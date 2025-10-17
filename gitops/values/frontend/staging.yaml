@@ -1,0 +1,46 @@
+# Frontend Staging Environment Values
+
+replicaCount: 2
+
+image:
+  repository: <ECR_REGISTRY>/servicepro-frontend # Replace with your ECR registry
+  tag: 'staging-latest'
+  pullPolicy: Always
+
+ingress:
+  enabled: true
+  className: 'nginx'
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-staging
+    nginx.ingress.kubernetes.io/ssl-redirect: 'true'
+  hosts:
+    - host: staging.servicepro.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: frontend-staging-tls
+      hosts:
+        - staging.servicepro.com
+
+resources:
+  limits:
+    cpu: 250m
+    memory: 256Mi
+  requests:
+    cpu: 50m
+    memory: 128Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+config:
+  apiUrl: 'https://api-staging.servicepro.com'
+  wsUrl: 'wss://api-staging.servicepro.com/ws'
+  environment: staging
+  enableAnalytics: false
+  enableDebug: true

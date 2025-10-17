@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "servicepro-backend.fullname" . }}
+  labels:
+    {{- include "servicepro-backend.labels" . | nindent 4 }}
+data:
+  redisHost: {{ .Values.redis.host | quote }}
+  redisPort: {{ .Values.redis.port | quote }}
+  redisDb: {{ .Values.redis.db | quote }}
+  dbMaxOpenConns: {{ .Values.database.maxOpenConns | quote }}
+  dbMaxIdleConns: {{ .Values.database.maxIdleConns | quote }}
+  dbConnMaxLifetime: {{ .Values.database.connMaxLifetime | quote }}

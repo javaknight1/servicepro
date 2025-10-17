@@ -1,0 +1,136 @@
+# Default values for servicepro-backend
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 2
+
+image:
+  repository: servicepro/backend
+  pullPolicy: IfNotPresent
+  tag: 'latest'
+
+imagePullSecrets: []
+nameOverride: ''
+fullnameOverride: ''
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ''
+
+podAnnotations: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+
+securityContext:
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8080
+
+ingress:
+  enabled: false
+  className: 'nginx'
+  annotations:
+    {}
+    # cert-manager.io/cluster-issuer: letsencrypt-prod
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+  hosts:
+    - host: api.servicepro.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+  #  - secretName: servicepro-backend-tls
+  #    hosts:
+  #      - api.servicepro.example.com
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 512Mi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+# Application configuration
+config:
+  port: 8080
+  environment: production
+  logLevel: info
+  corsAllowedOrigins: 'https://servicepro.example.com'
+
+# Database configuration
+database:
+  host: ''
+  port: 5432
+  name: servicepro
+  sslMode: require
+  maxOpenConns: 25
+  maxIdleConns: 5
+  connMaxLifetime: '5m'
+
+# Redis configuration
+redis:
+  host: ''
+  port: 6379
+  db: 0
+
+# JWT configuration
+jwt:
+  expiration: '24h'
+
+# AWS configuration
+aws:
+  region: us-east-1
+  s3Bucket: ''
+
+# Health checks
+livenessProbe:
+  httpGet:
+    path: /health
+    port: http
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: http
+  initialDelaySeconds: 10
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+# Secrets (should be overridden in environment-specific values)
+secrets:
+  databaseUrl: ''
+  redisPassword: ''
+  jwtSecret: ''
+  awsAccessKeyId: ''
+  awsSecretAccessKey: ''

@@ -1,0 +1,31 @@
+# Dependencies
+node_modules
+**/node_modules
+
+# Build outputs
+dist
+build
+coverage
+*.min.js
+*.min.css
+
+# Vendor and generated files
+vendor
+go.sum
+
+# Lock files
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# IDE and OS
+.idea
+.vscode
+.DS_Store
+
+# Kubernetes and Helm
+**/templates/*.yaml
+**/templates/*.yml
+
+# Docker
+Dockerfile*

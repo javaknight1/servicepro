@@ -1,0 +1,139 @@
+run:
+  timeout: 5m
+  tests: true
+  modules-download-mode: readonly
+
+linters:
+  enable:
+    # Standard Go formatting
+    - gofmt
+    - goimports
+    - gci
+
+    # Code quality
+    - govet
+    - errcheck
+    - staticcheck
+    - unused
+    - gosimple
+    - ineffassign
+    - typecheck
+
+    # Security checks
+    - gosec
+
+    # Performance linters
+    - prealloc
+    - bodyclose
+
+    # Best practices
+    - gocritic
+    - revive
+    - unconvert
+    - misspell
+    - whitespace
+    - goconst
+
+    # Error handling
+    - errorlint
+    - errname
+
+    # Additional useful linters
+    - dupl
+    - exportloopref
+    - nilerr
+    - nolintlint
+    - predeclared
+    - wastedassign
+
+linters-settings:
+  gofmt:
+    simplify: true
+
+  goimports:
+    local-prefixes: github.com/javaknight1/servicepro
+
+  gci:
+    sections:
+      - standard
+      - default
+      - prefix(github.com/javaknight1/servicepro)
+
+  gosec:
+    severity: medium
+    confidence: medium
+    excludes:
+      - G104 # Audit errors not checked - we use errcheck for this
+
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - performance
+      - style
+    disabled-checks:
+      - unnecessaryBlock
+
+  revive:
+    rules:
+      - name: exported
+        severity: warning
+      - name: package-comments
+        severity: warning
+      - name: var-naming
+        severity: warning
+      - name: indent-error-flow
+        severity: warning
+      - name: blank-imports
+        severity: warning
+      - name: context-as-argument
+        severity: warning
+      - name: error-return
+        severity: warning
+      - name: error-strings
+        severity: warning
+      - name: errorf
+        severity: warning
+      - name: increment-decrement
+        severity: warning
+      - name: var-declaration
+        severity: warning
+
+  goconst:
+    min-len: 3
+    min-occurrences: 3
+
+  dupl:
+    threshold: 100
+
+  prealloc:
+    simple: true
+    range-loops: true
+    for-loops: false
+
+issues:
+  exclude-rules:
+    # Exclude some linters from running on tests files
+    - path: _test\.go
+      linters:
+        - dupl
+        - gosec
+        - goconst
+
+    # Exclude some staticcheck messages
+    - linters:
+        - staticcheck
+      text: 'SA9003:'
+
+    # Exclude lll issues for long lines with go:generate
+    - linters:
+        - lll
+      source: '^//go:generate '
+
+  max-issues-per-linter: 0
+  max-same-issues: 0
+
+output:
+  format: colored-line-number
+  print-issued-lines: true
+  print-linter-name: true
+  sort-results: true

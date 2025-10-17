@@ -1,0 +1,36 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: servicepro-frontend-prod
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+
+  source:
+    repoURL: https://github.com/javaknight1/servicepro.git
+    targetRevision: v* # Deploy on v* tags (e.g., v1.0.0)
+    path: frontend/helm
+    helm:
+      valueFiles:
+        - ../../gitops/values/frontend/prod.yaml
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: servicepro-prod
+
+  syncPolicy:
+    # Manual approval for production
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+
+  revisionHistoryLimit: 10

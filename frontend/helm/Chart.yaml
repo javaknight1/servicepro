@@ -1,0 +1,14 @@
+apiVersion: v2
+name: servicepro-frontend
+description: ServicePro Frontend - React application
+type: application
+version: 0.1.0
+appVersion: '1.0.0'
+keywords:
+  - servicepro
+  - frontend
+  - react
+  - spa
+maintainers:
+  - name: ServicePro Team
+    email: team@servicepro.com

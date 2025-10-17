@@ -1,0 +1,39 @@
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+main
+bin/
+pkg/
+
+# Test files
+*.test
+*.out
+coverage.*
+*.coverprofile
+
+# Development files
+.env
+.env.local
+*.tmp
+tmp/
+.air.toml
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+README.md
+docs/
+
+# OS
+.DS_Store

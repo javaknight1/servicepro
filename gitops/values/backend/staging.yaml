@@ -1,0 +1,74 @@
+# Backend Staging Environment Values
+
+replicaCount: 2
+
+image:
+  repository: <ECR_REGISTRY>/servicepro-backend # Replace with your ECR registry
+  tag: 'staging-latest'
+  pullPolicy: Always
+
+ingress:
+  enabled: true
+  className: 'nginx'
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-staging
+    nginx.ingress.kubernetes.io/ssl-redirect: 'true'
+  hosts:
+    - host: api-staging.servicepro.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: backend-staging-tls
+      hosts:
+        - api-staging.servicepro.com
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 256Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+config:
+  port: 8080
+  environment: staging
+  logLevel: debug
+  corsAllowedOrigins: 'https://staging.servicepro.com'
+
+database:
+  host: 'servicepro-staging.xxxxxx.us-east-1.rds.amazonaws.com'
+  port: 5432
+  name: servicepro_staging
+  sslMode: require
+  maxOpenConns: 20
+  maxIdleConns: 5
+  connMaxLifetime: '5m'
+
+redis:
+  host: 'servicepro-staging.xxxxxx.cache.amazonaws.com'
+  port: 6379
+  db: 0
+
+jwt:
+  expiration: '24h'
+
+aws:
+  region: us-east-1
+  s3Bucket: 'servicepro-staging-assets'
+
+# Secrets should be managed via external secrets operator or sealed secrets
+secrets:
+  databaseUrl: '' # Managed externally
+  redisPassword: '' # Managed externally
+  jwtSecret: '' # Managed externally
+  awsAccessKeyId: '' # Managed externally
+  awsSecretAccessKey: '' # Managed externally

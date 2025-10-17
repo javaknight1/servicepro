@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "servicepro-frontend.fullname" . }}
+  labels:
+    {{- include "servicepro-frontend.labels" . | nindent 4 }}
+data:
+  apiUrl: {{ .Values.config.apiUrl | quote }}
+  wsUrl: {{ .Values.config.wsUrl | quote }}
+  environment: {{ .Values.config.environment | quote }}
+  enableAnalytics: {{ .Values.config.enableAnalytics | quote }}
+  enableDebug: {{ .Values.config.enableDebug | quote }}

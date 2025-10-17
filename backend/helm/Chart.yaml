@@ -1,0 +1,14 @@
+apiVersion: v2
+name: servicepro-backend
+description: ServicePro Backend API - Go microservice
+type: application
+version: 0.1.0
+appVersion: '1.0.0'
+keywords:
+  - servicepro
+  - backend
+  - golang
+  - api
+maintainers:
+  - name: ServicePro Team
+    email: team@servicepro.com

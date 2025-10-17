@@ -1,0 +1,81 @@
+# Backend Production Environment Values
+
+replicaCount: 5
+
+image:
+  repository: <ECR_REGISTRY>/servicepro-backend # Replace with your ECR registry
+  tag: '' # Set by CI/CD based on git tag
+  pullPolicy: IfNotPresent
+
+ingress:
+  enabled: true
+  className: 'nginx'
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-redirect: 'true'
+    nginx.ingress.kubernetes.io/rate-limit: '200'
+    nginx.ingress.kubernetes.io/limit-rps: '50'
+  hosts:
+    - host: api.servicepro.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: backend-prod-tls
+      hosts:
+        - api.servicepro.com
+
+resources:
+  limits:
+    cpu: 2000m
+    memory: 2Gi
+  requests:
+    cpu: 500m
+    memory: 1Gi
+
+autoscaling:
+  enabled: true
+  minReplicas: 5
+  maxReplicas: 20
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 75
+
+config:
+  port: 8080
+  environment: production
+  logLevel: warn
+  corsAllowedOrigins: 'https://servicepro.com,https://www.servicepro.com'
+
+database:
+  host: 'servicepro-prod.xxxxxx.us-east-1.rds.amazonaws.com'
+  port: 5432
+  name: servicepro_prod
+  sslMode: require
+  maxOpenConns: 50
+  maxIdleConns: 10
+  connMaxLifetime: '10m'
+
+redis:
+  host: 'servicepro-prod.xxxxxx.cache.amazonaws.com'
+  port: 6379
+  db: 0
+
+jwt:
+  expiration: '24h'
+
+aws:
+  region: us-east-1
+  s3Bucket: 'servicepro-prod-assets'
+
+# Production pod disruption budget
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 3
+
+# Secrets should be managed via external secrets operator or sealed secrets
+secrets:
+  databaseUrl: '' # Managed externally
+  redisPassword: '' # Managed externally
+  jwtSecret: '' # Managed externally
+  awsAccessKeyId: '' # Managed externally
+  awsSecretAccessKey: '' # Managed externally

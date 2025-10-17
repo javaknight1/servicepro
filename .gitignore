@@ -1,32 +1,121 @@
-# If you prefer the allow list template instead of the deny list, see community template:
-# https://github.com/github/gitignore/blob/main/community/Golang/Go.AllowList.gitignore
-#
-# Binaries for programs and plugins
+# Dependencies
+node_modules/
+vendor/
+
+# Build artifacts
+dist/
+build/
 *.exe
 *.exe~
 *.dll
 *.so
 *.dylib
 
-# Test binary, built with `go test -c`
+# Go build artifacts
 *.test
-
-# Code coverage profiles and other test artifacts
 *.out
+/bin/
+/pkg/
+/cmd/*/main
+
+# React build artifacts
+/frontend/build
+/frontend/.cache
+/frontend/dist
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env
+!.env.example
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+pnpm-debug.log*
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+*.sublime-workspace
+*.sublime-project
+
+# Testing
+coverage/
+*.cover
+*.coverage
 coverage.*
 *.coverprofile
 profile.cov
+.pytest_cache/
+.nyc_output
 
-# Dependency directories (remove the comment below to include it)
-# vendor/
+# Temporary files
+tmp/
+temp/
+*.tmp
 
-# Go workspace file
+# AWS and Infrastructure
+.terraform/
+*.tfstate
+*.tfstate.*
+terraform.tfvars
+.terraform.lock.hcl
+*.tfvars
+!terraform.tfvars.example
+
+# Secrets and credentials
+secrets/
+*.pem
+*.key
+*.crt
+*.p12
+credentials.json
+serviceAccountKey.json
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+/data/
+
+# Go specific
 go.work
 go.work.sum
 
-# env file
-.env
+# React specific
+.eslintcache
 
-# Editor/IDE
-# .idea/
-# .vscode/
+# Package manager locks (optional - uncomment if you want to ignore)
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
+
+# Docker
+docker-compose.override.yml
+
+# Local development
+.local/
+.air.toml

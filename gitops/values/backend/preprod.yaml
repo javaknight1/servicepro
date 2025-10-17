@@ -1,0 +1,75 @@
+# Backend PreProduction Environment Values
+
+replicaCount: 3
+
+image:
+  repository: <ECR_REGISTRY>/servicepro-backend # Replace with your ECR registry
+  tag: '' # Set by CI/CD based on git tag
+  pullPolicy: IfNotPresent
+
+ingress:
+  enabled: true
+  className: 'nginx'
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-redirect: 'true'
+    nginx.ingress.kubernetes.io/rate-limit: '100'
+  hosts:
+    - host: api-preprod.servicepro.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: backend-preprod-tls
+      hosts:
+        - api-preprod.servicepro.com
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+  requests:
+    cpu: 250m
+    memory: 512Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 8
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 75
+
+config:
+  port: 8080
+  environment: preprod
+  logLevel: info
+  corsAllowedOrigins: 'https://preprod.servicepro.com'
+
+database:
+  host: 'servicepro-preprod.xxxxxx.us-east-1.rds.amazonaws.com'
+  port: 5432
+  name: servicepro_preprod
+  sslMode: require
+  maxOpenConns: 25
+  maxIdleConns: 5
+  connMaxLifetime: '5m'
+
+redis:
+  host: 'servicepro-preprod.xxxxxx.cache.amazonaws.com'
+  port: 6379
+  db: 0
+
+jwt:
+  expiration: '24h'
+
+aws:
+  region: us-east-1
+  s3Bucket: 'servicepro-preprod-assets'
+
+# Secrets should be managed via external secrets operator or sealed secrets
+secrets:
+  databaseUrl: '' # Managed externally
+  redisPassword: '' # Managed externally
+  jwtSecret: '' # Managed externally
+  awsAccessKeyId: '' # Managed externally
+  awsSecretAccessKey: '' # Managed externally

@@ -1,0 +1,87 @@
+repos:
+  # General file checks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+        args: ['--unsafe']
+        exclude: |
+          (?x)^(
+            .*/templates/.*\.yaml|
+            .*/templates/.*\.yml
+          )$
+      - id: check-json
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+      - id: check-merge-conflict
+      - id: detect-private-key
+
+  # Prettier for formatting
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v3.1.0
+    hooks:
+      - id: prettier
+        types_or: [javascript, jsx, ts, tsx, json, yaml, markdown, css, scss]
+        additional_dependencies:
+          - prettier@3.1.0
+        exclude: |
+          (?x)^(
+            package-lock\.json|
+            yarn\.lock|
+            pnpm-lock\.yaml|
+            .*/templates/.*\.yaml|
+            .*/templates/.*\.yml
+          )$
+
+  # Frontend - ESLint
+  - repo: local
+    hooks:
+      - id: eslint
+        name: eslint
+        entry: bash -c 'cd frontend && npx eslint . --fix --max-warnings=0'
+        language: system
+        pass_filenames: false
+        files: ^frontend/.*\.[jt]sx?$
+
+  # Backend - Go linting
+  - repo: local
+    hooks:
+      - id: golangci-lint
+        name: golangci-lint
+        entry: bash -c 'cd backend && golangci-lint run --config .golangci.yml'
+        language: system
+        pass_filenames: false
+        files: ^backend/.*\.go$
+
+  # Go formatting
+  - repo: https://github.com/dnephin/pre-commit-golang
+    rev: v0.5.1
+    hooks:
+      - id: go-fmt
+        args: [-w]
+      - id: go-imports
+        args: [-w, -local, github.com/javaknight1/servicepro]
+
+  # Frontend tests (optional - can be slow)
+  - repo: local
+    hooks:
+      - id: frontend-tests
+        name: Frontend Tests
+        entry: bash -c 'cd frontend && npm test -- --watchAll=false --passWithNoTests'
+        language: system
+        pass_filenames: false
+        files: ^frontend/.*\.(ts|tsx|js|jsx)$
+        stages: [manual] # Only run when explicitly called with --hook-stage manual
+
+  # Backend tests (optional - can be slow)
+  - repo: local
+    hooks:
+      - id: backend-tests
+        name: Backend Tests
+        entry: bash -c 'cd backend && go test ./... -v'
+        language: system
+        pass_filenames: false
+        files: ^backend/.*\.go$
+        stages: [manual] # Only run when explicitly called with --hook-stage manual
