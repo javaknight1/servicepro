@@ -1,0 +1,187 @@
+<mjml>
+  <mj-head>
+    <mj-title>{{.Subject | default "Alert Notification"}}</mj-title>
+    <mj-preview>{{.PreviewText | default "Important notification"}}</mj-preview>
+    <mj-attributes>
+      <mj-all font-family="Arial, Helvetica, sans-serif" />
+      <mj-text font-size="14px" line-height="1.6" color="#374151" />
+      <mj-button background-color="{{.PrimaryColor | default "#2563eb"}}" color="#ffffff" border-radius="6px" font-size="14px" font-weight="600" />
+    </mj-attributes>
+    <mj-style inline="inline">
+      .severity-critical { background-color: #dc2626; }
+      .severity-high { background-color: #ea580c; }
+      .severity-medium { background-color: #d97706; }
+      .severity-low { background-color: #2563eb; }
+      .severity-info { background-color: #6b7280; }
+      .detail-label { color: #6b7280; font-size: 12px; text-transform: uppercase; }
+    </mj-style>
+  </mj-head>
+
+  <mj-body background-color="#f3f4f6">
+    <!-- Header with Severity Color -->
+    <mj-section
+      background-color="{{if eq .Severity "critical"}}#dc2626{{else if eq .Severity "high"}}#ea580c{{else if eq .Severity "medium"}}#d97706{{else if eq .Severity "low"}}#2563eb{{else}}#6b7280{{end}}"
+      padding="20px 0">
+      <mj-column>
+        {{if .CompanyLogo}}
+        <mj-image src="{{.CompanyLogo}}" alt="{{.CompanyName}}" width="150px" />
+        {{else}}
+        <mj-text font-size="24px" font-weight="bold" color="#ffffff" align="center">
+          {{.CompanyName | default "ServicePro"}}
+        </mj-text>
+        {{end}}
+      </mj-column>
+    </mj-section>
+
+    <!-- Severity Badge -->
+    <mj-section background-color="#ffffff" padding="30px 30px 0" border-radius="8px 8px 0 0">
+      <mj-column>
+        <mj-text align="center">
+          <span style="display:inline-block;padding:8px 16px;border-radius:9999px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#ffffff;background-color:{{if eq .Severity "critical"}}#dc2626{{else if eq .Severity "high"}}#ea580c{{else if eq .Severity "medium"}}#d97706{{else if eq .Severity "low"}}#2563eb{{else}}#6b7280{{end}};">
+            {{.Severity | upper}} PRIORITY
+          </span>
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Alert Icon and Title -->
+    <mj-section background-color="#ffffff" padding="20px 30px">
+      <mj-column>
+        <mj-text align="center" font-size="24px" font-weight="bold" color="#111827">
+          {{if eq .AlertType "warning"}}&#9888;{{else if eq .AlertType "error"}}&#10060;{{else if eq .AlertType "success"}}&#9989;{{else}}&#8505;{{end}}
+          {{.Title}}
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Alert Message -->
+    <mj-section background-color="#ffffff" padding="0 30px 30px">
+      <mj-column>
+        <mj-text align="center" font-size="16px" color="#4b5563" padding-bottom="25px">
+          {{.Message}}
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Alert Details Card -->
+    <mj-section background-color="#ffffff" padding="0 30px 30px">
+      <mj-column background-color="#f9fafb" border-radius="8px" padding="20px">
+        <!-- Alert Type -->
+        <mj-text css-class="detail-label" padding-bottom="3px">
+          ALERT TYPE
+        </mj-text>
+        <mj-text font-weight="600" padding-bottom="15px">
+          {{.AlertType | title}}
+        </mj-text>
+
+        <!-- Timestamp -->
+        <mj-text css-class="detail-label" padding-bottom="3px">
+          TIMESTAMP
+        </mj-text>
+        <mj-text font-weight="600" padding-bottom="15px">
+          {{formatDateTime .Timestamp}}
+        </mj-text>
+
+        <!-- Resource -->
+        {{if .ResourceName}}
+        <mj-text css-class="detail-label" padding-bottom="3px">
+          AFFECTED RESOURCE
+        </mj-text>
+        <mj-text font-weight="600" padding-bottom="15px">
+          {{.ResourceName}}
+          {{if .ResourceType}}<br/><span style="font-size:12px;font-weight:normal;color:#6b7280;">Type: {{.ResourceType}}</span>{{end}}
+          {{if .ResourceID}}<br/><span style="font-size:12px;font-weight:normal;color:#6b7280;">ID: {{.ResourceID}}</span>{{end}}
+        </mj-text>
+        {{end}}
+
+        <!-- Alert ID -->
+        <mj-text css-class="detail-label" padding-bottom="3px">
+          ALERT ID
+        </mj-text>
+        <mj-text font-size="12px" color="#6b7280">
+          {{.AlertID}}
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Additional Metadata -->
+    {{if .Metadata}}
+    <mj-section background-color="#ffffff" padding="0 30px 30px">
+      <mj-column background-color="#fef3c7" border-radius="8px" padding="15px">
+        <mj-text font-size="12px" font-weight="600" color="#92400e" padding-bottom="10px">
+          ADDITIONAL INFORMATION
+        </mj-text>
+        {{range $key, $value := .Metadata}}
+        <mj-text font-size="13px" color="#78350f" padding-bottom="5px">
+          <strong>{{$key}}:</strong> {{$value}}
+        </mj-text>
+        {{end}}
+      </mj-column>
+    </mj-section>
+    {{end}}
+
+    <!-- Action Buttons -->
+    <mj-section background-color="#ffffff" padding="0 30px 30px">
+      <mj-column>
+        {{if .DetailsURL}}
+        <mj-button href="{{.DetailsURL}}" width="100%">
+          View Details
+        </mj-button>
+        {{end}}
+      </mj-column>
+    </mj-section>
+
+    {{if or .AcknowledgeURL .ResolveURL}}
+    <mj-section background-color="#ffffff" padding="0 30px 30px">
+      {{if .AcknowledgeURL}}
+      <mj-column>
+        <mj-button href="{{.AcknowledgeURL}}" width="100%" background-color="#ffffff" color="{{.PrimaryColor | default "#2563eb"}}" border="1px solid {{.PrimaryColor | default "#2563eb"}}">
+          Acknowledge
+        </mj-button>
+      </mj-column>
+      {{end}}
+      {{if .ResolveURL}}
+      <mj-column>
+        <mj-button href="{{.ResolveURL}}" width="100%" background-color="#059669">
+          Mark as Resolved
+        </mj-button>
+      </mj-column>
+      {{end}}
+    </mj-section>
+    {{end}}
+
+    <!-- Urgency Notice for Critical -->
+    {{if eq .Severity "critical"}}
+    <mj-section background-color="#fef2f2" padding="20px 30px">
+      <mj-column>
+        <mj-text align="center" font-size="14px" font-weight="600" color="#dc2626">
+          This is a critical alert requiring immediate attention.
+        </mj-text>
+        <mj-text align="center" font-size="13px" color="#991b1b" padding-top="5px">
+          Please review and take action as soon as possible.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+    {{end}}
+
+    <!-- Footer -->
+    <mj-section background-color="#f9fafb" padding="25px" border-radius="0 0 8px 8px">
+      <mj-column>
+        <mj-text font-size="13px" color="#6b7280" align="center">
+          This is an automated alert from {{.CompanyName | default "ServicePro"}}.
+        </mj-text>
+
+        <mj-divider border-color="#e5e7eb" border-width="1px" padding="20px 0" />
+
+        <mj-text font-size="12px" color="#9ca3af" align="center">
+          You're receiving this because you're subscribed to {{.AlertType}} alerts.
+          {{if .UnsubscribeURL}}<br/><a href="{{.UnsubscribeURL}}" style="color:#9ca3af;">Manage notification preferences</a>{{end}}
+        </mj-text>
+
+        <mj-text font-size="11px" color="#9ca3af" align="center" padding-top="15px">
+          &copy; {{.CurrentYear}} {{.CompanyName | default "ServicePro"}}. All rights reserved.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

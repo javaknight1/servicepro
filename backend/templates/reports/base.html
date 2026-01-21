@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Service Report #{{.DocumentNumber}}</title>
+    <link rel="stylesheet" href="styles.css">
+    {{if .CustomCSS}}<style>{{.CustomCSS}}</style>{{end}}
+</head>
+<body>
+    <div class="document service-report">
+        <!-- Header Section -->
+        <header class="document-header">
+            <div class="company-info">
+                {{if .CompanyLogo}}
+                <img src="{{.CompanyLogo}}" alt="{{.CompanyName}}" class="company-logo">
+                {{else}}
+                <h1 class="company-name">{{.CompanyName}}</h1>
+                {{end}}
+                {{if .CompanyTagline}}
+                <p class="company-tagline">{{.CompanyTagline}}</p>
+                {{end}}
+                <div class="company-contact">
+                    {{if .CompanyPhone}}<p>Phone: {{.CompanyPhone}}</p>{{end}}
+                    {{if .CompanyEmail}}<p>Email: {{.CompanyEmail}}</p>{{end}}
+                </div>
+            </div>
+            <div class="document-info">
+                <h2 class="document-type">SERVICE REPORT</h2>
+                <table class="document-meta">
+                    <tr>
+                        <td class="label">Report Number:</td>
+                        <td class="value">{{.DocumentNumber}}</td>
+                    </tr>
+                    <tr>
+                        <td class="label">Work Order:</td>
+                        <td class="value">{{.WorkOrderNumber}}</td>
+                    </tr>
+                    <tr>
+                        <td class="label">Service Date:</td>
+                        <td class="value">{{.ServiceDate | formatDate}}</td>
+                    </tr>
+                    <tr>
+                        <td class="label">Status:</td>
+                        <td class="value">
+                            <span class="status-badge status-{{.Status | lowercase}}">{{.Status}}</span>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </header>
+
+        <!-- Customer & Location Info -->
+        <section class="info-grid-section">
+            <div class="info-card customer-info-card">
+                <h3 class="card-title">Customer Information</h3>
+                <div class="card-content">
+                    <p class="primary-info">{{.CustomerName}}</p>
+                    {{if .CustomerCompany}}
+                    <p class="secondary-info">{{.CustomerCompany}}</p>
+                    {{end}}
+                    {{if .CustomerPhone}}<p>Phone: {{.CustomerPhone}}</p>{{end}}
+                    {{if .CustomerEmail}}<p>Email: {{.CustomerEmail}}</p>{{end}}
+                </div>
+            </div>
+            <div class="info-card location-info-card">
+                <h3 class="card-title">Service Location</h3>
+                <div class="card-content">
+                    <p class="address">{{.ServiceAddress | nl2br}}</p>
+                    {{if .AccessNotes}}
+                    <p class="access-notes"><strong>Access:</strong> {{.AccessNotes}}</p>
+                    {{end}}
+                </div>
+            </div>
+        </section>
+
+        <!-- Technician & Time Info -->
+        <section class="service-details-section">
+            <div class="detail-row">
+                <div class="detail-item">
+                    <span class="detail-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+                            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                        </svg>
+                    </span>
+                    <div class="detail-content">
+                        <span class="detail-label">Technician</span>
+                        <span class="detail-value">{{.Technician.Name}}</span>
+                        {{if .Technician.Phone}}
+                        <span class="detail-sub">{{.Technician.Phone}}</span>
+                        {{end}}
+                    </div>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+                            <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/>
+                        </svg>
+                    </span>
+                    <div class="detail-content">
+                        <span class="detail-label">Arrival Time</span>
+                        <span class="detail-value">{{.ArrivalTime | formatTime}}</span>
+                    </div>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+                            <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/>
+                        </svg>
+                    </span>
+                    <div class="detail-content">
+                        <span class="detail-label">Departure Time</span>
+                        <span class="detail-value">{{.DepartureTime | formatTime}}</span>
+                    </div>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+                            <path d="M6 2v6h.01L6 8.01 10 12l-4 4 .01.01H6V22h12v-5.99h-.01L18 16l-4-4 4-3.99-.01-.01H18V2H6z"/>
+                        </svg>
+                    </span>
+                    <div class="detail-content">
+                        <span class="detail-label">Total Time</span>
+                        <span class="detail-value">{{.TotalHours}} hours</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Equipment Serviced -->
+        {{if .Equipment}}
+        <section class="equipment-section">
+            <div class="section-header">
+                <h3>Equipment Serviced</h3>
+            </div>
+            <div class="equipment-grid">
+                {{range .Equipment}}
+                <div class="equipment-card">
+                    <div class="equipment-header">
+                        <span class="equipment-name">{{.Name}}</span>
+                        {{if .Condition}}
+                        <span class="equipment-condition condition-{{.Condition | lowercase}}">{{.Condition}}</span>
+                        {{end}}
+                    </div>
+                    <div class="equipment-details">
+                        {{if .Model}}<p><strong>Model:</strong> {{.Model}}</p>{{end}}
+                        {{if .SerialNumber}}<p><strong>Serial:</strong> {{.SerialNumber}}</p>{{end}}
+                        {{if .Location}}<p><strong>Location:</strong> {{.Location}}</p>{{end}}
+                        {{if .ManufactureDate}}<p><strong>Manufactured:</strong> {{.ManufactureDate | formatDate}}</p>{{end}}
+                    </div>
+                </div>
+                {{end}}
+            </div>
+        </section>
+        {{end}}
+
+        <!-- Work Performed -->
+        <section class="work-section">
+            <div class="section-header">
+                <h3>Work Performed</h3>
+            </div>
+            <div class="work-content">
+                {{.WorkPerformed | nl2br}}
+            </div>
+        </section>
+
+        <!-- Tasks Checklist -->
+        {{if .Tasks}}
+        <section class="tasks-section">
+            <div class="section-header">
+                <h3>Service Checklist</h3>
+            </div>
+            <div class="tasks-list">
+                {{range .Tasks}}
+                <div class="task-item task-{{.Status | lowercase}}">
+                    <span class="task-checkbox">
+                        {{if eq .Status "completed"}}
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+                            <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                        </svg>
+                        {{else if eq .Status "skipped"}}
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+                            <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                        </svg>
+                        {{else}}
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z"/>
+                        </svg>
+                        {{end}}
+                    </span>
+                    <div class="task-content">
+                        <span class="task-description">{{.Description}}</span>
+                        {{if .Notes}}
+                        <span class="task-notes">{{.Notes}}</span>
+                        {{end}}
+                    </div>
+                    <span class="task-status-label">{{.Status}}</span>
+                </div>
+                {{end}}
+            </div>
+        </section>
+        {{end}}
+
+        <!-- Findings & Observations -->
+        {{if .Findings}}
+        <section class="findings-section">
+            <div class="section-header">
+                <h3>Findings & Observations</h3>
+            </div>
+            <div class="findings-content">
+                {{.Findings | nl2br}}
+            </div>
+        </section>
+        {{end}}
+
+        <!-- Recommendations -->
+        {{if .Recommendations}}
+        <section class="recommendations-section">
+            <div class="section-header">
+                <h3>Recommendations</h3>
+            </div>
+            <div class="recommendations-content">
+                {{.Recommendations | nl2br}}
+            </div>
+        </section>
+        {{end}}
+
+        <!-- Parts Used -->
+        {{if .PartsUsed}}
+        <section class="parts-section">
+            <div class="section-header">
+                <h3>Parts & Materials Used</h3>
+            </div>
+            <table class="parts-table">
+                <thead>
+                    <tr>
+                        <th>Part Number</th>
+                        <th>Description</th>
+                        <th class="text-center">Qty</th>
+                        <th class="text-right">Unit Cost</th>
+                        <th class="text-right">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range .PartsUsed}}
+                    <tr>
+                        <td>{{.PartNumber}}</td>
+                        <td>{{.Description}}</td>
+                        <td class="text-center">{{.Quantity}}</td>
+                        <td class="text-right">{{.UnitCost | formatCurrency}}</td>
+                        <td class="text-right">{{.Total | formatCurrency}}</td>
+                    </tr>
+                    {{end}}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="4" class="text-right"><strong>Parts Total:</strong></td>
+                        <td class="text-right"><strong>{{.PartsTotal | formatCurrency}}</strong></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </section>
+        {{end}}
+
+        <!-- Labor Summary -->
+        <section class="labor-section">
+            <div class="section-header">
+                <h3>Labor Summary</h3>
+            </div>
+            <table class="labor-table">
+                <tbody>
+                    <tr>
+                        <td>Regular Hours:</td>
+                        <td class="text-right">{{.LaborHours}} hrs @ {{.LaborRate | formatCurrency}}/hr</td>
+                        <td class="text-right">{{.LaborTotal | formatCurrency}}</td>
+                    </tr>
+                    {{if .OvertimeHours}}
+                    <tr>
+                        <td>Overtime Hours:</td>
+                        <td class="text-right">{{.OvertimeHours}} hrs @ {{.OvertimeRate | formatCurrency}}/hr</td>
+                        <td class="text-right">{{.OvertimeTotal | formatCurrency}}</td>
+                    </tr>
+                    {{end}}
+                    {{if .TravelTime}}
+                    <tr>
+                        <td>Travel Time:</td>
+                        <td class="text-right">{{.TravelTime}} hrs</td>
+                        <td class="text-right">{{.TravelCharge | formatCurrency}}</td>
+                    </tr>
+                    {{end}}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="2" class="text-right"><strong>Labor Total:</strong></td>
+                        <td class="text-right"><strong>{{.TotalLaborCharges | formatCurrency}}</strong></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </section>
+
+        <!-- Charges Summary -->
+        <section class="charges-section">
+            <div class="section-header">
+                <h3>Charges Summary</h3>
+            </div>
+            <table class="charges-table">
+                <tbody>
+                    <tr>
+                        <td>Labor:</td>
+                        <td class="text-right">{{.TotalLaborCharges | formatCurrency}}</td>
+                    </tr>
+                    <tr>
+                        <td>Parts & Materials:</td>
+                        <td class="text-right">{{.PartsTotal | formatCurrency}}</td>
+                    </tr>
+                    {{if .OtherCharges}}
+                    <tr>
+                        <td>Other Charges:</td>
+                        <td class="text-right">{{.OtherCharges | formatCurrency}}</td>
+                    </tr>
+                    {{end}}
+                    {{if .TaxAmount}}
+                    <tr>
+                        <td>Tax ({{.TaxRate | formatPercent}}):</td>
+                        <td class="text-right">{{.TaxAmount | formatCurrency}}</td>
+                    </tr>
+                    {{end}}
+                </tbody>
+                <tfoot>
+                    <tr class="total-row">
+                        <td><strong>Total Charges:</strong></td>
+                        <td class="text-right total-amount"><strong>{{.TotalCharges | formatCurrency}}</strong></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </section>
+
+        <!-- Photos -->
+        {{if .Photos}}
+        <section class="photos-section">
+            <div class="section-header">
+                <h3>Service Photos</h3>
+            </div>
+            <div class="photos-grid">
+                {{range .Photos}}
+                <div class="photo-item">
+                    <img src="{{.URL}}" alt="{{.Caption}}" class="photo-image">
+                    {{if .Caption}}
+                    <p class="photo-caption">{{.Caption}}</p>
+                    {{end}}
+                    {{if .Timestamp}}
+                    <p class="photo-timestamp">{{.Timestamp | formatDateTime}}</p>
+                    {{end}}
+                </div>
+                {{end}}
+            </div>
+        </section>
+        {{end}}
+
+        <!-- Next Service -->
+        {{if .NextServiceDate}}
+        <section class="next-service-section">
+            <div class="next-service-banner">
+                <div class="banner-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="32" height="32">
+                        <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM9 10H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2zm-8 4H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2z"/>
+                    </svg>
+                </div>
+                <div class="banner-content">
+                    <span class="banner-label">Next Scheduled Service</span>
+                    <span class="banner-date">{{.NextServiceDate | formatDate}}</span>
+                    {{if .NextServiceNotes}}
+                    <span class="banner-notes">{{.NextServiceNotes}}</span>
+                    {{end}}
+                </div>
+            </div>
+        </section>
+        {{end}}
+
+        <!-- Signatures -->
+        <section class="signatures-section">
+            <div class="section-header">
+                <h3>Signatures</h3>
+            </div>
+            <div class="signatures-grid">
+                <div class="signature-block technician-signature">
+                    <h4>Technician</h4>
+                    {{if .TechnicianSignature.Signature}}
+                    <div class="signature-image">
+                        <img src="{{.TechnicianSignature.Signature}}" alt="Technician Signature">
+                    </div>
+                    {{else}}
+                    <div class="signature-line"></div>
+                    {{end}}
+                    <div class="signature-info">
+                        <p class="signature-name">{{.Technician.Name}}</p>
+                        {{if .TechnicianSignature.Date}}
+                        <p class="signature-date">{{.TechnicianSignature.Date | formatDateTime}}</p>
+                        {{end}}
+                    </div>
+                </div>
+                <div class="signature-block customer-signature">
+                    <h4>Customer</h4>
+                    {{if .CustomerSignature.Signature}}
+                    <div class="signature-image">
+                        <img src="{{.CustomerSignature.Signature}}" alt="Customer Signature">
+                    </div>
+                    {{else}}
+                    <div class="signature-line"></div>
+                    {{end}}
+                    <div class="signature-info">
+                        {{if .CustomerSignature.Name}}
+                        <p class="signature-name">{{.CustomerSignature.Name}}</p>
+                        {{else}}
+                        <p class="signature-name-placeholder">Print Name</p>
+                        {{end}}
+                        {{if .CustomerSignature.Date}}
+                        <p class="signature-date">{{.CustomerSignature.Date | formatDateTime}}</p>
+                        {{end}}
+                    </div>
+                </div>
+            </div>
+            {{if .CustomerSignature.Signature}}
+            <p class="signature-disclaimer">
+                By signing above, the customer acknowledges that the work described has been completed to their satisfaction.
+            </p>
+            {{end}}
+        </section>
+
+        <!-- Notes -->
+        {{if .Notes}}
+        <section class="notes-section">
+            <div class="section-header">
+                <h3>Additional Notes</h3>
+            </div>
+            <div class="notes-content">
+                {{.Notes | nl2br}}
+            </div>
+        </section>
+        {{end}}
+
+        <!-- Footer -->
+        <footer class="document-footer">
+            {{if .FooterText}}
+            <p class="footer-message">{{.FooterText}}</p>
+            {{else}}
+            <p class="footer-message">Thank you for choosing {{.CompanyName}}!</p>
+            {{end}}
+            {{if .Technician.LicenseNumber}}
+            <p class="license-info">Technician License: {{.Technician.LicenseNumber}}</p>
+            {{end}}
+            <p class="footer-generated">Report generated on {{.GeneratedAt | formatDateTime}}</p>
+        </footer>
+    </div>
+</body>
+</html>

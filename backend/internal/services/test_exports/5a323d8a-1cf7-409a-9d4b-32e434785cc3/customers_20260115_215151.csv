@@ -1,0 +1,21 @@
+﻿id,first_name,last_name,company_name,email,phone_primary,phone_secondary,customer_type,status,billing_address_street,billing_address_city,billing_address_state,billing_address_zip,service_address_street,service_address_city,service_address_state,service_address_zip,notes,created_at,updated_at
+cc501192-b7ca-475b-badd-d43960b1a90a,FirstA,LastA,,email0@example.com,555-000-0000,,residential,active,123 Main St,CityA,CA,90000,,,,,,2026-01-15T21:51:51-05:00,2026-01-15T21:51:51-05:00
+bd86faa6-3e76-418c-acdd-70ce1bf89cbf,FirstB,LastB,,email1@example.com,555-000-1000,,commercial,inactive,123 Main St,CityB,TX,90000,,,,,,2026-01-15T20:51:51-05:00,2026-01-15T21:51:51-05:00
+b3c7e5a7-6a72-42f8-a867-8d6732d37511,FirstC,LastC,,email2@example.com,555-000-2000,,residential,prospect,123 Main St,CityC,NY,90000,,,,,,2026-01-15T19:51:51-05:00,2026-01-15T21:51:51-05:00
+bbe988a8-d565-4181-a770-9172f5837750,FirstD,LastD,,email3@example.com,555-000-3000,,commercial,active,123 Main St,CityD,FL,90000,,,,,,2026-01-15T18:51:51-05:00,2026-01-15T21:51:51-05:00
+02c6a87a-8e68-4a16-a67a-0d65aeba7270,FirstE,LastE,,email4@example.com,555-000-4000,,residential,inactive,123 Main St,CityE,WA,90000,,,,,,2026-01-15T17:51:51-05:00,2026-01-15T21:51:51-05:00
+2f6fbe84-6690-47df-9d6e-b3ef10e7a544,FirstF,LastF,,email5@example.com,555-000-5000,,commercial,prospect,123 Main St,CityF,CA,90000,,,,,,2026-01-15T16:51:51-05:00,2026-01-15T21:51:51-05:00
+e98acbf0-ff06-4678-9580-13357e70dc9c,FirstG,LastG,,email6@example.com,555-000-6000,,residential,active,123 Main St,CityG,TX,90000,,,,,,2026-01-15T15:51:51-05:00,2026-01-15T21:51:51-05:00
+1f047ef8-3510-4f98-a0db-9300e66746e3,FirstH,LastH,,email7@example.com,555-000-7000,,commercial,inactive,123 Main St,CityH,NY,90000,,,,,,2026-01-15T14:51:51-05:00,2026-01-15T21:51:51-05:00
+0e3cd1d7-e3b0-410c-88f1-3798873915c0,FirstI,LastI,,email8@example.com,555-000-8000,,residential,prospect,123 Main St,CityI,FL,90000,,,,,,2026-01-15T13:51:51-05:00,2026-01-15T21:51:51-05:00
+8d1ed91c-19e2-4b33-85e0-1fbd780b9e51,FirstJ,LastJ,,email9@example.com,555-000-9000,,commercial,active,123 Main St,CityJ,WA,90000,,,,,,2026-01-15T12:51:51-05:00,2026-01-15T21:51:51-05:00
+2d879029-4892-4bdd-bb2d-8a9012b35385,FirstK,LastK,,email0@example.com,555-000-0100,,residential,inactive,123 Main St,CityK,CA,90000,,,,,,2026-01-15T11:51:51-05:00,2026-01-15T21:51:51-05:00
+280be35d-5a0b-417e-9a98-e23f3a5958a4,FirstL,LastL,,email1@example.com,555-000-1100,,commercial,prospect,123 Main St,CityL,TX,90000,,,,,,2026-01-15T10:51:51-05:00,2026-01-15T21:51:51-05:00
+1b45e9af-41c7-44bc-916b-7d66efef8fc0,FirstM,LastM,,email2@example.com,555-000-2100,,residential,active,123 Main St,CityM,NY,90000,,,,,,2026-01-15T09:51:51-05:00,2026-01-15T21:51:51-05:00
+6b50f52e-7d8a-49f5-a402-1be885493faa,FirstN,LastN,,email3@example.com,555-000-3100,,commercial,inactive,123 Main St,CityN,FL,90000,,,,,,2026-01-15T08:51:51-05:00,2026-01-15T21:51:51-05:00
+1be0b9c2-ddaa-4014-96c3-923ef457cf09,FirstO,LastO,,email4@example.com,555-000-4100,,residential,prospect,123 Main St,CityO,WA,90000,,,,,,2026-01-15T07:51:51-05:00,2026-01-15T21:51:51-05:00
+264ab082-850f-4ba1-b98e-04e8de934459,FirstP,LastP,,email5@example.com,555-000-5100,,commercial,active,123 Main St,CityP,CA,90000,,,,,,2026-01-15T06:51:51-05:00,2026-01-15T21:51:51-05:00
+1e43f83d-925f-47d5-ad75-3ca0886d5637,FirstQ,LastQ,,email6@example.com,555-000-6100,,residential,inactive,123 Main St,CityQ,TX,90000,,,,,,2026-01-15T05:51:51-05:00,2026-01-15T21:51:51-05:00
+8f7c5bed-107e-4f96-9b28-fa3697d75a7e,FirstR,LastR,,email7@example.com,555-000-7100,,commercial,prospect,123 Main St,CityR,NY,90000,,,,,,2026-01-15T04:51:51-05:00,2026-01-15T21:51:51-05:00
+39fff97e-7ca9-4a54-92e5-4870b86cb6d4,FirstS,LastS,,email8@example.com,555-000-8100,,residential,active,123 Main St,CityS,FL,90000,,,,,,2026-01-15T03:51:51-05:00,2026-01-15T21:51:51-05:00
+bb6b5632-18ae-49b3-9c18-ade0e77137e8,FirstT,LastT,,email9@example.com,555-000-9100,,commercial,inactive,123 Main St,CityT,WA,90000,,,,,,2026-01-15T02:51:51-05:00,2026-01-15T21:51:51-05:00

@@ -1,0 +1,3926 @@
+openapi: 3.0.3
+info:
+  title: ServicePro API
+  description: |
+    # ServicePro API Documentation
+
+    ServicePro is a comprehensive service management platform for field service businesses.
+    This API provides endpoints for managing customers, jobs, invoices, quotes, and user authentication.
+
+    ## Authentication
+
+    Most endpoints require authentication using JWT Bearer tokens. Include the token in the
+    `Authorization` header:
+
+    ```
+    Authorization: Bearer <your_jwt_token>
+    ```
+
+    ## Rate Limiting
+
+    API requests are rate limited to protect the service. Rate limit information is included
+    in response headers:
+
+    - `X-RateLimit-Limit`: Maximum requests per window
+    - `X-RateLimit-Remaining`: Remaining requests in current window
+    - `X-RateLimit-Reset`: Unix timestamp when the window resets
+
+    ## Pagination
+
+    List endpoints support pagination with the following query parameters:
+
+    - `page`: Page number (default: 1)
+    - `page_size`: Results per page (default: 20, max: 100)
+
+    Paginated responses include:
+
+    - `total`: Total number of records
+    - `page`: Current page number
+    - `page_size`: Results per page
+    - `total_pages`: Total number of pages
+
+    ## Error Handling
+
+    The API uses standard HTTP status codes and returns errors in a consistent format:
+
+    ```json
+    {
+      "error": {
+        "code": "VALIDATION_ERROR",
+        "message": "Validation failed",
+        "details": [
+          {"field": "email", "message": "Invalid email format"}
+        ]
+      }
+    }
+    ```
+
+  version: 1.0.0
+  contact:
+    name: ServicePro Support
+    email: support@servicepro.com
+    url: https://servicepro.com/support
+  license:
+    name: Proprietary
+    url: https://servicepro.com/license
+
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Local development server
+  - url: https://api.servicepro.com/v1
+    description: Production server
+  - url: https://staging-api.servicepro.com/v1
+    description: Staging server
+
+tags:
+  - name: Authentication
+    description: User authentication and session management
+  - name: Customers
+    description: Customer management operations
+  - name: Jobs
+    description: Job scheduling and management
+  - name: Invoices
+    description: Invoice creation and payment tracking
+  - name: Quotes
+    description: Quote generation and management
+
+# ==============================================================================
+# Security Schemes
+# ==============================================================================
+
+security:
+  - BearerAuth: []
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT authentication token obtained from the login endpoint.
+        Include in the Authorization header as: `Bearer <token>`
+
+  # ============================================================================
+  # Common Parameters
+  # ============================================================================
+
+  parameters:
+    PageParam:
+      name: page
+      in: query
+      description: Page number for pagination
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+      example: 1
+
+    PageSizeParam:
+      name: page_size
+      in: query
+      description: Number of results per page
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+      example: 20
+
+    SortByParam:
+      name: sort_by
+      in: query
+      description: Field to sort by
+      schema:
+        type: string
+        default: created_at
+      example: created_at
+
+    SortOrderParam:
+      name: sort_order
+      in: query
+      description: Sort direction
+      schema:
+        type: string
+        enum: [ASC, DESC]
+        default: DESC
+      example: DESC
+
+    IdPathParam:
+      name: id
+      in: path
+      required: true
+      description: Resource UUID
+      schema:
+        type: string
+        format: uuid
+      example: 550e8400-e29b-41d4-a716-446655440000
+
+  # ============================================================================
+  # Common Headers
+  # ============================================================================
+
+  headers:
+    X-RateLimit-Limit:
+      description: Maximum number of requests allowed per time window
+      schema:
+        type: integer
+      example: 100
+
+    X-RateLimit-Remaining:
+      description: Number of requests remaining in current time window
+      schema:
+        type: integer
+      example: 95
+
+    X-RateLimit-Reset:
+      description: Unix timestamp when the rate limit window resets
+      schema:
+        type: integer
+      example: 1706025600
+
+  # ============================================================================
+  # Reusable Schemas
+  # ============================================================================
+
+  schemas:
+    # --------------------------------------------------------------------------
+    # Common Types
+    # --------------------------------------------------------------------------
+
+    UUID:
+      type: string
+      format: uuid
+      description: Universally Unique Identifier
+      example: 550e8400-e29b-41d4-a716-446655440000
+
+    Timestamp:
+      type: string
+      format: date-time
+      description: ISO 8601 timestamp
+      example: '2024-01-22T10:30:00Z'
+
+    Money:
+      type: string
+      pattern: '^\d+\.\d{2}$'
+      description: Monetary value with 2 decimal places
+      example: '1234.56'
+
+    Percentage:
+      type: string
+      pattern: '^\d+\.\d{2,4}$'
+      description: Percentage as decimal (e.g., 8.25% = "0.0825")
+      example: '0.0825'
+
+    # --------------------------------------------------------------------------
+    # Address Schema
+    # --------------------------------------------------------------------------
+
+    Address:
+      type: object
+      properties:
+        street:
+          type: string
+          maxLength: 255
+          example: '123 Main Street'
+        city:
+          type: string
+          maxLength: 100
+          example: 'Springfield'
+        state:
+          type: string
+          minLength: 2
+          maxLength: 2
+          example: 'IL'
+        zip:
+          type: string
+          pattern: '^\d{5}(-\d{4})?$'
+          example: '62701'
+      required:
+        - street
+        - city
+        - state
+        - zip
+
+    # --------------------------------------------------------------------------
+    # Pagination Schema
+    # --------------------------------------------------------------------------
+
+    PaginationMeta:
+      type: object
+      properties:
+        total:
+          type: integer
+          description: Total number of records
+          example: 150
+        page:
+          type: integer
+          description: Current page number
+          example: 1
+        page_size:
+          type: integer
+          description: Number of results per page
+          example: 20
+        total_pages:
+          type: integer
+          description: Total number of pages
+          example: 8
+      required:
+        - total
+        - page
+        - page_size
+        - total_pages
+
+    # --------------------------------------------------------------------------
+    # Error Schemas
+    # --------------------------------------------------------------------------
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              description: Machine-readable error code
+              example: VALIDATION_ERROR
+            message:
+              type: string
+              description: Human-readable error message
+              example: 'Validation failed'
+            details:
+              type: array
+              items:
+                $ref: '#/components/schemas/ErrorDetail'
+          required:
+            - code
+            - message
+      required:
+        - error
+
+    ErrorDetail:
+      type: object
+      properties:
+        field:
+          type: string
+          description: Field that caused the error
+          example: 'email'
+        message:
+          type: string
+          description: Error message for this field
+          example: 'Invalid email format'
+        code:
+          type: string
+          description: Error code for this field
+          example: 'INVALID_FORMAT'
+
+    ValidationError:
+      allOf:
+        - $ref: '#/components/schemas/Error'
+        - type: object
+          properties:
+            error:
+              type: object
+              properties:
+                code:
+                  example: VALIDATION_ERROR
+                message:
+                  example: 'Request validation failed'
+
+    AuthenticationError:
+      allOf:
+        - $ref: '#/components/schemas/Error'
+        - type: object
+          properties:
+            error:
+              type: object
+              properties:
+                code:
+                  example: AUTHENTICATION_REQUIRED
+                message:
+                  example: 'Authentication required'
+
+    AuthorizationError:
+      allOf:
+        - $ref: '#/components/schemas/Error'
+        - type: object
+          properties:
+            error:
+              type: object
+              properties:
+                code:
+                  example: FORBIDDEN
+                message:
+                  example: 'You do not have permission to perform this action'
+
+    NotFoundError:
+      allOf:
+        - $ref: '#/components/schemas/Error'
+        - type: object
+          properties:
+            error:
+              type: object
+              properties:
+                code:
+                  example: NOT_FOUND
+                message:
+                  example: 'Resource not found'
+
+    RateLimitError:
+      allOf:
+        - $ref: '#/components/schemas/Error'
+        - type: object
+          properties:
+            error:
+              type: object
+              properties:
+                code:
+                  example: RATE_LIMIT_EXCEEDED
+                message:
+                  example: 'Too many requests. Please try again later.'
+                details:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      retry_after:
+                        type: integer
+                        description: Seconds until rate limit resets
+                        example: 60
+
+    # --------------------------------------------------------------------------
+    # Authentication Schemas
+    # --------------------------------------------------------------------------
+
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 255
+          description: User's email address
+          example: 'user@example.com'
+        password:
+          type: string
+          format: password
+          minLength: 8
+          maxLength: 128
+          description: User's password
+          example: 'SecureP@ss123'
+      required:
+        - email
+        - password
+
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: JWT access token
+          example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
+        refresh_token:
+          type: string
+          description: Refresh token for obtaining new access tokens
+          example: 'dGhpcyBpcyBhIHJlZnJlc2ggdG9rZW4...'
+        expires_in:
+          type: integer
+          description: Token expiration time in seconds
+          example: 3600
+        token_type:
+          type: string
+          enum: [Bearer]
+          example: 'Bearer'
+        user:
+          $ref: '#/components/schemas/UserProfile'
+      required:
+        - token
+        - refresh_token
+        - expires_in
+        - token_type
+        - user
+
+    RegisterRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 255
+          example: 'newuser@example.com'
+        password:
+          type: string
+          format: password
+          minLength: 8
+          maxLength: 128
+          description: |
+            Password must contain at least:
+            - 8 characters
+            - 1 uppercase letter
+            - 1 lowercase letter
+            - 1 number
+          example: 'SecureP@ss123'
+        first_name:
+          type: string
+          maxLength: 100
+          example: 'John'
+        last_name:
+          type: string
+          maxLength: 100
+          example: 'Doe'
+      required:
+        - email
+        - password
+
+    RegisterResponse:
+      type: object
+      properties:
+        id:
+          $ref: '#/components/schemas/UUID'
+        email:
+          type: string
+          format: email
+          example: 'newuser@example.com'
+        role:
+          type: string
+          example: 'user'
+        email_verified:
+          type: boolean
+          example: false
+        created_at:
+          $ref: '#/components/schemas/Timestamp'
+        message:
+          type: string
+          example: 'Registration successful. Please check your email to verify your account.'
+      required:
+        - id
+        - email
+        - role
+        - email_verified
+        - created_at
+
+    UserProfile:
+      type: object
+      properties:
+        id:
+          $ref: '#/components/schemas/UUID'
+        email:
+          type: string
+          format: email
+          example: 'user@example.com'
+        first_name:
+          type: string
+          example: 'John'
+        last_name:
+          type: string
+          example: 'Doe'
+        role:
+          type: string
+          enum: [user, admin, manager, technician]
+          example: 'user'
+        email_verified:
+          type: boolean
+          example: true
+        created_at:
+          $ref: '#/components/schemas/Timestamp'
+        updated_at:
+          $ref: '#/components/schemas/Timestamp'
+      required:
+        - id
+        - email
+        - role
+        - email_verified
+
+    PasswordResetRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          example: 'user@example.com'
+      required:
+        - email
+
+    PasswordResetConfirm:
+      type: object
+      properties:
+        token:
+          type: string
+          description: Password reset token from email
+          example: 'abc123def456'
+        new_password:
+          type: string
+          format: password
+          minLength: 8
+          maxLength: 128
+          example: 'NewSecureP@ss456'
+      required:
+        - token
+        - new_password
+
+    EmailVerifyRequest:
+      type: object
+      properties:
+        token:
+          type: string
+          description: Email verification token
+          example: 'verification_token_here'
+      required:
+        - token
+
+    RefreshTokenRequest:
+      type: object
+      properties:
+        refresh_token:
+          type: string
+          description: The refresh token obtained during login
+          example: 'dGhpcyBpcyBhIHJlZnJlc2ggdG9rZW4...'
+      required:
+        - refresh_token
+
+    # --------------------------------------------------------------------------
+    # Customer Schemas
+    # --------------------------------------------------------------------------
+
+    CustomerType:
+      type: string
+      enum: [residential, commercial]
+      description: Type of customer
+      example: 'residential'
+
+    CustomerStatus:
+      type: string
+      enum: [active, inactive, prospect]
+      description: Customer status
+      example: 'active'
+
+    CustomerCreate:
+      type: object
+      properties:
+        first_name:
+          type: string
+          maxLength: 100
+          example: 'John'
+        last_name:
+          type: string
+          maxLength: 100
+          example: 'Doe'
+        company_name:
+          type: string
+          maxLength: 200
+          nullable: true
+          example: 'Acme Corporation'
+        email:
+          type: string
+          format: email
+          maxLength: 255
+          example: 'john.doe@acme.com'
+        phone_primary:
+          type: string
+          maxLength: 20
+          example: '555-123-4567'
+        phone_secondary:
+          type: string
+          maxLength: 20
+          nullable: true
+          example: '555-987-6543'
+        billing_address_street:
+          type: string
+          maxLength: 255
+          example: '123 Main Street'
+        billing_address_city:
+          type: string
+          maxLength: 100
+          example: 'Springfield'
+        billing_address_state:
+          type: string
+          minLength: 2
+          maxLength: 2
+          example: 'IL'
+        billing_address_zip:
+          type: string
+          pattern: '^\d{5}(-\d{4})?$'
+          example: '62701'
+        service_address_street:
+          type: string
+          maxLength: 255
+          nullable: true
+          example: '456 Oak Avenue'
+        service_address_city:
+          type: string
+          maxLength: 100
+          nullable: true
+          example: 'Springfield'
+        service_address_state:
+          type: string
+          minLength: 2
+          maxLength: 2
+          nullable: true
+          example: 'IL'
+        service_address_zip:
+          type: string
+          nullable: true
+          example: '62702'
+        customer_type:
+          $ref: '#/components/schemas/CustomerType'
+        status:
+          $ref: '#/components/schemas/CustomerStatus'
+        notes:
+          type: string
+          maxLength: 2000
+          nullable: true
+          example: 'VIP customer - priority service'
+      required:
+        - first_name
+        - last_name
+        - email
+        - phone_primary
+        - billing_address_street
+        - billing_address_city
+        - billing_address_state
+        - billing_address_zip
+        - customer_type
+
+    CustomerUpdate:
+      type: object
+      properties:
+        first_name:
+          type: string
+          maxLength: 100
+        last_name:
+          type: string
+          maxLength: 100
+        company_name:
+          type: string
+          maxLength: 200
+          nullable: true
+        email:
+          type: string
+          format: email
+          maxLength: 255
+        phone_primary:
+          type: string
+          maxLength: 20
+        phone_secondary:
+          type: string
+          maxLength: 20
+          nullable: true
+        billing_address_street:
+          type: string
+          maxLength: 255
+        billing_address_city:
+          type: string
+          maxLength: 100
+        billing_address_state:
+          type: string
+          minLength: 2
+          maxLength: 2
+        billing_address_zip:
+          type: string
+        service_address_street:
+          type: string
+          maxLength: 255
+          nullable: true
+        service_address_city:
+          type: string
+          maxLength: 100
+          nullable: true
+        service_address_state:
+          type: string
+          minLength: 2
+          maxLength: 2
+          nullable: true
+        service_address_zip:
+          type: string
+          nullable: true
+        customer_type:
+          $ref: '#/components/schemas/CustomerType'
+        status:
+          $ref: '#/components/schemas/CustomerStatus'
+        notes:
+          type: string
+          maxLength: 2000
+          nullable: true
+
+    Customer:
+      type: object
+      properties:
+        id:
+          $ref: '#/components/schemas/UUID'
+        first_name:
+          type: string
+          example: 'John'
+        last_name:
+          type: string
+          example: 'Doe'
+        display_name:
+          type: string
+          description: Formatted display name (company or full name)
+          example: 'Acme Corporation (John Doe)'
+        company_name:
+          type: string
+          nullable: true
+          example: 'Acme Corporation'
+        email:
+          type: string
+          format: email
+          example: 'john.doe@acme.com'
+        phone_primary:
+          type: string
+          example: '555-123-4567'
+        phone_secondary:
+          type: string
+          nullable: true
+          example: '555-987-6543'
+        billing_address_street:
+          type: string
+          example: '123 Main Street'
+        billing_address_city:
+          type: string
+          example: 'Springfield'
+        billing_address_state:
+          type: string
+          example: 'IL'
+        billing_address_zip:
+          type: string
+          example: '62701'
+        billing_address_full:
+          type: string
+          description: Formatted full billing address
+          example: '123 Main Street, Springfield, IL 62701'
+        service_address_street:
+          type: string
+          nullable: true
+          example: '456 Oak Avenue'
+        service_address_city:
+          type: string
+          nullable: true
+          example: 'Springfield'
+        service_address_state:
+          type: string
+          nullable: true
+          example: 'IL'
+        service_address_zip:
+          type: string
+          nullable: true
+          example: '62702'
+        service_address_full:
+          type: string
+          nullable: true
+          description: Formatted full service address
+          example: '456 Oak Avenue, Springfield, IL 62702'
+        customer_type:
+          $ref: '#/components/schemas/CustomerType'
+        status:
+          $ref: '#/components/schemas/CustomerStatus'
+        notes:
+          type: string
+          nullable: true
+          example: 'VIP customer - priority service'
+        created_at:
+          $ref: '#/components/schemas/Timestamp'
+        updated_at:
+          $ref: '#/components/schemas/Timestamp'
+      required:
+        - id
+        - first_name
+        - last_name
+        - display_name
+        - email
+        - phone_primary
+        - billing_address_street
+        - billing_address_city
+        - billing_address_state
+        - billing_address_zip
+        - billing_address_full
+        - customer_type
+        - status
+        - created_at
+        - updated_at
+
+    CustomerList:
+      type: object
+      properties:
+        customers:
+          type: array
+          items:
+            $ref: '#/components/schemas/Customer'
+        total:
+          type: integer
+          example: 150
+        page:
+          type: integer
+          example: 1
+        page_size:
+          type: integer
+          example: 20
+        total_pages:
+          type: integer
+          example: 8
+      required:
+        - customers
+        - total
+        - page
+        - page_size
+        - total_pages
+
+    CustomerStats:
+      type: object
+      properties:
+        total_customers:
+          type: integer
+          example: 500
+        active_customers:
+          type: integer
+          example: 450
+        inactive_customers:
+          type: integer
+          example: 30
+        prospects:
+          type: integer
+          example: 20
+        residential:
+          type: integer
+          example: 350
+        commercial:
+          type: integer
+          example: 150
+        new_this_month:
+          type: integer
+          example: 15
+
+    # --------------------------------------------------------------------------
+    # Job Schemas
+    # --------------------------------------------------------------------------
+
+    JobType:
+      type: string
+      enum: [installation, maintenance, repair, inspection, emergency]
+      example: 'installation'
+
+    JobStatus:
+      type: string
+      enum: [scheduled, in_progress, on_hold, completed, cancelled]
+      example: 'scheduled'
+
+    JobPriority:
+      type: string
+      enum: [low, normal, high, urgent]
+      example: 'normal'
+
+    JobCreate:
+      type: object
+      properties:
+        customer_id:
+          $ref: '#/components/schemas/UUID'
+        title:
+          type: string
+          maxLength: 200
+          example: 'HVAC Installation'
+        description:
+          type: string
+          maxLength: 5000
+          nullable: true
+          example: 'Install new central air conditioning system'
+        job_type:
+          $ref: '#/components/schemas/JobType'
+        priority:
+          $ref: '#/components/schemas/JobPriority'
+        scheduled_start_at:
+          type: string
+          format: date-time
+          example: '2024-02-01T09:00:00Z'
+        scheduled_end_at:
+          type: string
+          format: date-time
+          example: '2024-02-01T17:00:00Z'
+        estimated_duration:
+          type: integer
+          description: Estimated duration in minutes
+          example: 480
+        service_address:
+          $ref: '#/components/schemas/Address'
+        estimated_cost:
+          $ref: '#/components/schemas/Money'
+        internal_notes:
+          type: string
+          maxLength: 5000
+          nullable: true
+          description: Notes visible only to staff
+          example: 'Customer has an existing unit that needs removal'
+        customer_notes:
+          type: string
+          maxLength: 2000
+          nullable: true
+          description: Notes shared with customer
+          example: 'Please arrive between 9 AM and 5 PM'
+      required:
+        - customer_id
+        - title
+        - job_type
+        - scheduled_start_at
+        - scheduled_end_at
+        - service_address
+
+    JobUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 5000
+          nullable: true
+        job_type:
+          $ref: '#/components/schemas/JobType'
+        priority:
+          $ref: '#/components/schemas/JobPriority'
+        scheduled_start_at:
+          type: string
+          format: date-time
+        scheduled_end_at:
+          type: string
+          format: date-time
+        estimated_duration:
+          type: integer
+        service_address:
+          $ref: '#/components/schemas/Address'
+        estimated_cost:
+          $ref: '#/components/schemas/Money'
+        internal_notes:
+          type: string
+          maxLength: 5000
+          nullable: true
+        customer_notes:
+          type: string
+          maxLength: 2000
+          nullable: true
+        requires_follow_up:
+          type: boolean
+
+    Job:
+      type: object
+      properties:
+        id:
+          $ref: '#/components/schemas/UUID'
+        job_number:
+          type: string
+          description: Auto-generated job number
+          example: 'JOB-20240201-0001'
+        customer_id:
+          $ref: '#/components/schemas/UUID'
+        customer:
+          $ref: '#/components/schemas/Customer'
+        title:
+          type: string
+          example: 'HVAC Installation'
+        description:
+          type: string
+          nullable: true
+          example: 'Install new central air conditioning system'
+        job_type:
+          $ref: '#/components/schemas/JobType'
+        status:
+          $ref: '#/components/schemas/JobStatus'
+        priority:
+          $ref: '#/components/schemas/JobPriority'
+        scheduled_start_at:
+          type: string
+          format: date-time
+          example: '2024-02-01T09:00:00Z'
+        scheduled_end_at:
+          type: string
+          format: date-time
+          example: '2024-02-01T17:00:00Z'
+        actual_start_at:
+          type: string
+          format: date-time
+          nullable: true
+          example: '2024-02-01T09:15:00Z'
+        actual_end_at:
+          type: string
+          format: date-time
+          nullable: true
+        estimated_duration:
+          type: integer
+          description: Duration in minutes
+          example: 480
+        actual_duration:
+          type: integer
+          nullable: true
+          description: Actual duration in minutes
+        service_address:
+          $ref: '#/components/schemas/Address'
+        estimated_cost:
+          $ref: '#/components/schemas/Money'
+        actual_cost:
+          type: string
+          nullable: true
+        tax_amount:
+          type: string
+          nullable: true
+        total_amount:
+          type: string
+          nullable: true
+        internal_notes:
+          type: string
+          nullable: true
+        customer_notes:
+          type: string
+          nullable: true
+        completion_notes:
+          type: string
+          nullable: true
+        cancellation_reason:
+          type: string
+          nullable: true
+        requires_follow_up:
+          type: boolean
+          example: false
+        assignments:
+          type: array
+          items:
+            $ref: '#/components/schemas/JobAssignment'
+        materials:
+          type: array
+          items:
+            $ref: '#/components/schemas/JobMaterial'
+        notes:
+          type: array
+          items:
+            $ref: '#/components/schemas/JobNote'
+        created_by:
+          $ref: '#/components/schemas/UUID'
+        updated_by:
+          $ref: '#/components/schemas/UUID'
+        created_at:
+          $ref: '#/components/schemas/Timestamp'
+        updated_at:
+          $ref: '#/components/schemas/Timestamp'
+      required:
+        - id
+        - job_number
+        - customer_id
+        - title
+        - job_type
+        - status
+        - priority
+        - scheduled_start_at
+        - scheduled_end_at
+        - service_address
+        - requires_follow_up
+        - created_at
+        - updated_at
+
+    JobAssignment:
+      type: object
+      properties:
+        id:
+          $ref: '#/components/schemas/UUID'
+        technician_id:
+          $ref: '#/components/schemas/UUID'
+        technician_name:
+          type: string
+          example: 'Mike Smith'
+        role:
+          type: string
+          enum: [lead_technician, assistant, trainee]
+          example: 'lead_technician'
+        assigned_at:
+          $ref: '#/components/schemas/Timestamp'
+
+    JobAssignRequest:
+      type: object
+      properties:
+        technician_id:
+          $ref: '#/components/schemas/UUID'
+        role:
+          type: string
+          enum: [lead_technician, assistant, trainee]
+          default: lead_technician
+      required:
+        - technician_id
+
+    JobMaterial:
+      type: object
+      properties:
+        id:
+          $ref: '#/components/schemas/UUID'
+        name:
+          type: string
+          example: 'Copper Piping'
+        description:
+          type: string
+          nullable: true
+          example: '1/2 inch copper tubing'
+        sku:
+          type: string
+          nullable: true
+          example: 'CU-50-100'
+        quantity:
+          type: number
+          format: float
+          example: 50
+        unit:
+          type: string
+          example: 'ft'
+        unit_cost:
+          $ref: '#/components/schemas/Money'
+        total_cost:
+          $ref: '#/components/schemas/Money'
+        billable:
+          type: boolean
+          example: true
+        added_at:
+          $ref: '#/components/schemas/Timestamp'
+        added_by:
+          $ref: '#/components/schemas/UUID'
+
+    JobMaterialCreate:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 200
+          example: 'Copper Piping'
+        description:
+          type: string
+          maxLength: 500
+          nullable: true
+        sku:
+          type: string
+          maxLength: 50
+          nullable: true
+        quantity:
+          type: number
+          format: float
+          minimum: 0.01
+          example: 50
+        unit:
+          type: string
+          maxLength: 20
+          example: 'ft'
+        unit_cost:
+          $ref: '#/components/schemas/Money'
+        billable:
+          type: boolean
+          default: true
+      required:
+        - name
+        - quantity
+        - unit
+        - unit_cost
+
+    JobNote:
+      type: object
+      properties:
+        id:
+          $ref: '#/components/schemas/UUID'
+        note:
+          type: string
+          example: 'Customer requested callback tomorrow'
+        is_internal:
+          type: boolean
+          example: false
+        created_by:
+          $ref: '#/components/schemas/UUID'
+        created_by_name:
+          type: string
+          example: 'John Doe'
+        created_at:
+          $ref: '#/components/schemas/Timestamp'
+
+    JobNoteCreate:
+      type: object
+      properties:
+        note:
+          type: string
+          maxLength: 5000
+          example: 'Customer requested callback tomorrow'
+        is_internal:
+          type: boolean
+          description: If true, note is only visible to staff
+          default: false
+      required:
+        - note
+
+    JobList:
+      type: object
+      properties:
+        jobs:
+          type: array
+          items:
+            $ref: '#/components/schemas/Job'
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+      required:
+        - jobs
+        - total
+        - limit
+        - offset
+
+    JobStatusUpdate:
+      type: object
+      properties:
+        notes:
+          type: string
+          maxLength: 2000
+          nullable: true
+          description: Notes for this status change
+
+    JobStats:
+      type: object
+      properties:
+        total_jobs:
+          type: integer
+          example: 1500
+        scheduled:
+          type: integer
+          example: 50
+        in_progress:
+          type: integer
+          example: 25
+        on_hold:
+          type: integer
+          example: 5
+        completed:
+          type: integer
+          example: 1400
+        cancelled:
+          type: integer
+          example: 20
+        overdue:
+          type: integer
+          example: 3
+        today:
+          type: integer
+          example: 15
+        this_week:
+          type: integer
+          example: 75
+
+    # --------------------------------------------------------------------------
+    # Invoice Schemas
+    # --------------------------------------------------------------------------
+
+    InvoiceStatus:
+      type: string
+      enum:
+        [
+          draft,
+          sent,
+          viewed,
+          paid,
+          partially_paid,
+          overdue,
+          cancelled,
+          refunded,
+        ]
+      example: 'sent'
+
+    InvoiceCreate:
+      type: object
+      properties:
+        customer_id:
+          $ref: '#/components/schemas/UUID'
+        job_id:
+          $ref: '#/components/schemas/UUID'
+        quote_id:
+          $ref: '#/components/schemas/UUID'
+        issue_date:
+          type: string
+          format: date
+          example: '2024-01-22'
+        due_date:
+          type: string
+          format: date
+          example: '2024-02-21'
+        payment_term_id:
+          $ref: '#/components/schemas/UUID'
+        tax_rate_id:
+          $ref: '#/components/schemas/UUID'
+        po_number:
+          type: string
+          maxLength: 50
+          nullable: true
+          example: 'PO-12345'
+        notes:
+          type: string
+          maxLength: 2000
+          nullable: true
+          example: 'Thank you for your business'
+        terms_and_conditions:
+          type: string
+          maxLength: 5000
+          nullable: true
+        discount_amount:
+          $ref: '#/components/schemas/Money'
+        lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/InvoiceLineCreate'
+          minItems: 1
+      required:
+        - customer_id
+        - issue_date
+        - due_date
+        - lines
+
+    InvoiceUpdate:
+      type: object
+      properties:
+        status:
+          $ref: '#/components/schemas/InvoiceStatus'
+        due_date:
+          type: string
+          format: date
+        payment_term_id:
+          $ref: '#/components/schemas/UUID'
+        tax_rate_id:
+          $ref: '#/components/schemas/UUID'
+        po_number:
+          type: string
+          maxLength: 50
+          nullable: true
+        notes:
+          type: string
+          maxLength: 2000
+          nullable: true
+        terms_and_conditions:
+          type: string
+          maxLength: 5000
+          nullable: true
+        discount_amount:
+          $ref: '#/components/schemas/Money'
+        lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/InvoiceLineCreate'
+
+    Invoice:
+      type: object
+      properties:
+        id:
+          $ref: '#/components/schemas/UUID'
+        invoice_number:
+          type: string
+          example: 'INV-2024-0001'
+        customer_id:
+          $ref: '#/components/schemas/UUID'
+        customer:
+          $ref: '#/components/schemas/Customer'
+        job_id:
+          $ref: '#/components/schemas/UUID'
+        quote_id:
+          $ref: '#/components/schemas/UUID'
+        status:
+          $ref: '#/components/schemas/InvoiceStatus'
+        issue_date:
+          type: string
+          format: date
+          example: '2024-01-22'
+        due_date:
+          type: string
+          format: date
+          example: '2024-02-21'
+        sent_date:
+          type: string
+          format: date-time
+          nullable: true
+        viewed_date:
+          type: string
+          format: date-time
+          nullable: true
+        paid_date:
+          type: string
+          format: date-time
+          nullable: true
+        subtotal:
+          $ref: '#/components/schemas/Money'
+        tax_rate:
+          $ref: '#/components/schemas/Percentage'
+        tax_amount:
+          $ref: '#/components/schemas/Money'
+        discount_amount:
+          $ref: '#/components/schemas/Money'
+        total_amount:
+          $ref: '#/components/schemas/Money'
+        amount_paid:
+          $ref: '#/components/schemas/Money'
+        amount_due:
+          $ref: '#/components/schemas/Money'
+        is_overdue:
+          type: boolean
+          example: false
+        days_overdue:
+          type: integer
+          example: 0
+        po_number:
+          type: string
+          nullable: true
+          example: 'PO-12345'
+        notes:
+          type: string
+          nullable: true
+        terms_and_conditions:
+          type: string
+          nullable: true
+        lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/InvoiceLine'
+        payments:
+          type: array
+          items:
+            $ref: '#/components/schemas/Payment'
+        created_by:
+          $ref: '#/components/schemas/UUID'
+        updated_by:
+          $ref: '#/components/schemas/UUID'
+        created_at:
+          $ref: '#/components/schemas/Timestamp'
+        updated_at:
+          $ref: '#/components/schemas/Timestamp'
+      required:
+        - id
+        - invoice_number
+        - customer_id
+        - status
+        - issue_date
+        - due_date
+        - subtotal
+        - total_amount
+        - amount_paid
+        - amount_due
+        - is_overdue
+        - days_overdue
+        - lines
+        - payments
+        - created_at
+        - updated_at
+
+    InvoiceLine:
+      type: object
+      properties:
+        id:
+          $ref: '#/components/schemas/UUID'
+        description:
+          type: string
+          example: 'HVAC System Installation'
+        quantity:
+          $ref: '#/components/schemas/Money'
+        unit_price:
+          $ref: '#/components/schemas/Money'
+        unit_of_measure:
+          type: string
+          nullable: true
+          example: 'each'
+        discount_percentage:
+          $ref: '#/components/schemas/Percentage'
+        discount_amount:
+          $ref: '#/components/schemas/Money'
+        subtotal:
+          $ref: '#/components/schemas/Money'
+        taxable:
+          type: boolean
+          example: true
+        product_id:
+          $ref: '#/components/schemas/UUID'
+        service_id:
+          $ref: '#/components/schemas/UUID'
+        sort_order:
+          type: integer
+          example: 0
+
+    InvoiceLineCreate:
+      type: object
+      properties:
+        description:
+          type: string
+          maxLength: 500
+          example: 'HVAC System Installation'
+        quantity:
+          $ref: '#/components/schemas/Money'
+        unit_price:
+          $ref: '#/components/schemas/Money'
+        unit_of_measure:
+          type: string
+          maxLength: 50
+          nullable: true
+          example: 'each'
+        discount_percentage:
+          $ref: '#/components/schemas/Percentage'
+        discount_amount:
+          $ref: '#/components/schemas/Money'
+        taxable:
+          type: boolean
+          default: true
+        product_id:
+          $ref: '#/components/schemas/UUID'
+        service_id:
+          $ref: '#/components/schemas/UUID'
+        sort_order:
+          type: integer
+          default: 0
+      required:
+        - description
+        - quantity
+        - unit_price
+
+    Payment:
+      type: object
+      properties:
+        id:
+          $ref: '#/components/schemas/UUID'
+        invoice_id:
+          $ref: '#/components/schemas/UUID'
+        amount:
+          $ref: '#/components/schemas/Money'
+        payment_date:
+          type: string
+          format: date-time
+          example: '2024-01-25T00:00:00Z'
+        payment_method:
+          type: string
+          enum: [cash, check, credit_card, debit_card, ach, wire, other]
+          example: 'check'
+        reference_number:
+          type: string
+          nullable: true
+          example: 'CHK-12345'
+        notes:
+          type: string
+          nullable: true
+          example: 'Check received via mail'
+        created_by:
+          $ref: '#/components/schemas/UUID'
+        created_at:
+          $ref: '#/components/schemas/Timestamp'
+
+    PaymentCreate:
+      type: object
+      properties:
+        amount:
+          $ref: '#/components/schemas/Money'
+        payment_date:
+          type: string
+          format: date-time
+          example: '2024-01-25T00:00:00Z'
+        payment_method:
+          type: string
+          enum: [cash, check, credit_card, debit_card, ach, wire, other]
+          example: 'check'
+        reference_number:
+          type: string
+          maxLength: 100
+          nullable: true
+          example: 'CHK-12345'
+        notes:
+          type: string
+          maxLength: 500
+          nullable: true
+      required:
+        - amount
+        - payment_date
+        - payment_method
+
+    InvoiceList:
+      type: object
+      properties:
+        invoices:
+          type: array
+          items:
+            $ref: '#/components/schemas/Invoice'
+        total:
+          type: integer
+        page:
+          type: integer
+        page_size:
+          type: integer
+        total_pages:
+          type: integer
+      required:
+        - invoices
+        - total
+        - page
+        - page_size
+        - total_pages
+
+    InvoiceCancelRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          maxLength: 500
+          example: 'Duplicate invoice'
+      required:
+        - reason
+
+    # --------------------------------------------------------------------------
+    # Quote Schemas
+    # --------------------------------------------------------------------------
+
+    QuoteStatus:
+      type: string
+      enum: [draft, sent, viewed, accepted, declined, expired]
+      example: 'draft'
+
+    QuoteCreate:
+      type: object
+      properties:
+        customer_id:
+          $ref: '#/components/schemas/UUID'
+        valid_until:
+          type: string
+          format: date-time
+          example: '2024-03-01T23:59:59Z'
+        tax_rate:
+          $ref: '#/components/schemas/Percentage'
+        notes:
+          type: string
+          maxLength: 2000
+          nullable: true
+          example: 'Quote valid for 30 days'
+        terms:
+          type: string
+          maxLength: 5000
+          nullable: true
+          example: '50% deposit required upon acceptance'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/QuoteItemCreate'
+          minItems: 1
+      required:
+        - customer_id
+        - valid_until
+        - items
+
+    QuoteUpdate:
+      type: object
+      properties:
+        valid_until:
+          type: string
+          format: date-time
+        tax_rate:
+          $ref: '#/components/schemas/Percentage'
+        notes:
+          type: string
+          maxLength: 2000
+          nullable: true
+        terms:
+          type: string
+          maxLength: 5000
+          nullable: true
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/QuoteItemCreate'
+
+    Quote:
+      type: object
+      properties:
+        id:
+          $ref: '#/components/schemas/UUID'
+        quote_number:
+          type: string
+          example: 'QUO-2024-0001'
+        customer_id:
+          $ref: '#/components/schemas/UUID'
+        customer:
+          $ref: '#/components/schemas/Customer'
+        status:
+          $ref: '#/components/schemas/QuoteStatus'
+        valid_until:
+          type: string
+          format: date-time
+          example: '2024-03-01T23:59:59Z'
+        is_expired:
+          type: boolean
+          example: false
+        subtotal:
+          $ref: '#/components/schemas/Money'
+        tax_rate:
+          $ref: '#/components/schemas/Percentage'
+        tax_amount:
+          $ref: '#/components/schemas/Money'
+        total:
+          $ref: '#/components/schemas/Money'
+        notes:
+          type: string
+          nullable: true
+        terms:
+          type: string
+          nullable: true
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/QuoteItem'
+        sent_at:
+          type: string
+          format: date-time
+          nullable: true
+        viewed_at:
+          type: string
+          format: date-time
+          nullable: true
+        accepted_at:
+          type: string
+          format: date-time
+          nullable: true
+        declined_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_by:
+          $ref: '#/components/schemas/UUID'
+        updated_by:
+          $ref: '#/components/schemas/UUID'
+        created_at:
+          $ref: '#/components/schemas/Timestamp'
+        updated_at:
+          $ref: '#/components/schemas/Timestamp'
+      required:
+        - id
+        - quote_number
+        - customer_id
+        - status
+        - valid_until
+        - is_expired
+        - subtotal
+        - total
+        - items
+        - created_at
+        - updated_at
+
+    QuoteItem:
+      type: object
+      properties:
+        id:
+          $ref: '#/components/schemas/UUID'
+        description:
+          type: string
+          example: 'HVAC System Installation'
+        quantity:
+          $ref: '#/components/schemas/Money'
+        unit_price:
+          $ref: '#/components/schemas/Money'
+        subtotal:
+          $ref: '#/components/schemas/Money'
+        sort_order:
+          type: integer
+          example: 0
+
+    QuoteItemCreate:
+      type: object
+      properties:
+        description:
+          type: string
+          maxLength: 500
+          example: 'HVAC System Installation'
+        quantity:
+          $ref: '#/components/schemas/Money'
+        unit_price:
+          $ref: '#/components/schemas/Money'
+        sort_order:
+          type: integer
+          default: 0
+      required:
+        - description
+        - quantity
+        - unit_price
+
+    QuoteList:
+      type: object
+      properties:
+        quotes:
+          type: array
+          items:
+            $ref: '#/components/schemas/Quote'
+        total:
+          type: integer
+        page:
+          type: integer
+        page_size:
+          type: integer
+        total_pages:
+          type: integer
+      required:
+        - quotes
+        - total
+        - page
+        - page_size
+        - total_pages
+
+    QuoteStats:
+      type: object
+      properties:
+        total:
+          type: integer
+          example: 250
+        draft:
+          type: integer
+          example: 25
+        sent:
+          type: integer
+          example: 50
+        viewed:
+          type: integer
+          example: 30
+        accepted:
+          type: integer
+          example: 100
+        declined:
+          type: integer
+          example: 35
+        expired:
+          type: integer
+          example: 10
+        total_value:
+          $ref: '#/components/schemas/Money'
+        accepted_value:
+          $ref: '#/components/schemas/Money'
+        conversion_rate:
+          type: number
+          format: float
+          description: Percentage of quotes that were accepted
+          example: 57.14
+
+  # ============================================================================
+  # Common Responses
+  # ============================================================================
+
+  responses:
+    BadRequest:
+      description: Bad request - validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationError'
+          example:
+            error:
+              code: VALIDATION_ERROR
+              message: 'Request validation failed'
+              details:
+                - field: email
+                  message: 'Invalid email format'
+                  code: INVALID_FORMAT
+
+    Unauthorized:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/AuthenticationError'
+          example:
+            error:
+              code: AUTHENTICATION_REQUIRED
+              message: 'Authentication required'
+
+    Forbidden:
+      description: Access forbidden
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/AuthorizationError'
+          example:
+            error:
+              code: FORBIDDEN
+              message: 'You do not have permission to perform this action'
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/NotFoundError'
+          example:
+            error:
+              code: NOT_FOUND
+              message: 'Resource not found'
+
+    RateLimited:
+      description: Too many requests
+      headers:
+        X-RateLimit-Limit:
+          $ref: '#/components/headers/X-RateLimit-Limit'
+        X-RateLimit-Remaining:
+          $ref: '#/components/headers/X-RateLimit-Remaining'
+        X-RateLimit-Reset:
+          $ref: '#/components/headers/X-RateLimit-Reset'
+        Retry-After:
+          description: Seconds to wait before retrying
+          schema:
+            type: integer
+          example: 60
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/RateLimitError'
+          example:
+            error:
+              code: RATE_LIMIT_EXCEEDED
+              message: 'Too many requests. Please try again later.'
+              details:
+                - retry_after: 60
+
+# ==============================================================================
+# Paths
+# ==============================================================================
+
+paths:
+  # ============================================================================
+  # Authentication Endpoints
+  # ============================================================================
+
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: Authenticate user
+      description: |
+        Authenticates a user with email and password, returning JWT tokens.
+
+        **Rate Limiting:** 5 requests per minute per IP address.
+
+        **Account Locking:** After 5 failed attempts, the account is locked for 15 minutes.
+      operationId: login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            example:
+              email: 'user@example.com'
+              password: 'SecureP@ss123'
+      responses:
+        '200':
+          description: Login successful
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/X-RateLimit-Limit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/X-RateLimit-Remaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/X-RateLimit-Reset'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+              example:
+                token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
+                refresh_token: 'dGhpcyBpcyBhIHJlZnJlc2ggdG9rZW4...'
+                expires_in: 3600
+                token_type: 'Bearer'
+                user:
+                  id: '550e8400-e29b-41d4-a716-446655440000'
+                  email: 'user@example.com'
+                  first_name: 'John'
+                  last_name: 'Doe'
+                  role: 'user'
+                  email_verified: true
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error:
+                  code: INVALID_CREDENTIALS
+                  message: 'Invalid email or password'
+        '403':
+          description: Account locked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error:
+                  code: ACCOUNT_LOCKED
+                  message: 'Account locked due to too many failed login attempts'
+                  details:
+                    - unlock_at: '2024-01-22T11:00:00Z'
+                      minutes_remaining: 14
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /auth/register:
+    post:
+      tags:
+        - Authentication
+      summary: Register new user
+      description: |
+        Creates a new user account. A verification email will be sent to the provided email address.
+
+        **Password Requirements:**
+        - Minimum 8 characters
+        - At least 1 uppercase letter
+        - At least 1 lowercase letter
+        - At least 1 number
+      operationId: register
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+            example:
+              email: 'newuser@example.com'
+              password: 'SecureP@ss123'
+              first_name: 'John'
+              last_name: 'Doe'
+      responses:
+        '201':
+          description: Registration successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegisterResponse'
+              example:
+                id: '550e8400-e29b-41d4-a716-446655440000'
+                email: 'newuser@example.com'
+                role: 'user'
+                email_verified: false
+                created_at: '2024-01-22T10:00:00Z'
+                message: 'Registration successful. Please check your email to verify your account.'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: Email already registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error:
+                  code: EMAIL_EXISTS
+                  message: 'An account with this email already exists'
+
+  /auth/refresh:
+    post:
+      tags:
+        - Authentication
+      summary: Refresh access token
+      description: |
+        Exchanges a refresh token for a new access token.
+
+        The refresh token is single-use and a new one will be provided with each refresh.
+      operationId: refreshToken
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+      responses:
+        '200':
+          description: Token refreshed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Invalid or expired refresh token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error:
+                  code: INVALID_REFRESH_TOKEN
+                  message: 'Refresh token is invalid or expired'
+
+  /auth/logout:
+    post:
+      tags:
+        - Authentication
+      summary: Logout user
+      description: Invalidates the current access and refresh tokens.
+      operationId: logout
+      responses:
+        '204':
+          description: Logged out successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/reset-request:
+    post:
+      tags:
+        - Authentication
+      summary: Request password reset
+      description: |
+        Sends a password reset email to the specified address if an account exists.
+
+        **Rate Limiting:** 3 requests per hour per email address.
+
+        For security, this endpoint always returns success even if the email is not registered.
+      operationId: requestPasswordReset
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordResetRequest'
+      responses:
+        '200':
+          description: Reset email sent (if account exists)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+              example:
+                message: 'If an account exists with this email, a password reset link has been sent.'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /auth/reset-password:
+    post:
+      tags:
+        - Authentication
+      summary: Reset password
+      description: |
+        Resets the password using a token received via email.
+
+        The reset token is valid for 1 hour.
+      operationId: resetPassword
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordResetConfirm'
+      responses:
+        '200':
+          description: Password reset successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+              example:
+                message: 'Password has been reset successfully. You can now login with your new password.'
+        '400':
+          description: Invalid or expired token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error:
+                  code: INVALID_RESET_TOKEN
+                  message: 'Password reset token is invalid or expired'
+
+  /auth/verify:
+    post:
+      tags:
+        - Authentication
+      summary: Verify email address
+      description: Verifies a user's email address using the token from the verification email.
+      operationId: verifyEmail
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailVerifyRequest'
+      responses:
+        '200':
+          description: Email verified
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+              example:
+                message: 'Email verified successfully'
+        '400':
+          description: Invalid verification token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/me:
+    get:
+      tags:
+        - Authentication
+      summary: Get current user
+      description: Returns the profile of the currently authenticated user.
+      operationId: getCurrentUser
+      responses:
+        '200':
+          description: Current user profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ============================================================================
+  # Customer Endpoints
+  # ============================================================================
+
+  /customers:
+    get:
+      tags:
+        - Customers
+      summary: List customers
+      description: |
+        Returns a paginated list of customers with optional filtering.
+
+        **Required Permission:** `customers.list`
+      operationId: listCustomers
+      parameters:
+        - name: search
+          in: query
+          description: Search term (searches name, email, company, phone)
+          schema:
+            type: string
+        - name: customer_type
+          in: query
+          description: Filter by customer type
+          schema:
+            $ref: '#/components/schemas/CustomerType'
+        - name: status
+          in: query
+          description: Filter by status
+          schema:
+            $ref: '#/components/schemas/CustomerStatus'
+        - name: state
+          in: query
+          description: Filter by state code
+          schema:
+            type: string
+            minLength: 2
+            maxLength: 2
+        - name: city
+          in: query
+          description: Filter by city
+          schema:
+            type: string
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+        - $ref: '#/components/parameters/SortByParam'
+        - $ref: '#/components/parameters/SortOrderParam'
+      responses:
+        '200':
+          description: List of customers
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/X-RateLimit-Limit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/X-RateLimit-Remaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/X-RateLimit-Reset'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+    post:
+      tags:
+        - Customers
+      summary: Create customer
+      description: |
+        Creates a new customer record.
+
+        **Required Permission:** `customers.create`
+      operationId: createCustomer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomerCreate'
+      responses:
+        '201':
+          description: Customer created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: Email already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error:
+                  code: DUPLICATE_EMAIL
+                  message: 'A customer with this email already exists'
+
+  /customers/{id}:
+    get:
+      tags:
+        - Customers
+      summary: Get customer
+      description: |
+        Returns a single customer by ID.
+
+        **Required Permission:** `customers.read`
+      operationId: getCustomer
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      responses:
+        '200':
+          description: Customer details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags:
+        - Customers
+      summary: Update customer
+      description: |
+        Updates an existing customer.
+
+        **Required Permission:** `customers.update`
+      operationId: updateCustomer
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomerUpdate'
+      responses:
+        '200':
+          description: Customer updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Customers
+      summary: Delete customer
+      description: |
+        Soft deletes a customer. Related jobs and invoices are retained.
+
+        **Required Permission:** `customers.delete`
+      operationId: deleteCustomer
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      responses:
+        '204':
+          description: Customer deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /customers/search:
+    get:
+      tags:
+        - Customers
+      summary: Search customers
+      description: |
+        Basic search across customer fields.
+
+        **Required Permission:** `customers.list`
+      operationId: searchCustomers
+      parameters:
+        - name: q
+          in: query
+          required: true
+          description: Search query
+          schema:
+            type: string
+            minLength: 2
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Customer'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /customers/advanced-search:
+    get:
+      tags:
+        - Customers
+      summary: Advanced customer search
+      description: |
+        Full-text search with ranking and advanced filtering.
+
+        **Required Permission:** `customers.list`
+      operationId: advancedSearchCustomers
+      parameters:
+        - name: q
+          in: query
+          required: true
+          description: Search query
+          schema:
+            type: string
+        - name: type
+          in: query
+          schema:
+            $ref: '#/components/schemas/CustomerType'
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/CustomerStatus'
+        - name: city
+          in: query
+          schema:
+            type: string
+        - name: state
+          in: query
+          schema:
+            type: string
+        - $ref: '#/components/parameters/PageParam'
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [rank, name, created_at]
+            default: rank
+        - name: order
+          in: query
+          schema:
+            type: string
+            enum: [ASC, DESC]
+            default: DESC
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /customers/autocomplete:
+    get:
+      tags:
+        - Customers
+      summary: Customer autocomplete
+      description: |
+        Returns customer suggestions for autocomplete fields.
+
+        **Required Permission:** `customers.list`
+      operationId: autocompleteCustomers
+      parameters:
+        - name: q
+          in: query
+          required: true
+          description: Search prefix
+          schema:
+            type: string
+            minLength: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+      responses:
+        '200':
+          description: Autocomplete suggestions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      $ref: '#/components/schemas/UUID'
+                    display_name:
+                      type: string
+                    email:
+                      type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /customers/stats:
+    get:
+      tags:
+        - Customers
+      summary: Customer statistics
+      description: |
+        Returns customer statistics and counts.
+
+        **Required Permission:** `customers.list`
+      operationId: getCustomerStats
+      responses:
+        '200':
+          description: Customer statistics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerStats'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /customers/{id}/jobs:
+    get:
+      tags:
+        - Customers
+      summary: Get customer jobs
+      description: |
+        Returns all jobs for a specific customer.
+
+        **Required Permission:** `customers.read`
+      operationId: getCustomerJobs
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Customer's jobs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /customers/{id}/quotes:
+    get:
+      tags:
+        - Customers
+      summary: Get customer quotes
+      description: |
+        Returns all quotes for a specific customer.
+
+        **Required Permission:** `customers.read`
+      operationId: getCustomerQuotes
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      responses:
+        '200':
+          description: Customer's quotes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Quote'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ============================================================================
+  # Job Endpoints
+  # ============================================================================
+
+  /jobs:
+    get:
+      tags:
+        - Jobs
+      summary: List jobs
+      description: |
+        Returns a paginated list of jobs with optional filtering.
+
+        **Required Permission:** `jobs.list`
+      operationId: listJobs
+      parameters:
+        - name: customer_id
+          in: query
+          schema:
+            $ref: '#/components/schemas/UUID'
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/JobStatus'
+        - name: priority
+          in: query
+          schema:
+            $ref: '#/components/schemas/JobPriority'
+        - name: job_type
+          in: query
+          schema:
+            $ref: '#/components/schemas/JobType'
+        - name: assigned_user_id
+          in: query
+          schema:
+            $ref: '#/components/schemas/UUID'
+        - name: scheduled_start_from
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: scheduled_start_to
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: requires_follow_up
+          in: query
+          schema:
+            type: boolean
+        - $ref: '#/components/parameters/SortByParam'
+        - $ref: '#/components/parameters/SortOrderParam'
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: List of jobs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+    post:
+      tags:
+        - Jobs
+      summary: Create job
+      description: |
+        Creates a new job.
+
+        **Required Permission:** `jobs.create`
+
+        A unique job number will be auto-generated in the format `JOB-YYYYMMDD-XXXX`.
+      operationId: createJob
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JobCreate'
+      responses:
+        '201':
+          description: Job created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /jobs/{id}:
+    get:
+      tags:
+        - Jobs
+      summary: Get job
+      description: |
+        Returns a single job by ID.
+
+        **Required Permission:** `jobs.read`
+      operationId: getJob
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      responses:
+        '200':
+          description: Job details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags:
+        - Jobs
+      summary: Update job
+      description: |
+        Updates an existing job.
+
+        **Required Permission:** `jobs.update`
+      operationId: updateJob
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JobUpdate'
+      responses:
+        '200':
+          description: Job updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Jobs
+      summary: Delete job
+      description: |
+        Deletes a job. Only jobs with status `scheduled` or `cancelled` can be deleted.
+
+        **Required Permission:** `jobs.delete`
+      operationId: deleteJob
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      responses:
+        '204':
+          description: Job deleted
+        '400':
+          description: Cannot delete job in current status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error:
+                  code: INVALID_STATUS
+                  message: 'Cannot delete a job that is in progress or completed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /jobs/number/{jobNumber}:
+    get:
+      tags:
+        - Jobs
+      summary: Get job by number
+      description: |
+        Returns a job by its job number.
+
+        **Required Permission:** `jobs.read`
+      operationId: getJobByNumber
+      parameters:
+        - name: jobNumber
+          in: path
+          required: true
+          description: Job number (e.g., JOB-20240201-0001)
+          schema:
+            type: string
+            pattern: '^JOB-\d{8}-\d{4}$'
+      responses:
+        '200':
+          description: Job details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /jobs/my:
+    get:
+      tags:
+        - Jobs
+      summary: Get my assigned jobs
+      description: Returns jobs assigned to the current user.
+      operationId: getMyJobs
+      responses:
+        '200':
+          description: Assigned jobs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Job'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /jobs/scheduled:
+    get:
+      tags:
+        - Jobs
+      summary: Get scheduled jobs
+      description: |
+        Returns jobs scheduled within a date range.
+
+        **Required Permission:** `jobs.list`
+      operationId: getScheduledJobs
+      parameters:
+        - name: start
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: end
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Scheduled jobs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Job'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /jobs/overdue:
+    get:
+      tags:
+        - Jobs
+      summary: Get overdue jobs
+      description: |
+        Returns jobs that are past their scheduled end time but not completed.
+
+        **Required Permission:** `jobs.list`
+      operationId: getOverdueJobs
+      responses:
+        '200':
+          description: Overdue jobs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Job'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /jobs/stats:
+    get:
+      tags:
+        - Jobs
+      summary: Get job statistics
+      description: |
+        Returns job statistics and counts.
+
+        **Required Permission:** `jobs.list`
+      operationId: getJobStats
+      responses:
+        '200':
+          description: Job statistics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobStats'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /jobs/{id}/start:
+    post:
+      tags:
+        - Jobs
+      summary: Start job
+      description: |
+        Starts a scheduled job.
+
+        **Required Permission:** `jobs.update`
+
+        **Status Transition:** `scheduled` -> `in_progress`
+      operationId: startJob
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      responses:
+        '200':
+          description: Job started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+        '400':
+          description: Invalid status transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /jobs/{id}/complete:
+    post:
+      tags:
+        - Jobs
+      summary: Complete job
+      description: |
+        Marks a job as completed.
+
+        **Required Permission:** `jobs.update`
+
+        **Status Transition:** `in_progress` -> `completed`
+      operationId: completeJob
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JobStatusUpdate'
+      responses:
+        '200':
+          description: Job completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+        '400':
+          description: Invalid status transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /jobs/{id}/cancel:
+    post:
+      tags:
+        - Jobs
+      summary: Cancel job
+      description: |
+        Cancels a job.
+
+        **Required Permission:** `jobs.delete`
+
+        **Status Transition:** `scheduled` | `in_progress` | `on_hold` -> `cancelled`
+      operationId: cancelJob
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  maxLength: 500
+      responses:
+        '200':
+          description: Job cancelled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+        '400':
+          description: Invalid status transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /jobs/{id}/hold:
+    post:
+      tags:
+        - Jobs
+      summary: Put job on hold
+      description: |
+        Puts a job on hold.
+
+        **Required Permission:** `jobs.update`
+
+        **Status Transition:** `in_progress` -> `on_hold`
+      operationId: holdJob
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  maxLength: 500
+      responses:
+        '200':
+          description: Job put on hold
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /jobs/{id}/resume:
+    post:
+      tags:
+        - Jobs
+      summary: Resume job
+      description: |
+        Resumes a job that was on hold.
+
+        **Required Permission:** `jobs.update`
+
+        **Status Transition:** `on_hold` -> `in_progress`
+      operationId: resumeJob
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      responses:
+        '200':
+          description: Job resumed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /jobs/{id}/assign:
+    post:
+      tags:
+        - Jobs
+      summary: Assign technician
+      description: |
+        Assigns a technician to a job.
+
+        **Required Permission:** `jobs.update`
+      operationId: assignTechnician
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JobAssignRequest'
+      responses:
+        '200':
+          description: Technician assigned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+        '400':
+          description: Technician already assigned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /jobs/{id}/assign/{technicianId}:
+    delete:
+      tags:
+        - Jobs
+      summary: Unassign technician
+      description: |
+        Removes a technician from a job.
+
+        **Required Permission:** `jobs.update`
+      operationId: unassignTechnician
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+        - name: technicianId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/UUID'
+      responses:
+        '200':
+          description: Technician unassigned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /jobs/{id}/materials:
+    post:
+      tags:
+        - Jobs
+      summary: Add material
+      description: |
+        Adds a material/part to a job.
+
+        **Required Permission:** `jobs.update`
+      operationId: addJobMaterial
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JobMaterialCreate'
+      responses:
+        '201':
+          description: Material added
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobMaterial'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /jobs/{id}/notes:
+    post:
+      tags:
+        - Jobs
+      summary: Add note
+      description: |
+        Adds a note to a job.
+
+        **Required Permission:** `jobs.update`
+      operationId: addJobNote
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JobNoteCreate'
+      responses:
+        '201':
+          description: Note added
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobNote'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ============================================================================
+  # Invoice Endpoints
+  # ============================================================================
+
+  /invoices:
+    get:
+      tags:
+        - Invoices
+      summary: List invoices
+      description: Returns a paginated list of invoices with optional filtering.
+      operationId: listInvoices
+      parameters:
+        - name: customer_id
+          in: query
+          schema:
+            $ref: '#/components/schemas/UUID'
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/InvoiceStatus'
+        - name: from_date
+          in: query
+          description: Filter from issue date (YYYY-MM-DD)
+          schema:
+            type: string
+            format: date
+        - name: to_date
+          in: query
+          description: Filter to issue date (YYYY-MM-DD)
+          schema:
+            type: string
+            format: date
+        - name: min_amount
+          in: query
+          schema:
+            type: number
+        - name: max_amount
+          in: query
+          schema:
+            type: number
+        - name: is_overdue
+          in: query
+          schema:
+            type: boolean
+        - name: search
+          in: query
+          description: Search invoice number or notes
+          schema:
+            type: string
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+        - $ref: '#/components/parameters/SortByParam'
+        - $ref: '#/components/parameters/SortOrderParam'
+      responses:
+        '200':
+          description: List of invoices
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvoiceList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+    post:
+      tags:
+        - Invoices
+      summary: Create invoice
+      description: |
+        Creates a new invoice.
+
+        A unique invoice number will be auto-generated in the format `INV-YYYY-XXXX`.
+      operationId: createInvoice
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvoiceCreate'
+      responses:
+        '201':
+          description: Invoice created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invoice'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /invoices/{id}:
+    get:
+      tags:
+        - Invoices
+      summary: Get invoice
+      description: Returns a single invoice by ID.
+      operationId: getInvoice
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      responses:
+        '200':
+          description: Invoice details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invoice'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags:
+        - Invoices
+      summary: Update invoice
+      description: Updates an existing invoice.
+      operationId: updateInvoice
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvoiceUpdate'
+      responses:
+        '200':
+          description: Invoice updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invoice'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Invoices
+      summary: Delete invoice
+      description: Deletes a draft invoice.
+      operationId: deleteInvoice
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      responses:
+        '204':
+          description: Invoice deleted
+        '400':
+          description: Cannot delete non-draft invoice
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /invoices/{id}/send:
+    post:
+      tags:
+        - Invoices
+      summary: Send invoice
+      description: |
+        Sends an invoice to the customer via email.
+
+        **Status Transition:** `draft` -> `sent`
+      operationId: sendInvoice
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      responses:
+        '200':
+          description: Invoice sent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invoice'
+        '400':
+          description: Invoice cannot be sent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /invoices/{id}/payments:
+    post:
+      tags:
+        - Invoices
+      summary: Record payment
+      description: Records a payment against an invoice.
+      operationId: recordPayment
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentCreate'
+      responses:
+        '201':
+          description: Payment recorded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invoice'
+        '400':
+          description: Invalid payment
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error:
+                  code: INVALID_PAYMENT
+                  message: 'Payment amount exceeds amount due'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /invoices/{id}/cancel:
+    post:
+      tags:
+        - Invoices
+      summary: Cancel invoice
+      description: Cancels an invoice.
+      operationId: cancelInvoice
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvoiceCancelRequest'
+      responses:
+        '200':
+          description: Invoice cancelled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invoice'
+        '400':
+          description: Cannot cancel invoice
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ============================================================================
+  # Quote Endpoints
+  # ============================================================================
+
+  /quotes:
+    get:
+      tags:
+        - Quotes
+      summary: List quotes
+      description: |
+        Returns a paginated list of quotes with optional filtering.
+
+        **Required Permission:** `quotes.list`
+      operationId: listQuotes
+      parameters:
+        - name: customer_id
+          in: query
+          schema:
+            $ref: '#/components/schemas/UUID'
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/QuoteStatus'
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+      responses:
+        '200':
+          description: List of quotes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuoteList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+    post:
+      tags:
+        - Quotes
+      summary: Create quote
+      description: |
+        Creates a new quote.
+
+        **Required Permission:** `quotes.create`
+
+        A unique quote number will be auto-generated in the format `QUO-YYYY-XXXX`.
+      operationId: createQuote
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuoteCreate'
+      responses:
+        '201':
+          description: Quote created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Quote'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /quotes/{id}:
+    get:
+      tags:
+        - Quotes
+      summary: Get quote
+      description: |
+        Returns a single quote by ID.
+
+        **Required Permission:** `quotes.read`
+      operationId: getQuote
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      responses:
+        '200':
+          description: Quote details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Quote'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags:
+        - Quotes
+      summary: Update quote
+      description: |
+        Updates an existing quote. Only `draft` and `sent` quotes can be edited.
+
+        **Required Permission:** `quotes.update`
+      operationId: updateQuote
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuoteUpdate'
+      responses:
+        '200':
+          description: Quote updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Quote'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Quotes
+      summary: Delete quote
+      description: |
+        Deletes a quote. Only `draft` quotes can be deleted.
+
+        **Required Permission:** `quotes.delete`
+      operationId: deleteQuote
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      responses:
+        '204':
+          description: Quote deleted
+        '400':
+          description: Cannot delete non-draft quote
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /quotes/number/{quoteNumber}:
+    get:
+      tags:
+        - Quotes
+      summary: Get quote by number
+      description: |
+        Returns a quote by its quote number.
+
+        **Required Permission:** `quotes.read`
+      operationId: getQuoteByNumber
+      parameters:
+        - name: quoteNumber
+          in: path
+          required: true
+          description: Quote number (e.g., QUO-2024-0001)
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Quote details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Quote'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /quotes/{id}/send:
+    post:
+      tags:
+        - Quotes
+      summary: Send quote
+      description: |
+        Sends a quote to the customer via email.
+
+        **Required Permission:** `quotes.update`
+
+        **Status Transition:** `draft` -> `sent`
+      operationId: sendQuote
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      responses:
+        '200':
+          description: Quote sent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Quote'
+        '400':
+          description: Quote cannot be sent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /quotes/{id}/accept:
+    post:
+      tags:
+        - Quotes
+      summary: Accept quote
+      description: |
+        Marks a quote as accepted.
+
+        **Required Permission:** `quotes.update`
+
+        **Status Transition:** `sent` | `viewed` -> `accepted`
+      operationId: acceptQuote
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      responses:
+        '200':
+          description: Quote accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Quote'
+        '400':
+          description: Invalid status transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /quotes/{id}/reject:
+    post:
+      tags:
+        - Quotes
+      summary: Reject quote
+      description: |
+        Marks a quote as declined.
+
+        **Required Permission:** `quotes.update`
+
+        **Status Transition:** `sent` | `viewed` -> `declined`
+      operationId: rejectQuote
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      responses:
+        '200':
+          description: Quote declined
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Quote'
+        '400':
+          description: Invalid status transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /quotes/stats:
+    get:
+      tags:
+        - Quotes
+      summary: Get quote statistics
+      description: |
+        Returns quote statistics including counts by status and conversion rate.
+
+        **Required Permission:** `quotes.list`
+      operationId: getQuoteStats
+      responses:
+        '200':
+          description: Quote statistics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuoteStats'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'

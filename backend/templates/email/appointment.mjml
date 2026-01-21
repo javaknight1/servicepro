@@ -1,0 +1,176 @@
+<mjml>
+  <mj-head>
+    <mj-title>{{.Subject | default "Appointment Confirmation"}}</mj-title>
+    <mj-preview>{{.PreviewText | default "Your appointment details"}}</mj-preview>
+    <mj-attributes>
+      <mj-all font-family="Arial, Helvetica, sans-serif" />
+      <mj-text font-size="14px" line-height="1.6" color="#374151" />
+      <mj-button background-color="{{.PrimaryColor | default "#2563eb"}}" color="#ffffff" border-radius="6px" font-size="14px" font-weight="600" />
+    </mj-attributes>
+    <mj-style inline="inline">
+      .detail-label { color: #6b7280; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+      .detail-value { color: #111827; font-size: 16px; font-weight: 600; }
+      .status-confirmed { color: #059669; }
+      .status-pending { color: #d97706; }
+      .status-cancelled { color: #dc2626; }
+    </mj-style>
+  </mj-head>
+
+  <mj-body background-color="#f3f4f6">
+    <!-- Header -->
+    <mj-section background-color="{{.PrimaryColor | default "#2563eb"}}" padding="20px 0">
+      <mj-column>
+        {{if .CompanyLogo}}
+        <mj-image src="{{.CompanyLogo}}" alt="{{.CompanyName}}" width="150px" />
+        {{else}}
+        <mj-text font-size="24px" font-weight="bold" color="#ffffff" align="center">
+          {{.CompanyName | default "ServicePro"}}
+        </mj-text>
+        {{end}}
+      </mj-column>
+    </mj-section>
+
+    <!-- Status Banner -->
+    <mj-section background-color="{{if eq .Status "confirmed"}}#ecfdf5{{else if eq .Status "cancelled"}}#fef2f2{{else}}#fffbeb{{end}}" padding="15px 30px">
+      <mj-column>
+        <mj-text align="center" font-size="16px" font-weight="600"
+                 color="{{if eq .Status "confirmed"}}#059669{{else if eq .Status "cancelled"}}#dc2626{{else}}#d97706{{end}}">
+          {{if eq .Status "confirmed"}}Appointment Confirmed{{else if eq .Status "cancelled"}}Appointment Cancelled{{else if eq .Status "rescheduled"}}Appointment Rescheduled{{else}}Appointment Pending{{end}}
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Main Content -->
+    <mj-section background-color="#ffffff" padding="30px" border-radius="8px">
+      <mj-column>
+        <mj-text padding-bottom="20px">
+          Hello {{.RecipientName}},
+        </mj-text>
+
+        {{if eq .Status "confirmed"}}
+        <mj-text padding-bottom="25px">
+          Your appointment has been confirmed. Here are the details:
+        </mj-text>
+        {{else if eq .Status "pending"}}
+        <mj-text padding-bottom="25px">
+          We've received your appointment request. Please confirm to secure your time slot.
+        </mj-text>
+        {{else if eq .Status "rescheduled"}}
+        <mj-text padding-bottom="25px">
+          Your appointment has been rescheduled. Please review the new details below.
+        </mj-text>
+        {{end}}
+      </mj-column>
+    </mj-section>
+
+    <!-- Appointment Details Card -->
+    <mj-section background-color="#ffffff" padding="0 30px 30px">
+      <mj-column background-color="#f9fafb" border-radius="8px" padding="25px">
+        <!-- Service -->
+        <mj-text padding-bottom="5px" css-class="detail-label">
+          SERVICE
+        </mj-text>
+        <mj-text padding-bottom="20px" css-class="detail-value">
+          {{.ServiceName}}
+        </mj-text>
+
+        <!-- Date & Time -->
+        <mj-text padding-bottom="5px" css-class="detail-label">
+          DATE & TIME
+        </mj-text>
+        <mj-text padding-bottom="20px" css-class="detail-value">
+          {{formatDateLong .ScheduledDate}} at {{.ScheduledTime}}
+          {{if .Duration}}<br/><span style="font-size:14px;font-weight:normal;color:#6b7280;">Duration: {{.Duration}}</span>{{end}}
+        </mj-text>
+
+        <!-- Location -->
+        {{if .Location}}
+        <mj-text padding-bottom="5px" css-class="detail-label">
+          LOCATION
+        </mj-text>
+        <mj-text padding-bottom="20px" css-class="detail-value">
+          {{.Location}}
+        </mj-text>
+        {{end}}
+
+        <!-- Technician -->
+        {{if .TechnicianName}}
+        <mj-text padding-bottom="5px" css-class="detail-label">
+          ASSIGNED TECHNICIAN
+        </mj-text>
+        <mj-text css-class="detail-value">
+          {{.TechnicianName}}
+          {{if .TechnicianPhone}}<br/><span style="font-size:14px;font-weight:normal;color:#6b7280;">{{.TechnicianPhone}}</span>{{end}}
+        </mj-text>
+        {{end}}
+      </mj-column>
+    </mj-section>
+
+    <!-- Appointment ID -->
+    <mj-section background-color="#ffffff" padding="0 30px 20px">
+      <mj-column>
+        <mj-text font-size="12px" color="#9ca3af" align="center">
+          Appointment ID: {{.AppointmentID}}
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Action Buttons -->
+    <mj-section background-color="#ffffff" padding="0 30px 30px">
+      <mj-column>
+        {{if and (not .IsConfirmed) .ConfirmationURL}}
+        <mj-button href="{{.ConfirmationURL}}" width="100%" background-color="#059669">
+          Confirm Appointment
+        </mj-button>
+        {{end}}
+      </mj-column>
+    </mj-section>
+
+    {{if or .RescheduleURL .CancelURL}}
+    <mj-section background-color="#ffffff" padding="0 30px 30px">
+      {{if .RescheduleURL}}
+      <mj-column>
+        <mj-button href="{{.RescheduleURL}}" width="100%" background-color="#ffffff" color="{{.PrimaryColor | default "#2563eb"}}" border="1px solid {{.PrimaryColor | default "#2563eb"}}">
+          Reschedule
+        </mj-button>
+      </mj-column>
+      {{end}}
+      {{if .CancelURL}}
+      <mj-column>
+        <mj-button href="{{.CancelURL}}" width="100%" background-color="#ffffff" color="#dc2626" border="1px solid #dc2626">
+          Cancel
+        </mj-button>
+      </mj-column>
+      {{end}}
+    </mj-section>
+    {{end}}
+
+    <!-- Notes -->
+    {{if .Notes}}
+    <mj-section background-color="#ffffff" padding="0 30px 30px">
+      <mj-column background-color="#fef3c7" border-radius="8px" padding="15px">
+        <mj-text font-size="13px" color="#92400e">
+          <strong>Note:</strong> {{.Notes}}
+        </mj-text>
+      </mj-column>
+    </mj-section>
+    {{end}}
+
+    <!-- Footer -->
+    <mj-section background-color="#f9fafb" padding="25px" border-radius="0 0 8px 8px">
+      <mj-column>
+        <mj-text font-size="13px" color="#6b7280" align="center">
+          Need to make changes? Contact us at {{.CompanyEmail | default "support@servicepro.com"}}
+          {{if .CompanyPhone}}<br/>or call {{.CompanyPhone}}{{end}}
+        </mj-text>
+
+        <mj-divider border-color="#e5e7eb" border-width="1px" padding="20px 0" />
+
+        <mj-text font-size="11px" color="#9ca3af" align="center">
+          &copy; {{.CurrentYear}} {{.CompanyName | default "ServicePro"}}. All rights reserved.
+          {{if .UnsubscribeURL}}<br/><a href="{{.UnsubscribeURL}}" style="color:#9ca3af;">Unsubscribe</a>{{end}}
+        </mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

@@ -1,0 +1,232 @@
+<mjml>
+  <mj-head>
+    <mj-title>{{.Subject | default "Invoice"}}</mj-title>
+    <mj-preview>{{.PreviewText | default "Your invoice is ready"}}</mj-preview>
+    <mj-attributes>
+      <mj-all font-family="Arial, Helvetica, sans-serif" />
+      <mj-text font-size="14px" line-height="1.6" color="#374151" />
+      <mj-button background-color="{{.PrimaryColor | default "#2563eb"}}" color="#ffffff" border-radius="6px" font-size="16px" font-weight="600" />
+      <mj-table font-size="14px" />
+    </mj-attributes>
+    <mj-style inline="inline">
+      .invoice-header { background-color: #f9fafb; }
+      .detail-label { color: #6b7280; font-size: 12px; }
+      .amount-due { color: #111827; font-size: 28px; font-weight: 700; }
+      .status-paid { color: #059669; background-color: #ecfdf5; }
+      .status-pending { color: #d97706; background-color: #fffbeb; }
+      .status-overdue { color: #dc2626; background-color: #fef2f2; }
+      .table-header { background-color: #f3f4f6; color: #374151; font-weight: 600; }
+    </mj-style>
+  </mj-head>
+
+  <mj-body background-color="#f3f4f6">
+    <!-- Header -->
+    <mj-section background-color="{{.PrimaryColor | default "#2563eb"}}" padding="20px 0">
+      <mj-column>
+        {{if .CompanyLogo}}
+        <mj-image src="{{.CompanyLogo}}" alt="{{.CompanyName}}" width="150px" />
+        {{else}}
+        <mj-text font-size="24px" font-weight="bold" color="#ffffff" align="center">
+          {{.CompanyName | default "ServicePro"}}
+        </mj-text>
+        {{end}}
+      </mj-column>
+    </mj-section>
+
+    <!-- Invoice Header -->
+    <mj-section background-color="#ffffff" padding="30px" border-radius="8px 8px 0 0">
+      <mj-column width="60%">
+        <mj-text font-size="28px" font-weight="bold" color="#111827">
+          INVOICE
+        </mj-text>
+        <mj-text font-size="16px" color="#6b7280" padding-top="5px">
+          #{{.InvoiceNumber}}
+        </mj-text>
+      </mj-column>
+      <mj-column width="40%">
+        <mj-text align="right" padding-bottom="5px">
+          <span style="display:inline-block;padding:6px 12px;border-radius:9999px;font-size:12px;font-weight:600;{{if .IsPaid}}color:#059669;background-color:#ecfdf5;{{else if .IsOverdue}}color:#dc2626;background-color:#fef2f2;{{else}}color:#d97706;background-color:#fffbeb;{{end}}">
+            {{if .IsPaid}}PAID{{else if .IsOverdue}}OVERDUE{{else}}PENDING{{end}}
+          </span>
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Invoice Details -->
+    <mj-section background-color="#ffffff" padding="0 30px 30px">
+      <mj-column width="50%">
+        <mj-text css-class="detail-label" padding-bottom="5px">
+          INVOICE DATE
+        </mj-text>
+        <mj-text font-weight="600" padding-bottom="20px">
+          {{formatDateShort .InvoiceDate}}
+        </mj-text>
+
+        <mj-text css-class="detail-label" padding-bottom="5px">
+          DUE DATE
+        </mj-text>
+        <mj-text font-weight="600" color="{{if .IsOverdue}}#dc2626{{else}}#111827{{end}}">
+          {{formatDateShort .DueDate}}
+        </mj-text>
+      </mj-column>
+      <mj-column width="50%">
+        <mj-text css-class="detail-label" padding-bottom="5px">
+          BILL TO
+        </mj-text>
+        <mj-text font-weight="600">
+          {{.CustomerName}}
+        </mj-text>
+        {{if .CustomerAddress}}
+        <mj-text color="#6b7280" font-size="13px">
+          {{.CustomerAddress}}
+        </mj-text>
+        {{end}}
+        {{if .CustomerEmail}}
+        <mj-text color="#6b7280" font-size="13px">
+          {{.CustomerEmail}}
+        </mj-text>
+        {{end}}
+      </mj-column>
+    </mj-section>
+
+    <!-- Line Items Table -->
+    <mj-section background-color="#ffffff" padding="0 30px">
+      <mj-column>
+        <mj-table>
+          <tr style="background-color:#f3f4f6;text-align:left;">
+            <th style="padding:12px 15px;border-bottom:2px solid #e5e7eb;">Description</th>
+            <th style="padding:12px 15px;border-bottom:2px solid #e5e7eb;text-align:center;">Qty</th>
+            <th style="padding:12px 15px;border-bottom:2px solid #e5e7eb;text-align:right;">Price</th>
+            <th style="padding:12px 15px;border-bottom:2px solid #e5e7eb;text-align:right;">Amount</th>
+          </tr>
+          {{range .LineItems}}
+          <tr>
+            <td style="padding:15px;border-bottom:1px solid #e5e7eb;">{{.Description}}</td>
+            <td style="padding:15px;border-bottom:1px solid #e5e7eb;text-align:center;">{{.Quantity}}</td>
+            <td style="padding:15px;border-bottom:1px solid #e5e7eb;text-align:right;">{{formatCurrency .UnitPrice $.Currency}}</td>
+            <td style="padding:15px;border-bottom:1px solid #e5e7eb;text-align:right;">{{formatCurrency .Amount $.Currency}}</td>
+          </tr>
+          {{end}}
+        </mj-table>
+      </mj-column>
+    </mj-section>
+
+    <!-- Totals -->
+    <mj-section background-color="#ffffff" padding="20px 30px">
+      <mj-column width="50%">
+        <!-- Empty column for alignment -->
+      </mj-column>
+      <mj-column width="50%">
+        <mj-table>
+          <tr>
+            <td style="padding:8px 0;color:#6b7280;">Subtotal</td>
+            <td style="padding:8px 0;text-align:right;">{{formatCurrency .Subtotal .Currency}}</td>
+          </tr>
+          {{if .Discount}}
+          <tr>
+            <td style="padding:8px 0;color:#059669;">Discount</td>
+            <td style="padding:8px 0;text-align:right;color:#059669;">-{{formatCurrency .Discount .Currency}}</td>
+          </tr>
+          {{end}}
+          {{if .TaxAmount}}
+          <tr>
+            <td style="padding:8px 0;color:#6b7280;">Tax ({{formatPercent .TaxRate}})</td>
+            <td style="padding:8px 0;text-align:right;">{{formatCurrency .TaxAmount .Currency}}</td>
+          </tr>
+          {{end}}
+          <tr style="border-top:2px solid #e5e7eb;">
+            <td style="padding:15px 0;font-weight:700;font-size:16px;">Total</td>
+            <td style="padding:15px 0;text-align:right;font-weight:700;font-size:16px;">{{formatCurrency .Total .Currency}}</td>
+          </tr>
+          {{if and .AmountPaid (not .IsPaid)}}
+          <tr>
+            <td style="padding:8px 0;color:#6b7280;">Amount Paid</td>
+            <td style="padding:8px 0;text-align:right;">{{formatCurrency .AmountPaid .Currency}}</td>
+          </tr>
+          {{end}}
+        </mj-table>
+      </mj-column>
+    </mj-section>
+
+    <!-- Amount Due Banner -->
+    {{if not .IsPaid}}
+    <mj-section background-color="{{if .IsOverdue}}#fef2f2{{else}}#f0f9ff{{end}}" padding="25px 30px">
+      <mj-column>
+        <mj-text align="center" css-class="detail-label" padding-bottom="5px">
+          AMOUNT DUE
+        </mj-text>
+        <mj-text align="center" css-class="amount-due" color="{{if .IsOverdue}}#dc2626{{else}}#111827{{end}}">
+          {{formatCurrency .AmountDue .Currency}}
+        </mj-text>
+        {{if .IsOverdue}}
+        <mj-text align="center" font-size="13px" color="#dc2626" padding-top="10px">
+          This invoice is past due. Please pay immediately to avoid late fees.
+        </mj-text>
+        {{end}}
+      </mj-column>
+    </mj-section>
+    {{end}}
+
+    <!-- Pay Button -->
+    {{if and (not .IsPaid) .PaymentURL}}
+    <mj-section background-color="#ffffff" padding="30px">
+      <mj-column>
+        <mj-button href="{{.PaymentURL}}" width="100%">
+          Pay Now - {{formatCurrency .AmountDue .Currency}}
+        </mj-button>
+
+        {{if .PaymentMethods}}
+        <mj-text align="center" font-size="12px" color="#9ca3af" padding-top="15px">
+          We accept: {{join .PaymentMethods ", "}}
+        </mj-text>
+        {{end}}
+      </mj-column>
+    </mj-section>
+    {{end}}
+
+    <!-- Paid Confirmation -->
+    {{if .IsPaid}}
+    <mj-section background-color="#ecfdf5" padding="25px 30px">
+      <mj-column>
+        <mj-text align="center" font-size="18px" font-weight="600" color="#059669">
+          Thank you for your payment!
+        </mj-text>
+        <mj-text align="center" font-size="14px" color="#047857" padding-top="10px">
+          This invoice has been paid in full.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+    {{end}}
+
+    <!-- Payment Terms -->
+    {{if .PaymentTerms}}
+    <mj-section background-color="#ffffff" padding="20px 30px">
+      <mj-column>
+        <mj-text font-size="12px" color="#6b7280">
+          <strong>Payment Terms:</strong> {{.PaymentTerms}}
+        </mj-text>
+      </mj-column>
+    </mj-section>
+    {{end}}
+
+    <!-- Footer -->
+    <mj-section background-color="#f9fafb" padding="25px" border-radius="0 0 8px 8px">
+      <mj-column>
+        <mj-text font-size="13px" color="#6b7280" align="center">
+          Questions about this invoice? Contact us at {{.CompanyEmail | default "billing@servicepro.com"}}
+        </mj-text>
+
+        <mj-divider border-color="#e5e7eb" border-width="1px" padding="20px 0" />
+
+        <mj-text font-size="12px" color="#9ca3af" align="center">
+          {{.CompanyName | default "ServicePro"}}
+          {{if .CompanyAddress}}<br/>{{.CompanyAddress}}{{end}}
+        </mj-text>
+
+        <mj-text font-size="11px" color="#9ca3af" align="center" padding-top="15px">
+          &copy; {{.CurrentYear}} {{.CompanyName | default "ServicePro"}}. All rights reserved.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

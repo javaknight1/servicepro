@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>{{.Subject | default "Invoice"}}</title>
+  <style type="text/css">
+    body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+    table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+    img { -ms-interpolation-mode: bicubic; border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; }
+    body { margin: 0 !important; padding: 0 !important; width: 100% !important; }
+    a[x-apple-data-detectors] { color: inherit !important; text-decoration: none !important; }
+    @media screen and (max-width: 600px) {
+      .container { width: 100% !important; }
+      .content-padding { padding: 20px !important; }
+      .stack-column { display: block !important; width: 100% !important; }
+    }
+  </style>
+</head>
+<body style="margin:0;padding:0;background-color:#f3f4f6;">
+  <div style="display:none;font-size:1px;color:#f3f4f6;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">
+    {{.PreviewText | default "Your invoice is ready"}}
+  </div>
+
+  <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background-color:#f3f4f6;">
+    <tr>
+      <td align="center" style="padding:20px 10px;">
+        <table role="presentation" class="container" cellpadding="0" cellspacing="0" width="600" style="max-width:600px;">
+
+          <!-- Header -->
+          <tr>
+            <td align="center" style="background-color:{{.PrimaryColor | default "#2563eb"}};padding:25px;border-radius:8px 8px 0 0;">
+              {{if .CompanyLogo}}
+              <img src="{{.CompanyLogo}}" alt="{{.CompanyName}}" width="150" style="display:block;">
+              {{else}}
+              <h1 style="margin:0;color:#ffffff;font-family:Arial,sans-serif;font-size:24px;font-weight:bold;">
+                {{.CompanyName | default "ServicePro"}}
+              </h1>
+              {{end}}
+            </td>
+          </tr>
+
+          <!-- Invoice Header -->
+          <tr>
+            <td class="content-padding" style="background-color:#ffffff;padding:30px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
+                <tr>
+                  <td width="60%" valign="top">
+                    <h2 style="margin:0;color:#111827;font-family:Arial,sans-serif;font-size:28px;font-weight:bold;">
+                      INVOICE
+                    </h2>
+                    <p style="margin:5px 0 0;color:#6b7280;font-family:Arial,sans-serif;font-size:16px;">
+                      #{{.InvoiceNumber}}
+                    </p>
+                  </td>
+                  <td width="40%" valign="top" align="right">
+                    <span style="display:inline-block;padding:6px 12px;border-radius:9999px;font-size:12px;font-weight:600;{{if .IsPaid}}color:#059669;background-color:#ecfdf5;{{else if .IsOverdue}}color:#dc2626;background-color:#fef2f2;{{else}}color:#d97706;background-color:#fffbeb;{{end}}">
+                      {{if .IsPaid}}PAID{{else if .IsOverdue}}OVERDUE{{else}}PENDING{{end}}
+                    </span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Invoice Details -->
+          <tr>
+            <td style="background-color:#ffffff;padding:0 30px 30px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
+                <tr>
+                  <td class="stack-column" width="50%" valign="top" style="padding-right:15px;">
+                    <p style="margin:0 0 5px;color:#6b7280;font-family:Arial,sans-serif;font-size:12px;">INVOICE DATE</p>
+                    <p style="margin:0 0 20px;color:#111827;font-family:Arial,sans-serif;font-size:14px;font-weight:600;">
+                      {{formatDateShort .InvoiceDate}}
+                    </p>
+
+                    <p style="margin:0 0 5px;color:#6b7280;font-family:Arial,sans-serif;font-size:12px;">DUE DATE</p>
+                    <p style="margin:0;color:{{if .IsOverdue}}#dc2626{{else}}#111827{{end}};font-family:Arial,sans-serif;font-size:14px;font-weight:600;">
+                      {{formatDateShort .DueDate}}
+                    </p>
+                  </td>
+                  <td class="stack-column" width="50%" valign="top">
+                    <p style="margin:0 0 5px;color:#6b7280;font-family:Arial,sans-serif;font-size:12px;">BILL TO</p>
+                    <p style="margin:0;color:#111827;font-family:Arial,sans-serif;font-size:14px;font-weight:600;">
+                      {{.CustomerName}}
+                    </p>
+                    {{if .CustomerAddress}}
+                    <p style="margin:5px 0 0;color:#6b7280;font-family:Arial,sans-serif;font-size:13px;">
+                      {{.CustomerAddress}}
+                    </p>
+                    {{end}}
+                    {{if .CustomerEmail}}
+                    <p style="margin:3px 0 0;color:#6b7280;font-family:Arial,sans-serif;font-size:13px;">
+                      {{.CustomerEmail}}
+                    </p>
+                    {{end}}
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Line Items -->
+          <tr>
+            <td style="background-color:#ffffff;padding:0 30px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+                <tr style="background-color:#f3f4f6;">
+                  <th style="padding:12px 15px;border-bottom:2px solid #e5e7eb;text-align:left;font-family:Arial,sans-serif;font-size:14px;font-weight:600;color:#374151;">Description</th>
+                  <th style="padding:12px 15px;border-bottom:2px solid #e5e7eb;text-align:center;font-family:Arial,sans-serif;font-size:14px;font-weight:600;color:#374151;">Qty</th>
+                  <th style="padding:12px 15px;border-bottom:2px solid #e5e7eb;text-align:right;font-family:Arial,sans-serif;font-size:14px;font-weight:600;color:#374151;">Price</th>
+                  <th style="padding:12px 15px;border-bottom:2px solid #e5e7eb;text-align:right;font-family:Arial,sans-serif;font-size:14px;font-weight:600;color:#374151;">Amount</th>
+                </tr>
+                {{range .LineItems}}
+                <tr>
+                  <td style="padding:15px;border-bottom:1px solid #e5e7eb;font-family:Arial,sans-serif;font-size:14px;color:#374151;">{{.Description}}</td>
+                  <td style="padding:15px;border-bottom:1px solid #e5e7eb;font-family:Arial,sans-serif;font-size:14px;color:#374151;text-align:center;">{{.Quantity}}</td>
+                  <td style="padding:15px;border-bottom:1px solid #e5e7eb;font-family:Arial,sans-serif;font-size:14px;color:#374151;text-align:right;">{{formatCurrency .UnitPrice $.Currency}}</td>
+                  <td style="padding:15px;border-bottom:1px solid #e5e7eb;font-family:Arial,sans-serif;font-size:14px;color:#374151;text-align:right;">{{formatCurrency .Amount $.Currency}}</td>
+                </tr>
+                {{end}}
+              </table>
+            </td>
+          </tr>
+
+          <!-- Totals -->
+          <tr>
+            <td style="background-color:#ffffff;padding:20px 30px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
+                <tr>
+                  <td width="50%"></td>
+                  <td width="50%">
+                    <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
+                      <tr>
+                        <td style="padding:8px 0;font-family:Arial,sans-serif;font-size:14px;color:#6b7280;">Subtotal</td>
+                        <td style="padding:8px 0;font-family:Arial,sans-serif;font-size:14px;text-align:right;">{{formatCurrency .Subtotal .Currency}}</td>
+                      </tr>
+                      {{if .Discount}}
+                      <tr>
+                        <td style="padding:8px 0;font-family:Arial,sans-serif;font-size:14px;color:#059669;">Discount</td>
+                        <td style="padding:8px 0;font-family:Arial,sans-serif;font-size:14px;text-align:right;color:#059669;">-{{formatCurrency .Discount .Currency}}</td>
+                      </tr>
+                      {{end}}
+                      {{if .TaxAmount}}
+                      <tr>
+                        <td style="padding:8px 0;font-family:Arial,sans-serif;font-size:14px;color:#6b7280;">Tax ({{formatPercent .TaxRate}})</td>
+                        <td style="padding:8px 0;font-family:Arial,sans-serif;font-size:14px;text-align:right;">{{formatCurrency .TaxAmount .Currency}}</td>
+                      </tr>
+                      {{end}}
+                      <tr style="border-top:2px solid #e5e7eb;">
+                        <td style="padding:15px 0;font-family:Arial,sans-serif;font-size:16px;font-weight:700;">Total</td>
+                        <td style="padding:15px 0;font-family:Arial,sans-serif;font-size:16px;font-weight:700;text-align:right;">{{formatCurrency .Total .Currency}}</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Amount Due Banner -->
+          {{if not .IsPaid}}
+          <tr>
+            <td align="center" style="background-color:{{if .IsOverdue}}#fef2f2{{else}}#f0f9ff{{end}};padding:25px;">
+              <p style="margin:0 0 5px;color:#6b7280;font-family:Arial,sans-serif;font-size:12px;">AMOUNT DUE</p>
+              <p style="margin:0;color:{{if .IsOverdue}}#dc2626{{else}}#111827{{end}};font-family:Arial,sans-serif;font-size:28px;font-weight:700;">
+                {{formatCurrency .AmountDue .Currency}}
+              </p>
+              {{if .IsOverdue}}
+              <p style="margin:10px 0 0;color:#dc2626;font-family:Arial,sans-serif;font-size:13px;">
+                This invoice is past due. Please pay immediately to avoid late fees.
+              </p>
+              {{end}}
+            </td>
+          </tr>
+          {{end}}
+
+          <!-- Pay Button -->
+          {{if and (not .IsPaid) .PaymentURL}}
+          <tr>
+            <td align="center" style="background-color:#ffffff;padding:30px;">
+              <a href="{{.PaymentURL}}" style="display:inline-block;padding:16px 32px;background-color:{{.PrimaryColor | default "#2563eb"}};color:#ffffff;font-family:Arial,sans-serif;font-size:16px;font-weight:600;text-decoration:none;border-radius:6px;">
+                Pay Now - {{formatCurrency .AmountDue .Currency}}
+              </a>
+              {{if .PaymentMethods}}
+              <p style="margin:15px 0 0;color:#9ca3af;font-family:Arial,sans-serif;font-size:12px;">
+                We accept: {{join .PaymentMethods ", "}}
+              </p>
+              {{end}}
+            </td>
+          </tr>
+          {{end}}
+
+          <!-- Paid Confirmation -->
+          {{if .IsPaid}}
+          <tr>
+            <td align="center" style="background-color:#ecfdf5;padding:25px;">
+              <p style="margin:0;color:#059669;font-family:Arial,sans-serif;font-size:18px;font-weight:600;">
+                Thank you for your payment!
+              </p>
+              <p style="margin:10px 0 0;color:#047857;font-family:Arial,sans-serif;font-size:14px;">
+                This invoice has been paid in full.
+              </p>
+            </td>
+          </tr>
+          {{end}}
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color:#f9fafb;padding:25px;border-radius:0 0 8px 8px;">
+              <p style="margin:0 0 20px;color:#6b7280;font-family:Arial,sans-serif;font-size:13px;text-align:center;">
+                Questions about this invoice? Contact us at {{.CompanyEmail | default "billing@servicepro.com"}}
+              </p>
+
+              <hr style="border:none;border-top:1px solid #e5e7eb;margin:20px 0;">
+
+              <p style="margin:0;color:#9ca3af;font-family:Arial,sans-serif;font-size:12px;text-align:center;">
+                {{.CompanyName | default "ServicePro"}}
+                {{if .CompanyAddress}}<br>{{.CompanyAddress}}{{end}}
+              </p>
+
+              <p style="margin:15px 0 0;color:#9ca3af;font-family:Arial,sans-serif;font-size:11px;text-align:center;">
+                &copy; {{.CurrentYear}} {{.CompanyName | default "ServicePro"}}. All rights reserved.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

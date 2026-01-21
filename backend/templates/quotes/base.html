@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quote #{{.DocumentNumber}}</title>
+    <link rel="stylesheet" href="styles.css">
+    {{if .CustomCSS}}<style>{{.CustomCSS}}</style>{{end}}
+</head>
+<body>
+    <div class="document quote">
+        <!-- Header Section -->
+        <header class="document-header">
+            <div class="company-info">
+                {{if .CompanyLogo}}
+                <img src="{{.CompanyLogo}}" alt="{{.CompanyName}}" class="company-logo">
+                {{else}}
+                <h1 class="company-name">{{.CompanyName}}</h1>
+                {{end}}
+                {{if .CompanyTagline}}
+                <p class="company-tagline">{{.CompanyTagline}}</p>
+                {{end}}
+                <div class="company-contact">
+                    {{if .CompanyAddress}}<p>{{.CompanyAddress}}</p>{{end}}
+                    {{if .CompanyPhone}}<p>Phone: {{.CompanyPhone}}</p>{{end}}
+                    {{if .CompanyEmail}}<p>Email: {{.CompanyEmail}}</p>{{end}}
+                    {{if .CompanyWebsite}}<p>{{.CompanyWebsite}}</p>{{end}}
+                </div>
+            </div>
+            <div class="document-info">
+                <h2 class="document-type">QUOTE</h2>
+                <table class="document-meta">
+                    <tr>
+                        <td class="label">Quote Number:</td>
+                        <td class="value">{{.DocumentNumber}}</td>
+                    </tr>
+                    <tr>
+                        <td class="label">Date:</td>
+                        <td class="value">{{.Date | formatDate}}</td>
+                    </tr>
+                    <tr>
+                        <td class="label">Valid Until:</td>
+                        <td class="value {{if .IsExpired}}expired{{end}}">{{.ValidUntil | formatDate}}</td>
+                    </tr>
+                    {{if .ReferenceNumber}}
+                    <tr>
+                        <td class="label">Reference:</td>
+                        <td class="value">{{.ReferenceNumber}}</td>
+                    </tr>
+                    {{end}}
+                    <tr>
+                        <td class="label">Status:</td>
+                        <td class="value">
+                            <span class="status-badge status-{{.Status | lowercase}}">{{.Status | uppercase}}</span>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </header>
+
+        <!-- Customer Section -->
+        <section class="customer-section">
+            <div class="section-header">
+                <h3>Quote For</h3>
+            </div>
+            <div class="customer-details">
+                <p class="customer-name">{{.CustomerName}}</p>
+                {{if .CustomerCompany}}
+                <p class="customer-company">{{.CustomerCompany}}</p>
+                {{end}}
+                {{if .CustomerAddress}}
+                <p class="customer-address">{{.CustomerAddress | nl2br}}</p>
+                {{end}}
+                <div class="customer-contact">
+                    {{if .CustomerEmail}}<p>Email: {{.CustomerEmail}}</p>{{end}}
+                    {{if .CustomerPhone}}<p>Phone: {{.CustomerPhone}}</p>{{end}}
+                </div>
+            </div>
+        </section>
+
+        <!-- Project Description -->
+        {{if .ProjectDescription}}
+        <section class="project-section">
+            <div class="section-header">
+                <h3>Project Description</h3>
+            </div>
+            <div class="project-description">
+                {{.ProjectDescription | nl2br}}
+            </div>
+        </section>
+        {{end}}
+
+        <!-- Line Items -->
+        <section class="items-section">
+            <div class="section-header">
+                <h3>Quoted Items</h3>
+            </div>
+            <table class="items-table">
+                <thead>
+                    <tr>
+                        <th class="col-item">Description</th>
+                        <th class="col-qty">Qty</th>
+                        <th class="col-price">Unit Price</th>
+                        {{if .ShowDiscount}}<th class="col-discount">Discount</th>{{end}}
+                        <th class="col-amount">Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range .LineItems}}
+                    <tr class="{{if .Optional}}optional-item{{end}}">
+                        <td class="col-item">
+                            <div class="item-description">
+                                {{if .Optional}}<span class="optional-badge">Optional</span>{{end}}
+                                <span class="item-name">{{.Description}}</span>
+                                {{if .Details}}
+                                <span class="item-details">{{.Details}}</span>
+                                {{end}}
+                            </div>
+                        </td>
+                        <td class="col-qty">{{.Quantity}}</td>
+                        <td class="col-price">{{.UnitPrice | formatCurrency}}</td>
+                        {{if $.ShowDiscount}}
+                        <td class="col-discount">
+                            {{if .Discount}}{{.Discount | formatPercent}}{{else}}-{{end}}
+                        </td>
+                        {{end}}
+                        <td class="col-amount">{{.Amount | formatCurrency}}</td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </section>
+
+        <!-- Totals Section -->
+        <section class="totals-section">
+            <table class="totals-table">
+                <tr>
+                    <td class="label">Subtotal:</td>
+                    <td class="value">{{.Subtotal | formatCurrency}}</td>
+                </tr>
+                {{if .Discount}}
+                <tr class="discount-row">
+                    <td class="label">Discount ({{.DiscountPercent | formatPercent}}):</td>
+                    <td class="value">-{{.Discount | formatCurrency}}</td>
+                </tr>
+                {{end}}
+                {{if .TaxAmount}}
+                <tr>
+                    <td class="label">Tax ({{.TaxRate | formatPercent}}):</td>
+                    <td class="value">{{.TaxAmount | formatCurrency}}</td>
+                </tr>
+                {{end}}
+                <tr class="total-row">
+                    <td class="label">Total:</td>
+                    <td class="value total-amount">{{.Total | formatCurrency}}</td>
+                </tr>
+                {{if .OptionalTotal}}
+                <tr class="optional-total-row">
+                    <td class="label">With Optional Items:</td>
+                    <td class="value">{{.TotalWithOptional | formatCurrency}}</td>
+                </tr>
+                {{end}}
+            </table>
+        </section>
+
+        <!-- Terms and Conditions -->
+        {{if .Terms}}
+        <section class="terms-section">
+            <div class="section-header">
+                <h3>Terms & Conditions</h3>
+            </div>
+            <div class="terms-content">
+                {{.Terms | nl2br}}
+            </div>
+        </section>
+        {{end}}
+
+        <!-- Notes -->
+        {{if .Notes}}
+        <section class="notes-section">
+            <div class="section-header">
+                <h3>Notes</h3>
+            </div>
+            <div class="notes-content">
+                {{.Notes | nl2br}}
+            </div>
+        </section>
+        {{end}}
+
+        <!-- Acceptance Section -->
+        <section class="acceptance-section">
+            <div class="section-header">
+                <h3>Quote Acceptance</h3>
+            </div>
+            <p class="acceptance-intro">
+                To accept this quote, please sign below and return a copy to us.
+                This quote is valid until <strong>{{.ValidUntil | formatDate}}</strong>.
+            </p>
+            <div class="signature-area">
+                <div class="signature-block">
+                    <div class="signature-line"></div>
+                    <p class="signature-label">Customer Signature</p>
+                </div>
+                <div class="signature-block">
+                    <div class="signature-line"></div>
+                    <p class="signature-label">Print Name</p>
+                </div>
+                <div class="signature-block">
+                    <div class="signature-line"></div>
+                    <p class="signature-label">Date</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="document-footer">
+            {{if .FooterText}}
+            <p class="footer-message">{{.FooterText}}</p>
+            {{else}}
+            <p class="footer-message">Thank you for considering {{.CompanyName}}!</p>
+            {{end}}
+            <p class="footer-generated">Generated on {{.GeneratedAt | formatDateTime}}</p>
+        </footer>
+    </div>
+</body>
+</html>

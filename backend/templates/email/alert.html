@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>{{.Subject | default "Alert Notification"}}</title>
+  <style type="text/css">
+    body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+    table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+    img { -ms-interpolation-mode: bicubic; border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; }
+    body { margin: 0 !important; padding: 0 !important; width: 100% !important; }
+    a[x-apple-data-detectors] { color: inherit !important; text-decoration: none !important; }
+    @media screen and (max-width: 600px) {
+      .container { width: 100% !important; }
+      .content-padding { padding: 20px !important; }
+      .button-stack { display: block !important; width: 100% !important; margin: 10px 0 !important; }
+    }
+  </style>
+</head>
+<body style="margin:0;padding:0;background-color:#f3f4f6;">
+  <div style="display:none;font-size:1px;color:#f3f4f6;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">
+    {{.PreviewText | default "Important notification"}}
+  </div>
+
+  <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background-color:#f3f4f6;">
+    <tr>
+      <td align="center" style="padding:20px 10px;">
+        <table role="presentation" class="container" cellpadding="0" cellspacing="0" width="600" style="max-width:600px;">
+
+          <!-- Header with Severity Color -->
+          <tr>
+            <td align="center" style="background-color:{{if eq .Severity "critical"}}#dc2626{{else if eq .Severity "high"}}#ea580c{{else if eq .Severity "medium"}}#d97706{{else if eq .Severity "low"}}#2563eb{{else}}#6b7280{{end}};padding:25px;border-radius:8px 8px 0 0;">
+              {{if .CompanyLogo}}
+              <img src="{{.CompanyLogo}}" alt="{{.CompanyName}}" width="150" style="display:block;">
+              {{else}}
+              <h1 style="margin:0;color:#ffffff;font-family:Arial,sans-serif;font-size:24px;font-weight:bold;">
+                {{.CompanyName | default "ServicePro"}}
+              </h1>
+              {{end}}
+            </td>
+          </tr>
+
+          <!-- Severity Badge -->
+          <tr>
+            <td align="center" style="background-color:#ffffff;padding:30px 30px 0;">
+              <span style="display:inline-block;padding:8px 16px;border-radius:9999px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#ffffff;background-color:{{if eq .Severity "critical"}}#dc2626{{else if eq .Severity "high"}}#ea580c{{else if eq .Severity "medium"}}#d97706{{else if eq .Severity "low"}}#2563eb{{else}}#6b7280{{end}};">
+                {{upper .Severity}} PRIORITY
+              </span>
+            </td>
+          </tr>
+
+          <!-- Alert Title -->
+          <tr>
+            <td align="center" style="background-color:#ffffff;padding:20px 30px;">
+              <h2 style="margin:0;color:#111827;font-family:Arial,sans-serif;font-size:24px;font-weight:bold;">
+                {{if eq .AlertType "warning"}}&#9888;{{else if eq .AlertType "error"}}&#10060;{{else if eq .AlertType "success"}}&#9989;{{else}}&#8505;{{end}}
+                {{.Title}}
+              </h2>
+            </td>
+          </tr>
+
+          <!-- Alert Message -->
+          <tr>
+            <td align="center" style="background-color:#ffffff;padding:0 30px 30px;">
+              <p style="margin:0;color:#4b5563;font-family:Arial,sans-serif;font-size:16px;line-height:1.6;">
+                {{.Message}}
+              </p>
+            </td>
+          </tr>
+
+          <!-- Alert Details Card -->
+          <tr>
+            <td style="background-color:#ffffff;padding:0 30px 30px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background-color:#f9fafb;border-radius:8px;">
+                <tr>
+                  <td style="padding:20px;">
+                    <!-- Alert Type -->
+                    <p style="margin:0 0 3px;color:#6b7280;font-family:Arial,sans-serif;font-size:12px;text-transform:uppercase;">ALERT TYPE</p>
+                    <p style="margin:0 0 15px;color:#111827;font-family:Arial,sans-serif;font-size:14px;font-weight:600;">{{title .AlertType}}</p>
+
+                    <!-- Timestamp -->
+                    <p style="margin:0 0 3px;color:#6b7280;font-family:Arial,sans-serif;font-size:12px;text-transform:uppercase;">TIMESTAMP</p>
+                    <p style="margin:0 0 15px;color:#111827;font-family:Arial,sans-serif;font-size:14px;font-weight:600;">{{formatDateTime .Timestamp}}</p>
+
+                    {{if .ResourceName}}
+                    <!-- Resource -->
+                    <p style="margin:0 0 3px;color:#6b7280;font-family:Arial,sans-serif;font-size:12px;text-transform:uppercase;">AFFECTED RESOURCE</p>
+                    <p style="margin:0 0 15px;color:#111827;font-family:Arial,sans-serif;font-size:14px;font-weight:600;">
+                      {{.ResourceName}}
+                      {{if .ResourceType}}<br><span style="font-size:12px;font-weight:normal;color:#6b7280;">Type: {{.ResourceType}}</span>{{end}}
+                      {{if .ResourceID}}<br><span style="font-size:12px;font-weight:normal;color:#6b7280;">ID: {{.ResourceID}}</span>{{end}}
+                    </p>
+                    {{end}}
+
+                    <!-- Alert ID -->
+                    <p style="margin:0 0 3px;color:#6b7280;font-family:Arial,sans-serif;font-size:12px;text-transform:uppercase;">ALERT ID</p>
+                    <p style="margin:0;color:#6b7280;font-family:Arial,sans-serif;font-size:12px;">{{.AlertID}}</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Additional Metadata -->
+          {{if .Metadata}}
+          <tr>
+            <td style="background-color:#ffffff;padding:0 30px 30px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background-color:#fef3c7;border-radius:8px;">
+                <tr>
+                  <td style="padding:15px;">
+                    <p style="margin:0 0 10px;color:#92400e;font-family:Arial,sans-serif;font-size:12px;font-weight:600;">
+                      ADDITIONAL INFORMATION
+                    </p>
+                    {{range $key, $value := .Metadata}}
+                    <p style="margin:0 0 5px;color:#78350f;font-family:Arial,sans-serif;font-size:13px;">
+                      <strong>{{$key}}:</strong> {{$value}}
+                    </p>
+                    {{end}}
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          {{end}}
+
+          <!-- Action Buttons -->
+          {{if .DetailsURL}}
+          <tr>
+            <td align="center" style="background-color:#ffffff;padding:0 30px 20px;">
+              <a href="{{.DetailsURL}}" style="display:inline-block;padding:14px 28px;background-color:{{.PrimaryColor | default "#2563eb"}};color:#ffffff;font-family:Arial,sans-serif;font-size:14px;font-weight:600;text-decoration:none;border-radius:6px;">
+                View Details
+              </a>
+            </td>
+          </tr>
+          {{end}}
+
+          {{if or .AcknowledgeURL .ResolveURL}}
+          <tr>
+            <td align="center" style="background-color:#ffffff;padding:0 30px 30px;">
+              <table role="presentation" cellpadding="0" cellspacing="0">
+                <tr>
+                  {{if .AcknowledgeURL}}
+                  <td class="button-stack" style="padding:0 5px;">
+                    <a href="{{.AcknowledgeURL}}" style="display:inline-block;padding:12px 24px;background-color:#ffffff;color:{{.PrimaryColor | default "#2563eb"}};font-family:Arial,sans-serif;font-size:14px;font-weight:600;text-decoration:none;border:1px solid {{.PrimaryColor | default "#2563eb"}};border-radius:6px;">
+                      Acknowledge
+                    </a>
+                  </td>
+                  {{end}}
+                  {{if .ResolveURL}}
+                  <td class="button-stack" style="padding:0 5px;">
+                    <a href="{{.ResolveURL}}" style="display:inline-block;padding:12px 24px;background-color:#059669;color:#ffffff;font-family:Arial,sans-serif;font-size:14px;font-weight:600;text-decoration:none;border-radius:6px;">
+                      Mark as Resolved
+                    </a>
+                  </td>
+                  {{end}}
+                </tr>
+              </table>
+            </td>
+          </tr>
+          {{end}}
+
+          <!-- Critical Alert Notice -->
+          {{if eq .Severity "critical"}}
+          <tr>
+            <td align="center" style="background-color:#fef2f2;padding:20px 30px;">
+              <p style="margin:0;color:#dc2626;font-family:Arial,sans-serif;font-size:14px;font-weight:600;">
+                This is a critical alert requiring immediate attention.
+              </p>
+              <p style="margin:5px 0 0;color:#991b1b;font-family:Arial,sans-serif;font-size:13px;">
+                Please review and take action as soon as possible.
+              </p>
+            </td>
+          </tr>
+          {{end}}
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color:#f9fafb;padding:25px;border-radius:0 0 8px 8px;">
+              <p style="margin:0 0 20px;color:#6b7280;font-family:Arial,sans-serif;font-size:13px;text-align:center;">
+                This is an automated alert from {{.CompanyName | default "ServicePro"}}.
+              </p>
+
+              <hr style="border:none;border-top:1px solid #e5e7eb;margin:20px 0;">
+
+              <p style="margin:0 0 15px;color:#9ca3af;font-family:Arial,sans-serif;font-size:12px;text-align:center;">
+                You're receiving this because you're subscribed to {{.AlertType}} alerts.
+                {{if .UnsubscribeURL}}<br><a href="{{.UnsubscribeURL}}" style="color:#9ca3af;">Manage notification preferences</a>{{end}}
+              </p>
+
+              <p style="margin:0;color:#9ca3af;font-family:Arial,sans-serif;font-size:11px;text-align:center;">
+                &copy; {{.CurrentYear}} {{.CompanyName | default "ServicePro"}}. All rights reserved.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

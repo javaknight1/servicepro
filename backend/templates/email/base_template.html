@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>{{.Subject}}</title>
+  <!--[if mso]>
+  <noscript>
+    <xml>
+      <o:OfficeDocumentSettings>
+        <o:PixelsPerInch>96</o:PixelsPerInch>
+      </o:OfficeDocumentSettings>
+    </xml>
+  </noscript>
+  <![endif]-->
+  <style type="text/css">
+    /* Reset styles */
+    body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+    table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+    img { -ms-interpolation-mode: bicubic; border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; }
+    body { margin: 0 !important; padding: 0 !important; width: 100% !important; }
+
+    /* iOS blue links */
+    a[x-apple-data-detectors] { color: inherit !important; text-decoration: none !important; font-size: inherit !important; font-family: inherit !important; font-weight: inherit !important; line-height: inherit !important; }
+
+    /* Responsive styles */
+    @media screen and (max-width: 600px) {
+      .container { width: 100% !important; max-width: 100% !important; }
+      .content-padding { padding: 20px !important; }
+      .stack-column { display: block !important; width: 100% !important; max-width: 100% !important; }
+    }
+  </style>
+</head>
+<body style="margin:0;padding:0;background-color:#f3f4f6;">
+  <!-- Preview text -->
+  <div style="display:none;font-size:1px;color:#f3f4f6;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">
+    {{.PreviewText}}
+  </div>
+
+  <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background-color:#f3f4f6;">
+    <tr>
+      <td align="center" style="padding:20px 10px;">
+        <!-- Container -->
+        <table role="presentation" class="container" cellpadding="0" cellspacing="0" width="600" style="max-width:600px;">
+
+          <!-- Header -->
+          <tr>
+            <td align="center" style="background-color:{{.PrimaryColor | default "#2563eb"}};padding:25px;border-radius:8px 8px 0 0;">
+              {{if .CompanyLogo}}
+              <img src="{{.CompanyLogo}}" alt="{{.CompanyName}}" width="150" style="display:block;max-width:150px;height:auto;">
+              {{else}}
+              <h1 style="margin:0;color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:24px;font-weight:bold;">
+                {{.CompanyName | default "ServicePro"}}
+              </h1>
+              {{end}}
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td class="content-padding" style="background-color:#ffffff;padding:40px 30px;">
+              {{if .Heading}}
+              <h2 style="margin:0 0 20px;color:#111827;font-family:Arial,Helvetica,sans-serif;font-size:24px;font-weight:bold;">
+                {{.Heading}}
+              </h2>
+              {{end}}
+
+              {{if .RecipientName}}
+              <p style="margin:0 0 15px;color:#374151;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.6;">
+                Hello {{.RecipientName}},
+              </p>
+              {{end}}
+
+              <div style="margin:0 0 25px;color:#374151;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.6;">
+                {{.Body}}
+              </div>
+
+              {{if .ActionURL}}
+              <table role="presentation" cellpadding="0" cellspacing="0" style="margin:30px 0;">
+                <tr>
+                  <td align="center" style="background-color:{{.PrimaryColor | default "#2563eb"}};border-radius:6px;">
+                    <a href="{{.ActionURL}}" target="_blank" style="display:inline-block;padding:14px 28px;color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:16px;font-weight:600;text-decoration:none;">
+                      {{.ActionText | default "Take Action"}}
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              {{end}}
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color:#f9fafb;padding:30px;border-radius:0 0 8px 8px;">
+              {{if .Footer}}
+              <p style="margin:0 0 20px;color:#6b7280;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.5;text-align:center;">
+                {{.Footer}}
+              </p>
+              {{end}}
+
+              <hr style="border:none;border-top:1px solid #e5e7eb;margin:20px 0;">
+
+              <p style="margin:0;color:#9ca3af;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.5;text-align:center;">
+                {{.CompanyName | default "ServicePro"}}
+                {{if .CompanyAddress}}<br>{{.CompanyAddress}}{{end}}
+                {{if .CompanyPhone}}<br>{{.CompanyPhone}}{{end}}
+              </p>
+
+              {{if .UnsubscribeURL}}
+              <p style="margin:15px 0 0;color:#9ca3af;font-family:Arial,Helvetica,sans-serif;font-size:11px;line-height:1.5;text-align:center;">
+                <a href="{{.UnsubscribeURL}}" style="color:#9ca3af;">Unsubscribe</a> from these emails
+              </p>
+              {{end}}
+
+              <p style="margin:15px 0 0;color:#9ca3af;font-family:Arial,Helvetica,sans-serif;font-size:11px;line-height:1.5;text-align:center;">
+                &copy; {{.CurrentYear}} {{.CompanyName | default "ServicePro"}}. All rights reserved.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

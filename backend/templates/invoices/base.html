@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invoice #{{.DocumentNumber}}</title>
+    <link rel="stylesheet" href="styles.css">
+    {{if .CustomCSS}}<style>{{.CustomCSS}}</style>{{end}}
+</head>
+<body>
+    <div class="document invoice">
+        <!-- Header Section -->
+        <header class="document-header">
+            <div class="company-info">
+                {{if .CompanyLogo}}
+                <img src="{{.CompanyLogo}}" alt="{{.CompanyName}}" class="company-logo">
+                {{else}}
+                <h1 class="company-name">{{.CompanyName}}</h1>
+                {{end}}
+                {{if .CompanyTagline}}
+                <p class="company-tagline">{{.CompanyTagline}}</p>
+                {{end}}
+                <div class="company-contact">
+                    {{if .CompanyAddress}}<p>{{.CompanyAddress}}</p>{{end}}
+                    {{if .CompanyPhone}}<p>Phone: {{.CompanyPhone}}</p>{{end}}
+                    {{if .CompanyEmail}}<p>Email: {{.CompanyEmail}}</p>{{end}}
+                    {{if .CompanyWebsite}}<p>{{.CompanyWebsite}}</p>{{end}}
+                </div>
+            </div>
+            <div class="document-info">
+                <h2 class="document-type">INVOICE</h2>
+                <table class="document-meta">
+                    <tr>
+                        <td class="label">Invoice Number:</td>
+                        <td class="value">{{.DocumentNumber}}</td>
+                    </tr>
+                    <tr>
+                        <td class="label">Invoice Date:</td>
+                        <td class="value">{{.Date | formatDate}}</td>
+                    </tr>
+                    <tr>
+                        <td class="label">Due Date:</td>
+                        <td class="value {{if .IsOverdue}}overdue{{end}}">{{.DueDate | formatDate}}</td>
+                    </tr>
+                    {{if .PONumber}}
+                    <tr>
+                        <td class="label">PO Number:</td>
+                        <td class="value">{{.PONumber}}</td>
+                    </tr>
+                    {{end}}
+                    {{if .JobNumber}}
+                    <tr>
+                        <td class="label">Job Number:</td>
+                        <td class="value">{{.JobNumber}}</td>
+                    </tr>
+                    {{end}}
+                    <tr>
+                        <td class="label">Payment Terms:</td>
+                        <td class="value">{{.PaymentTerms}}</td>
+                    </tr>
+                </table>
+            </div>
+        </header>
+
+        <!-- Amount Due Banner (for unpaid invoices) -->
+        {{if gt .AmountDue 0}}
+        <div class="amount-due-banner {{if .IsOverdue}}overdue{{end}}">
+            <div class="banner-content">
+                <span class="banner-label">
+                    {{if .IsOverdue}}OVERDUE - {{end}}Amount Due:
+                </span>
+                <span class="banner-amount">{{.AmountDue | formatCurrency}}</span>
+            </div>
+            {{if .IsOverdue}}
+            <p class="overdue-message">This invoice is {{.DaysOverdue}} days past due. Please remit payment immediately.</p>
+            {{end}}
+        </div>
+        {{else}}
+        <div class="paid-banner">
+            <span class="paid-stamp">PAID</span>
+            <span class="paid-date">Paid on {{.PaidDate | formatDate}}</span>
+        </div>
+        {{end}}
+
+        <!-- Bill To / Ship To Section -->
+        <section class="addresses-section">
+            <div class="address-block bill-to">
+                <h3 class="address-label">Bill To</h3>
+                <div class="address-content">
+                    <p class="customer-name">{{.CustomerName}}</p>
+                    {{if .CustomerCompany}}
+                    <p class="customer-company">{{.CustomerCompany}}</p>
+                    {{end}}
+                    {{if .BillingAddress}}
+                    <p class="customer-address">{{.BillingAddress | nl2br}}</p>
+                    {{end}}
+                    {{if .CustomerEmail}}<p class="customer-email">{{.CustomerEmail}}</p>{{end}}
+                    {{if .CustomerPhone}}<p class="customer-phone">{{.CustomerPhone}}</p>{{end}}
+                </div>
+            </div>
+            {{if .ShippingAddress}}
+            <div class="address-block ship-to">
+                <h3 class="address-label">Service Location</h3>
+                <div class="address-content">
+                    <p class="address">{{.ShippingAddress | nl2br}}</p>
+                </div>
+            </div>
+            {{end}}
+        </section>
+
+        <!-- Service Details (if applicable) -->
+        {{if .ServiceDate}}
+        <section class="service-info-section">
+            <div class="service-info-grid">
+                <div class="service-info-item">
+                    <span class="info-label">Service Date:</span>
+                    <span class="info-value">{{.ServiceDate | formatDate}}</span>
+                </div>
+                {{if .Technician}}
+                <div class="service-info-item">
+                    <span class="info-label">Technician:</span>
+                    <span class="info-value">{{.Technician}}</span>
+                </div>
+                {{end}}
+                {{if .WorkOrderNumber}}
+                <div class="service-info-item">
+                    <span class="info-label">Work Order:</span>
+                    <span class="info-value">{{.WorkOrderNumber}}</span>
+                </div>
+                {{end}}
+            </div>
+        </section>
+        {{end}}
+
+        <!-- Line Items -->
+        <section class="items-section">
+            <table class="items-table">
+                <thead>
+                    <tr>
+                        <th class="col-item">Description</th>
+                        <th class="col-qty">Qty</th>
+                        <th class="col-rate">Rate</th>
+                        {{if .ShowTaxColumn}}<th class="col-tax">Tax</th>{{end}}
+                        <th class="col-amount">Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range .LineItems}}
+                    <tr>
+                        <td class="col-item">
+                            <div class="item-description">
+                                <span class="item-name">{{.Description}}</span>
+                                {{if .Details}}
+                                <span class="item-details">{{.Details}}</span>
+                                {{end}}
+                                {{if .DateRange}}
+                                <span class="item-date-range">{{.DateRange}}</span>
+                                {{end}}
+                            </div>
+                        </td>
+                        <td class="col-qty">{{.Quantity}}{{if .Unit}} {{.Unit}}{{end}}</td>
+                        <td class="col-rate">{{.UnitPrice | formatCurrency}}</td>
+                        {{if $.ShowTaxColumn}}
+                        <td class="col-tax">
+                            {{if .Taxable}}
+                            <span class="taxable-indicator">Taxable</span>
+                            {{else}}
+                            <span class="non-taxable-indicator">-</span>
+                            {{end}}
+                        </td>
+                        {{end}}
+                        <td class="col-amount">{{.Amount | formatCurrency}}</td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </section>
+
+        <!-- Totals Section -->
+        <section class="totals-section">
+            <div class="totals-container">
+                {{if .Notes}}
+                <div class="invoice-notes">
+                    <h4>Notes</h4>
+                    <p>{{.Notes | nl2br}}</p>
+                </div>
+                {{end}}
+
+                <table class="totals-table">
+                    <tr>
+                        <td class="label">Subtotal:</td>
+                        <td class="value">{{.Subtotal | formatCurrency}}</td>
+                    </tr>
+                    {{if .Discount}}
+                    <tr class="discount-row">
+                        <td class="label">
+                            Discount
+                            {{if .DiscountPercent}}({{.DiscountPercent | formatPercent}}){{end}}:
+                        </td>
+                        <td class="value">-{{.Discount | formatCurrency}}</td>
+                    </tr>
+                    {{end}}
+                    {{if .TaxAmount}}
+                    <tr class="tax-row">
+                        <td class="label">Tax ({{.TaxRate | formatPercent}}):</td>
+                        <td class="value">{{.TaxAmount | formatCurrency}}</td>
+                    </tr>
+                    {{end}}
+                    {{if .ShippingAmount}}
+                    <tr>
+                        <td class="label">Shipping:</td>
+                        <td class="value">{{.ShippingAmount | formatCurrency}}</td>
+                    </tr>
+                    {{end}}
+                    <tr class="total-row">
+                        <td class="label">Total:</td>
+                        <td class="value">{{.Total | formatCurrency}}</td>
+                    </tr>
+                    {{if gt .AmountPaid 0}}
+                    <tr class="payment-row">
+                        <td class="label">Amount Paid:</td>
+                        <td class="value">-{{.AmountPaid | formatCurrency}}</td>
+                    </tr>
+                    {{end}}
+                    <tr class="balance-row">
+                        <td class="label">Balance Due:</td>
+                        <td class="value balance-amount {{if .IsOverdue}}overdue{{end}}">
+                            {{.AmountDue | formatCurrency}}
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </section>
+
+        <!-- Payment History -->
+        {{if .Payments}}
+        <section class="payment-history-section">
+            <div class="section-header">
+                <h3>Payment History</h3>
+            </div>
+            <table class="payments-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Method</th>
+                        <th>Reference</th>
+                        <th>Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range .Payments}}
+                    <tr>
+                        <td>{{.Date | formatDate}}</td>
+                        <td>{{.Method}}</td>
+                        <td>{{.Reference}}</td>
+                        <td>{{.Amount | formatCurrency}}</td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </section>
+        {{end}}
+
+        <!-- Payment Instructions -->
+        {{if gt .AmountDue 0}}
+        <section class="payment-section">
+            <div class="section-header">
+                <h3>Payment Instructions</h3>
+            </div>
+            <div class="payment-methods">
+                {{if .AcceptOnlinePayment}}
+                <div class="payment-method online-payment">
+                    <div class="method-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
+                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2zm0 2v2h16V6H4zm0 6v6h16v-6H4zm2 2h4v2H6v-2z"/>
+                        </svg>
+                    </div>
+                    <div class="method-content">
+                        <h4>Pay Online</h4>
+                        <p>Click the button below to pay securely online.</p>
+                        {{if .PaymentLink}}
+                        <a href="{{.PaymentLink}}" class="pay-button">Pay Now</a>
+                        {{end}}
+                    </div>
+                </div>
+                {{end}}
+
+                {{if .BankDetails}}
+                <div class="payment-method bank-transfer">
+                    <div class="method-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
+                            <path d="M4 10h3v7H4v-7zm6 0h3v7h-3v-7zm7 0h3v7h-3v-7zM2 19h19v3H2v-3zm0-9L12 2l10 8H2z"/>
+                        </svg>
+                    </div>
+                    <div class="method-content">
+                        <h4>Bank Transfer</h4>
+                        <div class="bank-details">
+                            {{if .BankDetails.BankName}}<p><strong>Bank:</strong> {{.BankDetails.BankName}}</p>{{end}}
+                            {{if .BankDetails.AccountName}}<p><strong>Account Name:</strong> {{.BankDetails.AccountName}}</p>{{end}}
+                            {{if .BankDetails.AccountNumber}}<p><strong>Account Number:</strong> {{.BankDetails.AccountNumber}}</p>{{end}}
+                            {{if .BankDetails.RoutingNumber}}<p><strong>Routing Number:</strong> {{.BankDetails.RoutingNumber}}</p>{{end}}
+                            {{if .BankDetails.SwiftCode}}<p><strong>SWIFT:</strong> {{.BankDetails.SwiftCode}}</p>{{end}}
+                        </div>
+                        <p class="reference-note">Please include invoice number <strong>{{.DocumentNumber}}</strong> as reference.</p>
+                    </div>
+                </div>
+                {{end}}
+
+                {{if .AcceptCheck}}
+                <div class="payment-method check-payment">
+                    <div class="method-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
+                            <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 3c1.93 0 3.5 1.57 3.5 3.5S13.93 13 12 13s-3.5-1.57-3.5-3.5S10.07 6 12 6zm7 13H5v-.23c0-.62.28-1.2.76-1.58C7.47 15.82 9.64 15 12 15s4.53.82 6.24 2.19c.48.38.76.97.76 1.58V19z"/>
+                        </svg>
+                    </div>
+                    <div class="method-content">
+                        <h4>Check Payment</h4>
+                        <p>Make check payable to: <strong>{{.CompanyName}}</strong></p>
+                        <p>Mail to:</p>
+                        <address>{{.CompanyAddress | nl2br}}</address>
+                    </div>
+                </div>
+                {{end}}
+            </div>
+        </section>
+        {{end}}
+
+        <!-- Terms & Conditions -->
+        {{if .Terms}}
+        <section class="terms-section">
+            <div class="section-header">
+                <h3>Terms & Conditions</h3>
+            </div>
+            <div class="terms-content">
+                {{.Terms | nl2br}}
+            </div>
+        </section>
+        {{end}}
+
+        <!-- Footer -->
+        <footer class="document-footer">
+            {{if .FooterText}}
+            <p class="footer-message">{{.FooterText}}</p>
+            {{else}}
+            <p class="footer-message">Thank you for your business!</p>
+            {{end}}
+            {{if .TaxID}}
+            <p class="tax-id">Tax ID: {{.TaxID}}</p>
+            {{end}}
+            <p class="footer-generated">Generated on {{.GeneratedAt | formatDateTime}}</p>
+        </footer>
+    </div>
+</body>
+</html>
