@@ -1,341 +1,329 @@
 # ServicePro
 
-A modern service management platform built with React and Go, designed for efficient service delivery and customer management.
+A comprehensive service management platform for field service businesses. Built with Go (backend) and React (frontend).
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Tech Stack](#tech-stack)
+- [Getting Started](#getting-started)
+- [Project Structure](#project-structure)
+- [Development](#development)
+- [API Documentation](#api-documentation)
+- [Deployment](#deployment)
+- [Contributing](#contributing)
 
 ## Overview
 
-ServicePro is a comprehensive platform that streamlines service operations, customer interactions, and business workflows. The platform combines a responsive React frontend with a robust Go backend, deployed on AWS infrastructure for scalability and reliability.
+ServicePro provides tools for managing:
 
-## Technology Stack
+- **Customers** - CRM with full-text search, import/export
+- **Jobs** - Work order management with scheduling
+- **Quotes** - Quote generation with templates
+- **Invoices** - Invoice generation with payment tracking
+- **Scheduling** - Technician scheduling with conflict detection
+- **Reports** - Revenue and customer analytics
 
-### Frontend
-
-- **React** - Modern UI framework
-- **TypeScript** - Type-safe JavaScript
-- **Vite** - Fast build tool and dev server
-- **React Router** - Client-side routing
-- **Tailwind CSS** - Utility-first CSS framework
-- **Axios** - HTTP client
+## Tech Stack
 
 ### Backend
 
-- **Go 1.21+** - High-performance backend language
-- **Gorilla Mux** - HTTP router and dispatcher
-- **PostgreSQL** - Primary database
-- **Redis** - Caching layer
-- **JWT** - Authentication
+- **Language**: Go 1.21+
+- **Framework**: Gin (HTTP router)
+- **ORM**: GORM
+- **Database**: PostgreSQL 15+
+- **Cache**: Redis
+- **Authentication**: JWT with refresh tokens
+- **Email**: AWS SES
+
+### Frontend
+
+- **Framework**: React 18 with TypeScript
+- **Build Tool**: Vite
+- **State Management**: Zustand (client state) + React Query (server state)
+- **Styling**: Tailwind CSS
+- **HTTP Client**: Axios
 
 ### Infrastructure
 
-- **AWS ECS** - Container orchestration
-- **AWS RDS** - Managed PostgreSQL
-- **AWS ElastiCache** - Managed Redis
-- **AWS CloudFront** - CDN
-- **AWS S3** - Static asset storage
-- **Terraform** - Infrastructure as Code
-- **Docker** - Containerization
+- **Cloud**: AWS (EKS, RDS, ElastiCache, S3, SES)
+- **Container Orchestration**: Kubernetes
+- **IaC**: Terraform
+- **CI/CD**: GitHub Actions + ArgoCD
 
-## Prerequisites
+## Getting Started
 
-Before you begin, ensure you have the following installed:
+### Prerequisites
 
-- **Go** 1.21 or higher
-- **Node.js** 18.x or higher
-- **npm** or **yarn** or **pnpm**
-- **Docker** and **Docker Compose**
-- **PostgreSQL** 14+ (for local development)
-- **Redis** 7+ (for local development)
-- **AWS CLI** (for deployment)
-- **Terraform** 1.5+ (for infrastructure management)
+- Go 1.21+
+- Node.js 18+
+- Docker & Docker Compose
+- PostgreSQL 15+ (or use Docker)
+- Redis (or use Docker)
 
-## Setup Instructions
+### Quick Start
 
-### 1. Clone the Repository
+1. **Clone the repository**
+   \`\`\`bash
+   git clone https://github.com/javaknight1/servicepro.git
+   cd servicepro
+   \`\`\`
 
-```bash
-git clone https://github.com/yourusername/servicepro.git
-cd servicepro
-```
+2. **Start dependencies with Docker**
+   \`\`\`bash
+   docker-compose up -d postgres redis
+   \`\`\`
 
-### 2. Backend Setup
+3. **Setup backend**
+   \`\`\`bash
+   cd backend
+   cp .env.example .env
 
-```bash
-# Navigate to the backend directory
-cd backend
+   # Edit .env with your configuration
 
-# Install Go dependencies
-go mod download
+   go mod download
+   make migrate
+   make run
+   \`\`\`
 
-# Copy environment template
-cp .env.example .env
+4. **Setup frontend**
+   \`\`\`bash
+   cd frontend
+   cp .env.example .env
+   npm install
+   npm run dev
+   \`\`\`
 
-# Update .env with your local configuration
-# Edit database connection strings, API keys, etc.
-
-# Run database migrations
-go run cmd/migrate/main.go up
-
-# Start the backend server
-go run cmd/api/main.go
-```
-
-The backend API will be available at `http://localhost:8080`
-
-### 3. Frontend Setup
-
-```bash
-# Navigate to the frontend directory
-cd frontend
-
-# Install dependencies
-npm install
-# or
-yarn install
-# or
-pnpm install
-
-# Copy environment template
-cp .env.example .env.local
-
-# Update .env.local with your API endpoints
-
-# Start the development server
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-```
-
-The frontend will be available at `http://localhost:5173`
-
-### 4. Docker Setup (Alternative)
-
-```bash
-# From the root directory
-docker-compose up -d
-
-# This will start:
-# - PostgreSQL database
-# - Redis cache
-# - Backend API
-# - Frontend dev server
-```
-
-## Development Workflow
-
-### Running Tests
-
-**Backend Tests:**
-
-```bash
-cd backend
-go test ./... -v
-go test ./... -cover
-```
-
-**Frontend Tests:**
-
-```bash
-cd frontend
-npm test
-# or
-npm run test:coverage
-```
-
-### Code Quality
-
-**Backend:**
-
-```bash
-# Format code
-go fmt ./...
-
-# Lint
-golangci-lint run
-
-# Vet
-go vet ./...
-```
-
-**Frontend:**
-
-```bash
-# Format code
-npm run format
-
-# Lint
-npm run lint
-
-# Type check
-npm run type-check
-```
-
-### Building for Production
-
-**Backend:**
-
-```bash
-cd backend
-go build -o bin/api cmd/api/main.go
-```
-
-**Frontend:**
-
-```bash
-cd frontend
-npm run build
-```
-
-### Database Migrations
-
-```bash
-# Create a new migration
-go run cmd/migrate/main.go create migration_name
-
-# Run migrations
-go run cmd/migrate/main.go up
-
-# Rollback last migration
-go run cmd/migrate/main.go down
-
-# Check migration status
-go run cmd/migrate/main.go status
-```
+5. **Access the application**
+   - Frontend: http://localhost:3000
+   - Backend API: http://localhost:8080
+   - API Health: http://localhost:8080/health
 
 ## Project Structure
 
-```
+\`\`\`
 servicepro/
-├── backend/                # Go backend application
-│   ├── cmd/               # Command-line applications
-│   │   ├── api/          # Main API server
-│   │   └── migrate/      # Database migration tool
-│   ├── internal/         # Private application code
-│   │   ├── api/         # API handlers and routes
-│   │   ├── models/      # Data models
-│   │   ├── services/    # Business logic
-│   │   └── repository/  # Data access layer
-│   ├── pkg/             # Public libraries
-│   ├── migrations/      # Database migrations
-│   └── config/          # Configuration files
+├── backend/ # Go backend
+│ ├── cmd/api/ # Application entry point
+│ ├── config/ # Configuration management
+│ ├── internal/
+│ │ ├── api/
+│ │ │ ├── handlers/ # HTTP handlers
+│ │ │ ├── middleware/ # Auth, rate limiting, etc.
+│ │ │ ├── routes/ # Route definitions
+│ │ │ └── validators/ # Request validation
+│ │ ├── models/ # Domain models
+│ │ ├── repository/ # Data access layer
+│ │ └── services/ # Business logic
+│ ├── migrations/ # Database migrations
+│ ├── pkg/ # Shared packages
+│ └── templates/ # Email/PDF templates
 │
-├── frontend/            # React frontend application
-│   ├── src/
-│   │   ├── components/  # Reusable UI components
-│   │   ├── pages/       # Page components
-│   │   ├── services/    # API services
-│   │   ├── hooks/       # Custom React hooks
-│   │   ├── utils/       # Utility functions
-│   │   ├── types/       # TypeScript types
-│   │   └── assets/      # Static assets
-│   ├── public/          # Public assets
-│   └── tests/           # Test files
+├── frontend/ # React frontend
+│ ├── src/
+│ │ ├── components/ # Reusable UI components
+│ │ ├── pages/ # Page components
+│ │ ├── services/ # API service layer
+│ │ ├── store/ # Zustand stores
+│ │ ├── hooks/ # Custom React hooks
+│ │ ├── types/ # TypeScript types
+│ │ └── utils/ # Utility functions
+│ └── public/ # Static assets
 │
-├── infrastructure/      # Infrastructure as Code
-│   ├── terraform/      # Terraform configurations
-│   │   ├── environments/
-│   │   ├── modules/
-│   │   └── backend.tf
-│   └── docker/         # Docker configurations
+├── infrastructure/
+│ └── terraform/ # AWS infrastructure
 │
-├── docs/               # Documentation
-├── scripts/            # Utility scripts
-└── .github/            # GitHub workflows and templates
-```
+├── gitops/ # ArgoCD configurations
+│ └── values/ # Environment-specific values
+│
+├── docker-compose.yml # Local development
+└── Makefile # Build commands
+\`\`\`
 
-## Environment Variables
+## Development
 
-### Backend (.env)
+### Backend Commands
 
-```
-DATABASE_URL=postgresql://user:password@localhost:5432/servicepro
-REDIS_URL=redis://localhost:6379
-JWT_SECRET=your-secret-key
-AWS_REGION=us-east-1
-PORT=8080
-```
+\`\`\`bash
+cd backend
 
-### Frontend (.env.local)
+# Run the server
 
-```
-VITE_API_URL=http://localhost:8080/api
-VITE_WS_URL=ws://localhost:8080/ws
-```
+make run
 
-## Deployment
+# Run tests
 
-### AWS Deployment
+make test
 
-1. **Configure AWS credentials:**
+# Run linting
 
-```bash
-aws configure
-```
+make lint
 
-2. **Initialize Terraform:**
+# Run migrations
 
-```bash
-cd infrastructure/terraform
-terraform init
-```
+make migrate
 
-3. **Plan infrastructure changes:**
+# Generate API docs
 
-```bash
-terraform plan -var-file="environments/production.tfvars"
-```
+make docs
+\`\`\`
 
-4. **Apply infrastructure:**
+### Frontend Commands
 
-```bash
-terraform apply -var-file="environments/production.tfvars"
-```
+\`\`\`bash
+cd frontend
 
-5. **Deploy application:**
+# Development server
 
-```bash
-# Build and push Docker images
-./scripts/build-and-push.sh
+npm run dev
 
-# Update ECS services
-./scripts/deploy.sh production
-```
+# Build for production
+
+npm run build
+
+# Run tests
+
+npm run test
+
+# Lint code
+
+npm run lint
+
+# Type check
+
+npm run typecheck
+\`\`\`
+
+### Docker Compose
+
+\`\`\`bash
+
+# Start all services
+
+docker-compose up -d
+
+# Start specific services
+
+docker-compose up -d postgres redis
+
+# View logs
+
+docker-compose logs -f backend
+
+# Stop all services
+
+docker-compose down
+\`\`\`
 
 ## API Documentation
 
-API documentation is available at:
+### Authentication
 
-- Development: `http://localhost:8080/api/docs`
-- Production: `https://api.servicepro.com/docs`
+All authenticated endpoints require a JWT token in the Authorization header:
+\`\`\`
+Authorization: Bearer <token>
+\`\`\`
+
+### Base URL
+
+\`\`\`
+Development: http://localhost:8080/api/v1
+Production: https://api.servicepro.com/api/v1
+\`\`\`
+
+### Key Endpoints
+
+| Method | Endpoint             | Description       |
+| ------ | -------------------- | ----------------- |
+| POST   | \`/auth/login\`      | User login        |
+| POST   | \`/auth/register\`   | User registration |
+| GET    | \`/customers\`       | List customers    |
+| POST   | \`/customers\`       | Create customer   |
+| GET    | \`/jobs\`            | List jobs         |
+| POST   | \`/jobs\`            | Create job        |
+| GET    | \`/quotes\`          | List quotes       |
+| POST   | \`/quotes\`          | Create quote      |
+| GET    | \`/invoices\`        | List invoices     |
+| POST   | \`/invoices\`        | Create invoice    |
+| GET    | \`/reports/revenue\` | Revenue report    |
+
+### Error Responses
+
+\`\`\`json
+{
+"error": "Error type",
+"message": "Human-readable message",
+"details": {}
+}
+\`\`\`
+
+## Deployment
+
+### Environments
+
+| Environment     | Purpose                   |
+| --------------- | ------------------------- |
+| \`development\` | Local development         |
+| \`staging\`     | Testing and QA            |
+| \`preprod\`     | Pre-production validation |
+| \`production\`  | Live environment          |
+
+### Infrastructure Setup
+
+\`\`\`bash
+cd infrastructure/terraform
+
+# Initialize
+
+make init ENV=staging
+
+# Plan changes
+
+make plan ENV=staging
+
+# Apply changes
+
+make apply ENV=staging
+\`\`\`
+
+### Kubernetes Deployment
+
+Deployments are managed via ArgoCD with Helm charts.
+
+\`\`\`bash
+
+# Deploy to staging
+
+kubectl apply -f gitops/applications/staging.yaml
+
+# Check deployment status
+
+kubectl get pods -n servicepro-staging
+\`\`\`
 
 ## Contributing
 
-We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details on:
+1. Create a feature branch from \`master\`
+2. Make your changes
+3. Run tests and linting
+4. Submit a pull request
 
-- Code of Conduct
-- Development process
-- Pull request process
-- Coding standards
-- Commit message conventions
+### Code Style
+
+- **Go**: Follow standard Go conventions, use \`gofmt\`
+- **TypeScript**: Follow ESLint/Prettier configuration
+- **Commits**: Use conventional commit messages
+
+### Pull Request Guidelines
+
+- Include tests for new functionality
+- Update documentation as needed
+- Ensure CI passes before requesting review
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+Proprietary - All rights reserved.
 
 ## Support
 
-For support and questions:
-
-- Create an issue in the GitHub repository
-- Check the [documentation](docs/)
-- Contact the team at support@servicepro.com
-
-## Authors
-
-- Development Team - [Your Organization]
-
-## Acknowledgments
-
-- Thanks to all contributors
-- Built with modern best practices and industry standards
+For questions or issues, contact the development team.
