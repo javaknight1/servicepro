@@ -1,8 +1,16 @@
+# =============================================================================
+# ServicePro .gitignore
+# =============================================================================
+
+# -----------------------------------------------------------------------------
 # Dependencies
+# -----------------------------------------------------------------------------
 node_modules/
 vendor/
 
-# Build artifacts
+# -----------------------------------------------------------------------------
+# Build Artifacts
+# -----------------------------------------------------------------------------
 dist/
 build/
 *.exe
@@ -16,14 +24,21 @@ build/
 *.out
 /bin/
 /pkg/
-/cmd/*/main
 
-# React build artifacts
+# Backend compiled binaries
+backend/main
+backend/api
+backend/cmd/api/api
+/backend/cmd/*/main
+
+# React/Frontend build artifacts
 /frontend/build
 /frontend/.cache
 /frontend/dist
 
-# Environment variables
+# -----------------------------------------------------------------------------
+# Environment Variables
+# -----------------------------------------------------------------------------
 .env
 .env.local
 .env.development.local
@@ -31,8 +46,12 @@ build/
 .env.production.local
 *.env
 !.env.example
+!backend/.env.example
+!frontend/.env.example
 
+# -----------------------------------------------------------------------------
 # Logs
+# -----------------------------------------------------------------------------
 logs/
 *.log
 npm-debug.log*
@@ -41,7 +60,9 @@ yarn-error.log*
 lerna-debug.log*
 pnpm-debug.log*
 
-# OS files
+# -----------------------------------------------------------------------------
+# OS Files
+# -----------------------------------------------------------------------------
 .DS_Store
 .DS_Store?
 ._*
@@ -50,7 +71,9 @@ pnpm-debug.log*
 ehthumbs.db
 Thumbs.db
 
-# IDE specific files
+# -----------------------------------------------------------------------------
+# IDE/Editor Files
+# -----------------------------------------------------------------------------
 .idea/
 .vscode/
 *.swp
@@ -62,7 +85,9 @@ Thumbs.db
 *.sublime-workspace
 *.sublime-project
 
-# Testing
+# -----------------------------------------------------------------------------
+# Testing & Coverage
+# -----------------------------------------------------------------------------
 coverage/
 *.cover
 *.coverage
@@ -72,12 +97,39 @@ profile.cov
 .pytest_cache/
 .nyc_output
 
-# Temporary files
+# Go test cache
+/backend/coverage.out
+/backend/coverage.html
+
+# Cypress artifacts
+/frontend/cypress/screenshots/
+/frontend/cypress/videos/
+/frontend/cypress/downloads/
+
+# -----------------------------------------------------------------------------
+# Performance & Benchmarking
+# -----------------------------------------------------------------------------
+/benchmarks/results/
+*.bench
+*.prof
+*.trace
+cpu.pprof
+mem.pprof
+k6-results/
+artillery-results/
+
+# -----------------------------------------------------------------------------
+# Temporary Files
+# -----------------------------------------------------------------------------
 tmp/
 temp/
 *.tmp
+*.bak
+*.backup
 
-# AWS and Infrastructure
+# -----------------------------------------------------------------------------
+# AWS & Infrastructure
+# -----------------------------------------------------------------------------
 .terraform/
 *.tfstate
 *.tfstate.*
@@ -85,8 +137,28 @@ terraform.tfvars
 .terraform.lock.hcl
 *.tfvars
 !terraform.tfvars.example
+!*.tfvars.example
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
 
-# Secrets and credentials
+# Terraform plan files
+*.tfplan
+
+# -----------------------------------------------------------------------------
+# Kubernetes & Helm
+# -----------------------------------------------------------------------------
+*.kubeconfig
+kubeconfig
+charts/*.tgz
+/frontend/helm/charts/
+/backend/helm/charts/
+
+# -----------------------------------------------------------------------------
+# Secrets & Credentials
+# -----------------------------------------------------------------------------
 secrets/
 *.pem
 *.key
@@ -94,28 +166,85 @@ secrets/
 *.p12
 credentials.json
 serviceAccountKey.json
+.secrets/
+*-secret.yaml
+*-secrets.yaml
 
+# -----------------------------------------------------------------------------
 # Database
+# -----------------------------------------------------------------------------
 *.db
 *.sqlite
 *.sqlite3
 /data/
+dump.rdb
+*.rdb
 
-# Go specific
+# PostgreSQL
+*.sql.backup
+
+# -----------------------------------------------------------------------------
+# Go Specific
+# -----------------------------------------------------------------------------
 go.work
 go.work.sum
 
-# React specific
-.eslintcache
+# Air live reload
+.air.toml
+tmp/
 
-# Package manager locks (optional - uncomment if you want to ignore)
+# -----------------------------------------------------------------------------
+# Frontend Specific
+# -----------------------------------------------------------------------------
+.eslintcache
+.parcel-cache
+.cache/
+
+# Storybook
+storybook-static/
+
+# Service worker generated files
+/frontend/src/sw.js
+/frontend/src/workbox-*.js
+
+# -----------------------------------------------------------------------------
+# Generated Documentation
+# -----------------------------------------------------------------------------
+/backend/docs/swagger.json
+/backend/docs/swagger.yaml
+/backend/docs/docs.go
+
+# -----------------------------------------------------------------------------
+# Exports & Generated Files
+# -----------------------------------------------------------------------------
+/exports/
+*.csv.tmp
+*.xlsx.tmp
+*.pdf.tmp
+
+# -----------------------------------------------------------------------------
+# Docker
+# -----------------------------------------------------------------------------
+docker-compose.override.yml
+docker-compose.local.yml
+
+# -----------------------------------------------------------------------------
+# Local Development
+# -----------------------------------------------------------------------------
+.local/
+.claude/
+*.local.yaml
+*.local.yml
+
+# -----------------------------------------------------------------------------
+# Misc
+# -----------------------------------------------------------------------------
+# Package manager locks (keep these for reproducible builds)
+# Uncomment if you want to ignore:
 # package-lock.json
 # yarn.lock
 # pnpm-lock.yaml
 
-# Docker
-docker-compose.override.yml
-
-# Local development
-.local/
-.air.toml
+# Debug files
+debug/
+*.debug
