@@ -1,0 +1,611 @@
+{
+  "widgets": [
+    {
+      "height": 2,
+      "width": 24,
+      "y": 0,
+      "x": 0,
+      "type": "text",
+      "properties": {
+        "markdown": "# ServicePro Application Dashboard\n\nReal-time monitoring of application health, performance, and resource utilization.\n\n**Environment:** ${ENVIRONMENT} | **Region:** ${AWS_REGION} | **Last Updated:** ${TIMESTAMP}"
+      }
+    },
+    {
+      "height": 3,
+      "width": 6,
+      "y": 2,
+      "x": 0,
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          [
+            "ServicePro/${ENVIRONMENT}/API",
+            "RequestCount",
+            {
+              "stat": "Sum",
+              "period": 60,
+              "label": "Requests/min"
+            }
+          ]
+        ],
+        "view": "singleValue",
+        "region": "${AWS_REGION}",
+        "title": "Request Rate",
+        "period": 60,
+        "stat": "Sum"
+      }
+    },
+    {
+      "height": 3,
+      "width": 6,
+      "y": 2,
+      "x": 6,
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          [
+            "ServicePro/${ENVIRONMENT}/API",
+            "ResponseTime",
+            {
+              "stat": "p95",
+              "period": 60,
+              "label": "p95 Latency"
+            }
+          ]
+        ],
+        "view": "singleValue",
+        "region": "${AWS_REGION}",
+        "title": "Response Time (p95)",
+        "period": 60,
+        "stat": "p95",
+        "annotations": {
+          "horizontal": [
+            {
+              "color": "#ff7f0e",
+              "label": "Warning",
+              "value": 500
+            },
+            {
+              "color": "#d62728",
+              "label": "Critical",
+              "value": 1000
+            }
+          ]
+        }
+      }
+    },
+    {
+      "height": 3,
+      "width": 6,
+      "y": 2,
+      "x": 12,
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          [
+            {
+              "expression": "(m1/m2)*100",
+              "label": "Error Rate %",
+              "id": "e1"
+            }
+          ],
+          [
+            "ServicePro/${ENVIRONMENT}/API",
+            "HTTP5xxCount",
+            {
+              "id": "m1",
+              "visible": false,
+              "stat": "Sum"
+            }
+          ],
+          [
+            "ServicePro/${ENVIRONMENT}/API",
+            "RequestCount",
+            {
+              "id": "m2",
+              "visible": false,
+              "stat": "Sum"
+            }
+          ]
+        ],
+        "view": "singleValue",
+        "region": "${AWS_REGION}",
+        "title": "Error Rate",
+        "period": 300,
+        "stat": "Average"
+      }
+    },
+    {
+      "height": 3,
+      "width": 6,
+      "y": 2,
+      "x": 18,
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          [
+            "ServicePro/${ENVIRONMENT}",
+            "ActiveSessions",
+            {
+              "stat": "Average",
+              "period": 60
+            }
+          ]
+        ],
+        "view": "singleValue",
+        "region": "${AWS_REGION}",
+        "title": "Active Sessions",
+        "period": 60,
+        "stat": "Average"
+      }
+    },
+    {
+      "height": 6,
+      "width": 12,
+      "y": 5,
+      "x": 0,
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          [
+            "AWS/ECS",
+            "CPUUtilization",
+            "ClusterName",
+            "${CLUSTER_NAME}",
+            "ServiceName",
+            "${SERVICE_NAME}",
+            {
+              "color": "#1f77b4",
+              "label": "CPU %"
+            }
+          ],
+          [
+            "AWS/ECS",
+            "MemoryUtilization",
+            "ClusterName",
+            "${CLUSTER_NAME}",
+            "ServiceName",
+            "${SERVICE_NAME}",
+            {
+              "color": "#ff7f0e",
+              "label": "Memory %"
+            }
+          ]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "${AWS_REGION}",
+        "title": "CPU & Memory Utilization",
+        "period": 60,
+        "stat": "Average",
+        "annotations": {
+          "horizontal": [
+            {
+              "color": "#ff7f0e",
+              "label": "Warning",
+              "value": 70
+            },
+            {
+              "color": "#d62728",
+              "label": "Critical",
+              "value": 90
+            }
+          ]
+        },
+        "yAxis": {
+          "left": {
+            "min": 0,
+            "max": 100
+          }
+        }
+      }
+    },
+    {
+      "height": 6,
+      "width": 12,
+      "y": 5,
+      "x": 12,
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          [
+            "ServicePro/${ENVIRONMENT}/API",
+            "RequestCount",
+            {
+              "color": "#2ca02c",
+              "label": "Total Requests"
+            }
+          ],
+          [
+            "ServicePro/${ENVIRONMENT}/API",
+            "HTTP2xxCount",
+            {
+              "color": "#1f77b4",
+              "label": "2xx Responses"
+            }
+          ],
+          [
+            "ServicePro/${ENVIRONMENT}/API",
+            "HTTP4xxCount",
+            {
+              "color": "#ff7f0e",
+              "label": "4xx Responses"
+            }
+          ],
+          [
+            "ServicePro/${ENVIRONMENT}/API",
+            "HTTP5xxCount",
+            {
+              "color": "#d62728",
+              "label": "5xx Responses"
+            }
+          ]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "${AWS_REGION}",
+        "title": "Request Volume by Status",
+        "period": 60,
+        "stat": "Sum"
+      }
+    },
+    {
+      "height": 6,
+      "width": 8,
+      "y": 11,
+      "x": 0,
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          [
+            "ServicePro/${ENVIRONMENT}/API",
+            "ResponseTime",
+            {
+              "stat": "p50",
+              "label": "p50"
+            }
+          ],
+          [
+            "ServicePro/${ENVIRONMENT}/API",
+            "ResponseTime",
+            {
+              "stat": "p90",
+              "label": "p90"
+            }
+          ],
+          [
+            "ServicePro/${ENVIRONMENT}/API",
+            "ResponseTime",
+            {
+              "stat": "p95",
+              "label": "p95"
+            }
+          ],
+          [
+            "ServicePro/${ENVIRONMENT}/API",
+            "ResponseTime",
+            {
+              "stat": "p99",
+              "label": "p99"
+            }
+          ]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "${AWS_REGION}",
+        "title": "Response Time Percentiles",
+        "period": 60
+      }
+    },
+    {
+      "height": 6,
+      "width": 8,
+      "y": 11,
+      "x": 8,
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          [
+            "ServicePro/${ENVIRONMENT}",
+            "HeapUsed",
+            {
+              "label": "Heap Used"
+            }
+          ],
+          [
+            "ServicePro/${ENVIRONMENT}",
+            "HeapTotal",
+            {
+              "label": "Heap Total"
+            }
+          ],
+          [
+            "ServicePro/${ENVIRONMENT}",
+            "RSS",
+            {
+              "label": "RSS"
+            }
+          ]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "${AWS_REGION}",
+        "title": "Process Memory",
+        "period": 60,
+        "stat": "Average",
+        "yAxis": {
+          "left": {
+            "label": "Bytes"
+          }
+        }
+      }
+    },
+    {
+      "height": 6,
+      "width": 8,
+      "y": 11,
+      "x": 16,
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          [
+            "ServicePro/${ENVIRONMENT}",
+            "EventLoopLag",
+            {
+              "stat": "Average",
+              "label": "Average"
+            }
+          ],
+          [
+            "ServicePro/${ENVIRONMENT}",
+            "EventLoopLag",
+            {
+              "stat": "Maximum",
+              "label": "Maximum"
+            }
+          ]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "${AWS_REGION}",
+        "title": "Event Loop Lag",
+        "period": 60,
+        "annotations": {
+          "horizontal": [
+            {
+              "color": "#ff7f0e",
+              "label": "Warning",
+              "value": 100
+            }
+          ]
+        }
+      }
+    },
+    {
+      "height": 6,
+      "width": 12,
+      "y": 17,
+      "x": 0,
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          [
+            "ServicePro/${ENVIRONMENT}",
+            "LoginSuccess",
+            {
+              "color": "#2ca02c",
+              "label": "Successful"
+            }
+          ],
+          [
+            "ServicePro/${ENVIRONMENT}",
+            "LoginFailure",
+            {
+              "color": "#d62728",
+              "label": "Failed"
+            }
+          ]
+        ],
+        "view": "timeSeries",
+        "stacked": true,
+        "region": "${AWS_REGION}",
+        "title": "Authentication Activity",
+        "period": 300,
+        "stat": "Sum"
+      }
+    },
+    {
+      "height": 6,
+      "width": 12,
+      "y": 17,
+      "x": 12,
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          [
+            "ServicePro/${ENVIRONMENT}",
+            "CacheHit",
+            {
+              "color": "#2ca02c",
+              "label": "Cache Hits"
+            }
+          ],
+          [
+            "ServicePro/${ENVIRONMENT}",
+            "CacheMiss",
+            {
+              "color": "#d62728",
+              "label": "Cache Misses"
+            }
+          ]
+        ],
+        "view": "timeSeries",
+        "stacked": true,
+        "region": "${AWS_REGION}",
+        "title": "Cache Performance",
+        "period": 60,
+        "stat": "Sum"
+      }
+    },
+    {
+      "height": 6,
+      "width": 8,
+      "y": 23,
+      "x": 0,
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          [
+            "ServicePro/${ENVIRONMENT}",
+            "CustomersCreated",
+            {
+              "label": "Customers"
+            }
+          ],
+          [
+            "ServicePro/${ENVIRONMENT}",
+            "JobsCreated",
+            {
+              "label": "Jobs"
+            }
+          ],
+          [
+            "ServicePro/${ENVIRONMENT}",
+            "InvoicesCreated",
+            {
+              "label": "Invoices"
+            }
+          ]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "${AWS_REGION}",
+        "title": "Entities Created",
+        "period": 300,
+        "stat": "Sum"
+      }
+    },
+    {
+      "height": 6,
+      "width": 8,
+      "y": 23,
+      "x": 8,
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          [
+            "ServicePro/${ENVIRONMENT}",
+            "PaymentSuccess",
+            {
+              "color": "#2ca02c",
+              "label": "Successful"
+            }
+          ],
+          [
+            "ServicePro/${ENVIRONMENT}",
+            "PaymentFailure",
+            {
+              "color": "#d62728",
+              "label": "Failed"
+            }
+          ]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "${AWS_REGION}",
+        "title": "Payment Activity",
+        "period": 300,
+        "stat": "Sum"
+      }
+    },
+    {
+      "height": 6,
+      "width": 8,
+      "y": 23,
+      "x": 16,
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          [
+            "ServicePro/${ENVIRONMENT}",
+            "QueueDepth",
+            "Queue",
+            "jobs",
+            {
+              "label": "Jobs Queue"
+            }
+          ],
+          [
+            "ServicePro/${ENVIRONMENT}",
+            "QueueDepth",
+            "Queue",
+            "notifications",
+            {
+              "label": "Notifications Queue"
+            }
+          ],
+          [
+            "ServicePro/${ENVIRONMENT}",
+            "QueueDepth",
+            "Queue",
+            "emails",
+            {
+              "label": "Email Queue"
+            }
+          ]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "${AWS_REGION}",
+        "title": "Queue Depths",
+        "period": 60,
+        "stat": "Average"
+      }
+    },
+    {
+      "height": 6,
+      "width": 24,
+      "y": 29,
+      "x": 0,
+      "type": "log",
+      "properties": {
+        "query": "SOURCE '/aws/servicepro/${ENVIRONMENT}/errors' | fields @timestamp, @message\n| filter @message like /ERROR/\n| sort @timestamp desc\n| limit 50",
+        "region": "${AWS_REGION}",
+        "title": "Recent Errors",
+        "view": "table"
+      }
+    },
+    {
+      "height": 4,
+      "width": 24,
+      "y": 35,
+      "x": 0,
+      "type": "alarm",
+      "properties": {
+        "title": "Active Alarms",
+        "alarms": [
+          "arn:aws:cloudwatch:${AWS_REGION}:${AWS_ACCOUNT_ID}:alarm:${PROJECT}-${ENVIRONMENT}-cpu-critical",
+          "arn:aws:cloudwatch:${AWS_REGION}:${AWS_ACCOUNT_ID}:alarm:${PROJECT}-${ENVIRONMENT}-memory-critical",
+          "arn:aws:cloudwatch:${AWS_REGION}:${AWS_ACCOUNT_ID}:alarm:${PROJECT}-${ENVIRONMENT}-error-rate",
+          "arn:aws:cloudwatch:${AWS_REGION}:${AWS_ACCOUNT_ID}:alarm:${PROJECT}-${ENVIRONMENT}-api-latency-critical",
+          "arn:aws:cloudwatch:${AWS_REGION}:${AWS_ACCOUNT_ID}:alarm:${PROJECT}-${ENVIRONMENT}-no-requests"
+        ]
+      }
+    }
+  ],
+  "variables": [
+    {
+      "type": "property",
+      "property": "ENVIRONMENT",
+      "inputType": "select",
+      "id": "env",
+      "label": "Environment",
+      "defaultValue": "production",
+      "values": [
+        { "value": "production", "label": "Production" },
+        { "value": "staging", "label": "Staging" },
+        { "value": "development", "label": "Development" }
+      ]
+    }
+  ]
+}

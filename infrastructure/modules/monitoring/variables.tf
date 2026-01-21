@@ -56,3 +56,40 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+# -----------------------------------------------------------------------------
+# Dashboard Configuration
+# -----------------------------------------------------------------------------
+variable "enable_dashboards" {
+  description = "Enable CloudWatch dashboards from JSON templates"
+  type        = bool
+  default     = true
+}
+
+variable "environment" {
+  description = "Environment name (dev, staging, production)"
+  type        = string
+}
+
+variable "project_name" {
+  description = "Project name for dashboard metrics namespace"
+  type        = string
+  default     = "ServicePro"
+}
+
+variable "aws_account_id" {
+  description = "AWS account ID"
+  type        = string
+}
+
+variable "eks_cluster_name" {
+  description = "EKS cluster name for dashboard metrics"
+  type        = string
+  default     = ""
+}
+
+variable "service_name" {
+  description = "Service name for dashboard metrics"
+  type        = string
+  default     = "servicepro-api"
+}

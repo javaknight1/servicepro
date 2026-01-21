@@ -381,6 +381,12 @@ variable "log_retention_days" {
   default     = 30
 }
 
+variable "enable_dashboards" {
+  description = "Enable CloudWatch dashboards from JSON templates"
+  type        = bool
+  default     = true
+}
+
 variable "alert_emails" {
   description = "Email addresses for alerts"
   type        = list(string)

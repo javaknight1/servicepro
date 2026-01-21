@@ -416,15 +416,31 @@ Configures Simple Email Service.
 
 ### monitoring
 
-Sets up monitoring and alerting.
+Sets up monitoring, alerting, and CloudWatch dashboards.
 
 **Key Resources:**
 
 - SNS topics (critical, warning, info)
 - Email/Slack subscriptions
 - CloudWatch log groups
-- CloudWatch dashboard
+- CloudWatch dashboards (automatically deployed from JSON templates):
+  - Application dashboard - Overall application health and metrics
+  - Database dashboard - PostgreSQL and Redis performance
+  - API dashboard - Request distribution and endpoint metrics
+  - API Metrics dashboard - Custom application metrics
 - Metric alarms (ALB, RDS, ElastiCache)
+
+**Dashboard Templates:**
+
+The monitoring module automatically deploys CloudWatch dashboards from JSON template files located in `modules/monitoring/dashboards/`. These templates support variable substitution for environment-specific values:
+
+- `${ENVIRONMENT}` - Environment name
+- `${AWS_REGION}` - AWS region
+- `${AWS_ACCOUNT_ID}` - Account ID
+- `${CLUSTER_NAME}` - EKS cluster name
+- `${SERVICE_NAME}` - Service name
+- `${DB_INSTANCE_ID}` - RDS instance identifier
+- `${REDIS_CLUSTER_ID}` - ElastiCache cluster ID
 
 ### backup
 

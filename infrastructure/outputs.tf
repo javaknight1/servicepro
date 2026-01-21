@@ -216,6 +216,11 @@ output "sns_topic_warning_arn" {
   value       = module.monitoring.sns_topic_warning_arn
 }
 
+output "cloudwatch_dashboards" {
+  description = "CloudWatch dashboard names"
+  value       = module.monitoring.dashboard_names
+}
+
 # -----------------------------------------------------------------------------
 # Application Configuration
 # -----------------------------------------------------------------------------

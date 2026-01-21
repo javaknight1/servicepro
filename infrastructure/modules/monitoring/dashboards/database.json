@@ -1,0 +1,857 @@
+{
+  "widgets": [
+    {
+      "height": 2,
+      "width": 24,
+      "y": 0,
+      "x": 0,
+      "type": "text",
+      "properties": {
+        "markdown": "# ServicePro Database Dashboard\n\nMonitoring for PostgreSQL RDS and Redis ElastiCache.\n\n**Environment:** ${ENVIRONMENT} | **Region:** ${AWS_REGION}"
+      }
+    },
+    {
+      "height": 2,
+      "width": 24,
+      "y": 2,
+      "x": 0,
+      "type": "text",
+      "properties": {
+        "markdown": "## PostgreSQL RDS Metrics"
+      }
+    },
+    {
+      "height": 3,
+      "width": 6,
+      "y": 4,
+      "x": 0,
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          [
+            "AWS/RDS",
+            "DatabaseConnections",
+            "DBInstanceIdentifier",
+            "${DB_INSTANCE_ID}",
+            {
+              "stat": "Average",
+              "period": 60
+            }
+          ]
+        ],
+        "view": "singleValue",
+        "region": "${AWS_REGION}",
+        "title": "Active Connections",
+        "period": 60,
+        "stat": "Average"
+      }
+    },
+    {
+      "height": 3,
+      "width": 6,
+      "y": 4,
+      "x": 6,
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          [
+            "AWS/RDS",
+            "CPUUtilization",
+            "DBInstanceIdentifier",
+            "${DB_INSTANCE_ID}",
+            {
+              "stat": "Average",
+              "period": 60
+            }
+          ]
+        ],
+        "view": "singleValue",
+        "region": "${AWS_REGION}",
+        "title": "CPU Utilization",
+        "period": 60,
+        "stat": "Average",
+        "annotations": {
+          "horizontal": [
+            {
+              "color": "#ff7f0e",
+              "value": 70
+            },
+            {
+              "color": "#d62728",
+              "value": 90
+            }
+          ]
+        }
+      }
+    },
+    {
+      "height": 3,
+      "width": 6,
+      "y": 4,
+      "x": 12,
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          [
+            {
+              "expression": "m1/1024/1024/1024",
+              "label": "Free Storage (GB)",
+              "id": "e1"
+            }
+          ],
+          [
+            "AWS/RDS",
+            "FreeStorageSpace",
+            "DBInstanceIdentifier",
+            "${DB_INSTANCE_ID}",
+            {
+              "id": "m1",
+              "visible": false
+            }
+          ]
+        ],
+        "view": "singleValue",
+        "region": "${AWS_REGION}",
+        "title": "Free Storage",
+        "period": 300,
+        "stat": "Average"
+      }
+    },
+    {
+      "height": 3,
+      "width": 6,
+      "y": 4,
+      "x": 18,
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          [
+            "ServicePro/${ENVIRONMENT}/Database",
+            "SlowQueryCount",
+            {
+              "stat": "Sum",
+              "period": 300
+            }
+          ]
+        ],
+        "view": "singleValue",
+        "region": "${AWS_REGION}",
+        "title": "Slow Queries (5min)",
+        "period": 300,
+        "stat": "Sum"
+      }
+    },
+    {
+      "height": 6,
+      "width": 12,
+      "y": 7,
+      "x": 0,
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          [
+            "AWS/RDS",
+            "CPUUtilization",
+            "DBInstanceIdentifier",
+            "${DB_INSTANCE_ID}",
+            {
+              "color": "#1f77b4",
+              "label": "CPU %"
+            }
+          ]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "${AWS_REGION}",
+        "title": "RDS CPU Utilization",
+        "period": 60,
+        "stat": "Average",
+        "annotations": {
+          "horizontal": [
+            {
+              "color": "#ff7f0e",
+              "label": "Warning",
+              "value": 70
+            },
+            {
+              "color": "#d62728",
+              "label": "Critical",
+              "value": 90
+            }
+          ]
+        },
+        "yAxis": {
+          "left": {
+            "min": 0,
+            "max": 100
+          }
+        }
+      }
+    },
+    {
+      "height": 6,
+      "width": 12,
+      "y": 7,
+      "x": 12,
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          [
+            "AWS/RDS",
+            "DatabaseConnections",
+            "DBInstanceIdentifier",
+            "${DB_INSTANCE_ID}",
+            {
+              "color": "#1f77b4",
+              "label": "Connections"
+            }
+          ]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "${AWS_REGION}",
+        "title": "Database Connections",
+        "period": 60,
+        "stat": "Average",
+        "annotations": {
+          "horizontal": [
+            {
+              "color": "#ff7f0e",
+              "label": "80% of max",
+              "value": 80
+            }
+          ]
+        }
+      }
+    },
+    {
+      "height": 6,
+      "width": 8,
+      "y": 13,
+      "x": 0,
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          [
+            "AWS/RDS",
+            "ReadIOPS",
+            "DBInstanceIdentifier",
+            "${DB_INSTANCE_ID}",
+            {
+              "color": "#2ca02c",
+              "label": "Read IOPS"
+            }
+          ],
+          [
+            "AWS/RDS",
+            "WriteIOPS",
+            "DBInstanceIdentifier",
+            "${DB_INSTANCE_ID}",
+            {
+              "color": "#d62728",
+              "label": "Write IOPS"
+            }
+          ]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "${AWS_REGION}",
+        "title": "IOPS",
+        "period": 60,
+        "stat": "Average"
+      }
+    },
+    {
+      "height": 6,
+      "width": 8,
+      "y": 13,
+      "x": 8,
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          [
+            "AWS/RDS",
+            "ReadLatency",
+            "DBInstanceIdentifier",
+            "${DB_INSTANCE_ID}",
+            {
+              "color": "#2ca02c",
+              "label": "Read Latency"
+            }
+          ],
+          [
+            "AWS/RDS",
+            "WriteLatency",
+            "DBInstanceIdentifier",
+            "${DB_INSTANCE_ID}",
+            {
+              "color": "#d62728",
+              "label": "Write Latency"
+            }
+          ]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "${AWS_REGION}",
+        "title": "I/O Latency",
+        "period": 60,
+        "stat": "Average"
+      }
+    },
+    {
+      "height": 6,
+      "width": 8,
+      "y": 13,
+      "x": 16,
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          [
+            "AWS/RDS",
+            "ReadThroughput",
+            "DBInstanceIdentifier",
+            "${DB_INSTANCE_ID}",
+            {
+              "color": "#2ca02c",
+              "label": "Read"
+            }
+          ],
+          [
+            "AWS/RDS",
+            "WriteThroughput",
+            "DBInstanceIdentifier",
+            "${DB_INSTANCE_ID}",
+            {
+              "color": "#d62728",
+              "label": "Write"
+            }
+          ]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "${AWS_REGION}",
+        "title": "Throughput (Bytes/sec)",
+        "period": 60,
+        "stat": "Average"
+      }
+    },
+    {
+      "height": 6,
+      "width": 12,
+      "y": 19,
+      "x": 0,
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          [
+            {
+              "expression": "m1/1024/1024/1024",
+              "label": "Free Storage (GB)",
+              "id": "e1"
+            }
+          ],
+          [
+            "AWS/RDS",
+            "FreeStorageSpace",
+            "DBInstanceIdentifier",
+            "${DB_INSTANCE_ID}",
+            {
+              "id": "m1",
+              "visible": false
+            }
+          ]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "${AWS_REGION}",
+        "title": "Free Storage Space",
+        "period": 300,
+        "stat": "Average",
+        "annotations": {
+          "horizontal": [
+            {
+              "color": "#d62728",
+              "label": "10GB",
+              "value": 10
+            }
+          ]
+        }
+      }
+    },
+    {
+      "height": 6,
+      "width": 12,
+      "y": 19,
+      "x": 12,
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          [
+            {
+              "expression": "m1/1024/1024/1024",
+              "label": "Freeable Memory (GB)",
+              "id": "e1"
+            }
+          ],
+          [
+            "AWS/RDS",
+            "FreeableMemory",
+            "DBInstanceIdentifier",
+            "${DB_INSTANCE_ID}",
+            {
+              "id": "m1",
+              "visible": false
+            }
+          ]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "${AWS_REGION}",
+        "title": "Freeable Memory",
+        "period": 60,
+        "stat": "Average"
+      }
+    },
+    {
+      "height": 6,
+      "width": 12,
+      "y": 25,
+      "x": 0,
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          [
+            "ServicePro/${ENVIRONMENT}/Database",
+            "QueryDuration",
+            "Operation",
+            "SELECT",
+            {
+              "stat": "p95",
+              "label": "SELECT p95"
+            }
+          ],
+          [
+            "ServicePro/${ENVIRONMENT}/Database",
+            "QueryDuration",
+            "Operation",
+            "INSERT",
+            {
+              "stat": "p95",
+              "label": "INSERT p95"
+            }
+          ],
+          [
+            "ServicePro/${ENVIRONMENT}/Database",
+            "QueryDuration",
+            "Operation",
+            "UPDATE",
+            {
+              "stat": "p95",
+              "label": "UPDATE p95"
+            }
+          ],
+          [
+            "ServicePro/${ENVIRONMENT}/Database",
+            "QueryDuration",
+            "Operation",
+            "DELETE",
+            {
+              "stat": "p95",
+              "label": "DELETE p95"
+            }
+          ]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "${AWS_REGION}",
+        "title": "Query Duration by Operation (p95)",
+        "period": 60
+      }
+    },
+    {
+      "height": 6,
+      "width": 12,
+      "y": 25,
+      "x": 12,
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          [
+            "ServicePro/${ENVIRONMENT}/Database",
+            "QueryCount",
+            "Operation",
+            "SELECT",
+            {
+              "label": "SELECT"
+            }
+          ],
+          [
+            "ServicePro/${ENVIRONMENT}/Database",
+            "QueryCount",
+            "Operation",
+            "INSERT",
+            {
+              "label": "INSERT"
+            }
+          ],
+          [
+            "ServicePro/${ENVIRONMENT}/Database",
+            "QueryCount",
+            "Operation",
+            "UPDATE",
+            {
+              "label": "UPDATE"
+            }
+          ],
+          [
+            "ServicePro/${ENVIRONMENT}/Database",
+            "QueryCount",
+            "Operation",
+            "DELETE",
+            {
+              "label": "DELETE"
+            }
+          ]
+        ],
+        "view": "timeSeries",
+        "stacked": true,
+        "region": "${AWS_REGION}",
+        "title": "Query Count by Operation",
+        "period": 60,
+        "stat": "Sum"
+      }
+    },
+    {
+      "height": 2,
+      "width": 24,
+      "y": 31,
+      "x": 0,
+      "type": "text",
+      "properties": {
+        "markdown": "## Redis ElastiCache Metrics"
+      }
+    },
+    {
+      "height": 3,
+      "width": 6,
+      "y": 33,
+      "x": 0,
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          [
+            "AWS/ElastiCache",
+            "CurrConnections",
+            "CacheClusterId",
+            "${REDIS_CLUSTER_ID}",
+            {
+              "stat": "Average"
+            }
+          ]
+        ],
+        "view": "singleValue",
+        "region": "${AWS_REGION}",
+        "title": "Redis Connections",
+        "period": 60,
+        "stat": "Average"
+      }
+    },
+    {
+      "height": 3,
+      "width": 6,
+      "y": 33,
+      "x": 6,
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          [
+            "AWS/ElastiCache",
+            "DatabaseMemoryUsagePercentage",
+            "CacheClusterId",
+            "${REDIS_CLUSTER_ID}",
+            {
+              "stat": "Average"
+            }
+          ]
+        ],
+        "view": "singleValue",
+        "region": "${AWS_REGION}",
+        "title": "Memory Usage %",
+        "period": 60,
+        "stat": "Average",
+        "annotations": {
+          "horizontal": [
+            {
+              "color": "#ff7f0e",
+              "value": 70
+            },
+            {
+              "color": "#d62728",
+              "value": 90
+            }
+          ]
+        }
+      }
+    },
+    {
+      "height": 3,
+      "width": 6,
+      "y": 33,
+      "x": 12,
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          [
+            {
+              "expression": "(m1/(m1+m2))*100",
+              "label": "Hit Rate %",
+              "id": "e1"
+            }
+          ],
+          [
+            "AWS/ElastiCache",
+            "CacheHits",
+            "CacheClusterId",
+            "${REDIS_CLUSTER_ID}",
+            {
+              "id": "m1",
+              "visible": false,
+              "stat": "Sum"
+            }
+          ],
+          [
+            "AWS/ElastiCache",
+            "CacheMisses",
+            "CacheClusterId",
+            "${REDIS_CLUSTER_ID}",
+            {
+              "id": "m2",
+              "visible": false,
+              "stat": "Sum"
+            }
+          ]
+        ],
+        "view": "singleValue",
+        "region": "${AWS_REGION}",
+        "title": "Cache Hit Rate",
+        "period": 300,
+        "stat": "Average"
+      }
+    },
+    {
+      "height": 3,
+      "width": 6,
+      "y": 33,
+      "x": 18,
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          [
+            "AWS/ElastiCache",
+            "Evictions",
+            "CacheClusterId",
+            "${REDIS_CLUSTER_ID}",
+            {
+              "stat": "Sum"
+            }
+          ]
+        ],
+        "view": "singleValue",
+        "region": "${AWS_REGION}",
+        "title": "Evictions (5min)",
+        "period": 300,
+        "stat": "Sum"
+      }
+    },
+    {
+      "height": 6,
+      "width": 12,
+      "y": 36,
+      "x": 0,
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          [
+            "AWS/ElastiCache",
+            "CacheHits",
+            "CacheClusterId",
+            "${REDIS_CLUSTER_ID}",
+            {
+              "color": "#2ca02c",
+              "label": "Hits"
+            }
+          ],
+          [
+            "AWS/ElastiCache",
+            "CacheMisses",
+            "CacheClusterId",
+            "${REDIS_CLUSTER_ID}",
+            {
+              "color": "#d62728",
+              "label": "Misses"
+            }
+          ]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "${AWS_REGION}",
+        "title": "Cache Hits vs Misses",
+        "period": 60,
+        "stat": "Sum"
+      }
+    },
+    {
+      "height": 6,
+      "width": 12,
+      "y": 36,
+      "x": 12,
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          [
+            "AWS/ElastiCache",
+            "GetTypeCmds",
+            "CacheClusterId",
+            "${REDIS_CLUSTER_ID}",
+            {
+              "color": "#1f77b4",
+              "label": "GET"
+            }
+          ],
+          [
+            "AWS/ElastiCache",
+            "SetTypeCmds",
+            "CacheClusterId",
+            "${REDIS_CLUSTER_ID}",
+            {
+              "color": "#ff7f0e",
+              "label": "SET"
+            }
+          ]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "${AWS_REGION}",
+        "title": "Redis Commands",
+        "period": 60,
+        "stat": "Sum"
+      }
+    },
+    {
+      "height": 6,
+      "width": 12,
+      "y": 42,
+      "x": 0,
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          [
+            "AWS/ElastiCache",
+            "DatabaseMemoryUsagePercentage",
+            "CacheClusterId",
+            "${REDIS_CLUSTER_ID}",
+            {
+              "label": "Memory %"
+            }
+          ]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "${AWS_REGION}",
+        "title": "Redis Memory Usage",
+        "period": 60,
+        "stat": "Average",
+        "annotations": {
+          "horizontal": [
+            {
+              "color": "#ff7f0e",
+              "label": "Warning",
+              "value": 70
+            },
+            {
+              "color": "#d62728",
+              "label": "Critical",
+              "value": 90
+            }
+          ]
+        },
+        "yAxis": {
+          "left": {
+            "min": 0,
+            "max": 100
+          }
+        }
+      }
+    },
+    {
+      "height": 6,
+      "width": 12,
+      "y": 42,
+      "x": 12,
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          [
+            "AWS/ElastiCache",
+            "CurrConnections",
+            "CacheClusterId",
+            "${REDIS_CLUSTER_ID}",
+            {
+              "label": "Connections"
+            }
+          ]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "${AWS_REGION}",
+        "title": "Redis Connections",
+        "period": 60,
+        "stat": "Average",
+        "annotations": {
+          "horizontal": [
+            {
+              "color": "#ff7f0e",
+              "label": "Warning",
+              "value": 500
+            },
+            {
+              "color": "#d62728",
+              "label": "Critical",
+              "value": 1000
+            }
+          ]
+        }
+      }
+    },
+    {
+      "height": 6,
+      "width": 24,
+      "y": 48,
+      "x": 0,
+      "type": "log",
+      "properties": {
+        "query": "SOURCE '/aws/servicepro/${ENVIRONMENT}/database/slow-queries' | fields @timestamp, @message\n| sort @timestamp desc\n| limit 50",
+        "region": "${AWS_REGION}",
+        "title": "Recent Slow Queries",
+        "view": "table"
+      }
+    },
+    {
+      "height": 4,
+      "width": 24,
+      "y": 54,
+      "x": 0,
+      "type": "alarm",
+      "properties": {
+        "title": "Database Alarms",
+        "alarms": [
+          "arn:aws:cloudwatch:${AWS_REGION}:${AWS_ACCOUNT_ID}:alarm:${PROJECT}-${ENVIRONMENT}-db-connections",
+          "arn:aws:cloudwatch:${AWS_REGION}:${AWS_ACCOUNT_ID}:alarm:${PROJECT}-${ENVIRONMENT}-db-cpu",
+          "arn:aws:cloudwatch:${AWS_REGION}:${AWS_ACCOUNT_ID}:alarm:${PROJECT}-${ENVIRONMENT}-db-storage",
+          "arn:aws:cloudwatch:${AWS_REGION}:${AWS_ACCOUNT_ID}:alarm:${PROJECT}-${ENVIRONMENT}-redis-memory",
+          "arn:aws:cloudwatch:${AWS_REGION}:${AWS_ACCOUNT_ID}:alarm:${PROJECT}-${ENVIRONMENT}-slow-queries"
+        ]
+      }
+    }
+  ]
+}

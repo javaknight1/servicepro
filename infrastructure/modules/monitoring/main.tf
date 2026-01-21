@@ -58,118 +58,50 @@ resource "aws_cloudwatch_log_group" "api" {
 }
 
 # -----------------------------------------------------------------------------
-# CloudWatch Dashboard (created only if all resource IDs are provided)
+# Local values for dashboard templates
 # -----------------------------------------------------------------------------
-resource "aws_cloudwatch_dashboard" "main" {
-  count          = var.rds_identifier != "" && var.elasticache_cluster_id != "" ? 1 : 0
-  dashboard_name = "${var.name_prefix}-dashboard"
+locals {
+  dashboard_template_vars = {
+    ENVIRONMENT      = var.environment
+    AWS_REGION       = var.aws_region
+    AWS_ACCOUNT_ID   = var.aws_account_id
+    PROJECT          = var.project_name
+    CLUSTER_NAME     = var.eks_cluster_name
+    SERVICE_NAME     = var.service_name
+    DB_INSTANCE_ID   = var.rds_identifier
+    REDIS_CLUSTER_ID = var.elasticache_cluster_id
+    TIMESTAMP        = "Updated by Terraform"
+  }
 
-  dashboard_body = jsonencode({
-    widgets = [
-      {
-        type   = "metric"
-        x      = 0
-        y      = 0
-        width  = 12
-        height = 6
-        properties = {
-          title  = "ALB Request Count"
-          region = var.aws_region
-          metrics = [
-            ["AWS/ApplicationELB", "RequestCount", "LoadBalancer", var.alb_arn_suffix]
-          ]
-          period = 300
-          stat   = "Sum"
-        }
-      },
-      {
-        type   = "metric"
-        x      = 12
-        y      = 0
-        width  = 12
-        height = 6
-        properties = {
-          title  = "ALB Response Time"
-          region = var.aws_region
-          metrics = [
-            ["AWS/ApplicationELB", "TargetResponseTime", "LoadBalancer", var.alb_arn_suffix, "TargetGroup", var.target_group_arn_suffix, { stat = "p50" }],
-            ["...", { stat = "p95" }],
-            ["...", { stat = "p99" }]
-          ]
-          period = 300
-        }
-      },
-      {
-        type   = "metric"
-        x      = 0
-        y      = 6
-        width  = 12
-        height = 6
-        properties = {
-          title  = "HTTP Errors"
-          region = var.aws_region
-          metrics = [
-            ["AWS/ApplicationELB", "HTTPCode_ELB_5XX_Count", "LoadBalancer", var.alb_arn_suffix],
-            [".", "HTTPCode_Target_5XX_Count", ".", ".", "TargetGroup", var.target_group_arn_suffix],
-            [".", "HTTPCode_Target_4XX_Count", ".", ".", ".", "."]
-          ]
-          period = 300
-          stat   = "Sum"
-        }
-      },
-      {
-        type   = "metric"
-        x      = 12
-        y      = 6
-        width  = 12
-        height = 6
-        properties = {
-          title  = "Healthy/Unhealthy Hosts"
-          region = var.aws_region
-          metrics = [
-            ["AWS/ApplicationELB", "HealthyHostCount", "LoadBalancer", var.alb_arn_suffix, "TargetGroup", var.target_group_arn_suffix],
-            [".", "UnHealthyHostCount", ".", ".", ".", "."]
-          ]
-          period = 60
-          stat   = "Average"
-        }
-      },
-      {
-        type   = "metric"
-        x      = 0
-        y      = 12
-        width  = 12
-        height = 6
-        properties = {
-          title  = "RDS CPU & Connections"
-          region = var.aws_region
-          metrics = [
-            ["AWS/RDS", "CPUUtilization", "DBInstanceIdentifier", var.rds_identifier],
-            [".", "DatabaseConnections", ".", ".", { yAxis = "right" }]
-          ]
-          period = 300
-          stat   = "Average"
-        }
-      },
-      {
-        type   = "metric"
-        x      = 12
-        y      = 12
-        width  = 12
-        height = 6
-        properties = {
-          title  = "Redis CPU & Memory"
-          region = var.aws_region
-          metrics = [
-            ["AWS/ElastiCache", "CPUUtilization", "CacheClusterId", var.elasticache_cluster_id],
-            [".", "DatabaseMemoryUsagePercentage", ".", ".", { yAxis = "right" }]
-          ]
-          period = 300
-          stat   = "Average"
-        }
-      }
-    ]
-  })
+  # List of dashboards to create
+  dashboards = var.enable_dashboards ? {
+    "application" = {
+      name = "${var.name_prefix}-application"
+      file = "${path.module}/dashboards/application.json"
+    }
+    "database" = {
+      name = "${var.name_prefix}-database"
+      file = "${path.module}/dashboards/database.json"
+    }
+    "api" = {
+      name = "${var.name_prefix}-api"
+      file = "${path.module}/dashboards/api.json"
+    }
+    "api-metrics" = {
+      name = "${var.name_prefix}-api-metrics"
+      file = "${path.module}/dashboards/api-metrics.json"
+    }
+  } : {}
+}
+
+# -----------------------------------------------------------------------------
+# CloudWatch Dashboards from JSON Templates
+# -----------------------------------------------------------------------------
+resource "aws_cloudwatch_dashboard" "dashboards" {
+  for_each = local.dashboards
+
+  dashboard_name = each.value.name
+  dashboard_body = templatefile(each.value.file, local.dashboard_template_vars)
 }
 
 # -----------------------------------------------------------------------------

@@ -140,22 +140,34 @@ module "alb" {
 }
 
 # -----------------------------------------------------------------------------
-# Monitoring Module (SNS Topics - no dependencies)
+# Monitoring Module (SNS Topics, Dashboards)
 # -----------------------------------------------------------------------------
 module "monitoring" {
   source = "./modules/monitoring"
 
   name_prefix        = local.name_prefix
+  environment        = var.environment
   aws_region         = var.aws_region
+  aws_account_id     = data.aws_caller_identity.current.account_id
+  project_name       = var.project_name
   log_retention_days = var.log_retention_days
   alert_emails       = var.alert_emails
   slack_webhook_url  = var.slack_webhook_url
-  # ALB, RDS, and ElastiCache IDs passed after resources exist
+
+  # Dashboard configuration
+  enable_dashboards  = var.enable_dashboards
+  eks_cluster_name   = module.eks.cluster_name
+  service_name       = "servicepro-api"
+
+  # Resource IDs for dashboard metrics (empty strings initially, dashboards use custom metrics)
   alb_arn_suffix          = ""
   target_group_arn_suffix = ""
   rds_identifier          = ""
   elasticache_cluster_id  = ""
-  tags                    = local.common_tags
+
+  tags = local.common_tags
+
+  depends_on = [module.eks]
 }
 
 # -----------------------------------------------------------------------------

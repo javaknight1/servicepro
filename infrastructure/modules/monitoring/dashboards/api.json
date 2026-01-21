@@ -1,0 +1,910 @@
+{
+  "widgets": [
+    {
+      "height": 2,
+      "width": 24,
+      "y": 0,
+      "x": 0,
+      "type": "text",
+      "properties": {
+        "markdown": "# ServicePro API Dashboard\n\nDetailed API performance monitoring including endpoints, methods, and response codes.\n\n**Environment:** ${ENVIRONMENT} | **Region:** ${AWS_REGION}"
+      }
+    },
+    {
+      "height": 3,
+      "width": 4,
+      "y": 2,
+      "x": 0,
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          [
+            "ServicePro/${ENVIRONMENT}/API",
+            "RequestCount",
+            {
+              "stat": "Sum",
+              "period": 60
+            }
+          ]
+        ],
+        "view": "singleValue",
+        "region": "${AWS_REGION}",
+        "title": "Requests/min",
+        "period": 60,
+        "stat": "Sum"
+      }
+    },
+    {
+      "height": 3,
+      "width": 4,
+      "y": 2,
+      "x": 4,
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          [
+            "ServicePro/${ENVIRONMENT}/API",
+            "ResponseTime",
+            {
+              "stat": "Average"
+            }
+          ]
+        ],
+        "view": "singleValue",
+        "region": "${AWS_REGION}",
+        "title": "Avg Latency (ms)",
+        "period": 60,
+        "stat": "Average"
+      }
+    },
+    {
+      "height": 3,
+      "width": 4,
+      "y": 2,
+      "x": 8,
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          [
+            "ServicePro/${ENVIRONMENT}/API",
+            "ResponseTime",
+            {
+              "stat": "p95"
+            }
+          ]
+        ],
+        "view": "singleValue",
+        "region": "${AWS_REGION}",
+        "title": "p95 Latency (ms)",
+        "period": 60,
+        "stat": "p95"
+      }
+    },
+    {
+      "height": 3,
+      "width": 4,
+      "y": 2,
+      "x": 12,
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          [
+            "ServicePro/${ENVIRONMENT}/API",
+            "ResponseTime",
+            {
+              "stat": "p99"
+            }
+          ]
+        ],
+        "view": "singleValue",
+        "region": "${AWS_REGION}",
+        "title": "p99 Latency (ms)",
+        "period": 60,
+        "stat": "p99"
+      }
+    },
+    {
+      "height": 3,
+      "width": 4,
+      "y": 2,
+      "x": 16,
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          [
+            {
+              "expression": "(m1/(m1+m2+m3))*100",
+              "label": "Success Rate %",
+              "id": "e1"
+            }
+          ],
+          [
+            "ServicePro/${ENVIRONMENT}/API",
+            "HTTP2xxCount",
+            {
+              "id": "m1",
+              "visible": false,
+              "stat": "Sum"
+            }
+          ],
+          [
+            "ServicePro/${ENVIRONMENT}/API",
+            "HTTP4xxCount",
+            {
+              "id": "m2",
+              "visible": false,
+              "stat": "Sum"
+            }
+          ],
+          [
+            "ServicePro/${ENVIRONMENT}/API",
+            "HTTP5xxCount",
+            {
+              "id": "m3",
+              "visible": false,
+              "stat": "Sum"
+            }
+          ]
+        ],
+        "view": "singleValue",
+        "region": "${AWS_REGION}",
+        "title": "Success Rate",
+        "period": 300
+      }
+    },
+    {
+      "height": 3,
+      "width": 4,
+      "y": 2,
+      "x": 20,
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          [
+            "ServicePro/${ENVIRONMENT}/API",
+            "SlowRequestCount",
+            {
+              "stat": "Sum"
+            }
+          ]
+        ],
+        "view": "singleValue",
+        "region": "${AWS_REGION}",
+        "title": "Slow Requests",
+        "period": 300,
+        "stat": "Sum"
+      }
+    },
+    {
+      "height": 6,
+      "width": 12,
+      "y": 5,
+      "x": 0,
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          [
+            "ServicePro/${ENVIRONMENT}/API",
+            "RequestCount",
+            {
+              "color": "#1f77b4",
+              "label": "Total Requests"
+            }
+          ]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "${AWS_REGION}",
+        "title": "Request Rate",
+        "period": 60,
+        "stat": "Sum",
+        "yAxis": {
+          "left": {
+            "label": "Requests/min",
+            "min": 0
+          }
+        }
+      }
+    },
+    {
+      "height": 6,
+      "width": 12,
+      "y": 5,
+      "x": 12,
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          [
+            "ServicePro/${ENVIRONMENT}/API",
+            "ResponseTime",
+            {
+              "stat": "p50",
+              "label": "p50",
+              "color": "#2ca02c"
+            }
+          ],
+          [
+            "ServicePro/${ENVIRONMENT}/API",
+            "ResponseTime",
+            {
+              "stat": "p90",
+              "label": "p90",
+              "color": "#1f77b4"
+            }
+          ],
+          [
+            "ServicePro/${ENVIRONMENT}/API",
+            "ResponseTime",
+            {
+              "stat": "p95",
+              "label": "p95",
+              "color": "#ff7f0e"
+            }
+          ],
+          [
+            "ServicePro/${ENVIRONMENT}/API",
+            "ResponseTime",
+            {
+              "stat": "p99",
+              "label": "p99",
+              "color": "#d62728"
+            }
+          ]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "${AWS_REGION}",
+        "title": "Response Time Percentiles",
+        "period": 60,
+        "annotations": {
+          "horizontal": [
+            {
+              "color": "#ff7f0e",
+              "label": "SLO Warning",
+              "value": 500
+            },
+            {
+              "color": "#d62728",
+              "label": "SLO Critical",
+              "value": 1000
+            }
+          ]
+        }
+      }
+    },
+    {
+      "height": 6,
+      "width": 12,
+      "y": 11,
+      "x": 0,
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          [
+            "ServicePro/${ENVIRONMENT}/API",
+            "HTTP2xxCount",
+            {
+              "color": "#2ca02c",
+              "label": "2xx Success"
+            }
+          ],
+          [
+            "ServicePro/${ENVIRONMENT}/API",
+            "HTTP3xxCount",
+            {
+              "color": "#1f77b4",
+              "label": "3xx Redirect"
+            }
+          ],
+          [
+            "ServicePro/${ENVIRONMENT}/API",
+            "HTTP4xxCount",
+            {
+              "color": "#ff7f0e",
+              "label": "4xx Client Error"
+            }
+          ],
+          [
+            "ServicePro/${ENVIRONMENT}/API",
+            "HTTP5xxCount",
+            {
+              "color": "#d62728",
+              "label": "5xx Server Error"
+            }
+          ]
+        ],
+        "view": "timeSeries",
+        "stacked": true,
+        "region": "${AWS_REGION}",
+        "title": "Response Status Codes",
+        "period": 60,
+        "stat": "Sum"
+      }
+    },
+    {
+      "height": 6,
+      "width": 12,
+      "y": 11,
+      "x": 12,
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          [
+            {
+              "expression": "(m1/m2)*100",
+              "label": "Error Rate %",
+              "id": "e1",
+              "color": "#d62728"
+            }
+          ],
+          [
+            "ServicePro/${ENVIRONMENT}/API",
+            "HTTP5xxCount",
+            {
+              "id": "m1",
+              "visible": false,
+              "stat": "Sum"
+            }
+          ],
+          [
+            "ServicePro/${ENVIRONMENT}/API",
+            "RequestCount",
+            {
+              "id": "m2",
+              "visible": false,
+              "stat": "Sum"
+            }
+          ]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "${AWS_REGION}",
+        "title": "Error Rate",
+        "period": 60,
+        "annotations": {
+          "horizontal": [
+            {
+              "color": "#ff7f0e",
+              "label": "Warning 1%",
+              "value": 1
+            },
+            {
+              "color": "#d62728",
+              "label": "Critical 5%",
+              "value": 5
+            }
+          ]
+        },
+        "yAxis": {
+          "left": {
+            "min": 0,
+            "max": 10
+          }
+        }
+      }
+    },
+    {
+      "height": 2,
+      "width": 24,
+      "y": 17,
+      "x": 0,
+      "type": "text",
+      "properties": {
+        "markdown": "## Endpoint Performance"
+      }
+    },
+    {
+      "height": 6,
+      "width": 12,
+      "y": 19,
+      "x": 0,
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          [
+            "ServicePro/${ENVIRONMENT}/API",
+            "ResponseTime",
+            "Path",
+            "/api/v1/customers",
+            {
+              "stat": "p95",
+              "label": "Customers"
+            }
+          ],
+          [
+            "ServicePro/${ENVIRONMENT}/API",
+            "ResponseTime",
+            "Path",
+            "/api/v1/jobs",
+            {
+              "stat": "p95",
+              "label": "Jobs"
+            }
+          ],
+          [
+            "ServicePro/${ENVIRONMENT}/API",
+            "ResponseTime",
+            "Path",
+            "/api/v1/invoices",
+            {
+              "stat": "p95",
+              "label": "Invoices"
+            }
+          ],
+          [
+            "ServicePro/${ENVIRONMENT}/API",
+            "ResponseTime",
+            "Path",
+            "/api/v1/quotes",
+            {
+              "stat": "p95",
+              "label": "Quotes"
+            }
+          ],
+          [
+            "ServicePro/${ENVIRONMENT}/API",
+            "ResponseTime",
+            "Path",
+            "/api/v1/auth/login",
+            {
+              "stat": "p95",
+              "label": "Auth Login"
+            }
+          ]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "${AWS_REGION}",
+        "title": "Response Time by Endpoint (p95)",
+        "period": 60
+      }
+    },
+    {
+      "height": 6,
+      "width": 12,
+      "y": 19,
+      "x": 12,
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          [
+            "ServicePro/${ENVIRONMENT}/API",
+            "RequestCount",
+            "Path",
+            "/api/v1/customers",
+            {
+              "label": "Customers"
+            }
+          ],
+          [
+            "ServicePro/${ENVIRONMENT}/API",
+            "RequestCount",
+            "Path",
+            "/api/v1/jobs",
+            {
+              "label": "Jobs"
+            }
+          ],
+          [
+            "ServicePro/${ENVIRONMENT}/API",
+            "RequestCount",
+            "Path",
+            "/api/v1/invoices",
+            {
+              "label": "Invoices"
+            }
+          ],
+          [
+            "ServicePro/${ENVIRONMENT}/API",
+            "RequestCount",
+            "Path",
+            "/api/v1/quotes",
+            {
+              "label": "Quotes"
+            }
+          ],
+          [
+            "ServicePro/${ENVIRONMENT}/API",
+            "RequestCount",
+            "Path",
+            "/api/v1/auth/login",
+            {
+              "label": "Auth Login"
+            }
+          ]
+        ],
+        "view": "timeSeries",
+        "stacked": true,
+        "region": "${AWS_REGION}",
+        "title": "Request Count by Endpoint",
+        "period": 60,
+        "stat": "Sum"
+      }
+    },
+    {
+      "height": 2,
+      "width": 24,
+      "y": 25,
+      "x": 0,
+      "type": "text",
+      "properties": {
+        "markdown": "## HTTP Methods"
+      }
+    },
+    {
+      "height": 6,
+      "width": 8,
+      "y": 27,
+      "x": 0,
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          [
+            "ServicePro/${ENVIRONMENT}/API",
+            "RequestCount",
+            "Method",
+            "GET",
+            {
+              "color": "#2ca02c",
+              "label": "GET"
+            }
+          ],
+          [
+            "ServicePro/${ENVIRONMENT}/API",
+            "RequestCount",
+            "Method",
+            "POST",
+            {
+              "color": "#1f77b4",
+              "label": "POST"
+            }
+          ],
+          [
+            "ServicePro/${ENVIRONMENT}/API",
+            "RequestCount",
+            "Method",
+            "PUT",
+            {
+              "color": "#ff7f0e",
+              "label": "PUT"
+            }
+          ],
+          [
+            "ServicePro/${ENVIRONMENT}/API",
+            "RequestCount",
+            "Method",
+            "PATCH",
+            {
+              "color": "#9467bd",
+              "label": "PATCH"
+            }
+          ],
+          [
+            "ServicePro/${ENVIRONMENT}/API",
+            "RequestCount",
+            "Method",
+            "DELETE",
+            {
+              "color": "#d62728",
+              "label": "DELETE"
+            }
+          ]
+        ],
+        "view": "timeSeries",
+        "stacked": true,
+        "region": "${AWS_REGION}",
+        "title": "Requests by HTTP Method",
+        "period": 60,
+        "stat": "Sum"
+      }
+    },
+    {
+      "height": 6,
+      "width": 8,
+      "y": 27,
+      "x": 8,
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          [
+            "ServicePro/${ENVIRONMENT}/API",
+            "ResponseTime",
+            "Method",
+            "GET",
+            {
+              "stat": "p95",
+              "label": "GET"
+            }
+          ],
+          [
+            "ServicePro/${ENVIRONMENT}/API",
+            "ResponseTime",
+            "Method",
+            "POST",
+            {
+              "stat": "p95",
+              "label": "POST"
+            }
+          ],
+          [
+            "ServicePro/${ENVIRONMENT}/API",
+            "ResponseTime",
+            "Method",
+            "PUT",
+            {
+              "stat": "p95",
+              "label": "PUT"
+            }
+          ],
+          [
+            "ServicePro/${ENVIRONMENT}/API",
+            "ResponseTime",
+            "Method",
+            "PATCH",
+            {
+              "stat": "p95",
+              "label": "PATCH"
+            }
+          ],
+          [
+            "ServicePro/${ENVIRONMENT}/API",
+            "ResponseTime",
+            "Method",
+            "DELETE",
+            {
+              "stat": "p95",
+              "label": "DELETE"
+            }
+          ]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "${AWS_REGION}",
+        "title": "Response Time by Method (p95)",
+        "period": 60
+      }
+    },
+    {
+      "height": 6,
+      "width": 8,
+      "y": 27,
+      "x": 16,
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          [
+            "ServicePro/${ENVIRONMENT}/API",
+            "ErrorCount",
+            "Method",
+            "GET",
+            {
+              "label": "GET"
+            }
+          ],
+          [
+            "ServicePro/${ENVIRONMENT}/API",
+            "ErrorCount",
+            "Method",
+            "POST",
+            {
+              "label": "POST"
+            }
+          ],
+          [
+            "ServicePro/${ENVIRONMENT}/API",
+            "ErrorCount",
+            "Method",
+            "PUT",
+            {
+              "label": "PUT"
+            }
+          ],
+          [
+            "ServicePro/${ENVIRONMENT}/API",
+            "ErrorCount",
+            "Method",
+            "PATCH",
+            {
+              "label": "PATCH"
+            }
+          ],
+          [
+            "ServicePro/${ENVIRONMENT}/API",
+            "ErrorCount",
+            "Method",
+            "DELETE",
+            {
+              "label": "DELETE"
+            }
+          ]
+        ],
+        "view": "timeSeries",
+        "stacked": true,
+        "region": "${AWS_REGION}",
+        "title": "Errors by HTTP Method",
+        "period": 60,
+        "stat": "Sum"
+      }
+    },
+    {
+      "height": 2,
+      "width": 24,
+      "y": 33,
+      "x": 0,
+      "type": "text",
+      "properties": {
+        "markdown": "## Rate Limiting & Security"
+      }
+    },
+    {
+      "height": 6,
+      "width": 12,
+      "y": 35,
+      "x": 0,
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          [
+            "ServicePro/${ENVIRONMENT}/API",
+            "RateLimitHits",
+            {
+              "color": "#d62728",
+              "label": "Rate Limited Requests"
+            }
+          ]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "${AWS_REGION}",
+        "title": "Rate Limited Requests",
+        "period": 60,
+        "stat": "Sum"
+      }
+    },
+    {
+      "height": 6,
+      "width": 12,
+      "y": 35,
+      "x": 12,
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          [
+            "ServicePro/${ENVIRONMENT}",
+            "AuthFailures",
+            "Reason",
+            "invalid_credentials",
+            {
+              "label": "Invalid Credentials"
+            }
+          ],
+          [
+            "ServicePro/${ENVIRONMENT}",
+            "AuthFailures",
+            "Reason",
+            "expired_token",
+            {
+              "label": "Expired Token"
+            }
+          ],
+          [
+            "ServicePro/${ENVIRONMENT}",
+            "AuthFailures",
+            "Reason",
+            "invalid_token",
+            {
+              "label": "Invalid Token"
+            }
+          ],
+          [
+            "ServicePro/${ENVIRONMENT}",
+            "AuthFailures",
+            "Reason",
+            "account_locked",
+            {
+              "label": "Account Locked"
+            }
+          ]
+        ],
+        "view": "timeSeries",
+        "stacked": true,
+        "region": "${AWS_REGION}",
+        "title": "Authentication Failures by Reason",
+        "period": 300,
+        "stat": "Sum"
+      }
+    },
+    {
+      "height": 2,
+      "width": 24,
+      "y": 41,
+      "x": 0,
+      "type": "text",
+      "properties": {
+        "markdown": "## Slow Endpoints Analysis"
+      }
+    },
+    {
+      "height": 6,
+      "width": 24,
+      "y": 43,
+      "x": 0,
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          [
+            "ServicePro/${ENVIRONMENT}/API",
+            "SlowRequestCount",
+            "Path",
+            "/api/v1/reports/revenue",
+            {
+              "label": "Reports Revenue"
+            }
+          ],
+          [
+            "ServicePro/${ENVIRONMENT}/API",
+            "SlowRequestCount",
+            "Path",
+            "/api/v1/invoices/:id/pdf",
+            {
+              "label": "Invoice PDF"
+            }
+          ],
+          [
+            "ServicePro/${ENVIRONMENT}/API",
+            "SlowRequestCount",
+            "Path",
+            "/api/v1/customers/search",
+            {
+              "label": "Customer Search"
+            }
+          ],
+          [
+            "ServicePro/${ENVIRONMENT}/API",
+            "SlowRequestCount",
+            "Path",
+            "/api/v1/jobs",
+            {
+              "label": "Jobs List"
+            }
+          ]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "${AWS_REGION}",
+        "title": "Slow Requests by Endpoint (>1s)",
+        "period": 300,
+        "stat": "Sum"
+      }
+    },
+    {
+      "height": 6,
+      "width": 24,
+      "y": 49,
+      "x": 0,
+      "type": "log",
+      "properties": {
+        "query": "SOURCE '/aws/servicepro/${ENVIRONMENT}/api-access' | fields @timestamp, @message\n| filter @message like /\"status\":5/\n| sort @timestamp desc\n| limit 100",
+        "region": "${AWS_REGION}",
+        "title": "Recent 5xx Errors",
+        "view": "table"
+      }
+    },
+    {
+      "height": 4,
+      "width": 24,
+      "y": 55,
+      "x": 0,
+      "type": "alarm",
+      "properties": {
+        "title": "API Alarms",
+        "alarms": [
+          "arn:aws:cloudwatch:${AWS_REGION}:${AWS_ACCOUNT_ID}:alarm:${PROJECT}-${ENVIRONMENT}-api-latency-warning",
+          "arn:aws:cloudwatch:${AWS_REGION}:${AWS_ACCOUNT_ID}:alarm:${PROJECT}-${ENVIRONMENT}-api-latency-critical",
+          "arn:aws:cloudwatch:${AWS_REGION}:${AWS_ACCOUNT_ID}:alarm:${PROJECT}-${ENVIRONMENT}-error-rate",
+          "arn:aws:cloudwatch:${AWS_REGION}:${AWS_ACCOUNT_ID}:alarm:${PROJECT}-${ENVIRONMENT}-no-requests"
+        ]
+      }
+    }
+  ]
+}
