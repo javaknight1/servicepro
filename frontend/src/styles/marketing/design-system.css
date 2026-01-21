@@ -1,0 +1,1205 @@
+/**
+ * =============================================================================
+ * ServicePro Marketing Design System
+ * =============================================================================
+ * Core design tokens, utilities, and base styles for marketing pages.
+ * Follows WCAG 2.1 AA accessibility guidelines.
+ *
+ * Table of Contents:
+ * 1. CSS Custom Properties (Design Tokens)
+ * 2. Reset & Base Styles
+ * 3. Typography System
+ * 4. Color System
+ * 5. Spacing System
+ * 6. Layout Utilities
+ * 7. Responsive Breakpoints
+ * 8. Animation Definitions
+ * 9. Accessibility Utilities
+ * =============================================================================
+ */
+
+/* =============================================================================
+   1. CSS CUSTOM PROPERTIES (DESIGN TOKENS)
+   ============================================================================= */
+
+:root {
+  /* -------------------------------------------------------------------------
+     Color Palette
+     All colors meet WCAG 2.1 AA contrast requirements (4.5:1 for text)
+     ------------------------------------------------------------------------- */
+
+  /* Primary Brand Colors */
+  --color-primary-50: #eff6ff;
+  --color-primary-100: #dbeafe;
+  --color-primary-200: #bfdbfe;
+  --color-primary-300: #93c5fd;
+  --color-primary-400: #60a5fa;
+  --color-primary-500: #3b82f6; /* Main primary */
+  --color-primary-600: #2563eb;
+  --color-primary-700: #1d4ed8;
+  --color-primary-800: #1e40af;
+  --color-primary-900: #1e3a8a;
+
+  /* Secondary Colors */
+  --color-secondary-50: #f0fdf4;
+  --color-secondary-100: #dcfce7;
+  --color-secondary-200: #bbf7d0;
+  --color-secondary-300: #86efac;
+  --color-secondary-400: #4ade80;
+  --color-secondary-500: #22c55e; /* Main secondary */
+  --color-secondary-600: #16a34a;
+  --color-secondary-700: #15803d;
+  --color-secondary-800: #166534;
+  --color-secondary-900: #14532d;
+
+  /* Neutral Colors */
+  --color-neutral-0: #ffffff;
+  --color-neutral-50: #f9fafb;
+  --color-neutral-100: #f3f4f6;
+  --color-neutral-200: #e5e7eb;
+  --color-neutral-300: #d1d5db;
+  --color-neutral-400: #9ca3af;
+  --color-neutral-500: #6b7280;
+  --color-neutral-600: #4b5563;
+  --color-neutral-700: #374151;
+  --color-neutral-800: #1f2937;
+  --color-neutral-900: #111827;
+  --color-neutral-950: #030712;
+
+  /* Semantic Colors */
+  --color-success: #22c55e;
+  --color-success-light: #dcfce7;
+  --color-warning: #f59e0b;
+  --color-warning-light: #fef3c7;
+  --color-error: #ef4444;
+  --color-error-light: #fee2e2;
+  --color-info: #3b82f6;
+  --color-info-light: #dbeafe;
+
+  /* -------------------------------------------------------------------------
+     Typography
+     ------------------------------------------------------------------------- */
+
+  /* Font Families */
+  --font-family-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-family-display: 'Plus Jakarta Sans', var(--font-family-sans);
+  --font-family-mono: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+
+  /* Font Sizes - Fluid Typography */
+  --font-size-xs: clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem);
+  --font-size-sm: clamp(0.875rem, 0.8rem + 0.375vw, 1rem);
+  --font-size-base: clamp(1rem, 0.9rem + 0.5vw, 1.125rem);
+  --font-size-lg: clamp(1.125rem, 1rem + 0.625vw, 1.25rem);
+  --font-size-xl: clamp(1.25rem, 1.1rem + 0.75vw, 1.5rem);
+  --font-size-2xl: clamp(1.5rem, 1.25rem + 1.25vw, 2rem);
+  --font-size-3xl: clamp(1.875rem, 1.5rem + 1.875vw, 2.5rem);
+  --font-size-4xl: clamp(2.25rem, 1.75rem + 2.5vw, 3rem);
+  --font-size-5xl: clamp(3rem, 2rem + 5vw, 4.5rem);
+  --font-size-6xl: clamp(3.75rem, 2.5rem + 6.25vw, 6rem);
+
+  /* Line Heights */
+  --line-height-tight: 1.1;
+  --line-height-snug: 1.25;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.625;
+  --line-height-loose: 2;
+
+  /* Font Weights */
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --font-weight-extrabold: 800;
+
+  /* Letter Spacing */
+  --letter-spacing-tighter: -0.05em;
+  --letter-spacing-tight: -0.025em;
+  --letter-spacing-normal: 0;
+  --letter-spacing-wide: 0.025em;
+  --letter-spacing-wider: 0.05em;
+  --letter-spacing-widest: 0.1em;
+
+  /* -------------------------------------------------------------------------
+     Spacing Scale
+     Based on 4px grid (0.25rem)
+     ------------------------------------------------------------------------- */
+  --space-0: 0;
+  --space-px: 1px;
+  --space-0-5: 0.125rem; /* 2px */
+  --space-1: 0.25rem; /* 4px */
+  --space-1-5: 0.375rem; /* 6px */
+  --space-2: 0.5rem; /* 8px */
+  --space-2-5: 0.625rem; /* 10px */
+  --space-3: 0.75rem; /* 12px */
+  --space-3-5: 0.875rem; /* 14px */
+  --space-4: 1rem; /* 16px */
+  --space-5: 1.25rem; /* 20px */
+  --space-6: 1.5rem; /* 24px */
+  --space-7: 1.75rem; /* 28px */
+  --space-8: 2rem; /* 32px */
+  --space-9: 2.25rem; /* 36px */
+  --space-10: 2.5rem; /* 40px */
+  --space-11: 2.75rem; /* 44px */
+  --space-12: 3rem; /* 48px */
+  --space-14: 3.5rem; /* 56px */
+  --space-16: 4rem; /* 64px */
+  --space-20: 5rem; /* 80px */
+  --space-24: 6rem; /* 96px */
+  --space-28: 7rem; /* 112px */
+  --space-32: 8rem; /* 128px */
+  --space-36: 9rem; /* 144px */
+  --space-40: 10rem; /* 160px */
+  --space-44: 11rem; /* 176px */
+  --space-48: 12rem; /* 192px */
+  --space-52: 13rem; /* 208px */
+  --space-56: 14rem; /* 224px */
+  --space-60: 15rem; /* 240px */
+  --space-64: 16rem; /* 256px */
+
+  /* -------------------------------------------------------------------------
+     Layout
+     ------------------------------------------------------------------------- */
+
+  /* Container Widths */
+  --container-sm: 640px;
+  --container-md: 768px;
+  --container-lg: 1024px;
+  --container-xl: 1280px;
+  --container-2xl: 1536px;
+
+  /* Content Width */
+  --content-width: min(90%, 1200px);
+  --content-width-narrow: min(90%, 800px);
+  --content-width-wide: min(95%, 1400px);
+
+  /* -------------------------------------------------------------------------
+     Borders & Shadows
+     ------------------------------------------------------------------------- */
+
+  /* Border Radius */
+  --radius-none: 0;
+  --radius-sm: 0.125rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+  --radius-2xl: 1rem;
+  --radius-3xl: 1.5rem;
+  --radius-full: 9999px;
+
+  /* Box Shadows */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1),
+    0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1),
+    0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+  --shadow-inner: inset 0 2px 4px 0 rgb(0 0 0 / 0.05);
+
+  /* Colored Shadows */
+  --shadow-primary: 0 10px 40px -10px rgb(59 130 246 / 0.4);
+  --shadow-secondary: 0 10px 40px -10px rgb(34 197 94 / 0.4);
+
+  /* -------------------------------------------------------------------------
+     Transitions & Animations
+     ------------------------------------------------------------------------- */
+
+  /* Durations */
+  --duration-75: 75ms;
+  --duration-100: 100ms;
+  --duration-150: 150ms;
+  --duration-200: 200ms;
+  --duration-300: 300ms;
+  --duration-500: 500ms;
+  --duration-700: 700ms;
+  --duration-1000: 1000ms;
+
+  /* Easing Functions */
+  --ease-linear: linear;
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  --ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+
+  /* -------------------------------------------------------------------------
+     Z-Index Scale
+     ------------------------------------------------------------------------- */
+  --z-below: -1;
+  --z-base: 0;
+  --z-above: 1;
+  --z-dropdown: 10;
+  --z-sticky: 20;
+  --z-fixed: 30;
+  --z-modal-backdrop: 40;
+  --z-modal: 50;
+  --z-popover: 60;
+  --z-tooltip: 70;
+}
+
+/* Dark Mode Variables */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-background: var(--color-neutral-950);
+    --color-surface: var(--color-neutral-900);
+    --color-text-primary: var(--color-neutral-50);
+    --color-text-secondary: var(--color-neutral-400);
+    --color-border: var(--color-neutral-800);
+  }
+}
+
+/* Light Mode Variables (default) */
+:root {
+  --color-background: var(--color-neutral-0);
+  --color-surface: var(--color-neutral-50);
+  --color-text-primary: var(--color-neutral-900);
+  --color-text-secondary: var(--color-neutral-600);
+  --color-border: var(--color-neutral-200);
+}
+
+/* =============================================================================
+   2. RESET & BASE STYLES
+   ============================================================================= */
+
+/**
+ * Modern CSS Reset
+ * Based on Andy Bell's Modern CSS Reset with accessibility enhancements
+ */
+
+/* Box sizing rules */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* Remove default margin and padding */
+* {
+  margin: 0;
+  padding: 0;
+}
+
+/* Prevent font size inflation */
+html {
+  -moz-text-size-adjust: none;
+  -webkit-text-size-adjust: none;
+  text-size-adjust: none;
+  scroll-behavior: smooth;
+}
+
+/* Remove default list styles */
+ul[role='list'],
+ol[role='list'] {
+  list-style: none;
+}
+
+/* Set core body defaults */
+body {
+  min-height: 100vh;
+  font-family: var(--font-family-sans);
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-normal);
+  color: var(--color-text-primary);
+  background-color: var(--color-background);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Set shorter line heights on headings and interactive elements */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+button,
+input,
+label {
+  line-height: var(--line-height-snug);
+}
+
+/* Balance text wrapping on headings */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  text-wrap: balance;
+}
+
+/* Improve paragraph readability */
+p {
+  text-wrap: pretty;
+  max-width: 75ch;
+}
+
+/* A elements that don't have a class get default styles */
+a:not([class]) {
+  text-decoration-skip-ink: auto;
+  color: var(--color-primary-600);
+}
+
+/* Make images easier to work with */
+img,
+picture,
+video,
+canvas,
+svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+/* Inherit fonts for inputs and buttons */
+input,
+button,
+textarea,
+select {
+  font: inherit;
+}
+
+/* Make sure textareas without a rows attribute are not tiny */
+textarea:not([rows]) {
+  min-height: 10em;
+}
+
+/* Anything that has been anchored to should have extra scroll margin */
+:target {
+  scroll-margin-block: 5ex;
+}
+
+/* =============================================================================
+   3. TYPOGRAPHY SYSTEM
+   ============================================================================= */
+
+/* Headings */
+.heading-1,
+.h1 {
+  font-family: var(--font-family-display);
+  font-size: var(--font-size-5xl);
+  font-weight: var(--font-weight-extrabold);
+  line-height: var(--line-height-tight);
+  letter-spacing: var(--letter-spacing-tight);
+  color: var(--color-text-primary);
+}
+
+.heading-2,
+.h2 {
+  font-family: var(--font-family-display);
+  font-size: var(--font-size-4xl);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-tight);
+  letter-spacing: var(--letter-spacing-tight);
+  color: var(--color-text-primary);
+}
+
+.heading-3,
+.h3 {
+  font-family: var(--font-family-display);
+  font-size: var(--font-size-3xl);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-snug);
+  color: var(--color-text-primary);
+}
+
+.heading-4,
+.h4 {
+  font-family: var(--font-family-display);
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-snug);
+  color: var(--color-text-primary);
+}
+
+.heading-5,
+.h5 {
+  font-family: var(--font-family-display);
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-snug);
+  color: var(--color-text-primary);
+}
+
+.heading-6,
+.h6 {
+  font-family: var(--font-family-display);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-snug);
+  color: var(--color-text-primary);
+}
+
+/* Body Text */
+.text-body-lg {
+  font-size: var(--font-size-lg);
+  line-height: var(--line-height-relaxed);
+}
+
+.text-body {
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-relaxed);
+}
+
+.text-body-sm {
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+}
+
+/* Specialized Text */
+.text-lead {
+  font-size: var(--font-size-xl);
+  line-height: var(--line-height-relaxed);
+  color: var(--color-text-secondary);
+}
+
+.text-caption {
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-normal);
+  color: var(--color-text-secondary);
+}
+
+.text-overline {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--letter-spacing-widest);
+  text-transform: uppercase;
+  color: var(--color-primary-600);
+}
+
+/* =============================================================================
+   4. COLOR UTILITIES
+   ============================================================================= */
+
+/* Text Colors */
+.text-primary {
+  color: var(--color-primary-600);
+}
+.text-secondary {
+  color: var(--color-text-secondary);
+}
+.text-muted {
+  color: var(--color-neutral-400);
+}
+.text-success {
+  color: var(--color-success);
+}
+.text-warning {
+  color: var(--color-warning);
+}
+.text-error {
+  color: var(--color-error);
+}
+
+/* Background Colors */
+.bg-primary {
+  background-color: var(--color-primary-500);
+}
+.bg-primary-light {
+  background-color: var(--color-primary-50);
+}
+.bg-secondary {
+  background-color: var(--color-secondary-500);
+}
+.bg-secondary-light {
+  background-color: var(--color-secondary-50);
+}
+.bg-surface {
+  background-color: var(--color-surface);
+}
+.bg-muted {
+  background-color: var(--color-neutral-100);
+}
+
+/* Gradient Backgrounds */
+.bg-gradient-primary {
+  background: linear-gradient(
+    135deg,
+    var(--color-primary-500),
+    var(--color-primary-700)
+  );
+}
+
+.bg-gradient-hero {
+  background: linear-gradient(
+    135deg,
+    var(--color-primary-600) 0%,
+    var(--color-primary-500) 50%,
+    var(--color-secondary-500) 100%
+  );
+}
+
+.bg-gradient-mesh {
+  background-color: var(--color-primary-50);
+  background-image: radial-gradient(
+      at 40% 20%,
+      var(--color-primary-100) 0px,
+      transparent 50%
+    ),
+    radial-gradient(at 80% 0%, var(--color-secondary-100) 0px, transparent 50%),
+    radial-gradient(at 0% 50%, var(--color-primary-100) 0px, transparent 50%),
+    radial-gradient(at 80% 50%, var(--color-secondary-100) 0px, transparent 50%),
+    radial-gradient(at 0% 100%, var(--color-primary-100) 0px, transparent 50%);
+}
+
+/* =============================================================================
+   5. SPACING UTILITIES
+   ============================================================================= */
+
+/* Margin utilities */
+.m-auto {
+  margin: auto;
+}
+.mx-auto {
+  margin-inline: auto;
+}
+.my-auto {
+  margin-block: auto;
+}
+
+/* Common spacing classes */
+.mt-4 {
+  margin-top: var(--space-4);
+}
+.mt-8 {
+  margin-top: var(--space-8);
+}
+.mt-12 {
+  margin-top: var(--space-12);
+}
+.mt-16 {
+  margin-top: var(--space-16);
+}
+.mt-20 {
+  margin-top: var(--space-20);
+}
+.mt-24 {
+  margin-top: var(--space-24);
+}
+
+.mb-4 {
+  margin-bottom: var(--space-4);
+}
+.mb-8 {
+  margin-bottom: var(--space-8);
+}
+.mb-12 {
+  margin-bottom: var(--space-12);
+}
+.mb-16 {
+  margin-bottom: var(--space-16);
+}
+
+.py-8 {
+  padding-block: var(--space-8);
+}
+.py-12 {
+  padding-block: var(--space-12);
+}
+.py-16 {
+  padding-block: var(--space-16);
+}
+.py-20 {
+  padding-block: var(--space-20);
+}
+.py-24 {
+  padding-block: var(--space-24);
+}
+.py-32 {
+  padding-block: var(--space-32);
+}
+
+.px-4 {
+  padding-inline: var(--space-4);
+}
+.px-6 {
+  padding-inline: var(--space-6);
+}
+.px-8 {
+  padding-inline: var(--space-8);
+}
+
+/* Section spacing */
+.section {
+  padding-block: var(--space-16);
+}
+
+.section-lg {
+  padding-block: var(--space-24);
+}
+
+.section-xl {
+  padding-block: var(--space-32);
+}
+
+@media (min-width: 768px) {
+  .section {
+    padding-block: var(--space-20);
+  }
+
+  .section-lg {
+    padding-block: var(--space-32);
+  }
+
+  .section-xl {
+    padding-block: var(--space-40);
+  }
+}
+
+/* =============================================================================
+   6. LAYOUT UTILITIES
+   ============================================================================= */
+
+/* Container */
+.container {
+  width: 100%;
+  max-width: var(--container-xl);
+  margin-inline: auto;
+  padding-inline: var(--space-4);
+}
+
+@media (min-width: 640px) {
+  .container {
+    padding-inline: var(--space-6);
+  }
+}
+
+@media (min-width: 1024px) {
+  .container {
+    padding-inline: var(--space-8);
+  }
+}
+
+.container-narrow {
+  max-width: var(--container-md);
+}
+
+.container-wide {
+  max-width: var(--container-2xl);
+}
+
+/* Flexbox */
+.flex {
+  display: flex;
+}
+.inline-flex {
+  display: inline-flex;
+}
+.flex-col {
+  flex-direction: column;
+}
+.flex-row {
+  flex-direction: row;
+}
+.flex-wrap {
+  flex-wrap: wrap;
+}
+.items-start {
+  align-items: flex-start;
+}
+.items-center {
+  align-items: center;
+}
+.items-end {
+  align-items: flex-end;
+}
+.justify-start {
+  justify-content: flex-start;
+}
+.justify-center {
+  justify-content: center;
+}
+.justify-end {
+  justify-content: flex-end;
+}
+.justify-between {
+  justify-content: space-between;
+}
+.gap-2 {
+  gap: var(--space-2);
+}
+.gap-4 {
+  gap: var(--space-4);
+}
+.gap-6 {
+  gap: var(--space-6);
+}
+.gap-8 {
+  gap: var(--space-8);
+}
+.gap-12 {
+  gap: var(--space-12);
+}
+
+/* Grid */
+.grid {
+  display: grid;
+}
+
+.grid-cols-1 {
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+}
+.grid-cols-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.grid-cols-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.grid-cols-4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+@media (min-width: 640px) {
+  .sm\:grid-cols-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 768px) {
+  .md\:grid-cols-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .md\:grid-cols-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .lg\:grid-cols-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .lg\:grid-cols-4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+/* Text alignment */
+.text-left {
+  text-align: left;
+}
+.text-center {
+  text-align: center;
+}
+.text-right {
+  text-align: right;
+}
+
+/* =============================================================================
+   7. RESPONSIVE BREAKPOINTS
+   ============================================================================= */
+
+/**
+ * Breakpoint Reference:
+ * - sm: 640px  (Small tablets, large phones)
+ * - md: 768px  (Tablets)
+ * - lg: 1024px (Small laptops, tablets landscape)
+ * - xl: 1280px (Desktops)
+ * - 2xl: 1536px (Large desktops)
+ *
+ * Mobile-first approach: Default styles for mobile, then add breakpoints
+ */
+
+/* Hide/Show utilities */
+.hidden {
+  display: none;
+}
+.block {
+  display: block;
+}
+
+@media (min-width: 640px) {
+  .sm\:hidden {
+    display: none;
+  }
+  .sm\:block {
+    display: block;
+  }
+  .sm\:flex {
+    display: flex;
+  }
+}
+
+@media (min-width: 768px) {
+  .md\:hidden {
+    display: none;
+  }
+  .md\:block {
+    display: block;
+  }
+  .md\:flex {
+    display: flex;
+  }
+}
+
+@media (min-width: 1024px) {
+  .lg\:hidden {
+    display: none;
+  }
+  .lg\:block {
+    display: block;
+  }
+  .lg\:flex {
+    display: flex;
+  }
+}
+
+/* =============================================================================
+   8. ANIMATION DEFINITIONS
+   ============================================================================= */
+
+/**
+ * Animation classes for marketing page interactions.
+ * All animations respect user's reduced motion preferences.
+ */
+
+/* Respect reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Keyframe Definitions */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fadeInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes slideInUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes bounce {
+  0%,
+  100% {
+    transform: translateY(-5%);
+    animation-timing-function: cubic-bezier(0.8, 0, 1, 1);
+  }
+  50% {
+    transform: translateY(0);
+    animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Animation Classes */
+.animate-fade-in {
+  animation: fadeIn var(--duration-500) var(--ease-out) forwards;
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp var(--duration-500) var(--ease-out) forwards;
+}
+
+.animate-fade-in-down {
+  animation: fadeInDown var(--duration-500) var(--ease-out) forwards;
+}
+
+.animate-fade-in-left {
+  animation: fadeInLeft var(--duration-500) var(--ease-out) forwards;
+}
+
+.animate-fade-in-right {
+  animation: fadeInRight var(--duration-500) var(--ease-out) forwards;
+}
+
+.animate-scale-in {
+  animation: scaleIn var(--duration-300) var(--ease-out) forwards;
+}
+
+.animate-slide-in-up {
+  animation: slideInUp var(--duration-500) var(--ease-out) forwards;
+}
+
+.animate-pulse {
+  animation: pulse 2s var(--ease-in-out) infinite;
+}
+
+.animate-bounce {
+  animation: bounce 1s infinite;
+}
+
+.animate-float {
+  animation: float 3s var(--ease-in-out) infinite;
+}
+
+/* Staggered Animation Delays */
+.delay-100 {
+  animation-delay: 100ms;
+}
+.delay-200 {
+  animation-delay: 200ms;
+}
+.delay-300 {
+  animation-delay: 300ms;
+}
+.delay-400 {
+  animation-delay: 400ms;
+}
+.delay-500 {
+  animation-delay: 500ms;
+}
+.delay-700 {
+  animation-delay: 700ms;
+}
+.delay-1000 {
+  animation-delay: 1000ms;
+}
+
+/* Scroll-triggered animations (requires JS to add .is-visible) */
+.animate-on-scroll {
+  opacity: 0;
+  transform: translateY(20px);
+  transition:
+    opacity var(--duration-500) var(--ease-out),
+    transform var(--duration-500) var(--ease-out);
+}
+
+.animate-on-scroll.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Hover animations */
+.hover-lift {
+  transition: transform var(--duration-200) var(--ease-out);
+}
+
+.hover-lift:hover {
+  transform: translateY(-4px);
+}
+
+.hover-scale {
+  transition: transform var(--duration-200) var(--ease-out);
+}
+
+.hover-scale:hover {
+  transform: scale(1.02);
+}
+
+.hover-glow {
+  transition: box-shadow var(--duration-200) var(--ease-out);
+}
+
+.hover-glow:hover {
+  box-shadow: var(--shadow-primary);
+}
+
+/* =============================================================================
+   9. ACCESSIBILITY UTILITIES
+   ============================================================================= */
+
+/**
+ * Screen reader only content
+ * Hides content visually but keeps it accessible to screen readers
+ */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/**
+ * Not screen reader only
+ * Undoes .sr-only to make content visible again
+ */
+.not-sr-only {
+  position: static;
+  width: auto;
+  height: auto;
+  padding: 0;
+  margin: 0;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
+}
+
+/**
+ * Focus visible styles
+ * Enhanced focus indicators for keyboard navigation
+ */
+.focus-visible:focus-visible,
+:focus-visible {
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: 2px;
+}
+
+/* Skip to main content link */
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: var(--space-4);
+  z-index: var(--z-tooltip);
+  padding: var(--space-3) var(--space-4);
+  background-color: var(--color-primary-600);
+  color: var(--color-neutral-0);
+  font-weight: var(--font-weight-semibold);
+  text-decoration: none;
+  border-radius: var(--radius-md);
+  transition: top var(--duration-200) var(--ease-out);
+}
+
+.skip-link:focus {
+  top: var(--space-4);
+}
+
+/**
+ * Reduced motion alternatives
+ * Provides static alternatives for animated content
+ */
+@media (prefers-reduced-motion: reduce) {
+  .animate-on-scroll {
+    opacity: 1;
+    transform: none;
+  }
+
+  .hover-lift:hover,
+  .hover-scale:hover {
+    transform: none;
+  }
+}
+
+/**
+ * High contrast mode support
+ */
+@media (prefers-contrast: more) {
+  :root {
+    --color-text-primary: #000000;
+    --color-text-secondary: #333333;
+    --color-border: #000000;
+  }
+
+  a:not([class]) {
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+}
+
+/**
+ * Print styles
+ */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    font-size: 12pt;
+    line-height: 1.5;
+    color: #000;
+    background: #fff;
+  }
+
+  a {
+    text-decoration: underline;
+  }
+
+  a[href]::after {
+    content: ' (' attr(href) ')';
+    font-size: 0.8em;
+  }
+}

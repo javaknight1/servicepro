@@ -1,0 +1,67 @@
+{
+  "customers": [
+    {
+      "id": "cust-001",
+      "firstName": "John",
+      "lastName": "Smith",
+      "email": "john.smith@example.com",
+      "phone": "(555) 123-4567",
+      "companyName": "Smith Enterprises",
+      "address": {
+        "street": "123 Main St",
+        "city": "Austin",
+        "state": "TX",
+        "zip": "78701"
+      },
+      "status": "active",
+      "totalJobs": 5,
+      "totalInvoiced": 2500.0,
+      "outstandingBalance": 500.0,
+      "createdAt": "2024-01-01T00:00:00Z"
+    },
+    {
+      "id": "cust-002",
+      "firstName": "Jane",
+      "lastName": "Doe",
+      "email": "jane.doe@example.com",
+      "phone": "(555) 987-6543",
+      "companyName": null,
+      "address": {
+        "street": "456 Oak Ave",
+        "city": "Dallas",
+        "state": "TX",
+        "zip": "75201"
+      },
+      "status": "active",
+      "totalJobs": 3,
+      "totalInvoiced": 1200.0,
+      "outstandingBalance": 0.0,
+      "createdAt": "2024-01-10T00:00:00Z"
+    },
+    {
+      "id": "cust-003",
+      "firstName": "Bob",
+      "lastName": "Johnson",
+      "email": "bob.johnson@example.com",
+      "phone": "(555) 456-7890",
+      "companyName": "Johnson & Co",
+      "address": {
+        "street": "789 Pine Blvd",
+        "city": "Houston",
+        "state": "TX",
+        "zip": "77001"
+      },
+      "status": "inactive",
+      "totalJobs": 10,
+      "totalInvoiced": 5000.0,
+      "outstandingBalance": 1500.0,
+      "createdAt": "2023-06-15T00:00:00Z"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "pageSize": 10,
+    "total": 3,
+    "totalPages": 1
+  }
+}

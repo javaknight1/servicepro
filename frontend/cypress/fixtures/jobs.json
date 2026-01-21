@@ -1,0 +1,102 @@
+{
+  "jobs": [
+    {
+      "id": "job-001",
+      "title": "Lawn Mowing Service",
+      "description": "Regular weekly lawn mowing for front and back yard",
+      "customerId": "cust-001",
+      "customerName": "John Smith",
+      "status": "scheduled",
+      "scheduledDate": "2024-02-01",
+      "scheduledTime": "09:00",
+      "duration": 60,
+      "price": 75.0,
+      "assignedTo": {
+        "id": "user-456",
+        "name": "Mike Tech"
+      },
+      "address": {
+        "street": "123 Main St",
+        "city": "Austin",
+        "state": "TX",
+        "zip": "78701"
+      },
+      "notes": "Customer has dogs, please close gate after entering",
+      "createdAt": "2024-01-15T00:00:00Z"
+    },
+    {
+      "id": "job-002",
+      "title": "Pool Cleaning",
+      "description": "Full pool cleaning and chemical balance check",
+      "customerId": "cust-001",
+      "customerName": "John Smith",
+      "status": "completed",
+      "scheduledDate": "2024-01-25",
+      "scheduledTime": "14:00",
+      "duration": 90,
+      "price": 150.0,
+      "assignedTo": {
+        "id": "user-789",
+        "name": "Sarah Pool"
+      },
+      "address": {
+        "street": "123 Main St",
+        "city": "Austin",
+        "state": "TX",
+        "zip": "78701"
+      },
+      "completedAt": "2024-01-25T16:00:00Z",
+      "createdAt": "2024-01-10T00:00:00Z"
+    },
+    {
+      "id": "job-003",
+      "title": "HVAC Maintenance",
+      "description": "Annual AC unit inspection and filter replacement",
+      "customerId": "cust-002",
+      "customerName": "Jane Doe",
+      "status": "in_progress",
+      "scheduledDate": "2024-01-30",
+      "scheduledTime": "10:00",
+      "duration": 120,
+      "price": 200.0,
+      "assignedTo": {
+        "id": "user-456",
+        "name": "Mike Tech"
+      },
+      "address": {
+        "street": "456 Oak Ave",
+        "city": "Dallas",
+        "state": "TX",
+        "zip": "75201"
+      },
+      "createdAt": "2024-01-20T00:00:00Z"
+    },
+    {
+      "id": "job-004",
+      "title": "Plumbing Repair",
+      "description": "Fix leaking kitchen faucet",
+      "customerId": "cust-003",
+      "customerName": "Bob Johnson",
+      "status": "cancelled",
+      "scheduledDate": "2024-01-28",
+      "scheduledTime": "11:00",
+      "duration": 60,
+      "price": 125.0,
+      "assignedTo": null,
+      "address": {
+        "street": "789 Pine Blvd",
+        "city": "Houston",
+        "state": "TX",
+        "zip": "77001"
+      },
+      "cancelledReason": "Customer cancelled due to scheduling conflict",
+      "createdAt": "2024-01-22T00:00:00Z"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "pageSize": 10,
+    "total": 4,
+    "totalPages": 1
+  }
+}

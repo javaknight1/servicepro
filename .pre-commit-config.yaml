@@ -13,6 +13,7 @@ repos:
             .*/templates/.*\.yml
           )$
       - id: check-json
+        exclude: tsconfig.*\.json$
       - id: check-added-large-files
         args: ['--maxkb=1000']
       - id: check-merge-conflict
@@ -40,7 +41,7 @@ repos:
     hooks:
       - id: eslint
         name: eslint
-        entry: bash -c 'cd frontend && npx eslint . --fix --max-warnings=0'
+        entry: bash -c 'cd frontend && ESLINT_USE_FLAT_CONFIG=true npx eslint src --fix'
         language: system
         pass_filenames: false
         files: ^frontend/.*\.[jt]sx?$

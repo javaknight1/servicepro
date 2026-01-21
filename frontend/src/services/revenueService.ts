@@ -1,0 +1,213 @@
+import api from './api';
+import {
+  RevenueReportQuery,
+  RevenueReportResponse,
+  RevenueDataPoint,
+  RevenueByCategoryData,
+  CustomerRevenueData,
+  ReportExportRequest,
+  ReportExportResponse,
+  RevenueChartData,
+} from '../types/revenue';
+
+const REPORTS_BASE_URL = '/v1/reports/revenue';
+
+/**
+ * Get comprehensive revenue report
+ */
+export const getRevenueReport = async (
+  query: RevenueReportQuery
+): Promise<RevenueReportResponse> => {
+  const params = new URLSearchParams();
+
+  if (query.start_date) params.append('start_date', query.start_date);
+  if (query.end_date) params.append('end_date', query.end_date);
+  if (query.period_type) params.append('period_type', query.period_type);
+  if (query.currency) params.append('currency', query.currency);
+  if (query.category) params.append('category', query.category);
+  if (query.user_id) params.append('user_id', query.user_id);
+
+  const response = await api.get<RevenueReportResponse>(
+    `${REPORTS_BASE_URL}?${params.toString()}`
+  );
+  return response.data;
+};
+
+/**
+ * Get revenue time series data
+ */
+export const getRevenueTimeSeries = async (
+  query: RevenueReportQuery
+): Promise<RevenueDataPoint[]> => {
+  const params = new URLSearchParams();
+
+  if (query.start_date) params.append('start_date', query.start_date);
+  if (query.end_date) params.append('end_date', query.end_date);
+  if (query.period_type) params.append('period_type', query.period_type);
+  if (query.currency) params.append('currency', query.currency);
+
+  const response = await api.get<{ data: RevenueDataPoint[] }>(
+    `${REPORTS_BASE_URL}/time-series?${params.toString()}`
+  );
+  return response.data.data;
+};
+
+/**
+ * Get revenue category breakdown
+ */
+export const getRevenueCategoryBreakdown = async (
+  query: RevenueReportQuery
+): Promise<RevenueByCategoryData[]> => {
+  const params = new URLSearchParams();
+
+  if (query.start_date) params.append('start_date', query.start_date);
+  if (query.end_date) params.append('end_date', query.end_date);
+  if (query.currency) params.append('currency', query.currency);
+
+  const response = await api.get<{ data: RevenueByCategoryData[] }>(
+    `${REPORTS_BASE_URL}/categories?${params.toString()}`
+  );
+  return response.data.data;
+};
+
+/**
+ * Get top customers by revenue
+ */
+export const getTopCustomers = async (
+  query: RevenueReportQuery,
+  limit: number = 10
+): Promise<CustomerRevenueData[]> => {
+  const params = new URLSearchParams();
+
+  if (query.start_date) params.append('start_date', query.start_date);
+  if (query.end_date) params.append('end_date', query.end_date);
+  params.append('limit', limit.toString());
+
+  const response = await api.get<{ data: CustomerRevenueData[] }>(
+    `${REPORTS_BASE_URL}/customers?${params.toString()}`
+  );
+  return response.data.data;
+};
+
+/**
+ * Get chart-formatted revenue data
+ */
+export const getRevenueChartData = async (
+  query: RevenueReportQuery,
+  chartType: 'line' | 'bar' | 'pie' = 'line'
+): Promise<RevenueChartData> => {
+  const params = new URLSearchParams();
+
+  if (query.start_date) params.append('start_date', query.start_date);
+  if (query.end_date) params.append('end_date', query.end_date);
+  if (query.period_type) params.append('period_type', query.period_type);
+  params.append('chart_type', chartType);
+
+  const response = await api.get<RevenueChartData>(
+    `${REPORTS_BASE_URL}/chart-data?${params.toString()}`
+  );
+  return response.data;
+};
+
+/**
+ * Export revenue report
+ */
+export const exportRevenueReport = async (
+  request: ReportExportRequest
+): Promise<ReportExportResponse | Blob> => {
+  const response = await api.post<ReportExportResponse | Blob>(
+    `${REPORTS_BASE_URL}/export`,
+    request,
+    {
+      responseType: request.format === 'csv' ? 'blob' : 'json',
+    }
+  );
+  return response.data;
+};
+
+/**
+ * Download CSV export directly
+ */
+export const downloadCSVExport = async (
+  query: RevenueReportQuery,
+  filename: string = 'revenue_report.csv'
+): Promise<void> => {
+  const request: ReportExportRequest = {
+    query,
+    format: 'csv',
+    include_sections: ['summary', 'timeseries', 'categories'],
+    filename,
+  };
+
+  const response = await api.post(`${REPORTS_BASE_URL}/export`, request, {
+    responseType: 'blob',
+  });
+
+  // Create download link
+  const blob = new Blob([response.data], { type: 'text/csv' });
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', filename);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+};
+
+/**
+ * Download JSON export
+ */
+export const downloadJSONExport = async (
+  query: RevenueReportQuery,
+  filename: string = 'revenue_report.json'
+): Promise<void> => {
+  const report = await getRevenueReport(query);
+
+  const blob = new Blob([JSON.stringify(report, null, 2)], {
+    type: 'application/json',
+  });
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', filename);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+};
+
+/**
+ * Refresh revenue cache
+ */
+export const refreshRevenueCache = async (
+  periodType: string,
+  periodStart: string,
+  periodEnd: string
+): Promise<{ message: string }> => {
+  const params = new URLSearchParams({
+    period_type: periodType,
+    period_start: periodStart,
+    period_end: periodEnd,
+  });
+
+  const response = await api.post<{ message: string }>(
+    `${REPORTS_BASE_URL}/cache/refresh?${params.toString()}`
+  );
+  return response.data;
+};
+
+// Named export for index.ts re-export
+export const revenueService = {
+  getRevenueReport,
+  getRevenueTimeSeries,
+  getRevenueCategoryBreakdown,
+  getTopCustomers,
+  getRevenueChartData,
+  exportRevenueReport,
+  downloadCSVExport,
+  downloadJSONExport,
+  refreshRevenueCache,
+};
+
+export default revenueService;

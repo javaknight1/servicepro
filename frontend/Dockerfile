@@ -1,7 +1,11 @@
 # Build stage
-FROM node:18-alpine AS builder
+FROM node:22-alpine AS builder
 
 WORKDIR /app
+
+# Build arguments for environment variables
+ARG VITE_API_URL=/api
+ENV VITE_API_URL=$VITE_API_URL
 
 # Copy package files
 COPY package*.json ./
@@ -21,8 +25,11 @@ FROM nginx:alpine
 # Copy built assets from builder
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Copy custom nginx configuration
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Copy custom nginx configuration as template
+COPY nginx.conf /etc/nginx/templates/default.conf.template
+
+# Default backend URL (can be overridden at runtime)
+ENV BACKEND_URL=http://backend:8080
 
 # Create a non-root user
 RUN addgroup -g 1000 appuser && \
@@ -30,6 +37,7 @@ RUN addgroup -g 1000 appuser && \
     chown -R appuser:appuser /usr/share/nginx/html && \
     chown -R appuser:appuser /var/cache/nginx && \
     chown -R appuser:appuser /var/log/nginx && \
+    chown -R appuser:appuser /etc/nginx/conf.d && \
     touch /var/run/nginx.pid && \
     chown -R appuser:appuser /var/run/nginx.pid
 

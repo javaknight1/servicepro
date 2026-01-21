@@ -1,5 +1,8 @@
 // ESLint v9+ flat config for React + TypeScript
-// Note: Requires dependencies to be installed via package.json
+import tsParser from '@typescript-eslint/parser';
+import tsPlugin from '@typescript-eslint/eslint-plugin';
+import reactHooksPlugin from 'eslint-plugin-react-hooks';
+import reactRefreshPlugin from 'eslint-plugin-react-refresh';
 
 export default [
   {
@@ -12,10 +15,71 @@ export default [
       '*.config.ts',
       'public/**',
       'helm/**',
+      'cypress/**',
+      'scripts/**',
     ],
   },
   {
-    files: ['**/*.{js,jsx,ts,tsx}'],
+    files: ['**/*.{ts,tsx}'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      parser: tsParser,
+      parserOptions: {
+        ecmaFeatures: {
+          jsx: true,
+        },
+      },
+      globals: {
+        window: 'readonly',
+        document: 'readonly',
+        navigator: 'readonly',
+        console: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+        setInterval: 'readonly',
+        clearInterval: 'readonly',
+        fetch: 'readonly',
+        Promise: 'readonly',
+        process: 'readonly',
+        React: 'readonly',
+      },
+    },
+    plugins: {
+      '@typescript-eslint': tsPlugin,
+      'react-hooks': reactHooksPlugin,
+      'react-refresh': reactRefreshPlugin,
+    },
+    rules: {
+      // Disable base rule - TypeScript handles this
+      'no-unused-vars': 'off',
+
+      // TypeScript rules
+      '@typescript-eslint/no-unused-vars': [
+        'warn',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+      ],
+      '@typescript-eslint/no-explicit-any': 'warn',
+
+      // React hooks rules
+      'react-hooks/rules-of-hooks': 'error',
+      'react-hooks/exhaustive-deps': 'warn',
+
+      // React refresh
+      'react-refresh/only-export-components': [
+        'warn',
+        { allowConstantExport: true },
+      ],
+
+      // General rules
+      'no-console': ['warn', { allow: ['warn', 'error'] }],
+      'no-debugger': 'error',
+      'prefer-const': 'error',
+      'no-var': 'error',
+    },
+  },
+  {
+    files: ['**/*.{js,jsx}'],
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'module',
@@ -36,11 +100,14 @@ export default [
         fetch: 'readonly',
         Promise: 'readonly',
         process: 'readonly',
+        require: 'readonly',
+        module: 'readonly',
+        __dirname: 'readonly',
+        Buffer: 'readonly',
       },
     },
     rules: {
-      // Basic rules that work without plugins
-      'no-console': ['warn', { allow: ['warn', 'error'] }],
+      'no-console': 'off',
       'no-debugger': 'error',
       'no-unused-vars': [
         'error',
@@ -51,64 +118,3 @@ export default [
     },
   },
 ];
-
-// When you install dependencies, replace with the full config:
-/*
-import js from '@eslint/js';
-import typescript from '@typescript-eslint/eslint-plugin';
-import tsParser from '@typescript-eslint/parser';
-import react from 'eslint-plugin-react';
-import reactHooks from 'eslint-plugin-react-hooks';
-import jsxA11y from 'eslint-plugin-jsx-a11y';
-import importPlugin from 'eslint-plugin-import';
-import prettier from 'eslint-config-prettier';
-
-export default [
-  { ignores: ['node_modules', 'dist', 'build', 'coverage', 'public', 'helm'] },
-  js.configs.recommended,
-  {
-    files: ['** /*.{js,jsx,ts,tsx}'],
-    languageOptions: {
-      parser: tsParser,
-      parserOptions: {
-        ecmaFeatures: { jsx: true },
-        project: './tsconfig.json',
-      },
-    },
-    plugins: {
-      '@typescript-eslint': typescript,
-      react,
-      'react-hooks': reactHooks,
-      'jsx-a11y': jsxA11y,
-      import: importPlugin,
-    },
-    rules: {
-      ...typescript.configs.recommended.rules,
-      ...react.configs.recommended.rules,
-      'react/react-in-jsx-scope': 'off',
-      'react-hooks/rules-of-hooks': 'error',
-      'react-hooks/exhaustive-deps': 'warn',
-      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
-    },
-    settings: { react: { version: 'detect' } },
-  },
-  prettier,
-];
-
-Required dependencies in package.json:
-{
-  "devDependencies": {
-    "@eslint/js": "^9.15.0",
-    "@typescript-eslint/eslint-plugin": "^8.0.0",
-    "@typescript-eslint/parser": "^8.0.0",
-    "eslint": "^9.15.0",
-    "eslint-config-prettier": "^9.1.0",
-    "eslint-plugin-import": "^2.29.1",
-    "eslint-plugin-jsx-a11y": "^6.8.0",
-    "eslint-plugin-react": "^7.33.2",
-    "eslint-plugin-react-hooks": "^4.6.0",
-    "prettier": "^3.1.0",
-    "typescript": "^5.3.3"
-  }
-}
-*/
