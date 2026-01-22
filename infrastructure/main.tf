@@ -41,6 +41,18 @@ locals {
 }
 
 # -----------------------------------------------------------------------------
+# Resource Group Module
+# -----------------------------------------------------------------------------
+module "resource_group" {
+  source = "./modules/resource-group"
+
+  name_prefix  = local.name_prefix
+  project_name = var.project_name
+  environment  = var.environment
+  tags         = local.common_tags
+}
+
+# -----------------------------------------------------------------------------
 # VPC Module
 # -----------------------------------------------------------------------------
 module "vpc" {

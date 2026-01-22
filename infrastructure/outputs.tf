@@ -20,6 +20,16 @@ output "name_prefix" {
   value       = local.name_prefix
 }
 
+output "resource_group_name" {
+  description = "AWS Resource Group name"
+  value       = module.resource_group.name
+}
+
+output "resource_group_arn" {
+  description = "AWS Resource Group ARN"
+  value       = module.resource_group.arn
+}
+
 # -----------------------------------------------------------------------------
 # VPC
 # -----------------------------------------------------------------------------
