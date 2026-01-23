@@ -17,18 +17,140 @@ import (
 
 // setupTestDB creates an in-memory SQLite database for testing
 func setupTestDB(t *testing.T) *gorm.DB {
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{
+		DisableForeignKeyConstraintWhenMigrating: true,
+	})
 	require.NoError(t, err)
 
-	// Auto-migrate models
-	err = db.AutoMigrate(
-		&models.Invoice{},
-		&models.InvoiceLine{},
-		&models.InvoicePayment{},
-		&models.PaymentTerm{},
-		&models.TaxRate{},
-		&models.User{},
-	)
+	// Manually create tables with SQLite-compatible syntax
+	// (AutoMigrate fails with PostgreSQL-specific uuid_generate_v4())
+	err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS users (
+			id TEXT PRIMARY KEY,
+			email TEXT NOT NULL,
+			password_hash TEXT,
+			role TEXT DEFAULT 'user',
+			email_verified INTEGER DEFAULT 0,
+			verification_sent_at DATETIME,
+			failed_login_count INTEGER DEFAULT 0,
+			last_failed_login_at DATETIME,
+			locked_until DATETIME,
+			created_at DATETIME,
+			updated_at DATETIME,
+			deleted_at DATETIME
+		)
+	`).Error
+	require.NoError(t, err)
+
+	err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS payment_terms (
+			id TEXT PRIMARY KEY,
+			name TEXT NOT NULL,
+			description TEXT,
+			term_type TEXT NOT NULL DEFAULT 'net_30',
+			days_until_due INTEGER,
+			discount_percentage REAL,
+			discount_days INTEGER,
+			late_fee_percentage REAL,
+			late_fee_amount REAL,
+			grace_period_days INTEGER DEFAULT 0,
+			is_default INTEGER DEFAULT 0,
+			is_active INTEGER DEFAULT 1,
+			created_at DATETIME,
+			updated_at DATETIME
+		)
+	`).Error
+	require.NoError(t, err)
+
+	err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS tax_rates (
+			id TEXT PRIMARY KEY,
+			name TEXT NOT NULL,
+			description TEXT,
+			rate REAL NOT NULL,
+			tax_type TEXT NOT NULL DEFAULT 'sales_tax',
+			region TEXT,
+			is_compound INTEGER DEFAULT 0,
+			is_active INTEGER DEFAULT 1,
+			effective_date DATE,
+			expiry_date DATE,
+			created_at DATETIME,
+			updated_at DATETIME
+		)
+	`).Error
+	require.NoError(t, err)
+
+	err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS invoices (
+			id TEXT PRIMARY KEY,
+			invoice_number TEXT DEFAULT '',
+			customer_id TEXT NOT NULL,
+			job_id TEXT,
+			quote_id TEXT,
+			status TEXT NOT NULL DEFAULT 'draft',
+			issue_date DATE NOT NULL,
+			due_date DATE NOT NULL,
+			sent_date DATETIME,
+			viewed_date DATETIME,
+			paid_date DATETIME,
+			subtotal REAL DEFAULT 0,
+			tax_amount REAL DEFAULT 0,
+			discount_amount REAL DEFAULT 0,
+			total_amount REAL DEFAULT 0,
+			amount_paid REAL DEFAULT 0,
+			payment_term_id TEXT,
+			tax_rate_id TEXT,
+			po_number TEXT,
+			notes TEXT,
+			terms_and_conditions TEXT,
+			footer_text TEXT,
+			created_by TEXT NOT NULL,
+			updated_by TEXT,
+			created_at DATETIME,
+			updated_at DATETIME,
+			deleted_at DATETIME
+		)
+	`).Error
+	require.NoError(t, err)
+
+	err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS invoice_lines (
+			id TEXT PRIMARY KEY,
+			invoice_id TEXT NOT NULL,
+			description TEXT NOT NULL,
+			quantity REAL NOT NULL DEFAULT 1,
+			unit_price REAL NOT NULL,
+			unit_of_measure TEXT DEFAULT 'each',
+			discount_percentage REAL DEFAULT 0,
+			discount_amount REAL DEFAULT 0,
+			taxable INTEGER DEFAULT 1,
+			tax_rate REAL DEFAULT 0,
+			tax_amount REAL DEFAULT 0,
+			line_total REAL DEFAULT 0,
+			line_total_with_tax REAL DEFAULT 0,
+			product_id TEXT,
+			service_id TEXT,
+			sort_order INTEGER DEFAULT 0,
+			created_at DATETIME,
+			updated_at DATETIME
+		)
+	`).Error
+	require.NoError(t, err)
+
+	err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS invoice_payments (
+			id TEXT PRIMARY KEY,
+			invoice_id TEXT NOT NULL,
+			amount REAL NOT NULL,
+			payment_method TEXT NOT NULL,
+			payment_date DATE NOT NULL,
+			reference_number TEXT,
+			notes TEXT,
+			created_by TEXT NOT NULL,
+			created_at DATETIME,
+			updated_at DATETIME
+		)
+	`).Error
 	require.NoError(t, err)
 
 	return db

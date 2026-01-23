@@ -101,6 +101,10 @@ profile.cov
 /backend/coverage.out
 /backend/coverage.html
 
+# Export test artifacts
+/backend/internal/services/test_exports/
+test_exports/
+
 # Cypress artifacts
 /frontend/cypress/screenshots/
 /frontend/cypress/videos/

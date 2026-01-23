@@ -332,10 +332,6 @@ func TestBillingService_RecordUsage(t *testing.T) {
 	billingService := NewBillingService(nil, db, planService, logger)
 	ctx := context.Background()
 
-	// Migrate UsageRecord
-	err := db.AutoMigrate(&UsageRecord{})
-	require.NoError(t, err)
-
 	subscriptionID := uuid.New()
 
 	t.Run("records usage successfully", func(t *testing.T) {
@@ -368,9 +364,6 @@ func TestBillingService_GetUsageSummary(t *testing.T) {
 	planService := NewPlanService(nil, db, logger)
 	billingService := NewBillingService(nil, db, planService, logger)
 	ctx := context.Background()
-
-	err := db.AutoMigrate(&UsageRecord{})
-	require.NoError(t, err)
 
 	subscriptionID := uuid.New()
 	now := time.Now()

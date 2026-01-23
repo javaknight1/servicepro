@@ -342,6 +342,11 @@ func (acm *AccessControlMiddleware) checkRequestSize(c *gin.Context) bool {
 
 // checkRouteRateLimit validates route-specific rate limits
 func (acm *AccessControlMiddleware) checkRouteRateLimit(c *gin.Context) bool {
+	// Skip rate limiting if Redis client is not configured
+	if acm.redisClient == nil {
+		return true
+	}
+
 	// Build route key
 	routeKey := fmt.Sprintf("%s:%s", c.Request.Method, c.Request.URL.Path)
 

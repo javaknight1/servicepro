@@ -39,7 +39,7 @@ func (r *PermissionRepository) GetUserPermissions(userID uuid.UUID) ([]models.Pe
 			r.id IN (
 				SELECT ur.role_id FROM user_roles ur
 				WHERE ur.user_id = ?
-				AND (ur.expires_at IS NULL OR ur.expires_at > NOW())
+				AND (ur.expires_at IS NULL OR ur.expires_at > CURRENT_TIMESTAMP)
 			)
 			OR
 			-- Check tenant_users table (tenant-specific roles)
@@ -71,7 +71,7 @@ func (r *PermissionRepository) GetUserRoles(userID uuid.UUID) ([]models.Role, er
 			r.id IN (
 				SELECT ur.role_id FROM user_roles ur
 				WHERE ur.user_id = ?
-				AND (ur.expires_at IS NULL OR ur.expires_at > NOW())
+				AND (ur.expires_at IS NULL OR ur.expires_at > CURRENT_TIMESTAMP)
 			)
 			OR
 			r.id IN (
@@ -153,7 +153,7 @@ func (r *PermissionRepository) GetUserHighestRole(userID uuid.UUID) (*models.Rol
 			r.id IN (
 				SELECT ur.role_id FROM user_roles ur
 				WHERE ur.user_id = ?
-				AND (ur.expires_at IS NULL OR ur.expires_at > NOW())
+				AND (ur.expires_at IS NULL OR ur.expires_at > CURRENT_TIMESTAMP)
 			)
 			OR
 			r.id IN (

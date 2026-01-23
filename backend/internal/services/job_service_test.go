@@ -297,7 +297,21 @@ func TestJobService_CreateJob_Success(t *testing.T) {
 	}
 
 	mockCustomerRepo.On("GetByID", customerID).Return(customer, nil)
-	mockJobRepo.On("Create", mock.AnythingOfType("*models.Job")).Return(nil)
+	mockJobRepo.On("Create", mock.AnythingOfType("*models.Job")).Return(nil).Run(func(args mock.Arguments) {
+		// Set the ID so GetByID can find it
+		job := args.Get(0).(*models.Job)
+		if job.ID == uuid.Nil {
+			job.ID = uuid.New()
+		}
+	})
+	mockJobRepo.On("GetByID", mock.AnythingOfType("uuid.UUID")).Return(&models.Job{
+		ID:         uuid.New(),
+		CustomerID: customerID,
+		Title:      req.Title,
+		JobType:    req.JobType,
+		Priority:   models.JobPriorityNormal,
+		Status:     models.JobStatusScheduled,
+	}, nil)
 
 	response, err := service.CreateJob(req, createdBy)
 
@@ -483,6 +497,8 @@ func TestJobService_CompleteJob_Success(t *testing.T) {
 
 	job := createTestJob()
 	job.Status = models.JobStatusInProgress
+	now := time.Now()
+	job.ActualStartAt = &now // Set actual start time for completion
 
 	mockJobRepo.On("GetByID", job.ID).Return(job, nil)
 	mockJobRepo.On("Update", mock.AnythingOfType("*models.Job")).Return(nil)

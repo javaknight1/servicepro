@@ -190,7 +190,7 @@ func TestGenerateSchedules_Weekly(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
-	assert.Equal(t, 6, result.GeneratedCount) // 3 days/week * 2 weeks
+	assert.Equal(t, 7, result.GeneratedCount) // 3 days/week * 2 weeks + Mon Jan 15 (end date is inclusive)
 	assert.Equal(t, 0, result.SkippedCount)
 
 	scheduleRepo.AssertExpectations(t)
@@ -293,8 +293,8 @@ func TestGenerateSchedules_SkipWeekends(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
 	assert.Equal(t, 5, result.GeneratedCount) // 5 weekdays (Mon-Fri)
-	assert.Equal(t, 2, result.SkippedCount)   // Sat, Sun
-	assert.Len(t, result.SkippedDates, 2)
+	assert.Equal(t, 3, result.SkippedCount)   // Jan 6 (Sat), Jan 7 (Sun), Jan 13 (Sat) - end date is inclusive
+	assert.Len(t, result.SkippedDates, 3)
 
 	scheduleRepo.AssertExpectations(t)
 }

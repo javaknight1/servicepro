@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/csv"
 	"encoding/json"
+	"fmt"
 	"testing"
 	"time"
 
@@ -18,7 +19,11 @@ import (
 )
 
 func setupExportTestDB(t *testing.T) *gorm.DB {
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	// Use a unique database name per test with shared cache mode
+	// This allows goroutines within the same test to access the same in-memory database
+	// while keeping tests isolated from each other
+	dbName := fmt.Sprintf("file:%s?mode=memory&cache=shared", t.Name())
+	db, err := gorm.Open(sqlite.Open(dbName), &gorm.Config{})
 	require.NoError(t, err)
 
 	// Create customers table
@@ -654,7 +659,8 @@ func BenchmarkExportExcel_1000Records(b *testing.B) {
 }
 
 func setupExportBenchmarkDB(b *testing.B, count int) *gorm.DB {
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	// Use shared cache mode so all goroutines access the same in-memory database
+	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
 	if err != nil {
 		b.Fatal(err)
 	}

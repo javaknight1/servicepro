@@ -102,6 +102,20 @@ func setupTestEnvironment(t *testing.T) (*gorm.DB, *redis.Client, *miniredis.Min
 	`).Error
 	require.NoError(t, err)
 
+	err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS tenant_users (
+			id TEXT PRIMARY KEY,
+			tenant_id TEXT NOT NULL,
+			user_id TEXT NOT NULL,
+			role_id TEXT NOT NULL,
+			is_active INTEGER DEFAULT 1,
+			created_at DATETIME,
+			updated_at DATETIME,
+			deleted_at DATETIME
+		)
+	`).Error
+	require.NoError(t, err)
+
 	// Setup Redis
 	mr, err := miniredis.Run()
 	require.NoError(t, err)

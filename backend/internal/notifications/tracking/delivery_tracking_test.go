@@ -5,6 +5,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // =============================================================================
@@ -20,7 +22,7 @@ func createTestRecord(t *testing.T, tracker *DeliveryTracker, customerID, channe
 	ctx := context.Background()
 
 	input := &TrackDeliveryInput{
-		MessageID:  "msg-" + time.Now().Format("150405.000000"),
+		MessageID:  "msg-" + uuid.New().String(),
 		CustomerID: customerID,
 		Channel:    channel,
 		Recipient:  "+1234567890",

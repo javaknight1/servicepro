@@ -29,6 +29,80 @@ func setupTestDB(t *testing.T) *gorm.DB {
 	err = db.AutoMigrate(&Plan{}, &PlanFeature{}, &Subscription{}, &SubscriptionEvent{})
 	require.NoError(t, err)
 
+	// Create subscription_invoices table manually for SQLite compatibility
+	err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS subscription_invoices (
+			id TEXT PRIMARY KEY,
+			subscription_id TEXT NOT NULL,
+			customer_id TEXT NOT NULL,
+			stripe_invoice_id TEXT UNIQUE,
+			subtotal INTEGER DEFAULT 0,
+			tax INTEGER DEFAULT 0,
+			total INTEGER DEFAULT 0,
+			amount_due INTEGER DEFAULT 0,
+			amount_paid INTEGER DEFAULT 0,
+			amount_remaining INTEGER DEFAULT 0,
+			currency TEXT DEFAULT 'USD',
+			status TEXT NOT NULL,
+			collection_method TEXT,
+			period_start DATETIME,
+			period_end DATETIME,
+			due_date DATETIME,
+			paid_at DATETIME,
+			voided_at DATETIME,
+			hosted_invoice_url TEXT,
+			invoice_pdf TEXT,
+			description TEXT,
+			metadata TEXT,
+			created_at DATETIME,
+			updated_at DATETIME
+		)
+	`).Error
+	require.NoError(t, err)
+
+	// Create invoice_line_items table
+	err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS invoice_line_items (
+			id TEXT PRIMARY KEY,
+			invoice_id TEXT NOT NULL,
+			description TEXT,
+			amount INTEGER DEFAULT 0,
+			quantity INTEGER DEFAULT 1,
+			unit_amount INTEGER DEFAULT 0,
+			currency TEXT DEFAULT 'USD',
+			period_start DATETIME,
+			period_end DATETIME,
+			proration INTEGER DEFAULT 0,
+			created_at DATETIME
+		)
+	`).Error
+	require.NoError(t, err)
+
+	// Create subscription_usage_records table manually for SQLite compatibility
+	err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS subscription_usage_records (
+			id TEXT PRIMARY KEY,
+			subscription_id TEXT NOT NULL,
+			metric_key TEXT NOT NULL,
+			quantity INTEGER DEFAULT 0,
+			timestamp DATETIME,
+			idempotency_key TEXT,
+			created_at DATETIME
+		)
+	`).Error
+	require.NoError(t, err)
+
+	// Create index on subscription_usage_records but skip unique constraint for testing
+	err = db.Exec(`
+		CREATE INDEX IF NOT EXISTS idx_usage_subscription ON subscription_usage_records(subscription_id)
+	`).Error
+	require.NoError(t, err)
+
+	err = db.Exec(`
+		CREATE INDEX IF NOT EXISTS idx_usage_metric ON subscription_usage_records(metric_key)
+	`).Error
+	require.NoError(t, err)
+
 	return db
 }
 

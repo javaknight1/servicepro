@@ -9,7 +9,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
@@ -62,10 +61,14 @@ func (m *MockPermissionChecker) GetUserHighestRole(ctx context.Context, userID u
 
 func setupTestRouter() *gin.Engine {
 	gin.SetMode(gin.TestMode)
-	return gin.New()
+	router := gin.New()
+	// Trust all proxies for testing so X-Forwarded-For is used
+	router.SetTrustedProxies([]string{"0.0.0.0/0", "::/0"})
+	router.ForwardedByClientIP = true
+	return router
 }
 
-func setupTestMiddleware() (*AccessControlMiddleware, *redis.Client) {
+func setupTestMiddleware() *AccessControlMiddleware {
 	// Create test configuration
 	cfg := &config.AccessControlConfig{
 		RouteProtection: config.RouteProtectionConfig{
@@ -96,20 +99,13 @@ func setupTestMiddleware() (*AccessControlMiddleware, *redis.Client) {
 		},
 	}
 
-	// Create Redis client for testing
-	redisClient := redis.NewClient(&redis.Options{
-		Addr: "localhost:6379",
-		DB:   1, // Use DB 1 for tests
-	})
-
-	// Create mock permission checker (will be nil for basic tests)
-	return NewAccessControlMiddleware(cfg, nil, redisClient), redisClient
+	// Create middleware without Redis for tests that don't need rate limiting
+	return NewAccessControlMiddleware(cfg, nil, nil)
 }
 
 func TestRouteProtection_IPBlacklist(t *testing.T) {
 	router := setupTestRouter()
-	middleware, redisClient := setupTestMiddleware()
-	defer redisClient.Close()
+	middleware := setupTestMiddleware()
 
 	router.Use(middleware.RouteProtection())
 	router.GET("/test", func(c *gin.Context) {
@@ -119,6 +115,7 @@ func TestRouteProtection_IPBlacklist(t *testing.T) {
 	// Test with blacklisted IP
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("GET", "/test", nil)
+	req.RemoteAddr = "127.0.0.1:12345" // Set a valid remote addr for the proxy
 	req.Header.Set("X-Forwarded-For", "192.168.1.100")
 	router.ServeHTTP(w, req)
 
@@ -127,6 +124,7 @@ func TestRouteProtection_IPBlacklist(t *testing.T) {
 	// Test with allowed IP
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("GET", "/test", nil)
+	req.RemoteAddr = "127.0.0.1:12345" // Set a valid remote addr for the proxy
 	req.Header.Set("X-Forwarded-For", "192.168.1.50")
 	router.ServeHTTP(w, req)
 
@@ -135,8 +133,7 @@ func TestRouteProtection_IPBlacklist(t *testing.T) {
 
 func TestRouteProtection_RequestSizeLimit(t *testing.T) {
 	router := setupTestRouter()
-	middleware, redisClient := setupTestMiddleware()
-	defer redisClient.Close()
+	middleware := setupTestMiddleware()
 
 	router.Use(middleware.RouteProtection())
 	router.POST("/test", func(c *gin.Context) {
@@ -154,8 +151,7 @@ func TestRouteProtection_RequestSizeLimit(t *testing.T) {
 
 func TestSecurityHeaders(t *testing.T) {
 	router := setupTestRouter()
-	middleware, redisClient := setupTestMiddleware()
-	defer redisClient.Close()
+	middleware := setupTestMiddleware()
 
 	router.Use(middleware.ApplySecurityHeaders())
 	router.GET("/test", func(c *gin.Context) {
@@ -175,8 +171,7 @@ func TestSecurityHeaders(t *testing.T) {
 
 func TestCORS_AllowedOrigin(t *testing.T) {
 	router := setupTestRouter()
-	middleware, redisClient := setupTestMiddleware()
-	defer redisClient.Close()
+	middleware := setupTestMiddleware()
 
 	router.Use(middleware.CORS())
 	router.GET("/test", func(c *gin.Context) {
@@ -196,8 +191,7 @@ func TestCORS_AllowedOrigin(t *testing.T) {
 
 func TestCORS_BlockedOrigin(t *testing.T) {
 	router := setupTestRouter()
-	middleware, redisClient := setupTestMiddleware()
-	defer redisClient.Close()
+	middleware := setupTestMiddleware()
 
 	router.Use(middleware.CORS())
 	router.GET("/test", func(c *gin.Context) {
@@ -215,8 +209,7 @@ func TestCORS_BlockedOrigin(t *testing.T) {
 
 func TestCORS_PreflightRequest(t *testing.T) {
 	router := setupTestRouter()
-	middleware, redisClient := setupTestMiddleware()
-	defer redisClient.Close()
+	middleware := setupTestMiddleware()
 
 	router.Use(middleware.CORS())
 	router.OPTIONS("/test", func(c *gin.Context) {
@@ -584,8 +577,7 @@ func TestConfig_IsIPAllowed(t *testing.T) {
 
 func BenchmarkRouteProtection(b *testing.B) {
 	router := setupTestRouter()
-	middleware, redisClient := setupTestMiddleware()
-	defer redisClient.Close()
+	middleware := setupTestMiddleware()
 
 	router.Use(middleware.RouteProtection())
 	router.GET("/test", func(c *gin.Context) {
@@ -602,8 +594,7 @@ func BenchmarkRouteProtection(b *testing.B) {
 
 func BenchmarkSecurityHeaders(b *testing.B) {
 	router := setupTestRouter()
-	middleware, redisClient := setupTestMiddleware()
-	defer redisClient.Close()
+	middleware := setupTestMiddleware()
 
 	router.Use(middleware.ApplySecurityHeaders())
 	router.GET("/test", func(c *gin.Context) {

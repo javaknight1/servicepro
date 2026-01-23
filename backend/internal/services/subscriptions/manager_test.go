@@ -274,15 +274,17 @@ func TestManager_ListSubscriptions(t *testing.T) {
 	customerID := uuid.New()
 	for i := 0; i < 3; i++ {
 		sub := &Subscription{
-			ID:                 uuid.New(),
-			CustomerID:         customerID,
-			PlanID:             plan.ID,
-			Status:             SubscriptionStatusActive,
-			BillingCycle:       BillingCycleMonthly,
-			StartDate:          time.Now(),
-			CurrentPeriodStart: time.Now(),
-			CurrentPeriodEnd:   time.Now().Add(30 * 24 * time.Hour),
-			Currency:           "USD",
+			ID:                   uuid.New(),
+			CustomerID:           customerID,
+			PlanID:               plan.ID,
+			StripeSubscriptionID: uuid.New().String(), // Unique value for each subscription
+			StripeCustomerID:     uuid.New().String(),
+			Status:               SubscriptionStatusActive,
+			BillingCycle:         BillingCycleMonthly,
+			StartDate:            time.Now(),
+			CurrentPeriodStart:   time.Now(),
+			CurrentPeriodEnd:     time.Now().Add(30 * 24 * time.Hour),
+			Currency:             "USD",
 		}
 		err := db.Create(sub).Error
 		require.NoError(t, err)
