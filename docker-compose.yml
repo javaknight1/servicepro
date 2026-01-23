@@ -49,7 +49,7 @@ services:
     volumes:
       - ./backend:/app
       - go-mod-cache:/go/pkg/mod
-    command: go run cmd/api/main.go
+    command: go run cmd/api/cmd/main.go
 
   frontend:
     image: node:22-alpine
