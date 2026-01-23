@@ -128,33 +128,14 @@ temp/
 *.backup
 
 # -----------------------------------------------------------------------------
-# AWS & Infrastructure
+# Fly.io
 # -----------------------------------------------------------------------------
-.terraform/
-*.tfstate
-*.tfstate.*
-terraform.tfvars
-.terraform.lock.hcl
-*.tfvars
-!terraform.tfvars.example
-!*.tfvars.example
-crash.log
-override.tf
-override.tf.json
-*_override.tf
-*_override.tf.json
+.fly/
+fly.toml.local
+*.fly.toml.local
 
-# Terraform plan files
-*.tfplan
-
-# -----------------------------------------------------------------------------
-# Kubernetes & Helm
-# -----------------------------------------------------------------------------
-*.kubeconfig
-kubeconfig
-charts/*.tgz
-/frontend/helm/charts/
-/backend/helm/charts/
+# Fly.io secrets (if using fly secrets import)
+fly-secrets.env
 
 # -----------------------------------------------------------------------------
 # Secrets & Credentials
