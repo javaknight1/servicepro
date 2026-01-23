@@ -27,5 +27,9 @@ pnpm-lock.yaml
 **/templates/*.yaml
 **/templates/*.yml
 
+# Go templates (contain {{...}} syntax that Prettier can't parse)
+backend/templates/**/*.html
+backend/templates/**/*.mjml
+
 # Docker
 Dockerfile*
