@@ -2,17 +2,6 @@
 
 A comprehensive service management platform for field service businesses. Built with Go (backend) and React (frontend).
 
-## Table of Contents
-
-- [Overview](#overview)
-- [Tech Stack](#tech-stack)
-- [Getting Started](#getting-started)
-- [Project Structure](#project-structure)
-- [Development](#development)
-- [API Documentation](#api-documentation)
-- [Deployment](#deployment)
-- [Contributing](#contributing)
-
 ## Overview
 
 ServicePro provides tools for managing:
@@ -29,296 +18,116 @@ ServicePro provides tools for managing:
 ### Backend
 
 - **Language**: Go 1.21+
-- **Framework**: Gin (HTTP router)
-- **ORM**: GORM
-- **Database**: PostgreSQL 15+
+- **Framework**: Gin
+- **Database**: PostgreSQL 15+ with GORM
 - **Cache**: Redis
-- **Authentication**: JWT with refresh tokens
-- **Email**: AWS SES
+- **Authentication**: JWT with bcrypt
 
 ### Frontend
 
 - **Framework**: React 18 with TypeScript
 - **Build Tool**: Vite
-- **State Management**: Zustand (client state) + React Query (server state)
+- **State**: Zustand + React Query
 - **Styling**: Tailwind CSS
-- **HTTP Client**: Axios
 
-### Infrastructure
-
-- **Cloud**: AWS (EKS, RDS, ElastiCache, S3, SES)
-- **Container Orchestration**: Kubernetes
-- **IaC**: Terraform
-- **CI/CD**: GitHub Actions + ArgoCD
-
-## Getting Started
+## Quick Start
 
 ### Prerequisites
 
-- Go 1.21+
-- Node.js 18+
 - Docker & Docker Compose
-- PostgreSQL 15+ (or use Docker)
-- Redis (or use Docker)
+- Go 1.21+ (for backend development)
+- Node.js 18+ (for frontend development)
 
-### Quick Start
+### Start with Docker
 
-1. **Clone the repository**
-   \`\`\`bash
-   git clone https://github.com/javaknight1/servicepro.git
-   cd servicepro
-   \`\`\`
+```bash
+# Start all services
+make dev
 
-2. **Start dependencies with Docker**
-   \`\`\`bash
-   docker-compose up -d postgres redis
-   \`\`\`
+# View logs
+make logs
 
-3. **Setup backend**
-   \`\`\`bash
-   cd backend
-   cp .env.example .env
+# Stop services
+make stop
+```
 
-   # Edit .env with your configuration
+### Access the Application
 
-   go mod download
-   make migrate
-   make run
-   \`\`\`
-
-4. **Setup frontend**
-   \`\`\`bash
-   cd frontend
-   cp .env.example .env
-   npm install
-   npm run dev
-   \`\`\`
-
-5. **Access the application**
-   - Frontend: http://localhost:3000
-   - Backend API: http://localhost:8080
-   - API Health: http://localhost:8080/health
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:8080
+- API Health: http://localhost:8080/health
 
 ## Project Structure
 
-\`\`\`
+```
 servicepro/
-├── backend/ # Go backend
-│ ├── cmd/api/ # Application entry point
-│ ├── config/ # Configuration management
-│ ├── internal/
-│ │ ├── api/
-│ │ │ ├── handlers/ # HTTP handlers
-│ │ │ ├── middleware/ # Auth, rate limiting, etc.
-│ │ │ ├── routes/ # Route definitions
-│ │ │ └── validators/ # Request validation
-│ │ ├── models/ # Domain models
-│ │ ├── repository/ # Data access layer
-│ │ └── services/ # Business logic
-│ ├── migrations/ # Database migrations
-│ ├── pkg/ # Shared packages
-│ └── templates/ # Email/PDF templates
-│
-├── frontend/ # React frontend
-│ ├── src/
-│ │ ├── components/ # Reusable UI components
-│ │ ├── pages/ # Page components
-│ │ ├── services/ # API service layer
-│ │ ├── store/ # Zustand stores
-│ │ ├── hooks/ # Custom React hooks
-│ │ ├── types/ # TypeScript types
-│ │ └── utils/ # Utility functions
-│ └── public/ # Static assets
-│
-├── infrastructure/
-│ └── terraform/ # AWS infrastructure
-│
-├── gitops/ # ArgoCD configurations
-│ └── values/ # Environment-specific values
-│
-├── docker-compose.yml # Local development
-└── Makefile # Build commands
-\`\`\`
+├── backend/              # Go backend service
+├── frontend/             # React frontend app
+├── docs/                 # Developer documentation
+│   ├── getting-started/  # Setup guides
+│   ├── api/              # API reference
+│   ├── architecture/     # System design
+│   ├── features/         # Feature docs
+│   └── observability/    # Monitoring docs
+├── help/                 # End-user documentation
+├── training/             # Training materials
+├── docker-compose.yml    # Local development
+└── Makefile              # Build commands
+```
+
+## Documentation
+
+| Topic             | Location                                                                   |
+| ----------------- | -------------------------------------------------------------------------- |
+| **Quick Start**   | [docs/getting-started/quick-start.md](docs/getting-started/quick-start.md) |
+| **Full Setup**    | [docs/getting-started/full-setup.md](docs/getting-started/full-setup.md)   |
+| **API Reference** | [docs/api/](docs/api/)                                                     |
+| **Architecture**  | [docs/architecture/](docs/architecture/)                                   |
+| **Help Center**   | [help/](help/)                                                             |
 
 ## Development
 
-### Backend Commands
+### Backend
 
-\`\`\`bash
+```bash
 cd backend
+make run        # Start server
+make test       # Run tests
+make lint       # Lint code
+```
 
-# Run the server
+### Frontend
 
-make run
-
-# Run tests
-
-make test
-
-# Run linting
-
-make lint
-
-# Run migrations
-
-make migrate
-
-# Generate API docs
-
-make docs
-\`\`\`
-
-### Frontend Commands
-
-\`\`\`bash
+```bash
 cd frontend
+npm run dev     # Development server
+npm run build   # Production build
+npm run test    # Run tests
+```
 
-# Development server
+### Useful Make Commands
 
-npm run dev
-
-# Build for production
-
-npm run build
-
-# Run tests
-
-npm run test
-
-# Lint code
-
-npm run lint
-
-# Type check
-
-npm run typecheck
-\`\`\`
-
-### Docker Compose
-
-\`\`\`bash
-
-# Start all services
-
-docker-compose up -d
-
-# Start specific services
-
-docker-compose up -d postgres redis
-
-# View logs
-
-docker-compose logs -f backend
-
-# Stop all services
-
-docker-compose down
-\`\`\`
-
-## API Documentation
-
-### Authentication
-
-All authenticated endpoints require a JWT token in the Authorization header:
-\`\`\`
-Authorization: Bearer <token>
-\`\`\`
-
-### Base URL
-
-\`\`\`
-Development: http://localhost:8080/api/v1
-Production: https://api.servicepro.com/api/v1
-\`\`\`
-
-### Key Endpoints
-
-| Method | Endpoint             | Description       |
-| ------ | -------------------- | ----------------- |
-| POST   | \`/auth/login\`      | User login        |
-| POST   | \`/auth/register\`   | User registration |
-| GET    | \`/customers\`       | List customers    |
-| POST   | \`/customers\`       | Create customer   |
-| GET    | \`/jobs\`            | List jobs         |
-| POST   | \`/jobs\`            | Create job        |
-| GET    | \`/quotes\`          | List quotes       |
-| POST   | \`/quotes\`          | Create quote      |
-| GET    | \`/invoices\`        | List invoices     |
-| POST   | \`/invoices\`        | Create invoice    |
-| GET    | \`/reports/revenue\` | Revenue report    |
-
-### Error Responses
-
-\`\`\`json
-{
-"error": "Error type",
-"message": "Human-readable message",
-"details": {}
-}
-\`\`\`
+```bash
+make dev        # Start all services with Docker
+make stop       # Stop all services
+make logs       # View service logs
+make test       # Run all tests
+make lint       # Run linters
+make clean      # Clean build artifacts
+```
 
 ## Deployment
 
-### Environments
-
-| Environment     | Purpose                   |
-| --------------- | ------------------------- |
-| \`development\` | Local development         |
-| \`staging\`     | Testing and QA            |
-| \`preprod\`     | Pre-production validation |
-| \`production\`  | Live environment          |
-
-### Infrastructure Setup
-
-\`\`\`bash
-cd infrastructure/terraform
-
-# Initialize
-
-make init ENV=staging
-
-# Plan changes
-
-make plan ENV=staging
-
-# Apply changes
-
-make apply ENV=staging
-\`\`\`
-
-### Kubernetes Deployment
-
-Deployments are managed via ArgoCD with Helm charts.
-
-\`\`\`bash
-
-# Deploy to staging
-
-kubectl apply -f gitops/applications/staging.yaml
-
-# Check deployment status
-
-kubectl get pods -n servicepro-staging
-\`\`\`
+> **Coming Soon**: Deployment documentation will be added once hosting infrastructure is finalized.
 
 ## Contributing
 
-1. Create a feature branch from \`master\`
+1. Create a feature branch from `master`
 2. Make your changes
 3. Run tests and linting
 4. Submit a pull request
 
-### Code Style
-
-- **Go**: Follow standard Go conventions, use \`gofmt\`
-- **TypeScript**: Follow ESLint/Prettier configuration
-- **Commits**: Use conventional commit messages
-
-### Pull Request Guidelines
-
-- Include tests for new functionality
-- Update documentation as needed
-- Ensure CI passes before requesting review
+See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 
 ## License
 
@@ -326,4 +135,5 @@ Proprietary - All rights reserved.
 
 ## Support
 
-For questions or issues, contact the development team.
+- **Help Center**: [/help](help/)
+- **Email**: support@servicepro.com
