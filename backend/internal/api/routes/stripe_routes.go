@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/javaknight1/servicepro/backend/config"
 	"github.com/javaknight1/servicepro/backend/internal/api/handlers"
 	"github.com/javaknight1/servicepro/backend/internal/api/middleware"
 	"github.com/javaknight1/servicepro/backend/internal/permissions"
@@ -12,30 +13,33 @@ import (
 )
 
 // SetupStripeRoutes configures all Stripe related routes (legacy without permissions)
-func SetupStripeRoutes(router *gin.RouterGroup, jwtSecret string) error {
-	// Load Stripe configuration from environment
-	config, err := stripeService.LoadFromEnv()
-	if err != nil {
-		log.Printf("Failed to load Stripe configuration: %v", err)
-		return err
-	}
-
-	// Create Stripe client
-	client, err := stripeService.NewClient(config)
+func SetupStripeRoutes(router *gin.RouterGroup, jwtSecret string, appCfg *config.Config) error {
+	// Create Stripe client using the main config
+	client, err := stripeService.NewClient(appCfg)
 	if err != nil {
 		log.Printf("Failed to create Stripe client: %v", err)
 		return err
 	}
 
 	// Create event processor and register default handlers
-	eventProcessor := stripeService.NewEventProcessor(config.Logger)
+	eventProcessor := stripeService.NewEventProcessor()
 	eventProcessor.RegisterDefaultHandlers()
 
 	// Create webhook handler
-	webhookHandler := stripeService.NewWebhookHandler(config, eventProcessor)
+	webhookHandler := stripeService.NewWebhookHandler(appCfg, eventProcessor)
 
 	// Create HTTP handler
 	stripeHandler := handlers.NewStripeHandler(client, webhookHandler)
+
+	// Determine environment for logging
+	environment := "unknown"
+	if len(appCfg.Stripe.SecretKey) > 8 {
+		if appCfg.Stripe.SecretKey[:8] == "sk_test_" {
+			environment = "test"
+		} else if appCfg.Stripe.SecretKey[:8] == "sk_live_" {
+			environment = "live"
+		}
+	}
 
 	// Stripe routes group
 	stripe := router.Group("/stripe")
@@ -78,7 +82,7 @@ func SetupStripeRoutes(router *gin.RouterGroup, jwtSecret string) error {
 		}
 	}
 
-	log.Printf("Stripe routes configured successfully in %s mode", config.Environment)
+	log.Printf("Stripe routes configured successfully in %s mode", environment)
 	return nil
 }
 
@@ -86,30 +90,34 @@ func SetupStripeRoutes(router *gin.RouterGroup, jwtSecret string) error {
 func SetupStripeRoutesWithPermissions(
 	router *gin.RouterGroup,
 	permMiddleware *middleware.PermissionMiddleware,
+	appCfg *config.Config,
 ) error {
-	// Load Stripe configuration from environment
-	config, err := stripeService.LoadFromEnv()
-	if err != nil {
-		log.Printf("Failed to load Stripe configuration: %v", err)
-		return err
-	}
-
-	// Create Stripe client
-	client, err := stripeService.NewClient(config)
+	// Create Stripe client using the main config
+	client, err := stripeService.NewClient(appCfg)
 	if err != nil {
 		log.Printf("Failed to create Stripe client: %v", err)
 		return err
 	}
 
 	// Create event processor and register default handlers
-	eventProcessor := stripeService.NewEventProcessor(config.Logger)
+	eventProcessor := stripeService.NewEventProcessor()
 	eventProcessor.RegisterDefaultHandlers()
 
 	// Create webhook handler
-	webhookHandler := stripeService.NewWebhookHandler(config, eventProcessor)
+	webhookHandler := stripeService.NewWebhookHandler(appCfg, eventProcessor)
 
 	// Create HTTP handler
 	stripeHandler := handlers.NewStripeHandler(client, webhookHandler)
+
+	// Determine environment for logging
+	environment := "unknown"
+	if len(appCfg.Stripe.SecretKey) > 8 {
+		if appCfg.Stripe.SecretKey[:8] == "sk_test_" {
+			environment = "test"
+		} else if appCfg.Stripe.SecretKey[:8] == "sk_live_" {
+			environment = "live"
+		}
+	}
 
 	// Stripe routes group
 	stripe := router.Group("/stripe")
@@ -183,6 +191,6 @@ func SetupStripeRoutesWithPermissions(
 		}
 	}
 
-	log.Printf("Stripe routes configured successfully with permissions in %s mode", config.Environment)
+	log.Printf("Stripe routes configured successfully with permissions in %s mode", environment)
 	return nil
 }

@@ -12,7 +12,7 @@ import (
 
 	"github.com/javaknight1/servicepro/backend/internal/repository"
 	"github.com/javaknight1/servicepro/backend/pkg/auth"
-	"github.com/javaknight1/servicepro/backend/pkg/email"
+	"github.com/javaknight1/servicepro/backend/pkg/clients/email"
 )
 
 const (
@@ -44,7 +44,7 @@ type EmailVerificationServiceInterface interface {
 // EmailVerificationService handles email verification operations
 type EmailVerificationService struct {
 	userRepo        repository.UserRepositoryInterface
-	emailService    email.EmailServiceInterface
+	emailClient     email.Client
 	redisClient     *redis.Client
 	verificationURL string // Frontend verification URL
 }
@@ -52,13 +52,13 @@ type EmailVerificationService struct {
 // NewEmailVerificationService creates a new email verification service
 func NewEmailVerificationService(
 	userRepo repository.UserRepositoryInterface,
-	emailService email.EmailServiceInterface,
+	emailClient email.Client,
 	redisClient *redis.Client,
 	verificationURL string,
 ) *EmailVerificationService {
 	return &EmailVerificationService{
 		userRepo:        userRepo,
-		emailService:    emailService,
+		emailClient:     emailClient,
 		redisClient:     redisClient,
 		verificationURL: verificationURL,
 	}
@@ -109,7 +109,7 @@ func (s *EmailVerificationService) SendVerificationEmail(userID uuid.UUID) error
 
 	// Send verification email asynchronously
 	go func() {
-		if err := s.emailService.SendEmailVerificationEmail(user.Email, verificationToken, s.verificationURL); err != nil {
+		if err := s.emailClient.SendEmailVerificationEmail(context.Background(), user.Email, verificationToken, s.verificationURL); err != nil {
 			log.Printf("Failed to send verification email to %s: %v", user.Email, err)
 		}
 	}()
@@ -162,7 +162,7 @@ func (s *EmailVerificationService) VerifyEmail(token string) error {
 
 	// Send confirmation email asynchronously
 	go func() {
-		if err := s.emailService.SendEmailVerificationSuccessEmail(user.Email); err != nil {
+		if err := s.emailClient.SendEmailVerificationSuccessEmail(context.Background(), user.Email); err != nil {
 			log.Printf("Failed to send verification success email to %s: %v", user.Email, err)
 		}
 	}()
@@ -238,7 +238,7 @@ func (s *EmailVerificationService) SendReminderEmails() error {
 		}
 
 		// Send reminder email (not async for batch processing)
-		if err := s.emailService.SendEmailVerificationReminderEmail(user.Email, verificationToken, s.verificationURL); err != nil {
+		if err := s.emailClient.SendEmailVerificationReminderEmail(context.Background(), user.Email, verificationToken, s.verificationURL); err != nil {
 			log.Printf("Failed to send verification reminder to %s: %v", user.Email, err)
 		} else {
 			log.Printf("Sent verification reminder to %s", user.Email)

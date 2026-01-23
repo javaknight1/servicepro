@@ -2,6 +2,7 @@ package webhooks
 
 import (
 	"io"
+	"log"
 	"net/http"
 	"strings"
 
@@ -19,14 +20,12 @@ import (
 // StripeWebhookHandler handles Stripe webhook requests
 type StripeWebhookHandler struct {
 	service *stripeservice.WebhookHandlerService
-	logger  stripeservice.StripeLogger
 }
 
 // NewStripeWebhookHandler creates a new Stripe webhook handler
-func NewStripeWebhookHandler(service *stripeservice.WebhookHandlerService, logger stripeservice.StripeLogger) *StripeWebhookHandler {
+func NewStripeWebhookHandler(service *stripeservice.WebhookHandlerService) *StripeWebhookHandler {
 	return &StripeWebhookHandler{
 		service: service,
-		logger:  logger,
 	}
 }
 
@@ -433,12 +432,10 @@ func (h *StripeWebhookHandler) RegisterAdminRoutes(router *gin.RouterGroup) {
 // =============================================================================
 
 func (h *StripeWebhookHandler) logError(message string, err error) {
-	if h.logger != nil {
-		if err != nil {
-			h.logger.Errorf("%s: %v", message, err)
-		} else {
-			h.logger.Errorf("%s", message)
-		}
+	if err != nil {
+		log.Printf("[Stripe Webhook] %s: %v", message, err)
+	} else {
+		log.Printf("[Stripe Webhook] %s", message)
 	}
 }
 

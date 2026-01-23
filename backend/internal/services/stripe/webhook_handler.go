@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"math"
 	"sync"
 	"time"
@@ -99,7 +100,6 @@ func DefaultWebhookHandlerConfig() *WebhookHandlerConfig {
 type WebhookHandlerService struct {
 	config    *WebhookHandlerConfig
 	db        *gorm.DB
-	logger    StripeLogger
 	notifier  WebhookNotifier
 	processor *EventProcessor
 
@@ -117,7 +117,6 @@ type WebhookHandlerService struct {
 func NewWebhookHandlerService(
 	config *WebhookHandlerConfig,
 	db *gorm.DB,
-	logger StripeLogger,
 	notifier WebhookNotifier,
 ) *WebhookHandlerService {
 	if config == nil {
@@ -128,12 +127,11 @@ func NewWebhookHandlerService(
 		notifier = &NoOpNotifier{}
 	}
 
-	processor := NewEventProcessor(logger)
+	processor := NewEventProcessor()
 
 	service := &WebhookHandlerService{
 		config:          config,
 		db:              db,
-		logger:          logger,
 		notifier:        notifier,
 		processor:       processor,
 		processedEvents: make(map[string]time.Time),
@@ -157,9 +155,7 @@ func (s *WebhookHandlerService) Start() {
 	// Start cleanup routine
 	go s.cleanupRoutine()
 
-	if s.logger != nil {
-		s.logger.Infof("Webhook handler service started")
-	}
+	log.Printf("[Stripe] Webhook handler service started")
 }
 
 // Stop stops the background processors
@@ -167,9 +163,7 @@ func (s *WebhookHandlerService) Stop() {
 	close(s.stopChan)
 	s.wg.Wait()
 
-	if s.logger != nil {
-		s.logger.Infof("Webhook handler service stopped")
-	}
+	log.Printf("[Stripe] Webhook handler service stopped")
 }
 
 // =============================================================================
@@ -206,17 +200,13 @@ func (s *WebhookHandlerService) ProcessWebhook(ctx context.Context, input *Webho
 	// Verify signature and parse event
 	event, err := s.verifyAndParseEvent(input.Payload, input.Signature)
 	if err != nil {
-		if s.logger != nil {
-			s.logger.Errorf("Signature verification failed: %v", err)
-		}
+		log.Printf("[Stripe] Signature verification failed: %v", err)
 		return &WebhookResult{Processed: false, Error: "signature verification failed"}, ErrInvalidSignature
 	}
 
 	// Check in-memory idempotency cache
 	if s.wasEventProcessed(event.ID) {
-		if s.logger != nil {
-			s.logger.Warnf("Event already processed (cache): %s", event.ID)
-		}
+		log.Printf("[Stripe] Event already processed (cache): %s", event.ID)
 		return &WebhookResult{
 			EventID:   event.ID,
 			EventType: string(event.Type),
@@ -232,9 +222,7 @@ func (s *WebhookHandlerService) ProcessWebhook(ctx context.Context, input *Webho
 		existing, err := s.getEventByExternalID(ctx, event.ID)
 		if err == nil && existing != nil {
 			if existing.Status == models.WebhookStatusProcessed {
-				if s.logger != nil {
-					s.logger.Warnf("Event already processed (db): %s", event.ID)
-				}
+				log.Printf("[Stripe] Event already processed (db): %s", event.ID)
 				return &WebhookResult{
 					EventID:   event.ID,
 					EventType: string(event.Type),
@@ -246,9 +234,7 @@ func (s *WebhookHandlerService) ProcessWebhook(ctx context.Context, input *Webho
 		} else {
 			// Save new event
 			if err := s.saveWebhookEvent(ctx, webhookEvent); err != nil {
-				if s.logger != nil {
-					s.logger.Errorf("Failed to save webhook event: %v", err)
-				}
+				log.Printf("[Stripe] Failed to save webhook event: %v", err)
 				// Continue processing even if DB save fails
 			}
 		}
@@ -280,10 +266,8 @@ func (s *WebhookHandlerService) ProcessWebhook(ctx context.Context, input *Webho
 	// Mark in cache
 	s.markEventProcessed(event.ID)
 
-	if s.logger != nil {
-		s.logger.Infof("Event processed successfully: id=%s, type=%s, time=%dms",
-			event.ID, event.Type, processingTime)
-	}
+	log.Printf("[Stripe] Event processed successfully: id=%s, type=%s, time=%dms",
+		event.ID, event.Type, processingTime)
 
 	return &WebhookResult{
 		EventID:   event.ID,
@@ -326,9 +310,7 @@ func (s *WebhookHandlerService) registerEventHandlers() {
 	s.processor.RegisterHandler(EventRefundCreated, s.handleRefundCreated)
 	s.processor.RegisterHandler(EventRefundUpdated, s.handleRefundUpdated)
 
-	if s.logger != nil {
-		s.logger.Infof("Registered webhook event handlers")
-	}
+	log.Printf("[Stripe] Registered webhook event handlers")
 }
 
 // =============================================================================
@@ -341,22 +323,20 @@ func (s *WebhookHandlerService) handlePaymentIntentSucceeded(ctx context.Context
 		return fmt.Errorf("failed to parse payment intent: %w", err)
 	}
 
-	if s.logger != nil {
-		s.logger.Infof("Payment intent succeeded: id=%s, amount=%d %s",
-			pi.ID, pi.Amount, pi.Currency)
-	}
+	log.Printf("[Stripe] Payment intent succeeded: id=%s, amount=%d %s",
+		pi.ID, pi.Amount, pi.Currency)
 
 	// Update payment record in database
 	if s.db != nil {
 		if err := s.updatePaymentStatus(ctx, pi.ID, models.PaymentStatusSucceeded, nil); err != nil {
-			s.logger.Errorf("Failed to update payment status: %v", err)
+			log.Printf("[Stripe] Failed to update payment status: %v", err)
 		}
 	}
 
 	// Send notification
 	if s.config.EnableNotifications {
 		if err := s.notifier.NotifyPaymentSucceeded(ctx, pi.ID, pi.Amount, pi.Currency); err != nil {
-			s.logger.Warnf("Failed to send payment success notification: %v", err)
+			log.Printf("[Stripe] Failed to send payment success notification: %v", err)
 		}
 	}
 
@@ -369,23 +349,21 @@ func (s *WebhookHandlerService) handlePaymentIntentFailed(ctx context.Context, e
 		return fmt.Errorf("failed to parse payment intent: %w", err)
 	}
 
-	if s.logger != nil {
-		s.logger.Warnf("Payment intent failed: id=%s, amount=%d %s",
-			pi.ID, pi.Amount, pi.Currency)
-	}
+	log.Printf("[Stripe] Payment intent failed: id=%s, amount=%d %s",
+		pi.ID, pi.Amount, pi.Currency)
 
 	// Update payment record
 	if s.db != nil {
 		failureMsg := "Payment failed"
 		if err := s.updatePaymentStatus(ctx, pi.ID, models.PaymentStatusFailed, &failureMsg); err != nil {
-			s.logger.Errorf("Failed to update payment status: %v", err)
+			log.Printf("[Stripe] Failed to update payment status: %v", err)
 		}
 	}
 
 	// Send notification
 	if s.config.EnableNotifications {
 		if err := s.notifier.NotifyPaymentFailed(ctx, pi.ID, "Payment processing failed"); err != nil {
-			s.logger.Warnf("Failed to send payment failure notification: %v", err)
+			log.Printf("[Stripe] Failed to send payment failure notification: %v", err)
 		}
 	}
 
@@ -398,13 +376,11 @@ func (s *WebhookHandlerService) handlePaymentIntentCanceled(ctx context.Context,
 		return fmt.Errorf("failed to parse payment intent: %w", err)
 	}
 
-	if s.logger != nil {
-		s.logger.Infof("Payment intent canceled: id=%s", pi.ID)
-	}
+	log.Printf("[Stripe] Payment intent canceled: id=%s", pi.ID)
 
 	if s.db != nil {
 		if err := s.updatePaymentStatus(ctx, pi.ID, models.PaymentStatusCanceled, nil); err != nil {
-			s.logger.Errorf("Failed to update payment status: %v", err)
+			log.Printf("[Stripe] Failed to update payment status: %v", err)
 		}
 	}
 
@@ -421,9 +397,7 @@ func (s *WebhookHandlerService) handleChargeSucceeded(ctx context.Context, event
 		return fmt.Errorf("failed to parse charge: %w", err)
 	}
 
-	if s.logger != nil {
-		s.logger.Infof("Charge succeeded: id=%s, amount=%d %s", ch.ID, ch.Amount, ch.Currency)
-	}
+	log.Printf("[Stripe] Charge succeeded: id=%s, amount=%d %s", ch.ID, ch.Amount, ch.Currency)
 
 	return nil
 }
@@ -434,10 +408,8 @@ func (s *WebhookHandlerService) handleChargeFailed(ctx context.Context, event *s
 		return fmt.Errorf("failed to parse charge: %w", err)
 	}
 
-	if s.logger != nil {
-		s.logger.Warnf("Charge failed: id=%s, code=%s, message=%s",
-			ch.ID, ch.FailureCode, ch.FailureMessage)
-	}
+	log.Printf("[Stripe] Charge failed: id=%s, code=%s, message=%s",
+		ch.ID, ch.FailureCode, ch.FailureMessage)
 
 	return nil
 }
@@ -448,9 +420,7 @@ func (s *WebhookHandlerService) handleChargeRefunded(ctx context.Context, event 
 		return fmt.Errorf("failed to parse charge: %w", err)
 	}
 
-	if s.logger != nil {
-		s.logger.Infof("Charge refunded: id=%s, amount=%d %s", ch.ID, ch.Amount, ch.Currency)
-	}
+	log.Printf("[Stripe] Charge refunded: id=%s, amount=%d %s", ch.ID, ch.Amount, ch.Currency)
 
 	// Update payment record
 	if s.db != nil && ch.PaymentIntentID != "" {
@@ -459,7 +429,7 @@ func (s *WebhookHandlerService) handleChargeRefunded(ctx context.Context, event 
 			status = models.PaymentStatusPartiallyRefunded
 		}
 		if err := s.updatePaymentStatus(ctx, ch.PaymentIntentID, status, nil); err != nil {
-			s.logger.Errorf("Failed to update payment status: %v", err)
+			log.Printf("[Stripe] Failed to update payment status: %v", err)
 		}
 	}
 
@@ -472,21 +442,19 @@ func (s *WebhookHandlerService) handleChargeDisputed(ctx context.Context, event 
 		return fmt.Errorf("failed to parse charge: %w", err)
 	}
 
-	if s.logger != nil {
-		s.logger.Warnf("Charge disputed: id=%s, amount=%d %s", ch.ID, ch.Amount, ch.Currency)
-	}
+	log.Printf("[Stripe] Charge disputed: id=%s, amount=%d %s", ch.ID, ch.Amount, ch.Currency)
 
 	// Update payment record
 	if s.db != nil && ch.PaymentIntentID != "" {
 		if err := s.updatePaymentStatus(ctx, ch.PaymentIntentID, models.PaymentStatusDisputed, nil); err != nil {
-			s.logger.Errorf("Failed to update payment status: %v", err)
+			log.Printf("[Stripe] Failed to update payment status: %v", err)
 		}
 	}
 
 	// Critical event - send notification
 	if s.config.EnableNotifications {
 		if err := s.notifier.NotifyDisputeCreated(ctx, ch.ID, ch.Amount); err != nil {
-			s.logger.Warnf("Failed to send dispute notification: %v", err)
+			log.Printf("[Stripe] Failed to send dispute notification: %v", err)
 		}
 	}
 
@@ -503,10 +471,8 @@ func (s *WebhookHandlerService) handleInvoicePaid(ctx context.Context, event *st
 		return fmt.Errorf("failed to parse invoice: %w", err)
 	}
 
-	if s.logger != nil {
-		s.logger.Infof("Invoice paid: id=%s, amount=%d %s",
-			invoice.ID, invoice.AmountPaid, invoice.Currency)
-	}
+	log.Printf("[Stripe] Invoice paid: id=%s, amount=%d %s",
+		invoice.ID, invoice.AmountPaid, invoice.Currency)
 
 	return nil
 }
@@ -517,10 +483,8 @@ func (s *WebhookHandlerService) handleInvoicePaymentFailed(ctx context.Context, 
 		return fmt.Errorf("failed to parse invoice: %w", err)
 	}
 
-	if s.logger != nil {
-		s.logger.Warnf("Invoice payment failed: id=%s, amount=%d %s",
-			invoice.ID, invoice.AmountDue, invoice.Currency)
-	}
+	log.Printf("[Stripe] Invoice payment failed: id=%s, amount=%d %s",
+		invoice.ID, invoice.AmountDue, invoice.Currency)
 
 	return nil
 }
@@ -535,14 +499,12 @@ func (s *WebhookHandlerService) handleSubscriptionCreated(ctx context.Context, e
 		return fmt.Errorf("failed to parse subscription: %w", err)
 	}
 
-	if s.logger != nil {
-		s.logger.Infof("Subscription created: id=%s, status=%s", sub.ID, sub.Status)
-	}
+	log.Printf("[Stripe] Subscription created: id=%s, status=%s", sub.ID, sub.Status)
 
 	// Create/update subscription record
 	if s.db != nil {
 		if err := s.upsertSubscription(ctx, &sub); err != nil {
-			s.logger.Errorf("Failed to save subscription: %v", err)
+			log.Printf("[Stripe] Failed to save subscription: %v", err)
 		}
 	}
 
@@ -555,13 +517,11 @@ func (s *WebhookHandlerService) handleSubscriptionUpdated(ctx context.Context, e
 		return fmt.Errorf("failed to parse subscription: %w", err)
 	}
 
-	if s.logger != nil {
-		s.logger.Infof("Subscription updated: id=%s, status=%s", sub.ID, sub.Status)
-	}
+	log.Printf("[Stripe] Subscription updated: id=%s, status=%s", sub.ID, sub.Status)
 
 	if s.db != nil {
 		if err := s.upsertSubscription(ctx, &sub); err != nil {
-			s.logger.Errorf("Failed to update subscription: %v", err)
+			log.Printf("[Stripe] Failed to update subscription: %v", err)
 		}
 	}
 
@@ -574,20 +534,18 @@ func (s *WebhookHandlerService) handleSubscriptionDeleted(ctx context.Context, e
 		return fmt.Errorf("failed to parse subscription: %w", err)
 	}
 
-	if s.logger != nil {
-		s.logger.Warnf("Subscription deleted: id=%s", sub.ID)
-	}
+	log.Printf("[Stripe] Subscription deleted: id=%s", sub.ID)
 
 	if s.db != nil {
 		if err := s.upsertSubscription(ctx, &sub); err != nil {
-			s.logger.Errorf("Failed to update subscription: %v", err)
+			log.Printf("[Stripe] Failed to update subscription: %v", err)
 		}
 	}
 
 	// Critical event - send notification
 	if s.config.EnableNotifications && sub.Customer != nil {
 		if err := s.notifier.NotifySubscriptionCanceled(ctx, sub.ID, sub.Customer.ID); err != nil {
-			s.logger.Warnf("Failed to send subscription canceled notification: %v", err)
+			log.Printf("[Stripe] Failed to send subscription canceled notification: %v", err)
 		}
 	}
 
@@ -604,9 +562,7 @@ func (s *WebhookHandlerService) handleCustomerCreated(ctx context.Context, event
 		return fmt.Errorf("failed to parse customer: %w", err)
 	}
 
-	if s.logger != nil {
-		s.logger.Infof("Customer created: id=%s, email=%s", cust.ID, cust.Email)
-	}
+	log.Printf("[Stripe] Customer created: id=%s, email=%s", cust.ID, cust.Email)
 
 	return nil
 }
@@ -617,9 +573,7 @@ func (s *WebhookHandlerService) handleCustomerUpdated(ctx context.Context, event
 		return fmt.Errorf("failed to parse customer: %w", err)
 	}
 
-	if s.logger != nil {
-		s.logger.Infof("Customer updated: id=%s", cust.ID)
-	}
+	log.Printf("[Stripe] Customer updated: id=%s", cust.ID)
 
 	return nil
 }
@@ -630,9 +584,7 @@ func (s *WebhookHandlerService) handleCustomerDeleted(ctx context.Context, event
 		return fmt.Errorf("failed to parse customer: %w", err)
 	}
 
-	if s.logger != nil {
-		s.logger.Warnf("Customer deleted: id=%s", cust.ID)
-	}
+	log.Printf("[Stripe] Customer deleted: id=%s", cust.ID)
 
 	return nil
 }
@@ -647,14 +599,12 @@ func (s *WebhookHandlerService) handleRefundCreated(ctx context.Context, event *
 		return fmt.Errorf("failed to parse refund: %w", err)
 	}
 
-	if s.logger != nil {
-		s.logger.Infof("Refund created: id=%s, amount=%d %s", ref.ID, ref.Amount, ref.Currency)
-	}
+	log.Printf("[Stripe] Refund created: id=%s, amount=%d %s", ref.ID, ref.Amount, ref.Currency)
 
 	// Send notification
 	if s.config.EnableNotifications {
 		if err := s.notifier.NotifyRefundCreated(ctx, ref.ID, ref.Amount); err != nil {
-			s.logger.Warnf("Failed to send refund notification: %v", err)
+			log.Printf("[Stripe] Failed to send refund notification: %v", err)
 		}
 	}
 
@@ -667,9 +617,7 @@ func (s *WebhookHandlerService) handleRefundUpdated(ctx context.Context, event *
 		return fmt.Errorf("failed to parse refund: %w", err)
 	}
 
-	if s.logger != nil {
-		s.logger.Infof("Refund updated: id=%s, status=%s", ref.ID, ref.Status)
-	}
+	log.Printf("[Stripe] Refund updated: id=%s, status=%s", ref.ID, ref.Status)
 
 	return nil
 }
@@ -735,10 +683,8 @@ func (s *WebhookHandlerService) handleProcessingError(
 ) (*WebhookResult, error) {
 	errMsg := processErr.Error()
 
-	if s.logger != nil {
-		s.logger.Errorf("Event processing failed: id=%s, type=%s, error=%v",
-			event.ID, event.Type, processErr)
-	}
+	log.Printf("[Stripe] Event processing failed: id=%s, type=%s, error=%v",
+		event.ID, event.Type, processErr)
 
 	// Check if we should retry
 	if webhookEvent.CanRetry() {
@@ -752,14 +698,10 @@ func (s *WebhookHandlerService) handleProcessingError(
 		// Queue for retry
 		select {
 		case s.retryQueue <- webhookEvent:
-			if s.logger != nil {
-				s.logger.Infof("Event queued for retry: id=%s, attempt=%d, next_retry=%v",
-					event.ID, webhookEvent.RetryCount, nextRetry)
-			}
+			log.Printf("[Stripe] Event queued for retry: id=%s, attempt=%d, next_retry=%v",
+				event.ID, webhookEvent.RetryCount, nextRetry)
 		default:
-			if s.logger != nil {
-				s.logger.Warnf("Retry queue full, event will not be retried: id=%s", event.ID)
-			}
+			log.Printf("[Stripe] Retry queue full, event will not be retried: id=%s", event.ID)
 		}
 
 		return &WebhookResult{
@@ -953,9 +895,7 @@ func (s *WebhookHandlerService) processRetry(webhookEvent *models.WebhookEvent) 
 	// Parse the stored event
 	var stripeEvent stripe.Event
 	if err := json.Unmarshal(webhookEvent.Payload, &stripeEvent); err != nil {
-		if s.logger != nil {
-			s.logger.Errorf("Failed to unmarshal event for retry: %v", err)
-		}
+		log.Printf("[Stripe] Failed to unmarshal event for retry: %v", err)
 		webhookEvent.MarkAsFailed("failed to unmarshal event", "UNMARSHAL_ERROR")
 		s.updateWebhookEvent(ctx, webhookEvent)
 		return
@@ -970,9 +910,7 @@ func (s *WebhookHandlerService) processRetry(webhookEvent *models.WebhookEvent) 
 	processingTime := time.Since(startTime).Milliseconds()
 
 	if err != nil {
-		if s.logger != nil {
-			s.logger.Errorf("Retry failed for event %s: %v", webhookEvent.ExternalEventID, err)
-		}
+		log.Printf("[Stripe] Retry failed for event %s: %v", webhookEvent.ExternalEventID, err)
 
 		if webhookEvent.CanRetry() {
 			nextRetry := s.calculateNextRetry(webhookEvent.RetryCount)
@@ -983,9 +921,7 @@ func (s *WebhookHandlerService) processRetry(webhookEvent *models.WebhookEvent) 
 			select {
 			case s.retryQueue <- webhookEvent:
 			default:
-				if s.logger != nil {
-					s.logger.Warnf("Retry queue full, dropping event: %s", webhookEvent.ExternalEventID)
-				}
+				log.Printf("[Stripe] Retry queue full, dropping event: %s", webhookEvent.ExternalEventID)
 			}
 		} else {
 			webhookEvent.MarkAsFailed(err.Error(), "MAX_RETRIES_EXCEEDED")
@@ -1003,9 +939,7 @@ func (s *WebhookHandlerService) processRetry(webhookEvent *models.WebhookEvent) 
 	s.updateWebhookEvent(ctx, webhookEvent)
 	s.markEventProcessed(webhookEvent.ExternalEventID)
 
-	if s.logger != nil {
-		s.logger.Infof("Retry succeeded for event %s", webhookEvent.ExternalEventID)
-	}
+	log.Printf("[Stripe] Retry succeeded for event %s", webhookEvent.ExternalEventID)
 }
 
 func (s *WebhookHandlerService) cleanupRoutine() {
@@ -1035,9 +969,7 @@ func (s *WebhookHandlerService) cleanupProcessedEvents() {
 		}
 	}
 
-	if s.logger != nil {
-		s.logger.Debugf("Cleaned up processed events cache, count: %d", len(s.processedEvents))
-	}
+	log.Printf("[Stripe] Cleaned up processed events cache, count: %d", len(s.processedEvents))
 }
 
 // =============================================================================
@@ -1170,9 +1102,7 @@ func (s *WebhookHandlerService) ReprocessEvent(ctx context.Context, eventID uuid
 	// Queue for processing
 	select {
 	case s.retryQueue <- &webhookEvent:
-		if s.logger != nil {
-			s.logger.Infof("Event queued for reprocessing: %s", eventID)
-		}
+		log.Printf("[Stripe] Event queued for reprocessing: %s", eventID)
 	default:
 		return errors.New("retry queue is full")
 	}

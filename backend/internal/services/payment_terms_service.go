@@ -336,7 +336,7 @@ func (s *PaymentTermsService) GetPaymentStatusFromTerm(
 			status.DiscountAmount = discountAmount.Round(2)
 			status.Status = "early"
 			status.RecommendedAction = fmt.Sprintf("Pay before %s to receive %.2f%% discount",
-				discountDeadline.Format("2006-01-02"), term.DiscountPercentage)
+				discountDeadline.Format("2006-01-02"), term.DiscountPercentage.InexactFloat64())
 			status.NotificationRequired = true
 			status.NotificationType = "early_payment_discount_available"
 		}

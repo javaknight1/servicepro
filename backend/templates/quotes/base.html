@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Quote #{{.DocumentNumber}}</title>
     <link rel="stylesheet" href="styles.css">
-    {{if .CustomCSS}}<style>{{.CustomCSS}}</style>{{end}}
+    {{if .CustomCSS}}<style>{{.CustomCSS | safeCSS}}</style>{{end}}
 </head>
 <body>
     <div class="document quote">
@@ -157,7 +157,7 @@
                 {{if .OptionalTotal}}
                 <tr class="optional-total-row">
                     <td class="label">With Optional Items:</td>
-                    <td class="value">{{.TotalWithOptional | formatCurrency}}</td>
+                    <td class="value">{{add .Total .OptionalTotal | formatCurrency}}</td>
                 </tr>
                 {{end}}
             </table>

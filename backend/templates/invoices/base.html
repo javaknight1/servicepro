@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Invoice #{{.DocumentNumber}}</title>
     <link rel="stylesheet" href="styles.css">
-    {{if .CustomCSS}}<style>{{.CustomCSS}}</style>{{end}}
+    {{if .CustomCSS}}<style>{{.CustomCSS | safeCSS}}</style>{{end}}
 </head>
 <body>
     <div class="document invoice">

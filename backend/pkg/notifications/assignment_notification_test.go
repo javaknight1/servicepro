@@ -12,45 +12,59 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/javaknight1/servicepro/backend/internal/models"
+	"github.com/javaknight1/servicepro/backend/pkg/clients/email"
 )
 
-// MockEmailService is a mock implementation of EmailServiceInterface
+// MockEmailService is a mock implementation of email.Client interface
 type MockEmailService struct {
 	mock.Mock
 }
 
-func (m *MockEmailService) SendWelcomeEmail(to, name string) error {
-	args := m.Called(to, name)
+func (m *MockEmailService) Send(ctx context.Context, msg *email.EmailMessage) (*email.SendResult, error) {
+	args := m.Called(ctx, msg)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*email.SendResult), args.Error(1)
+}
+
+func (m *MockEmailService) SendWelcomeEmail(ctx context.Context, to, name string) error {
+	args := m.Called(ctx, to, name)
 	return args.Error(0)
 }
 
-func (m *MockEmailService) SendPasswordResetEmail(to, resetToken, resetURL string) error {
-	args := m.Called(to, resetToken, resetURL)
+func (m *MockEmailService) SendPasswordResetEmail(ctx context.Context, to, resetToken, resetURL string) error {
+	args := m.Called(ctx, to, resetToken, resetURL)
 	return args.Error(0)
 }
 
-func (m *MockEmailService) SendPasswordResetConfirmationEmail(to string) error {
-	args := m.Called(to)
+func (m *MockEmailService) SendPasswordResetConfirmationEmail(ctx context.Context, to string) error {
+	args := m.Called(ctx, to)
 	return args.Error(0)
 }
 
-func (m *MockEmailService) SendEmailVerificationEmail(to, verificationToken, verificationURL string) error {
-	args := m.Called(to, verificationToken, verificationURL)
+func (m *MockEmailService) SendEmailVerificationEmail(ctx context.Context, to, verificationToken, verificationURL string) error {
+	args := m.Called(ctx, to, verificationToken, verificationURL)
 	return args.Error(0)
 }
 
-func (m *MockEmailService) SendEmailVerificationReminderEmail(to, verificationToken, verificationURL string) error {
-	args := m.Called(to, verificationToken, verificationURL)
+func (m *MockEmailService) SendEmailVerificationReminderEmail(ctx context.Context, to, verificationToken, verificationURL string) error {
+	args := m.Called(ctx, to, verificationToken, verificationURL)
 	return args.Error(0)
 }
 
-func (m *MockEmailService) SendEmailVerificationSuccessEmail(to string) error {
-	args := m.Called(to)
+func (m *MockEmailService) SendEmailVerificationSuccessEmail(ctx context.Context, to string) error {
+	args := m.Called(ctx, to)
 	return args.Error(0)
 }
 
-func (m *MockEmailService) SendEmail(to, subject, body string) error {
-	args := m.Called(to, subject, body)
+func (m *MockEmailService) HealthCheck(ctx context.Context) error {
+	args := m.Called(ctx)
+	return args.Error(0)
+}
+
+func (m *MockEmailService) Close() error {
+	args := m.Called()
 	return args.Error(0)
 }
 
@@ -72,7 +86,7 @@ func TestNewNotificationService(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.NotNil(t, service)
-	assert.NotNil(t, service.emailService)
+	assert.NotNil(t, service.emailClient)
 	assert.NotNil(t, service.smsProvider)
 	assert.NotNil(t, service.templates)
 }
@@ -97,7 +111,7 @@ func TestSendNotification_Email(t *testing.T) {
 		},
 	}
 
-	mockEmailService.On("SendEmail", "tech@example.com", "Test Subject", mock.Anything).Return(nil)
+	mockEmailService.On("Send", mock.Anything, mock.AnythingOfType("*email.EmailMessage")).Return(&email.SendResult{Success: true}, nil)
 
 	result, err := service.SendNotification(ctx, req)
 
@@ -128,7 +142,7 @@ func TestSendNotification_EmailError(t *testing.T) {
 		},
 	}
 
-	mockEmailService.On("SendEmail", "tech@example.com", "Test Subject", mock.Anything, true).Return(errors.New("email error"))
+	mockEmailService.On("Send", mock.Anything, mock.AnythingOfType("*email.EmailMessage")).Return(nil, errors.New("email error"))
 
 	result, err := service.SendNotification(ctx, req)
 
@@ -224,7 +238,9 @@ func TestSendMultiChannelNotification_Success(t *testing.T) {
 		},
 	}
 
-	mockEmailService.On("SendEmail", "tech@example.com", "Email Notification", mock.Anything).Return(nil)
+	mockEmailService.On("Send", mock.Anything, mock.MatchedBy(func(msg *email.EmailMessage) bool {
+		return len(msg.To) > 0 && msg.To[0] == "tech@example.com" && msg.Subject == "Email Notification"
+	})).Return(&email.SendResult{Success: true}, nil)
 	mockSMSProvider.On("SendSMS", ctx, "+1234567890", mock.Anything).Return(nil)
 
 	results, err := service.SendMultiChannelNotification(ctx, reqs)
@@ -266,15 +282,28 @@ func TestSendMultiChannelNotification_PartialFailure(t *testing.T) {
 		},
 	}
 
-	mockEmailService.On("SendEmail", "tech@example.com", "Email Notification", mock.Anything).Return(nil)
+	mockEmailService.On("Send", mock.Anything, mock.MatchedBy(func(msg *email.EmailMessage) bool {
+		return len(msg.To) > 0 && msg.To[0] == "tech@example.com" && msg.Subject == "Email Notification"
+	})).Return(&email.SendResult{Success: true}, nil)
 	mockSMSProvider.On("SendSMS", ctx, "+1234567890", mock.Anything).Return(errors.New("SMS error"))
 
 	results, err := service.SendMultiChannelNotification(ctx, reqs)
 
 	require.NoError(t, err) // At least one succeeded
 	assert.Len(t, results, 2)
-	assert.True(t, results[0].Success)
-	assert.False(t, results[1].Success)
+
+	// Results may be in any order due to concurrent processing
+	successCount := 0
+	failureCount := 0
+	for _, r := range results {
+		if r.Success {
+			successCount++
+		} else {
+			failureCount++
+		}
+	}
+	assert.Equal(t, 1, successCount, "Expected 1 successful notification")
+	assert.Equal(t, 1, failureCount, "Expected 1 failed notification")
 	mockEmailService.AssertExpectations(t)
 	mockSMSProvider.AssertExpectations(t)
 }
@@ -299,7 +328,9 @@ func TestSendMultiChannelNotification_AllFailures(t *testing.T) {
 		},
 	}
 
-	mockEmailService.On("SendEmail", "tech@example.com", "Email Notification", mock.Anything, true).Return(errors.New("email error"))
+	mockEmailService.On("Send", mock.Anything, mock.MatchedBy(func(msg *email.EmailMessage) bool {
+		return len(msg.To) > 0 && msg.To[0] == "tech@example.com" && msg.Subject == "Email Notification"
+	})).Return(nil, errors.New("email error"))
 
 	results, err := service.SendMultiChannelNotification(ctx, reqs)
 
@@ -340,7 +371,9 @@ func TestSendAssignmentCreatedNotification(t *testing.T) {
 		Role:  models.UserRoleTechnician,
 	}
 
-	mockEmailService.On("SendEmail", "tech@example.com", mock.Anything, mock.Anything).Return(nil)
+	mockEmailService.On("Send", mock.Anything, mock.MatchedBy(func(msg *email.EmailMessage) bool {
+		return len(msg.To) > 0 && msg.To[0] == "tech@example.com"
+	})).Return(&email.SendResult{Success: true}, nil)
 
 	err = service.SendAssignmentCreatedNotification(ctx, assignment, job, technician)
 
@@ -378,7 +411,9 @@ func TestSendAssignmentUpdatedNotification(t *testing.T) {
 		Role:  models.UserRoleTechnician,
 	}
 
-	mockEmailService.On("SendEmail", "tech@example.com", mock.Anything, mock.Anything).Return(nil)
+	mockEmailService.On("Send", mock.Anything, mock.MatchedBy(func(msg *email.EmailMessage) bool {
+		return len(msg.To) > 0 && msg.To[0] == "tech@example.com"
+	})).Return(&email.SendResult{Success: true}, nil)
 
 	err = service.SendAssignmentUpdatedNotification(ctx, assignment, job, technician, "Role changed from Technician to Senior Technician")
 
@@ -396,7 +431,9 @@ func TestSendAssignmentRemovedNotification(t *testing.T) {
 
 	ctx := context.Background()
 
-	mockEmailService.On("SendEmail", "tech@example.com", mock.Anything, mock.Anything).Return(nil)
+	mockEmailService.On("Send", mock.Anything, mock.MatchedBy(func(msg *email.EmailMessage) bool {
+		return len(msg.To) > 0 && msg.To[0] == "tech@example.com"
+	})).Return(&email.SendResult{Success: true}, nil)
 
 	err = service.SendAssignmentRemovedNotification(ctx, "tech@example.com", "John Doe", "JOB-003", "HVAC Maintenance")
 
@@ -432,8 +469,12 @@ func TestSendBulkNotifications_Success(t *testing.T) {
 		},
 	}
 
-	mockEmailService.On("SendEmail", "tech1@example.com", "Notification 1", mock.Anything).Return(nil)
-	mockEmailService.On("SendEmail", "tech2@example.com", "Notification 2", mock.Anything).Return(nil)
+	mockEmailService.On("Send", mock.Anything, mock.MatchedBy(func(msg *email.EmailMessage) bool {
+		return len(msg.To) > 0 && msg.To[0] == "tech1@example.com"
+	})).Return(&email.SendResult{Success: true}, nil)
+	mockEmailService.On("Send", mock.Anything, mock.MatchedBy(func(msg *email.EmailMessage) bool {
+		return len(msg.To) > 0 && msg.To[0] == "tech2@example.com"
+	})).Return(&email.SendResult{Success: true}, nil)
 
 	results, errs := service.SendBulkNotifications(ctx, reqs)
 
@@ -472,15 +513,30 @@ func TestSendBulkNotifications_PartialFailure(t *testing.T) {
 		},
 	}
 
-	mockEmailService.On("SendEmail", "tech1@example.com", "Notification 1", mock.Anything).Return(nil)
-	mockEmailService.On("SendEmail", "tech2@example.com", "Notification 2", mock.Anything, true).Return(errors.New("email error"))
+	mockEmailService.On("Send", mock.Anything, mock.MatchedBy(func(msg *email.EmailMessage) bool {
+		return len(msg.To) > 0 && msg.To[0] == "tech1@example.com"
+	})).Return(&email.SendResult{Success: true}, nil)
+	mockEmailService.On("Send", mock.Anything, mock.MatchedBy(func(msg *email.EmailMessage) bool {
+		return len(msg.To) > 0 && msg.To[0] == "tech2@example.com"
+	})).Return(nil, errors.New("email error"))
 
 	results, errs := service.SendBulkNotifications(ctx, reqs)
 
 	assert.Len(t, results, 2)
 	assert.Len(t, errs, 1)
-	assert.True(t, results[0].Success)
-	assert.False(t, results[1].Success)
+
+	// Results may be in any order due to concurrent processing
+	successCount := 0
+	failureCount := 0
+	for _, r := range results {
+		if r.Success {
+			successCount++
+		} else {
+			failureCount++
+		}
+	}
+	assert.Equal(t, 1, successCount, "Expected 1 successful notification")
+	assert.Equal(t, 1, failureCount, "Expected 1 failed notification")
 	mockEmailService.AssertExpectations(t)
 }
 
@@ -537,7 +593,7 @@ func TestSendNotification_PriorityLevels(t *testing.T) {
 				TemplateData:   map[string]interface{}{"Message": "Test message"},
 			}
 
-			mockEmailService.On("SendEmail", "tech@example.com", "Test Subject", mock.Anything).Return(nil)
+			mockEmailService.On("Send", mock.Anything, mock.AnythingOfType("*email.EmailMessage")).Return(&email.SendResult{Success: true}, nil)
 
 			result, err := service.SendNotification(ctx, req)
 

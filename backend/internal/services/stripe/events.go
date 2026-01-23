@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"sync"
 
 	"github.com/stripe/stripe-go/v76"
@@ -15,7 +16,6 @@ type EventHandler func(ctx context.Context, event *stripe.Event) error
 
 // EventProcessor processes Stripe webhook events
 type EventProcessor struct {
-	logger   StripeLogger
 	handlers map[string][]EventHandler
 	mu       sync.RWMutex
 
@@ -33,9 +33,8 @@ type EventStatistics struct {
 }
 
 // NewEventProcessor creates a new event processor
-func NewEventProcessor(logger StripeLogger) *EventProcessor {
+func NewEventProcessor() *EventProcessor {
 	return &EventProcessor{
-		logger:   logger,
 		handlers: make(map[string][]EventHandler),
 		stats: &EventStatistics{
 			EventCounts: make(map[string]int64),
@@ -49,10 +48,7 @@ func (p *EventProcessor) RegisterHandler(eventType string, handler EventHandler)
 	defer p.mu.Unlock()
 
 	p.handlers[eventType] = append(p.handlers[eventType], handler)
-
-	if p.logger != nil {
-		p.logger.Infof("Registered handler for event type: %s", eventType)
-	}
+	log.Printf("[Stripe] Registered handler for event type: %s", eventType)
 }
 
 // ProcessEvent processes a Stripe webhook event
@@ -66,9 +62,7 @@ func (p *EventProcessor) ProcessEvent(ctx context.Context, event *stripe.Event) 
 	p.stats.EventCounts[string(event.Type)]++
 	p.statsLock.Unlock()
 
-	if p.logger != nil {
-		p.logger.Infof("Processing event: id=%s, type=%s", event.ID, event.Type)
-	}
+	log.Printf("[Stripe] Processing event: id=%s, type=%s", event.ID, event.Type)
 
 	// Get handlers for this event type
 	p.mu.RLock()
@@ -76,9 +70,7 @@ func (p *EventProcessor) ProcessEvent(ctx context.Context, event *stripe.Event) 
 	p.mu.RUnlock()
 
 	if !exists || len(handlers) == 0 {
-		if p.logger != nil {
-			p.logger.Warnf("No handlers registered for event type: %s", event.Type)
-		}
+		log.Printf("[Stripe] No handlers registered for event type: %s", event.Type)
 		// Not an error - just no handlers registered
 		p.statsLock.Lock()
 		p.stats.SuccessfullyProcessed++
@@ -90,10 +82,8 @@ func (p *EventProcessor) ProcessEvent(ctx context.Context, event *stripe.Event) 
 	var lastErr error
 	for _, handler := range handlers {
 		if err := handler(ctx, event); err != nil {
-			if p.logger != nil {
-				p.logger.Errorf("Handler failed for event %s (type %s): %v",
-					event.ID, event.Type, err)
-			}
+			log.Printf("[Stripe] Handler failed for event %s (type %s): %v",
+				event.ID, event.Type, err)
 			lastErr = err
 			// Continue processing other handlers
 		}
@@ -110,9 +100,7 @@ func (p *EventProcessor) ProcessEvent(ctx context.Context, event *stripe.Event) 
 	p.stats.SuccessfullyProcessed++
 	p.statsLock.Unlock()
 
-	if p.logger != nil {
-		p.logger.Infof("Event processed successfully: id=%s, type=%s", event.ID, event.Type)
-	}
+	log.Printf("[Stripe] Event processed successfully: id=%s, type=%s", event.ID, event.Type)
 
 	return nil
 }
@@ -351,98 +339,62 @@ func ParseRefund(event *stripe.Event) (*RefundData, error) {
 	return data, nil
 }
 
-// Example event handlers (these can be customized based on your needs)
+// Default event handlers
 
 // DefaultPaymentSucceededHandler is a default handler for successful payments
-func DefaultPaymentSucceededHandler(logger StripeLogger) EventHandler {
+func DefaultPaymentSucceededHandler() EventHandler {
 	return func(ctx context.Context, event *stripe.Event) error {
 		pi, err := ParsePaymentIntent(event)
 		if err != nil {
 			return err
 		}
 
-		if logger != nil {
-			logger.Infof("Payment succeeded: id=%s, amount=%d, currency=%s",
-				pi.ID, pi.Amount, pi.Currency)
-		}
-
-		// TODO: Update your database, send confirmation email, etc.
-		// Example:
-		// - Mark invoice as paid
-		// - Send receipt email to customer
-		// - Update customer payment history
-		// - Trigger fulfillment process
+		log.Printf("[Stripe] Payment succeeded: id=%s, amount=%d, currency=%s",
+			pi.ID, pi.Amount, pi.Currency)
 
 		return nil
 	}
 }
 
 // DefaultPaymentFailedHandler is a default handler for failed payments
-func DefaultPaymentFailedHandler(logger StripeLogger) EventHandler {
+func DefaultPaymentFailedHandler() EventHandler {
 	return func(ctx context.Context, event *stripe.Event) error {
 		pi, err := ParsePaymentIntent(event)
 		if err != nil {
 			return err
 		}
 
-		if logger != nil {
-			logger.Warnf("Payment failed: id=%s, amount=%d, currency=%s",
-				pi.ID, pi.Amount, pi.Currency)
-		}
-
-		// TODO: Handle payment failure
-		// Example:
-		// - Mark invoice as failed
-		// - Send failure notification to customer
-		// - Retry payment if appropriate
-		// - Alert admin if needed
+		log.Printf("[Stripe] Payment failed: id=%s, amount=%d, currency=%s",
+			pi.ID, pi.Amount, pi.Currency)
 
 		return nil
 	}
 }
 
 // DefaultChargeRefundedHandler is a default handler for refunded charges
-func DefaultChargeRefundedHandler(logger StripeLogger) EventHandler {
+func DefaultChargeRefundedHandler() EventHandler {
 	return func(ctx context.Context, event *stripe.Event) error {
 		ch, err := ParseCharge(event)
 		if err != nil {
 			return err
 		}
 
-		if logger != nil {
-			logger.Infof("Charge refunded: id=%s, amount=%d, currency=%s",
-				ch.ID, ch.Amount, ch.Currency)
-		}
-
-		// TODO: Handle refund
-		// Example:
-		// - Update invoice status
-		// - Send refund confirmation email
-		// - Update accounting records
-		// - Reverse fulfillment if needed
+		log.Printf("[Stripe] Charge refunded: id=%s, amount=%d, currency=%s",
+			ch.ID, ch.Amount, ch.Currency)
 
 		return nil
 	}
 }
 
 // DefaultCustomerCreatedHandler is a default handler for customer creation
-func DefaultCustomerCreatedHandler(logger StripeLogger) EventHandler {
+func DefaultCustomerCreatedHandler() EventHandler {
 	return func(ctx context.Context, event *stripe.Event) error {
 		cust, err := ParseCustomer(event)
 		if err != nil {
 			return err
 		}
 
-		if logger != nil {
-			logger.Infof("Customer created: id=%s, email=%s", cust.ID, cust.Email)
-		}
-
-		// TODO: Handle new customer
-		// Example:
-		// - Link Stripe customer to internal user record
-		// - Send welcome email
-		// - Initialize customer preferences
-		// - Update CRM
+		log.Printf("[Stripe] Customer created: id=%s, email=%s", cust.ID, cust.Email)
 
 		return nil
 	}
@@ -451,16 +403,14 @@ func DefaultCustomerCreatedHandler(logger StripeLogger) EventHandler {
 // RegisterDefaultHandlers registers default event handlers
 func (p *EventProcessor) RegisterDefaultHandlers() {
 	// Payment Intent Events
-	p.RegisterHandler(EventPaymentIntentSucceeded, DefaultPaymentSucceededHandler(p.logger))
-	p.RegisterHandler(EventPaymentIntentFailed, DefaultPaymentFailedHandler(p.logger))
+	p.RegisterHandler(EventPaymentIntentSucceeded, DefaultPaymentSucceededHandler())
+	p.RegisterHandler(EventPaymentIntentFailed, DefaultPaymentFailedHandler())
 
 	// Charge Events
-	p.RegisterHandler(EventChargeRefunded, DefaultChargeRefundedHandler(p.logger))
+	p.RegisterHandler(EventChargeRefunded, DefaultChargeRefundedHandler())
 
 	// Customer Events
-	p.RegisterHandler(EventCustomerCreated, DefaultCustomerCreatedHandler(p.logger))
+	p.RegisterHandler(EventCustomerCreated, DefaultCustomerCreatedHandler())
 
-	if p.logger != nil {
-		p.logger.Infof("Registered default event handlers")
-	}
+	log.Printf("[Stripe] Registered default event handlers")
 }

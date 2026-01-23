@@ -129,7 +129,7 @@ func TestRequestPasswordReset_ValidEmail_UserExists(t *testing.T) {
 	}
 
 	mockUserRepo.On("GetByEmail", "test@example.com").Return(testUser, nil)
-	mockEmailService.On("SendPasswordResetEmail", "test@example.com", mock.AnythingOfType("string"), "http://localhost:5173/reset-password").Return(nil)
+	mockEmailService.On("SendPasswordResetEmail", mock.Anything, "test@example.com", mock.AnythingOfType("string"), "http://localhost:5173/reset-password").Return(nil)
 
 	service := NewPasswordResetService(mockUserRepo, mockEmailService, redisClient, "http://localhost:5173/reset-password")
 
@@ -244,7 +244,7 @@ func TestResetPassword_ValidToken_StrongPassword(t *testing.T) {
 	mockUserRepo.On("GetByEmail", "test@example.com").Return(testUser, nil)
 	mockUserRepo.On("UpdatePassword", testUser.ID, mock.AnythingOfType("string")).Return(nil)
 	mockUserRepo.On("ResetFailedLoginCountByUUID", testUser.ID).Return(nil)
-	mockEmailService.On("SendPasswordResetConfirmationEmail", "test@example.com").Return(nil)
+	mockEmailService.On("SendPasswordResetConfirmationEmail", mock.Anything, "test@example.com").Return(nil)
 
 	service := NewPasswordResetService(mockUserRepo, mockEmailService, redisClient, "http://localhost:5173/reset-password")
 

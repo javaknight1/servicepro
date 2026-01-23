@@ -3,9 +3,10 @@ package analytics
 import (
 	"context"
 	"log"
-	"os"
 	"sync"
 	"time"
+
+	appconfig "github.com/javaknight1/servicepro/backend/config"
 )
 
 // TrackerConfig holds configuration for the analytics tracker
@@ -50,11 +51,20 @@ func DefaultTrackerConfig() TrackerConfig {
 		Workers:       2,
 		RetryAttempts: 3,
 		RetryDelay:    time.Second,
-		Environment:   getEnvOrDefault("ENVIRONMENT", "development"),
-		Version:       getEnvOrDefault("APP_VERSION", "unknown"),
-		Enabled:       getEnvOrDefault("ANALYTICS_ENABLED", "true") == "true",
-		Debug:         getEnvOrDefault("ANALYTICS_DEBUG", "false") == "true",
+		Environment:   "development",
+		Version:       "unknown",
+		Enabled:       true,
+		Debug:         false,
 	}
+}
+
+// NewTrackerConfigFromAppConfig creates a TrackerConfig from the centralized app config
+func NewTrackerConfigFromAppConfig(appCfg *appconfig.Config) TrackerConfig {
+	cfg := DefaultTrackerConfig()
+	cfg.Environment = appCfg.Server.Env
+	cfg.Enabled = appCfg.Analytics.Enabled
+	cfg.Debug = appCfg.Analytics.Debug
+	return cfg
 }
 
 // Tracker is the main analytics tracker
@@ -248,10 +258,23 @@ func (t *Tracker) Flush(ctx context.Context) error {
 
 // Close stops the tracker and flushes remaining events
 func (t *Tracker) Close() error {
-	t.cancel()
+	// First, drain any remaining events from the queue into the buffer
+	// before canceling the context
+drainLoop:
+	for {
+		select {
+		case event := <-t.queue:
+			t.addToBuffer(event)
+		default:
+			break drainLoop
+		}
+	}
 
-	// Flush remaining events
+	// Flush remaining events in the buffer
 	t.flushBuffer()
+
+	// Now cancel the context to stop workers
+	t.cancel()
 
 	// Wait for workers to finish
 	done := make(chan struct{})
@@ -289,15 +312,6 @@ type TrackerStats struct {
 	LastFlush   time.Time `json:"last_flush"`
 	Enabled     bool      `json:"enabled"`
 	Environment string    `json:"environment"`
-}
-
-// Helper functions
-
-func getEnvOrDefault(key, defaultValue string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return defaultValue
 }
 
 // Global tracker instance

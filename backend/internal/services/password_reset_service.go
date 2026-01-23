@@ -11,7 +11,7 @@ import (
 
 	"github.com/javaknight1/servicepro/backend/internal/repository"
 	"github.com/javaknight1/servicepro/backend/pkg/auth"
-	"github.com/javaknight1/servicepro/backend/pkg/email"
+	"github.com/javaknight1/servicepro/backend/pkg/clients/email"
 )
 
 const (
@@ -35,24 +35,24 @@ type PasswordResetServiceInterface interface {
 
 // PasswordResetService handles password reset operations
 type PasswordResetService struct {
-	userRepo     repository.UserRepositoryInterface
-	emailService email.EmailServiceInterface
-	redisClient  *redis.Client
-	resetURL     string // Frontend reset URL
+	userRepo    repository.UserRepositoryInterface
+	emailClient email.Client
+	redisClient *redis.Client
+	resetURL    string // Frontend reset URL
 }
 
 // NewPasswordResetService creates a new password reset service
 func NewPasswordResetService(
 	userRepo repository.UserRepositoryInterface,
-	emailService email.EmailServiceInterface,
+	emailClient email.Client,
 	redisClient *redis.Client,
 	resetURL string,
 ) *PasswordResetService {
 	return &PasswordResetService{
-		userRepo:     userRepo,
-		emailService: emailService,
-		redisClient:  redisClient,
-		resetURL:     resetURL,
+		userRepo:    userRepo,
+		emailClient: emailClient,
+		redisClient: redisClient,
+		resetURL:    resetURL,
 	}
 }
 
@@ -93,7 +93,7 @@ func (s *PasswordResetService) RequestPasswordReset(emailAddr string) error {
 
 	// Send reset email asynchronously
 	go func() {
-		if err := s.emailService.SendPasswordResetEmail(user.Email, resetToken, s.resetURL); err != nil {
+		if err := s.emailClient.SendPasswordResetEmail(context.Background(), user.Email, resetToken, s.resetURL); err != nil {
 			log.Printf("Failed to send password reset email to %s: %v", user.Email, err)
 		}
 	}()
@@ -154,7 +154,7 @@ func (s *PasswordResetService) ResetPassword(token, newPassword string) error {
 
 	// Send confirmation email asynchronously
 	go func() {
-		if err := s.emailService.SendPasswordResetConfirmationEmail(user.Email); err != nil {
+		if err := s.emailClient.SendPasswordResetConfirmationEmail(context.Background(), user.Email); err != nil {
 			log.Printf("Failed to send password reset confirmation email to %s: %v", user.Email, err)
 		}
 	}()

@@ -14,6 +14,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/sns"
 	"github.com/aws/aws-sdk-go-v2/service/sns/types"
+
+	appconfig "github.com/javaknight1/servicepro/backend/config"
 )
 
 // Standard errors
@@ -130,6 +132,38 @@ func DefaultSNSConfig() *SNSConfig {
 		LogLevel:            "info",
 		HealthCheckInterval: 30 * time.Second,
 	}
+}
+
+// NewSNSConfigFromAppConfig creates an SNSConfig from the main application config.
+// It applies values from the app config while using defaults for everything else.
+func NewSNSConfigFromAppConfig(cfg *appconfig.Config) *SNSConfig {
+	snsCfg := DefaultSNSConfig()
+
+	if cfg == nil {
+		return snsCfg
+	}
+
+	// Apply AWS region (SNS-specific takes precedence, then general AWS region)
+	if cfg.SNS.Region != "" {
+		snsCfg.Region = cfg.SNS.Region
+	} else if cfg.AWS.Region != "" {
+		snsCfg.Region = cfg.AWS.Region
+	}
+
+	// Apply AWS credentials
+	if cfg.AWS.AccessKeyID != "" {
+		snsCfg.AccessKeyID = cfg.AWS.AccessKeyID
+	}
+	if cfg.AWS.SecretAccessKey != "" {
+		snsCfg.SecretAccessKey = cfg.AWS.SecretAccessKey
+	}
+
+	// Apply default topic ARN if configured
+	if cfg.SNS.TopicARN != "" {
+		snsCfg.TopicARNs["default"] = cfg.SNS.TopicARN
+	}
+
+	return snsCfg
 }
 
 // Validate validates the SNS configuration

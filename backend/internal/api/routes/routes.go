@@ -1,6 +1,8 @@
 package routes
 
 import (
+	"context"
+
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
 
@@ -14,7 +16,12 @@ import (
 	"github.com/javaknight1/servicepro/backend/internal/services"
 	permissionsSvc "github.com/javaknight1/servicepro/backend/internal/services/permissions"
 	"github.com/javaknight1/servicepro/backend/pkg/auth"
-	"github.com/javaknight1/servicepro/backend/pkg/email"
+	emailclient "github.com/javaknight1/servicepro/backend/pkg/clients/email"
+
+	// Register email providers (blank imports trigger init() registration)
+	_ "github.com/javaknight1/servicepro/backend/pkg/clients/email/mock"
+	_ "github.com/javaknight1/servicepro/backend/pkg/clients/email/resend"
+	_ "github.com/javaknight1/servicepro/backend/pkg/clients/email/ses"
 )
 
 // Setup configures all API routes
@@ -30,31 +37,28 @@ func Setup(router *gin.Engine, db *gorm.DB, redisClient *redis.Client, cfg *conf
 	jwtManager := auth.NewJWTManager(&cfg.JWT)
 	authService := services.NewAuthService(userRepo, jwtManager, &cfg.Auth)
 
-	// Initialize email service
-	var emailService email.EmailServiceInterface
-	if cfg.Server.Env == "production" {
-		svc, err := email.NewEmailService(cfg.AWS.Region, cfg.AWS.SESFromEmail)
-		if err != nil {
-			// If email service fails in production, this is critical
-			panic(err)
-		}
-		emailService = svc
-	} else {
-		// Use mock email service for development
-		emailService = &email.MockEmailService{}
+	// Initialize email service using the new unified client factory
+	// Provider is auto-detected based on configuration:
+	// - development env -> Mock
+	// - Resend API key present -> Resend
+	// - AWS SES configured -> SES
+	// - fallback -> Mock
+	emailClient, err := emailclient.NewClient(context.Background(), cfg)
+	if err != nil {
+		// If email client creation fails, this is critical
+		panic(err)
 	}
-
 	// Initialize email verification service (before registration service)
 	// Verification URL uses frontend URL from config
 	verificationURL := cfg.Server.FrontendURL + "/verify-email"
-	emailVerificationService := services.NewEmailVerificationService(userRepo, emailService, redisClient, verificationURL)
+	emailVerificationService := services.NewEmailVerificationService(userRepo, emailClient, redisClient, verificationURL)
 
-	registrationService := services.NewRegistrationService(userRepo, emailService, emailVerificationService)
+	registrationService := services.NewRegistrationService(userRepo, emailClient, emailVerificationService)
 
 	// Initialize password reset service
 	// Reset URL uses frontend URL from config
 	resetURL := cfg.Server.FrontendURL + "/reset-password"
-	passwordResetService := services.NewPasswordResetService(userRepo, emailService, redisClient, resetURL)
+	passwordResetService := services.NewPasswordResetService(userRepo, emailClient, redisClient, resetURL)
 
 	// Initialize permission checker
 	permissionChecker := permissionsSvc.NewPermissionChecker(permissionRepo, redisClient)
@@ -485,7 +489,7 @@ func Setup(router *gin.Engine, db *gorm.DB, redisClient *redis.Client, cfg *conf
 	v1.GET("/permissions", permissionMiddleware.RequireAuth(), roleHandler.GetPermissions)
 
 	// Stripe routes (for Stripe-specific endpoints and webhooks)
-	if err := SetupStripeRoutesWithPermissions(v1, permissionMiddleware); err != nil {
+	if err := SetupStripeRoutesWithPermissions(v1, permissionMiddleware, cfg); err != nil {
 		// Log error but don't fail - Stripe may not be configured in all environments
 		// In production, this should be handled more strictly
 		_ = err

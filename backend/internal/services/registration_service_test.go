@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -11,45 +12,59 @@ import (
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/repository"
 	"github.com/javaknight1/servicepro/backend/pkg/auth"
+	"github.com/javaknight1/servicepro/backend/pkg/clients/email"
 )
 
-// MockEmailService for testing
+// MockEmailService for testing - implements email.Client interface
 type MockEmailService struct {
 	mock.Mock
 }
 
-func (m *MockEmailService) SendWelcomeEmail(to, name string) error {
-	args := m.Called(to, name)
+func (m *MockEmailService) Send(ctx context.Context, msg *email.EmailMessage) (*email.SendResult, error) {
+	args := m.Called(ctx, msg)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*email.SendResult), args.Error(1)
+}
+
+func (m *MockEmailService) SendWelcomeEmail(ctx context.Context, to, name string) error {
+	args := m.Called(ctx, to, name)
 	return args.Error(0)
 }
 
-func (m *MockEmailService) SendEmail(to, subject, body string) error {
-	args := m.Called(to, subject, body)
+func (m *MockEmailService) SendPasswordResetEmail(ctx context.Context, to, resetToken, resetURL string) error {
+	args := m.Called(ctx, to, resetToken, resetURL)
 	return args.Error(0)
 }
 
-func (m *MockEmailService) SendPasswordResetEmail(to, resetToken, resetURL string) error {
-	args := m.Called(to, resetToken, resetURL)
+func (m *MockEmailService) SendPasswordResetConfirmationEmail(ctx context.Context, to string) error {
+	args := m.Called(ctx, to)
 	return args.Error(0)
 }
 
-func (m *MockEmailService) SendPasswordResetConfirmationEmail(to string) error {
-	args := m.Called(to)
+func (m *MockEmailService) SendEmailVerificationEmail(ctx context.Context, to, verificationToken, verificationURL string) error {
+	args := m.Called(ctx, to, verificationToken, verificationURL)
 	return args.Error(0)
 }
 
-func (m *MockEmailService) SendEmailVerificationEmail(to, verificationToken, verificationURL string) error {
-	args := m.Called(to, verificationToken, verificationURL)
+func (m *MockEmailService) SendEmailVerificationReminderEmail(ctx context.Context, to, verificationToken, verificationURL string) error {
+	args := m.Called(ctx, to, verificationToken, verificationURL)
 	return args.Error(0)
 }
 
-func (m *MockEmailService) SendEmailVerificationReminderEmail(to, verificationToken, verificationURL string) error {
-	args := m.Called(to, verificationToken, verificationURL)
+func (m *MockEmailService) SendEmailVerificationSuccessEmail(ctx context.Context, to string) error {
+	args := m.Called(ctx, to)
 	return args.Error(0)
 }
 
-func (m *MockEmailService) SendEmailVerificationSuccessEmail(to string) error {
-	args := m.Called(to)
+func (m *MockEmailService) HealthCheck(ctx context.Context) error {
+	args := m.Called(ctx)
+	return args.Error(0)
+}
+
+func (m *MockEmailService) Close() error {
+	args := m.Called()
 	return args.Error(0)
 }
 
@@ -122,7 +137,7 @@ func TestRegister_Success(t *testing.T) {
 	mockRepo.On("GetByEmail", email).Return(nil, repository.ErrUserNotFound)
 	mockRepo.On("Create", email, mock.AnythingOfType("string")).Return(user, nil)
 	// Welcome email is sent when verification service is nil
-	mockEmail.On("SendWelcomeEmail", email, email).Return(nil)
+	mockEmail.On("SendWelcomeEmail", mock.Anything, email, email).Return(nil)
 
 	response, err := registrationService.Register(email, password)
 

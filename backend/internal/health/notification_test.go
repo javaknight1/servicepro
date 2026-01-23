@@ -118,6 +118,9 @@ func TestNotifierRecoveryDisabled(t *testing.T) {
 	notifier := NewNotifier(config, "test")
 	notifier.AddChannel(channel)
 
+	// First record a health check failure to meet alert threshold
+	notifier.OnHealthCheck(CheckResult{Name: "test-check", Status: StatusUnhealthy})
+
 	// Failure should notify
 	notifier.OnStatusChange("test-check", StatusHealthy, StatusUnhealthy)
 

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 	"time"
 )
@@ -264,13 +265,19 @@ func TestCheckerIsReady(t *testing.T) {
 func TestCheckerStatusChangeCallback(t *testing.T) {
 	checker := NewChecker("1.0.0", "test")
 
-	callbackCalled := false
-	var oldStatus, newStatus Status
+	type statusChange struct {
+		old Status
+		new Status
+	}
+	var changes []statusChange
+	var mu sync.Mutex
+	done := make(chan struct{}, 2) // Buffer for 2 callbacks
 
 	checker.OnStatusChange(func(name string, old, new Status) {
-		callbackCalled = true
-		oldStatus = old
-		newStatus = new
+		mu.Lock()
+		changes = append(changes, statusChange{old: old, new: new})
+		mu.Unlock()
+		done <- struct{}{}
 	})
 
 	statusValue := StatusHealthy
@@ -283,26 +290,43 @@ func TestCheckerStatusChangeCallback(t *testing.T) {
 
 	ctx := context.Background()
 
-	// First check - establishes initial status
+	// First check - establishes initial status (unknown -> healthy)
 	checker.RunCheck(ctx, "changing-check")
 
 	// Change status
 	statusValue = StatusUnhealthy
 	checker.RunCheck(ctx, "changing-check")
 
-	// Wait for callback
-	time.Sleep(10 * time.Millisecond)
-
-	if !callbackCalled {
-		t.Error("Callback should have been called")
+	// Wait for both callbacks with timeout
+	for i := 0; i < 2; i++ {
+		select {
+		case <-done:
+		case <-time.After(100 * time.Millisecond):
+			t.Fatal("Timeout waiting for callbacks")
+		}
 	}
 
-	if oldStatus != StatusHealthy {
-		t.Errorf("Old status = %s, want healthy", oldStatus)
+	mu.Lock()
+	defer mu.Unlock()
+
+	if len(changes) != 2 {
+		t.Fatalf("Expected 2 status changes, got %d", len(changes))
 	}
 
-	if newStatus != StatusUnhealthy {
-		t.Errorf("New status = %s, want unhealthy", newStatus)
+	// First change: unknown -> healthy
+	if changes[0].old != StatusUnknown {
+		t.Errorf("First change: old status = %s, want unknown", changes[0].old)
+	}
+	if changes[0].new != StatusHealthy {
+		t.Errorf("First change: new status = %s, want healthy", changes[0].new)
+	}
+
+	// Second change: healthy -> unhealthy
+	if changes[1].old != StatusHealthy {
+		t.Errorf("Second change: old status = %s, want healthy", changes[1].old)
+	}
+	if changes[1].new != StatusUnhealthy {
+		t.Errorf("Second change: new status = %s, want unhealthy", changes[1].new)
 	}
 }
 

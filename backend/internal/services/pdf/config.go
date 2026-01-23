@@ -11,6 +11,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+
+	appconfig "github.com/javaknight1/servicepro/backend/config"
 )
 
 // =============================================================================
@@ -227,6 +229,48 @@ func DefaultConfig() *Config {
 		TemplateDir: "./templates/pdf",
 		AssetDir:    "./assets",
 	}
+}
+
+// NewConfigFromAppConfig creates a PDF Config from the main application config.
+// It applies values from the app config while using defaults for everything else.
+func NewConfigFromAppConfig(cfg *appconfig.Config) *Config {
+	pdfCfg := DefaultConfig()
+
+	if cfg == nil {
+		return pdfCfg
+	}
+
+	// Apply storage settings from app config
+	if cfg.PDF.StorageType != "" {
+		pdfCfg.Storage.Type = cfg.PDF.StorageType
+	}
+	if cfg.PDF.LocalPath != "" {
+		pdfCfg.Storage.LocalPath = cfg.PDF.LocalPath
+	}
+	if cfg.PDF.S3Bucket != "" {
+		pdfCfg.Storage.S3Bucket = cfg.PDF.S3Bucket
+	}
+	if cfg.PDF.S3Prefix != "" {
+		pdfCfg.Storage.S3Prefix = cfg.PDF.S3Prefix
+	}
+	if cfg.PDF.S3PublicURL != "" {
+		pdfCfg.Storage.S3PublicURL = cfg.PDF.S3PublicURL
+	}
+
+	// Apply AWS region for S3
+	if cfg.AWS.Region != "" {
+		pdfCfg.Storage.S3Region = cfg.AWS.Region
+	}
+
+	// Apply branding settings from app config
+	if cfg.PDF.CompanyName != "" {
+		pdfCfg.Branding.CompanyName = cfg.PDF.CompanyName
+	}
+	if cfg.PDF.CompanyLogo != "" {
+		pdfCfg.Branding.LogoPath = cfg.PDF.CompanyLogo
+	}
+
+	return pdfCfg
 }
 
 // =============================================================================

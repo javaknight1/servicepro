@@ -6,20 +6,26 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"sync"
 	"time"
 
 	"github.com/stripe/stripe-go/v76"
 	"github.com/stripe/stripe-go/v76/webhook"
+
+	"github.com/javaknight1/servicepro/backend/config"
 )
+
+// Default webhook tolerance for timestamp validation
+const defaultWebhookTolerance = 5 * time.Minute
 
 // WebhookHandler handles incoming Stripe webhooks
 type WebhookHandler struct {
-	config         *Config
-	logger         StripeLogger
-	eventProcessor *EventProcessor
-	mu             sync.RWMutex
+	webhookSecret    string
+	webhookTolerance time.Duration
+	eventProcessor   *EventProcessor
+	mu               sync.RWMutex
 
 	// Event tracking for idempotency
 	processedEvents map[string]time.Time
@@ -27,12 +33,12 @@ type WebhookHandler struct {
 }
 
 // NewWebhookHandler creates a new webhook handler
-func NewWebhookHandler(config *Config, eventProcessor *EventProcessor) *WebhookHandler {
+func NewWebhookHandler(cfg *config.Config, eventProcessor *EventProcessor) *WebhookHandler {
 	handler := &WebhookHandler{
-		config:          config,
-		logger:          config.Logger,
-		eventProcessor:  eventProcessor,
-		processedEvents: make(map[string]time.Time),
+		webhookSecret:    cfg.Stripe.WebhookSecret,
+		webhookTolerance: defaultWebhookTolerance,
+		eventProcessor:   eventProcessor,
+		processedEvents:  make(map[string]time.Time),
 	}
 
 	// Start cleanup goroutine for processed events
@@ -71,24 +77,18 @@ func (h *WebhookHandler) HandleWebhook(ctx context.Context, req *WebhookRequest)
 	// Verify webhook signature
 	event, err := h.verifySignature(req.Payload, req.Signature)
 	if err != nil {
-		if h.logger != nil {
-			h.logger.Errorf("Webhook signature verification failed: %v", err)
-		}
+		log.Printf("[Stripe] Webhook signature verification failed: %v", err)
 		return &WebhookResponse{
 			Received: false,
 			Error:    "signature verification failed",
 		}, fmt.Errorf("signature verification failed: %w", err)
 	}
 
-	if h.logger != nil {
-		h.logger.Infof("Webhook received: id=%s, type=%s", event.ID, event.Type)
-	}
+	log.Printf("[Stripe] Webhook received: id=%s, type=%s", event.ID, event.Type)
 
 	// Check if event was already processed (idempotency)
 	if h.wasEventProcessed(event.ID) {
-		if h.logger != nil {
-			h.logger.Warnf("Event already processed: id=%s", event.ID)
-		}
+		log.Printf("[Stripe] Event already processed: id=%s", event.ID)
 		return &WebhookResponse{
 			Received: true,
 			EventID:  event.ID,
@@ -98,10 +98,8 @@ func (h *WebhookHandler) HandleWebhook(ctx context.Context, req *WebhookRequest)
 	// Process the event
 	if h.eventProcessor != nil {
 		if err := h.eventProcessor.ProcessEvent(ctx, event); err != nil {
-			if h.logger != nil {
-				h.logger.Errorf("Failed to process event: id=%s, type=%s, error=%v",
-					event.ID, event.Type, err)
-			}
+			log.Printf("[Stripe] Failed to process event: id=%s, type=%s, error=%v",
+				event.ID, event.Type, err)
 			return &WebhookResponse{
 				Received: false,
 				EventID:  event.ID,
@@ -113,9 +111,7 @@ func (h *WebhookHandler) HandleWebhook(ctx context.Context, req *WebhookRequest)
 	// Mark event as processed
 	h.markEventProcessed(event.ID)
 
-	if h.logger != nil {
-		h.logger.Infof("Event processed successfully: id=%s, type=%s", event.ID, event.Type)
-	}
+	log.Printf("[Stripe] Event processed successfully: id=%s, type=%s", event.ID, event.Type)
 
 	return &WebhookResponse{
 		Received: true,
@@ -130,9 +126,7 @@ func (h *WebhookHandler) HandleHTTPWebhook(w http.ResponseWriter, r *http.Reques
 	// Read body
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		if h.logger != nil {
-			h.logger.Errorf("Failed to read webhook body: %v", err)
-		}
+		log.Printf("[Stripe] Failed to read webhook body: %v", err)
 		h.sendErrorResponse(w, http.StatusBadRequest, "failed to read request body")
 		return
 	}
@@ -141,9 +135,7 @@ func (h *WebhookHandler) HandleHTTPWebhook(w http.ResponseWriter, r *http.Reques
 	// Get signature
 	signature := r.Header.Get("Stripe-Signature")
 	if signature == "" {
-		if h.logger != nil {
-			h.logger.Errorf("Missing Stripe-Signature header")
-		}
+		log.Printf("[Stripe] Missing Stripe-Signature header")
 		h.sendErrorResponse(w, http.StatusBadRequest, "missing signature")
 		return
 	}
@@ -175,7 +167,7 @@ func (h *WebhookHandler) verifySignature(payload []byte, signature string) (*str
 	event, err := webhook.ConstructEvent(
 		payload,
 		signature,
-		h.config.WebhookSecret,
+		h.webhookSecret,
 	)
 
 	if err != nil {
@@ -183,7 +175,7 @@ func (h *WebhookHandler) verifySignature(payload []byte, signature string) (*str
 	}
 
 	// Additional timestamp check for replay attacks
-	if time.Since(time.Unix(event.Created, 0)) > h.config.WebhookTolerance {
+	if time.Since(time.Unix(event.Created, 0)) > h.webhookTolerance {
 		return nil, fmt.Errorf("webhook timestamp too old: event created at %v",
 			time.Unix(event.Created, 0))
 	}
@@ -226,10 +218,8 @@ func (h *WebhookHandler) cleanupProcessedEvents() {
 
 		h.eventMu.Unlock()
 
-		if h.logger != nil {
-			h.logger.Debugf("Cleaned up old processed events, current count: %d",
-				len(h.processedEvents))
-		}
+		log.Printf("[Stripe] Cleaned up old processed events, current count: %d",
+			len(h.processedEvents))
 	}
 }
 
@@ -239,9 +229,7 @@ func (h *WebhookHandler) sendJSONResponse(w http.ResponseWriter, statusCode int,
 	w.WriteHeader(statusCode)
 
 	if err := json.NewEncoder(w).Encode(response); err != nil {
-		if h.logger != nil {
-			h.logger.Errorf("Failed to encode response: %v", err)
-		}
+		log.Printf("[Stripe] Failed to encode response: %v", err)
 	}
 }
 

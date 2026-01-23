@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"html/template"
 	"io"
+	"math"
 	"strings"
 	"sync"
 	"time"
@@ -66,9 +67,12 @@ var templateFuncs = template.FuncMap{
 			amount = -amount
 		}
 
+		// Round to 2 decimal places to avoid floating point precision issues
+		rounded := math.Round(amount*100) / 100
+
 		// Format with commas
-		intPart := int64(amount)
-		decPart := int64((amount - float64(intPart)) * 100)
+		intPart := int64(rounded)
+		decPart := int64(math.Round((rounded - float64(intPart)) * 100))
 
 		var result string
 		if intPart == 0 {
@@ -117,6 +121,9 @@ var templateFuncs = template.FuncMap{
 	},
 	"safe": func(s string) template.HTML {
 		return template.HTML(s)
+	},
+	"safeCSS": func(s string) template.CSS {
+		return template.CSS(s)
 	},
 
 	// Conditionals
@@ -238,8 +245,9 @@ func (r *Renderer) loadTemplates() error {
 			return fmt.Errorf("failed to parse template %s: %w", docType, err)
 		}
 
-		// Store CSS for inline embedding
-		tmpl, err = tmpl.New("styles").Parse(combinedCSS)
+		// Store CSS for inline embedding (don't reassign tmpl, as we want to keep
+		// the reference to the main template, not the styles sub-template)
+		_, err = tmpl.New("styles").Parse(combinedCSS)
 		if err != nil {
 			return fmt.Errorf("failed to parse styles template: %w", err)
 		}

@@ -1,13 +1,14 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"log"
 
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/repository"
 	"github.com/javaknight1/servicepro/backend/pkg/auth"
-	"github.com/javaknight1/servicepro/backend/pkg/email"
+	"github.com/javaknight1/servicepro/backend/pkg/clients/email"
 )
 
 var (
@@ -18,19 +19,19 @@ var (
 // RegistrationService handles user registration business logic
 type RegistrationService struct {
 	userRepo            repository.UserRepositoryInterface
-	emailService        email.EmailServiceInterface
+	emailClient         email.Client
 	verificationService EmailVerificationServiceInterface
 }
 
 // NewRegistrationService creates a new registration service
 func NewRegistrationService(
 	userRepo repository.UserRepositoryInterface,
-	emailService email.EmailServiceInterface,
+	emailClient email.Client,
 	verificationService EmailVerificationServiceInterface,
 ) *RegistrationService {
 	return &RegistrationService{
 		userRepo:            userRepo,
-		emailService:        emailService,
+		emailClient:         emailClient,
 		verificationService: verificationService,
 	}
 }
@@ -87,7 +88,7 @@ func (s *RegistrationService) Register(emailAddr, password string) (*models.Regi
 			}
 		} else {
 			// Fallback to welcome email if verification service not configured
-			if err := s.emailService.SendWelcomeEmail(user.Email, user.Email); err != nil {
+			if err := s.emailClient.SendWelcomeEmail(context.Background(), user.Email, user.Email); err != nil {
 				log.Printf("Failed to send welcome email to %s: %v", user.Email, err)
 			}
 		}

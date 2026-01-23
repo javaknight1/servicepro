@@ -13,7 +13,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/javaknight1/servicepro/backend/internal/models"
-	"github.com/javaknight1/servicepro/backend/pkg/email"
+	"github.com/javaknight1/servicepro/backend/pkg/clients/email"
 )
 
 var (
@@ -102,11 +102,11 @@ type NotificationServiceInterface interface {
 
 // NotificationService handles sending notifications
 type NotificationService struct {
-	emailService email.EmailServiceInterface
-	smsProvider  SMSProvider // Interface for SMS provider
-	templates    *template.Template
-	logger       *log.Logger
-	mu           sync.RWMutex
+	emailClient email.Client
+	smsProvider SMSProvider // Interface for SMS provider
+	templates   *template.Template
+	logger      *log.Logger
+	mu          sync.RWMutex
 }
 
 // SMSProvider defines interface for SMS providers (Twilio, AWS SNS, etc.)
@@ -125,11 +125,11 @@ func (m *MockSMSProvider) SendSMS(ctx context.Context, to, message string) error
 }
 
 // NewNotificationService creates a new notification service
-func NewNotificationService(emailService email.EmailServiceInterface, smsProvider SMSProvider) (*NotificationService, error) {
+func NewNotificationService(emailClient email.Client, smsProvider SMSProvider) (*NotificationService, error) {
 	service := &NotificationService{
-		emailService: emailService,
-		smsProvider:  smsProvider,
-		logger:       log.New(log.Writer(), "[NotificationService] ", log.LstdFlags),
+		emailClient: emailClient,
+		smsProvider: smsProvider,
+		logger:      log.New(log.Writer(), "[NotificationService] ", log.LstdFlags),
 	}
 
 	// Initialize with mock SMS if none provided
@@ -498,6 +498,10 @@ func (s *NotificationService) SendBulkNotifications(ctx context.Context, reqs []
 // Helper methods
 
 func (s *NotificationService) sendEmailNotification(ctx context.Context, req *NotificationRequest) error {
+	if req.RecipientEmail == "" {
+		return ErrInvalidRecipient
+	}
+
 	// Determine template name based on context
 	templateName := "assignment_created_email"
 	if subject, ok := req.TemplateData["subject"].(string); ok {
@@ -519,8 +523,10 @@ func (s *NotificationService) sendEmailNotification(ctx context.Context, req *No
 		return fmt.Errorf("%w: %v", ErrTemplateParsing, err)
 	}
 
-	// Send email
-	return s.emailService.SendEmail(req.RecipientEmail, req.Subject, body.String())
+	// Send email using the new client interface
+	msg := email.NewEmailMessage(req.RecipientEmail, req.Subject, body.String())
+	_, sendErr := s.emailClient.Send(ctx, msg)
+	return sendErr
 }
 
 func (s *NotificationService) sendSMSNotification(ctx context.Context, req *NotificationRequest) error {

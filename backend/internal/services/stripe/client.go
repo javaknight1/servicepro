@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"sync"
 	"time"
 
@@ -13,26 +14,44 @@ import (
 	"github.com/stripe/stripe-go/v76/customer"
 	"github.com/stripe/stripe-go/v76/paymentintent"
 	"github.com/stripe/stripe-go/v76/refund"
+
+	"github.com/javaknight1/servicepro/backend/config"
+)
+
+// Default configuration values
+const (
+	defaultMaxNetworkRetries = 3
+	defaultRequestsPerSecond = 100
 )
 
 // Client is the main Stripe client wrapper
 type Client struct {
-	config *Config
-	logger StripeLogger
-	mu     sync.RWMutex
+	secretKey      string
+	publishableKey string
+	webhookSecret  string
+	environment    string
+	mu             sync.RWMutex
 
 	// Rate limiting
 	rateLimiter *rateLimiter
 }
 
 // NewClient creates a new Stripe client
-func NewClient(config *Config) (*Client, error) {
-	if err := config.Validate(); err != nil {
-		return nil, fmt.Errorf("invalid configuration: %w", err)
+func NewClient(cfg *config.Config) (*Client, error) {
+	if cfg == nil {
+		return nil, errors.New("config is required")
+	}
+
+	if cfg.Stripe.SecretKey == "" {
+		return nil, errors.New("stripe secret key is required")
+	}
+
+	if cfg.Stripe.PublishableKey == "" {
+		return nil, errors.New("stripe publishable key is required")
 	}
 
 	// Set Stripe API key
-	stripe.Key = config.SecretKey
+	stripe.Key = cfg.Stripe.SecretKey
 
 	// Configure Stripe SDK
 	stripe.SetAppInfo(&stripe.AppInfo{
@@ -42,24 +61,53 @@ func NewClient(config *Config) (*Client, error) {
 	})
 
 	// Set max network retries
+	maxRetries := cfg.Stripe.MaxRetries
+	if maxRetries <= 0 {
+		maxRetries = defaultMaxNetworkRetries
+	}
 	stripe.SetBackend("api", stripe.GetBackendWithConfig(
 		stripe.APIBackend,
 		&stripe.BackendConfig{
-			MaxNetworkRetries: stripe.Int64(int64(config.MaxNetworkRetries)),
+			MaxNetworkRetries: stripe.Int64(int64(maxRetries)),
 		},
 	))
 
-	client := &Client{
-		config:      config,
-		logger:      config.Logger,
-		rateLimiter: newRateLimiter(config.RequestsPerSecond),
+	// Determine environment from secret key prefix
+	environment := "unknown"
+	if len(cfg.Stripe.SecretKey) > 8 {
+		if cfg.Stripe.SecretKey[:8] == "sk_test_" {
+			environment = "test"
+		} else if cfg.Stripe.SecretKey[:8] == "sk_live_" {
+			environment = "live"
+		}
 	}
 
-	if client.logger != nil {
-		client.logger.Infof("Stripe client initialized in %s mode", config.Environment)
+	client := &Client{
+		secretKey:      cfg.Stripe.SecretKey,
+		publishableKey: cfg.Stripe.PublishableKey,
+		webhookSecret:  cfg.Stripe.WebhookSecret,
+		environment:    environment,
+		rateLimiter:    newRateLimiter(defaultRequestsPerSecond),
 	}
+
+	log.Printf("Stripe client initialized in %s mode", environment)
 
 	return client, nil
+}
+
+// GetPublishableKey returns the publishable key (safe for frontend)
+func (c *Client) GetPublishableKey() string {
+	return c.publishableKey
+}
+
+// GetWebhookSecret returns the webhook secret
+func (c *Client) GetWebhookSecret() string {
+	return c.webhookSecret
+}
+
+// IsTestMode returns true if running in test mode
+func (c *Client) IsTestMode() bool {
+	return c.environment == "test"
 }
 
 // PaymentIntentParams represents parameters for creating a payment intent
@@ -178,22 +226,16 @@ func (c *Client) CreatePaymentIntent(ctx context.Context, params *PaymentIntentP
 	stripeParams.Context = ctx
 
 	// Log the request
-	if c.logger != nil {
-		c.logger.Infof("Creating payment intent: amount=%d, currency=%s", params.Amount, params.Currency)
-	}
+	log.Printf("Creating payment intent: amount=%d, currency=%s", params.Amount, params.Currency)
 
 	// Create payment intent
 	pi, err := paymentintent.New(stripeParams)
 	if err != nil {
-		if c.logger != nil {
-			c.logger.Errorf("Failed to create payment intent: %v", err)
-		}
+		log.Printf("Failed to create payment intent: %v", err)
 		return nil, fmt.Errorf("failed to create payment intent: %w", err)
 	}
 
-	if c.logger != nil {
-		c.logger.Infof("Payment intent created: id=%s, status=%s", pi.ID, pi.Status)
-	}
+	log.Printf("Payment intent created: id=%s, status=%s", pi.ID, pi.Status)
 
 	return c.paymentIntentToResult(pi), nil
 }
@@ -213,9 +255,7 @@ func (c *Client) GetPaymentIntent(ctx context.Context, id string) (*PaymentInten
 
 	pi, err := paymentintent.Get(id, params)
 	if err != nil {
-		if c.logger != nil {
-			c.logger.Errorf("Failed to get payment intent: id=%s, error=%v", id, err)
-		}
+		log.Printf("Failed to get payment intent: id=%s, error=%v", id, err)
 		return nil, fmt.Errorf("failed to get payment intent: %w", err)
 	}
 
@@ -238,21 +278,15 @@ func (c *Client) ConfirmPaymentIntent(ctx context.Context, id string, paymentMet
 	}
 	params.Context = ctx
 
-	if c.logger != nil {
-		c.logger.Infof("Confirming payment intent: id=%s", id)
-	}
+	log.Printf("Confirming payment intent: id=%s", id)
 
 	pi, err := paymentintent.Confirm(id, params)
 	if err != nil {
-		if c.logger != nil {
-			c.logger.Errorf("Failed to confirm payment intent: id=%s, error=%v", id, err)
-		}
+		log.Printf("Failed to confirm payment intent: id=%s, error=%v", id, err)
 		return nil, fmt.Errorf("failed to confirm payment intent: %w", err)
 	}
 
-	if c.logger != nil {
-		c.logger.Infof("Payment intent confirmed: id=%s, status=%s", pi.ID, pi.Status)
-	}
+	log.Printf("Payment intent confirmed: id=%s, status=%s", pi.ID, pi.Status)
 
 	return c.paymentIntentToResult(pi), nil
 }
@@ -273,21 +307,15 @@ func (c *Client) CancelPaymentIntent(ctx context.Context, id string, reason *str
 	}
 	params.Context = ctx
 
-	if c.logger != nil {
-		c.logger.Infof("Canceling payment intent: id=%s", id)
-	}
+	log.Printf("Canceling payment intent: id=%s", id)
 
 	pi, err := paymentintent.Cancel(id, params)
 	if err != nil {
-		if c.logger != nil {
-			c.logger.Errorf("Failed to cancel payment intent: id=%s, error=%v", id, err)
-		}
+		log.Printf("Failed to cancel payment intent: id=%s, error=%v", id, err)
 		return nil, fmt.Errorf("failed to cancel payment intent: %w", err)
 	}
 
-	if c.logger != nil {
-		c.logger.Infof("Payment intent canceled: id=%s", pi.ID)
-	}
+	log.Printf("Payment intent canceled: id=%s", pi.ID)
 
 	return c.paymentIntentToResult(pi), nil
 }
@@ -308,21 +336,15 @@ func (c *Client) CapturePaymentIntent(ctx context.Context, id string, amountToCa
 	}
 	params.Context = ctx
 
-	if c.logger != nil {
-		c.logger.Infof("Capturing payment intent: id=%s", id)
-	}
+	log.Printf("Capturing payment intent: id=%s", id)
 
 	pi, err := paymentintent.Capture(id, params)
 	if err != nil {
-		if c.logger != nil {
-			c.logger.Errorf("Failed to capture payment intent: id=%s, error=%v", id, err)
-		}
+		log.Printf("Failed to capture payment intent: id=%s, error=%v", id, err)
 		return nil, fmt.Errorf("failed to capture payment intent: %w", err)
 	}
 
-	if c.logger != nil {
-		c.logger.Infof("Payment intent captured: id=%s, amount=%d", pi.ID, pi.Amount)
-	}
+	log.Printf("Payment intent captured: id=%s, amount=%d", pi.ID, pi.Amount)
 
 	return c.paymentIntentToResult(pi), nil
 }
@@ -398,21 +420,15 @@ func (c *Client) CreateCustomer(ctx context.Context, params *CustomerParams) (*C
 
 	stripeParams.Context = ctx
 
-	if c.logger != nil {
-		c.logger.Infof("Creating Stripe customer: email=%s", stringPtrValue(params.Email))
-	}
+	log.Printf("Creating Stripe customer: email=%s", stringPtrValue(params.Email))
 
 	cust, err := customer.New(stripeParams)
 	if err != nil {
-		if c.logger != nil {
-			c.logger.Errorf("Failed to create customer: %v", err)
-		}
+		log.Printf("Failed to create customer: %v", err)
 		return nil, fmt.Errorf("failed to create customer: %w", err)
 	}
 
-	if c.logger != nil {
-		c.logger.Infof("Customer created: id=%s", cust.ID)
-	}
+	log.Printf("Customer created: id=%s", cust.ID)
 
 	return c.customerToResult(cust), nil
 }
@@ -432,9 +448,7 @@ func (c *Client) GetCustomer(ctx context.Context, id string) (*CustomerResult, e
 
 	cust, err := customer.Get(id, params)
 	if err != nil {
-		if c.logger != nil {
-			c.logger.Errorf("Failed to get customer: id=%s, error=%v", id, err)
-		}
+		log.Printf("Failed to get customer: id=%s, error=%v", id, err)
 		return nil, fmt.Errorf("failed to get customer: %w", err)
 	}
 
@@ -518,24 +532,18 @@ func (c *Client) CreateRefund(ctx context.Context, params *RefundParams) (*Refun
 
 	stripeParams.Context = ctx
 
-	if c.logger != nil {
-		c.logger.Infof("Creating refund: charge=%s, payment_intent=%s, amount=%v",
-			stringPtrValue(params.ChargeID),
-			stringPtrValue(params.PaymentIntentID),
-			params.Amount)
-	}
+	log.Printf("Creating refund: charge=%s, payment_intent=%s, amount=%v",
+		stringPtrValue(params.ChargeID),
+		stringPtrValue(params.PaymentIntentID),
+		params.Amount)
 
 	ref, err := refund.New(stripeParams)
 	if err != nil {
-		if c.logger != nil {
-			c.logger.Errorf("Failed to create refund: %v", err)
-		}
+		log.Printf("Failed to create refund: %v", err)
 		return nil, fmt.Errorf("failed to create refund: %w", err)
 	}
 
-	if c.logger != nil {
-		c.logger.Infof("Refund created: id=%s, status=%s", ref.ID, ref.Status)
-	}
+	log.Printf("Refund created: id=%s, status=%s", ref.ID, ref.Status)
 
 	return c.refundToResult(ref), nil
 }

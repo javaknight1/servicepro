@@ -240,10 +240,10 @@ func TestTrackerEnrichesEvents(t *testing.T) {
 func TestTrackerTrackBatch(t *testing.T) {
 	store := NewMockEventStore()
 	config := TrackerConfig{
-		BatchSize:     10,
-		FlushInterval: 100 * time.Millisecond,
+		BatchSize:     1, // Small batch size for immediate processing
+		FlushInterval: 10 * time.Millisecond,
 		MaxQueueSize:  100,
-		Workers:       1,
+		Workers:       2,
 		RetryAttempts: 1,
 		RetryDelay:    10 * time.Millisecond,
 		Environment:   "test",
@@ -269,6 +269,8 @@ func TestTrackerTrackBatch(t *testing.T) {
 		t.Errorf("TrackBatch should not error: %v", err)
 	}
 
+	// Wait for workers to process events from queue to buffer and flush
+	time.Sleep(200 * time.Millisecond)
 	tracker.Flush(ctx)
 	time.Sleep(100 * time.Millisecond)
 
@@ -315,8 +317,8 @@ func TestTrackerStats(t *testing.T) {
 func TestTrackerClose(t *testing.T) {
 	store := NewMockEventStore()
 	config := TrackerConfig{
-		BatchSize:     10,
-		FlushInterval: 100 * time.Millisecond,
+		BatchSize:     1, // Small batch size for immediate processing
+		FlushInterval: 10 * time.Millisecond,
 		MaxQueueSize:  100,
 		Workers:       2,
 		RetryAttempts: 1,
@@ -335,6 +337,9 @@ func TestTrackerClose(t *testing.T) {
 	for i := 0; i < 5; i++ {
 		tracker.Track(ctx, NewEvent(EventUserLogin, CategoryUser))
 	}
+
+	// Wait for workers to start processing events
+	time.Sleep(200 * time.Millisecond)
 
 	// Close should flush remaining events
 	err := tracker.Close()
@@ -391,10 +396,10 @@ func TestTrackerRetryOnError(t *testing.T) {
 func TestGlobalTracker(t *testing.T) {
 	store := NewMockEventStore()
 	config := TrackerConfig{
-		BatchSize:     10,
-		FlushInterval: 100 * time.Millisecond,
+		BatchSize:     1, // Small batch size for immediate processing
+		FlushInterval: 10 * time.Millisecond,
 		MaxQueueSize:  100,
-		Workers:       1,
+		Workers:       2,
 		RetryAttempts: 1,
 		RetryDelay:    10 * time.Millisecond,
 		Environment:   "test",
@@ -420,6 +425,8 @@ func TestGlobalTracker(t *testing.T) {
 		t.Errorf("Track should not error: %v", err)
 	}
 
+	// Wait for workers to process event
+	time.Sleep(200 * time.Millisecond)
 	tracker.Flush(ctx)
 	time.Sleep(100 * time.Millisecond)
 

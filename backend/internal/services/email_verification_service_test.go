@@ -37,7 +37,7 @@ func TestSendVerificationEmail_Success(t *testing.T) {
 	// Setup expectations
 	mockRepo.On("GetByID", userID).Return(user, nil)
 	mockRepo.On("UpdateVerificationSentAt", userID, mock.AnythingOfType("*time.Time")).Return(nil)
-	mockEmail.On("SendEmailVerificationEmail", user.Email, mock.AnythingOfType("string"), "http://localhost:5173/verify-email").Return(nil)
+	mockEmail.On("SendEmailVerificationEmail", mock.Anything, user.Email, mock.AnythingOfType("string"), "http://localhost:5173/verify-email").Return(nil)
 
 	// Execute
 	err := service.SendVerificationEmail(userID)
@@ -140,7 +140,7 @@ func TestVerifyEmail_Success(t *testing.T) {
 	// Setup expectations
 	mockRepo.On("GetByEmail", email).Return(user, nil)
 	mockRepo.On("MarkEmailVerified", userID).Return(nil)
-	mockEmail.On("SendEmailVerificationSuccessEmail", email).Return(nil)
+	mockEmail.On("SendEmailVerificationSuccessEmail", mock.Anything, email).Return(nil)
 
 	// Execute
 	err := service.VerifyEmail(token)
@@ -245,7 +245,7 @@ func TestResendVerificationEmail_Success(t *testing.T) {
 	mockRepo.On("GetByEmail", email).Return(user, nil)
 	mockRepo.On("GetByID", userID).Return(user, nil) // SendVerificationEmail internally calls GetByID
 	mockRepo.On("UpdateVerificationSentAt", userID, mock.AnythingOfType("*time.Time")).Return(nil)
-	mockEmail.On("SendEmailVerificationEmail", email, mock.AnythingOfType("string"), "http://localhost:5173/verify-email").Return(nil)
+	mockEmail.On("SendEmailVerificationEmail", mock.Anything, email, mock.AnythingOfType("string"), "http://localhost:5173/verify-email").Return(nil)
 
 	// Execute
 	err := service.ResendVerificationEmail(email)
@@ -347,8 +347,8 @@ func TestSendReminderEmails_Success(t *testing.T) {
 	mockRepo.On("GetUnverifiedUsersForReminder", ReminderThreshold).Return(users, nil)
 	mockRepo.On("UpdateVerificationSentAt", user1.ID, mock.AnythingOfType("*time.Time")).Return(nil)
 	mockRepo.On("UpdateVerificationSentAt", user2.ID, mock.AnythingOfType("*time.Time")).Return(nil)
-	mockEmail.On("SendEmailVerificationReminderEmail", user1.Email, mock.AnythingOfType("string"), "http://localhost:5173/verify-email").Return(nil)
-	mockEmail.On("SendEmailVerificationReminderEmail", user2.Email, mock.AnythingOfType("string"), "http://localhost:5173/verify-email").Return(nil)
+	mockEmail.On("SendEmailVerificationReminderEmail", mock.Anything, user1.Email, mock.AnythingOfType("string"), "http://localhost:5173/verify-email").Return(nil)
+	mockEmail.On("SendEmailVerificationReminderEmail", mock.Anything, user2.Email, mock.AnythingOfType("string"), "http://localhost:5173/verify-email").Return(nil)
 
 	// Execute
 	err := service.SendReminderEmails()
