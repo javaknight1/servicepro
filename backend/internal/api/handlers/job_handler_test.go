@@ -205,10 +205,10 @@ func TestJobHandler_CreateJob_Success(t *testing.T) {
 	router := setupJobTestRouter()
 
 	userID := uuid.New()
-	userRole := models.UserRoleAdmin
+	userRole := models.RoleUser
 
 	router.POST("/jobs", func(c *gin.Context) {
-		c.Set("userID", userID)
+		c.Set("user_id", userID)
 		c.Set("userRole", userRole)
 		handler.CreateJob(c)
 	})
@@ -278,8 +278,8 @@ func TestJobHandler_CreateJob_InvalidJSON(t *testing.T) {
 
 	userID := uuid.New()
 	router.POST("/jobs", func(c *gin.Context) {
-		c.Set("userID", userID)
-		c.Set("userRole", models.UserRoleAdmin)
+		c.Set("user_id", userID)
+		c.Set("userRole", models.RoleUser)
 		handler.CreateJob(c)
 	})
 
@@ -299,8 +299,8 @@ func TestJobHandler_CreateJob_CustomerNotFound(t *testing.T) {
 
 	userID := uuid.New()
 	router.POST("/jobs", func(c *gin.Context) {
-		c.Set("userID", userID)
-		c.Set("userRole", models.UserRoleAdmin)
+		c.Set("user_id", userID)
+		c.Set("userRole", models.RoleUser)
 		handler.CreateJob(c)
 	})
 
@@ -334,14 +334,14 @@ func TestJobHandler_GetJob_Success(t *testing.T) {
 	jobID := uuid.New()
 
 	router.GET("/jobs/:id", func(c *gin.Context) {
-		c.Set("userID", userID)
-		c.Set("userRole", models.UserRoleAdmin)
+		c.Set("user_id", userID)
+		c.Set("userRole", models.RoleUser)
 		handler.GetJob(c)
 	})
 
 	response := createTestJobResponse()
 	response.ID = jobID
-	mockService.On("GetJobByID", jobID, userID, models.UserRoleAdmin).Return(response, nil)
+	mockService.On("GetJobByID", jobID, userID, models.RoleUser).Return(response, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/jobs/"+jobID.String(), nil)
 	w := httptest.NewRecorder()
@@ -364,8 +364,8 @@ func TestJobHandler_GetJob_InvalidUUID(t *testing.T) {
 
 	userID := uuid.New()
 	router.GET("/jobs/:id", func(c *gin.Context) {
-		c.Set("userID", userID)
-		c.Set("userRole", models.UserRoleAdmin)
+		c.Set("user_id", userID)
+		c.Set("userRole", models.RoleUser)
 		handler.GetJob(c)
 	})
 
@@ -386,12 +386,12 @@ func TestJobHandler_GetJob_NotFound(t *testing.T) {
 	jobID := uuid.New()
 
 	router.GET("/jobs/:id", func(c *gin.Context) {
-		c.Set("userID", userID)
-		c.Set("userRole", models.UserRoleAdmin)
+		c.Set("user_id", userID)
+		c.Set("userRole", models.RoleUser)
 		handler.GetJob(c)
 	})
 
-	mockService.On("GetJobByID", jobID, userID, models.UserRoleAdmin).
+	mockService.On("GetJobByID", jobID, userID, models.RoleUser).
 		Return(nil, services.ErrJobNotFound)
 
 	req := httptest.NewRequest(http.MethodGet, "/jobs/"+jobID.String(), nil)
@@ -411,13 +411,13 @@ func TestJobHandler_ListJobs_Success(t *testing.T) {
 
 	userID := uuid.New()
 	router.GET("/jobs", func(c *gin.Context) {
-		c.Set("userID", userID)
-		c.Set("userRole", models.UserRoleAdmin)
+		c.Set("user_id", userID)
+		c.Set("userRole", models.RoleUser)
 		handler.ListJobs(c)
 	})
 
 	jobs := []models.JobResponse{*createTestJobResponse(), *createTestJobResponse()}
-	mockService.On("ListJobs", mock.AnythingOfType("*models.JobListFilter"), userID, models.UserRoleAdmin).
+	mockService.On("ListJobs", mock.AnythingOfType("*models.JobListFilter"), userID, models.RoleUser).
 		Return(jobs, int64(2), nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/jobs?limit=10&offset=0", nil)
@@ -448,8 +448,8 @@ func TestJobHandler_UpdateJob_Success(t *testing.T) {
 	jobID := uuid.New()
 
 	router.PUT("/jobs/:id", func(c *gin.Context) {
-		c.Set("userID", userID)
-		c.Set("userRole", models.UserRoleAdmin)
+		c.Set("user_id", userID)
+		c.Set("userRole", models.RoleUser)
 		handler.UpdateJob(c)
 	})
 
@@ -462,7 +462,7 @@ func TestJobHandler_UpdateJob_Success(t *testing.T) {
 	response.ID = jobID
 	response.Title = newTitle
 
-	mockService.On("UpdateJob", jobID, mock.AnythingOfType("*models.UpdateJobRequest"), userID, models.UserRoleAdmin).
+	mockService.On("UpdateJob", jobID, mock.AnythingOfType("*models.UpdateJobRequest"), userID, models.RoleUser).
 		Return(response, nil)
 
 	jsonBody, _ := json.Marshal(reqBody)
@@ -486,12 +486,12 @@ func TestJobHandler_DeleteJob_Success(t *testing.T) {
 	jobID := uuid.New()
 
 	router.DELETE("/jobs/:id", func(c *gin.Context) {
-		c.Set("userID", userID)
-		c.Set("userRole", models.UserRoleAdmin)
+		c.Set("user_id", userID)
+		c.Set("userRole", models.RoleUser)
 		handler.DeleteJob(c)
 	})
 
-	mockService.On("DeleteJob", jobID, userID, models.UserRoleAdmin).Return(nil)
+	mockService.On("DeleteJob", jobID, userID, models.RoleUser).Return(nil)
 
 	req := httptest.NewRequest(http.MethodDelete, "/jobs/"+jobID.String(), nil)
 	w := httptest.NewRecorder()
@@ -512,8 +512,8 @@ func TestJobHandler_StartJob_Success(t *testing.T) {
 	jobID := uuid.New()
 
 	router.POST("/jobs/:id/start", func(c *gin.Context) {
-		c.Set("userID", userID)
-		c.Set("userRole", models.UserRoleTechnician)
+		c.Set("user_id", userID)
+		c.Set("userRole", models.RoleUser)
 		handler.StartJob(c)
 	})
 
@@ -521,7 +521,7 @@ func TestJobHandler_StartJob_Success(t *testing.T) {
 	response.ID = jobID
 	response.Status = models.JobStatusInProgress
 
-	mockService.On("StartJob", jobID, userID, models.UserRoleTechnician).Return(response, nil)
+	mockService.On("StartJob", jobID, userID, models.RoleUser).Return(response, nil)
 
 	req := httptest.NewRequest(http.MethodPost, "/jobs/"+jobID.String()+"/start", nil)
 	w := httptest.NewRecorder()
@@ -547,8 +547,8 @@ func TestJobHandler_CompleteJob_Success(t *testing.T) {
 	jobID := uuid.New()
 
 	router.POST("/jobs/:id/complete", func(c *gin.Context) {
-		c.Set("userID", userID)
-		c.Set("userRole", models.UserRoleTechnician)
+		c.Set("user_id", userID)
+		c.Set("userRole", models.RoleUser)
 		handler.CompleteJob(c)
 	})
 
@@ -560,7 +560,7 @@ func TestJobHandler_CompleteJob_Success(t *testing.T) {
 	response.ID = jobID
 	response.Status = models.JobStatusCompleted
 
-	mockService.On("CompleteJob", jobID, "Job completed successfully", userID, models.UserRoleTechnician).
+	mockService.On("CompleteJob", jobID, "Job completed successfully", userID, models.RoleUser).
 		Return(response, nil)
 
 	jsonBody, _ := json.Marshal(reqBody)
@@ -590,8 +590,8 @@ func TestJobHandler_AssignTechnician_Success(t *testing.T) {
 	techID := uuid.New()
 
 	router.POST("/jobs/:id/assign", func(c *gin.Context) {
-		c.Set("userID", userID)
-		c.Set("userRole", models.UserRoleManager)
+		c.Set("user_id", userID)
+		c.Set("userRole", models.RoleUser)
 		handler.AssignTechnician(c)
 	})
 
@@ -600,7 +600,7 @@ func TestJobHandler_AssignTechnician_Success(t *testing.T) {
 		"role":          "Lead Technician",
 	}
 
-	mockService.On("AssignTechnician", jobID, techID, "Lead Technician", userID, models.UserRoleManager).
+	mockService.On("AssignTechnician", jobID, techID, "Lead Technician", userID, models.RoleUser).
 		Return(nil)
 
 	jsonBody, _ := json.Marshal(reqBody)
@@ -622,8 +622,8 @@ func TestJobHandler_GetJobStats_Success(t *testing.T) {
 
 	userID := uuid.New()
 	router.GET("/jobs/stats", func(c *gin.Context) {
-		c.Set("userID", userID)
-		c.Set("userRole", models.UserRoleAdmin)
+		c.Set("user_id", userID)
+		c.Set("userRole", models.RoleUser)
 		handler.GetJobStats(c)
 	})
 

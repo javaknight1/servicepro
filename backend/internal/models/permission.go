@@ -113,9 +113,10 @@ func IsValidAction(action string) bool {
 }
 
 // ParsePermissionName parses a permission name (e.g., "users.create") into resource and action
+// Splits on the first dot only, so "api.users.create" becomes resource="api", action="users.create"
 func ParsePermissionName(name string) (resource, action string, err error) {
-	parts := strings.Split(name, ".")
-	if len(parts) != 2 {
+	parts := strings.SplitN(name, ".", 2)
+	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
 		return "", "", ErrInvalidPermissionFormat
 	}
 	return parts[0], parts[1], nil

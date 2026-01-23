@@ -271,8 +271,7 @@ func createTestRefundEvent(eventType string, refundID string, amount int64) ([]b
 	return json.Marshal(event)
 }
 
-func setupTestService() (*WebhookHandlerService, *MockLogger, *MockNotifier) {
-	logger := NewMockLogger()
+func setupTestService() (*WebhookHandlerService, *MockNotifier) {
 	notifier := NewMockNotifier()
 
 	config := &WebhookHandlerConfig{
@@ -286,8 +285,8 @@ func setupTestService() (*WebhookHandlerService, *MockLogger, *MockNotifier) {
 		ProcessingTimeout:   5 * time.Second,
 	}
 
-	service := NewWebhookHandlerService(config, nil, logger, notifier)
-	return service, logger, notifier
+	service := NewWebhookHandlerService(config, nil, notifier)
+	return service, notifier
 }
 
 // =============================================================================
@@ -312,13 +311,10 @@ func TestDefaultWebhookHandlerConfig(t *testing.T) {
 }
 
 func TestNewWebhookHandlerService(t *testing.T) {
-	service, logger, notifier := setupTestService()
+	service, notifier := setupTestService()
 
 	if service == nil {
 		t.Fatal("Service should not be nil")
-	}
-	if service.logger != logger {
-		t.Error("Logger not set correctly")
 	}
 	if service.notifier != notifier {
 		t.Error("Notifier not set correctly")
@@ -332,7 +328,7 @@ func TestNewWebhookHandlerServiceWithNilNotifier(t *testing.T) {
 	config := DefaultWebhookHandlerConfig()
 	config.WebhookSecret = "test_secret"
 
-	service := NewWebhookHandlerService(config, nil, nil, nil)
+	service := NewWebhookHandlerService(config, nil, nil)
 
 	if service.notifier == nil {
 		t.Error("Notifier should be set to NoOpNotifier when nil")
@@ -350,7 +346,7 @@ func TestNewWebhookHandlerServiceWithNilNotifier(t *testing.T) {
 // =============================================================================
 
 func TestValidateInput(t *testing.T) {
-	service, _, _ := setupTestService()
+	service, _ := setupTestService()
 
 	tests := []struct {
 		name    string
@@ -403,7 +399,7 @@ func TestValidateInput(t *testing.T) {
 // =============================================================================
 
 func TestVerifyAndParseEvent(t *testing.T) {
-	service, _, _ := setupTestService()
+	service, _ := setupTestService()
 
 	// Create a valid event
 	payload, _ := createTestPaymentIntentEvent(EventPaymentIntentSucceeded, "pi_test123", 1000)
@@ -421,7 +417,7 @@ func TestVerifyAndParseEvent(t *testing.T) {
 }
 
 func TestVerifyAndParseEventInvalidSignature(t *testing.T) {
-	service, _, _ := setupTestService()
+	service, _ := setupTestService()
 
 	payload, _ := createTestPaymentIntentEvent(EventPaymentIntentSucceeded, "pi_test123", 1000)
 
@@ -433,7 +429,7 @@ func TestVerifyAndParseEventInvalidSignature(t *testing.T) {
 }
 
 func TestVerifyAndParseEventExpired(t *testing.T) {
-	service, _, _ := setupTestService()
+	service, _ := setupTestService()
 	service.config.WebhookTolerance = 1 * time.Second
 
 	// Create event with old Created timestamp in the payload
@@ -454,7 +450,7 @@ func TestVerifyAndParseEventExpired(t *testing.T) {
 // =============================================================================
 
 func TestIdempotencyCache(t *testing.T) {
-	service, _, _ := setupTestService()
+	service, _ := setupTestService()
 
 	eventID := "evt_test123"
 
@@ -473,7 +469,7 @@ func TestIdempotencyCache(t *testing.T) {
 }
 
 func TestCleanupProcessedEvents(t *testing.T) {
-	service, _, _ := setupTestService()
+	service, _ := setupTestService()
 
 	// Add some events
 	service.processedEvents["old_event"] = time.Now().Add(-25 * time.Hour)
@@ -498,7 +494,8 @@ func TestCleanupProcessedEvents(t *testing.T) {
 // =============================================================================
 
 func TestHandlePaymentIntentSucceeded(t *testing.T) {
-	service, logger, notifier := setupTestService()
+	service, notifier := setupTestService()
+	_ = notifier // may be unused in some tests
 	ctx := context.Background()
 
 	// Create event
@@ -531,23 +528,10 @@ func TestHandlePaymentIntentSucceeded(t *testing.T) {
 	if notifier.PaymentSucceededCalls[0].Amount != 5000 {
 		t.Errorf("Expected amount 5000, got %d", notifier.PaymentSucceededCalls[0].Amount)
 	}
-
-	// Check logging
-	messages := logger.GetMessages()
-	hasLog := false
-	for _, msg := range messages {
-		if contains(msg, "Payment intent succeeded") {
-			hasLog = true
-			break
-		}
-	}
-	if !hasLog {
-		t.Error("Expected payment success log message")
-	}
 }
 
 func TestHandlePaymentIntentFailed(t *testing.T) {
-	service, _, notifier := setupTestService()
+	service, notifier := setupTestService()
 	ctx := context.Background()
 
 	pi := stripe.PaymentIntent{
@@ -578,7 +562,7 @@ func TestHandlePaymentIntentFailed(t *testing.T) {
 }
 
 func TestHandleChargeDisputed(t *testing.T) {
-	service, _, notifier := setupTestService()
+	service, notifier := setupTestService()
 	ctx := context.Background()
 
 	ch := stripe.Charge{
@@ -608,7 +592,7 @@ func TestHandleChargeDisputed(t *testing.T) {
 }
 
 func TestHandleRefundCreated(t *testing.T) {
-	service, _, notifier := setupTestService()
+	service, notifier := setupTestService()
 	ctx := context.Background()
 
 	ref := stripe.Refund{
@@ -647,7 +631,7 @@ func TestHandleRefundCreated(t *testing.T) {
 // =============================================================================
 
 func TestCalculateNextRetry(t *testing.T) {
-	service, _, _ := setupTestService()
+	service, _ := setupTestService()
 	service.config.RetryBaseDelay = 1 * time.Second
 	service.config.RetryMaxDelay = 1 * time.Minute
 
@@ -796,7 +780,7 @@ func TestWebhookEventIsTerminal(t *testing.T) {
 // =============================================================================
 
 func TestConcurrentEventProcessing(t *testing.T) {
-	service, _, _ := setupTestService()
+	service, _ := setupTestService()
 	ctx := context.Background()
 
 	var processedCount int32
@@ -846,7 +830,7 @@ func TestConcurrentEventProcessing(t *testing.T) {
 // =============================================================================
 
 func TestServiceStartStop(t *testing.T) {
-	service, logger, _ := setupTestService()
+	service, _ := setupTestService()
 
 	// Start service
 	service.Start()
@@ -854,29 +838,8 @@ func TestServiceStartStop(t *testing.T) {
 	// Give it time to start
 	time.Sleep(50 * time.Millisecond)
 
-	// Stop service
+	// Stop service - should not panic
 	service.Stop()
-
-	// Check logs
-	messages := logger.GetMessages()
-	hasStartLog := false
-	hasStopLog := false
-
-	for _, msg := range messages {
-		if contains(msg, "started") {
-			hasStartLog = true
-		}
-		if contains(msg, "stopped") {
-			hasStopLog = true
-		}
-	}
-
-	if !hasStartLog {
-		t.Error("Expected start log message")
-	}
-	if !hasStopLog {
-		t.Error("Expected stop log message")
-	}
 }
 
 // =============================================================================
@@ -913,7 +876,7 @@ func TestNoOpNotifier(t *testing.T) {
 // =============================================================================
 
 func TestCreateWebhookEvent(t *testing.T) {
-	service, _, _ := setupTestService()
+	service, _ := setupTestService()
 
 	stripeEvent := &stripe.Event{
 		ID:      "evt_test123",
@@ -978,7 +941,7 @@ func containsImpl(s, substr string) bool {
 // =============================================================================
 
 func BenchmarkIdempotencyCheck(b *testing.B) {
-	service, _, _ := setupTestService()
+	service, _ := setupTestService()
 
 	// Pre-populate with some events
 	for i := 0; i < 1000; i++ {
@@ -993,7 +956,7 @@ func BenchmarkIdempotencyCheck(b *testing.B) {
 }
 
 func BenchmarkMarkEventProcessed(b *testing.B) {
-	service, _, _ := setupTestService()
+	service, _ := setupTestService()
 
 	b.ResetTimer()
 
@@ -1003,7 +966,7 @@ func BenchmarkMarkEventProcessed(b *testing.B) {
 }
 
 func BenchmarkValidateInput(b *testing.B) {
-	service, _, _ := setupTestService()
+	service, _ := setupTestService()
 
 	input := &WebhookInput{
 		Payload:   make([]byte, 1000),

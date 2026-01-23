@@ -133,9 +133,11 @@ func TestLogin_Success(t *testing.T) {
 		Email:            "test@example.com",
 		PasswordHash:     passwordHash,
 		FailedLoginCount: 0,
+		EmailVerified:    true,
 	}
 
 	mockRepo.On("GetByEmail", "test@example.com").Return(user, nil)
+	mockRepo.On("ResetFailedLoginCountByUUID", userID).Return(nil)
 
 	response, err := authService.Login("test@example.com", password)
 
@@ -178,9 +180,11 @@ func TestLogin_InvalidCredentials_WrongPassword(t *testing.T) {
 		Email:            "test@example.com",
 		PasswordHash:     passwordHash,
 		FailedLoginCount: 0,
+		EmailVerified:    true,
 	}
 
 	mockRepo.On("GetByEmail", "test@example.com").Return(user, nil)
+	mockRepo.On("IncrementFailedLoginCountByUUID", userID).Return(nil)
 
 	response, err := authService.Login("test@example.com", "WrongPassword")
 
@@ -234,9 +238,12 @@ func TestLogin_AccountLockout_AfterMaxAttempts(t *testing.T) {
 		Email:            "test@example.com",
 		PasswordHash:     passwordHash,
 		FailedLoginCount: 4, // One more attempt will trigger lockout
+		EmailVerified:    true,
 	}
 
 	mockRepo.On("GetByEmail", "test@example.com").Return(user, nil)
+	mockRepo.On("IncrementFailedLoginCountByUUID", userID).Return(nil)
+	mockRepo.On("LockAccountByUUID", userID, mock.AnythingOfType("time.Time")).Return(nil)
 
 	response, err := authService.Login("test@example.com", "WrongPassword")
 

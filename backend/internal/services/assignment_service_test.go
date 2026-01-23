@@ -252,11 +252,10 @@ func TestBulkAssignTechnicians_Success(t *testing.T) {
 	}
 
 	// Setup mocks for both technicians
+	// Note: GetByAssignedUser is only called if job has scheduled times, which this test job doesn't have
 	mockJobRepo.On("GetByID", jobID).Return(job, nil).Times(2)
 	mockUserRepo.On("GetByID", tech1ID).Return(tech1, nil)
 	mockUserRepo.On("GetByID", tech2ID).Return(tech2, nil)
-	mockJobRepo.On("GetByAssignedUser", tech1ID).Return([]models.Job{}, nil)
-	mockJobRepo.On("GetByAssignedUser", tech2ID).Return([]models.Job{}, nil)
 	mockJobRepo.On("AddAssignment", mock.AnythingOfType("*models.JobAssignment")).Return(nil).Times(2)
 
 	assignments, errs := service.BulkAssignTechnicians(ctx, req, uuid.New())

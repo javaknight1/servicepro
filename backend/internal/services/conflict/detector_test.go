@@ -201,7 +201,7 @@ func TestCheckConflicts_TechnicianOverlap(t *testing.T) {
 			hasOverlapConflict = true
 			assert.Equal(t, models.ConflictSeverityHigh, conflict.Severity)
 			assert.NotNil(t, conflict.ConflictingWith)
-			assert.Equal(t, existingSchedule.ID.String(), conflict.ConflictingWith.ID)
+			assert.Equal(t, existingSchedule.ID, conflict.ConflictingWith.ID)
 		}
 	}
 	assert.True(t, hasOverlapConflict, "Should detect technician overlap conflict")

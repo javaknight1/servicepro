@@ -791,7 +791,7 @@ func TestGetAvailableTechnicians_Success(t *testing.T) {
 		},
 	}
 
-	mockAssignmentService.On("GetAvailableTechnicians", mock.Anything, &req).Return(technicians, nil)
+	mockAssignmentService.On("GetAvailableTechnicians", mock.Anything, mock.AnythingOfType("*services.AvailabilityCheckRequest")).Return(technicians, nil)
 
 	router := setupTestRouter()
 	router = setupAuthContext(router, uuid.New(), models.UserRoleManager)

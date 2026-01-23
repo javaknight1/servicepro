@@ -97,7 +97,8 @@ func TestRegisterHandler_InvalidEmail(t *testing.T) {
 	mockService := new(MockRegistrationService)
 	handler := NewRegistrationHandler(mockService)
 
-	mockService.On("Register", "invalid-email", "SecurePass123!").Return(nil, auth.ErrInvalidEmailFormat)
+	// Note: Gin's binding validation catches invalid email format before service is called
+	// The service mock is not expected to be called because binding fails first
 
 	router := setupTestRouter()
 	router.POST("/register", handler.Register)
@@ -119,7 +120,39 @@ func TestRegisterHandler_InvalidEmail(t *testing.T) {
 	var response models.ErrorResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(t, err)
-	assert.Equal(t, "invalid_email", response.Error)
+	assert.Equal(t, "invalid_request", response.Error)
+
+	mockService.AssertExpectations(t)
+}
+
+func TestRegisterHandler_PasswordTooShort(t *testing.T) {
+	mockService := new(MockRegistrationService)
+	handler := NewRegistrationHandler(mockService)
+
+	// Note: Gin's binding validation catches password < 8 chars before service is called
+	// The service mock is not expected to be called because binding fails first
+
+	router := setupTestRouter()
+	router.POST("/register", handler.Register)
+
+	registerReq := models.RegisterRequest{
+		Email:    "user@example.com",
+		Password: "weak", // Only 4 characters, fails min=8 binding
+	}
+	body, _ := json.Marshal(registerReq)
+
+	req, _ := http.NewRequest("POST", "/register", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+
+	var response models.ErrorResponse
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	assert.NoError(t, err)
+	assert.Equal(t, "invalid_request", response.Error)
 
 	mockService.AssertExpectations(t)
 }
@@ -128,14 +161,15 @@ func TestRegisterHandler_WeakPassword(t *testing.T) {
 	mockService := new(MockRegistrationService)
 	handler := NewRegistrationHandler(mockService)
 
-	mockService.On("Register", "user@example.com", "weak").Return(nil, services.ErrWeakPassword)
+	// Password is 8+ chars but fails service's strength requirements (no special chars, etc.)
+	mockService.On("Register", "user@example.com", "weakpass").Return(nil, services.ErrWeakPassword)
 
 	router := setupTestRouter()
 	router.POST("/register", handler.Register)
 
 	registerReq := models.RegisterRequest{
 		Email:    "user@example.com",
-		Password: "weak",
+		Password: "weakpass", // 8 characters but no special chars
 	}
 	body, _ := json.Marshal(registerReq)
 

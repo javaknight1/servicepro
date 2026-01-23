@@ -4,10 +4,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"sync"
 	"testing"
 	"time"
 
@@ -22,40 +20,6 @@ import (
 
 func init() {
 	gin.SetMode(gin.TestMode)
-}
-
-// MockLogger for testing
-type MockLogger struct {
-	mu       sync.Mutex
-	messages []string
-}
-
-func NewMockLogger() *MockLogger {
-	return &MockLogger{messages: make([]string, 0)}
-}
-
-func (l *MockLogger) Debugf(format string, v ...interface{}) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	l.messages = append(l.messages, fmt.Sprintf("[DEBUG] "+format, v...))
-}
-
-func (l *MockLogger) Infof(format string, v ...interface{}) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	l.messages = append(l.messages, fmt.Sprintf("[INFO] "+format, v...))
-}
-
-func (l *MockLogger) Warnf(format string, v ...interface{}) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	l.messages = append(l.messages, fmt.Sprintf("[WARN] "+format, v...))
-}
-
-func (l *MockLogger) Errorf(format string, v ...interface{}) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	l.messages = append(l.messages, fmt.Sprintf("[ERROR] "+format, v...))
 }
 
 // MockNotifier for testing
@@ -83,7 +47,6 @@ func (n *MockNotifier) NotifyWebhookError(ctx context.Context, eventID string, e
 const testWebhookSecret = "whsec_test_secret_key_12345"
 
 func setupTestHandler() (*StripeWebhookHandler, *gin.Engine) {
-	logger := NewMockLogger()
 	notifier := &MockNotifier{}
 
 	config := &stripeservice.WebhookHandlerConfig{
@@ -97,8 +60,8 @@ func setupTestHandler() (*StripeWebhookHandler, *gin.Engine) {
 		ProcessingTimeout:   5 * time.Second,
 	}
 
-	service := stripeservice.NewWebhookHandlerService(config, nil, logger, notifier)
-	handler := NewStripeWebhookHandler(service, logger)
+	service := stripeservice.NewWebhookHandlerService(config, nil, notifier)
+	handler := NewStripeWebhookHandler(service)
 
 	router := gin.New()
 	router.POST("/api/v1/webhooks/stripe", handler.HandleWebhook)

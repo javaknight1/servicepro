@@ -17,17 +17,14 @@ import (
 // ImportExportHandler handles import/export operations
 type ImportExportHandler struct {
 	importService *services.ImportService
-	exportService *services.ExportService
 }
 
 // NewImportExportHandler creates a new import/export handler
 func NewImportExportHandler(
 	importService *services.ImportService,
-	exportService *services.ExportService,
 ) *ImportExportHandler {
 	return &ImportExportHandler{
 		importService: importService,
-		exportService: exportService,
 	}
 }
 
@@ -262,75 +259,12 @@ func (h *ImportExportHandler) GetImportStatus(c *gin.Context) {
 
 // ExportCustomers handles customer export
 // GET /api/v1/customers/export
+// Deprecated: Use POST /api/v1/exports with export_type="customers" for async exports
 func (h *ImportExportHandler) ExportCustomers(c *gin.Context) {
-	var req models.ExportRequest
-	if err := c.ShouldBindQuery(&req); err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
-			Error:   "invalid_request",
-			Message: err.Error(),
-		})
-		return
-	}
-
-	// Get customers based on filters
-	var customers []models.Customer
-	var err error
-
-	if req.CustomerType != "" || req.Status != "" || req.City != "" || req.State != "" {
-		customers, err = h.exportService.GetCustomersForExport(
-			c.Request.Context(),
-			req.CustomerType,
-			req.Status,
-			req.City,
-			req.State,
-		)
-	} else {
-		customers, err = h.exportService.GetAllCustomers(c.Request.Context())
-	}
-
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "internal_error",
-			Message: "failed to retrieve customers",
-		})
-		return
-	}
-
-	// Export based on format
-	switch req.Format {
-	case models.ExportFormatCSV:
-		c.Header("Content-Type", "text/csv")
-		c.Header("Content-Disposition", `attachment; filename="customers.csv"`)
-
-		exporter := csvpkg.NewExporter(c.Writer)
-		if err := exporter.ExportCustomersCSV(customers, req.IncludeNotes); err != nil {
-			c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-				Error:   "export_error",
-				Message: "failed to export CSV",
-			})
-			return
-		}
-
-	case models.ExportFormatJSON:
-		c.Header("Content-Type", "application/json")
-		c.Header("Content-Disposition", `attachment; filename="customers.json"`)
-
-		exporter := csvpkg.NewExporter(c.Writer)
-		if err := exporter.ExportCustomersJSON(customers); err != nil {
-			c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-				Error:   "export_error",
-				Message: "failed to export JSON",
-			})
-			return
-		}
-
-	default:
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
-			Error:   "invalid_format",
-			Message: "unsupported export format",
-		})
-		return
-	}
+	c.JSON(http.StatusGone, models.ErrorResponse{
+		Error:   "deprecated",
+		Message: "This endpoint has been deprecated. Use POST /api/v1/exports with export_type='customers' for async exports with progress tracking.",
+	})
 }
 
 // GetImportTemplate returns a CSV template for import

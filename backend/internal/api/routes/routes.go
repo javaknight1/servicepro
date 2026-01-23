@@ -63,9 +63,8 @@ func Setup(router *gin.Engine, db *gorm.DB, redisClient *redis.Client, cfg *conf
 	// Initialize permission checker
 	permissionChecker := permissionsSvc.NewPermissionChecker(permissionRepo, redisClient)
 
-	// Initialize import/export services
+	// Initialize import service
 	importService := services.NewImportService(db, customerRepo, redisClient)
-	exportService := services.NewExportService(customerRepo)
 
 	// Initialize job service
 	jobService := services.NewJobService(jobRepo, customerRepo, db)
@@ -89,7 +88,7 @@ func Setup(router *gin.Engine, db *gorm.DB, redisClient *redis.Client, cfg *conf
 	passwordResetHandler := handlers.NewPasswordResetHandler(passwordResetService)
 	emailVerificationHandler := handlers.NewEmailVerificationHandler(emailVerificationService)
 	customerHandler := handlers.NewCustomerHandler(customerRepo)
-	importExportHandler := handlers.NewImportExportHandler(importService, exportService)
+	importExportHandler := handlers.NewImportExportHandler(importService)
 	jobHandler := handlers.NewJobHandler(jobService)
 	quoteHandler := handlers.NewQuoteHandler(quoteService)
 	revenueHandler := handlers.NewRevenueHandler(revenueService)
