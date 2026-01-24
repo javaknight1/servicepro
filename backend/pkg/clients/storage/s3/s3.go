@@ -29,24 +29,30 @@ import (
 func init() {
 	storage.RegisterProvider(storage.ProviderS3, func(ctx context.Context, cfg *config.Config) (storage.Client, error) {
 		s3Cfg := &Config{
-			Region:          cfg.AWS.Region,
-			AccessKeyID:     cfg.AWS.AccessKeyID,
-			SecretAccessKey: cfg.AWS.SecretAccessKey,
-			Bucket:          cfg.AWS.S3Bucket,
+			Endpoint:        cfg.S3Compatible.Endpoint,
+			Bucket:          cfg.S3Compatible.Bucket,
+			Region:          cfg.S3Compatible.Region,
+			AccessKeyID:     cfg.S3Compatible.AccessKeyID,
+			SecretAccessKey: cfg.S3Compatible.SecretAccessKey,
+			UsePathStyle:    cfg.S3Compatible.UsePathStyle,
+			DisableSSL:      cfg.S3Compatible.DisableSSL,
+			PublicURL:       cfg.S3Compatible.PublicURL,
 		}
 		return NewClient(ctx, s3Cfg)
 	})
 }
 
 // Config holds configuration for the S3 storage client
+// Works with AWS S3, Cloudflare R2, MinIO, and other S3-compatible services
 type Config struct {
+	Endpoint        string // Custom endpoint (required for R2, MinIO; empty for AWS S3)
+	Bucket          string
 	Region          string
 	AccessKeyID     string
 	SecretAccessKey string
-	Bucket          string
-	Endpoint        string // For S3-compatible services
-	UsePathStyle    bool   // For S3-compatible services
-	DisableSSL      bool   // For local testing
+	UsePathStyle    bool   // Required for MinIO and some S3-compatible services
+	DisableSSL      bool   // For local development (e.g., MinIO without TLS)
+	PublicURL       string // Optional: base URL for public access (e.g., CDN or MinIO public URL)
 }
 
 // Client implements the storage.Client interface using AWS S3
@@ -206,10 +212,17 @@ func (c *Client) uploadData(ctx context.Context, data []byte, input *storage.Upl
 		return nil, fmt.Errorf("failed to upload to S3: %w", err)
 	}
 
+	// Generate the public URL
+	// If PublicURL is configured, use it; otherwise fall back to the S3 location
+	url := result.Location
+	if c.config.PublicURL != "" {
+		url = strings.TrimSuffix(c.config.PublicURL, "/") + "/" + key
+	}
+
 	output := &storage.UploadOutput{
 		Key:         key,
 		ETag:        aws.ToString(result.ETag),
-		URL:         result.Location,
+		URL:         url,
 		Checksum:    checksum,
 		Size:        int64(len(data)),
 		ContentType: contentType,

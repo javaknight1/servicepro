@@ -17,7 +17,7 @@ type Config struct {
 	JWT           JWTConfig
 	Auth          AuthConfig
 	AWS           AWSConfig
-	R2            R2Config
+	S3Compatible  S3CompatibleConfig
 	Resend        ResendConfig
 	BetterStack   BetterStackConfig
 	Stripe        StripeConfig
@@ -41,14 +41,17 @@ type AWSConfig struct {
 	SecretAccessKey string
 }
 
-// R2Config holds Cloudflare R2 storage configuration
-type R2Config struct {
-	AccountID       string
+// S3CompatibleConfig holds S3-compatible storage configuration
+// Works with AWS S3, Cloudflare R2, MinIO, and other S3-compatible services
+type S3CompatibleConfig struct {
+	Endpoint        string // Custom endpoint (required for R2, MinIO; empty for AWS S3)
+	Bucket          string
+	Region          string
 	AccessKeyID     string
 	SecretAccessKey string
-	Bucket          string
-	Endpoint        string
-	PublicURL       string // Optional: for public access URLs
+	UsePathStyle    bool   // Required for MinIO and some S3-compatible services
+	DisableSSL      bool   // For local development (e.g., MinIO without TLS)
+	PublicURL       string // Optional: base URL for public access (e.g., CDN URL)
 }
 
 // ResendConfig holds Resend email service configuration
@@ -251,13 +254,15 @@ func Load() *Config {
 			AccessKeyID:     getEnv("AWS_ACCESS_KEY_ID", ""),
 			SecretAccessKey: getEnv("AWS_SECRET_ACCESS_KEY", ""),
 		},
-		R2: R2Config{
-			AccountID:       getEnv("R2_ACCOUNT_ID", ""),
-			AccessKeyID:     getEnv("R2_ACCESS_KEY_ID", ""),
-			SecretAccessKey: getEnv("R2_SECRET_ACCESS_KEY", ""),
-			Bucket:          getEnv("R2_BUCKET", "servicepro-uploads"),
-			Endpoint:        getEnv("R2_ENDPOINT", ""),
-			PublicURL:       getEnv("R2_PUBLIC_URL", ""),
+		S3Compatible: S3CompatibleConfig{
+			Endpoint:        getEnv("S3_COMPATIBLE_ENDPOINT", ""),
+			Bucket:          getEnv("S3_COMPATIBLE_BUCKET", "servicepro-uploads"),
+			Region:          getEnv("S3_COMPATIBLE_REGION", "us-east-1"),
+			AccessKeyID:     getEnv("S3_COMPATIBLE_ACCESS_KEY_ID", ""),
+			SecretAccessKey: getEnv("S3_COMPATIBLE_SECRET_ACCESS_KEY", ""),
+			UsePathStyle:    getEnvAsBool("S3_COMPATIBLE_USE_PATH_STYLE", false),
+			DisableSSL:      getEnvAsBool("S3_COMPATIBLE_DISABLE_SSL", false),
+			PublicURL:       getEnv("S3_COMPATIBLE_PUBLIC_URL", ""),
 		},
 		Resend: ResendConfig{
 			APIKey:    getEnv("RESEND_API_KEY", ""),

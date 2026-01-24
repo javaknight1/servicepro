@@ -10,7 +10,6 @@ type Provider string
 
 const (
 	ProviderS3   Provider = "s3"
-	ProviderR2   Provider = "r2"
 	ProviderMock Provider = "mock"
 )
 

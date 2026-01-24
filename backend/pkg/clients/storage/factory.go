@@ -40,16 +40,13 @@ func GetRegisteredProviders() []Provider {
 // NewClient creates a new storage client based on configuration.
 //
 // Provider selection order:
-// 1. If cfg.Server.Env == "development" -> Mock
-// 2. If cfg.R2.AccountID != "" && cfg.R2.Bucket != "" -> R2
-// 3. If cfg.AWS.S3Bucket != "" -> S3
-// 4. Fallback -> Mock
+// 1. If S3Compatible is configured (bucket set) -> S3 (works for AWS S3, R2, MinIO)
+// 2. Fallback -> Mock (for tests or when storage is not configured)
 //
 // Note: Providers must be registered by importing their packages with blank imports:
 //
 //	import _ "github.com/javaknight1/servicepro/backend/pkg/clients/storage/mock"
 //	import _ "github.com/javaknight1/servicepro/backend/pkg/clients/storage/s3"
-//	import _ "github.com/javaknight1/servicepro/backend/pkg/clients/storage/r2"
 func NewClient(ctx context.Context, cfg *config.Config) (Client, error) {
 	if cfg == nil {
 		return nil, fmt.Errorf("config is required")
@@ -72,22 +69,12 @@ func NewClient(ctx context.Context, cfg *config.Config) (Client, error) {
 
 // detectProvider determines which provider to use based on configuration
 func detectProvider(cfg *config.Config) Provider {
-	// 1. Development environment defaults to mock
-	if cfg.Server.Env == "development" {
-		return ProviderMock
-	}
-
-	// 2. Check for R2 credentials
-	if cfg.R2.AccountID != "" && cfg.R2.Bucket != "" {
-		return ProviderR2
-	}
-
-	// 3. Check for S3 credentials
-	if cfg.AWS.S3Bucket != "" {
+	// Use S3 if S3Compatible is configured (works for AWS S3, Cloudflare R2, MinIO)
+	if cfg.S3Compatible.Bucket != "" && cfg.S3Compatible.AccessKeyID != "" {
 		return ProviderS3
 	}
 
-	// 4. Fallback to mock
+	// Fallback to mock (for tests or when storage is not configured)
 	return ProviderMock
 }
 
