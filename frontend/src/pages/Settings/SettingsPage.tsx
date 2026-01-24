@@ -9,6 +9,7 @@ import {
   Button,
   Input,
 } from '@components/shared';
+import { ProfilePictureSection } from '@components/settings/ProfilePictureSection';
 import { useAuthStore } from '@store';
 import { User, Lock, Bell, Shield } from 'lucide-react';
 
@@ -73,6 +74,7 @@ export function SettingsPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
+                  <ProfilePictureSection />
                   <form className="space-y-4 mt-6">
                     <Input
                       label="Email Address"

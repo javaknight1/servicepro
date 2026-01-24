@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { authApi } from '@services/api';
+import { authApi, userApi } from '@services/api';
 import type { AuthState, User } from '@app-types';
 
 export const useAuthStore = create<AuthState>()(
@@ -30,8 +30,13 @@ export const useAuthStore = create<AuthState>()(
             isLoading: false,
           });
 
-          // TODO: Fetch user profile after login
-          // For now, we'll decode the JWT or wait for a /me endpoint
+          // Fetch user profile after login
+          try {
+            const userResponse = await userApi.getCurrentUser();
+            set({ user: userResponse.data });
+          } catch (userError) {
+            console.error('Failed to fetch user profile:', userError);
+          }
         } catch (error) {
           set({ isLoading: false });
           throw error;
@@ -92,6 +97,30 @@ export const useAuthStore = create<AuthState>()(
 
       setUser: (user: User) => {
         set({ user });
+      },
+
+      updateProfilePicture: (url: string | null) => {
+        const currentUser = get().user;
+        if (currentUser) {
+          set({
+            user: {
+              ...currentUser,
+              profile_picture_url: url ?? undefined,
+            },
+          });
+        }
+      },
+
+      fetchCurrentUser: async () => {
+        const token = get().token;
+        if (!token) return;
+
+        try {
+          const response = await userApi.getCurrentUser();
+          set({ user: response.data });
+        } catch (error) {
+          console.error('Failed to fetch current user:', error);
+        }
       },
     }),
     {

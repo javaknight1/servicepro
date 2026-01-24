@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { LogOut, Settings, User } from 'lucide-react';
+import { LogOut, Settings } from 'lucide-react';
 import { useAuthStore, useTenantStore } from '@store';
-import { Button } from '@components/shared';
+import { Button, Avatar } from '@components/shared';
 import { TenantSwitcher } from '@components/tenants';
 
 function ProfileDropdown() {
@@ -35,23 +35,19 @@ function ProfileDropdown() {
     logout();
   };
 
-  // Get initials for avatar
-  const getInitials = () => {
-    if (user?.email) {
-      return user.email.charAt(0).toUpperCase();
-    }
-    return 'U';
-  };
-
   return (
     <div ref={dropdownRef} className="relative">
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center justify-center h-9 w-9 rounded-full bg-primary-100 text-primary-700 font-medium text-sm hover:bg-primary-200 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+        className="flex items-center justify-center rounded-full hover:ring-2 hover:ring-primary-200 transition-all focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
         title={user?.email || 'Account'}
       >
-        {getInitials()}
+        <Avatar
+          email={user?.email || ''}
+          profilePictureUrl={user?.profile_picture_url}
+          size="sm"
+        />
       </button>
 
       {isOpen && (

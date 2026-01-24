@@ -11,6 +11,7 @@ import {
   Input,
   Modal,
   Badge,
+  Avatar,
 } from '@components/shared';
 import { useTenantStore } from '@store';
 import {
@@ -19,8 +20,6 @@ import {
   Settings,
   Trash2,
   UserPlus,
-  Mail,
-  Shield,
 } from 'lucide-react';
 import type {
   TenantMember,
@@ -373,9 +372,11 @@ export function OrgSettingsPage() {
                           className="flex items-center justify-between py-4"
                         >
                           <div className="flex items-center">
-                            <div className="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center">
-                              <Mail className="h-5 w-5 text-primary-600" />
-                            </div>
+                            <Avatar
+                              email={member.email}
+                              profilePictureUrl={member.profile_picture_url}
+                              size="md"
+                            />
                             <div className="ml-4">
                               <p className="text-sm font-medium text-neutral-900">
                                 {member.email}

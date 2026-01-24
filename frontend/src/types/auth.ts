@@ -2,6 +2,7 @@ export interface User {
   id: string;
   email: string;
   role: 'user' | 'admin';
+  profile_picture_url?: string;
   email_verified: boolean;
   created_at: string;
   updated_at: string;
@@ -63,4 +64,6 @@ export interface AuthState {
   logout: () => void;
   refreshAccessToken: () => Promise<void>;
   setUser: (user: User) => void;
+  updateProfilePicture: (url: string | null) => void;
+  fetchCurrentUser: () => Promise<void>;
 }

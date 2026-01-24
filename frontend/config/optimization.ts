@@ -202,6 +202,8 @@ export const optimizeDeps = {
     'react-hook-form',
     'zod',
     'date-fns',
+    'react-easy-crop',
+    'tslib',
   ],
 
   // Don't pre-bundle these (for development)

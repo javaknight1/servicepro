@@ -13,6 +13,7 @@ import type {
   VerifyEmailRequest,
   ResendVerificationRequest,
   ApiError,
+  User,
 } from '@app-types';
 
 // Create axios instance
@@ -127,10 +128,10 @@ export const authApi = {
     api.post('/v1/auth/resend-verification', data),
 };
 
-// User API endpoints (example for future use)
+// User API endpoints
 export const userApi = {
-  getCurrentUser: () => api.get('/users/me'),
-  updateUser: (id: string, data: any) => api.put(`/users/${id}`, data),
+  getCurrentUser: () => api.get<User>('/v1/users/me'),
+  updateUser: (id: string, data: any) => api.put(`/v1/users/${id}`, data),
 };
 
 export default api;
