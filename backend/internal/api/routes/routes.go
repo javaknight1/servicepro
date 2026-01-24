@@ -143,6 +143,9 @@ func Setup(router *gin.Engine, db *gorm.DB, redisClient *redis.Client, cfg *conf
 			webhooks.POST("/ses-notification", emailVerificationHandler.HandleSESNotification)
 		}
 
+		// Version endpoint (public, no auth required)
+		v1.GET("/version", handlers.GetVersion)
+
 		// User profile routes (protected with JWT authentication)
 		users := v1.Group("/users")
 		users.Use(permissionMiddleware.RequireAuth())
