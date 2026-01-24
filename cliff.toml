@@ -10,13 +10,55 @@ body = """
     ## [{{ version | trim_start_matches(pat="v") }}] - {{ timestamp | date(format="%Y-%m-%d") }}
 {% else %}\
     ## [Unreleased]
-{% endif %}\
+{% endif %}
+
+{# Separate commits into release-worthy and dev categories #}
+{% set release_groups = ["🚨 Major Changes", "🎯 Minor Changes", "✨ Features", "🐛 Bug Fixes", "⚡ Performance", "💥 Breaking Changes"] %}
+{% set dev_groups = ["📚 Documentation", "♻️ Refactoring", "✅ Tests", "🔧 Miscellaneous", "🚀 CI/CD"] %}
+
+{# Check if we have any release commits #}
+{% set_global has_release = false %}
 {% for group, commits in commits | group_by(attribute="group") %}
-    ### {{ group | striptags | trim | upper_first }}
-    {% for commit in commits %}
-        - {% if commit.scope %}**{{ commit.scope }}**: {% endif %}{{ commit.message | upper_first }}\
-    {% endfor %}
-{% endfor %}\n
+    {% if group in release_groups %}
+        {% set_global has_release = true %}
+    {% endif %}
+{% endfor %}
+
+{# Check if we have any dev commits #}
+{% set_global has_dev = false %}
+{% for group, commits in commits | group_by(attribute="group") %}
+    {% if group in dev_groups %}
+        {% set_global has_dev = true %}
+    {% endif %}
+{% endfor %}
+
+{% if has_release %}
+### Release Features
+
+| Type | Description | Commit |
+|------|-------------|--------|
+{% for group, commits in commits | group_by(attribute="group") %}
+{% if group in release_groups %}
+{% for commit in commits %}
+| {{ group }} | {% if commit.scope %}**{{ commit.scope }}**: {% endif %}{{ commit.message | upper_first }} | [`{{ commit.id | truncate(length=7, end="") }}`]({{ remote.link }}/commit/{{ commit.id }}) |
+{% endfor %}
+{% endif %}
+{% endfor %}
+{% endif %}
+
+{% if has_dev %}
+### Dev Features
+
+| Type | Description | Commit |
+|------|-------------|--------|
+{% for group, commits in commits | group_by(attribute="group") %}
+{% if group in dev_groups %}
+{% for commit in commits %}
+| {{ group }} | {% if commit.scope %}**{{ commit.scope }}**: {% endif %}{{ commit.message | upper_first }} | [`{{ commit.id | truncate(length=7, end="") }}`]({{ remote.link }}/commit/{{ commit.id }}) |
+{% endfor %}
+{% endif %}
+{% endfor %}
+{% endif %}
 """
 trim = true
 
@@ -24,13 +66,21 @@ trim = true
 conventional_commits = true
 filter_unconventional = true
 commit_parsers = [
+    { message = "^major", group = "🚨 Major Changes" },
+    { message = "^minor", group = "🎯 Minor Changes" },
     { message = "^feat", group = "✨ Features" },
     { message = "^fix", group = "🐛 Bug Fixes" },
     { message = "^perf", group = "⚡ Performance" },
+    { message = ".*!", group = "💥 Breaking Changes" },
     { message = "^doc", group = "📚 Documentation" },
     { message = "^refactor", group = "♻️ Refactoring" },
     { message = "^test", group = "✅ Tests" },
+    { message = "^ci", group = "🚀 CI/CD" },
     { message = "^chore\\(release\\)", skip = true },
     { message = "^chore", group = "🔧 Miscellaneous" },
 ]
 tag_pattern = "v[0-9].*"
+
+[remote.github]
+owner = "javaknight1"
+repo = "servicepro"

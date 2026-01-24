@@ -1,11 +1,13 @@
 #!/bin/bash
 # scripts/release.sh - Automated release script with version detection
 #
-# Version bump rules:
-#   - Any BREAKING CHANGE or feat! → MAJOR
-#   - Any feat (no breaking)       → MINOR
-#   - Any fix or perf (no feat)    → PATCH
-#   - Only docs, chore, test, etc. → NO RELEASE
+# Version bump rules (in priority order):
+#   - major: commit             → MAJOR (always, even pre-1.0)
+#   - minor: commit             → MINOR
+#   - BREAKING CHANGE or feat!  → MAJOR (MINOR if pre-1.0)
+#   - feat                      → MINOR
+#   - fix or perf               → PATCH
+#   - docs, chore, test, etc.   → NO RELEASE
 #
 # Usage:
 #   ./scripts/release.sh           # Auto-detect version
@@ -29,6 +31,7 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
+MAGENTA='\033[0;35m'
 CYAN='\033[0;36m'
 DIM='\033[2m'
 BOLD='\033[1m'
@@ -65,11 +68,13 @@ while [[ $# -gt 0 ]]; do
             echo "  --yes, -y     Skip confirmation prompts"
             echo "  --help, -h    Show this help"
             echo ""
-            echo "Version bump rules:"
-            echo "  MAJOR: Any commit with '!' or 'BREAKING CHANGE'"
-            echo "  MINOR: Any 'feat' commit (without breaking changes)"
-            echo "  PATCH: Any 'fix' or 'perf' commit (without feat)"
-            echo "  NONE:  Only docs, chore, test, refactor, etc."
+            echo "Version bump rules (in priority order):"
+            echo "  MAJOR: 'major:' commit (always, even pre-1.0)"
+            echo "  MINOR: 'minor:' commit"
+            echo "  MAJOR: Any commit with '!' or 'BREAKING CHANGE' (MINOR if pre-1.0)"
+            echo "  MINOR: Any 'feat' commit"
+            echo "  PATCH: Any 'fix' or 'perf' commit"
+            echo "  NONE:  Only docs, chore, test, refactor, ci, etc."
             exit 0
             ;;
         *) error "Unknown option: $1. Use --help for usage." ;;
@@ -165,6 +170,8 @@ if [[ -z "$COMMITS" ]]; then
 fi
 
 # Initialize counters
+MAJOR_COUNT=0
+MINOR_COUNT=0
 BREAKING_COUNT=0
 FEAT_COUNT=0
 FIX_COUNT=0
@@ -177,44 +184,70 @@ CI_COUNT=0
 OTHER_COUNT=0
 
 # Collect commits by type for display
+declare -a MAJOR_COMMITS=()
+declare -a MINOR_COMMITS=()
 declare -a BREAKING_COMMITS=()
 declare -a FEAT_COMMITS=()
 declare -a FIX_COMMITS=()
 declare -a PERF_COMMITS=()
 declare -a OTHER_COMMITS=()
 
+# Regex patterns (stored in variables to avoid bash parsing issues with parentheses)
+# These match conventional commit format: type(scope)?: message
+# Using simpler patterns that match the prefix
+MAJOR_PATTERN='^major[(:!]'
+MINOR_PATTERN='^minor[(:!]'
+BREAKING_PATTERN1='^[a-z]+!:'
+BREAKING_PATTERN2='^[a-z]+\([^)]+\)!:'
+FEAT_PATTERN='^feat[(:!]'
+FIX_PATTERN='^fix[(:!]'
+PERF_PATTERN='^perf[(:!]'
+DOCS_PATTERN='^docs[(:!]'
+REFACTOR_PATTERN='^refactor[(:!]'
+TEST_PATTERN='^test[(:!]'
+CHORE_PATTERN='^chore[(:!]'
+CI_PATTERN='^ci[(:!]'
+STYLE_BUILD_PATTERN='^(style|build)[(:!]'
+
 while IFS= read -r commit; do
     [[ -z "$commit" ]] && continue
 
-    # Check for breaking changes (highest priority)
-    if [[ "$commit" =~ ^[a-z]+!(\([^)]+\))?: ]] || [[ "$commit" =~ ^[a-z]+\([^)]+\)!: ]] || [[ "$commit" == *"BREAKING CHANGE"* ]]; then
+    # Check for explicit major/minor commits first (highest priority)
+    if [[ "$commit" =~ $MAJOR_PATTERN ]]; then
+        ((MAJOR_COUNT++))
+        MAJOR_COMMITS+=("$commit")
+    elif [[ "$commit" =~ $MINOR_PATTERN ]]; then
+        ((MINOR_COUNT++))
+        MINOR_COMMITS+=("$commit")
+    # Check for breaking changes
+    elif [[ "$commit" =~ $BREAKING_PATTERN1 ]] || [[ "$commit" =~ $BREAKING_PATTERN2 ]] || [[ "$commit" == *"BREAKING CHANGE"* ]]; then
         ((BREAKING_COUNT++))
         BREAKING_COMMITS+=("$commit")
-    elif [[ "$commit" =~ ^feat(\([^)]+\))?!?: ]]; then
+    elif [[ "$commit" =~ $FEAT_PATTERN ]]; then
         ((FEAT_COUNT++))
         FEAT_COMMITS+=("$commit")
-    elif [[ "$commit" =~ ^fix(\([^)]+\))?: ]]; then
+    elif [[ "$commit" =~ $FIX_PATTERN ]]; then
         ((FIX_COUNT++))
         FIX_COMMITS+=("$commit")
-    elif [[ "$commit" =~ ^perf(\([^)]+\))?: ]]; then
+    elif [[ "$commit" =~ $PERF_PATTERN ]]; then
         ((PERF_COUNT++))
         PERF_COMMITS+=("$commit")
-    elif [[ "$commit" =~ ^docs(\([^)]+\))?: ]]; then
+    elif [[ "$commit" =~ $DOCS_PATTERN ]]; then
         ((DOCS_COUNT++))
         OTHER_COMMITS+=("📚 $commit")
-    elif [[ "$commit" =~ ^refactor(\([^)]+\))?: ]]; then
+    elif [[ "$commit" =~ $REFACTOR_PATTERN ]]; then
         ((REFACTOR_COUNT++))
         OTHER_COMMITS+=("♻️  $commit")
-    elif [[ "$commit" =~ ^test(\([^)]+\))?: ]]; then
+    elif [[ "$commit" =~ $TEST_PATTERN ]]; then
         ((TEST_COUNT++))
         OTHER_COMMITS+=("✅ $commit")
-    elif [[ "$commit" =~ ^chore(\([^)]+\))?: ]]; then
+    elif [[ "$commit" =~ $CHORE_PATTERN ]]; then
         ((CHORE_COUNT++))
         # Don't add chore to display
-    elif [[ "$commit" =~ ^ci(\([^)]+\))?: ]]; then
+    elif [[ "$commit" =~ $CI_PATTERN ]]; then
         ((CI_COUNT++))
         # Don't add ci to display
-    elif [[ "$commit" =~ ^(style|build)(\([^)]+\))?: ]]; then
+    elif [[ "$commit" =~ $STYLE_BUILD_PATTERN ]]; then
         ((OTHER_COUNT++))
     else
         ((OTHER_COUNT++))
@@ -223,7 +256,7 @@ while IFS= read -r commit; do
 done <<< "$COMMITS"
 
 # Calculate totals
-RELEASE_WORTHY=$((BREAKING_COUNT + FEAT_COUNT + FIX_COUNT + PERF_COUNT))
+RELEASE_WORTHY=$((MAJOR_COUNT + MINOR_COUNT + BREAKING_COUNT + FEAT_COUNT + FIX_COUNT + PERF_COUNT))
 NON_RELEASE=$((DOCS_COUNT + REFACTOR_COUNT + TEST_COUNT + CHORE_COUNT + CI_COUNT + OTHER_COUNT))
 TOTAL_COMMITS=$((RELEASE_WORTHY + NON_RELEASE))
 
@@ -234,6 +267,8 @@ echo ""
 # Release-worthy commits (highlighted)
 if [[ $RELEASE_WORTHY -gt 0 ]]; then
     echo -e "${GREEN}Release-worthy commits: $RELEASE_WORTHY${NC}"
+    [[ $MAJOR_COUNT -gt 0 ]]    && echo -e "  ${RED}🚨 Major:       $MAJOR_COUNT${NC}"
+    [[ $MINOR_COUNT -gt 0 ]]    && echo -e "  ${MAGENTA}🎯 Minor:       $MINOR_COUNT${NC}"
     [[ $BREAKING_COUNT -gt 0 ]] && echo -e "  ${RED}💥 Breaking:    $BREAKING_COUNT${NC}"
     [[ $FEAT_COUNT -gt 0 ]]     && echo -e "  ${GREEN}✨ Features:    $FEAT_COUNT${NC}"
     [[ $FIX_COUNT -gt 0 ]]      && echo -e "  ${YELLOW}🐛 Fixes:       $FIX_COUNT${NC}"
@@ -301,11 +336,13 @@ if [[ $RELEASE_WORTHY -eq 0 ]]; then
         echo -e "${YELLOW}No release-worthy commits found.${NC}"
         echo ""
         echo "Only these commit types trigger releases:"
-        echo "  • feat!  / BREAKING CHANGE → MAJOR"
+        echo "  • major                    → MAJOR"
+        echo "  • minor                    → MINOR"
+        echo "  • feat! / BREAKING CHANGE  → MAJOR"
         echo "  • feat                     → MINOR"
         echo "  • fix / perf               → PATCH"
         echo ""
-        echo "Your commits are: docs, chores, tests, refactoring, etc."
+        echo "Your commits are: docs, chores, tests, refactoring, ci, etc."
         echo "These will be included in the next release."
         echo ""
         info "Use --force to create a patch release anyway."
@@ -313,7 +350,14 @@ if [[ $RELEASE_WORTHY -eq 0 ]]; then
     fi
 else
     # Determine bump type based on highest priority commit
-    if [[ $BREAKING_COUNT -gt 0 ]]; then
+    # Priority: major > minor > breaking > feat > fix/perf
+    if [[ $MAJOR_COUNT -gt 0 ]]; then
+        BUMP_TYPE="major"
+        info "Found $MAJOR_COUNT major commit(s) → MAJOR bump"
+    elif [[ $MINOR_COUNT -gt 0 ]]; then
+        BUMP_TYPE="minor"
+        info "Found $MINOR_COUNT minor commit(s) → MINOR bump"
+    elif [[ $BREAKING_COUNT -gt 0 ]]; then
         BUMP_TYPE="major"
         info "Found $BREAKING_COUNT breaking change(s) → MAJOR bump"
     elif [[ $FEAT_COUNT -gt 0 ]]; then
@@ -328,8 +372,8 @@ fi
 # Calculate new version
 case $BUMP_TYPE in
     major)
-        if [[ $MAJOR -eq 0 ]]; then
-            # Pre-1.0: breaking changes bump minor
+        if [[ $MAJOR -eq 0 && $MAJOR_COUNT -eq 0 ]]; then
+            # Pre-1.0: breaking changes bump minor (but explicit major commits always bump major)
             NEW_VERSION="$MAJOR.$((MINOR + 1)).0"
             warn "Pre-1.0: Breaking changes bump MINOR (0.$MINOR.x → 0.$((MINOR + 1)).0)"
         else
@@ -355,7 +399,7 @@ echo ""
 if [[ "$DRY_RUN" == true ]]; then
     header "🏃 Dry Run Complete"
     echo ""
-    echo "Would create release ${GREEN}v$NEW_VERSION${NC} with:"
+    echo -e "Would create release ${GREEN}v$NEW_VERSION${NC} with:"
     echo ""
     echo "  📋 Updated files:"
     echo "      • VERSION"
