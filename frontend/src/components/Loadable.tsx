@@ -5,6 +5,7 @@
  * Wrapper for lazy-loaded components with loading states and error boundaries
  */
 
+/* eslint-disable react-refresh/only-export-components */
 import React, {
   Suspense,
   ComponentType,

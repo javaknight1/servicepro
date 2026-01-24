@@ -95,7 +95,7 @@ test: frontend-test backend-test
 frontend-lint:
 	@echo "Running ESLint on frontend..."
 	@if [ -n "$$(find frontend/src -name '*.js' -o -name '*.jsx' -o -name '*.ts' -o -name '*.tsx' 2>/dev/null)" ]; then \
-		cd frontend && ESLINT_USE_FLAT_CONFIG=true npx eslint .; \
+		cd frontend && ESLINT_USE_FLAT_CONFIG=true npx eslint . --max-warnings 0; \
 	else \
 		echo "No JavaScript/TypeScript files found in frontend/src"; \
 	fi
@@ -105,7 +105,7 @@ frontend-lint-check: frontend-lint
 frontend-lint-fix:
 	@echo "Running ESLint with auto-fix on frontend..."
 	@if [ -n "$$(find frontend/src -name '*.js' -o -name '*.jsx' -o -name '*.ts' -o -name '*.tsx' 2>/dev/null)" ]; then \
-		cd frontend && ESLINT_USE_FLAT_CONFIG=true npx eslint . --fix; \
+		cd frontend && ESLINT_USE_FLAT_CONFIG=true npx eslint . --fix --max-warnings 0; \
 	else \
 		echo "No JavaScript/TypeScript files found in frontend/src"; \
 	fi

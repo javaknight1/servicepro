@@ -1,4 +1,4 @@
-import React, { useCallback, memo } from 'react';
+import React, { useCallback, useMemo, memo } from 'react';
 import { cn } from '../../utils/cn';
 import { SegmentFilterProps, FilterOption } from '../../types/filter';
 
@@ -74,13 +74,17 @@ const SegmentFilter: React.FC<SegmentFilterProps> = ({
   disabled = false,
   className,
 }) => {
-  const selectedValues = multiple
-    ? Array.isArray(value)
-      ? value
-      : []
-    : value !== null
-      ? [value]
-      : [];
+  const selectedValues = useMemo(
+    () =>
+      multiple
+        ? Array.isArray(value)
+          ? value
+          : []
+        : value !== null
+          ? [value]
+          : [],
+    [multiple, value]
+  );
 
   const handleSegmentClick = useCallback(
     (segmentValue: string | number) => {
@@ -149,13 +153,17 @@ export const PillSegmentFilter: React.FC<PillSegmentFilterProps> = memo(
     className,
     size = 'md',
   }) => {
-    const selectedValues = multiple
-      ? Array.isArray(value)
-        ? value
-        : []
-      : value !== null
-        ? [value]
-        : [];
+    const selectedValues = useMemo(
+      () =>
+        multiple
+          ? Array.isArray(value)
+            ? value
+            : []
+          : value !== null
+            ? [value]
+            : [],
+      [multiple, value]
+    );
 
     const handleSegmentClick = useCallback(
       (segmentValue: string | number) => {
@@ -369,13 +377,17 @@ export const ColorSegmentFilter: React.FC<ColorSegmentFilterProps> = memo(
     disabled = false,
     className,
   }) => {
-    const selectedValues = multiple
-      ? Array.isArray(value)
-        ? value
-        : []
-      : value !== null
-        ? [value]
-        : [];
+    const selectedValues = useMemo(
+      () =>
+        multiple
+          ? Array.isArray(value)
+            ? value
+            : []
+          : value !== null
+            ? [value]
+            : [],
+      [multiple, value]
+    );
 
     const handleSegmentClick = useCallback(
       (segmentValue: string | number) => {

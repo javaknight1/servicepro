@@ -438,7 +438,7 @@ export const InlineNumberRangeFilter: React.FC<InlineNumberRangeFilterProps> =
       min = 0,
       max = 100,
       step = 1,
-      formatValue = defaultFormatValue,
+      formatValue: _formatValue = defaultFormatValue,
       disabled = false,
       className,
     }) => {

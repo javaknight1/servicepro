@@ -1,5 +1,6 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { useMemo, forwardRef, memo } from 'react';
-import { ChartData, ChartOptions, ScaleOptionsByType } from 'chart.js';
+import { ChartData, ChartOptions } from 'chart.js';
 import BaseChart from './BaseChart';
 import {
   LineChartProps,

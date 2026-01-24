@@ -5,6 +5,7 @@
  * Progressive image loading with lazy loading and format optimization
  */
 
+/* eslint-disable react-refresh/only-export-components */
 import {
   useState,
   useEffect,
@@ -95,13 +96,6 @@ function useIntersectionObserver(
   return isIntersecting;
 }
 
-/**
- * Native lazy loading support check
- */
-function supportsLazyLoading(): boolean {
-  return 'loading' in HTMLImageElement.prototype;
-}
-
 // =============================================================================
 // Component
 // =============================================================================
@@ -119,7 +113,7 @@ export function OptimizedImage({
   objectFit = 'cover',
   objectPosition = 'center',
   sizes,
-  quality = imageConfig.quality,
+  quality: _quality = imageConfig.quality,
   onLoadingComplete,
   fallback,
   className,
