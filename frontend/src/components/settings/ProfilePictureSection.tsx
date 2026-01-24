@@ -9,7 +9,9 @@ const ALLOWED_TYPES = ['image/jpeg', 'image/png'];
 
 export function ProfilePictureSection() {
   const user = useAuthStore((state) => state.user);
-  const updateProfilePicture = useAuthStore((state) => state.updateProfilePicture);
+  const updateProfilePicture = useAuthStore(
+    (state) => state.updateProfilePicture
+  );
 
   const [imageSrc, setImageSrc] = useState<string | null>(null);
   const [showCropModal, setShowCropModal] = useState(false);
@@ -99,7 +101,9 @@ export function ProfilePictureSection() {
 
   return (
     <div className="mb-6 pb-6 border-b border-neutral-200">
-      <h3 className="text-sm font-medium text-neutral-900 mb-4">Profile Picture</h3>
+      <h3 className="text-sm font-medium text-neutral-900 mb-4">
+        Profile Picture
+      </h3>
 
       <div className="flex items-center gap-6">
         <Avatar
@@ -143,13 +147,9 @@ export function ProfilePictureSection() {
             )}
           </div>
 
-          <p className="text-xs text-neutral-500">
-            JPEG or PNG, max 2MB
-          </p>
+          <p className="text-xs text-neutral-500">JPEG or PNG, max 2MB</p>
 
-          {error && (
-            <p className="text-xs text-red-600">{error}</p>
-          )}
+          {error && <p className="text-xs text-red-600">{error}</p>}
         </div>
       </div>
 

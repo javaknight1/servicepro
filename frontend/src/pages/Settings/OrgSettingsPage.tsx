@@ -14,13 +14,7 @@ import {
   Avatar,
 } from '@components/shared';
 import { useTenantStore } from '@store';
-import {
-  Building2,
-  Users,
-  Settings,
-  Trash2,
-  UserPlus,
-} from 'lucide-react';
+import { Building2, Users, Settings, Trash2, UserPlus } from 'lucide-react';
 import type {
   TenantMember,
   CreateTenantRequest,

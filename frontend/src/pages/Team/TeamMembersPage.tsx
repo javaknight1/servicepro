@@ -14,13 +14,7 @@ import {
 } from '@components/shared';
 import { useTenantStore } from '@store';
 import { roleApi } from '@services/roleApi';
-import {
-  UserPlus,
-  Trash2,
-  Shield,
-  Search,
-  Building2,
-} from 'lucide-react';
+import { UserPlus, Trash2, Shield, Search, Building2 } from 'lucide-react';
 import type { TenantMember } from '@/types/tenant';
 import type { Role } from '@/types/role';
 

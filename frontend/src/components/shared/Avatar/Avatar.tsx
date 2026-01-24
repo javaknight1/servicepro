@@ -33,11 +33,7 @@ export function Avatar({
       <img
         src={profilePictureUrl}
         alt={`${email}'s avatar`}
-        className={clsx(
-          'rounded-full object-cover',
-          sizeClass,
-          className
-        )}
+        className={clsx('rounded-full object-cover', sizeClass, className)}
       />
     );
   }
