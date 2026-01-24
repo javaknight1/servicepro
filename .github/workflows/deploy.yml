@@ -1,0 +1,43 @@
+# =============================================================================
+# Deploy to Fly.io
+# =============================================================================
+# Uncomment when Fly.io is configured:
+# 1. Run: fly launch (in backend/ and frontend/ directories)
+# 2. Add FLY_API_TOKEN to GitHub secrets
+# 3. Uncomment the workflow below
+# =============================================================================
+
+# name: Deploy
+#
+# on:
+#   release:
+#     types: [published]
+#
+# jobs:
+#   deploy-backend:
+#     name: Deploy Backend
+#     runs-on: ubuntu-latest
+#     steps:
+#       - uses: actions/checkout@v4
+#
+#       - uses: superfly/flyctl-actions/setup-flyctl@master
+#
+#       - name: Deploy backend to Fly.io
+#         working-directory: backend
+#         run: flyctl deploy --remote-only
+#         env:
+#           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+#
+#   deploy-frontend:
+#     name: Deploy Frontend
+#     runs-on: ubuntu-latest
+#     steps:
+#       - uses: actions/checkout@v4
+#
+#       - uses: superfly/flyctl-actions/setup-flyctl@master
+#
+#       - name: Deploy frontend to Fly.io
+#         working-directory: frontend
+#         run: flyctl deploy --remote-only
+#         env:
+#           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
