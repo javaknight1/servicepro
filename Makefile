@@ -1,10 +1,18 @@
-.PHONY: help setup-hooks lint lint-fix test format dev up down migrate
+.PHONY: help setup-hooks lint lint-fix lint-check test format format-check dev up down migrate
 .PHONY: test-unit test-integration test-e2e test-performance test-all
 .PHONY: coverage ci notify
 .PHONY: k6-smoke k6-load k6-stress k6-ci
 .PHONY: artillery-stress artillery-peak artillery-soak artillery-spike
 .PHONY: bench bench-api bench-db bench-e2e bench-critical bench-report bench-schedule
 .PHONY: docker-dev docker-prod docker-test docker-down docker-clean docker-logs docker-ps
+
+# =============================================================================
+# Centralized Tool Versions (used by CI and pre-commit)
+# =============================================================================
+GOLANGCI_LINT_VERSION ?= v2.1.6
+PRETTIER_VERSION ?= 3.1.0
+NODE_VERSION ?= 20
+GO_VERSION ?= 1.21
 
 help:
 	@echo "Available targets:"
@@ -24,8 +32,10 @@ help:
 	@echo ""
 	@echo "Quality:"
 	@echo "  lint         - Run all linters"
+	@echo "  lint-check   - Run all linters in check-only mode (for CI)"
 	@echo "  lint-fix     - Run linters with auto-fix"
 	@echo "  format       - Format all code"
+	@echo "  format-check - Check formatting without modifying (for CI)"
 	@echo "  test         - Run all tests"
 	@echo ""
 	@echo "Testing:"
@@ -79,15 +89,33 @@ help:
 setup-hooks:
 	@./scripts/setup-pre-commit.sh
 
-# Combined linting
+# =============================================================================
+# Linting (centralized rules - used by pre-commit and CI)
+# =============================================================================
+
+# Run all linters (allows auto-fix where applicable)
 lint: frontend-lint backend-lint
 
+# Run all linters with auto-fix
 lint-fix: frontend-lint-fix backend-lint-fix format
 
-# Combined formatting
+# Run all linters in check-only mode (for CI - no modifications)
+lint-check: frontend-lint-check backend-lint-check format-check
+	@echo "✓ All lint checks passed"
+
+# =============================================================================
+# Formatting (centralized rules - used by pre-commit and CI)
+# =============================================================================
+
+# Format all files
 format:
 	@echo "Formatting all files with Prettier..."
 	@npx prettier --write .
+
+# Check formatting without modifying (for CI)
+format-check:
+	@echo "Checking formatting with Prettier..."
+	@npx prettier --check .
 
 # Combined testing
 test: frontend-test backend-test
@@ -96,15 +124,17 @@ test: frontend-test backend-test
 frontend-lint:
 	@echo "Running ESLint on frontend..."
 	@if [ -n "$$(find frontend/src -name '*.js' -o -name '*.jsx' -o -name '*.ts' -o -name '*.tsx' 2>/dev/null)" ]; then \
-		cd frontend && npx eslint .; \
+		cd frontend && ESLINT_USE_FLAT_CONFIG=true npx eslint .; \
 	else \
 		echo "No JavaScript/TypeScript files found in frontend/src"; \
 	fi
 
+frontend-lint-check: frontend-lint
+
 frontend-lint-fix:
 	@echo "Running ESLint with auto-fix on frontend..."
 	@if [ -n "$$(find frontend/src -name '*.js' -o -name '*.jsx' -o -name '*.ts' -o -name '*.tsx' 2>/dev/null)" ]; then \
-		cd frontend && npx eslint . --fix; \
+		cd frontend && ESLINT_USE_FLAT_CONFIG=true npx eslint . --fix; \
 	else \
 		echo "No JavaScript/TypeScript files found in frontend/src"; \
 	fi
@@ -123,12 +153,14 @@ frontend-build:
 
 # Backend targets
 backend-lint:
-	@echo "Running golangci-lint on backend..."
+	@echo "Running golangci-lint $(GOLANGCI_LINT_VERSION) on backend..."
 	@if [ -n "$$(find backend -name '*.go' 2>/dev/null)" ]; then \
 		cd backend && golangci-lint run --config .golangci.yml; \
 	else \
 		echo "No Go files found in backend"; \
 	fi
+
+backend-lint-check: backend-lint
 
 backend-lint-fix:
 	@echo "Running go fmt and go imports on backend..."
@@ -147,13 +179,18 @@ backend-build:
 	@cd backend && go build -o bin/servicepro ./cmd/server
 
 # Install dependencies
-install-deps:
+install-deps: install-golangci-lint
 	@echo "Installing frontend dependencies..."
 	@cd frontend && npm install
 	@echo "Installing backend dependencies..."
 	@cd backend && go mod download
 	@echo "Installing pre-commit..."
 	@./scripts/setup-pre-commit.sh
+
+# Install golangci-lint at centralized version
+install-golangci-lint:
+	@echo "Installing golangci-lint $(GOLANGCI_LINT_VERSION)..."
+	@curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $$(go env GOPATH)/bin $(GOLANGCI_LINT_VERSION)
 
 # Development targets
 dev: dev-db

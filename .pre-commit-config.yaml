@@ -44,22 +44,22 @@ repos:
             .*/templates/.*\.yml
           )$
 
-  # Frontend - ESLint
+  # Frontend - ESLint (uses centralized Makefile target)
   - repo: local
     hooks:
       - id: eslint
         name: eslint
-        entry: bash -c 'cd frontend && ESLINT_USE_FLAT_CONFIG=true npx eslint src --fix'
+        entry: make frontend-lint-fix
         language: system
         pass_filenames: false
         files: ^frontend/.*\.[jt]sx?$
 
-  # Backend - Go linting
+  # Backend - Go linting (uses centralized Makefile target)
   - repo: local
     hooks:
       - id: golangci-lint
         name: golangci-lint
-        entry: bash -c 'cd backend && golangci-lint run --config .golangci.yml'
+        entry: make backend-lint
         language: system
         pass_filenames: false
         files: ^backend/.*\.go$

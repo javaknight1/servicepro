@@ -35,10 +35,9 @@ jobs:
           go install golang.org/x/tools/cmd/goimports@latest
           echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
 
+      # Install golangci-lint using centralized version from Makefile
       - name: Install golangci-lint
-        run: |
-          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v2.1.6
-          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+        run: make install-golangci-lint
 
       - name: Install frontend dependencies
         run: cd frontend && npm ci
@@ -52,11 +51,10 @@ jobs:
           path: ~/.cache/pre-commit
           key: pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
 
+      # Run pre-commit which uses centralized Makefile targets
+      # This includes: eslint, golangci-lint, prettier, and file checks
       - name: Run pre-commit on all files
         run: pre-commit run --all-files --show-diff-on-failure
-
-      - name: Check formatting with Prettier
-        run: npx prettier --check .
 
   backend-tests:
     name: Backend Tests
