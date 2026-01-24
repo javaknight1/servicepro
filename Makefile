@@ -172,8 +172,8 @@ dev: dev-db
 	@echo "  Terminal 2: make dev-frontend"
 
 dev-db:
-	@echo "Starting PostgreSQL and Redis..."
-	@docker compose up -d postgres redis
+	@echo "Starting PostgreSQL, Redis, and MinIO..."
+	@docker compose up -d postgres redis minio
 	@echo "Waiting for services to be ready..."
 	@sleep 3
 	@docker compose ps
@@ -210,7 +210,7 @@ db-reset:
 db-fresh:
 	@echo "Resetting database..."
 	@docker compose down -v 2>/dev/null || true
-	@docker compose up -d postgres redis
+	@docker compose up -d postgres redis minio
 	@echo "Waiting for PostgreSQL to be ready..."
 	@sleep 5
 	@make migrate
