@@ -4,12 +4,18 @@ import { LogOut, Settings } from 'lucide-react';
 import { useAuthStore, useTenantStore } from '@store';
 import { Button, Avatar } from '@components/shared';
 import { TenantSwitcher } from '@components/tenants';
+import { getDisplayName } from '@/utils/avatar';
 
 function ProfileDropdown() {
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const displayName = getDisplayName(
+    user?.email || '',
+    user?.first_name,
+    user?.last_name
+  );
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -41,10 +47,12 @@ function ProfileDropdown() {
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center justify-center rounded-full hover:ring-2 hover:ring-primary-200 transition-all focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
-        title={user?.email || 'Account'}
+        title={displayName}
       >
         <Avatar
           email={user?.email || ''}
+          firstName={user?.first_name}
+          lastName={user?.last_name}
           profilePictureUrl={user?.profile_picture_url}
           size="sm"
         />
@@ -52,11 +60,16 @@ function ProfileDropdown() {
 
       {isOpen && (
         <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-neutral-200 py-1 z-50">
-          {user?.email && (
+          {user && (
             <div className="px-4 py-3 border-b border-neutral-200">
               <p className="text-sm font-medium text-neutral-900 truncate">
-                {user.email}
+                {displayName}
               </p>
+              {(user.first_name || user.last_name) && (
+                <p className="text-xs text-neutral-500 truncate">
+                  {user.email}
+                </p>
+              )}
             </div>
           )}
 

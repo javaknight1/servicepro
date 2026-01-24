@@ -2,6 +2,8 @@ export interface User {
   id: string;
   email: string;
   role: 'user' | 'admin';
+  first_name?: string;
+  last_name?: string;
   profile_picture_url?: string;
   email_verified: boolean;
   created_at: string;

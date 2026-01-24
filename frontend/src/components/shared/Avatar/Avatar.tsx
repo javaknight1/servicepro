@@ -1,10 +1,12 @@
-import { getAvatarColor, getInitials } from '@/utils/avatar';
+import { getAvatarColor, getInitials, getDisplayName } from '@/utils/avatar';
 import clsx from 'clsx';
 
 export type AvatarSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl';
 
 export interface AvatarProps {
   email: string;
+  firstName?: string | null;
+  lastName?: string | null;
   profilePictureUrl?: string | null;
   size?: AvatarSize;
   className?: string;
@@ -20,19 +22,22 @@ const sizeClasses: Record<AvatarSize, string> = {
 
 export function Avatar({
   email,
+  firstName,
+  lastName,
   profilePictureUrl,
   size = 'md',
   className,
 }: AvatarProps) {
   const colors = getAvatarColor(email);
-  const initials = getInitials(email);
+  const initials = getInitials(email, firstName, lastName);
+  const displayName = getDisplayName(email, firstName, lastName);
   const sizeClass = sizeClasses[size];
 
   if (profilePictureUrl) {
     return (
       <img
         src={profilePictureUrl}
-        alt={`${email}'s avatar`}
+        alt={`${displayName}'s avatar`}
         className={clsx('rounded-full object-cover', sizeClass, className)}
       />
     );
@@ -47,7 +52,7 @@ export function Avatar({
         colors.text,
         className
       )}
-      title={email}
+      title={displayName}
     >
       {initials}
     </div>

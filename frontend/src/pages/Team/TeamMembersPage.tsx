@@ -15,6 +15,7 @@ import {
 import { useTenantStore } from '@store';
 import { roleApi } from '@services/roleApi';
 import { UserPlus, Trash2, Shield, Search, Building2 } from 'lucide-react';
+import { getDisplayName } from '@/utils/avatar';
 import type { TenantMember } from '@/types/tenant';
 import type { Role } from '@/types/role';
 
@@ -135,11 +136,19 @@ export function TeamMembersPage() {
     setShowRoleModal(true);
   };
 
-  const filteredMembers = members.filter(
-    (member) =>
-      member.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      member.role_name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredMembers = members.filter((member) => {
+    const searchLower = searchQuery.toLowerCase();
+    const displayName = getDisplayName(
+      member.email,
+      member.first_name,
+      member.last_name
+    );
+    return (
+      member.email.toLowerCase().includes(searchLower) ||
+      member.role_name.toLowerCase().includes(searchLower) ||
+      displayName.toLowerCase().includes(searchLower)
+    );
+  });
 
   if (!currentTenant) {
     return (
@@ -217,50 +226,66 @@ export function TeamMembersPage() {
               </div>
             ) : (
               <div className="divide-y divide-neutral-200">
-                {filteredMembers.map((member) => (
-                  <div
-                    key={member.id}
-                    className="flex items-center justify-between py-4"
-                  >
-                    <div className="flex items-center">
-                      <Avatar
-                        email={member.email}
-                        profilePictureUrl={member.profile_picture_url}
-                        size="md"
-                      />
-                      <div className="ml-4">
-                        <p className="text-sm font-medium text-neutral-900">
-                          {member.email}
-                        </p>
-                        <div className="flex items-center mt-1 space-x-2">
-                          <Badge variant="neutral">{member.role_name}</Badge>
-                          {!member.accepted_at && member.invited_at && (
-                            <Badge variant="warning">Pending Invite</Badge>
+                {filteredMembers.map((member) => {
+                  const memberDisplayName = getDisplayName(
+                    member.email,
+                    member.first_name,
+                    member.last_name
+                  );
+                  const hasName = member.first_name || member.last_name;
+
+                  return (
+                    <div
+                      key={member.id}
+                      className="flex items-center justify-between py-4"
+                    >
+                      <div className="flex items-center">
+                        <Avatar
+                          email={member.email}
+                          firstName={member.first_name}
+                          lastName={member.last_name}
+                          profilePictureUrl={member.profile_picture_url}
+                          size="md"
+                        />
+                        <div className="ml-4">
+                          <p className="text-sm font-medium text-neutral-900">
+                            {memberDisplayName}
+                          </p>
+                          {hasName && (
+                            <p className="text-xs text-neutral-500">
+                              {member.email}
+                            </p>
                           )}
+                          <div className="flex items-center mt-1 space-x-2">
+                            <Badge variant="neutral">{member.role_name}</Badge>
+                            {!member.accepted_at && member.invited_at && (
+                              <Badge variant="warning">Pending Invite</Badge>
+                            )}
+                          </div>
                         </div>
                       </div>
+                      <div className="flex items-center space-x-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => openChangeRoleModal(member)}
+                          title="Change role"
+                        >
+                          <Shield className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRemoveMember(member)}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          title="Remove member"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => openChangeRoleModal(member)}
-                        title="Change role"
-                      >
-                        <Shield className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleRemoveMember(member)}
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                        title="Remove member"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </CardContent>

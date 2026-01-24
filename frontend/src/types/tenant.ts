@@ -31,6 +31,8 @@ export interface TenantMember {
   id: string;
   user_id: string;
   email: string;
+  first_name?: string;
+  last_name?: string;
   profile_picture_url?: string;
   role_id: string;
   role_name: string;

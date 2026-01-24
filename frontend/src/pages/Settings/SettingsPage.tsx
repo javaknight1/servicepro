@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { DashboardLayout } from '@components/layout';
 import {
   Card,
@@ -11,13 +11,64 @@ import {
 } from '@components/shared';
 import { ProfilePictureSection } from '@components/settings/ProfilePictureSection';
 import { useAuthStore } from '@store';
+import { userService } from '@services/userService';
 import { User, Lock, Bell, Shield } from 'lucide-react';
 
 export function SettingsPage() {
   const user = useAuthStore((state) => state.user);
+  const setUser = useAuthStore((state) => state.setUser);
+  const fetchCurrentUser = useAuthStore((state) => state.fetchCurrentUser);
   const [activeTab, setActiveTab] = useState<
     'profile' | 'security' | 'notifications'
   >('profile');
+
+  // Profile form state
+  const [firstName, setFirstName] = useState(user?.first_name || '');
+  const [lastName, setLastName] = useState(user?.last_name || '');
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<{
+    type: 'success' | 'error';
+    text: string;
+  } | null>(null);
+
+  // Ensure user data is loaded
+  useEffect(() => {
+    fetchCurrentUser();
+  }, [fetchCurrentUser]);
+
+  // Update form when user data changes
+  useEffect(() => {
+    if (user) {
+      setFirstName(user.first_name || '');
+      setLastName(user.last_name || '');
+    }
+  }, [user]);
+
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSaving(true);
+    setSaveMessage(null);
+
+    try {
+      const updatedUser = await userService.updateProfile({
+        first_name: firstName || null,
+        last_name: lastName || null,
+      });
+      setUser(updatedUser);
+      setSaveMessage({ type: 'success', text: 'Profile updated successfully' });
+    } catch (error) {
+      console.error('Failed to update profile:', error);
+      setSaveMessage({ type: 'error', text: 'Failed to update profile' });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancelProfile = () => {
+    setFirstName(user?.first_name || '');
+    setLastName(user?.last_name || '');
+    setSaveMessage(null);
+  };
 
   const tabs = [
     { id: 'profile' as const, label: 'Profile', icon: User },
@@ -75,33 +126,61 @@ export function SettingsPage() {
                 </CardHeader>
                 <CardContent>
                   <ProfilePictureSection />
-                  <form className="space-y-4 mt-6">
+                  <form className="space-y-4 mt-6" onSubmit={handleSaveProfile}>
                     <Input
                       label="Email Address"
                       type="email"
-                      defaultValue={user?.email || ''}
+                      value={user?.email || ''}
                       fullWidth
                       disabled
                       helperText="Contact support to change your email address"
                     />
 
                     <Input
-                      label="Full Name"
+                      label="First Name"
                       type="text"
-                      placeholder="Enter your full name"
+                      placeholder="Enter your first name"
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
                       fullWidth
                     />
 
                     <Input
-                      label="Company"
+                      label="Last Name"
                       type="text"
-                      placeholder="Enter your company name"
+                      placeholder="Enter your last name"
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
                       fullWidth
                     />
 
+                    {saveMessage && (
+                      <div
+                        className={`text-sm ${
+                          saveMessage.type === 'success'
+                            ? 'text-green-600'
+                            : 'text-red-600'
+                        }`}
+                      >
+                        {saveMessage.text}
+                      </div>
+                    )}
+
                     <div className="flex justify-end space-x-3 pt-4">
-                      <Button variant="outline">Cancel</Button>
-                      <Button variant="primary">Save Changes</Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleCancelProfile}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        type="submit"
+                        variant="primary"
+                        disabled={isSaving}
+                      >
+                        {isSaving ? 'Saving...' : 'Save Changes'}
+                      </Button>
                     </div>
                   </form>
                 </CardContent>
