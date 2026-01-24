@@ -13,7 +13,7 @@ import type {
   VerifyEmailRequest,
   ResendVerificationRequest,
   ApiError,
-} from '@types';
+} from '@app-types';
 
 // Create axios instance
 const api: AxiosInstance = axios.create({

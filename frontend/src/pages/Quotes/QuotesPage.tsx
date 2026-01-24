@@ -10,9 +10,9 @@ import {
 } from '@components/shared';
 import type { Column } from '@components/shared';
 import { quoteService, QuoteFilters } from '@services/quoteService';
-import type { Quote } from '@types/quote';
+import type { Quote } from '@app-types/quote';
 import { FileText, Plus, Search } from 'lucide-react';
-import { formatCurrency } from '@types';
+import { formatCurrency } from '@app-types';
 
 const getQuoteStatusLabel = (status: string): string => {
   const labels: Record<string, string> = {

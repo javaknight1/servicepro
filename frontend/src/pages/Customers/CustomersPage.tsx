@@ -12,7 +12,7 @@ import type { Column } from '@components/shared';
 import { customerService } from '@services/customerService';
 import type { Customer, CustomerFilters } from '@services/customerService';
 import { Users, Plus, Search } from 'lucide-react';
-import { getCustomerStatusLabel, getCustomerTypeLabel } from '@types';
+import { getCustomerStatusLabel, getCustomerTypeLabel } from '@app-types';
 
 export function CustomersPage() {
   const navigate = useNavigate();

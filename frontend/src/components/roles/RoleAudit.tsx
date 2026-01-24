@@ -18,7 +18,7 @@ import {
   CardContent,
 } from '@components/shared';
 import { useRoleAuditLogs, useExportAuditLogs } from '@hooks/useRoles';
-import type { RoleAuditLog, AuditFilters } from '@types/role';
+import type { RoleAuditLog, AuditFilters } from '@app-types/role';
 
 const actionLabels: Record<RoleAuditLog['action'], string> = {
   created: 'Created',
@@ -102,7 +102,7 @@ export function RoleAudit() {
 
   if (error) {
     return (
-      <Card variant="outlined">
+      <Card variant="bordered">
         <CardContent>
           <div className="text-center py-8">
             <p className="text-error-600">

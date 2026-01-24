@@ -362,7 +362,7 @@ Thank you for your interest in {{service_name}}. This quote is valid for {{valid
 Project Details:
 - Start Date: {{project_start}}
 - Duration: {{project_duration}} weeks
-- Total Cost: ${{ total_cost }}
+- Total Cost: \${{total_cost}}
 
 Best regards,
 {{company_name}}`}

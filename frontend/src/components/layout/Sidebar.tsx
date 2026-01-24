@@ -69,7 +69,7 @@ function NavItemLink({
   const hasChildren = item.children && item.children.length > 0;
   const isChildActive =
     hasChildren &&
-    item.children.some((child) => location.pathname === child.path);
+    item.children!.some((child) => location.pathname === child.path);
 
   // Initialize expanded state based on whether a child is active
   const [isExpanded, setIsExpanded] = useState(isChildActive);
@@ -108,7 +108,7 @@ function NavItemLink({
             </>
           )}
         </button>
-        {!isCollapsed && isExpanded && (
+        {!isCollapsed && isExpanded && item.children && (
           <div className="mt-1 ml-8 space-y-1">
             {item.children.map((child) => (
               <NavLink

@@ -16,8 +16,8 @@ import { customerService, CustomerStats } from '@services/customerService';
 import { jobService, JobStats, Job } from '@services/jobService';
 import { quoteService } from '@services/quoteService';
 import { invoiceService, InvoiceStats } from '@services/invoiceService';
-import type { Quote, QuoteStats } from '@types/quote';
-import { formatCurrency, getJobStatusLabel } from '@types';
+import type { Quote, QuoteStats } from '@app-types/quote';
+import { formatCurrency, getJobStatusLabel } from '@app-types';
 import {
   Users,
   Briefcase,

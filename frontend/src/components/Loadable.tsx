@@ -181,7 +181,8 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
 /**
  * Creates a loadable component with Suspense and Error Boundary
  */
-export function loadable<P extends object>(
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function loadable<P = any>(
   importFn: () => Promise<{ default: ComponentType<P> }>,
   options: LoadableOptions = {}
 ): ComponentType<P> {
@@ -239,10 +240,12 @@ export function loadable<P extends object>(
         loadingFallback
       );
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const AnyLazyComponent = LazyComponent as React.ComponentType<any>;
     return (
       <ErrorBoundary fallback={errorFallback}>
         <Suspense fallback={delayedFallback}>
-          <LazyComponent {...props} />
+          <AnyLazyComponent {...props} />
         </Suspense>
       </ErrorBoundary>
     );

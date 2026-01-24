@@ -247,10 +247,10 @@ const RevenueReportPage: React.FC = () => {
         callbacks: {
           label: (context: {
             dataset: { label?: string };
-            parsed: { y: number };
+            parsed: { y: number | null };
           }) => {
             return `${context.dataset.label}: ${formatCurrency(
-              context.parsed.y
+              context.parsed.y ?? 0
             )}`;
           },
         },

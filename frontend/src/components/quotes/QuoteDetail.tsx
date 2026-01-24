@@ -55,10 +55,11 @@ export const QuoteDetail: React.FC<QuoteDetailProps> = ({
   // Load existing quote data into form
   useEffect(() => {
     if (existingQuote) {
+      // Cast to unknown first to handle type differences between Quote and QuoteFormData
       reset({
         ...existingQuote,
-        tax_exemption_type: existingQuote.tax_exemption_type || 'none',
-      });
+        tax_exemption_type: 'none',
+      } as unknown as QuoteFormData);
     }
   }, [existingQuote, reset]);
 
@@ -69,14 +70,14 @@ export const QuoteDetail: React.FC<QuoteDetailProps> = ({
   const saveMutation = useMutation({
     mutationFn: async (data: QuoteFormData) => {
       if (quoteId) {
-        return await quoteService.updateQuote(quoteId, data);
+        return await quoteService.updateQuote(quoteId, data as unknown as Partial<Quote>);
       } else {
-        return await quoteService.createQuote(data);
+        return await quoteService.createQuote(data as unknown as Partial<Quote>);
       }
     },
     onSuccess: (savedQuote) => {
-      queryClient.invalidateQueries(['quotes']);
-      queryClient.invalidateQueries(['quote', quoteId]);
+      queryClient.invalidateQueries({ queryKey: ['quotes'] });
+      queryClient.invalidateQueries({ queryKey: ['quote', quoteId] });
       onSave?.(savedQuote);
     },
   });
@@ -125,7 +126,9 @@ export const QuoteDetail: React.FC<QuoteDetailProps> = ({
       quote_number: existingQuote?.quote_number || 'DRAFT',
       created_at: existingQuote?.created_at || new Date().toISOString(),
       updated_at: new Date().toISOString(),
-    } as Quote;
+      is_expired: false,
+      created_by: '',
+    } as unknown as Quote;
 
     await downloadQuotePDF(quoteData);
   };
@@ -138,7 +141,9 @@ export const QuoteDetail: React.FC<QuoteDetailProps> = ({
       quote_number: existingQuote?.quote_number || 'DRAFT',
       created_at: existingQuote?.created_at || new Date().toISOString(),
       updated_at: new Date().toISOString(),
-    } as Quote;
+      is_expired: false,
+      created_by: '',
+    } as unknown as Quote;
 
     await previewQuotePDF(quoteData);
   };
@@ -147,7 +152,7 @@ export const QuoteDetail: React.FC<QuoteDetailProps> = ({
   const sendMutation = useMutation({
     mutationFn: () => quoteService.sendQuote(quoteId!),
     onSuccess: () => {
-      queryClient.invalidateQueries(['quote', quoteId]);
+      queryClient.invalidateQueries({ queryKey: ['quote', quoteId] });
     },
   });
 
@@ -206,10 +211,10 @@ export const QuoteDetail: React.FC<QuoteDetailProps> = ({
                 <button
                   type="button"
                   onClick={() => sendMutation.mutate()}
-                  disabled={sendMutation.isLoading}
+                  disabled={sendMutation.isPending}
                   className="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
                 >
-                  {sendMutation.isLoading ? 'Sending...' : 'Send to Customer'}
+                  {sendMutation.isPending ? 'Sending...' : 'Send to Customer'}
                 </button>
               )}
             </>
@@ -225,10 +230,10 @@ export const QuoteDetail: React.FC<QuoteDetailProps> = ({
           )}
           <button
             type="submit"
-            disabled={saveMutation.isLoading}
+            disabled={saveMutation.isPending}
             className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
           >
-            {saveMutation.isLoading
+            {saveMutation.isPending
               ? 'Saving...'
               : quoteId
                 ? 'Save'

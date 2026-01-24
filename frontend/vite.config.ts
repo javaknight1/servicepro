@@ -108,7 +108,7 @@ export default defineConfig(({ mode }) => ({
       '@utils': path.resolve(__dirname, './src/utils'),
       '@store': path.resolve(__dirname, './src/store'),
       '@theme': path.resolve(__dirname, './src/theme'),
-      '@types': path.resolve(__dirname, './src/types'),
+      '@app-types': path.resolve(__dirname, './src/types'),
       '@config': path.resolve(__dirname, './src/config'),
       '@providers': path.resolve(__dirname, './src/providers'),
       // Mock @sentry/tracing (not installed as a dependency)

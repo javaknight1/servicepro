@@ -116,8 +116,8 @@ export const useWebSocket = (
 
           // Invalidate React Query cache for the quote
           if (message.quote_id) {
-            queryClient.invalidateQueries(['quote', message.quote_id]);
-            queryClient.invalidateQueries(['quotes']);
+            queryClient.invalidateQueries({ queryKey: ['quote', message.quote_id] });
+            queryClient.invalidateQueries({ queryKey: ['quotes'] });
           }
         } catch (err) {
           console.error('Failed to parse WebSocket message:', err);

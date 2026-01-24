@@ -9,7 +9,7 @@ import type {
   BulkAssignRolesRequest,
   RoleFilters,
   AuditFilters,
-} from '@types/role';
+} from '@app-types/role';
 
 // Query keys
 export const roleKeys = {

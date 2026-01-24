@@ -11,7 +11,7 @@ import {
 } from '@components/shared';
 import { useRoles, useDeleteRole, useBulkAssignRoles } from '@hooks/useRoles';
 import { RoleForm } from './RoleForm';
-import type { Role } from '@types/role';
+import type { Role } from '@app-types/role';
 
 interface RoleManagerProps {
   onRoleSelect?: (role: Role) => void;
@@ -91,7 +91,7 @@ export function RoleManager({ onRoleSelect }: RoleManagerProps) {
 
   if (error) {
     return (
-      <Card variant="outlined">
+      <Card variant="bordered">
         <CardContent>
           <div className="text-center py-8">
             <p className="text-error-600">

@@ -10,6 +10,8 @@ import {
   dateFnsLocalizer,
   Views,
   SlotInfo,
+  View,
+  EventProps,
 } from 'react-big-calendar';
 import { format, parse, startOfWeek, getDay } from 'date-fns';
 import { enUS } from 'date-fns/locale';
@@ -43,8 +45,8 @@ const localizer = dateFnsLocalizer({
   locales,
 });
 
-// Create drag-and-drop enabled calendar
-const DnDCalendar = withDragAndDrop(BigCalendar);
+// Create drag-and-drop enabled calendar with proper typing
+const DnDCalendar = withDragAndDrop<JobEvent>(BigCalendar as React.ComponentType<any>);
 
 /**
  * Error Boundary for Calendar Component
@@ -218,10 +220,11 @@ export const Calendar: React.FC<CalendarProps> = ({
 
   // Handle view change
   const handleViewChange = useCallback(
-    (view: CalendarView) => {
-      setCurrentView(view);
+    (view: View) => {
+      const calView = view as CalendarView;
+      setCurrentView(calView);
       if (onViewChange) {
-        onViewChange(view);
+        onViewChange(calView);
       }
     },
     [onViewChange]
@@ -229,8 +232,8 @@ export const Calendar: React.FC<CalendarProps> = ({
 
   // Custom event component
   const EventComponent = useCallback(
-    ({ event, title }: { event: JobEvent; title: string }) => (
-      <CalendarEvent event={event} title={title} />
+    (props: EventProps<JobEvent>) => (
+      <CalendarEvent event={props.event} title={String(props.title || props.event.title)} />
     ),
     []
   );
@@ -289,14 +292,14 @@ export const Calendar: React.FC<CalendarProps> = ({
           <DnDCalendar
             localizer={localizer}
             events={events}
-            startAccessor="start"
-            endAccessor="end"
+            startAccessor={(event: JobEvent) => event.start}
+            endAccessor={(event: JobEvent) => event.end}
             date={currentDate}
             onNavigate={handleNavigate}
-            view={currentView}
+            view={currentView as View}
             onView={handleViewChange}
-            views={['month', 'week', 'day', 'agenda']}
-            onSelectEvent={handleSelectEvent}
+            views={['month', 'week', 'day', 'agenda'] as View[]}
+            onSelectEvent={(event: JobEvent) => handleSelectEvent(event)}
             onSelectSlot={handleSelectSlot}
             onEventDrop={handleEventDrop}
             onEventResize={handleEventResize}
@@ -307,9 +310,9 @@ export const Calendar: React.FC<CalendarProps> = ({
             step={30}
             timeslots={2}
             defaultDate={defaultDate}
-            defaultView={defaultView}
+            defaultView={defaultView as View}
             components={components}
-            eventPropGetter={eventStyleGetter}
+            eventPropGetter={(event: JobEvent) => eventStyleGetter(event)}
             formats={formats}
             style={{ height: '100%', minHeight: '600px' }}
             className="custom-calendar"

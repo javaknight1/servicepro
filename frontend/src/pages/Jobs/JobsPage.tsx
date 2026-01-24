@@ -11,7 +11,7 @@ import {
 import type { Column } from '@components/shared';
 import { jobService, Job, JobFilters } from '@services/jobService';
 import { Briefcase, Plus, Search } from 'lucide-react';
-import { getJobStatusLabel, getJobPriorityLabel } from '@types';
+import { getJobStatusLabel, getJobPriorityLabel } from '@app-types';
 
 export function JobsPage() {
   const navigate = useNavigate();

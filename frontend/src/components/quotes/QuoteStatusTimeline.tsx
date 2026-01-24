@@ -34,15 +34,16 @@ export const QuoteStatusTimeline: React.FC<QuoteStatusTimelineProps> = ({
   };
 
   const getStatusColor = (status: QuoteStatus): string => {
-    const colors = {
+    const colors: Record<QuoteStatus, string> = {
       [QuoteStatus.DRAFT]: 'bg-gray-400',
       [QuoteStatus.SENT]: 'bg-blue-500',
       [QuoteStatus.VIEWED]: 'bg-purple-500',
       [QuoteStatus.ACCEPTED]: 'bg-green-500',
       [QuoteStatus.DECLINED]: 'bg-red-500',
+      [QuoteStatus.REJECTED]: 'bg-red-500',
       [QuoteStatus.EXPIRED]: 'bg-yellow-500',
     };
-    return colors[status] || 'bg-gray-400';
+    return colors[status];
   };
 
   const getEventLabel = (event: string): string => {

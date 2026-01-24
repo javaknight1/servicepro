@@ -4,7 +4,7 @@ import { MainLayout } from '@components/layout';
 import { Button, Card } from '@components/shared';
 import { authApi } from '@services';
 import { AxiosError } from 'axios';
-import type { ErrorResponse } from '@types';
+import type { ErrorResponse } from '@app-types';
 import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
 
 export function VerifyEmailPage() {

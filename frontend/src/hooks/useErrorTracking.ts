@@ -139,22 +139,12 @@ export function useErrorTracking(options: UseErrorTrackingOptions = {}) {
    */
   const withSpan = useCallback(
     async <T>(name: string, fn: () => Promise<T>): Promise<T> => {
-      const transaction = Sentry.getCurrentHub().getScope()?.getTransaction();
-      const span = transaction?.startChild({
-        op: 'function',
-        description: name,
-      });
-
-      try {
-        const result = await fn();
-        span?.setStatus('ok');
-        return result;
-      } catch (error) {
-        span?.setStatus('internal_error');
-        throw error;
-      } finally {
-        span?.finish();
-      }
+      return Sentry.startSpan(
+        { name, op: 'function' },
+        async () => {
+          return fn();
+        }
+      );
     },
     []
   );

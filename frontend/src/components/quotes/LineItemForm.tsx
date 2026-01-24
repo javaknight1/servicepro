@@ -91,7 +91,8 @@ export const LineItemForm: React.FC<LineItemFormProps> = ({
 
   const handleBlur = (field: keyof LineItemFormData) => {
     setTouched((prev) => ({ ...prev, [field]: true }));
-    const error = validateField(field, formData[field]);
+    const value = formData[field] ?? '';
+    const error = validateField(field, value);
     setErrors((prev) => ({ ...prev, [field]: error }));
   };
 

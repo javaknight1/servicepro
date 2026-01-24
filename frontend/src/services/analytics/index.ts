@@ -264,7 +264,7 @@ class AnalyticsService {
     };
 
     // Track to GA4
-    if (this.config.enableGA4 && window.gtag) {
+    if (this.config.enableGA4 && typeof window.gtag === 'function') {
       this.trackToGA4(event);
     }
 

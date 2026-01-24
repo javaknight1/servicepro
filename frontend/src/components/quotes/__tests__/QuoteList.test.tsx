@@ -22,16 +22,21 @@ const mockQuotes: Quote[] = [
     id: '1',
     quote_number: 'Q-2024-001',
     customer_id: 'cust-1',
-    customer_name: 'John Doe',
-    customer_email: 'john@example.com',
+    customer: {
+      id: 'cust-1',
+      email: 'john@example.com',
+      name: 'John Doe',
+    },
     status: QuoteStatus.DRAFT,
-    subtotal: '1000.00',
-    tax_rate: '0.0825',
-    tax_amount: '82.50',
-    total: '1082.50',
+    subtotal: 1000.0,
+    tax_rate: 0.0825,
+    tax_amount: 82.5,
+    total: 1082.5,
     valid_until: '2024-12-31T23:59:59Z',
+    is_expired: false,
     notes: '',
     items: [],
+    created_by: 'user-1',
     created_at: '2024-01-15T10:00:00Z',
     updated_at: '2024-01-15T10:00:00Z',
   },
@@ -39,16 +44,21 @@ const mockQuotes: Quote[] = [
     id: '2',
     quote_number: 'Q-2024-002',
     customer_id: 'cust-2',
-    customer_name: 'Jane Smith',
-    customer_email: 'jane@example.com',
+    customer: {
+      id: 'cust-2',
+      email: 'jane@example.com',
+      name: 'Jane Smith',
+    },
     status: QuoteStatus.SENT,
-    subtotal: '2000.00',
-    tax_rate: '0.0825',
-    tax_amount: '165.00',
-    total: '2165.00',
+    subtotal: 2000.0,
+    tax_rate: 0.0825,
+    tax_amount: 165.0,
+    total: 2165.0,
     valid_until: '2024-12-31T23:59:59Z',
+    is_expired: false,
     notes: '',
     items: [],
+    created_by: 'user-1',
     created_at: '2024-01-16T10:00:00Z',
     updated_at: '2024-01-16T10:00:00Z',
   },
@@ -56,16 +66,21 @@ const mockQuotes: Quote[] = [
     id: '3',
     quote_number: 'Q-2024-003',
     customer_id: 'cust-3',
-    customer_name: 'Bob Johnson',
-    customer_email: 'bob@example.com',
+    customer: {
+      id: 'cust-3',
+      email: 'bob@example.com',
+      name: 'Bob Johnson',
+    },
     status: QuoteStatus.ACCEPTED,
-    subtotal: '3000.00',
-    tax_rate: '0.0825',
-    tax_amount: '247.50',
-    total: '3247.50',
+    subtotal: 3000.0,
+    tax_rate: 0.0825,
+    tax_amount: 247.5,
+    total: 3247.5,
     valid_until: '2024-12-31T23:59:59Z',
+    is_expired: false,
     notes: '',
     items: [],
+    created_by: 'user-1',
     created_at: '2024-01-17T10:00:00Z',
     updated_at: '2024-01-17T10:00:00Z',
   },
@@ -124,12 +139,9 @@ describe('QuoteList', () => {
         .mockRejectedValueOnce(new Error('Network error'))
         .mockResolvedValueOnce({
           quotes: mockQuotes,
-          pagination: {
-            page: 1,
-            page_size: 25,
-            total: mockQuotes.length,
-            total_pages: 1,
-          },
+          page: 1,
+          page_size: 25,
+          total: mockQuotes.length,
         });
 
       render(<QuoteList />, { wrapper: createWrapper() });
@@ -151,12 +163,9 @@ describe('QuoteList', () => {
     it('should display "No quotes found" when list is empty', async () => {
       vi.mocked(quoteService.getQuotes).mockResolvedValue({
         quotes: [],
-        pagination: {
-          page: 1,
-          page_size: 25,
-          total: 0,
-          total_pages: 0,
-        },
+        page: 1,
+        page_size: 25,
+        total: 0,
       });
 
       render(<QuoteList />, { wrapper: createWrapper() });
@@ -171,12 +180,9 @@ describe('QuoteList', () => {
     it('should render all quotes in the list', async () => {
       vi.mocked(quoteService.getQuotes).mockResolvedValue({
         quotes: mockQuotes,
-        pagination: {
-          page: 1,
-          page_size: 25,
-          total: mockQuotes.length,
-          total_pages: 1,
-        },
+        page: 1,
+        page_size: 25,
+        total: mockQuotes.length,
       });
 
       render(<QuoteList />, { wrapper: createWrapper() });
@@ -191,12 +197,9 @@ describe('QuoteList', () => {
     it('should display customer names and emails', async () => {
       vi.mocked(quoteService.getQuotes).mockResolvedValue({
         quotes: mockQuotes,
-        pagination: {
-          page: 1,
-          page_size: 25,
-          total: mockQuotes.length,
-          total_pages: 1,
-        },
+        page: 1,
+        page_size: 25,
+        total: mockQuotes.length,
       });
 
       render(<QuoteList />, { wrapper: createWrapper() });
@@ -212,12 +215,9 @@ describe('QuoteList', () => {
     it('should format amounts with currency', async () => {
       vi.mocked(quoteService.getQuotes).mockResolvedValue({
         quotes: mockQuotes,
-        pagination: {
-          page: 1,
-          page_size: 25,
-          total: mockQuotes.length,
-          total_pages: 1,
-        },
+        page: 1,
+        page_size: 25,
+        total: mockQuotes.length,
       });
 
       render(<QuoteList />, { wrapper: createWrapper() });
@@ -232,12 +232,9 @@ describe('QuoteList', () => {
     it('should display status badges with correct colors', async () => {
       vi.mocked(quoteService.getQuotes).mockResolvedValue({
         quotes: mockQuotes,
-        pagination: {
-          page: 1,
-          page_size: 25,
-          total: mockQuotes.length,
-          total_pages: 1,
-        },
+        page: 1,
+        page_size: 25,
+        total: mockQuotes.length,
       });
 
       const { container } = render(<QuoteList />, { wrapper: createWrapper() });
@@ -271,12 +268,9 @@ describe('QuoteList', () => {
       const user = userEvent.setup();
       vi.mocked(quoteService.getQuotes).mockResolvedValue({
         quotes: mockQuotes,
-        pagination: {
-          page: 1,
-          page_size: 25,
-          total: mockQuotes.length,
-          total_pages: 1,
-        },
+        page: 1,
+        page_size: 25,
+        total: mockQuotes.length,
       });
 
       render(<QuoteList />, { wrapper: createWrapper() });
@@ -302,12 +296,9 @@ describe('QuoteList', () => {
       const user = userEvent.setup();
       vi.mocked(quoteService.getQuotes).mockResolvedValue({
         quotes: mockQuotes,
-        pagination: {
-          page: 1,
-          page_size: 25,
-          total: mockQuotes.length,
-          total_pages: 1,
-        },
+        page: 1,
+        page_size: 25,
+        total: mockQuotes.length,
       });
 
       render(<QuoteList />, { wrapper: createWrapper() });
@@ -333,12 +324,9 @@ describe('QuoteList', () => {
       const user = userEvent.setup();
       vi.mocked(quoteService.getQuotes).mockResolvedValue({
         quotes: mockQuotes,
-        pagination: {
-          page: 1,
-          page_size: 25,
-          total: mockQuotes.length,
-          total_pages: 1,
-        },
+        page: 1,
+        page_size: 25,
+        total: mockQuotes.length,
       });
 
       render(<QuoteList />, { wrapper: createWrapper() });
@@ -369,12 +357,9 @@ describe('QuoteList', () => {
     it('should display pagination information', async () => {
       vi.mocked(quoteService.getQuotes).mockResolvedValue({
         quotes: mockQuotes,
-        pagination: {
-          page: 1,
-          page_size: 25,
-          total: 100,
-          total_pages: 4,
-        },
+        page: 1,
+        page_size: 25,
+        total: 100,
       });
 
       const { container } = render(<QuoteList />, { wrapper: createWrapper() });
@@ -396,12 +381,9 @@ describe('QuoteList', () => {
       const user = userEvent.setup();
       vi.mocked(quoteService.getQuotes).mockResolvedValue({
         quotes: mockQuotes,
-        pagination: {
-          page: 1,
-          page_size: 25,
-          total: 100,
-          total_pages: 4,
-        },
+        page: 1,
+        page_size: 25,
+        total: 100,
       });
 
       render(<QuoteList />, { wrapper: createWrapper() });
@@ -426,12 +408,9 @@ describe('QuoteList', () => {
       const user = userEvent.setup();
       vi.mocked(quoteService.getQuotes).mockResolvedValue({
         quotes: mockQuotes,
-        pagination: {
-          page: 2,
-          page_size: 25,
-          total: 100,
-          total_pages: 4,
-        },
+        page: 2,
+        page_size: 25,
+        total: 100,
       });
 
       render(<QuoteList />, { wrapper: createWrapper() });
@@ -455,12 +434,9 @@ describe('QuoteList', () => {
     it('should disable previous button on first page', async () => {
       vi.mocked(quoteService.getQuotes).mockResolvedValue({
         quotes: mockQuotes,
-        pagination: {
-          page: 1,
-          page_size: 25,
-          total: 100,
-          total_pages: 4,
-        },
+        page: 1,
+        page_size: 25,
+        total: 100,
       });
 
       render(<QuoteList />, { wrapper: createWrapper() });
@@ -478,12 +454,9 @@ describe('QuoteList', () => {
     it('should disable next button on last page', async () => {
       vi.mocked(quoteService.getQuotes).mockResolvedValue({
         quotes: mockQuotes,
-        pagination: {
-          page: 4,
-          page_size: 25,
-          total: 100,
-          total_pages: 4,
-        },
+        page: 4,
+        page_size: 25,
+        total: 100,
       });
 
       render(<QuoteList />, { wrapper: createWrapper() });
@@ -502,12 +475,9 @@ describe('QuoteList', () => {
       const user = userEvent.setup();
       vi.mocked(quoteService.getQuotes).mockResolvedValue({
         quotes: mockQuotes,
-        pagination: {
-          page: 1,
-          page_size: 25,
-          total: mockQuotes.length,
-          total_pages: 1,
-        },
+        page: 1,
+        page_size: 25,
+        total: mockQuotes.length,
       });
 
       render(<QuoteList />, { wrapper: createWrapper() });
@@ -533,12 +503,9 @@ describe('QuoteList', () => {
       const user = userEvent.setup();
       vi.mocked(quoteService.getQuotes).mockResolvedValue({
         quotes: mockQuotes,
-        pagination: {
-          page: 1,
-          page_size: 25,
-          total: mockQuotes.length,
-          total_pages: 1,
-        },
+        page: 1,
+        page_size: 25,
+        total: mockQuotes.length,
       });
 
       render(<QuoteList />, { wrapper: createWrapper() });
@@ -566,12 +533,9 @@ describe('QuoteList', () => {
       const user = userEvent.setup();
       vi.mocked(quoteService.getQuotes).mockResolvedValue({
         quotes: mockQuotes,
-        pagination: {
-          page: 1,
-          page_size: 25,
-          total: mockQuotes.length,
-          total_pages: 1,
-        },
+        page: 1,
+        page_size: 25,
+        total: mockQuotes.length,
       });
 
       render(<QuoteList onEdit={vi.fn()} onDelete={vi.fn()} />, {
@@ -596,12 +560,9 @@ describe('QuoteList', () => {
       const onEdit = vi.fn();
       vi.mocked(quoteService.getQuotes).mockResolvedValue({
         quotes: mockQuotes,
-        pagination: {
-          page: 1,
-          page_size: 25,
-          total: mockQuotes.length,
-          total_pages: 1,
-        },
+        page: 1,
+        page_size: 25,
+        total: mockQuotes.length,
       });
 
       render(<QuoteList onEdit={onEdit} />, { wrapper: createWrapper() });
@@ -624,12 +585,9 @@ describe('QuoteList', () => {
       const onDelete = vi.fn();
       vi.mocked(quoteService.getQuotes).mockResolvedValue({
         quotes: mockQuotes,
-        pagination: {
-          page: 1,
-          page_size: 25,
-          total: mockQuotes.length,
-          total_pages: 1,
-        },
+        page: 1,
+        page_size: 25,
+        total: mockQuotes.length,
       });
 
       render(<QuoteList onDelete={onDelete} />, { wrapper: createWrapper() });
@@ -652,12 +610,9 @@ describe('QuoteList', () => {
       const onConvert = vi.fn();
       vi.mocked(quoteService.getQuotes).mockResolvedValue({
         quotes: mockQuotes,
-        pagination: {
-          page: 1,
-          page_size: 25,
-          total: mockQuotes.length,
-          total_pages: 1,
-        },
+        page: 1,
+        page_size: 25,
+        total: mockQuotes.length,
       });
 
       render(<QuoteList onConvert={onConvert} />, { wrapper: createWrapper() });
@@ -677,12 +632,9 @@ describe('QuoteList', () => {
       const user = userEvent.setup();
       vi.mocked(quoteService.getQuotes).mockResolvedValue({
         quotes: mockQuotes,
-        pagination: {
-          page: 1,
-          page_size: 25,
-          total: mockQuotes.length,
-          total_pages: 1,
-        },
+        page: 1,
+        page_size: 25,
+        total: mockQuotes.length,
       });
       vi.mocked(quoteService.sendQuote).mockResolvedValue(mockQuotes[0]);
 
@@ -703,12 +655,9 @@ describe('QuoteList', () => {
       const user = userEvent.setup();
       vi.mocked(quoteService.getQuotes).mockResolvedValue({
         quotes: mockQuotes,
-        pagination: {
-          page: 1,
-          page_size: 25,
-          total: mockQuotes.length,
-          total_pages: 1,
-        },
+        page: 1,
+        page_size: 25,
+        total: mockQuotes.length,
       });
 
       const { container } = render(
@@ -744,12 +693,9 @@ describe('QuoteList', () => {
       const customerId = 'cust-123';
       vi.mocked(quoteService.getQuotes).mockResolvedValue({
         quotes: mockQuotes,
-        pagination: {
-          page: 1,
-          page_size: 25,
-          total: mockQuotes.length,
-          total_pages: 1,
-        },
+        page: 1,
+        page_size: 25,
+        total: mockQuotes.length,
       });
 
       render(<QuoteList customerId={customerId} />, {

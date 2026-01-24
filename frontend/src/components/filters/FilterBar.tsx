@@ -231,7 +231,7 @@ const SelectFilterComponent: React.FC<SelectFilterComponentProps> = memo(
         const newValues = currentValues.includes(optionValue)
           ? currentValues.filter((v) => v !== optionValue)
           : [...currentValues, optionValue];
-        onChange(newValues.length > 0 ? newValues : null);
+        onChange(newValues.length > 0 ? (newValues as FilterValue) : null);
       } else {
         onChange(optionValue === value ? null : optionValue);
         setIsOpen(false);

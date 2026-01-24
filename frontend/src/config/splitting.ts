@@ -13,7 +13,8 @@ import { ComponentType, lazy } from 'react';
 
 export interface RouteConfig {
   path: string;
-  component: () => Promise<{ default: ComponentType<unknown> }>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  component: () => Promise<{ default: ComponentType<any> }>;
   preload?: 'eager' | 'hover' | 'visible' | 'none';
   chunkName?: string;
   priority?: 'high' | 'medium' | 'low';

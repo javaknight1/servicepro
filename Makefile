@@ -215,7 +215,7 @@ dev-db:
 
 dev-backend:
 	@echo "Starting backend server..."
-	@cd backend && go run cmd/cmd/main.go
+	@cd backend && go run cmd/main.go
 
 dev-frontend:
 	@echo "Starting frontend dev server..."

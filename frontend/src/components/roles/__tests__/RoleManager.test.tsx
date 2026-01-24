@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { RoleManager } from '../RoleManager';
 import { roleApi } from '@services/roleApi';
-import type { Role } from '@types/role';
+import type { Role } from '@app-types/role';
 
 // Mock the API
 vi.mock('@services/roleApi');

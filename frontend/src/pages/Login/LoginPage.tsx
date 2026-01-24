@@ -14,7 +14,7 @@ import {
 } from '@components/shared';
 import { useAuthStore } from '@store';
 import { AxiosError } from 'axios';
-import type { ErrorResponse } from '@types';
+import type { ErrorResponse } from '@app-types';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),

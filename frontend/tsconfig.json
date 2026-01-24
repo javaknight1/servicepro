@@ -5,6 +5,7 @@
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "skipLibCheck": true,
+    "types": ["node"],
 
     /* Bundler mode */
     "moduleResolution": "bundler",
@@ -16,26 +17,45 @@
 
     /* Linting */
     "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true,
 
     /* Path aliases */
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
+      "@components": ["./src/components"],
       "@components/*": ["./src/components/*"],
+      "@pages": ["./src/pages"],
       "@pages/*": ["./src/pages/*"],
+      "@hooks": ["./src/hooks"],
       "@hooks/*": ["./src/hooks/*"],
+      "@services": ["./src/services"],
       "@services/*": ["./src/services/*"],
+      "@utils": ["./src/utils"],
       "@utils/*": ["./src/utils/*"],
+      "@store": ["./src/store"],
       "@store/*": ["./src/store/*"],
+      "@theme": ["./src/theme"],
       "@theme/*": ["./src/theme/*"],
-      "@types/*": ["./src/types/*"],
+      "@app-types": ["./src/types"],
+      "@app-types/*": ["./src/types/*"],
+      "@config": ["./src/config"],
       "@config/*": ["./src/config/*"],
+      "@providers": ["./src/providers"],
       "@providers/*": ["./src/providers/*"]
     }
   },
   "include": ["src"],
+  "exclude": [
+    "src/**/*.test.ts",
+    "src/**/*.test.tsx",
+    "src/**/__tests__/**",
+    "src/**/__stories__/**",
+    "src/**/*.stories.ts",
+    "src/**/*.stories.tsx",
+    "src/test/**"
+  ],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

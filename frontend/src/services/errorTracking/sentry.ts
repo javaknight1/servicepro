@@ -1,5 +1,4 @@
 import * as Sentry from '@sentry/react';
-import { BrowserTracing } from '@sentry/tracing';
 
 // Error tracking configuration
 export interface ErrorTrackingConfig {
@@ -82,18 +81,19 @@ export function initErrorTracking(config: ErrorTrackingConfig): void {
     debug: finalConfig.debug,
 
     integrations: [
-      new BrowserTracing({
-        tracePropagationTargets: [
-          'localhost',
-          /^https:\/\/api\.servicepro\.com/,
-          /^https:\/\/.*\.servicepro\.com/,
-        ],
-        routingInstrumentation: Sentry.reactRouterV6Instrumentation,
+      Sentry.browserTracingIntegration({
+        enableInp: true,
       }),
-      new Sentry.Replay({
+      Sentry.replayIntegration({
         maskAllText: true,
         blockAllMedia: true,
       }),
+    ],
+
+    tracePropagationTargets: [
+      'localhost',
+      /^https:\/\/api\.servicepro\.com/,
+      /^https:\/\/.*\.servicepro\.com/,
     ],
 
     replaysSessionSampleRate: 0.1,
@@ -107,7 +107,8 @@ export function initErrorTracking(config: ErrorTrackingConfig): void {
       if (finalConfig.beforeSend) {
         const result = finalConfig.beforeSend(event, hint);
         if (!result) return null;
-        event = result;
+        // Use the filtered result
+        return sanitizeEvent(result) as Sentry.ErrorEvent;
       }
 
       // Filter ignored errors
@@ -116,9 +117,7 @@ export function initErrorTracking(config: ErrorTrackingConfig): void {
       }
 
       // Sanitize sensitive data
-      event = sanitizeEvent(event);
-
-      return event;
+      return sanitizeEvent(event) as Sentry.ErrorEvent;
     },
 
     beforeBreadcrumb: (breadcrumb) => {
@@ -315,24 +314,21 @@ export function addBreadcrumb(breadcrumb: Sentry.Breadcrumb): void {
 }
 
 /**
- * Start a performance transaction
+ * Start a performance span (replaces deprecated startTransaction)
  */
-export function startTransaction(
+export function startPerformanceSpan<T>(
   name: string,
-  op: string
-): Sentry.Transaction | undefined {
-  return Sentry.startTransaction({ name, op });
+  op: string,
+  callback: () => T
+): T {
+  return Sentry.startSpan({ name, op }, callback);
 }
 
 /**
- * Create a span within the current transaction
+ * Get the active span
  */
-export function startSpan(
-  op: string,
-  description?: string
-): Sentry.Span | undefined {
-  const transaction = Sentry.getCurrentHub().getScope()?.getTransaction();
-  return transaction?.startChild({ op, description });
+export function getActiveSpan(): Sentry.Span | undefined {
+  return Sentry.getActiveSpan();
 }
 
 /**

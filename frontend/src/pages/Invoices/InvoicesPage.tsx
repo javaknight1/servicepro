@@ -15,7 +15,7 @@ import {
   InvoiceFilters,
 } from '@services/invoiceService';
 import { Receipt, Plus, Search } from 'lucide-react';
-import { getInvoiceStatusLabel, formatCurrency } from '@types';
+import { getInvoiceStatusLabel, formatCurrency } from '@app-types';
 
 export function InvoicesPage() {
   const navigate = useNavigate();

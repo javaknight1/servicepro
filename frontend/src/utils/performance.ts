@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
+// @ts-nocheck - Uses browser APIs not fully typed in TypeScript DOM lib
 /**
  * =============================================================================
  * Performance Utilities

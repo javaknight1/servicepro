@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import {
   useReactTable,
   getCoreRowModel,
@@ -49,7 +49,7 @@ export const QuoteList: React.FC<QuoteListProps> = ({
   } = useQuery({
     queryKey: ['quotes', filters],
     queryFn: () => quoteService.getQuotes(filters),
-    keepPreviousData: true,
+    placeholderData: keepPreviousData,
   });
 
   // Define columns
@@ -63,14 +63,15 @@ export const QuoteList: React.FC<QuoteListProps> = ({
           </span>
         ),
       }),
-      columnHelper.accessor('customer_name', {
+      columnHelper.accessor((row) => row.customer?.name ?? '', {
+        id: 'customer_name',
         header: 'Customer',
         cell: (info) => (
           <div className="flex flex-col">
             <span className="font-medium text-gray-900">{info.getValue()}</span>
-            {info.row.original.customer_email && (
+            {info.row.original.customer?.email && (
               <span className="text-xs text-gray-500">
-                {info.row.original.customer_email}
+                {info.row.original.customer.email}
               </span>
             )}
           </div>
@@ -93,7 +94,7 @@ export const QuoteList: React.FC<QuoteListProps> = ({
         cell: (info) => (
           <span className="font-medium text-gray-900">
             $
-            {parseFloat(info.getValue()).toLocaleString('en-US', {
+            {info.getValue().toLocaleString('en-US', {
               minimumFractionDigits: 2,
               maximumFractionDigits: 2,
             })}
@@ -104,10 +105,12 @@ export const QuoteList: React.FC<QuoteListProps> = ({
         header: 'Status',
         cell: (info) => {
           const status = info.getValue();
-          const statusColors = {
+          const statusColors: Record<QuoteStatus, string> = {
             [QuoteStatus.DRAFT]: 'bg-gray-100 text-gray-800',
             [QuoteStatus.SENT]: 'bg-blue-100 text-blue-800',
+            [QuoteStatus.VIEWED]: 'bg-purple-100 text-purple-800',
             [QuoteStatus.ACCEPTED]: 'bg-green-100 text-green-800',
+            [QuoteStatus.DECLINED]: 'bg-orange-100 text-orange-800',
             [QuoteStatus.REJECTED]: 'bg-red-100 text-red-800',
             [QuoteStatus.EXPIRED]: 'bg-yellow-100 text-yellow-800',
           };
@@ -224,8 +227,8 @@ export const QuoteList: React.FC<QuoteListProps> = ({
     getSortedRowModel: getSortedRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     manualPagination: true,
-    pageCount: quotesData?.pagination
-      ? Math.ceil(quotesData.pagination.total / quotesData.pagination.page_size)
+    pageCount: quotesData?.total && quotesData?.page_size
+      ? Math.ceil(quotesData.total / quotesData.page_size)
       : 0,
   });
 
@@ -320,7 +323,7 @@ export const QuoteList: React.FC<QuoteListProps> = ({
   }
 
   const quotes = quotesData?.quotes || [];
-  const pagination = quotesData?.pagination;
+  const pagination = quotesData ? { total: quotesData.total, page: quotesData.page, page_size: quotesData.page_size } : undefined;
 
   return (
     <div className="space-y-4">

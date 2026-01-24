@@ -37,7 +37,7 @@ export interface DataTableProps<T> {
   className?: string;
 }
 
-export function DataTable<T extends Record<string, unknown>>({
+export function DataTable<T extends object>({
   data,
   columns,
   keyExtractor,
@@ -70,8 +70,8 @@ export function DataTable<T extends Record<string, unknown>>({
     if (!effectiveSortBy || sorting) return data;
 
     return [...data].sort((a, b) => {
-      const aVal = a[effectiveSortBy];
-      const bVal = b[effectiveSortBy];
+      const aVal = (a as Record<string, unknown>)[effectiveSortBy];
+      const bVal = (b as Record<string, unknown>)[effectiveSortBy];
 
       if (aVal === bVal) return 0;
       if (aVal === null || aVal === undefined) return 1;
@@ -167,8 +167,8 @@ export function DataTable<T extends Record<string, unknown>>({
                       className={cn('px-4 py-3 text-sm', column.className)}
                     >
                       {column.render
-                        ? column.render(row[column.key], row)
-                        : (row[column.key] as React.ReactNode) ?? '-'}
+                        ? column.render((row as Record<string, unknown>)[column.key], row)
+                        : ((row as Record<string, unknown>)[column.key] as React.ReactNode) ?? '-'}
                     </td>
                   ))}
                 </tr>

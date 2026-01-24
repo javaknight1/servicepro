@@ -202,11 +202,11 @@ export const QuotePDFDocument: React.FC<QuotePDFDocumentProps> = ({
           <Text style={styles.sectionTitle}>Customer Information</Text>
           <View style={styles.row}>
             <Text style={styles.label}>Name:</Text>
-            <Text style={styles.value}>{quote.customer_name}</Text>
+            <Text style={styles.value}>{quote.customer?.name || 'N/A'}</Text>
           </View>
           <View style={styles.row}>
             <Text style={styles.label}>Email:</Text>
-            <Text style={styles.value}>{quote.customer_email}</Text>
+            <Text style={styles.value}>{quote.customer?.email || 'N/A'}</Text>
           </View>
         </View>
 
@@ -247,7 +247,7 @@ export const QuotePDFDocument: React.FC<QuotePDFDocumentProps> = ({
           </View>
           <View style={styles.totalRow}>
             <Text style={styles.totalLabel}>
-              Tax ({(parseFloat(quote.tax_rate) * 100).toFixed(2)}%):
+              Tax ({(quote.tax_rate * 100).toFixed(2)}%):
             </Text>
             <Text style={styles.totalValue}>
               {formatCurrency(quote.tax_amount)}
@@ -359,7 +359,7 @@ export const PDFDownloadButton: React.FC<PDFDownloadButtonProps> = ({
       fileName={`quote-${quote.quote_number}.pdf`}
       className={className}
     >
-      {({ blob, url, loading, error }) => {
+      {({ blob, url, loading, error }: { blob: Blob | null; url: string | null; loading: boolean; error: Error | null }) => {
         if (loading) return 'Generating PDF...';
         if (error) return 'Error generating PDF';
         return children;

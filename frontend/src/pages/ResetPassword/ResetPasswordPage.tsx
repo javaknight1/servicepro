@@ -14,7 +14,7 @@ import {
 } from '@components/shared';
 import { authApi } from '@services';
 import { AxiosError } from 'axios';
-import type { ErrorResponse } from '@types';
+import type { ErrorResponse } from '@app-types';
 import { CheckCircle } from 'lucide-react';
 
 const resetPasswordSchema = z

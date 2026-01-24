@@ -10,7 +10,7 @@ import {
   useRoles,
 } from '@hooks/useRoles';
 import { Loader2, Check } from 'lucide-react';
-import type { Role, Permission } from '@types/role';
+import type { Role, Permission } from '@app-types/role';
 
 const roleSchema = z.object({
   name: z
@@ -132,6 +132,7 @@ export function RoleForm({ role, onSuccess, onCancel }: RoleFormProps) {
         // Create new role
         await createMutation.mutateAsync({
           ...data,
+          description: data.description || '',
           permission_ids: selectedPermissions,
         });
       }

@@ -237,7 +237,7 @@ export function TeamMembersPage() {
                           {member.email}
                         </p>
                         <div className="flex items-center mt-1 space-x-2">
-                          <Badge variant="default">{member.role_name}</Badge>
+                          <Badge variant="neutral">{member.role_name}</Badge>
                           {!member.accepted_at && member.invited_at && (
                             <Badge variant="warning">Pending Invite</Badge>
                           )}

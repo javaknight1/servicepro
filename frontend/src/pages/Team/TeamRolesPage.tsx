@@ -199,7 +199,7 @@ export function TeamRolesPage() {
                   )}
                 </div>
                 {selectedRole && (
-                  <Badge variant="default">
+                  <Badge variant="neutral">
                     Level {selectedRole.hierarchy_level}
                   </Badge>
                 )}

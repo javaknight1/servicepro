@@ -119,7 +119,7 @@ const BarChart = forwardRef<ChartRef, BarChartProps>(
             ? {
                 callbacks: {
                   label: function (context) {
-                    const value = context.parsed[horizontal ? 'x' : 'y'];
+                    const value = context.parsed[horizontal ? 'x' : 'y'] ?? 0;
                     const label = context.label;
                     const datasetLabel = context.dataset.label || '';
                     return tooltipFormat(value, label, datasetLabel);

@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { DashboardLayout } from '@components/layout';
 import { Button } from '@components/shared';
 import { customerService } from '@services/customerService';
-import type { CustomerType, CustomerStatus } from '@types/customer';
+import type { CustomerType, CustomerStatus } from '@app-types/customer';
 import { ArrowLeft, Save, Trash2, Loader2 } from 'lucide-react';
 
 interface CustomerFormData {

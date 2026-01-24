@@ -14,7 +14,7 @@ import {
 } from '@components/shared';
 import { authApi } from '@services';
 import { AxiosError } from 'axios';
-import type { ErrorResponse } from '@types';
+import type { ErrorResponse } from '@app-types';
 import { CheckCircle, ArrowLeft } from 'lucide-react';
 
 const forgotPasswordSchema = z.object({

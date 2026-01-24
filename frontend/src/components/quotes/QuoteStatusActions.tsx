@@ -36,8 +36,8 @@ export const QuoteStatusActions: React.FC<QuoteStatusActionsProps> = ({
   const sendMutation = useMutation({
     mutationFn: () => quoteService.sendQuote(quoteId),
     onSuccess: () => {
-      queryClient.invalidateQueries(['quote', quoteId]);
-      queryClient.invalidateQueries(['quotes']);
+      queryClient.invalidateQueries({ queryKey: ['quote', quoteId] });
+      queryClient.invalidateQueries({ queryKey: ['quotes'] });
     },
   });
 
@@ -45,8 +45,8 @@ export const QuoteStatusActions: React.FC<QuoteStatusActionsProps> = ({
   const acceptMutation = useMutation({
     mutationFn: () => quoteService.acceptQuote(quoteId),
     onSuccess: () => {
-      queryClient.invalidateQueries(['quote', quoteId]);
-      queryClient.invalidateQueries(['quotes']);
+      queryClient.invalidateQueries({ queryKey: ['quote', quoteId] });
+      queryClient.invalidateQueries({ queryKey: ['quotes'] });
     },
   });
 
@@ -54,8 +54,8 @@ export const QuoteStatusActions: React.FC<QuoteStatusActionsProps> = ({
   const declineMutation = useMutation({
     mutationFn: () => quoteService.rejectQuote(quoteId),
     onSuccess: () => {
-      queryClient.invalidateQueries(['quote', quoteId]);
-      queryClient.invalidateQueries(['quotes']);
+      queryClient.invalidateQueries({ queryKey: ['quote', quoteId] });
+      queryClient.invalidateQueries({ queryKey: ['quotes'] });
       setShowDeclineReason(false);
       setDeclineReason('');
     },
@@ -107,10 +107,10 @@ export const QuoteStatusActions: React.FC<QuoteStatusActionsProps> = ({
         {canSend && (
           <button
             onClick={() => sendMutation.mutate()}
-            disabled={sendMutation.isLoading}
+            disabled={sendMutation.isPending}
             className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
           >
-            {sendMutation.isLoading ? (
+            {sendMutation.isPending ? (
               <>
                 <svg
                   className="h-4 w-4 animate-spin"
@@ -152,10 +152,10 @@ export const QuoteStatusActions: React.FC<QuoteStatusActionsProps> = ({
         {canAccept && (
           <button
             onClick={() => acceptMutation.mutate()}
-            disabled={acceptMutation.isLoading}
+            disabled={acceptMutation.isPending}
             className="inline-flex items-center gap-2 rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
           >
-            {acceptMutation.isLoading ? (
+            {acceptMutation.isPending ? (
               <>
                 <svg
                   className="h-4 w-4 animate-spin"
@@ -201,10 +201,10 @@ export const QuoteStatusActions: React.FC<QuoteStatusActionsProps> = ({
           <div className="space-y-2">
             <button
               onClick={handleDecline}
-              disabled={declineMutation.isLoading}
+              disabled={declineMutation.isPending}
               className="inline-flex items-center gap-2 rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
             >
-              {declineMutation.isLoading ? (
+              {declineMutation.isPending ? (
                 <>
                   <svg
                     className="h-4 w-4 animate-spin"

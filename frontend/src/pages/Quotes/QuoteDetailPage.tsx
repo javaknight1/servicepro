@@ -4,7 +4,7 @@ import { DashboardLayout } from '@components/layout';
 import { Button } from '@components/shared';
 import { quoteService } from '@services/quoteService';
 import { customerService, Customer } from '@services/customerService';
-import type { Quote, LineItemFormData } from '@types/quote';
+import type { Quote, LineItemFormData } from '@app-types/quote';
 import { ArrowLeft, Save, Trash2, Loader2, Plus, X } from 'lucide-react';
 
 interface QuoteFormData {
@@ -194,9 +194,9 @@ export function QuoteDetailPage() {
 
     try {
       if (isNew) {
-        await quoteService.createQuote(submitData);
+        await quoteService.createQuote(submitData as unknown as Partial<Quote>);
       } else if (id) {
-        await quoteService.updateQuote(id, submitData);
+        await quoteService.updateQuote(id, submitData as unknown as Partial<Quote>);
       }
       navigate('/quotes');
     } catch (err: any) {

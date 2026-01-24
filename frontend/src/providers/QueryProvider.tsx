@@ -118,7 +118,7 @@ export function QueryProvider({
   // Setup persistence
   useEffect(() => {
     if (enablePersistence) {
-      const persistPromise = persistQueryClient({
+      const [unsubscribe, restorePromise] = persistQueryClient({
         queryClient,
         persister,
         maxAge: CACHE_TIMES.EXTENDED,
@@ -131,12 +131,12 @@ export function QueryProvider({
         },
       });
 
-      persistPromise.then(() => {
+      restorePromise.then(() => {
         setIsRestored(true);
       });
 
       return () => {
-        // Cleanup if needed
+        unsubscribe();
       };
     }
   }, [queryClient, enablePersistence]);

@@ -117,7 +117,7 @@ const LineChart = forwardRef<ChartRef, LineChartProps>(
             ? {
                 callbacks: {
                   label: function (context) {
-                    const value = context.parsed.y;
+                    const value = context.parsed.y ?? 0;
                     const label = context.label;
                     const datasetLabel = context.dataset.label || '';
                     return tooltipFormat(value, label, datasetLabel);
