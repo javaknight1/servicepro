@@ -92,9 +92,9 @@ export const TemplatePreview: React.FC<TemplatePreviewProps> = ({
     }
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const validateVariable = (
     varDef: TemplateVariable,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     value: any
   ): string | null => {
     if (varDef.required && !value) {
