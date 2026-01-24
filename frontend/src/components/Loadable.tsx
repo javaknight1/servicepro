@@ -399,8 +399,7 @@ export function loadableWithRetry<P extends object>(
 // Preload Component
 // =============================================================================
 
-interface PreloadLinkProps
-  extends React.AnchorHTMLAttributes<HTMLAnchorElement> {
+interface PreloadLinkProps extends React.AnchorHTMLAttributes<HTMLAnchorElement> {
   onPreload?: () => void;
   preloadDelay?: number;
   children: ReactNode;

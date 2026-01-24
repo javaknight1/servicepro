@@ -26,8 +26,10 @@ import {
 // Types
 // =============================================================================
 
-export interface OptimizedImageProps
-  extends Omit<ImgHTMLAttributes<HTMLImageElement>, 'src' | 'srcSet'> {
+export interface OptimizedImageProps extends Omit<
+  ImgHTMLAttributes<HTMLImageElement>,
+  'src' | 'srcSet'
+> {
   src: string;
   alt: string;
   width?: number;

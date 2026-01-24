@@ -243,8 +243,10 @@ PillSegmentFilter.displayName = 'PillSegmentFilter';
 // Tab Variant Component
 // ============================================
 
-interface TabSegmentFilterProps
-  extends Omit<SegmentFilterProps, 'multiple' | 'className'> {
+interface TabSegmentFilterProps extends Omit<
+  SegmentFilterProps,
+  'multiple' | 'className'
+> {
   className?: string;
   underline?: boolean;
 }
@@ -348,8 +350,10 @@ TabSegmentFilter.displayName = 'TabSegmentFilter';
 // Color Segment Variant
 // ============================================
 
-interface ColorSegmentFilterProps
-  extends Omit<SegmentFilterProps, 'className'> {
+interface ColorSegmentFilterProps extends Omit<
+  SegmentFilterProps,
+  'className'
+> {
   className?: string;
 }
 

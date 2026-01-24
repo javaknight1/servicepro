@@ -421,8 +421,10 @@ export default memo(NumberRangeFilter);
 // Inline Variant
 // ============================================
 
-interface InlineNumberRangeFilterProps
-  extends Omit<NumberRangeFilterProps, 'className'> {
+interface InlineNumberRangeFilterProps extends Omit<
+  NumberRangeFilterProps,
+  'className'
+> {
   className?: string;
 }
 
@@ -514,8 +516,10 @@ InlineNumberRangeFilter.displayName = 'InlineNumberRangeFilter';
 // Currency Variant
 // ============================================
 
-interface CurrencyRangeFilterProps
-  extends Omit<NumberRangeFilterProps, 'formatValue'> {
+interface CurrencyRangeFilterProps extends Omit<
+  NumberRangeFilterProps,
+  'formatValue'
+> {
   currency?: string;
   locale?: string;
 }
@@ -544,8 +548,10 @@ CurrencyRangeFilter.displayName = 'CurrencyRangeFilter';
 // Percentage Variant
 // ============================================
 
-interface PercentageRangeFilterProps
-  extends Omit<NumberRangeFilterProps, 'formatValue' | 'min' | 'max'> {
+interface PercentageRangeFilterProps extends Omit<
+  NumberRangeFilterProps,
+  'formatValue' | 'min' | 'max'
+> {
   min?: number;
   max?: number;
 }

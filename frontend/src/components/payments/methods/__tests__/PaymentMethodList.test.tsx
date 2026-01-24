@@ -296,8 +296,9 @@ describe('PaymentMethodList', () => {
     render(<PaymentMethodList paymentMethods={[]} className="custom-class" />);
 
     // The className is applied to the container
-    const container = screen.getByText(/No payment methods/).closest('div')
-      ?.parentElement;
+    const container = screen
+      .getByText(/No payment methods/)
+      .closest('div')?.parentElement;
     expect(container).toHaveClass('custom-class');
   });
 

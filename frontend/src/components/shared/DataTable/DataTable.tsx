@@ -171,9 +171,9 @@ export function DataTable<T extends object>({
                             (row as Record<string, unknown>)[column.key],
                             row
                           )
-                        : ((row as Record<string, unknown>)[
+                        : (((row as Record<string, unknown>)[
                             column.key
-                          ] as React.ReactNode) ?? '-'}
+                          ] as React.ReactNode) ?? '-')}
                     </td>
                   ))}
                 </tr>

@@ -147,14 +147,12 @@ npm run test:coverage
    ```
 
 5. **Create a pull request**:
-
    - Provide a clear title and description
    - Reference any related issues
    - Include screenshots for UI changes
    - Ensure CI/CD checks pass
 
 6. **Code review**:
-
    - Address reviewer feedback
    - Keep discussions professional and constructive
    - Push updates to the same branch

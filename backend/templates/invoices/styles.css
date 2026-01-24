@@ -27,8 +27,8 @@
   --color-white: #ffffff;
 
   /* Typography */
-  --font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto',
-    sans-serif;
+  --font-family:
+    'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto', sans-serif;
   --font-size-xs: 0.75rem;
   --font-size-sm: 0.875rem;
   --font-size-base: 1rem;

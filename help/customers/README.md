@@ -13,7 +13,6 @@ Create, edit, and manage customer records.
 
 1. Click **Customers** > **+ Add Customer**
 2. Fill in required fields:
-
    - Customer Name
    - Type (Commercial/Residential)
    - Primary Contact
@@ -21,7 +20,6 @@ Create, edit, and manage customer records.
    - Service Address
 
 3. Optional fields:
-
    - Billing Address (if different)
    - Notes
    - Custom Fields

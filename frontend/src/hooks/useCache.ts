@@ -24,15 +24,19 @@ import {
 // Types
 // =============================================================================
 
-interface UseCachedQueryOptions<T>
-  extends Omit<UseQueryOptions<T>, 'queryKey' | 'queryFn'> {
+interface UseCachedQueryOptions<T> extends Omit<
+  UseQueryOptions<T>,
+  'queryKey' | 'queryFn'
+> {
   cacheKey?: string;
   persistToLocalStorage?: boolean;
   localStorageExpiry?: number;
 }
 
-interface UseCachedMutationOptions<TData, TVariables>
-  extends UseMutationOptions<TData, Error, TVariables> {
+interface UseCachedMutationOptions<
+  TData,
+  TVariables,
+> extends UseMutationOptions<TData, Error, TVariables> {
   invalidateKeys?: string[];
   optimisticUpdate?: (variables: TVariables) => void;
   rollback?: () => void;

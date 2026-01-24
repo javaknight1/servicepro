@@ -9,7 +9,6 @@ This document tracks technical improvements that should be implemented but are d
 ### Testing
 
 - [ ] **Integration Tests** - Create comprehensive API integration tests with test database
-
   - Test all CRUD operations for each entity (customers, jobs, quotes, invoices)
   - Test authentication flows (login, register, password reset, token refresh)
   - Test authorization (permission checks, role-based access)
@@ -91,7 +90,6 @@ The following advanced email features were identified in legacy code and should 
 ### Email Tracking & Analytics
 
 - [ ] **Open/Click Tracking** - Monitor email engagement
-
   - Tracking pixel injection for opens
   - Link wrapping for click tracking
   - Opt-out management
@@ -250,7 +248,6 @@ The following advanced metrics features were identified in legacy code and shoul
 ### Code Quality
 
 - [ ] **Linting Configuration**
-
   - Backend: Set up `golangci-lint` with custom rules
     ```yaml
     # .golangci.yml suggested linters:
@@ -287,7 +284,6 @@ The following advanced metrics features were identified in legacy code and shoul
 ### Developer Experience
 
 - [ ] **Developer Environment Setup** - Improve local development experience
-
   - Create `make dev` command for one-click setup
   - Add hot-reload for both backend and frontend in Docker
   - Create seed data scripts for local development
@@ -302,7 +298,6 @@ The following advanced metrics features were identified in legacy code and shoul
 ### Infrastructure
 
 - [ ] **Terraform State Migration** - Enable remote state management
-
   - Uncomment and configure S3 backend in `main.tf`
   - Set up DynamoDB table for state locking
   - Migrate existing state to S3
@@ -321,7 +316,6 @@ The following advanced metrics features were identified in legacy code and shoul
 ### Documentation
 
 - [ ] **API Documentation** - Generate OpenAPI/Swagger specification
-
   - Use `swaggo/swag` for auto-generation from Go comments
   - Host interactive API docs at `/api/docs`
   - Keep spec in sync with code changes
@@ -334,7 +328,6 @@ The following advanced metrics features were identified in legacy code and shoul
 ### Observability
 
 - [ ] **Distributed Tracing** - Implement request tracing
-
   - Add OpenTelemetry instrumentation
   - Configure trace export to AWS X-Ray or Jaeger
   - Add trace IDs to all log entries
@@ -347,7 +340,6 @@ The following advanced metrics features were identified in legacy code and shoul
 ### Security
 
 - [ ] **Security Hardening**
-
   - Implement CSP headers for frontend
   - Add rate limiting per user (not just per IP)
   - Implement request signing for webhooks
