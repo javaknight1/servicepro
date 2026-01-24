@@ -360,17 +360,7 @@ export const PDFDownloadButton: React.FC<PDFDownloadButtonProps> = ({
       fileName={`quote-${quote.quote_number}.pdf`}
       className={className}
     >
-      {({
-        _blob,
-        _url,
-        loading,
-        error,
-      }: {
-        _blob: Blob | null;
-        _url: string | null;
-        loading: boolean;
-        error: Error | null;
-      }) => {
+      {({ loading, error }: { loading: boolean; error: Error | null }) => {
         if (loading) return 'Generating PDF...';
         if (error) return 'Error generating PDF';
         return children;

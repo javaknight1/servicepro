@@ -43,7 +43,6 @@ const BarChart = forwardRef<ChartRef, BarChartProps>(
       barThickness,
       maxBarThickness = 50,
       borderRadius = 4,
-      _grouped = true,
       yMin,
       yMax,
       yAxisFormat,

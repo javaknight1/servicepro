@@ -301,7 +301,6 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
   minDate,
   maxDate,
   presets = dateRangePresets,
-  _showTime = false,
   disabled = false,
   className,
 }) => {

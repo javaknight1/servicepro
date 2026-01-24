@@ -191,7 +191,6 @@ const generateDescription = (pattern: any): string => {
 export const PatternPreview: React.FC<PatternPreviewProps> = ({
   pattern,
   previewMonths = 3,
-  _showSkipped = false,
 }) => {
   const [occurrences, setOccurrences] = useState<Date[]>([]);
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');

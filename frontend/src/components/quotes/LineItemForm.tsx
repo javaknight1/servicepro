@@ -27,7 +27,6 @@ export const LineItemForm: React.FC<LineItemFormProps> = ({
   initialData,
   autoFocus = false,
   showCancel = false,
-  _buttonText = 'Add Item',
 }) => {
   const [formData, setFormData] = useState<LineItemFormData>({
     description: initialData?.description || '',
