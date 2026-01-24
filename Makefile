@@ -1,10 +1,7 @@
-.PHONY: help setup-hooks lint lint-fix lint-check test format format-check dev up down migrate
-.PHONY: test-unit test-integration test-e2e test-performance test-all
-.PHONY: coverage ci ci-local ci-lint ci-backend ci-frontend notify
-.PHONY: k6-smoke k6-load k6-stress k6-ci
-.PHONY: artillery-stress artillery-peak artillery-soak artillery-spike
-.PHONY: bench bench-api bench-db bench-e2e bench-critical bench-report bench-schedule
-.PHONY: docker-dev docker-prod docker-test docker-down docker-clean docker-logs docker-ps
+.PHONY: help lint lint-fix lint-check test format format-check dev up down migrate
+.PHONY: test-unit test-integration test-e2e test-all
+.PHONY: coverage ci ci-local ci-lint ci-backend ci-frontend
+.PHONY: docker-dev docker-down docker-clean docker-logs docker-ps
 
 # =============================================================================
 # Centralized Tool Versions (used by CI and pre-commit)
@@ -26,8 +23,7 @@ help:
 	@echo "  db-reset     - Reset database (WARNING: deletes all data)"
 	@echo ""
 	@echo "Setup:"
-	@echo "  setup        - Complete setup (install deps, setup hooks, start db)"
-	@echo "  setup-hooks  - Install pre-commit hooks"
+	@echo "  setup        - Complete setup (install deps, start db)"
 	@echo "  install-deps - Install all dependencies"
 	@echo ""
 	@echo "Quality:"
@@ -42,30 +38,8 @@ help:
 	@echo "  test-unit        - Run unit tests only"
 	@echo "  test-integration - Run integration tests"
 	@echo "  test-e2e         - Run E2E tests (Cypress)"
-	@echo "  test-performance - Run performance tests (k6)"
 	@echo "  test-all         - Run all test suites"
 	@echo "  coverage         - Generate coverage reports"
-	@echo ""
-	@echo "k6 Load Testing:"
-	@echo "  k6-smoke         - Run quick smoke test (5 VUs)"
-	@echo "  k6-load          - Run normal load test (100 VUs)"
-	@echo "  k6-stress        - Run stress test (400 VUs)"
-	@echo "  k6-ci            - Run CI pipeline test with JSON output"
-	@echo ""
-	@echo "Artillery Stress Testing:"
-	@echo "  artillery-stress - Run default stress test"
-	@echo "  artillery-peak   - Run peak load test (max capacity)"
-	@echo "  artillery-soak   - Run soak test (2+ hours)"
-	@echo "  artillery-spike  - Run spike tests (sudden load changes)"
-	@echo ""
-	@echo "Benchmark Suite:"
-	@echo "  bench            - Run full benchmark suite"
-	@echo "  bench-api        - Run API benchmarks only"
-	@echo "  bench-db         - Run database benchmarks only"
-	@echo "  bench-e2e        - Run end-to-end benchmarks only"
-	@echo "  bench-critical   - Run critical path benchmarks"
-	@echo "  bench-report     - Generate benchmark report"
-	@echo "  bench-schedule   - Start benchmark scheduler"
 	@echo ""
 	@echo "CI/CD:"
 	@echo "  ci-local     - Run exactly what CI runs (lint + backend + frontend)"
@@ -74,13 +48,10 @@ help:
 	@echo "  ci-frontend  - Run frontend tests + build (matches CI)"
 	@echo "  ci           - Run full CI pipeline (legacy)"
 	@echo "  ci-quick     - Run quick CI (lint + unit tests)"
-	@echo "  notify       - Send test notifications"
 	@echo ""
 	@echo "Docker:"
 	@echo "  docker-dev   - Start dev environment (hot reload)"
-	@echo "  docker-prod  - Build & run production images locally"
-	@echo "  docker-test  - Run integration tests in Docker"
-	@echo "  docker-down  - Stop all Docker environments"
+	@echo "  docker-down  - Stop all containers"
 	@echo "  docker-clean - Remove all Docker data and images"
 	@echo "  docker-logs  - Follow logs from all containers"
 	@echo "  docker-ps    - Show running containers"
@@ -88,10 +59,6 @@ help:
 	@echo "Specific:"
 	@echo "  frontend-*   - Frontend-specific targets"
 	@echo "  backend-*    - Backend-specific targets"
-
-# Pre-commit setup
-setup-hooks:
-	@./scripts/setup-pre-commit.sh
 
 # =============================================================================
 # Linting (centralized rules - used by pre-commit and CI)
@@ -188,8 +155,6 @@ install-deps: install-golangci-lint
 	@cd frontend && npm install
 	@echo "Installing backend dependencies..."
 	@cd backend && go mod download
-	@echo "Installing pre-commit..."
-	@./scripts/setup-pre-commit.sh
 
 # Install golangci-lint at centralized version
 install-golangci-lint:
@@ -251,7 +216,7 @@ db-fresh:
 	@make migrate
 	@echo "Database reset complete!"
 
-setup: install-deps setup-hooks dev-db migrate
+setup: install-deps dev-db migrate
 	@echo ""
 	@echo "✅ Setup complete!"
 	@echo ""
@@ -285,46 +250,16 @@ docker-dev-d:
 	@echo "View logs: make docker-logs"
 	@docker compose ps
 
-# Production test environment (built images, no hot reload)
-docker-prod:
-	@echo "Building and starting production environment..."
-	@docker compose -f docker-compose.prod.yml up --build
-	@echo ""
-	@echo "Production build running at: http://localhost:3000"
-
-# Production environment (detached)
-docker-prod-d:
-	@echo "Building and starting production environment (detached)..."
-	@docker compose -f docker-compose.prod.yml up --build -d
-	@echo ""
-	@echo "Production build running at: http://localhost:3000"
-	@docker compose -f docker-compose.prod.yml ps
-
-# Integration test environment
-docker-test:
-	@echo "Running integration tests..."
-	@docker compose -f docker-compose.test.yml run --rm test-runner
-
-# Start test API for E2E tests
-docker-test-api:
-	@echo "Starting test API server..."
-	@docker compose -f docker-compose.test.yml up -d test-api
-	@echo "Test API running at: http://localhost:8081"
-
 # Stop all Docker environments
 docker-down:
-	@echo "Stopping all Docker environments..."
+	@echo "Stopping Docker containers..."
 	@docker compose down 2>/dev/null || true
-	@docker compose -f docker-compose.prod.yml down 2>/dev/null || true
-	@docker compose -f docker-compose.test.yml down 2>/dev/null || true
 	@echo "All containers stopped."
 
 # Clean all Docker data
 docker-clean:
 	@echo "Cleaning all Docker data..."
 	@docker compose down -v --rmi local 2>/dev/null || true
-	@docker compose -f docker-compose.prod.yml down -v --rmi local 2>/dev/null || true
-	@docker compose -f docker-compose.test.yml down -v --rmi local 2>/dev/null || true
 	@docker system prune -f
 	@echo "Docker cleanup complete."
 
@@ -343,14 +278,7 @@ docker-logs-db:
 
 # Docker status
 docker-ps:
-	@echo "Development containers:"
-	@docker compose ps 2>/dev/null || echo "  (none running)"
-	@echo ""
-	@echo "Production containers:"
-	@docker compose -f docker-compose.prod.yml ps 2>/dev/null || echo "  (none running)"
-	@echo ""
-	@echo "Test containers:"
-	@docker compose -f docker-compose.test.yml ps 2>/dev/null || echo "  (none running)"
+	@docker compose ps
 
 # Shell into containers
 docker-shell-backend:
@@ -399,45 +327,6 @@ test-e2e:
 test-e2e-headed:
 	@echo "Opening Cypress..."
 	@cd frontend && npx cypress open
-
-# Performance tests
-test-performance:
-	@echo "Running performance tests..."
-	@./scripts/run-tests.sh -t performance
-
-# k6 load tests (direct)
-k6-smoke:
-	@echo "Running k6 smoke tests..."
-	@k6 run -e K6_PROFILE=smoke tests/performance/k6/main.js
-
-k6-load:
-	@echo "Running k6 load tests..."
-	@k6 run -e K6_PROFILE=load tests/performance/k6/main.js
-
-k6-stress:
-	@echo "Running k6 stress tests..."
-	@k6 run -e K6_PROFILE=stress tests/performance/k6/main.js
-
-k6-ci:
-	@echo "Running k6 CI tests..."
-	@k6 run -e K6_PROFILE=ci --out json=k6-results.json tests/performance/k6/main.js
-
-# Artillery stress tests
-artillery-stress:
-	@echo "Running Artillery stress tests..."
-	@artillery run tests/performance/artillery/stress-config.yml
-
-artillery-peak:
-	@echo "Running Artillery peak load tests..."
-	@artillery run tests/performance/artillery/scenarios/peak-load.yml
-
-artillery-soak:
-	@echo "Running Artillery soak tests (2+ hours)..."
-	@artillery run tests/performance/artillery/scenarios/sustained-load.yml
-
-artillery-spike:
-	@echo "Running Artillery spike tests..."
-	@artillery run tests/performance/artillery/scenarios/spike-tests.yml
 
 # All tests
 test-all:
@@ -503,13 +392,6 @@ ci-quick:
 	@echo "Running quick CI..."
 	@./scripts/run-tests.sh -t unit
 
-# Send notifications
-notify:
-	@./scripts/notify.sh success "All tests passed"
-
-notify-failure:
-	@./scripts/notify.sh failure "Tests failed"
-
 # =============================================================================
 # Clean
 # =============================================================================
@@ -527,45 +409,3 @@ clean:
 	@echo "Clean complete"
 
 clean-docker: docker-clean
-
-# =============================================================================
-# Benchmark Suite
-# =============================================================================
-
-# Full benchmark suite
-bench:
-	@echo "Running full benchmark suite..."
-	@cd benchmarks && node index.js run --env=$(BENCH_ENV)
-
-# API benchmarks
-bench-api:
-	@echo "Running API benchmarks..."
-	@cd benchmarks && node runners/api-benchmarks.js --env=$(BENCH_ENV)
-
-# Database benchmarks
-bench-db:
-	@echo "Running database benchmarks..."
-	@cd benchmarks && node runners/db-benchmarks.js --env=$(BENCH_ENV)
-
-# End-to-end benchmarks
-bench-e2e:
-	@echo "Running end-to-end benchmarks..."
-	@cd benchmarks && node runners/end-to-end.js --env=$(BENCH_ENV)
-
-# Critical path benchmarks
-bench-critical:
-	@echo "Running critical path benchmarks..."
-	@cd benchmarks && node index.js run --critical --env=$(BENCH_ENV)
-
-# Generate benchmark report
-bench-report:
-	@echo "Generating benchmark report..."
-	@cd benchmarks && node index.js report
-
-# Start benchmark scheduler
-bench-schedule:
-	@echo "Starting benchmark scheduler..."
-	@cd benchmarks && node index.js schedule
-
-# Benchmark environment (default: local)
-BENCH_ENV ?= local
