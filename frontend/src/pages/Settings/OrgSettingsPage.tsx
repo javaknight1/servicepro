@@ -14,14 +14,22 @@ import {
   Avatar,
 } from '@components/shared';
 import { useTenantStore } from '@store';
-import { Building2, Users, Settings, Trash2, UserPlus } from 'lucide-react';
+import {
+  Building2,
+  Users,
+  Settings,
+  Trash2,
+  UserPlus,
+  CreditCard,
+} from 'lucide-react';
+import { MembershipTab } from '@components/membership';
 import type {
   TenantMember,
   CreateTenantRequest,
   UpdateTenantRequest,
 } from '@/types/tenant';
 
-type TabId = 'general' | 'members';
+type TabId = 'general' | 'members' | 'membership';
 
 export function OrgSettingsPage() {
   const navigate = useNavigate();
@@ -59,6 +67,7 @@ export function OrgSettingsPage() {
   const tabs = [
     { id: 'general' as const, label: 'General', icon: Settings },
     { id: 'members' as const, label: 'Members', icon: Users },
+    { id: 'membership' as const, label: 'Membership', icon: CreditCard },
   ];
 
   // Load current tenant data into form
@@ -402,6 +411,8 @@ export function OrgSettingsPage() {
                 </CardContent>
               </Card>
             )}
+
+            {activeTab === 'membership' && <MembershipTab />}
           </div>
         </div>
       </div>

@@ -121,6 +121,22 @@ const NewOrgPage = loadable(
   { chunkName: 'new-org', delay: 100 }
 );
 
+const ChangeMembershipPage = loadable(
+  () =>
+    import(
+      /* @ts-expect-error - dynamic import type */ /* webpackChunkName: "page-settings" */ '@pages/Settings'
+    ).then((m) => ({ default: m.ChangeMembershipPage })),
+  { chunkName: 'change-membership', delay: 100 }
+);
+
+const PricingPage = loadable(
+  () =>
+    import(
+      /* @ts-expect-error - dynamic import type */ /* webpackChunkName: "page-pricing" */ '@pages/Pricing'
+    ).then((m) => ({ default: m.PricingPage })),
+  { chunkName: 'pricing', delay: 100 }
+);
+
 // Module pages
 const CustomersPage = loadable(
   () =>
@@ -324,6 +340,7 @@ export function AppRoutes() {
       {/* Public routes - accessible regardless of auth status */}
       <Route path="/verify-email" element={<VerifyEmailPage />} />
       <Route path="/unauthorized" element={<UnauthorizedPage />} />
+      <Route path="/pricing" element={<PricingPage />} />
 
       {/* Protected routes - require authentication */}
       <Route element={<ProtectedRoute />}>
@@ -343,6 +360,10 @@ export function AppRoutes() {
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/settings/organization" element={<OrgSettingsPage />} />
         <Route path="/settings/organization/new" element={<NewOrgPage />} />
+        <Route
+          path="/settings/organization/membership/change"
+          element={<ChangeMembershipPage />}
+        />
         <Route path="/team/members" element={<TeamMembersPage />} />
         <Route path="/team/roles" element={<TeamRolesPage />} />
         <Route path="/reports/revenue" element={<RevenueReportPage />} />
@@ -380,6 +401,8 @@ export const routePaths = {
   settings: '/settings',
   orgSettings: '/settings/organization',
   newOrg: '/settings/organization/new',
+  changeMembership: '/settings/organization/membership/change',
+  pricing: '/pricing',
   team: {
     members: '/team/members',
     roles: '/team/roles',
