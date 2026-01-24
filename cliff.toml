@@ -40,7 +40,7 @@ body = """
 {% for group, commits in commits | group_by(attribute="group") %}
 {% if group in release_groups %}
 {% for commit in commits %}
-| {{ group }} | {% if commit.scope %}**{{ commit.scope }}**: {% endif %}{{ commit.message | upper_first }} | [`{{ commit.id | truncate(length=7, end="") }}`]({{ remote.link }}/commit/{{ commit.id }}) |
+| {{ group }} | {% if commit.scope %}**{{ commit.scope }}**: {% endif %}{{ commit.message | upper_first }} | [`{{ commit.id | truncate(length=7, end="") }}`](https://github.com/javaknight1/servicepro/commit/{{ commit.id }}) |
 {% endfor %}
 {% endif %}
 {% endfor %}
@@ -54,7 +54,7 @@ body = """
 {% for group, commits in commits | group_by(attribute="group") %}
 {% if group in dev_groups %}
 {% for commit in commits %}
-| {{ group }} | {% if commit.scope %}**{{ commit.scope }}**: {% endif %}{{ commit.message | upper_first }} | [`{{ commit.id | truncate(length=7, end="") }}`]({{ remote.link }}/commit/{{ commit.id }}) |
+| {{ group }} | {% if commit.scope %}**{{ commit.scope }}**: {% endif %}{{ commit.message | upper_first }} | [`{{ commit.id | truncate(length=7, end="") }}`](https://github.com/javaknight1/servicepro/commit/{{ commit.id }}) |
 {% endfor %}
 {% endif %}
 {% endfor %}
