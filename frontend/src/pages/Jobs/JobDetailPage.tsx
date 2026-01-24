@@ -4,7 +4,6 @@ import { DashboardLayout } from '@components/layout';
 import { Button } from '@components/shared';
 import {
   jobService,
-  Job,
   JobStatus,
   JobPriority,
   JobType,
@@ -108,6 +107,7 @@ export function JobDetailPage() {
     setIsSaving(true);
     setError(null);
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const submitData: Record<string, any> = {
       customer_id: formData.customer_id,
       title: formData.title,
@@ -132,6 +132,7 @@ export function JobDetailPage() {
         await jobService.updateJob(id, submitData);
       }
       navigate('/jobs');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       console.error('Failed to save job:', err);
       setError(
@@ -153,6 +154,7 @@ export function JobDetailPage() {
     try {
       await jobService.deleteJob(id);
       navigate('/jobs');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       console.error('Failed to delete job:', err);
       setError(err?.response?.data?.message || 'Failed to delete job');

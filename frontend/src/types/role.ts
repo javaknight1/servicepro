@@ -42,6 +42,7 @@ export interface RoleAuditLog {
     | 'permission_removed';
   performed_by: string;
   performed_by_name?: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   details?: Record<string, any>;
   timestamp: string;
 }

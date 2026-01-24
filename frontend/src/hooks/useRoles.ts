@@ -1,8 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { roleApi } from '@services/roleApi';
 import type {
-  Role,
-  Permission,
   CreateRoleRequest,
   UpdateRoleRequest,
   AssignRoleRequest,

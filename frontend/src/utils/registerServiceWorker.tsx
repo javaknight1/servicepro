@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 /**
  * =============================================================================
  * Service Worker Registration
@@ -53,6 +54,7 @@ export function registerServiceWorker(
 
   // Skip in development without explicit enable
   if (import.meta.env.DEV && !import.meta.env.VITE_ENABLE_SW) {
+    // eslint-disable-next-line no-console
     console.log('Service Worker: Skipped in development');
     return () => {};
   }
@@ -68,17 +70,20 @@ export function registerServiceWorker(
     immediate: true,
     onNeedRefresh() {
       swState.needsRefresh = true;
+      // eslint-disable-next-line no-console
       console.log('Service Worker: New content available');
       onNeedRefresh?.();
     },
     onOfflineReady() {
       swState.isOfflineReady = true;
+      // eslint-disable-next-line no-console
       console.log('Service Worker: App ready for offline use');
       onOfflineReady?.();
     },
     onRegistered(registration) {
       swState.isRegistered = true;
       swState.registration = registration ?? null;
+      // eslint-disable-next-line no-console
       console.log('Service Worker: Registered', registration);
       onRegistered?.(registration);
 
@@ -93,6 +98,7 @@ export function registerServiceWorker(
       }
     },
     onRegisterError(error) {
+      // eslint-disable-next-line no-console
       console.error('Service Worker: Registration failed', error);
       onRegisterError?.(error);
     },

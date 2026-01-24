@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { PaymentSummaryData } from '../../../types/payment';
@@ -20,7 +20,7 @@ vi.mock('@stripe/react-stripe-js', () => ({
   ),
   useStripe: () => mockStripe,
   useElements: () => mockElements,
-  CardElement: ({ onChange, onFocus, onBlur, onReady, options, id }: any) => (
+  CardElement: ({ onChange, onFocus, onBlur, onReady, _options, id }: any) => (
     <div
       data-testid="stripe-card-element"
       id={id}

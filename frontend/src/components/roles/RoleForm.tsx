@@ -58,7 +58,7 @@ export function RoleForm({ role, onSuccess, onCancel }: RoleFormProps) {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-    reset,
+    reset: _reset,
   } = useForm<RoleFormData>({
     resolver: zodResolver(roleSchema),
     defaultValues: {
@@ -138,6 +138,7 @@ export function RoleForm({ role, onSuccess, onCancel }: RoleFormProps) {
       }
       onSuccess?.();
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Failed to save role:', error);
     }
   };

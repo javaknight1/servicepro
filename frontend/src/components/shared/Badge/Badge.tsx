@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { cn } from '@utils/cn';
 
 export type BadgeVariant = 'success' | 'warning' | 'error' | 'info' | 'neutral';

@@ -40,7 +40,7 @@ export const ConflictChecker: React.FC<ConflictCheckerProps> = ({
   onConflictDetected,
   onConflictResolved,
   autoCheck = true,
-  showSuggestions = true,
+  showSuggestions: _showSuggestions = true,
 }) => {
   const [isChecking, setIsChecking] = useState(false);
   const [conflictResponse, setConflictResponse] =
@@ -95,6 +95,7 @@ export const ConflictChecker: React.FC<ConflictCheckerProps> = ({
       const errorMessage =
         err instanceof Error ? err.message : 'Failed to check conflicts';
       setError(errorMessage);
+      // eslint-disable-next-line no-console
       console.error('Conflict check error:', err);
     } finally {
       setIsChecking(false);

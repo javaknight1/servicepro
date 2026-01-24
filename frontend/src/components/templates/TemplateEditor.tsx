@@ -1,14 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm, Controller, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { templateService } from '../../services/templateService';
-import type {
-  QuoteTemplate,
-  TemplateVariable,
-  TemplateLineItem,
-} from '../../types/template';
+import type { QuoteTemplate, TemplateVariable } from '../../types/template';
 import { VariableEditor } from './VariableEditor';
 
 const templateSchema = z.object({
@@ -53,7 +49,7 @@ export const TemplateEditor: React.FC<TemplateEditorProps> = ({
     control,
     handleSubmit,
     watch,
-    setValue,
+    setValue: _setValue,
     formState: { errors, isDirty },
     reset,
   } = useForm<TemplateFormData>({

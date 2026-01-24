@@ -16,7 +16,7 @@ export const useAuthStore = create<AuthState>()(
         try {
           set({ isLoading: true });
           const response = await authApi.login({ email, password });
-          const { token, refreshToken, expiresIn } = response.data;
+          const { token, refreshToken, expiresIn: _expiresIn } = response.data;
 
           // Save tokens to localStorage
           localStorage.setItem('access_token', token);

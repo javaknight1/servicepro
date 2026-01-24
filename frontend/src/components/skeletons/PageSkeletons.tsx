@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 /**
  * =============================================================================
  * Page Skeleton Components
@@ -8,7 +9,6 @@
 import { cn } from '@utils/cn';
 import {
   Skeleton,
-  SkeletonGroup,
   TextSkeleton,
   AvatarSkeleton,
   ButtonSkeleton,

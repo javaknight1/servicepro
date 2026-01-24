@@ -23,11 +23,7 @@ import {
   CreditCard,
 } from 'lucide-react';
 import { MembershipTab } from '@components/membership';
-import type {
-  TenantMember,
-  CreateTenantRequest,
-  UpdateTenantRequest,
-} from '@/types/tenant';
+import type { TenantMember, UpdateTenantRequest } from '@/types/tenant';
 
 type TabId = 'general' | 'members' | 'membership';
 
@@ -84,6 +80,7 @@ export function OrgSettingsPage() {
     if (activeTab === 'members' && currentTenant) {
       loadMembers();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, currentTenant]);
 
   const loadMembers = async () => {

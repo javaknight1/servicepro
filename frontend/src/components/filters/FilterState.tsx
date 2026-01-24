@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, {
   createContext,
   useContext,
@@ -54,7 +55,7 @@ function filterReducer(state: FilterState, action: FilterAction): FilterState {
       };
 
     case 'REMOVE_FILTER':
-      const { [action.payload]: removed, ...remainingFilters } = state.filters;
+      const { [action.payload]: _removed, ...remainingFilters } = state.filters;
       return {
         ...state,
         filters: remainingFilters,

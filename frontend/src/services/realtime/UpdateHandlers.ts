@@ -5,7 +5,6 @@
 import {
   WebSocketMessage,
   MessageType,
-  MessageHandler,
   EntityType,
   EntityUpdateMessage,
   NotificationMessage,
@@ -13,7 +12,6 @@ import {
   SyncMessage,
   PresenceMessage,
   ErrorMessage,
-  AckMessage,
 } from '../../types/realtime';
 
 // ============================================

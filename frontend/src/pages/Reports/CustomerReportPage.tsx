@@ -16,7 +16,6 @@ import { Line, Bar, Doughnut } from 'react-chartjs-2';
 import {
   Users,
   UserPlus,
-  UserMinus,
   TrendingUp,
   TrendingDown,
   AlertTriangle,

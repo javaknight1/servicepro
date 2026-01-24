@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 /**
  * React Hooks for WebSocket Integration
  */
@@ -14,13 +15,10 @@ import {
 } from 'react';
 import {
   ConnectionStatus,
-  ConnectionState,
   WebSocketMessage,
   ChannelSubscription,
   EntityType,
-  EntityUpdateMessage,
   NotificationMessage,
-  PresenceMessage,
   UseWebSocketOptions,
   UseWebSocketReturn,
   UseSubscriptionOptions,
@@ -28,7 +26,6 @@ import {
 } from '../../types/realtime';
 import {
   WebSocketServiceImpl,
-  getWebSocketService,
   createWebSocketService,
 } from './WebSocketService';
 import {
@@ -37,7 +34,6 @@ import {
 } from './UpdateHandlers';
 import {
   ConnectionManager,
-  getConnectionManager,
   createConnectionManager,
 } from './ConnectionManager';
 
@@ -371,7 +367,7 @@ export function useRealtimeEntity<T = unknown>(
   const { handlers } = useWebSocketContext();
   const [data, setData] = useState<T | null>(options.initialData ?? null);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
+  const [_error, _setError] = useState<Error | null>(null);
 
   const optionsRef = useRef(options);
   useEffect(() => {
@@ -436,7 +432,7 @@ export function useRealtimeEntity<T = unknown>(
     setIsLoading(false);
   }, []);
 
-  return { data, isLoading, error, refresh };
+  return { data, isLoading, error: _error, refresh };
 }
 
 // ============================================
@@ -584,7 +580,7 @@ export function useRealtimeSync<T = unknown>(
   const [data, setData] = useState<T[]>(options?.initialData ?? []);
   const [isLoading, setIsLoading] = useState(false);
   const [hasMore, setHasMore] = useState(false);
-  const [cursor, setCursor] = useState<string | undefined>();
+  const [_cursor, setCursor] = useState<string | undefined>();
 
   useEffect(() => {
     const unsubscribe = handlers.onSync<T>(

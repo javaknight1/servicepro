@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+/* eslint-disable react-refresh/only-export-components */
+import { useState, useEffect } from 'react';
 import { PatternPreviewProps, RecurrenceType, DAYS_OF_WEEK } from './types';
 
 /**
@@ -28,6 +29,7 @@ const formatTime = (timeStr: string): string => {
  * Generate preview occurrences client-side
  */
 const generatePreviewOccurrences = (
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   pattern: any,
   previewMonths: number
 ): Date[] => {
@@ -114,6 +116,7 @@ const generatePreviewOccurrences = (
 /**
  * Pattern Description Generator
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const generateDescription = (pattern: any): string => {
   const parts: string[] = [];
 
@@ -188,7 +191,7 @@ const generateDescription = (pattern: any): string => {
 export const PatternPreview: React.FC<PatternPreviewProps> = ({
   pattern,
   previewMonths = 3,
-  showSkipped = false,
+  _showSkipped = false,
 }) => {
   const [occurrences, setOccurrences] = useState<Date[]>([]);
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');

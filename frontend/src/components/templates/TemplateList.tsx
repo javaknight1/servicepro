@@ -1,11 +1,7 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { templateService } from '../../services/templateService';
-import type {
-  QuoteTemplate,
-  TemplateListFilter,
-  TemplateCategory,
-} from '../../types/template';
+import type { QuoteTemplate, TemplateListFilter } from '../../types/template';
 
 interface TemplateListProps {
   onSelect?: (template: QuoteTemplate) => void;

@@ -117,7 +117,7 @@ export function SubscriptionManager({
     return (
       <CancellationFlow
         subscription={subscription}
-        onCancel={(reason, feedback, immediate) => {
+        onCancel={(_reason, _feedback, _immediate) => {
           if (onCancel) {
             onCancel();
           }

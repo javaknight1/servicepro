@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 /**
  * Analytics Context Provider
  *
@@ -303,7 +304,7 @@ export function useSearchTracking() {
   const { trackSearch: trackSearchEvent } = useAnalytics();
 
   const trackSearch = useCallback(
-    (searchTerm: string, resultCount?: number, searchType?: string) => {
+    (searchTerm: string, resultCount?: number, _searchType?: string) => {
       trackSearchEvent(searchTerm, resultCount);
     },
     [trackSearchEvent]

@@ -27,6 +27,7 @@ export function ChangeMembershipPage() {
   const [billingCycle, setBillingCycle] = useState<BillingCycle>('monthly');
 
   // Get pre-selected tier from location state (if coming from pricing page)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const preSelectedTierId = (location.state as any)?.selectedTierId;
 
   useEffect(() => {
@@ -52,6 +53,7 @@ export function ChangeMembershipPage() {
       navigate('/settings/organization', {
         state: { activeTab: 'membership', success: true },
       });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       setUpdateError(
         err.response?.data?.message || 'Failed to update membership'

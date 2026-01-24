@@ -3,7 +3,6 @@ import { persist } from 'zustand/middleware';
 import { tenantApi } from '@/services/tenantService';
 import type {
   Tenant,
-  TenantMember,
   TenantState,
   CreateTenantRequest,
   UpdateTenantRequest,
@@ -40,6 +39,7 @@ export const useTenantStore = create<TenantState>()(
 
             set({ currentTenant: savedTenant || tenants[0] });
           }
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (error: any) {
           set({
             error:
@@ -82,6 +82,7 @@ export const useTenantStore = create<TenantState>()(
           }));
 
           return newTenant;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (error: any) {
           set({
             error:
@@ -110,6 +111,7 @@ export const useTenantStore = create<TenantState>()(
           }));
 
           return updatedTenant;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (error: any) {
           set({
             error:
@@ -136,6 +138,7 @@ export const useTenantStore = create<TenantState>()(
                 : currentTenant,
             isLoading: false,
           });
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (error: any) {
           set({
             error:

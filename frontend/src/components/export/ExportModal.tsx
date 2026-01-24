@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ExportFormat,
   ExportType,
@@ -7,9 +7,7 @@ import {
   ExportProgress,
   getFormatLabel,
   getFormatIcon,
-  getStatusColor,
   formatFileSize,
-  formatDuration,
 } from '../../types/export';
 import exportService from '../../services/exportService';
 
@@ -101,7 +99,7 @@ const ExportModal: React.FC<ExportModalProps> = ({
         await exportService.cancelExport(job.id);
         setPhase('configure');
         setJob(null);
-      } catch (err) {
+      } catch {
         setError('Failed to cancel export');
       }
     }

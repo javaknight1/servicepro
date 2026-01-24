@@ -27,7 +27,7 @@ export const LineItemForm: React.FC<LineItemFormProps> = ({
   initialData,
   autoFocus = false,
   showCancel = false,
-  buttonText = 'Add Item',
+  _buttonText = 'Add Item',
 }) => {
   const [formData, setFormData] = useState<LineItemFormData>({
     description: initialData?.description || '',
@@ -96,28 +96,28 @@ export const LineItemForm: React.FC<LineItemFormProps> = ({
     setErrors((prev) => ({ ...prev, [field]: error }));
   };
 
-  const validateForm = (): boolean => {
-    const newErrors: LineItemValidationErrors = {
-      description: validateField('description', formData.description),
-      quantity: validateField('quantity', formData.quantity),
-      unit_price: validateField('unit_price', formData.unit_price),
-    };
-
-    setErrors(newErrors);
-    setTouched({
-      description: true,
-      quantity: true,
-      unit_price: true,
-    });
-
-    return !Object.values(newErrors).some((error) => error !== undefined);
-  };
-
   const handleSubmit = useCallback(
     (e: React.FormEvent) => {
       e.preventDefault();
 
-      if (!validateForm()) {
+      // Validate form inline to avoid dependency issues
+      const newErrors: LineItemValidationErrors = {
+        description: validateField('description', formData.description),
+        quantity: validateField('quantity', formData.quantity),
+        unit_price: validateField('unit_price', formData.unit_price),
+      };
+
+      setErrors(newErrors);
+      setTouched({
+        description: true,
+        quantity: true,
+        unit_price: true,
+      });
+
+      const isValid = !Object.values(newErrors).some(
+        (error) => error !== undefined
+      );
+      if (!isValid) {
         return;
       }
 

@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // Import chart components
@@ -48,7 +48,7 @@ vi.mock('chart.js', async () => {
 
 // Mock react-chartjs-2
 vi.mock('react-chartjs-2', () => ({
-  Chart: vi.fn(({ data, options, type }) => (
+  Chart: vi.fn(({ data, _options, type }) => (
     <div data-testid="mock-chart" data-type={type}>
       <span data-testid="chart-labels">{JSON.stringify(data.labels)}</span>
       <span data-testid="chart-datasets">{JSON.stringify(data.datasets)}</span>

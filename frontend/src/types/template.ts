@@ -8,6 +8,7 @@ export interface TemplateVariable {
   type: 'text' | 'number' | 'date' | 'currency';
   label: string;
   description?: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   default_value?: any;
   required: boolean;
   placeholder?: string;
@@ -68,6 +69,7 @@ export interface TemplateCategory {
 }
 
 export interface TemplateVariableMap {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   [key: string]: any;
 }
 
@@ -79,6 +81,7 @@ export interface TemplateRenderRequest {
 
 export interface TemplateRenderResult {
   content: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   line_items: any[];
   payment_terms: string;
   delivery_info: string;

@@ -1,13 +1,13 @@
 import React from 'react';
-import { CalendarToolbarProps, CalendarView, CALENDAR_VIEWS } from './types';
-import { toolbarStyles, cn } from './styles';
+import { CalendarToolbarProps, CALENDAR_VIEWS } from './types';
+import { toolbarStyles } from './styles';
 import { ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 
 /**
  * Custom toolbar for calendar navigation and view selection
  */
 export const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
-  date,
+  date: _date,
   view,
   onNavigate,
   onViewChange,

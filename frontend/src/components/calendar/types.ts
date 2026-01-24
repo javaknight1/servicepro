@@ -1,4 +1,4 @@
-import { Event as RBCEvent, View } from 'react-big-calendar';
+import { Event as RBCEvent } from 'react-big-calendar';
 
 /**
  * Job status enum matching backend
@@ -42,6 +42,7 @@ export interface JobEvent extends RBCEvent {
   customerId?: string;
   customerName?: string;
   location?: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   resource?: any;
 }
 

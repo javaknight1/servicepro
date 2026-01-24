@@ -10,10 +10,10 @@
 import { useEffect } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { ProtectedRoute, PublicRoute } from '@components/layout';
+/* eslint-disable react-refresh/only-export-components */
 import {
   loadable,
   loadableWithRetry,
-  PageLoader,
   DashboardSkeleton,
 } from '@components/Loadable';
 import {

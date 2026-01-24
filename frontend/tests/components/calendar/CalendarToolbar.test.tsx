@@ -159,7 +159,7 @@ describe('CalendarToolbar Component', () => {
 
   describe('Icons', () => {
     it('should render chevron icons for navigation', () => {
-      const { container } = render(<CalendarToolbar {...defaultProps} />);
+      render(<CalendarToolbar {...defaultProps} />);
 
       const prevButton = screen.getByLabelText('Previous');
       const nextButton = screen.getByLabelText('Next');
@@ -169,7 +169,7 @@ describe('CalendarToolbar Component', () => {
     });
 
     it('should render calendar icon on today button', () => {
-      const { container } = render(<CalendarToolbar {...defaultProps} />);
+      render(<CalendarToolbar {...defaultProps} />);
 
       const todayButton = screen.getByLabelText('Today');
       expect(todayButton.querySelector('svg')).toBeInTheDocument();

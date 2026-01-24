@@ -5,7 +5,6 @@
 import {
   ConnectionConfig,
   ConnectionState,
-  ConnectionStatus,
   ConnectionMetrics,
   WebSocketMessage,
   WebSocketEventType,
@@ -663,7 +662,8 @@ export class WebSocketServiceImpl {
       try {
         await this.send(item.message);
         item.sentAt = Date.now();
-      } catch (error) {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      } catch (_error) {
         if (item.retries < item.maxRetries) {
           item.retries++;
           this.messageQueue.push(item);
@@ -732,6 +732,7 @@ export class WebSocketServiceImpl {
 
   private log(message: string, data?: unknown): void {
     if (this.config.debug) {
+      // eslint-disable-next-line no-console
       console.log(`[WebSocket] ${message}`, data || '');
     }
   }

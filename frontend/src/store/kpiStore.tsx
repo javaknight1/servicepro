@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, {
   createContext,
   useContext,
@@ -163,6 +164,7 @@ export const KPIProvider: React.FC<KPIProviderProps> = ({
       const ws = new WebSocket(wsUrl);
 
       ws.onopen = () => {
+        // eslint-disable-next-line no-console
         console.log('KPI WebSocket connected');
         setConnected(true);
         reconnectAttemptsRef.current = 0;
@@ -172,6 +174,7 @@ export const KPIProvider: React.FC<KPIProviderProps> = ({
       };
 
       ws.onclose = () => {
+        // eslint-disable-next-line no-console
         console.log('KPI WebSocket disconnected');
         setConnected(false);
 
@@ -181,6 +184,7 @@ export const KPIProvider: React.FC<KPIProviderProps> = ({
           reconnectAttemptsRef.current < maxReconnectAttempts
         ) {
           reconnectAttemptsRef.current++;
+          // eslint-disable-next-line no-console
           console.log(
             `Reconnecting KPI WebSocket (attempt ${reconnectAttemptsRef.current})`
           );

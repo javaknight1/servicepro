@@ -11,12 +11,13 @@ export default [
       'dist/**',
       'build/**',
       'coverage/**',
-      '*.config.js',
-      '*.config.ts',
+      '**/*.config.js',
+      '**/*.config.ts',
       'public/**',
       'helm/**',
       'cypress/**',
       'scripts/**',
+      'config/**',
     ],
   },
   {
@@ -76,6 +77,23 @@ export default [
       'no-debugger': 'error',
       'prefer-const': 'error',
       'no-var': 'error',
+    },
+  },
+  {
+    // Relaxed rules for test files
+    files: [
+      '**/*.test.{ts,tsx}',
+      '**/*.spec.{ts,tsx}',
+      '**/tests/**/*.{ts,tsx}',
+      '**/__tests__/**/*.{ts,tsx}',
+    ],
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-unused-vars': [
+        'warn',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+      ],
+      'no-console': 'off',
     },
   },
   {

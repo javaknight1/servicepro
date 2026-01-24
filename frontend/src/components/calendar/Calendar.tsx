@@ -8,7 +8,6 @@ import React, {
 import {
   Calendar as BigCalendar,
   dateFnsLocalizer,
-  Views,
   SlotInfo,
   View,
   EventProps,
@@ -47,6 +46,7 @@ const localizer = dateFnsLocalizer({
 
 // Create drag-and-drop enabled calendar with proper typing
 const DnDCalendar = withDragAndDrop<JobEvent>(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   BigCalendar as React.ComponentType<any>
 );
 
@@ -144,6 +144,7 @@ export const Calendar: React.FC<CalendarProps> = ({
 
   // Handle event drop (drag and drop)
   const handleEventDrop = useCallback(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     async ({ event, start, end, isAllDay }: any) => {
       if (!onEventDrop) return;
 
@@ -166,6 +167,7 @@ export const Calendar: React.FC<CalendarProps> = ({
 
   // Handle event resize
   const handleEventResize = useCallback(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     async ({ event, start, end }: any) => {
       if (!onEventResize) return;
 
@@ -245,6 +247,7 @@ export const Calendar: React.FC<CalendarProps> = ({
 
   // Custom toolbar component
   const ToolbarComponent = useCallback(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (toolbarProps: any) => (
       <CalendarToolbar
         date={toolbarProps.date}

@@ -29,7 +29,7 @@ export const QuoteDetail: React.FC<QuoteDetailProps> = ({
   enableAutoSave = true,
 }) => {
   const queryClient = useQueryClient();
-  const [showPDFPreview, setShowPDFPreview] = useState(false);
+  const [_showPDFPreview, _setShowPDFPreview] = useState(false);
 
   // Fetch existing quote if editing
   const { data: existingQuote, isLoading: isLoadingQuote } = useQuery({
@@ -64,7 +64,11 @@ export const QuoteDetail: React.FC<QuoteDetailProps> = ({
   }, [existingQuote, reset]);
 
   // Real-time calculations
-  const { subtotal, taxAmount, total } = useQuoteCalculations(watch, setValue);
+  const {
+    subtotal: _subtotal,
+    taxAmount: _taxAmount,
+    total: _total,
+  } = useQuoteCalculations(watch, setValue);
 
   // Save mutation
   const saveMutation = useMutation({
@@ -112,7 +116,7 @@ export const QuoteDetail: React.FC<QuoteDetailProps> = ({
 
   // Line items management
   const items = watch('items') || [];
-  const handleItemsChange = useCallback(
+  const _handleItemsChange = useCallback(
     (updatedItems: LineItem[]) => {
       setValue('items', updatedItems, {
         shouldValidate: true,

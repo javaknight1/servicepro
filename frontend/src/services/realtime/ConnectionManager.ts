@@ -7,8 +7,6 @@ import {
   ConnectionState,
   ConnectionStatus,
   ConnectionMetrics,
-  WebSocketEventType,
-  WebSocketEventHandler,
   calculateBackoff,
 } from '../../types/realtime';
 import {
@@ -130,7 +128,7 @@ export class ConnectionManager {
     this.log(`Connecting to ${url}`);
 
     try {
-      const service = await this.createConnection(url);
+      await this.createConnection(url);
       this.pool.activeConnection = url;
 
       this.startHealthMonitoring();
@@ -357,7 +355,7 @@ export class ConnectionManager {
           current?.disconnect();
         }
 
-        const service = await this.createConnection(url);
+        await this.createConnection(url);
         this.pool.activeConnection = url;
 
         this.emitEvent('failover', {
@@ -434,7 +432,8 @@ export class ConnectionManager {
 
         this.stopRecovery();
         this.emitEvent('recovery', { attempts: this.recoveryAttempts });
-      } catch (error) {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      } catch (_error) {
         this.log(`Recovery attempt ${this.recoveryAttempts} failed`);
         this.attemptRecovery();
       }
@@ -686,6 +685,7 @@ export class ConnectionManager {
 
   private log(message: string): void {
     if (this.config.debug) {
+      // eslint-disable-next-line no-console
       console.log(`[ConnectionManager] ${message}`);
     }
   }

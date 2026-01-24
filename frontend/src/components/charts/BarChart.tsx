@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { useMemo, forwardRef, memo } from 'react';
 import { ChartData, ChartOptions } from 'chart.js';
 import BaseChart from './BaseChart';
@@ -42,7 +43,7 @@ const BarChart = forwardRef<ChartRef, BarChartProps>(
       barThickness,
       maxBarThickness = 50,
       borderRadius = 4,
-      grouped = true,
+      _grouped = true,
       yMin,
       yMax,
       yAxisFormat,

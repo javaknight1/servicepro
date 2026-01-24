@@ -325,7 +325,6 @@ describe('Calendar Integration Tests', () => {
     });
 
     it('should handle loading state during interactions', async () => {
-      const user = userEvent.setup();
       const { rerender } = render(
         <Calendar events={mockEvents} isLoading={false} />
       );

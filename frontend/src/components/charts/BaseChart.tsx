@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, {
   useRef,
   useEffect,
@@ -13,7 +14,6 @@ import {
   ChartOptions,
   ChartType,
   registerables,
-  Plugin,
 } from 'chart.js';
 import { Chart } from 'react-chartjs-2';
 import { cn } from '../../utils/cn';
@@ -199,7 +199,7 @@ const BaseChart = forwardRef<ChartRef, InternalBaseChartProps>(
       height = 300,
       maintainAspectRatio = true,
       aspectRatio = 2,
-      showLegend = true,
+      _showLegend = true,
       legendPosition = 'top',
       showGrid = true,
       showXAxis = true,
@@ -212,7 +212,7 @@ const BaseChart = forwardRef<ChartRef, InternalBaseChartProps>(
       loading = false,
       error = null,
       className,
-      enableZoom = false,
+      _enableZoom = false,
       enableExport = false,
       plugins: customPlugins = [],
       onReady,
@@ -375,12 +375,14 @@ const BaseChart = forwardRef<ChartRef, InternalBaseChartProps>(
         exportAsImage,
         resetZoom: () => {
           // Would require zoom plugin
+          // eslint-disable-next-line no-console
           console.log('Zoom reset not implemented');
         },
         updateData: (labels: string[], datasets: DatasetConfig[]) => {
           const chart = chartRef.current;
           if (chart) {
             chart.data.labels = labels;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             chart.data.datasets = datasets as any;
             chart.update();
           }

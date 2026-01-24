@@ -1,15 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '@components/layout';
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-  Button,
-  Input,
-} from '@components/shared';
+import { Card, CardContent, Button, Input } from '@components/shared';
 import { useTenantStore } from '@store';
 import { Building2 } from 'lucide-react';
 import type { CreateTenantRequest } from '@/types/tenant';

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { SubscriptionManager } from '../../../src/components/subscriptions/SubscriptionManager';
 import type { Plan, Subscription } from '../../../src/types/subscription';
@@ -109,7 +109,6 @@ const createMockSubscription = (
 
 describe('SubscriptionManager Component', () => {
   const mockOnChangePlan = vi.fn();
-  const mockOnChangeBillingCycle = vi.fn();
   const mockOnCancel = vi.fn();
   const mockOnReactivate = vi.fn();
 

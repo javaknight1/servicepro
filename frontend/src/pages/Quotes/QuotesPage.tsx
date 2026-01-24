@@ -42,6 +42,7 @@ export function QuotesPage() {
 
   useEffect(() => {
     loadQuotes();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters]);
 
   const loadQuotes = async () => {

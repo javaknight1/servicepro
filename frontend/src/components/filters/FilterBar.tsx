@@ -1,19 +1,10 @@
-import React, {
-  useState,
-  useRef,
-  useEffect,
-  useCallback,
-  useMemo,
-  memo,
-} from 'react';
+import React, { useState, useRef, useEffect, useMemo, memo } from 'react';
 import { cn } from '../../utils/cn';
 import {
   FilterBarProps,
   FilterConfig,
-  FilterType,
   FilterValue,
   ActiveFilter,
-  FilterOption,
   formatFilterValue,
 } from '../../types/filter';
 import { FilterProvider, useFilters, useFilter } from './FilterState';
@@ -185,7 +176,7 @@ const SelectFilterComponent: React.FC<SelectFilterComponentProps> = memo(
     const containerRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
 
-    const options = config.options || [];
+    const options = useMemo(() => config.options || [], [config.options]);
     const isMultiple = config.type === 'multiselect';
     const selectedValues = isMultiple
       ? Array.isArray(value)
@@ -572,7 +563,9 @@ const FilterItem: React.FC<FilterItemProps> = memo(({ config }) => {
       case 'date':
         return (
           <DateRangePicker
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             value={value as any}
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             onChange={setValue as any}
             placeholder={config.placeholder}
           />
@@ -581,7 +574,9 @@ const FilterItem: React.FC<FilterItemProps> = memo(({ config }) => {
       case 'daterange':
         return (
           <DateRangePicker
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             value={value as any}
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             onChange={setValue as any}
             placeholder={config.placeholder}
             minDate={config.min as Date}

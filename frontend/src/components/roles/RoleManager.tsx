@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Search, Trash2, Edit2, Shield, Users } from 'lucide-react';
+import { Plus, Search, Trash2, Edit2, Shield } from 'lucide-react';
 import {
   Button,
   Input,
@@ -29,7 +29,7 @@ export function RoleManager({ onRoleSelect }: RoleManagerProps) {
 
   // Mutations
   const deleteRoleMutation = useDeleteRole();
-  const bulkAssignMutation = useBulkAssignRoles();
+  const _bulkAssignMutation = useBulkAssignRoles();
 
   // Filtered roles based on search
   const filteredRoles = roles.filter(
@@ -64,6 +64,7 @@ export function RoleManager({ onRoleSelect }: RoleManagerProps) {
       await deleteRoleMutation.mutateAsync(deletingRole.id);
       setDeletingRole(null);
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Failed to delete role:', error);
     }
   };
@@ -78,6 +79,7 @@ export function RoleManager({ onRoleSelect }: RoleManagerProps) {
       );
       setSelectedRoles([]);
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Failed to bulk delete roles:', error);
     }
   };

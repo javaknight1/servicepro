@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { PlanSelector } from '../../../src/components/subscriptions/PlanSelector';
-import type { Plan, BillingCycle } from '../../../src/types/subscription';
+import type { Plan } from '../../../src/types/subscription';
 
 // Mock plans for testing
 const mockPlans: Plan[] = [

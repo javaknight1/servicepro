@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback } from 'react';
 import { LineItem, LineItemFormData } from '../../types/quote';
 import LineItemRow from './LineItemRow';
 import LineItemForm from './LineItemForm';

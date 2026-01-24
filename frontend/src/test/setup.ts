@@ -54,7 +54,7 @@ vi.mock('@tanstack/react-table', () => ({
   getPaginationRowModel: vi.fn(),
   getSortedRowModel: vi.fn(),
   getFilteredRowModel: vi.fn(),
-  flexRender: vi.fn((cell, context) => cell),
+  flexRender: vi.fn((cell, _context) => cell),
   createColumnHelper: vi.fn(() => ({
     accessor: vi.fn(),
     display: vi.fn(),

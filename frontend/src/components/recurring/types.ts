@@ -93,6 +93,7 @@ export interface SkippedDate {
 export interface GenerationResult {
   generatedCount: number;
   skippedCount: number;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   schedules: any[];
   skippedDates?: SkippedDate[];
 }

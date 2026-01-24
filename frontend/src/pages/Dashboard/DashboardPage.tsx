@@ -23,7 +23,6 @@ import {
   Briefcase,
   FileText,
   Receipt,
-  Plus,
   ArrowRight,
   Building2,
   Rocket,

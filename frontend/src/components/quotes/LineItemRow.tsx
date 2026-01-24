@@ -9,6 +9,7 @@ interface LineItemRowProps {
   onDuplicate?: (id: string) => void;
   isSelected?: boolean;
   onSelect?: (id: string, selected: boolean) => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   dragHandleProps?: any;
   isDragging?: boolean;
   isEditable?: boolean;

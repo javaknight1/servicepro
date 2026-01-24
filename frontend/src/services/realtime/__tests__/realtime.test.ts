@@ -6,10 +6,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import {
-  WebSocketServiceImpl,
-  createWebSocketService,
-} from '../WebSocketService';
+import { WebSocketServiceImpl } from '../WebSocketService';
 import {
   UpdateHandlerManager,
   OptimisticUpdateManager,
@@ -27,13 +24,11 @@ import {
   parseCloseCode,
   isRecoverableError,
   calculateBackoff,
-  WebSocketMessage,
   EntityUpdateMessage,
   NotificationMessage,
   PresenceMessage,
   BatchMessage,
   PingMessage,
-  PongMessage,
 } from '../../../types/realtime';
 
 // ============================================

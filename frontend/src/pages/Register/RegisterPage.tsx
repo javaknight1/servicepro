@@ -31,7 +31,7 @@ const registerSchema = z
 type RegisterFormData = z.infer<typeof registerSchema>;
 
 export function RegisterPage() {
-  const navigate = useNavigate();
+  const _navigate = useNavigate();
   const register_action = useAuthStore((state) => state.register);
   const [error, setError] = useState<string>('');
   const [success, setSuccess] = useState(false);

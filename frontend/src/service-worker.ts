@@ -32,7 +32,7 @@ const CACHE_NAMES = {
   fonts: 'servicepro-fonts-v1',
 };
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
+const _API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 // =============================================================================
 // Precache Static Assets
@@ -188,6 +188,7 @@ const bgSyncPlugin = new BackgroundSyncPlugin('servicepro-mutations', {
     while ((entry = await queue.shiftRequest())) {
       try {
         await fetch(entry.request.clone());
+        // eslint-disable-next-line no-console
         console.log(
           'Background sync: Successfully replayed request',
           entry.request.url
@@ -259,12 +260,14 @@ registerRoute(
 
 // Install event - skip waiting to activate immediately
 self.addEventListener('install', (event) => {
+  // eslint-disable-next-line no-console
   console.log('Service Worker: Installing...');
   event.waitUntil(self.skipWaiting());
 });
 
 // Activate event - claim all clients
 self.addEventListener('activate', (event) => {
+  // eslint-disable-next-line no-console
   console.log('Service Worker: Activating...');
   event.waitUntil(
     Promise.all([
@@ -274,6 +277,7 @@ self.addEventListener('activate', (event) => {
           cacheNames
             .filter((name) => !Object.values(CACHE_NAMES).includes(name))
             .map((name) => {
+              // eslint-disable-next-line no-console
               console.log('Service Worker: Deleting old cache', name);
               return caches.delete(name);
             })
@@ -366,6 +370,7 @@ async function invalidateCachePatterns(patterns: string[]): Promise<void> {
     for (const pattern of patterns) {
       if (url.pathname.includes(pattern)) {
         await cache.delete(request);
+        // eslint-disable-next-line no-console
         console.log('Service Worker: Invalidated cache for', url.pathname);
         break;
       }
@@ -378,7 +383,7 @@ async function invalidateCachePatterns(patterns: string[]): Promise<void> {
 // =============================================================================
 
 // Provide offline fallback for navigation requests
-const offlineFallback = new Route(
+const _offlineFallback = new Route(
   ({ request }) => request.mode === 'navigate',
   async () => {
     const cache = await caches.open(CACHE_NAMES.static);
@@ -438,4 +443,5 @@ const offlineFallback = new Route(
 // Register offline fallback as catch handler
 // This is only used when all other strategies fail
 
+// eslint-disable-next-line no-console
 console.log('Service Worker: Registered and ready');

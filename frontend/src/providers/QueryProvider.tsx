@@ -29,6 +29,7 @@ const queryCache = new QueryCache({
   onError: (error, query) => {
     // Only show error notification for user-initiated queries
     if (query.state.data !== undefined) {
+      // eslint-disable-next-line no-console
       console.error('Query error:', error);
       // You could dispatch to a toast/notification system here
     }
@@ -36,6 +37,7 @@ const queryCache = new QueryCache({
   onSuccess: (data, query) => {
     // Log successful queries in development
     if (import.meta.env.DEV) {
+      // eslint-disable-next-line no-console
       console.debug('Query success:', query.queryKey);
     }
   },
@@ -43,7 +45,8 @@ const queryCache = new QueryCache({
 
 // Mutation cache with error handling
 const mutationCache = new MutationCache({
-  onError: (error, _variables, _context, mutation) => {
+  onError: (error, _variables, _context, _mutation) => {
+    // eslint-disable-next-line no-console
     console.error('Mutation error:', error);
 
     // Handle specific error types
@@ -59,6 +62,7 @@ const mutationCache = new MutationCache({
   },
   onSuccess: (_data, _variables, _context, mutation) => {
     if (import.meta.env.DEV) {
+      // eslint-disable-next-line no-console
       console.debug('Mutation success:', mutation.options.mutationKey);
     }
   },
@@ -266,7 +270,7 @@ export function PendingMutationsIndicator() {
     const checkPending = async () => {
       if ('serviceWorker' in navigator && 'SyncManager' in window) {
         // Check for pending background sync
-        const registration = await navigator.serviceWorker.ready;
+        const _registration = await navigator.serviceWorker.ready;
         // Note: SyncManager API is limited, this is simplified
         setPendingCount(0);
       }
@@ -314,6 +318,7 @@ export function CacheManager({ onClearCache }: CacheManagerProps) {
 
   const handleClearExpired = () => {
     const cleared = cache.clearExpired();
+    // eslint-disable-next-line no-console
     console.log(`Cleared ${cleared} expired items`);
     setStats(cache.getStats());
   };

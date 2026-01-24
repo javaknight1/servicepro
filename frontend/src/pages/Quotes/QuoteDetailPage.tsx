@@ -202,6 +202,7 @@ export function QuoteDetailPage() {
         );
       }
       navigate('/quotes');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       console.error('Failed to save quote:', err);
       setError(
@@ -223,6 +224,7 @@ export function QuoteDetailPage() {
     try {
       await quoteService.deleteQuote(id);
       navigate('/quotes');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       console.error('Failed to delete quote:', err);
       setError(err?.response?.data?.message || 'Failed to delete quote');

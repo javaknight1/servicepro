@@ -2,11 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { DashboardLayout } from '@components/layout';
 import { Button } from '@components/shared';
-import {
-  invoiceService,
-  Invoice,
-  InvoiceLineItem,
-} from '@services/invoiceService';
+import { invoiceService, Invoice } from '@services/invoiceService';
 import { customerService, Customer } from '@services/customerService';
 import { ArrowLeft, Save, Trash2, Loader2, Plus, X } from 'lucide-react';
 
@@ -221,6 +217,7 @@ export function InvoiceDetailPage() {
         );
       }
       navigate('/invoices');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       console.error('Failed to save invoice:', err);
       setError(
@@ -243,6 +240,7 @@ export function InvoiceDetailPage() {
     try {
       await invoiceService.deleteInvoice(id);
       navigate('/invoices');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       console.error('Failed to delete invoice:', err);
       setError(err?.response?.data?.message || 'Failed to delete invoice');

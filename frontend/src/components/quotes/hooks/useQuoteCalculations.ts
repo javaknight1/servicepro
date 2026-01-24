@@ -12,7 +12,8 @@ export const useQuoteCalculations = (
   setValue: UseFormSetValue<QuoteFormData>
 ) => {
   // Watch for changes to items and tax information
-  const items = watch('items') || [];
+  const watchedItems = watch('items');
+  const items = useMemo(() => watchedItems || [], [watchedItems]);
   const taxRate = watch('tax_rate') || '0';
   const taxExemptionType = watch('tax_exemption_type') || 'none';
 

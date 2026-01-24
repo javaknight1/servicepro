@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React from 'react';
 import {
   Document,
@@ -360,13 +361,13 @@ export const PDFDownloadButton: React.FC<PDFDownloadButtonProps> = ({
       className={className}
     >
       {({
-        blob,
-        url,
+        _blob,
+        _url,
         loading,
         error,
       }: {
-        blob: Blob | null;
-        url: string | null;
+        _blob: Blob | null;
+        _url: string | null;
         loading: boolean;
         error: Error | null;
       }) => {

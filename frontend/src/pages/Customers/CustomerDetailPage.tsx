@@ -112,6 +112,7 @@ export function CustomerDetailPage() {
     setError(null);
 
     // Prepare data - only include service address if checkbox is checked
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const submitData: Record<string, any> = {
       ...formData,
       company_name: formData.company_name || undefined,
@@ -142,6 +143,7 @@ export function CustomerDetailPage() {
         await customerService.updateCustomer(id, submitData);
       }
       navigate('/customers');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       console.error('Failed to save customer:', err);
       setError(
@@ -166,6 +168,7 @@ export function CustomerDetailPage() {
     try {
       await customerService.deleteCustomer(id);
       navigate('/customers');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       console.error('Failed to delete customer:', err);
       setError(err?.response?.data?.message || 'Failed to delete customer');

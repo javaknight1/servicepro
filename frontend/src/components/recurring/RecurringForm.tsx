@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
   RecurringFormProps,
   RecurringPatternRequest,
@@ -75,6 +75,7 @@ export const RecurringForm: React.FC<RecurringFormProps> = ({
     }
   }, [endMode]);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleInputChange = (
     field: keyof RecurringPatternRequest,
     value: any

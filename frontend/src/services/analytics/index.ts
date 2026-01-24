@@ -156,6 +156,7 @@ class AnalyticsService {
     }
 
     if (this.config.debug) {
+      // eslint-disable-next-line no-console
       console.log('[Analytics] Initialized with config:', this.config);
     }
   }
@@ -187,6 +188,7 @@ class AnalyticsService {
     }
 
     if (this.config.debug) {
+      // eslint-disable-next-line no-console
       console.log('[Analytics] GA4 initialized with:', measurementId);
     }
   }
@@ -206,6 +208,7 @@ class AnalyticsService {
     }
 
     if (this.config.debug) {
+      // eslint-disable-next-line no-console
       console.log('[Analytics] User ID set:', userId);
     }
   }
@@ -217,6 +220,7 @@ class AnalyticsService {
     this.tenantId = tenantId;
 
     if (this.config.debug) {
+      // eslint-disable-next-line no-console
       console.log('[Analytics] Tenant ID set:', tenantId);
     }
   }
@@ -234,6 +238,7 @@ class AnalyticsService {
     }
 
     if (this.config.debug) {
+      // eslint-disable-next-line no-console
       console.log('[Analytics] Consent status:', hasConsent);
     }
   }
@@ -274,6 +279,7 @@ class AnalyticsService {
     }
 
     if (this.config.debug) {
+      // eslint-disable-next-line no-console
       console.log('[Analytics] Event tracked:', event);
     }
   }
@@ -482,6 +488,7 @@ class AnalyticsService {
       }
 
       if (this.config.debug) {
+        // eslint-disable-next-line no-console
         console.log('[Analytics] Flushed', events.length, 'events');
       }
     } catch (error) {

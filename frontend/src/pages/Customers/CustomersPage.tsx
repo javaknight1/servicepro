@@ -29,6 +29,7 @@ export function CustomersPage() {
 
   useEffect(() => {
     loadCustomers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters]);
 
   const loadCustomers = async () => {

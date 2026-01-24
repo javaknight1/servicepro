@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
 import { cn } from '../../utils/cn';
 import {
   KPIWidgetProps,
-  KPIData,
   KPITrend,
   KPITargetProgress,
   formatKPIValue,
@@ -275,7 +274,7 @@ const KPIWidget: React.FC<KPIWidgetProps> = ({
   error = null,
   size = 'md',
   realTime = false,
-  updateInterval,
+  updateInterval: _updateInterval,
   onClick,
   className,
   animate = true,

@@ -1,5 +1,5 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { AddPaymentMethod } from '../AddPaymentMethod';
 
 // Mock Stripe
@@ -258,7 +258,7 @@ describe('AddPaymentMethod', () => {
 
   it('shows loading spinner when stripe is initializing', () => {
     // This test verifies the loading state before Stripe loads
-    const { rerender } = render(<AddPaymentMethod {...defaultProps} />);
+    render(<AddPaymentMethod {...defaultProps} />);
 
     // The Stripe Elements wrapper should be present
     expect(screen.getByTestId('stripe-elements')).toBeInTheDocument();

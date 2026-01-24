@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Calendar } from '../../../src/components/calendar/Calendar';
 import {
@@ -185,7 +185,6 @@ describe('Calendar Component', () => {
     });
 
     it('should render different views correctly', async () => {
-      const user = userEvent.setup();
       const { rerender } = render(
         <Calendar events={mockEvents} defaultView="month" />
       );

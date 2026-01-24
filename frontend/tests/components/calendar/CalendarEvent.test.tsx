@@ -190,7 +190,7 @@ describe('CalendarEvent Component', () => {
         ...mockEvent,
         jobNumber: 'JOB-VERY-LONG-NUMBER-12345',
       };
-      const { container } = render(
+      render(
         <CalendarEvent
           event={longJobNumberEvent}
           title={longJobNumberEvent.title}

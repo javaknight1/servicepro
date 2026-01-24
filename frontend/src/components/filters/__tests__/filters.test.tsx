@@ -7,7 +7,7 @@ import {
   within,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import FilterBar from '../FilterBar';
 import DateRangePicker from '../DateRangePicker';
 import SegmentFilter, {
@@ -869,7 +869,7 @@ describe('Filter Combinations', () => {
     let queryParams: Record<string, string> = {};
 
     const TestComponent: React.FC = () => {
-      const { setFilter, setSearch, buildQueryParams } = useFilters();
+      const { setFilter, buildQueryParams } = useFilters();
 
       return (
         <div>

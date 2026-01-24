@@ -63,7 +63,7 @@ export const subscribeToExportProgress = (
     }
   });
 
-  eventSource.onerror = (error) => {
+  eventSource.onerror = (_error) => {
     onError(new Error('SSE connection error'));
     eventSource.close();
   };

@@ -208,6 +208,7 @@ export const useDashboardKPIs = (options: UseKPIOptions = {}) => {
       const ws = new WebSocket(wsUrl);
 
       ws.onopen = () => {
+        // eslint-disable-next-line no-console
         console.log('Dashboard KPI WebSocket connected');
         ws.send(
           JSON.stringify({ action: 'subscribe', channel: 'dashboard-kpi' })

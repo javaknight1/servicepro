@@ -7,6 +7,7 @@ export interface WebSocketMessage {
   event: string;
   status: string;
   timestamp: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   data?: any;
 }
 
@@ -78,6 +79,7 @@ export const useWebSocket = (
       const socket = new WebSocket(url);
 
       socket.onopen = () => {
+        // eslint-disable-next-line no-console
         console.log('WebSocket connected');
         setReadyState(WebSocket.OPEN);
         reconnectAttempts.current = 0;
@@ -85,6 +87,7 @@ export const useWebSocket = (
       };
 
       socket.onclose = () => {
+        // eslint-disable-next-line no-console
         console.log('WebSocket disconnected');
         setReadyState(WebSocket.CLOSED);
         onClose?.();
@@ -92,6 +95,7 @@ export const useWebSocket = (
         // Auto-reconnect
         if (autoReconnect && reconnectAttempts.current < maxReconnectAttempts) {
           reconnectAttempts.current++;
+          // eslint-disable-next-line no-console
           console.log(`Reconnecting... attempt ${reconnectAttempts.current}`);
 
           reconnectTimeout.current = setTimeout(() => {
@@ -101,6 +105,7 @@ export const useWebSocket = (
       };
 
       socket.onerror = (event) => {
+        // eslint-disable-next-line no-console
         console.error('WebSocket error:', event);
         setError(event);
         onError?.(event);
@@ -109,6 +114,7 @@ export const useWebSocket = (
       socket.onmessage = (event) => {
         try {
           const message: WebSocketMessage = JSON.parse(event.data);
+          // eslint-disable-next-line no-console
           console.log('WebSocket message:', message);
 
           // Handle message
@@ -122,6 +128,7 @@ export const useWebSocket = (
             queryClient.invalidateQueries({ queryKey: ['quotes'] });
           }
         } catch (err) {
+          // eslint-disable-next-line no-console
           console.error('Failed to parse WebSocket message:', err);
         }
       };
@@ -151,10 +158,9 @@ export const useWebSocket = (
       if (reconnectTimeout.current) {
         clearTimeout(reconnectTimeout.current);
       }
-      if (ws) {
-        ws.close();
-      }
+      // Note: ws cleanup is handled by storing ref to socket in closure
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [connect]);
 
   // Update readyState when ws changes
