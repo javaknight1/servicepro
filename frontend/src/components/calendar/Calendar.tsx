@@ -46,7 +46,9 @@ const localizer = dateFnsLocalizer({
 });
 
 // Create drag-and-drop enabled calendar with proper typing
-const DnDCalendar = withDragAndDrop<JobEvent>(BigCalendar as React.ComponentType<any>);
+const DnDCalendar = withDragAndDrop<JobEvent>(
+  BigCalendar as React.ComponentType<any>
+);
 
 /**
  * Error Boundary for Calendar Component
@@ -233,7 +235,10 @@ export const Calendar: React.FC<CalendarProps> = ({
   // Custom event component
   const EventComponent = useCallback(
     (props: EventProps<JobEvent>) => (
-      <CalendarEvent event={props.event} title={String(props.title || props.event.title)} />
+      <CalendarEvent
+        event={props.event}
+        title={String(props.title || props.event.title)}
+      />
     ),
     []
   );

@@ -196,7 +196,10 @@ export function QuoteDetailPage() {
       if (isNew) {
         await quoteService.createQuote(submitData as unknown as Partial<Quote>);
       } else if (id) {
-        await quoteService.updateQuote(id, submitData as unknown as Partial<Quote>);
+        await quoteService.updateQuote(
+          id,
+          submitData as unknown as Partial<Quote>
+        );
       }
       navigate('/quotes');
     } catch (err: any) {

@@ -139,12 +139,9 @@ export function useErrorTracking(options: UseErrorTrackingOptions = {}) {
    */
   const withSpan = useCallback(
     async <T>(name: string, fn: () => Promise<T>): Promise<T> => {
-      return Sentry.startSpan(
-        { name, op: 'function' },
-        async () => {
-          return fn();
-        }
-      );
+      return Sentry.startSpan({ name, op: 'function' }, async () => {
+        return fn();
+      });
     },
     []
   );

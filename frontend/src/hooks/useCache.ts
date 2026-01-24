@@ -142,9 +142,16 @@ export function useCachedMutation<TData, TVariables>(
   const queryClient = useQueryClient();
   const previousDataRef = useRef<Map<string, unknown>>(new Map());
 
-  const mutation = useMutation<TData, Error, TVariables, { previousData: Map<string, unknown> }>({
+  const mutation = useMutation<
+    TData,
+    Error,
+    TVariables,
+    { previousData: Map<string, unknown> }
+  >({
     mutationFn,
-    onMutate: async (variables): Promise<{ previousData: Map<string, unknown> }> => {
+    onMutate: async (
+      variables
+    ): Promise<{ previousData: Map<string, unknown> }> => {
       // Cancel outgoing queries for affected keys
       for (const key of invalidateKeys) {
         await queryClient.cancelQueries({ queryKey: [key] });
@@ -393,7 +400,8 @@ export function useServiceWorkerCache() {
   } | null>(null);
 
   const getCacheStats = useCallback(async () => {
-    const controller = 'serviceWorker' in navigator ? navigator.serviceWorker.controller : null;
+    const controller =
+      'serviceWorker' in navigator ? navigator.serviceWorker.controller : null;
     if (controller) {
       const messageChannel = new MessageChannel();
 
@@ -403,10 +411,9 @@ export function useServiceWorkerCache() {
           resolve(event.data);
         };
 
-        controller.postMessage(
-          { type: 'GET_CACHE_STATS' },
-          [messageChannel.port2]
-        );
+        controller.postMessage({ type: 'GET_CACHE_STATS' }, [
+          messageChannel.port2,
+        ]);
       });
     }
     return null;

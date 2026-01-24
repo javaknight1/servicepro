@@ -22,7 +22,7 @@ services:
     ports:
       - '5433:5432'
     tmpfs:
-      - /var/lib/postgresql/data  # Use tmpfs for faster tests
+      - /var/lib/postgresql/data # Use tmpfs for faster tests
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U test_user -d servicepro_test']
       interval: 2s
@@ -54,10 +54,11 @@ services:
     image: stripe/stripe-mock:latest
     container_name: servicepro-stripe-mock
     ports:
-      - '12111:12111'  # HTTP
-      - '12112:12112'  # HTTPS
+      - '12111:12111' # HTTP
+      - '12112:12112' # HTTPS
     healthcheck:
-      test: ['CMD', 'wget', '-q', '--spider', 'http://localhost:12111/v1/customers']
+      test:
+        ['CMD', 'wget', '-q', '--spider', 'http://localhost:12111/v1/customers']
       interval: 2s
       timeout: 5s
       retries: 10
@@ -77,7 +78,7 @@ services:
       AWS_ACCESS_KEY_ID: test
       AWS_SECRET_ACCESS_KEY: test
     ports:
-      - '4566:4566'  # All LocalStack services
+      - '4566:4566' # All LocalStack services
     volumes:
       - ./backend/tests/localstack:/etc/localstack/init/ready.d:ro
     healthcheck:
@@ -95,10 +96,17 @@ services:
     image: mailhog/mailhog:latest
     container_name: servicepro-mailhog
     ports:
-      - '1025:1025'  # SMTP
-      - '8025:8025'  # Web UI
+      - '1025:1025' # SMTP
+      - '8025:8025' # Web UI
     healthcheck:
-      test: ['CMD', 'wget', '-q', '--spider', 'http://localhost:8025/api/v2/messages']
+      test:
+        [
+          'CMD',
+          'wget',
+          '-q',
+          '--spider',
+          'http://localhost:8025/api/v2/messages',
+        ]
       interval: 2s
       timeout: 5s
       retries: 10
@@ -141,7 +149,7 @@ services:
       ENV: test
       JWT_SECRET: test-jwt-secret-for-integration-tests
       LOG_LEVEL: debug
-      TEST_MODE: "true"
+      TEST_MODE: 'true'
     depends_on:
       test-postgres:
         condition: service_healthy
@@ -157,7 +165,15 @@ services:
       - ./backend:/app
       - go-mod-cache:/go/pkg/mod
     working_dir: /app
-    command: ["go", "test", "-v", "-tags=integration", "-count=1", "./tests/integration/..."]
+    command:
+      [
+        'go',
+        'test',
+        '-v',
+        '-tags=integration',
+        '-count=1',
+        './tests/integration/...',
+      ]
     networks:
       - test-network
 

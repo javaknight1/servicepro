@@ -70,9 +70,14 @@ export const QuoteDetail: React.FC<QuoteDetailProps> = ({
   const saveMutation = useMutation({
     mutationFn: async (data: QuoteFormData) => {
       if (quoteId) {
-        return await quoteService.updateQuote(quoteId, data as unknown as Partial<Quote>);
+        return await quoteService.updateQuote(
+          quoteId,
+          data as unknown as Partial<Quote>
+        );
       } else {
-        return await quoteService.createQuote(data as unknown as Partial<Quote>);
+        return await quoteService.createQuote(
+          data as unknown as Partial<Quote>
+        );
       }
     },
     onSuccess: (savedQuote) => {

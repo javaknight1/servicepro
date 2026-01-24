@@ -227,9 +227,10 @@ export const QuoteList: React.FC<QuoteListProps> = ({
     getSortedRowModel: getSortedRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     manualPagination: true,
-    pageCount: quotesData?.total && quotesData?.page_size
-      ? Math.ceil(quotesData.total / quotesData.page_size)
-      : 0,
+    pageCount:
+      quotesData?.total && quotesData?.page_size
+        ? Math.ceil(quotesData.total / quotesData.page_size)
+        : 0,
   });
 
   // Update filters when sorting changes
@@ -323,7 +324,13 @@ export const QuoteList: React.FC<QuoteListProps> = ({
   }
 
   const quotes = quotesData?.quotes || [];
-  const pagination = quotesData ? { total: quotesData.total, page: quotesData.page, page_size: quotesData.page_size } : undefined;
+  const pagination = quotesData
+    ? {
+        total: quotesData.total,
+        page: quotesData.page,
+        page_size: quotesData.page_size,
+      }
+    : undefined;
 
   return (
     <div className="space-y-4">

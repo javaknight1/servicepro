@@ -211,9 +211,14 @@ export function InvoiceDetailPage() {
 
     try {
       if (isNew) {
-        await invoiceService.createInvoice(submitData as unknown as Partial<Invoice>);
+        await invoiceService.createInvoice(
+          submitData as unknown as Partial<Invoice>
+        );
       } else if (id) {
-        await invoiceService.updateInvoice(id, submitData as unknown as Partial<Invoice>);
+        await invoiceService.updateInvoice(
+          id,
+          submitData as unknown as Partial<Invoice>
+        );
       }
       navigate('/invoices');
     } catch (err: any) {

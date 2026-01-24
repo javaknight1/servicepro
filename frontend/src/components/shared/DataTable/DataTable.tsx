@@ -167,8 +167,13 @@ export function DataTable<T extends object>({
                       className={cn('px-4 py-3 text-sm', column.className)}
                     >
                       {column.render
-                        ? column.render((row as Record<string, unknown>)[column.key], row)
-                        : ((row as Record<string, unknown>)[column.key] as React.ReactNode) ?? '-'}
+                        ? column.render(
+                            (row as Record<string, unknown>)[column.key],
+                            row
+                          )
+                        : ((row as Record<string, unknown>)[
+                            column.key
+                          ] as React.ReactNode) ?? '-'}
                     </td>
                   ))}
                 </tr>
