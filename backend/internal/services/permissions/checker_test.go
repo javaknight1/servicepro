@@ -33,6 +33,7 @@ func setupTestDB(t *testing.T) *gorm.DB {
 			email TEXT NOT NULL,
 			password_hash TEXT NOT NULL,
 			role TEXT DEFAULT 'user',
+			profile_picture_url TEXT,
 			email_verified INTEGER DEFAULT 0,
 			verification_sent_at DATETIME,
 			failed_login_count INTEGER DEFAULT 0,

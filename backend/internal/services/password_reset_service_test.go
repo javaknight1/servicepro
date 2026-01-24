@@ -107,6 +107,11 @@ func (m *MockUserRepositoryGorm) GetUnverifiedUsersForReminder(threshold time.Du
 	return args.Get(0).([]*models.User), args.Error(1)
 }
 
+func (m *MockUserRepositoryGorm) UpdateProfilePicture(userID uuid.UUID, url *string) error {
+	args := m.Called(userID, url)
+	return args.Error(0)
+}
+
 // setupTestRedis creates a miniredis server and returns a configured redis client
 func setupTestRedis(t *testing.T) (*redis.Client, *miniredis.Miniredis) {
 	mr := miniredis.RunT(t)
