@@ -6,61 +6,51 @@ header = """
 All notable changes to ServicePro will be documented in this file.
 """
 body = """
-{%- if version %}
+{% if version -%}
 ## [{{ version | trim_start_matches(pat="v") }}] - {{ timestamp | date(format="%Y-%m-%d") }}
-{%- else %}
+{% else -%}
 ## [Unreleased]
-{%- endif %}
-
-{# Separate commits into release-worthy and dev categories #}
-{%- set release_groups = ["🚨 Major Changes", "🎯 Minor Changes", "✨ Features", "🐛 Bug Fixes", "⚡ Performance", "💥 Breaking Changes"] %}
-{%- set dev_groups = ["📚 Documentation", "♻️ Refactoring", "✅ Tests", "🔧 Miscellaneous", "🚀 CI/CD"] %}
-
-{# Check if we have any release commits #}
-{%- set_global has_release = false %}
-{%- for group, commits in commits | group_by(attribute="group") %}
-{%- if group in release_groups %}
-{%- set_global has_release = true %}
-{%- endif %}
-{%- endfor %}
-
-{# Check if we have any dev commits #}
-{%- set_global has_dev = false %}
-{%- for group, commits in commits | group_by(attribute="group") %}
-{%- if group in dev_groups %}
-{%- set_global has_dev = true %}
-{%- endif %}
-{%- endfor %}
-
-{%- if has_release %}
-
+{% endif -%}
+{% set release_groups = ["🚨 Major Changes", "🎯 Minor Changes", "✨ Features", "🐛 Bug Fixes", "⚡ Performance", "💥 Breaking Changes"] -%}
+{% set dev_groups = ["📚 Documentation", "♻️ Refactoring", "✅ Tests", "🔧 Miscellaneous", "🚀 CI/CD"] -%}
+{% set_global has_release = false -%}
+{% for group, commits in commits | group_by(attribute="group") -%}
+{% if group in release_groups -%}
+{% set_global has_release = true -%}
+{% endif -%}
+{% endfor -%}
+{% set_global has_dev = false -%}
+{% for group, commits in commits | group_by(attribute="group") -%}
+{% if group in dev_groups -%}
+{% set_global has_dev = true -%}
+{% endif -%}
+{% endfor -%}
+{% if has_release %}
 ### Release Features
 
 | Type | Description | Commit |
 |------|-------------|--------|
-{%- for group, commits in commits | group_by(attribute="group") %}
-{%- if group in release_groups %}
-{%- for commit in commits %}
+{% for group, commits in commits | group_by(attribute="group") -%}
+{% if group in release_groups -%}
+{% for commit in commits -%}
 | {{ group }} | {% if commit.scope %}**{{ commit.scope }}**: {% endif %}{{ commit.message | upper_first }} | [`{{ commit.id | truncate(length=7, end="") }}`](https://github.com/javaknight1/servicepro/commit/{{ commit.id }}) |
-{%- endfor %}
-{%- endif %}
-{%- endfor %}
-{%- endif %}
-
-{%- if has_dev %}
-
+{% endfor -%}
+{% endif -%}
+{% endfor -%}
+{% endif -%}
+{% if has_dev %}
 ### Dev Features
 
 | Type | Description | Commit |
 |------|-------------|--------|
-{%- for group, commits in commits | group_by(attribute="group") %}
-{%- if group in dev_groups %}
-{%- for commit in commits %}
+{% for group, commits in commits | group_by(attribute="group") -%}
+{% if group in dev_groups -%}
+{% for commit in commits -%}
 | {{ group }} | {% if commit.scope %}**{{ commit.scope }}**: {% endif %}{{ commit.message | upper_first }} | [`{{ commit.id | truncate(length=7, end="") }}`](https://github.com/javaknight1/servicepro/commit/{{ commit.id }}) |
-{%- endfor %}
-{%- endif %}
-{%- endfor %}
-{%- endif %}
+{% endfor -%}
+{% endif -%}
+{% endfor -%}
+{% endif -%}
 """
 trim = true
 
