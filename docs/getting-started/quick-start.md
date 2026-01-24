@@ -80,7 +80,7 @@ cd backend && cp .env.example .env && cd ..
 make migrate
 
 # 5. Start backend (in one terminal)
-cd backend && go run cmd/api/cmd/main.go
+cd backend && go run cmd/cmd/main.go
 
 # 6. Start frontend (in another terminal)
 cd frontend && npm run dev

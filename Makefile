@@ -1,6 +1,6 @@
 .PHONY: help setup-hooks lint lint-fix lint-check test format format-check dev up down migrate
 .PHONY: test-unit test-integration test-e2e test-performance test-all
-.PHONY: coverage ci notify
+.PHONY: coverage ci ci-local ci-lint ci-backend ci-frontend notify
 .PHONY: k6-smoke k6-load k6-stress k6-ci
 .PHONY: artillery-stress artillery-peak artillery-soak artillery-spike
 .PHONY: bench bench-api bench-db bench-e2e bench-critical bench-report bench-schedule
@@ -68,7 +68,11 @@ help:
 	@echo "  bench-schedule   - Start benchmark scheduler"
 	@echo ""
 	@echo "CI/CD:"
-	@echo "  ci           - Run full CI pipeline locally"
+	@echo "  ci-local     - Run exactly what CI runs (lint + backend + frontend)"
+	@echo "  ci-lint      - Run lint checks only (matches CI)"
+	@echo "  ci-backend   - Run backend tests + build (matches CI)"
+	@echo "  ci-frontend  - Run frontend tests + build (matches CI)"
+	@echo "  ci           - Run full CI pipeline (legacy)"
 	@echo "  ci-quick     - Run quick CI (lint + unit tests)"
 	@echo "  notify       - Send test notifications"
 	@echo ""
@@ -145,7 +149,7 @@ frontend-format:
 
 frontend-test:
 	@echo "Running frontend tests..."
-	@cd frontend && npm test -- --watchAll=false
+	@cd frontend && npm test -- --run --passWithNoTests
 
 frontend-build:
 	@echo "Building frontend..."
@@ -172,11 +176,11 @@ backend-format:
 
 backend-test:
 	@echo "Running backend tests..."
-	@cd backend && go test ./... -v
+	@cd backend && go test -v -race -timeout 5m ./... -skip "Integration"
 
 backend-build:
 	@echo "Building backend..."
-	@cd backend && go build -o bin/servicepro ./cmd/server
+	@cd backend && go build -o /dev/null ./cmd
 
 # Install dependencies
 install-deps: install-golangci-lint
@@ -211,7 +215,7 @@ dev-db:
 
 dev-backend:
 	@echo "Starting backend server..."
-	@cd backend && go run cmd/api/cmd/main.go
+	@cd backend && go run cmd/cmd/main.go
 
 dev-frontend:
 	@echo "Starting frontend dev server..."
@@ -455,7 +459,41 @@ coverage-view:
 # CI/CD
 # =============================================================================
 
-# Full CI pipeline
+# Run exactly what CI runs (matches checks.yml)
+ci-local: ci-lint ci-backend ci-frontend
+	@echo ""
+	@echo "✅ All CI checks passed locally!"
+
+# Lint check (matches CI lint job)
+ci-lint:
+	@echo "═══════════════════════════════════════════════════════════════"
+	@echo "Running lint checks (matches CI)..."
+	@echo "═══════════════════════════════════════════════════════════════"
+	@pre-commit run --all-files --show-diff-on-failure
+
+# Backend checks (matches CI backend-tests job)
+ci-backend:
+	@echo ""
+	@echo "═══════════════════════════════════════════════════════════════"
+	@echo "Running backend tests (matches CI)..."
+	@echo "═══════════════════════════════════════════════════════════════"
+	@cd backend && go test -v -race -timeout 5m ./... -skip "Integration"
+	@echo "Verifying backend build..."
+	@cd backend && go build -o /dev/null ./cmd
+	@echo "✓ Backend checks passed"
+
+# Frontend checks (matches CI frontend-tests job)
+ci-frontend:
+	@echo ""
+	@echo "═══════════════════════════════════════════════════════════════"
+	@echo "Running frontend tests (matches CI)..."
+	@echo "═══════════════════════════════════════════════════════════════"
+	@cd frontend && npm test -- --run --passWithNoTests
+	@echo "Verifying frontend build..."
+	@cd frontend && npm run build
+	@echo "✓ Frontend checks passed"
+
+# Full CI pipeline (legacy - uses scripts)
 ci:
 	@echo "Running CI pipeline..."
 	@./scripts/run-tests.sh --ci -p

@@ -170,21 +170,40 @@ describe('Input Component', () => {
   // Input Type Tests - Table Driven
   // ==========================================================================
   describe('Input Types', () => {
-    const inputTypes = [
-      { type: 'text' as const, role: 'textbox' },
-      { type: 'email' as const, role: 'textbox' },
-      { type: 'password' as const, role: 'textbox' },
-      { type: 'tel' as const, role: 'textbox' },
-      { type: 'url' as const, role: 'textbox' },
-      { type: 'search' as const, role: 'searchbox' },
-    ];
+    it('renders text input type', () => {
+      render(<Input type="text" />);
+      const input = screen.getByRole('textbox');
+      expect(input).toHaveAttribute('type', 'text');
+    });
 
-    inputTypes.forEach(({ type, role }) => {
-      it(`renders ${type} input type`, () => {
-        render(<Input type={type} />);
-        const input = screen.getByRole(role);
-        expect(input).toHaveAttribute('type', type);
-      });
+    it('renders email input type', () => {
+      render(<Input type="email" />);
+      const input = screen.getByRole('textbox');
+      expect(input).toHaveAttribute('type', 'email');
+    });
+
+    it('renders password input type', () => {
+      render(<Input type="password" data-testid="password-input" />);
+      const input = screen.getByTestId('password-input');
+      expect(input).toHaveAttribute('type', 'password');
+    });
+
+    it('renders tel input type', () => {
+      render(<Input type="tel" />);
+      const input = screen.getByRole('textbox');
+      expect(input).toHaveAttribute('type', 'tel');
+    });
+
+    it('renders url input type', () => {
+      render(<Input type="url" />);
+      const input = screen.getByRole('textbox');
+      expect(input).toHaveAttribute('type', 'url');
+    });
+
+    it('renders search input type', () => {
+      render(<Input type="search" />);
+      const input = screen.getByRole('searchbox');
+      expect(input).toHaveAttribute('type', 'search');
     });
   });
 

@@ -19,7 +19,7 @@ set -e
 # =============================================================================
 
 REPO_URL="https://github.com/javaknight1/servicepro"
-MAIN_BRANCH="main"  # or "master"
+MAIN_BRANCH="master"
 
 # =============================================================================
 # Colors & Helpers

@@ -81,9 +81,10 @@ describe('TotalCalculator', () => {
   it('should calculate totals correctly with zero tax rate', () => {
     render(<TotalCalculator items={mockItems} taxRate={0} />);
 
-    expect(screen.getByText('$175.00')).toBeInTheDocument(); // Subtotal
+    // When tax rate is 0, subtotal and grand total are both $175.00
+    const priceElements = screen.getAllByText('$175.00');
+    expect(priceElements.length).toBe(2); // Subtotal and Grand Total
     expect(screen.getByText('$0.00')).toBeInTheDocument(); // Tax amount
-    expect(screen.getByText('$175.00')).toBeInTheDocument(); // Grand total (same as subtotal)
   });
 
   it('should handle decimal quantities and prices', () => {

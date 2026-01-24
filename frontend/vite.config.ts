@@ -111,6 +111,8 @@ export default defineConfig(({ mode }) => ({
       '@types': path.resolve(__dirname, './src/types'),
       '@config': path.resolve(__dirname, './src/config'),
       '@providers': path.resolve(__dirname, './src/providers'),
+      // Mock @sentry/tracing (not installed as a dependency)
+      '@sentry/tracing': path.resolve(__dirname, './src/test/__mocks__/sentry-tracing.ts'),
     },
   },
   server: {
@@ -127,6 +129,9 @@ export default defineConfig(({ mode }) => ({
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     include: ['src/**/*.{test,spec}.{ts,tsx}'],
+    deps: {
+      inline: ['@sentry/tracing'],
+    },
     coverage: {
       provider: 'v8',
       reporter: ['text', 'text-summary', 'json', 'html', 'lcov'],

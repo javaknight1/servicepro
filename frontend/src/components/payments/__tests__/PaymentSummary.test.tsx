@@ -31,7 +31,9 @@ describe('PaymentSummary', () => {
     render(<PaymentSummary summary={baseSummary} showLineItems />);
 
     expect(screen.getByText('Service Plan - Pro')).toBeInTheDocument();
-    expect(screen.getByText('$99.00')).toBeInTheDocument();
+    // $99.00 appears for both line item and subtotal
+    const prices = screen.getAllByText('$99.00');
+    expect(prices.length).toBeGreaterThan(0);
   });
 
   it('hides line items when showLineItems is false', () => {
@@ -44,7 +46,9 @@ describe('PaymentSummary', () => {
     render(<PaymentSummary summary={baseSummary} />);
 
     expect(screen.getByText('Subtotal')).toBeInTheDocument();
-    expect(screen.getByText('$99.00')).toBeInTheDocument();
+    // Find at least one $99.00 (subtotal value)
+    const prices = screen.getAllByText('$99.00');
+    expect(prices.length).toBeGreaterThan(0);
   });
 
   it('displays tax with rate', () => {
@@ -115,7 +119,9 @@ describe('PaymentSummary', () => {
     render(<PaymentSummary summary={summaryWithMultiQuantity} showLineItems />);
 
     expect(screen.getByText('3 x $10.00')).toBeInTheDocument();
-    expect(screen.getByText('$30.00')).toBeInTheDocument();
+    // $30.00 appears for both line item and subtotal
+    const prices = screen.getAllByText('$30.00');
+    expect(prices.length).toBeGreaterThan(0);
   });
 
   it('displays currency notice', () => {

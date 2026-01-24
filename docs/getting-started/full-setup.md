@@ -244,7 +244,7 @@ sudo -u postgres createuser --interactive --pwprompt servicepro
 sudo -u postgres createdb -O servicepro servicepro_dev
 
 # Run migrations
-cd backend && go run cmd/api/cmd/main.go migrate up
+cd backend && go run cmd/cmd/main.go migrate up
 ```
 
 ## Running the Application

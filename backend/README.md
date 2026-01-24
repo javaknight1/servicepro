@@ -15,7 +15,7 @@ Go backend service for the ServicePro platform.
 
 ```
 backend/
-├── cmd/api/              # Application entry point
+├── cmd/              # Application entry point
 ├── config/               # Configuration management
 ├── internal/
 │   ├── api/
@@ -65,7 +65,7 @@ export JWT_SECRET=dev-secret-key-min-32-characters-long
 make migrate-up
 
 # Run the application
-go run cmd/api/main.go
+go run cmd/main.go
 ```
 
 ## Environment Variables

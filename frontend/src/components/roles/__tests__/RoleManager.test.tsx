@@ -153,13 +153,14 @@ describe('RoleManager', () => {
       expect(screen.getByText('admin')).toBeInTheDocument();
     });
 
-    // Find and click edit button
+    // Find and click edit button (first icon button in the admin row)
     const rows = screen.getAllByRole('row');
     const adminRow = rows.find((row) => within(row).queryByText('admin'));
     expect(adminRow).toBeDefined();
 
-    const editButton = within(adminRow!).getByRole('button', { name: '' });
-    await user.click(editButton);
+    // Get all buttons in the row, the first one is typically edit
+    const buttons = within(adminRow!).getAllByRole('button');
+    await user.click(buttons[0]);
 
     // Check modal is open
     await waitFor(() => {
@@ -185,9 +186,9 @@ describe('RoleManager', () => {
     const deleteButton = deleteButtons[deleteButtons.length - 1];
     await user.click(deleteButton);
 
-    // Check confirmation modal
+    // Check confirmation modal - "Delete Role" appears in both title and button
     await waitFor(() => {
-      expect(screen.getByText('Delete Role')).toBeInTheDocument();
+      expect(screen.getAllByText('Delete Role').length).toBeGreaterThan(0);
       expect(
         screen.getByText(/are you sure you want to delete the role/i)
       ).toBeInTheDocument();
@@ -211,12 +212,14 @@ describe('RoleManager', () => {
     const deleteButtons = within(userRow).getAllByRole('button');
     await user.click(deleteButtons[deleteButtons.length - 1]);
 
-    // Confirm deletion
+    // Confirm deletion - "Delete Role" appears in both title and button
     await waitFor(() => {
-      expect(screen.getByText('Delete Role')).toBeInTheDocument();
+      expect(screen.getAllByText('Delete Role').length).toBeGreaterThan(0);
     });
 
-    const confirmButton = screen.getByRole('button', { name: /delete role/i });
+    // The confirm button specifically has the text "Delete Role"
+    const confirmButtons = screen.getAllByRole('button', { name: /delete role/i });
+    const confirmButton = confirmButtons[confirmButtons.length - 1]; // Last one is the confirm button
     await user.click(confirmButton);
 
     // Check API was called

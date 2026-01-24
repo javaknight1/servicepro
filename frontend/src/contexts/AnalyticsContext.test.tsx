@@ -172,13 +172,23 @@ describe('useAnalytics', () => {
     // Suppress console.error for expected error
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation();
 
-    expect(() => {
+    // In React 18, errors thrown during render are handled by React's error boundaries
+    // So we need to catch the error differently
+    let thrownError: Error | null = null;
+    try {
       render(
         <MemoryRouter>
           <TestComponent />
         </MemoryRouter>
       );
-    }).toThrow('useAnalytics must be used within an AnalyticsProvider');
+    } catch (error) {
+      thrownError = error as Error;
+    }
+
+    expect(thrownError).not.toBeNull();
+    expect(thrownError?.message).toBe(
+      'useAnalytics must be used within an AnalyticsProvider'
+    );
 
     consoleSpy.mockRestore();
   });
@@ -198,11 +208,7 @@ describe('useAnalytics', () => {
 
     fireEvent.click(screen.getByText('Track Click'));
 
-    expect(analytics.trackClick).toHaveBeenCalledWith(
-      'btn-1',
-      'Click Me',
-      undefined
-    );
+    expect(analytics.trackClick).toHaveBeenCalledWith('btn-1', 'Click Me');
   });
 
   it('provides trackFormSubmit function', () => {
@@ -230,11 +236,7 @@ describe('useAnalytics', () => {
 
     fireEvent.click(screen.getByText('Track Feature'));
 
-    expect(analytics.trackFeature).toHaveBeenCalledWith(
-      'dashboard',
-      'viewed',
-      undefined
-    );
+    expect(analytics.trackFeature).toHaveBeenCalledWith('dashboard', 'viewed');
   });
 
   it('provides trackError function', () => {
@@ -244,8 +246,7 @@ describe('useAnalytics', () => {
 
     expect(analytics.trackError).toHaveBeenCalledWith(
       'TestError',
-      'Something went wrong',
-      undefined
+      'Something went wrong'
     );
   });
 

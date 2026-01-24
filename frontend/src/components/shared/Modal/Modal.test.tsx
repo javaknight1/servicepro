@@ -122,28 +122,32 @@ describe('Modal Component', () => {
     ];
 
     sizes.forEach(({ size, expectedClass }) => {
-      it(`renders ${size} size with correct styles`, () => {
-        const { container } = render(
+      it(`renders ${size} size with correct styles`, async () => {
+        render(
           <Modal isOpen={true} onClose={vi.fn()} size={size}>
             {size} Modal
           </Modal>
         );
 
-        // Find the Dialog.Panel element which has the size class
-        const panel = container.querySelector('[class*="rounded-2xl"]');
-        expect(panel).toHaveClass(expectedClass);
+        // Wait for the Dialog.Panel element to appear (rendered via Portal)
+        await waitFor(() => {
+          const panel = document.querySelector('[class*="rounded-2xl"]');
+          expect(panel).toHaveClass(expectedClass);
+        });
       });
     });
 
-    it('uses md size by default', () => {
-      const { container } = render(
+    it('uses md size by default', async () => {
+      render(
         <Modal isOpen={true} onClose={vi.fn()}>
           Default Size Modal
         </Modal>
       );
 
-      const panel = container.querySelector('[class*="rounded-2xl"]');
-      expect(panel).toHaveClass('max-w-md');
+      await waitFor(() => {
+        const panel = document.querySelector('[class*="rounded-2xl"]');
+        expect(panel).toHaveClass('max-w-md');
+      });
     });
   });
 
@@ -275,42 +279,48 @@ describe('Modal Component', () => {
   // Styling Tests
   // ==========================================================================
   describe('Styling', () => {
-    it('applies base modal panel styles', () => {
-      const { container } = render(
+    it('applies base modal panel styles', async () => {
+      render(
         <Modal isOpen={true} onClose={vi.fn()}>
           Content
         </Modal>
       );
 
-      const panel = container.querySelector('[class*="rounded-2xl"]');
-      expect(panel).toHaveClass('bg-white');
-      expect(panel).toHaveClass('p-6');
-      expect(panel).toHaveClass('shadow-xl');
-      expect(panel).toHaveClass('rounded-2xl');
+      await waitFor(() => {
+        const panel = document.querySelector('[class*="rounded-2xl"]');
+        expect(panel).toHaveClass('bg-white');
+        expect(panel).toHaveClass('p-6');
+        expect(panel).toHaveClass('shadow-xl');
+        expect(panel).toHaveClass('rounded-2xl');
+      });
     });
 
-    it('applies overlay styles', () => {
-      const { container } = render(
+    it('applies overlay styles', async () => {
+      render(
         <Modal isOpen={true} onClose={vi.fn()}>
           Content
         </Modal>
       );
 
-      const overlay = container.querySelector('.bg-black.bg-opacity-25');
-      expect(overlay).toBeInTheDocument();
+      await waitFor(() => {
+        const overlay = document.querySelector('.bg-black.bg-opacity-25');
+        expect(overlay).toBeInTheDocument();
+      });
     });
 
-    it('centers modal in viewport', () => {
-      const { container } = render(
+    it('centers modal in viewport', async () => {
+      render(
         <Modal isOpen={true} onClose={vi.fn()}>
           Content
         </Modal>
       );
 
-      const centering = container.querySelector(
-        '.flex.min-h-full.items-center.justify-center'
-      );
-      expect(centering).toBeInTheDocument();
+      await waitFor(() => {
+        const centering = document.querySelector(
+          '.flex.min-h-full.items-center.justify-center'
+        );
+        expect(centering).toBeInTheDocument();
+      });
     });
   });
 
@@ -433,16 +443,18 @@ describe('Modal Component', () => {
   // Full Size Modal Tests
   // ==========================================================================
   describe('Full Size Modal', () => {
-    it('applies full size specific styles', () => {
-      const { container } = render(
+    it('applies full size specific styles', async () => {
+      render(
         <Modal isOpen={true} onClose={vi.fn()} size="full">
           Full content
         </Modal>
       );
 
-      const panel = container.querySelector('[class*="rounded-2xl"]');
-      expect(panel).toHaveClass('max-w-full');
-      expect(panel).toHaveClass('mx-4');
+      await waitFor(() => {
+        const panel = document.querySelector('[class*="rounded-2xl"]');
+        expect(panel).toHaveClass('max-w-full');
+        expect(panel).toHaveClass('mx-4');
+      });
     });
   });
 });

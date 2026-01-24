@@ -243,7 +243,7 @@ describe('LineItemForm', () => {
       expect(mockOnAdd).toHaveBeenCalledWith({
         description: 'Test Service',
         quantity: '2.5',
-        unit_price: '50.50',
+        unit_price: '50.5', // Browser input trims trailing zeros
       });
     });
   });

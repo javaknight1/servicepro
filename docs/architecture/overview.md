@@ -79,7 +79,7 @@ ServicePro system architecture, services, and design patterns.
 
 ```
 backend/
-├── cmd/api/cmd/          # Application entry point
+├── cmd/cmd/          # Application entry point
 ├── internal/
 │   ├── api/
 │   │   ├── handlers/     # HTTP handlers (controllers)

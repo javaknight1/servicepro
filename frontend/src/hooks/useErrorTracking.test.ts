@@ -6,30 +6,9 @@ import {
   useComponentErrorTracking,
   useErrorHandler,
 } from './useErrorTracking';
+import * as sentry from '@services/errorTracking/sentry';
 
-// Mock the sentry service
-vi.mock('../services/errorTracking/sentry', () => ({
-  captureException: vi.fn(() => 'mock-event-id'),
-  captureMessage: vi.fn(() => 'mock-event-id'),
-  setUser: vi.fn(),
-  setTag: vi.fn(),
-  setExtra: vi.fn(),
-  addBreadcrumb: vi.fn(),
-}));
-
-// Mock Sentry
-vi.mock('@sentry/react', () => ({
-  getCurrentHub: vi.fn(() => ({
-    getScope: vi.fn(() => ({
-      getTransaction: vi.fn(() => ({
-        startChild: vi.fn(() => ({
-          setStatus: vi.fn(),
-          finish: vi.fn(),
-        })),
-      })),
-    })),
-  })),
-}));
+// The sentry service is already mocked globally in setup.ts
 
 describe('useErrorTracking', () => {
   beforeEach(() => {
@@ -38,7 +17,7 @@ describe('useErrorTracking', () => {
 
   describe('trackError', () => {
     it('captures error with context', () => {
-      const { captureException } = require('../services/errorTracking/sentry');
+      const { captureException } = vi.mocked(sentry);
       const { result } = renderHook(() =>
         useErrorTracking({ componentName: 'TestComponent' })
       );
@@ -62,7 +41,7 @@ describe('useErrorTracking', () => {
     });
 
     it('includes initial tags', () => {
-      const { captureException } = require('../services/errorTracking/sentry');
+      const { captureException } = vi.mocked(sentry);
       const { result } = renderHook(() =>
         useErrorTracking({
           componentName: 'TestComponent',
@@ -88,7 +67,7 @@ describe('useErrorTracking', () => {
 
   describe('trackMessage', () => {
     it('captures message with level', () => {
-      const { captureMessage } = require('../services/errorTracking/sentry');
+      const { captureMessage } = vi.mocked(sentry);
       const { result } = renderHook(() => useErrorTracking());
 
       act(() => {
@@ -105,7 +84,7 @@ describe('useErrorTracking', () => {
 
   describe('trackAction', () => {
     it('adds breadcrumb for user action', () => {
-      const { addBreadcrumb } = require('../services/errorTracking/sentry');
+      const { addBreadcrumb } = vi.mocked(sentry);
       const { result } = renderHook(() =>
         useErrorTracking({ componentName: 'TestComponent' })
       );
@@ -128,7 +107,7 @@ describe('useErrorTracking', () => {
 
   describe('trackNavigation', () => {
     it('adds breadcrumb for navigation', () => {
-      const { addBreadcrumb } = require('../services/errorTracking/sentry');
+      const { addBreadcrumb } = vi.mocked(sentry);
       const { result } = renderHook(() => useErrorTracking());
 
       act(() => {
@@ -146,7 +125,7 @@ describe('useErrorTracking', () => {
 
   describe('trackApiCall', () => {
     it('adds breadcrumb for successful API call', () => {
-      const { addBreadcrumb } = require('../services/errorTracking/sentry');
+      const { addBreadcrumb } = vi.mocked(sentry);
       const { result } = renderHook(() => useErrorTracking());
 
       act(() => {
@@ -166,7 +145,7 @@ describe('useErrorTracking', () => {
     });
 
     it('adds error level for failed API call', () => {
-      const { addBreadcrumb } = require('../services/errorTracking/sentry');
+      const { addBreadcrumb } = vi.mocked(sentry);
       const { result } = renderHook(() => useErrorTracking());
 
       act(() => {
@@ -184,7 +163,7 @@ describe('useErrorTracking', () => {
 
 describe('useErrorTrackingUser', () => {
   it('sets user when provided', () => {
-    const { setUser } = require('../services/errorTracking/sentry');
+    const { setUser } = vi.mocked(sentry);
     const user = { id: '123', email: 'test@example.com' };
 
     renderHook(() => useErrorTrackingUser(user));
@@ -193,7 +172,7 @@ describe('useErrorTrackingUser', () => {
   });
 
   it('clears user when null', () => {
-    const { setUser } = require('../services/errorTracking/sentry');
+    const { setUser } = vi.mocked(sentry);
 
     const { rerender } = renderHook(({ user }) => useErrorTrackingUser(user), {
       initialProps: {
@@ -218,7 +197,7 @@ describe('useErrorTrackingUser', () => {
 
 describe('useComponentErrorTracking', () => {
   it('tracks component mount', () => {
-    const { addBreadcrumb } = require('../services/errorTracking/sentry');
+    const { addBreadcrumb } = vi.mocked(sentry);
 
     renderHook(() => useComponentErrorTracking('TestComponent'));
 
@@ -230,7 +209,7 @@ describe('useComponentErrorTracking', () => {
   });
 
   it('tracks component unmount', () => {
-    const { addBreadcrumb } = require('../services/errorTracking/sentry');
+    const { addBreadcrumb } = vi.mocked(sentry);
 
     const { unmount } = renderHook(() =>
       useComponentErrorTracking('TestComponent')
@@ -250,7 +229,7 @@ describe('useComponentErrorTracking', () => {
 describe('useErrorHandler', () => {
   describe('handleError', () => {
     it('logs and tracks error', () => {
-      const { captureException } = require('../services/errorTracking/sentry');
+      const { captureException } = vi.mocked(sentry);
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation();
 
       const { result } = renderHook(() => useErrorHandler('TestComponent'));
@@ -269,7 +248,7 @@ describe('useErrorHandler', () => {
 
   describe('withErrorHandling', () => {
     it('catches sync errors', () => {
-      const { captureException } = require('../services/errorTracking/sentry');
+      const { captureException } = vi.mocked(sentry);
       vi.spyOn(console, 'error').mockImplementation();
 
       const { result } = renderHook(() => useErrorHandler());
@@ -305,7 +284,7 @@ describe('useErrorHandler', () => {
 
   describe('withAsyncErrorHandling', () => {
     it('catches async errors', async () => {
-      const { captureException } = require('../services/errorTracking/sentry');
+      const { captureException } = vi.mocked(sentry);
       vi.spyOn(console, 'error').mockImplementation();
 
       const { result } = renderHook(() => useErrorHandler());

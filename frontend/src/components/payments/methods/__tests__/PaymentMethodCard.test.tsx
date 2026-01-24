@@ -36,8 +36,8 @@ describe('PaymentMethodCard', () => {
   it('renders card brand and last 4 digits', () => {
     render(<PaymentMethodCard paymentMethod={basePaymentMethod} />);
 
-    expect(screen.getByText(/Visa/)).toBeInTheDocument();
-    expect(screen.getByText(/4242/)).toBeInTheDocument();
+    // The display name contains both brand and last 4 digits
+    expect(screen.getByText('Visa •••• 4242')).toBeInTheDocument();
   });
 
   it('renders expiry date', () => {
@@ -85,8 +85,8 @@ describe('PaymentMethodCard', () => {
     };
     render(<PaymentMethodCard paymentMethod={bankPM} />);
 
-    expect(screen.getByText(/Chase/)).toBeInTheDocument();
-    expect(screen.getByText(/6789/)).toBeInTheDocument();
+    // The display name contains both bank name and last 4 digits
+    expect(screen.getByText('Chase •••• 6789')).toBeInTheDocument();
   });
 
   // ==========================================================================

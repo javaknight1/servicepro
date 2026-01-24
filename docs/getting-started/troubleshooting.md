@@ -130,11 +130,11 @@ docker compose up -d postgres
 
 ```bash
 # Check migration status
-cd backend && go run cmd/api/cmd/main.go migrate status
+cd backend && go run cmd/cmd/main.go migrate status
 
 # Reset migrations (WARNING: deletes all data)
-go run cmd/api/cmd/main.go migrate down --all
-go run cmd/api/cmd/main.go migrate up
+go run cmd/cmd/main.go migrate down --all
+go run cmd/cmd/main.go migrate up
 
 # Or reset entire database
 make db-reset
@@ -181,7 +181,7 @@ lsof -i :8080
 kill -9 <PID>
 
 # Or use a different port
-APP_PORT=8081 go run cmd/api/cmd/main.go
+APP_PORT=8081 go run cmd/cmd/main.go
 ```
 
 ### Environment variables not loading
@@ -286,7 +286,7 @@ docker compose exec postgres psql -U postgres -c \
   "SELECT email, email_verified FROM users WHERE email = 'admin@servicepro.local';"
 
 # Reset password or create user
-cd backend && go run cmd/api/cmd/main.go seed
+cd backend && go run cmd/cmd/main.go seed
 ```
 
 ### Token not persisting

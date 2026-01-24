@@ -28,7 +28,7 @@ build/
 # Backend compiled binaries
 backend/main
 backend/api
-backend/cmd/api/api
+backend/cmd/api
 /backend/cmd/*/main
 
 # React/Frontend build artifacts

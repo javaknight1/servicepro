@@ -22,6 +22,22 @@ vi.mock('@sentry/react', () => ({
   })),
 }));
 
+// Mock @sentry/tracing globally (not installed as a dependency)
+vi.mock('@sentry/tracing', () => ({
+  BrowserTracing: vi.fn().mockImplementation(() => ({})),
+}));
+
+// Mock the sentry service which depends on @sentry/tracing
+vi.mock('../services/errorTracking/sentry', () => ({
+  captureException: vi.fn(() => 'mock-event-id'),
+  captureMessage: vi.fn(() => 'mock-event-id'),
+  setUser: vi.fn(),
+  setTag: vi.fn(),
+  setExtra: vi.fn(),
+  addBreadcrumb: vi.fn(),
+  initSentry: vi.fn(),
+}));
+
 // Mock @tanstack/react-table globally (not installed as a dependency)
 vi.mock('@tanstack/react-table', () => ({
   useReactTable: vi.fn(() => ({

@@ -2,14 +2,7 @@ import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { vi } from 'vitest';
 import { ErrorBoundary, withErrorBoundary } from './ErrorBoundary';
-
-// Mock Sentry
-vi.mock('@sentry/react', () => ({
-  withScope: vi.fn((fn) => fn({ setExtras: vi.fn() })),
-  captureException: vi.fn(() => 'mock-event-id'),
-  showReportDialog: vi.fn(),
-  withErrorBoundary: vi.fn((Component) => Component),
-}));
+import * as Sentry from '@sentry/react';
 
 // Component that throws an error
 const ThrowError: React.FC<{ shouldThrow?: boolean }> = ({
@@ -171,16 +164,15 @@ describe('ErrorBoundary', () => {
   });
 
   it('captures error to Sentry', () => {
-    const Sentry = require('@sentry/react');
-
     render(
       <ErrorBoundary>
         <ThrowError />
       </ErrorBoundary>
     );
 
-    expect(Sentry.withScope).toHaveBeenCalled();
-    expect(Sentry.captureException).toHaveBeenCalled();
+    // Verify that the error boundary attempted to capture the exception
+    expect(vi.mocked(Sentry.withScope)).toHaveBeenCalled();
+    expect(vi.mocked(Sentry.captureException)).toHaveBeenCalled();
   });
 });
 

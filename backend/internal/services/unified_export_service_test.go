@@ -26,6 +26,13 @@ func setupExportTestDB(t *testing.T) *gorm.DB {
 	db, err := gorm.Open(sqlite.Open(dbName), &gorm.Config{})
 	require.NoError(t, err)
 
+	// Set busy timeout to avoid "database is locked" errors when multiple
+	// goroutines access the database concurrently
+	sqlDB, err := db.DB()
+	require.NoError(t, err)
+	_, err = sqlDB.Exec("PRAGMA busy_timeout = 5000")
+	require.NoError(t, err)
+
 	// Create customers table
 	err = db.Exec(`
 		CREATE TABLE customers (
