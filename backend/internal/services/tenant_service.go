@@ -30,12 +30,18 @@ type PermissionCacheInvalidator interface {
 	InvalidateUserPermissions(ctx context.Context, userID uuid.UUID) error
 }
 
+// MembershipAssigner interface for assigning default membership
+type MembershipAssigner interface {
+	AssignDefaultTier(ctx context.Context, tenantID uuid.UUID) error
+}
+
 // TenantService handles tenant business logic
 type TenantService struct {
-	tenantRepo      *repository.TenantRepository
-	userRepo        repository.UserRepositoryInterface
-	permInvalidator PermissionCacheInvalidator
-	defaultRoleID   uuid.UUID // Default role for new members
+	tenantRepo         *repository.TenantRepository
+	userRepo           repository.UserRepositoryInterface
+	permInvalidator    PermissionCacheInvalidator
+	membershipAssigner MembershipAssigner
+	defaultRoleID      uuid.UUID // Default role for new members
 }
 
 // NewTenantService creates a new tenant service
@@ -53,6 +59,12 @@ func NewTenantService(tenantRepo *repository.TenantRepository, userRepo reposito
 // This is optional - if not set, permission cache won't be invalidated on membership changes
 func (s *TenantService) SetPermissionInvalidator(invalidator PermissionCacheInvalidator) {
 	s.permInvalidator = invalidator
+}
+
+// SetMembershipAssigner sets the membership assigner for assigning default tiers
+// This is optional - if not set, new tenants won't get a default membership tier
+func (s *TenantService) SetMembershipAssigner(assigner MembershipAssigner) {
+	s.membershipAssigner = assigner
 }
 
 // invalidatePermissionCache invalidates the permission cache for a user
@@ -136,6 +148,14 @@ func (s *TenantService) CreateTenant(ctx context.Context, req *models.CreateTena
 		log.Printf("[TENANT] WARNING: Could not verify membership: %v", err)
 	} else {
 		log.Printf("[TENANT] Membership verification: UserBelongsToTenant=%v", belongs)
+	}
+
+	// Assign default membership tier (Free)
+	if s.membershipAssigner != nil {
+		if err := s.membershipAssigner.AssignDefaultTier(ctx, tenant.ID); err != nil {
+			log.Printf("[TENANT] WARNING: Could not assign default membership tier: %v", err)
+			// Don't fail tenant creation for this
+		}
 	}
 
 	return tenant, nil

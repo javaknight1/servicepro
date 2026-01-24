@@ -14,6 +14,7 @@ const (
 	ResourceUsers        = "users"
 	ResourceRoles        = "roles"
 	ResourceSettings     = "settings"
+	ResourceMembership   = "membership"
 )
 
 // Actions defines all action types in the system
@@ -136,6 +137,12 @@ const (
 	SettingsUpdate = "settings.update"
 )
 
+// Membership permissions
+const (
+	MembershipUpdate  = "membership.update"
+	MembershipBilling = "membership.billing"
+)
+
 // PermissionDefinition represents a permission with its metadata
 type PermissionDefinition struct {
 	Name        string
@@ -226,6 +233,10 @@ func AllPermissions() []PermissionDefinition {
 		// Settings
 		{SettingsRead, "View system settings", ResourceSettings, ActionRead},
 		{SettingsUpdate, "Update system settings", ResourceSettings, ActionUpdate},
+
+		// Membership
+		{MembershipUpdate, "Change membership tier", ResourceMembership, ActionUpdate},
+		{MembershipBilling, "Manage billing settings", ResourceMembership, ActionAdmin},
 	}
 }
 
@@ -254,6 +265,7 @@ func DefaultRolePermissions() []RolePermissions {
 				UsersCreate, UsersRead, UsersUpdate, UsersDelete, UsersList,
 				RolesCreate, RolesRead, RolesUpdate, RolesDelete, RolesAssign,
 				SettingsRead, SettingsUpdate,
+				MembershipUpdate, MembershipBilling,
 			},
 		},
 		{
@@ -272,6 +284,7 @@ func DefaultRolePermissions() []RolePermissions {
 				UsersCreate, UsersRead, UsersUpdate, UsersDelete, UsersList,
 				RolesRead, RolesAssign,
 				SettingsRead, SettingsUpdate,
+				MembershipUpdate, MembershipBilling,
 			},
 		},
 		{
@@ -341,5 +354,6 @@ func PermissionsByResource() map[string][]string {
 		ResourceUsers:        {UsersCreate, UsersRead, UsersUpdate, UsersDelete, UsersList},
 		ResourceRoles:        {RolesCreate, RolesRead, RolesUpdate, RolesDelete, RolesAssign},
 		ResourceSettings:     {SettingsRead, SettingsUpdate},
+		ResourceMembership:   {MembershipUpdate, MembershipBilling},
 	}
 }

@@ -1386,6 +1386,246 @@ CREATE TRIGGER trigger_revenue_alerts_updated_at BEFORE UPDATE ON revenue_alerts
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- ============================================================================
+-- MEMBERSHIP SYSTEM
+-- ============================================================================
+
+-- Membership tier status
+CREATE TYPE membership_status AS ENUM ('active', 'cancelled', 'expired', 'pending');
+
+-- Subscription billing cycle
+CREATE TYPE billing_cycle AS ENUM ('monthly', 'annual');
+
+-- Membership tiers table
+CREATE TABLE membership_tiers (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR(50) NOT NULL UNIQUE,
+    display_name VARCHAR(100) NOT NULL,
+    description TEXT,
+    monthly_price_cents INTEGER NOT NULL DEFAULT 0,
+    annual_price_cents INTEGER NOT NULL DEFAULT 0,
+    features JSONB NOT NULL DEFAULT '{}',
+    enabled BOOLEAN NOT NULL DEFAULT TRUE, -- FALSE for legacy tiers (grandfathered users only)
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_membership_tiers_name ON membership_tiers(name) WHERE enabled = TRUE;
+CREATE INDEX idx_membership_tiers_sort ON membership_tiers(sort_order) WHERE enabled = TRUE;
+
+CREATE TRIGGER trigger_membership_tiers_updated_at BEFORE UPDATE ON membership_tiers
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Membership limitations table
+CREATE TABLE membership_limitations (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    tier_id UUID NOT NULL REFERENCES membership_tiers(id) ON DELETE CASCADE,
+    resource_type VARCHAR(50) NOT NULL,
+    limit_value INTEGER NOT NULL, -- -1 for unlimited
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT unique_tier_resource UNIQUE (tier_id, resource_type)
+);
+
+CREATE INDEX idx_membership_limitations_tier ON membership_limitations(tier_id);
+
+CREATE TRIGGER trigger_membership_limitations_updated_at BEFORE UPDATE ON membership_limitations
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Tenant subscriptions table
+CREATE TABLE tenant_subscriptions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    tier_id UUID NOT NULL REFERENCES membership_tiers(id) ON DELETE RESTRICT,
+    status membership_status NOT NULL DEFAULT 'active',
+    billing_cycle billing_cycle NOT NULL DEFAULT 'monthly',
+    price_cents INTEGER NOT NULL DEFAULT 0, -- Locked-in price at time of subscription (for grandfathering)
+    started_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    ended_at TIMESTAMP WITH TIME ZONE,
+    current_period_start TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    current_period_end TIMESTAMP WITH TIME ZONE,
+    cancelled_at TIMESTAMP WITH TIME ZONE,
+    changed_by UUID REFERENCES users(id) ON DELETE SET NULL,
+    change_reason TEXT,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_tenant_subscriptions_tenant ON tenant_subscriptions(tenant_id);
+CREATE INDEX idx_tenant_subscriptions_status ON tenant_subscriptions(status) WHERE status = 'active';
+CREATE INDEX idx_tenant_subscriptions_tier ON tenant_subscriptions(tier_id);
+
+-- Ensure only one active subscription per tenant
+CREATE UNIQUE INDEX idx_tenant_subscriptions_active ON tenant_subscriptions(tenant_id)
+    WHERE status = 'active';
+
+CREATE TRIGGER trigger_tenant_subscriptions_updated_at BEFORE UPDATE ON tenant_subscriptions
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Seed membership tiers
+INSERT INTO membership_tiers (id, name, display_name, description, monthly_price_cents, annual_price_cents, features, sort_order) VALUES
+    (
+        '00000000-0000-0000-0001-000000000001',
+        'free',
+        'Free',
+        'Get started with basic features',
+        0,
+        0,
+        '{
+            "team_members": 3,
+            "customers": 50,
+            "jobs_per_month": 20,
+            "quotes_per_month": 10,
+            "storage_gb": 1,
+            "advanced_reporting": false,
+            "api_access": false,
+            "webhooks": false,
+            "custom_branding": false
+        }'::jsonb,
+        1
+    ),
+    (
+        '00000000-0000-0000-0001-000000000002',
+        'basic',
+        'Basic',
+        'Perfect for growing businesses',
+        2900,
+        29000,
+        '{
+            "team_members": 10,
+            "customers": 500,
+            "jobs_per_month": 200,
+            "quotes_per_month": 100,
+            "storage_gb": 10,
+            "advanced_reporting": true,
+            "api_access": false,
+            "webhooks": false,
+            "custom_branding": false
+        }'::jsonb,
+        2
+    ),
+    (
+        '00000000-0000-0000-0001-000000000003',
+        'pro',
+        'Pro',
+        'Full-featured solution for professional teams',
+        7900,
+        79000,
+        '{
+            "team_members": -1,
+            "customers": -1,
+            "jobs_per_month": -1,
+            "quotes_per_month": -1,
+            "storage_gb": 100,
+            "advanced_reporting": true,
+            "api_access": true,
+            "webhooks": true,
+            "custom_branding": true
+        }'::jsonb,
+        3
+    )
+ON CONFLICT (name) DO UPDATE SET
+    display_name = EXCLUDED.display_name,
+    description = EXCLUDED.description,
+    monthly_price_cents = EXCLUDED.monthly_price_cents,
+    annual_price_cents = EXCLUDED.annual_price_cents,
+    features = EXCLUDED.features,
+    sort_order = EXCLUDED.sort_order;
+
+-- Seed membership limitations
+-- Free tier
+INSERT INTO membership_limitations (tier_id, resource_type, limit_value) VALUES
+    ('00000000-0000-0000-0001-000000000001', 'team_members', 3),
+    ('00000000-0000-0000-0001-000000000001', 'customers', 50),
+    ('00000000-0000-0000-0001-000000000001', 'jobs_per_month', 20),
+    ('00000000-0000-0000-0001-000000000001', 'quotes_per_month', 10),
+    ('00000000-0000-0000-0001-000000000001', 'storage_gb', 1)
+ON CONFLICT (tier_id, resource_type) DO UPDATE SET limit_value = EXCLUDED.limit_value;
+
+-- Basic tier
+INSERT INTO membership_limitations (tier_id, resource_type, limit_value) VALUES
+    ('00000000-0000-0000-0001-000000000002', 'team_members', 10),
+    ('00000000-0000-0000-0001-000000000002', 'customers', 500),
+    ('00000000-0000-0000-0001-000000000002', 'jobs_per_month', 200),
+    ('00000000-0000-0000-0001-000000000002', 'quotes_per_month', 100),
+    ('00000000-0000-0000-0001-000000000002', 'storage_gb', 10)
+ON CONFLICT (tier_id, resource_type) DO UPDATE SET limit_value = EXCLUDED.limit_value;
+
+-- Pro tier (-1 = unlimited)
+INSERT INTO membership_limitations (tier_id, resource_type, limit_value) VALUES
+    ('00000000-0000-0000-0001-000000000003', 'team_members', -1),
+    ('00000000-0000-0000-0001-000000000003', 'customers', -1),
+    ('00000000-0000-0000-0001-000000000003', 'jobs_per_month', -1),
+    ('00000000-0000-0000-0001-000000000003', 'quotes_per_month', -1),
+    ('00000000-0000-0000-0001-000000000003', 'storage_gb', 100)
+ON CONFLICT (tier_id, resource_type) DO UPDATE SET limit_value = EXCLUDED.limit_value;
+
+-- Add membership permissions
+INSERT INTO permissions (id, name, description, resource, action) VALUES
+    ('40000000-0000-0000-0000-000000000001', 'membership.update', 'Change membership tier', 'membership', 'update'),
+    ('40000000-0000-0000-0000-000000000002', 'membership.billing', 'Manage billing settings', 'membership', 'admin')
+ON CONFLICT (name) DO NOTHING;
+
+-- Grant membership permissions to super_admin and admin
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT '00000000-0000-0000-0000-000000000001', id FROM permissions WHERE name IN ('membership.update', 'membership.billing')
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT '00000000-0000-0000-0000-000000000002', id FROM permissions WHERE name IN ('membership.update', 'membership.billing')
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
+-- Helper function: Get current subscription for a tenant
+CREATE OR REPLACE FUNCTION get_tenant_subscription(p_tenant_id UUID)
+RETURNS TABLE (
+    subscription_id UUID,
+    tier_id UUID,
+    tier_name VARCHAR,
+    tier_display_name VARCHAR,
+    status membership_status,
+    started_at TIMESTAMP WITH TIME ZONE,
+    features JSONB
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        ts.id as subscription_id,
+        ts.tier_id,
+        mt.name as tier_name,
+        mt.display_name as tier_display_name,
+        ts.status,
+        ts.started_at,
+        mt.features
+    FROM tenant_subscriptions ts
+    JOIN membership_tiers mt ON ts.tier_id = mt.id
+    WHERE ts.tenant_id = p_tenant_id AND ts.status = 'active'
+    LIMIT 1;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+-- Helper function: Check if tenant has reached a resource limit
+CREATE OR REPLACE FUNCTION check_tenant_limit(p_tenant_id UUID, p_resource_type VARCHAR)
+RETURNS BOOLEAN AS $$
+DECLARE
+    v_limit INTEGER;
+BEGIN
+    SELECT ml.limit_value INTO v_limit
+    FROM tenant_subscriptions ts
+    JOIN membership_limitations ml ON ts.tier_id = ml.tier_id
+    WHERE ts.tenant_id = p_tenant_id
+      AND ts.status = 'active'
+      AND ml.resource_type = p_resource_type;
+
+    -- -1 means unlimited
+    IF v_limit = -1 THEN
+        RETURN FALSE;
+    END IF;
+
+    RETURN TRUE;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+-- ============================================================================
 -- SCHEMA COMPLETE
 -- ============================================================================
 

@@ -516,13 +516,23 @@ func Setup(router *gin.Engine, db *gorm.DB, redisClient *redis.Client, cfg *conf
 	// Export routes
 	RegisterExportRoutesWithPermissions(v1, db, permissionMiddleware)
 
+	// Membership repository and service
+	membershipRepo := repository.NewMembershipRepository(db)
+	membershipService := services.NewMembershipService(membershipRepo)
+	membershipHandler := handlers.NewMembershipHandler(membershipService)
+
 	// Tenant routes
 	tenantRepo := repository.NewTenantRepository(db)
 	tenantService := services.NewTenantService(tenantRepo, userRepo)
 	// Set the permission cache invalidator so tenant membership changes invalidate cached permissions
 	tenantService.SetPermissionInvalidator(permissionChecker)
+	// Set the membership assigner so new tenants get a default membership tier
+	tenantService.SetMembershipAssigner(membershipService)
 	tenantHandler := handlers.NewTenantHandler(tenantService)
 	SetupTenantRoutes(v1, tenantHandler, permissionMiddleware)
+
+	// Membership routes
+	SetupMembershipRoutes(v1, membershipHandler, permissionMiddleware)
 
 	// Role and Permission routes (read-only)
 	roleHandler := handlers.NewRoleHandler(permissionRepo)
