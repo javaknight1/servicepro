@@ -107,6 +107,11 @@ func (m *MockUserRepository) UpdateProfilePicture(userID uuid.UUID, url *string)
 	return args.Error(0)
 }
 
+func (m *MockUserRepository) UpdateProfile(userID uuid.UUID, firstName, lastName *string) error {
+	args := m.Called(userID, firstName, lastName)
+	return args.Error(0)
+}
+
 func getTestAuthConfig() *config.AuthConfig {
 	return &config.AuthConfig{
 		MaxLoginAttempts:  5,

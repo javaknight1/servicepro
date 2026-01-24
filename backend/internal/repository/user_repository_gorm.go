@@ -181,3 +181,14 @@ func (r *UserRepositoryGorm) UpdateProfilePicture(userID uuid.UUID, url *string)
 			"updated_at":          time.Now(),
 		}).Error
 }
+
+// UpdateProfile updates the user's first and last name
+func (r *UserRepositoryGorm) UpdateProfile(userID uuid.UUID, firstName, lastName *string) error {
+	return r.db.Model(&models.User{}).
+		Where("id = ?", userID).
+		Updates(map[string]interface{}{
+			"first_name": firstName,
+			"last_name":  lastName,
+			"updated_at": time.Now(),
+		}).Error
+}

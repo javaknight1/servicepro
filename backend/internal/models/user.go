@@ -28,6 +28,8 @@ type User struct {
 	Email              string         `json:"email" gorm:"uniqueIndex;not null"`
 	PasswordHash       string         `json:"-" gorm:"not null"`
 	Role               UserRole       `json:"role" gorm:"type:varchar(50);not null;default:'user'"`
+	FirstName          *string        `json:"first_name" gorm:"column:first_name;size:100"`
+	LastName           *string        `json:"last_name" gorm:"column:last_name;size:100"`
 	ProfilePictureURL  *string        `json:"profile_picture_url" gorm:"column:profile_picture_url"`
 	EmailVerified      bool           `json:"email_verified" gorm:"default:false"`
 	VerificationSentAt *time.Time     `json:"-"`
@@ -72,6 +74,12 @@ type RegisterResponse struct {
 	Email     string    `json:"email"`
 	Role      UserRole  `json:"role"`
 	CreatedAt time.Time `json:"createdAt"`
+}
+
+// UpdateProfileRequest represents the request to update user profile
+type UpdateProfileRequest struct {
+	FirstName *string `json:"first_name"`
+	LastName  *string `json:"last_name"`
 }
 
 // ErrorResponse represents an error response

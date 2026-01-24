@@ -171,6 +171,8 @@ type TenantMemberResponse struct {
 	ID                uuid.UUID  `json:"id"`
 	UserID            uuid.UUID  `json:"user_id"`
 	Email             string     `json:"email"`
+	FirstName         *string    `json:"first_name,omitempty"`
+	LastName          *string    `json:"last_name,omitempty"`
 	ProfilePictureURL *string    `json:"profile_picture_url,omitempty"`
 	RoleID            uuid.UUID  `json:"role_id"`
 	RoleName          string     `json:"role_name"`
@@ -194,6 +196,8 @@ func (tu *TenantUser) ToMemberResponse() TenantMemberResponse {
 
 	if tu.User != nil {
 		response.Email = tu.User.Email
+		response.FirstName = tu.User.FirstName
+		response.LastName = tu.User.LastName
 		response.ProfilePictureURL = tu.User.ProfilePictureURL
 	}
 

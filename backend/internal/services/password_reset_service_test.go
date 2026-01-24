@@ -112,6 +112,11 @@ func (m *MockUserRepositoryGorm) UpdateProfilePicture(userID uuid.UUID, url *str
 	return args.Error(0)
 }
 
+func (m *MockUserRepositoryGorm) UpdateProfile(userID uuid.UUID, firstName, lastName *string) error {
+	args := m.Called(userID, firstName, lastName)
+	return args.Error(0)
+}
+
 // setupTestRedis creates a miniredis server and returns a configured redis client
 func setupTestRedis(t *testing.T) (*redis.Client, *miniredis.Miniredis) {
 	mr := miniredis.RunT(t)

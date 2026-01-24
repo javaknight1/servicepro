@@ -39,6 +39,8 @@ func setupTestEnvironment(t *testing.T) (*gorm.DB, *redis.Client, *miniredis.Min
 			email TEXT NOT NULL,
 			password_hash TEXT NOT NULL,
 			role TEXT DEFAULT 'user',
+			first_name TEXT,
+			last_name TEXT,
 			profile_picture_url TEXT,
 			email_verified INTEGER DEFAULT 0,
 			verification_sent_at DATETIME,

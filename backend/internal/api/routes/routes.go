@@ -153,6 +153,9 @@ func Setup(router *gin.Engine, db *gorm.DB, redisClient *redis.Client, cfg *conf
 			// Current user endpoint
 			users.GET("/me", userHandler.GetCurrentUser)
 
+			// Update profile endpoint
+			users.PATCH("/me/profile", userHandler.UpdateProfile)
+
 			// Profile picture endpoints
 			if profilePictureHandler != nil {
 				users.POST("/me/profile-picture", profilePictureHandler.UploadProfilePicture)
