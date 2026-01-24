@@ -289,6 +289,22 @@ if [[ $NON_RELEASE -gt 0 ]]; then
 fi
 
 # Show release-worthy commit details
+if [[ ${#MAJOR_COMMITS[@]} -gt 0 ]]; then
+    echo -e "${RED}Major Changes:${NC}"
+    for commit in "${MAJOR_COMMITS[@]}"; do
+        echo "    🚨 $commit"
+    done
+    echo ""
+fi
+
+if [[ ${#MINOR_COMMITS[@]} -gt 0 ]]; then
+    echo -e "${MAGENTA}Minor Changes:${NC}"
+    for commit in "${MINOR_COMMITS[@]}"; do
+        echo "    🎯 $commit"
+    done
+    echo ""
+fi
+
 if [[ ${#BREAKING_COMMITS[@]} -gt 0 ]]; then
     echo -e "${RED}Breaking Changes:${NC}"
     for commit in "${BREAKING_COMMITS[@]}"; do
