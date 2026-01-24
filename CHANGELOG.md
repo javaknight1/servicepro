@@ -2,6 +2,34 @@
 
 All notable changes to ServicePro will be documented in this file.
 
+## [0.3.0] - 2026-01-24
+
+### Release Features
+
+| Type             | Description                                                                | Commit                                                                                                 |
+| ---------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| ✨ Features      | Add endpoints to allow users to update membership status for organizations | [`9db1c7a`](https://github.com/javaknight1/servicepro/commit/9db1c7ae23cf0bab4628ca9cf1628d64a17a5aec) |
+| 🎯 Minor Changes | Added new endpoint to give users a first name and last name                | [`7346cdd`](https://github.com/javaknight1/servicepro/commit/7346cdd4f77f50881b56c253983b75c0aca9ea2b) |
+| 🎯 Minor Changes | Get latest first and last name and edit in Profile                         | [`d677665`](https://github.com/javaknight1/servicepro/commit/d67766541218bd094daa41d0955a45aa7bebc7ae) |
+| 🎯 Minor Changes | Updated the UI to include membership features                              | [`c1fd85d`](https://github.com/javaknight1/servicepro/commit/c1fd85df33069e227fe786eab05d6b0750118f7a) |
+| 🐛 Bug Fixes     | Fixed some warnings getting emitted by commits                             | [`e0d5280`](https://github.com/javaknight1/servicepro/commit/e0d52805f670a0ea260842c6acb8afa7bc10905d) |
+| 🐛 Bug Fixes     | Fixed issue with prettier versions incompatible                            | [`a741b7c`](https://github.com/javaknight1/servicepro/commit/a741b7c552a88654590d5f80823fa60cd2e1e799) |
+| 🐛 Bug Fixes     | Resolved eslint warnings in UI                                             | [`768475c`](https://github.com/javaknight1/servicepro/commit/768475cba7b967af10cec37cfb5bca5285323132) |
+| 🐛 Bug Fixes     | Resolve wanrings that came from updating eslint                            | [`52d58f1`](https://github.com/javaknight1/servicepro/commit/52d58f1603bfc0b72db6e8a15d35b118423a9134) |
+
+### Dev Features
+
+| Type             | Description                                            | Commit                                                                                                 |
+| ---------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
+| ✅ Tests         | Fixed unuit tests after eslint changes                 | [`21faf03`](https://github.com/javaknight1/servicepro/commit/21faf03ef01765d600192e30fd5e7c93a61eaeb6) |
+| 🔧 Miscellaneous | Auto generate prettier and lint                        | [`d0108aa`](https://github.com/javaknight1/servicepro/commit/d0108aa6065b93b68eddd2060ae8f1ef0b76378a) |
+| 🔧 Miscellaneous | Remove workflow that we aren't using right now         | [`638df07`](https://github.com/javaknight1/servicepro/commit/638df07ef3afe4d80b1a2b1e867b5f2c9523d8fe) |
+| 🔧 Miscellaneous | Created CLAUDE.md to help with development             | [`ef0fdab`](https://github.com/javaknight1/servicepro/commit/ef0fdab1cfb2eb52a3a0c4cfd257bedb31e81f67) |
+| 🔧 Miscellaneous | Include Minio in makefile commands                     | [`a7376ce`](https://github.com/javaknight1/servicepro/commit/a7376ce556042e159f423a8618943df720b09a9a) |
+| 🔧 Miscellaneous | Updated @typescript-eslint/typescript-estree to 8.53.1 | [`786024e`](https://github.com/javaknight1/servicepro/commit/786024e4946dd6fe67fc7db36bdebe297ad4e9a5) |
+| 🔧 Miscellaneous | Disable some lintings:                                 | [`780fec6`](https://github.com/javaknight1/servicepro/commit/780fec6bbf935ae670bb8585a38c7d366bcf56d4) |
+| 🔧 Miscellaneous | Require unit tests on pre-commit                       | [`1dc6bee`](https://github.com/javaknight1/servicepro/commit/1dc6bee4cfa6d22c963f10e2b9517c29fb7340ec) |
+
 ## [0.2.0] - 2026-01-24
 
 ### Release Features
