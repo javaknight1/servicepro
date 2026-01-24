@@ -1,13 +1,13 @@
 import { create } from 'zustand';
+import { AxiosError } from 'axios';
 import { membershipApi } from '@/services/membershipService';
-import type {
-  MembershipTier,
-  TenantMembership,
-  MembershipState,
-  BillingCycle,
-} from '@/types/membership';
+import type { MembershipState, BillingCycle } from '@/types/membership';
 
-export const useMembershipStore = create<MembershipState>((set, get) => ({
+interface ApiErrorResponse {
+  message?: string;
+}
+
+export const useMembershipStore = create<MembershipState>((set) => ({
   tiers: [],
   currentMembership: null,
   isLoading: false,
@@ -18,10 +18,12 @@ export const useMembershipStore = create<MembershipState>((set, get) => ({
       set({ isLoading: true, error: null });
       const response = await membershipApi.getAllTiers();
       set({ tiers: response.data.tiers, isLoading: false });
-    } catch (error: any) {
+    } catch (error) {
+      const axiosError = error as AxiosError<ApiErrorResponse>;
       set({
         error:
-          error.response?.data?.message || 'Failed to load membership tiers',
+          axiosError.response?.data?.message ||
+          'Failed to load membership tiers',
         isLoading: false,
       });
       throw error;
@@ -33,14 +35,16 @@ export const useMembershipStore = create<MembershipState>((set, get) => ({
       set({ isLoading: true, error: null });
       const response = await membershipApi.getTenantMembership(tenantId);
       set({ currentMembership: response.data, isLoading: false });
-    } catch (error: any) {
+    } catch (error) {
+      const axiosError = error as AxiosError<ApiErrorResponse>;
       // If no subscription found, set null but don't treat as error
-      if (error.response?.status === 404) {
+      if (axiosError.response?.status === 404) {
         set({ currentMembership: null, isLoading: false });
         return;
       }
       set({
-        error: error.response?.data?.message || 'Failed to load membership',
+        error:
+          axiosError.response?.data?.message || 'Failed to load membership',
         isLoading: false,
       });
       throw error;
@@ -59,9 +63,11 @@ export const useMembershipStore = create<MembershipState>((set, get) => ({
         billing_cycle: billingCycle,
       });
       set({ currentMembership: response.data, isLoading: false });
-    } catch (error: any) {
+    } catch (error) {
+      const axiosError = error as AxiosError<ApiErrorResponse>;
       set({
-        error: error.response?.data?.message || 'Failed to update membership',
+        error:
+          axiosError.response?.data?.message || 'Failed to update membership',
         isLoading: false,
       });
       throw error;
