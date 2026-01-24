@@ -104,6 +104,7 @@ CREATE TABLE users (
     email VARCHAR(255) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
     role VARCHAR(50) NOT NULL DEFAULT 'user',
+    profile_picture_url TEXT,
     email_verified BOOLEAN DEFAULT FALSE,
     verification_sent_at TIMESTAMP,
     failed_login_count INTEGER NOT NULL DEFAULT 0,

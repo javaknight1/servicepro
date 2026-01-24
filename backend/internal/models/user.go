@@ -28,6 +28,7 @@ type User struct {
 	Email              string         `json:"email" gorm:"uniqueIndex;not null"`
 	PasswordHash       string         `json:"-" gorm:"not null"`
 	Role               UserRole       `json:"role" gorm:"type:varchar(50);not null;default:'user'"`
+	ProfilePictureURL  *string        `json:"profile_picture_url" gorm:"column:profile_picture_url"`
 	EmailVerified      bool           `json:"email_verified" gorm:"default:false"`
 	VerificationSentAt *time.Time     `json:"-"`
 	FailedLoginCount   int            `json:"-" gorm:"default:0"`
@@ -78,4 +79,9 @@ type ErrorResponse struct {
 	Error   string   `json:"error"`
 	Message string   `json:"message,omitempty"`
 	Details []string `json:"details,omitempty"`
+}
+
+// ProfilePictureUploadResponse represents the response for profile picture upload
+type ProfilePictureUploadResponse struct {
+	ProfilePictureURL string `json:"profile_picture_url"`
 }

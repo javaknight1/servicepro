@@ -171,3 +171,13 @@ func (r *UserRepositoryGorm) GetUnverifiedUsersForReminder(threshold time.Durati
 
 	return users, nil
 }
+
+// UpdateProfilePicture updates the user's profile picture URL
+func (r *UserRepositoryGorm) UpdateProfilePicture(userID uuid.UUID, url *string) error {
+	return r.db.Model(&models.User{}).
+		Where("id = ?", userID).
+		Updates(map[string]interface{}{
+			"profile_picture_url": url,
+			"updated_at":          time.Now(),
+		}).Error
+}

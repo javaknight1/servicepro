@@ -33,6 +33,7 @@ type UserRepositoryGormInterface interface {
 	MarkEmailVerified(userID uuid.UUID) error
 	UpdateVerificationSentAt(userID uuid.UUID, sentAt *time.Time) error
 	GetUnverifiedUsersForReminder(threshold time.Duration) ([]*models.User, error)
+	UpdateProfilePicture(userID uuid.UUID, url *string) error
 }
 
 // =============================================================================

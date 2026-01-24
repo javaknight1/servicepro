@@ -168,15 +168,16 @@ type UpdateMemberRoleRequest struct {
 
 // TenantMemberResponse represents a member in the tenant
 type TenantMemberResponse struct {
-	ID         uuid.UUID  `json:"id"`
-	UserID     uuid.UUID  `json:"user_id"`
-	Email      string     `json:"email"`
-	RoleID     uuid.UUID  `json:"role_id"`
-	RoleName   string     `json:"role_name"`
-	IsActive   bool       `json:"is_active"`
-	InvitedAt  *time.Time `json:"invited_at,omitempty"`
-	AcceptedAt *time.Time `json:"accepted_at,omitempty"`
-	JoinedAt   time.Time  `json:"joined_at"`
+	ID                uuid.UUID  `json:"id"`
+	UserID            uuid.UUID  `json:"user_id"`
+	Email             string     `json:"email"`
+	ProfilePictureURL *string    `json:"profile_picture_url,omitempty"`
+	RoleID            uuid.UUID  `json:"role_id"`
+	RoleName          string     `json:"role_name"`
+	IsActive          bool       `json:"is_active"`
+	InvitedAt         *time.Time `json:"invited_at,omitempty"`
+	AcceptedAt        *time.Time `json:"accepted_at,omitempty"`
+	JoinedAt          time.Time  `json:"joined_at"`
 }
 
 // ToMemberResponse converts a TenantUser to TenantMemberResponse
@@ -193,6 +194,7 @@ func (tu *TenantUser) ToMemberResponse() TenantMemberResponse {
 
 	if tu.User != nil {
 		response.Email = tu.User.Email
+		response.ProfilePictureURL = tu.User.ProfilePictureURL
 	}
 
 	if tu.Role != nil {

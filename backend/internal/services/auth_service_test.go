@@ -102,6 +102,11 @@ func (m *MockUserRepository) GetUnverifiedUsersForReminder(threshold time.Durati
 	return args.Get(0).([]*models.User), args.Error(1)
 }
 
+func (m *MockUserRepository) UpdateProfilePicture(userID uuid.UUID, url *string) error {
+	args := m.Called(userID, url)
+	return args.Error(0)
+}
+
 func getTestAuthConfig() *config.AuthConfig {
 	return &config.AuthConfig{
 		MaxLoginAttempts:  5,

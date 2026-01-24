@@ -22,6 +22,11 @@ import (
 	_ "github.com/javaknight1/servicepro/backend/pkg/clients/email/mock"
 	_ "github.com/javaknight1/servicepro/backend/pkg/clients/email/resend"
 	_ "github.com/javaknight1/servicepro/backend/pkg/clients/email/ses"
+
+	// Register storage providers (S3 works for AWS S3, Cloudflare R2, MinIO)
+	storageclient "github.com/javaknight1/servicepro/backend/pkg/clients/storage"
+	_ "github.com/javaknight1/servicepro/backend/pkg/clients/storage/mock"
+	_ "github.com/javaknight1/servicepro/backend/pkg/clients/storage/s3"
 )
 
 // Setup configures all API routes
@@ -78,6 +83,19 @@ func Setup(router *gin.Engine, db *gorm.DB, redisClient *redis.Client, cfg *conf
 	// Initialize customer report service
 	customerReportService := services.NewCustomerReportService(db)
 
+	// Initialize storage client for profile pictures
+	storageClient, err := storageclient.NewClient(context.Background(), cfg)
+	if err != nil {
+		// Log error but don't fail - storage may not be configured in all environments
+		_ = err
+	}
+
+	// Initialize profile picture service
+	var profilePictureService *services.ProfilePictureService
+	if storageClient != nil {
+		profilePictureService = services.NewProfilePictureService(userRepo, storageClient)
+	}
+
 	// Initialize middleware
 	rateLimiter := middleware.NewRateLimiter(redisClient, &cfg.Auth)
 	permissionMiddleware := middleware.NewPermissionMiddleware(permissionChecker, jwtManager)
@@ -93,6 +111,15 @@ func Setup(router *gin.Engine, db *gorm.DB, redisClient *redis.Client, cfg *conf
 	quoteHandler := handlers.NewQuoteHandler(quoteService)
 	revenueHandler := handlers.NewRevenueHandler(revenueService)
 	customerReportHandler := handlers.NewCustomerReportHandler(customerReportService)
+
+	// Initialize user handler
+	userHandler := handlers.NewUserHandler(userRepo)
+
+	// Initialize profile picture handler
+	var profilePictureHandler *handlers.ProfilePictureHandler
+	if profilePictureService != nil {
+		profilePictureHandler = handlers.NewProfilePictureHandler(profilePictureService)
+	}
 
 	// API v1 routes
 	v1 := router.Group("/api/v1")
@@ -114,6 +141,20 @@ func Setup(router *gin.Engine, db *gorm.DB, redisClient *redis.Client, cfg *conf
 		{
 			webhooks.POST("/ses-bounce", emailVerificationHandler.HandleSESBounce)
 			webhooks.POST("/ses-notification", emailVerificationHandler.HandleSESNotification)
+		}
+
+		// User profile routes (protected with JWT authentication)
+		users := v1.Group("/users")
+		users.Use(permissionMiddleware.RequireAuth())
+		{
+			// Current user endpoint
+			users.GET("/me", userHandler.GetCurrentUser)
+
+			// Profile picture endpoints
+			if profilePictureHandler != nil {
+				users.POST("/me/profile-picture", profilePictureHandler.UploadProfilePicture)
+				users.DELETE("/me/profile-picture", profilePictureHandler.DeleteProfilePicture)
+			}
 		}
 
 		// Customer routes (protected with JWT authentication and permissions)
