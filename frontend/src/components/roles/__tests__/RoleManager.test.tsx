@@ -218,7 +218,9 @@ describe('RoleManager', () => {
     });
 
     // The confirm button specifically has the text "Delete Role"
-    const confirmButtons = screen.getAllByRole('button', { name: /delete role/i });
+    const confirmButtons = screen.getAllByRole('button', {
+      name: /delete role/i,
+    });
     const confirmButton = confirmButtons[confirmButtons.length - 1]; // Last one is the confirm button
     await user.click(confirmButton);
 

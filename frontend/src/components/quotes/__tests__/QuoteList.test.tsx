@@ -245,13 +245,19 @@ describe('QuoteList', () => {
       await waitFor(() => {
         // Use getAllByText and find the badges (span elements with rounded-full class)
         const draftBadges = screen.getAllByText('Draft');
-        const draftBadge = draftBadges.find(el => el.tagName === 'SPAN' && el.classList.contains('rounded-full'));
+        const draftBadge = draftBadges.find(
+          (el) => el.tagName === 'SPAN' && el.classList.contains('rounded-full')
+        );
 
         const sentBadges = screen.getAllByText('Sent');
-        const sentBadge = sentBadges.find(el => el.tagName === 'SPAN' && el.classList.contains('rounded-full'));
+        const sentBadge = sentBadges.find(
+          (el) => el.tagName === 'SPAN' && el.classList.contains('rounded-full')
+        );
 
         const acceptedBadges = screen.getAllByText('Accepted');
-        const acceptedBadge = acceptedBadges.find(el => el.tagName === 'SPAN' && el.classList.contains('rounded-full'));
+        const acceptedBadge = acceptedBadges.find(
+          (el) => el.tagName === 'SPAN' && el.classList.contains('rounded-full')
+        );
 
         expect(draftBadge).toHaveClass('bg-gray-100', 'text-gray-800');
         expect(sentBadge).toHaveClass('bg-blue-100', 'text-blue-800');
@@ -568,7 +574,9 @@ describe('QuoteList', () => {
         },
       });
 
-      render(<QuoteList onEdit={vi.fn()} onDelete={vi.fn()} />, { wrapper: createWrapper() });
+      render(<QuoteList onEdit={vi.fn()} onDelete={vi.fn()} />, {
+        wrapper: createWrapper(),
+      });
 
       await waitFor(() => {
         expect(screen.getByText('Q-2024-001')).toBeInTheDocument();
@@ -703,7 +711,10 @@ describe('QuoteList', () => {
         },
       });
 
-      const { container } = render(<QuoteList onEdit={vi.fn()} onDelete={vi.fn()} />, { wrapper: createWrapper() });
+      const { container } = render(
+        <QuoteList onEdit={vi.fn()} onDelete={vi.fn()} />,
+        { wrapper: createWrapper() }
+      );
 
       await waitFor(() => {
         expect(screen.getByText('Q-2024-001')).toBeInTheDocument();

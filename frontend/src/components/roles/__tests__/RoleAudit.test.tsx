@@ -147,8 +147,12 @@ describe('RoleAudit', () => {
 
   it('applies action filter', async () => {
     const user = userEvent.setup();
-    const getRoleAuditLogsMock = vi.fn().mockResolvedValue({ data: mockAuditLogs });
-    vi.mocked(roleApi.getRoleAuditLogs).mockImplementation(getRoleAuditLogsMock);
+    const getRoleAuditLogsMock = vi
+      .fn()
+      .mockResolvedValue({ data: mockAuditLogs });
+    vi.mocked(roleApi.getRoleAuditLogs).mockImplementation(
+      getRoleAuditLogsMock
+    );
 
     const { container } = render(<RoleAudit />, { wrapper: createWrapper() });
 
@@ -173,8 +177,12 @@ describe('RoleAudit', () => {
 
   it('applies date filters', async () => {
     const user = userEvent.setup();
-    const getRoleAuditLogsMock = vi.fn().mockResolvedValue({ data: mockAuditLogs });
-    vi.mocked(roleApi.getRoleAuditLogs).mockImplementation(getRoleAuditLogsMock);
+    const getRoleAuditLogsMock = vi
+      .fn()
+      .mockResolvedValue({ data: mockAuditLogs });
+    vi.mocked(roleApi.getRoleAuditLogs).mockImplementation(
+      getRoleAuditLogsMock
+    );
 
     const { container } = render(<RoleAudit />, { wrapper: createWrapper() });
 
@@ -183,7 +191,9 @@ describe('RoleAudit', () => {
 
     // Wait for filter panel
     await waitFor(() => {
-      expect(container.querySelectorAll('input[type="date"]').length).toBeGreaterThan(0);
+      expect(
+        container.querySelectorAll('input[type="date"]').length
+      ).toBeGreaterThan(0);
     });
 
     // Get date inputs
@@ -207,8 +217,12 @@ describe('RoleAudit', () => {
 
   it('clears all filters', async () => {
     const user = userEvent.setup();
-    const getRoleAuditLogsMock = vi.fn().mockResolvedValue({ data: mockAuditLogs });
-    vi.mocked(roleApi.getRoleAuditLogs).mockImplementation(getRoleAuditLogsMock);
+    const getRoleAuditLogsMock = vi
+      .fn()
+      .mockResolvedValue({ data: mockAuditLogs });
+    vi.mocked(roleApi.getRoleAuditLogs).mockImplementation(
+      getRoleAuditLogsMock
+    );
 
     const { container } = render(<RoleAudit />, { wrapper: createWrapper() });
 

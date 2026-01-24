@@ -112,7 +112,10 @@ export default defineConfig(({ mode }) => ({
       '@config': path.resolve(__dirname, './src/config'),
       '@providers': path.resolve(__dirname, './src/providers'),
       // Mock @sentry/tracing (not installed as a dependency)
-      '@sentry/tracing': path.resolve(__dirname, './src/test/__mocks__/sentry-tracing.ts'),
+      '@sentry/tracing': path.resolve(
+        __dirname,
+        './src/test/__mocks__/sentry-tracing.ts'
+      ),
     },
   },
   server: {

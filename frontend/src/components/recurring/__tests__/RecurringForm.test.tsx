@@ -20,8 +20,12 @@ describe('RecurringForm', () => {
       render(<RecurringForm onSubmit={mockOnSubmit} />);
 
       // Use placeholder text or text content since labels aren't properly associated
-      expect(screen.getByPlaceholderText(/weekly maintenance/i)).toBeInTheDocument();
-      expect(screen.getByPlaceholderText(/regular maintenance schedule/i)).toBeInTheDocument();
+      expect(
+        screen.getByPlaceholderText(/weekly maintenance/i)
+      ).toBeInTheDocument();
+      expect(
+        screen.getByPlaceholderText(/regular maintenance schedule/i)
+      ).toBeInTheDocument();
       expect(screen.getByPlaceholderText(/123 main st/i)).toBeInTheDocument();
       expect(screen.getByText(/recurrence type/i)).toBeInTheDocument();
     });
@@ -147,7 +151,10 @@ describe('RecurringForm', () => {
       const user = userEvent.setup();
       render(<RecurringForm onSubmit={mockOnSubmit} />);
 
-      await user.type(screen.getByPlaceholderText(/weekly maintenance/i), '   ');
+      await user.type(
+        screen.getByPlaceholderText(/weekly maintenance/i),
+        '   '
+      );
       await user.click(screen.getByRole('button', { name: /create pattern/i }));
 
       expect(screen.getByText(/title is required/i)).toBeInTheDocument();
@@ -162,7 +169,10 @@ describe('RecurringForm', () => {
       expect(screen.getByText(/title is required/i)).toBeInTheDocument();
 
       // Then enter valid title
-      await user.type(screen.getByPlaceholderText(/weekly maintenance/i), 'Valid Title');
+      await user.type(
+        screen.getByPlaceholderText(/weekly maintenance/i),
+        'Valid Title'
+      );
 
       expect(screen.queryByText(/title is required/i)).not.toBeInTheDocument();
     });
@@ -177,7 +187,10 @@ describe('RecurringForm', () => {
       render(<RecurringForm onSubmit={mockOnSubmit} />);
 
       // Fill required fields
-      await user.type(screen.getByPlaceholderText(/weekly maintenance/i), 'Test Pattern');
+      await user.type(
+        screen.getByPlaceholderText(/weekly maintenance/i),
+        'Test Pattern'
+      );
 
       // Default is weekly, so just submit
       await user.click(screen.getByRole('button', { name: /create pattern/i }));
@@ -189,7 +202,10 @@ describe('RecurringForm', () => {
       const user = userEvent.setup();
       render(<RecurringForm onSubmit={mockOnSubmit} />);
 
-      await user.type(screen.getByPlaceholderText(/weekly maintenance/i), 'Test Pattern');
+      await user.type(
+        screen.getByPlaceholderText(/weekly maintenance/i),
+        'Test Pattern'
+      );
 
       // Select Monday
       await user.click(screen.getByRole('button', { name: 'Mon' }));
@@ -235,7 +251,10 @@ describe('RecurringForm', () => {
       const user = userEvent.setup();
       render(<RecurringForm onSubmit={mockOnSubmit} />);
 
-      await user.type(screen.getByPlaceholderText(/weekly maintenance/i), 'Test Pattern');
+      await user.type(
+        screen.getByPlaceholderText(/weekly maintenance/i),
+        'Test Pattern'
+      );
 
       // Change to monthly - get select by its displayed text
       const recurrenceSelect = screen.getByRole('combobox');
@@ -250,7 +269,10 @@ describe('RecurringForm', () => {
       const user = userEvent.setup();
       render(<RecurringForm onSubmit={mockOnSubmit} />);
 
-      await user.type(screen.getByPlaceholderText(/weekly maintenance/i), 'Test Pattern');
+      await user.type(
+        screen.getByPlaceholderText(/weekly maintenance/i),
+        'Test Pattern'
+      );
       const recurrenceSelect = screen.getByRole('combobox');
       await user.selectOptions(recurrenceSelect, RecurrenceType.MONTHLY);
 
@@ -278,7 +300,10 @@ describe('RecurringForm', () => {
       const user = userEvent.setup();
       render(<RecurringForm onSubmit={mockOnSubmit} />);
 
-      await user.type(screen.getByPlaceholderText(/weekly maintenance/i), 'Test Pattern');
+      await user.type(
+        screen.getByPlaceholderText(/weekly maintenance/i),
+        'Test Pattern'
+      );
       const recurrenceSelect = screen.getByRole('combobox');
       await user.selectOptions(recurrenceSelect, RecurrenceType.YEARLY);
 
@@ -291,7 +316,10 @@ describe('RecurringForm', () => {
       const user = userEvent.setup();
       render(<RecurringForm onSubmit={mockOnSubmit} />);
 
-      await user.type(screen.getByPlaceholderText(/weekly maintenance/i), 'Test Pattern');
+      await user.type(
+        screen.getByPlaceholderText(/weekly maintenance/i),
+        'Test Pattern'
+      );
       const recurrenceSelect = screen.getByRole('combobox');
       await user.selectOptions(recurrenceSelect, RecurrenceType.YEARLY);
 
@@ -309,7 +337,10 @@ describe('RecurringForm', () => {
       const user = userEvent.setup();
       render(<RecurringForm onSubmit={mockOnSubmit} />);
 
-      await user.type(screen.getByPlaceholderText(/weekly maintenance/i), 'Annual Review');
+      await user.type(
+        screen.getByPlaceholderText(/weekly maintenance/i),
+        'Annual Review'
+      );
       const recurrenceSelect = screen.getByRole('combobox');
       await user.selectOptions(recurrenceSelect, RecurrenceType.YEARLY);
 
@@ -350,7 +381,10 @@ describe('RecurringForm', () => {
       const user = userEvent.setup();
       render(<RecurringForm onSubmit={mockOnSubmit} />);
 
-      await user.type(screen.getByPlaceholderText(/weekly maintenance/i), 'Daily Task');
+      await user.type(
+        screen.getByPlaceholderText(/weekly maintenance/i),
+        'Daily Task'
+      );
       const recurrenceSelect = screen.getByRole('combobox');
       await user.selectOptions(recurrenceSelect, RecurrenceType.DAILY);
 
@@ -368,7 +402,10 @@ describe('RecurringForm', () => {
       const user = userEvent.setup();
       const { container } = render(<RecurringForm onSubmit={mockOnSubmit} />);
 
-      await user.type(screen.getByPlaceholderText(/weekly maintenance/i), 'Test Pattern');
+      await user.type(
+        screen.getByPlaceholderText(/weekly maintenance/i),
+        'Test Pattern'
+      );
       const recurrenceSelect = screen.getByRole('combobox');
       await user.selectOptions(recurrenceSelect, RecurrenceType.DAILY);
 
@@ -394,7 +431,10 @@ describe('RecurringForm', () => {
       const user = userEvent.setup();
       const { container } = render(<RecurringForm onSubmit={mockOnSubmit} />);
 
-      await user.type(screen.getByPlaceholderText(/weekly maintenance/i), 'Test Pattern');
+      await user.type(
+        screen.getByPlaceholderText(/weekly maintenance/i),
+        'Test Pattern'
+      );
       const recurrenceSelect = screen.getByRole('combobox');
       await user.selectOptions(recurrenceSelect, RecurrenceType.DAILY);
 
@@ -419,7 +459,10 @@ describe('RecurringForm', () => {
       const user = userEvent.setup();
       const { container } = render(<RecurringForm onSubmit={mockOnSubmit} />);
 
-      await user.type(screen.getByPlaceholderText(/weekly maintenance/i), 'Test Pattern');
+      await user.type(
+        screen.getByPlaceholderText(/weekly maintenance/i),
+        'Test Pattern'
+      );
       const recurrenceSelect = screen.getByRole('combobox');
       await user.selectOptions(recurrenceSelect, RecurrenceType.DAILY);
 
@@ -450,7 +493,10 @@ describe('RecurringForm', () => {
       const user = userEvent.setup();
       const { container } = render(<RecurringForm onSubmit={mockOnSubmit} />);
 
-      await user.type(screen.getByPlaceholderText(/weekly maintenance/i), 'Test Pattern');
+      await user.type(
+        screen.getByPlaceholderText(/weekly maintenance/i),
+        'Test Pattern'
+      );
       const recurrenceSelect = screen.getByRole('combobox');
       await user.selectOptions(recurrenceSelect, RecurrenceType.DAILY);
 
@@ -460,7 +506,9 @@ describe('RecurringForm', () => {
       // Get date inputs by type
       const dateInputs = container.querySelectorAll('input[type="date"]');
       const startDateInput = dateInputs[0] as HTMLInputElement;
-      const endDateInput = dateInputs[dateInputs.length - 1] as HTMLInputElement;
+      const endDateInput = dateInputs[
+        dateInputs.length - 1
+      ] as HTMLInputElement;
 
       await user.clear(startDateInput);
       await user.type(startDateInput, '2024-06-01');
@@ -523,7 +571,9 @@ describe('RecurringForm', () => {
       // The end date input should be disabled when "Never ends" is selected
       const dateInputs = container.querySelectorAll('input[type="date"]');
       // Last date input should be the end date
-      const endDateInput = dateInputs[dateInputs.length - 1] as HTMLInputElement;
+      const endDateInput = dateInputs[
+        dateInputs.length - 1
+      ] as HTMLInputElement;
       expect(endDateInput).toBeDisabled();
     });
 
@@ -534,7 +584,9 @@ describe('RecurringForm', () => {
       await user.click(screen.getByLabelText(/ends on/i));
 
       const dateInputs = container.querySelectorAll('input[type="date"]');
-      const endDateInput = dateInputs[dateInputs.length - 1] as HTMLInputElement;
+      const endDateInput = dateInputs[
+        dateInputs.length - 1
+      ] as HTMLInputElement;
       expect(endDateInput).not.toBeDisabled();
     });
   });
@@ -547,9 +599,18 @@ describe('RecurringForm', () => {
       const user = userEvent.setup();
       render(<RecurringForm onSubmit={mockOnSubmit} />);
 
-      await user.type(screen.getByPlaceholderText(/weekly maintenance/i), 'Weekly Meeting');
-      await user.type(screen.getByPlaceholderText(/regular maintenance schedule/i), 'Team sync');
-      await user.type(screen.getByPlaceholderText(/123 main st/i), 'Conference Room');
+      await user.type(
+        screen.getByPlaceholderText(/weekly maintenance/i),
+        'Weekly Meeting'
+      );
+      await user.type(
+        screen.getByPlaceholderText(/regular maintenance schedule/i),
+        'Team sync'
+      );
+      await user.type(
+        screen.getByPlaceholderText(/123 main st/i),
+        'Conference Room'
+      );
 
       // Select days
       await user.click(screen.getByRole('button', { name: 'Mon' }));
@@ -573,7 +634,10 @@ describe('RecurringForm', () => {
       const user = userEvent.setup();
       render(<RecurringForm onSubmit={mockOnSubmit} />);
 
-      await user.type(screen.getByPlaceholderText(/weekly maintenance/i), 'Test');
+      await user.type(
+        screen.getByPlaceholderText(/weekly maintenance/i),
+        'Test'
+      );
       const recurrenceSelect = screen.getByRole('combobox');
       await user.selectOptions(recurrenceSelect, RecurrenceType.DAILY);
 
@@ -664,7 +728,10 @@ describe('RecurringForm', () => {
       const user = userEvent.setup();
       render(<RecurringForm onSubmit={mockOnSubmit} />);
 
-      await user.type(screen.getByPlaceholderText(/weekly maintenance/i), 'Bi-weekly Task');
+      await user.type(
+        screen.getByPlaceholderText(/weekly maintenance/i),
+        'Bi-weekly Task'
+      );
       await user.click(screen.getByRole('button', { name: 'Mon' }));
 
       // Interval is the first spinbutton
