@@ -282,7 +282,9 @@ func (s *MemoryStore) GetRecord(ctx context.Context, id string) (*DeliveryRecord
 	if !exists {
 		return nil, ErrRecordNotFound
 	}
-	return record, nil
+	// Return a copy to prevent data races
+	recordCopy := *record
+	return &recordCopy, nil
 }
 
 func (s *MemoryStore) GetRecordByMessageID(ctx context.Context, messageID string) (*DeliveryRecord, error) {
@@ -293,7 +295,10 @@ func (s *MemoryStore) GetRecordByMessageID(ctx context.Context, messageID string
 	if !exists {
 		return nil, ErrRecordNotFound
 	}
-	return s.records[recordID], nil
+	// Return a copy to prevent data races
+	record := s.records[recordID]
+	recordCopy := *record
+	return &recordCopy, nil
 }
 
 func (s *MemoryStore) UpdateRecord(ctx context.Context, record *DeliveryRecord) error {

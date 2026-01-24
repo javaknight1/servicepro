@@ -114,21 +114,30 @@ func (s *unifiedExportService) StartExport(ctx context.Context, userID uuid.UUID
 	// Initialize progress tracking
 	s.initProgress(job.ID)
 
+	// Capture job ID before starting goroutine to avoid race
+	jobID := job.ID
+
 	// Start async export in goroutine
-	go s.processExport(context.Background(), job, config)
+	go s.processExport(context.Background(), jobID, config)
 
 	return job, nil
 }
 
 // processExport handles the actual export processing
-func (s *unifiedExportService) processExport(ctx context.Context, job *models.ExportJob, config *models.ExportConfig) {
+func (s *unifiedExportService) processExport(ctx context.Context, jobID uuid.UUID, config *models.ExportConfig) {
 	startTime := time.Now()
+
+	// Fetch fresh job from database to avoid race with caller
+	var job models.ExportJob
+	if err := s.db.First(&job, "id = ?", jobID).Error; err != nil {
+		return
+	}
 
 	// Update job status to processing
 	now := time.Now()
 	job.Status = models.ExportJobStatusProcessing
 	job.StartedAt = &now
-	s.db.Save(job)
+	s.db.Save(&job)
 
 	s.updateProgress(job.ID, models.ExportProgress{
 		JobID:        job.ID,
@@ -140,12 +149,12 @@ func (s *unifiedExportService) processExport(ctx context.Context, job *models.Ex
 	// Fetch data based on export type
 	data, totalRecords, err := s.fetchData(ctx, config)
 	if err != nil {
-		s.failJob(job, fmt.Sprintf("Failed to fetch data: %v", err))
+		s.failJob(&job, fmt.Sprintf("Failed to fetch data: %v", err))
 		return
 	}
 
 	job.TotalRecords = totalRecords
-	s.db.Save(job)
+	s.db.Save(&job)
 
 	s.updateProgress(job.ID, models.ExportProgress{
 		JobID:        job.ID,
@@ -174,7 +183,7 @@ func (s *unifiedExportService) processExport(ctx context.Context, job *models.Ex
 	}
 
 	if err != nil {
-		s.failJob(job, fmt.Sprintf("Failed to generate export: %v", err))
+		s.failJob(&job, fmt.Sprintf("Failed to generate export: %v", err))
 		return
 	}
 
@@ -190,14 +199,14 @@ func (s *unifiedExportService) processExport(ctx context.Context, job *models.Ex
 
 	// Write to file
 	if err := os.WriteFile(job.FilePath, exportData, 0644); err != nil {
-		s.failJob(job, fmt.Sprintf("Failed to write file: %v", err))
+		s.failJob(&job, fmt.Sprintf("Failed to write file: %v", err))
 		return
 	}
 
 	// Get file info
 	fileInfo, err := os.Stat(job.FilePath)
 	if err != nil {
-		s.failJob(job, fmt.Sprintf("Failed to get file info: %v", err))
+		s.failJob(&job, fmt.Sprintf("Failed to get file info: %v", err))
 		return
 	}
 
@@ -212,7 +221,7 @@ func (s *unifiedExportService) processExport(ctx context.Context, job *models.Ex
 	job.CompletedAt = &completedAt
 	job.ExpiresAt = &expiresAt
 	job.UpdatedAt = completedAt
-	s.db.Save(job)
+	s.db.Save(&job)
 
 	s.updateProgress(job.ID, models.ExportProgress{
 		JobID:            job.ID,

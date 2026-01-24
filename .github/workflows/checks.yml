@@ -104,7 +104,7 @@ jobs:
 
       - name: Run unit tests
         working-directory: frontend
-        run: npm test -- --watchAll=false --passWithNoTests
+        run: npm test -- --run --passWithNoTests
 
       - name: Verify build
         working-directory: frontend

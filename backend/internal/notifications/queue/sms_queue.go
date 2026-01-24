@@ -356,9 +356,10 @@ func (q *SMSQueue) EnqueueMessage(ctx context.Context, msg *SMSMessage) error {
 		msg.ExpiresAt = now.Add(q.config.MessageTTL)
 	}
 
-	// Store message
+	// Store message and get current queue size
 	q.messagesMu.Lock()
 	q.messages[msg.ID] = msg
+	queueSize := int64(len(q.messages))
 	q.messagesMu.Unlock()
 
 	// Add to priority queue
@@ -369,7 +370,7 @@ func (q *SMSQueue) EnqueueMessage(ctx context.Context, msg *SMSMessage) error {
 	// Update metrics
 	q.metrics.mu.Lock()
 	q.metrics.MessagesEnqueued++
-	q.metrics.CurrentQueueSize = int64(len(q.messages))
+	q.metrics.CurrentQueueSize = queueSize
 	if q.metrics.CurrentQueueSize > q.metrics.PeakQueueSize {
 		q.metrics.PeakQueueSize = q.metrics.CurrentQueueSize
 	}

@@ -17,6 +17,7 @@ type MockEventStore struct {
 	queryErr     error
 	countErr     error
 	deleteErr    error
+	errMu        sync.Mutex // protects error fields
 }
 
 func NewMockEventStore() *MockEventStore {
@@ -33,8 +34,11 @@ func (m *MockEventStore) Save(ctx context.Context, event *Event) error {
 }
 
 func (m *MockEventStore) SaveBatch(ctx context.Context, events []*Event) error {
-	if m.saveBatchErr != nil {
-		return m.saveBatchErr
+	m.errMu.Lock()
+	err := m.saveBatchErr
+	m.errMu.Unlock()
+	if err != nil {
+		return err
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -74,7 +78,9 @@ func (m *MockEventStore) GetEvents() []*Event {
 }
 
 func (m *MockEventStore) SetSaveBatchError(err error) {
+	m.errMu.Lock()
 	m.saveBatchErr = err
+	m.errMu.Unlock()
 }
 
 func TestDefaultTrackerConfig(t *testing.T) {
@@ -376,8 +382,7 @@ func TestTrackerRetryOnError(t *testing.T) {
 
 	// Set error for first few calls, then succeed
 	callCount := 0
-	originalSaveBatch := store.saveBatchErr
-	store.saveBatchErr = errors.New("temporary error")
+	store.SetSaveBatchError(errors.New("temporary error"))
 
 	ctx := context.Background()
 	tracker.Track(ctx, NewEvent(EventUserLogin, CategoryUser))
@@ -386,7 +391,7 @@ func TestTrackerRetryOnError(t *testing.T) {
 	time.Sleep(200 * time.Millisecond)
 
 	// Clear error and retry
-	store.saveBatchErr = originalSaveBatch
+	store.SetSaveBatchError(nil)
 	tracker.Flush(ctx)
 	time.Sleep(100 * time.Millisecond)
 

@@ -119,7 +119,8 @@ func TestCheckConflicts_NoConflicts(t *testing.T) {
 	detector := NewConflictDetector(mockRepo)
 
 	techID := uuid.New()
-	startTime := time.Now().Add(1 * time.Hour)
+	// Use a fixed time that's within business hours on a weekday (Monday at 9 AM)
+	startTime := time.Date(2024, 1, 15, 9, 0, 0, 0, time.UTC) // Monday
 	endTime := startTime.Add(2 * time.Hour)
 
 	req := &ConflictCheckRequest{
