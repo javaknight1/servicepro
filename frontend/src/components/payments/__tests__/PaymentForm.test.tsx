@@ -3,15 +3,16 @@ import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { PaymentSummaryData } from '../../../types/payment';
 
-// Mock Stripe
-const mockStripe = {
-  confirmCardPayment: vi.fn(),
-  elements: vi.fn(),
-};
-
-const mockElements = {
-  getElement: vi.fn(),
-};
+// Create mock objects with vi.hoisted() to ensure they're available before vi.mock runs
+const { mockStripe, mockElements } = vi.hoisted(() => ({
+  mockStripe: {
+    confirmCardPayment: vi.fn(),
+    elements: vi.fn(),
+  },
+  mockElements: {
+    getElement: vi.fn(),
+  },
+}));
 
 vi.mock('@stripe/react-stripe-js', () => ({
   Elements: ({ children }: { children: React.ReactNode }) => (

@@ -1,13 +1,14 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
+import { vi } from 'vitest';
 import { ErrorBoundary, withErrorBoundary } from './ErrorBoundary';
 
 // Mock Sentry
-jest.mock('@sentry/react', () => ({
-  withScope: jest.fn((fn) => fn({ setExtras: jest.fn() })),
-  captureException: jest.fn(() => 'mock-event-id'),
-  showReportDialog: jest.fn(),
-  withErrorBoundary: jest.fn((Component) => Component),
+vi.mock('@sentry/react', () => ({
+  withScope: vi.fn((fn) => fn({ setExtras: vi.fn() })),
+  captureException: vi.fn(() => 'mock-event-id'),
+  showReportDialog: vi.fn(),
+  withErrorBoundary: vi.fn((Component) => Component),
 }));
 
 // Component that throws an error
@@ -23,7 +24,7 @@ const ThrowError: React.FC<{ shouldThrow?: boolean }> = ({
 // Suppress console.error for expected errors
 const originalError = console.error;
 beforeAll(() => {
-  console.error = jest.fn();
+  console.error = vi.fn();
 });
 
 afterAll(() => {
@@ -32,7 +33,7 @@ afterAll(() => {
 
 describe('ErrorBoundary', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('renders children when there is no error', () => {
@@ -66,7 +67,7 @@ describe('ErrorBoundary', () => {
   });
 
   it('renders custom fallback function with error and reset', () => {
-    const fallbackFn = jest.fn((error: Error, resetError: () => void) => (
+    const fallbackFn = vi.fn((error: Error, resetError: () => void) => (
       <div>
         <span>Error: {error.message}</span>
         <button onClick={resetError}>Reset</button>
@@ -84,7 +85,7 @@ describe('ErrorBoundary', () => {
   });
 
   it('calls onError callback when error occurs', () => {
-    const onError = jest.fn();
+    const onError = vi.fn();
 
     render(
       <ErrorBoundary onError={onError}>
@@ -202,7 +203,7 @@ describe('withErrorBoundary HOC', () => {
   });
 
   it('passes error boundary props to wrapper', () => {
-    const onError = jest.fn();
+    const onError = vi.fn();
     const WrappedComponent = withErrorBoundary(ThrowError, { onError });
 
     render(<WrappedComponent />);

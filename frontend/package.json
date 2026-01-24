@@ -46,11 +46,9 @@
     "zustand": "^4.5.0"
   },
   "devDependencies": {
+    "@sentry/react": "^10.36.0",
     "@tanstack/react-query-devtools": "^5.62.0",
-    "rollup-plugin-visualizer": "^5.12.0",
-    "vite-plugin-compression": "^0.5.1",
-    "sharp": "^0.33.2",
-    "terser": "^5.27.0",
+    "@tanstack/react-table": "^8.21.3",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.1",
     "@testing-library/user-event": "^14.6.1",
@@ -67,9 +65,13 @@
     "eslint-plugin-react-refresh": "^0.4.5",
     "jsdom": "^27.4.0",
     "postcss": "^8.4.35",
+    "rollup-plugin-visualizer": "^5.12.0",
+    "sharp": "^0.33.2",
     "tailwindcss": "^3.4.1",
+    "terser": "^5.27.0",
     "typescript": "^5.3.3",
     "vite": "^5.1.0",
+    "vite-plugin-compression": "^0.5.1",
     "vite-plugin-pwa": "^0.21.1",
     "vitest": "^4.0.17",
     "workbox-window": "^7.3.0"

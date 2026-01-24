@@ -13,6 +13,18 @@ vi.mock('@store', () => ({
     }
     return { login: mockLogin };
   }),
+  useTenantStore: vi.fn((selector) => {
+    const state = {
+      currentTenant: null,
+      tenants: [],
+      setCurrentTenant: vi.fn(),
+      fetchTenants: vi.fn(),
+    };
+    if (typeof selector === 'function') {
+      return selector(state);
+    }
+    return state;
+  }),
 }));
 
 // Mock useNavigate

@@ -1,6 +1,7 @@
 import React from 'react';
 import { render, screen, act, fireEvent } from '@testing-library/react';
 import { MemoryRouter, useNavigate } from 'react-router-dom';
+import { vi } from 'vitest';
 import {
   AnalyticsProvider,
   useAnalytics,
@@ -12,38 +13,41 @@ import {
 import { analytics } from '../services/analytics';
 
 // Mock the analytics service
-jest.mock('../services/analytics', () => ({
+vi.mock('../services/analytics', () => ({
   analytics: {
-    init: jest.fn(),
-    setUserId: jest.fn(),
-    setTenantId: jest.fn(),
-    setConsent: jest.fn(),
-    track: jest.fn(),
-    pageView: jest.fn(),
-    trackClick: jest.fn(),
-    trackFormSubmit: jest.fn(),
-    trackSearch: jest.fn(),
-    trackFeature: jest.fn(),
-    trackBusiness: jest.fn(),
-    trackTiming: jest.fn(),
-    trackError: jest.fn(),
-    trackLogin: jest.fn(),
-    trackSignup: jest.fn(),
-    trackLogout: jest.fn(),
-    getSessionId: jest.fn(() => 'mock-session-id'),
-    flush: jest.fn(() => Promise.resolve()),
-    reset: jest.fn(),
+    init: vi.fn(),
+    setUserId: vi.fn(),
+    setTenantId: vi.fn(),
+    setConsent: vi.fn(),
+    track: vi.fn(),
+    pageView: vi.fn(),
+    trackClick: vi.fn(),
+    trackFormSubmit: vi.fn(),
+    trackSearch: vi.fn(),
+    trackFeature: vi.fn(),
+    trackBusiness: vi.fn(),
+    trackTiming: vi.fn(),
+    trackError: vi.fn(),
+    trackLogin: vi.fn(),
+    trackSignup: vi.fn(),
+    trackLogout: vi.fn(),
+    getSessionId: vi.fn(() => 'mock-session-id'),
+    flush: vi.fn(() => Promise.resolve()),
+    reset: vi.fn(),
   },
 }));
 
 // Mock react-router-dom
-jest.mock('react-router-dom', () => ({
-  ...jest.requireActual('react-router-dom'),
-  useLocation: jest.fn(() => ({
-    pathname: '/test-path',
-    search: '?query=value',
-  })),
-}));
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual('react-router-dom');
+  return {
+    ...actual,
+    useLocation: vi.fn(() => ({
+      pathname: '/test-path',
+      search: '?query=value',
+    })),
+  };
+});
 
 // Helper component to test hooks
 function TestComponent() {
@@ -103,7 +107,7 @@ const renderWithProvider = (
 
 describe('AnalyticsProvider', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('initializes with config', () => {
@@ -161,12 +165,12 @@ describe('AnalyticsProvider', () => {
 
 describe('useAnalytics', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('throws error when used outside provider', () => {
     // Suppress console.error for expected error
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation();
 
     expect(() => {
       render(
@@ -272,7 +276,7 @@ describe('useAnalytics', () => {
 
 describe('usePageTracking', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('tracks page view on mount', () => {
@@ -291,7 +295,7 @@ describe('usePageTracking', () => {
 
 describe('useComponentTracking', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('tracks component mount and unmount', () => {
@@ -318,7 +322,7 @@ describe('useComponentTracking', () => {
 
 describe('useInteractionTracking', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('provides trackButtonClick and trackForm functions', () => {
@@ -357,7 +361,7 @@ describe('useInteractionTracking', () => {
 
 describe('useBusinessTracking', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('provides business tracking functions', () => {
@@ -468,7 +472,7 @@ describe('useBusinessTracking', () => {
 
 describe('AnalyticsProvider edge cases', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('handles null userId', () => {

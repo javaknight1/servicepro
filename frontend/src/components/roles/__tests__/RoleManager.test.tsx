@@ -1,12 +1,13 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { RoleManager } from '../RoleManager';
 import { roleApi } from '@services/roleApi';
 import type { Role } from '@types/role';
 
 // Mock the API
-jest.mock('@services/roleApi');
+vi.mock('@services/roleApi');
 
 const mockRoles: Role[] = [
   {
@@ -53,8 +54,8 @@ const createWrapper = () => {
 
 describe('RoleManager', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-    (roleApi.getRoles as jest.Mock).mockResolvedValue({ data: mockRoles });
+    vi.clearAllMocks();
+    (roleApi.getRoles as vi.Mock).mockResolvedValue({ data: mockRoles });
   });
 
   it('renders role manager with roles', async () => {
@@ -195,8 +196,8 @@ describe('RoleManager', () => {
 
   it('calls delete API when confirming deletion', async () => {
     const user = userEvent.setup();
-    const deleteMock = jest.fn().mockResolvedValue({});
-    (roleApi.deleteRole as jest.Mock) = deleteMock;
+    const deleteMock = vi.fn().mockResolvedValue({});
+    (roleApi.deleteRole as vi.Mock) = deleteMock;
 
     render(<RoleManager />, { wrapper: createWrapper() });
 
@@ -225,7 +226,7 @@ describe('RoleManager', () => {
   });
 
   it('handles loading state', () => {
-    (roleApi.getRoles as jest.Mock).mockReturnValue(new Promise(() => {}));
+    (roleApi.getRoles as vi.Mock).mockReturnValue(new Promise(() => {}));
 
     render(<RoleManager />, { wrapper: createWrapper() });
 
@@ -233,7 +234,7 @@ describe('RoleManager', () => {
   });
 
   it('handles error state', async () => {
-    (roleApi.getRoles as jest.Mock).mockRejectedValue(
+    (roleApi.getRoles as vi.Mock).mockRejectedValue(
       new Error('Failed to load')
     );
 
@@ -255,7 +256,7 @@ describe('RoleManager', () => {
 
   it('calls onRoleSelect when role is clicked', async () => {
     const user = userEvent.setup();
-    const onRoleSelect = jest.fn();
+    const onRoleSelect = vi.fn();
 
     render(<RoleManager onRoleSelect={onRoleSelect} />, {
       wrapper: createWrapper(),

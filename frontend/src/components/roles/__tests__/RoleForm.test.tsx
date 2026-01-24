@@ -1,12 +1,13 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { RoleForm } from '../RoleForm';
 import { roleApi } from '@services/roleApi';
 import type { Role, Permission } from '@types/role';
 
 // Mock the API
-jest.mock('@services/roleApi');
+vi.mock('@services/roleApi');
 
 const mockPermissions: Permission[] = [
   {
@@ -62,11 +63,11 @@ const createWrapper = () => {
 
 describe('RoleForm', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-    (roleApi.getPermissions as jest.Mock).mockResolvedValue({
+    vi.clearAllMocks();
+    (roleApi.getPermissions as vi.Mock).mockResolvedValue({
       data: mockPermissions,
     });
-    (roleApi.getRoles as jest.Mock).mockResolvedValue({ data: [] });
+    (roleApi.getRoles as vi.Mock).mockResolvedValue({ data: [] });
   });
 
   describe('Create mode', () => {
@@ -149,10 +150,10 @@ describe('RoleForm', () => {
 
     it('creates role with selected permissions', async () => {
       const user = userEvent.setup();
-      const createMock = jest.fn().mockResolvedValue({ data: mockRole });
-      (roleApi.createRole as jest.Mock) = createMock;
+      const createMock = vi.fn().mockResolvedValue({ data: mockRole });
+      (roleApi.createRole as vi.Mock) = createMock;
 
-      const onSuccess = jest.fn();
+      const onSuccess = vi.fn();
       render(<RoleForm onSuccess={onSuccess} />, { wrapper: createWrapper() });
 
       // Fill form
@@ -253,10 +254,10 @@ describe('RoleForm', () => {
 
     it('updates role when submitted', async () => {
       const user = userEvent.setup();
-      const updateMock = jest.fn().mockResolvedValue({ data: mockRole });
-      (roleApi.updateRole as jest.Mock) = updateMock;
+      const updateMock = vi.fn().mockResolvedValue({ data: mockRole });
+      (roleApi.updateRole as vi.Mock) = updateMock;
 
-      const onSuccess = jest.fn();
+      const onSuccess = vi.fn();
       render(<RoleForm role={mockRole} onSuccess={onSuccess} />, {
         wrapper: createWrapper(),
       });
@@ -287,7 +288,7 @@ describe('RoleForm', () => {
 
   it('calls onCancel when cancel button is clicked', async () => {
     const user = userEvent.setup();
-    const onCancel = jest.fn();
+    const onCancel = vi.fn();
 
     render(<RoleForm onCancel={onCancel} />, { wrapper: createWrapper() });
 
@@ -297,8 +298,8 @@ describe('RoleForm', () => {
 
   it('displays error message on API failure', async () => {
     const user = userEvent.setup();
-    const createMock = jest.fn().mockRejectedValue(new Error('API Error'));
-    (roleApi.createRole as jest.Mock) = createMock;
+    const createMock = vi.fn().mockRejectedValue(new Error('API Error'));
+    (roleApi.createRole as vi.Mock) = createMock;
 
     render(<RoleForm />, { wrapper: createWrapper() });
 
@@ -317,7 +318,7 @@ describe('RoleForm', () => {
     const createMock = jest
       .fn()
       .mockImplementation(() => new Promise(() => {}));
-    (roleApi.createRole as jest.Mock) = createMock;
+    (roleApi.createRole as vi.Mock) = createMock;
 
     render(<RoleForm />, { wrapper: createWrapper() });
 

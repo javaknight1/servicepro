@@ -1,12 +1,13 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { RoleAudit } from '../RoleAudit';
 import { roleApi } from '@services/roleApi';
 import type { RoleAuditLog } from '@types/role';
 
 // Mock the API
-jest.mock('@services/roleApi');
+vi.mock('@services/roleApi');
 
 const mockAuditLogs: RoleAuditLog[] = [
   {
@@ -54,8 +55,8 @@ const createWrapper = () => {
 
 describe('RoleAudit', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-    (roleApi.getRoleAuditLogs as jest.Mock).mockResolvedValue({
+    vi.clearAllMocks();
+    (roleApi.getRoleAuditLogs as vi.Mock).mockResolvedValue({
       data: mockAuditLogs,
     });
   });
@@ -146,7 +147,7 @@ describe('RoleAudit', () => {
     const getRoleAuditLogsMock = jest
       .fn()
       .mockResolvedValue({ data: mockAuditLogs });
-    (roleApi.getRoleAuditLogs as jest.Mock) = getRoleAuditLogsMock;
+    (roleApi.getRoleAuditLogs as vi.Mock) = getRoleAuditLogsMock;
 
     render(<RoleAudit />, { wrapper: createWrapper() });
 
@@ -170,7 +171,7 @@ describe('RoleAudit', () => {
     const getRoleAuditLogsMock = jest
       .fn()
       .mockResolvedValue({ data: mockAuditLogs });
-    (roleApi.getRoleAuditLogs as jest.Mock) = getRoleAuditLogsMock;
+    (roleApi.getRoleAuditLogs as vi.Mock) = getRoleAuditLogsMock;
 
     render(<RoleAudit />, { wrapper: createWrapper() });
 
@@ -201,7 +202,7 @@ describe('RoleAudit', () => {
     const getRoleAuditLogsMock = jest
       .fn()
       .mockResolvedValue({ data: mockAuditLogs });
-    (roleApi.getRoleAuditLogs as jest.Mock) = getRoleAuditLogsMock;
+    (roleApi.getRoleAuditLogs as vi.Mock) = getRoleAuditLogsMock;
 
     render(<RoleAudit />, { wrapper: createWrapper() });
 
@@ -225,18 +226,18 @@ describe('RoleAudit', () => {
     const exportMock = jest
       .fn()
       .mockResolvedValue({ data: new Blob(['test']) });
-    (roleApi.exportAuditLogs as jest.Mock) = exportMock;
+    (roleApi.exportAuditLogs as vi.Mock) = exportMock;
 
     // Mock URL.createObjectURL
-    global.URL.createObjectURL = jest.fn();
+    global.URL.createObjectURL = vi.fn();
     const mockLink = {
-      click: jest.fn(),
-      remove: jest.fn(),
-      setAttribute: jest.fn(),
+      click: vi.fn(),
+      remove: vi.fn(),
+      setAttribute: vi.fn(),
       href: '',
     };
-    jest.spyOn(document, 'createElement').mockReturnValue(mockLink as any);
-    jest.spyOn(document.body, 'appendChild').mockImplementation();
+    vi.spyOn(document, 'createElement').mockReturnValue(mockLink as any);
+    vi.spyOn(document.body, 'appendChild').mockImplementation();
 
     render(<RoleAudit />, { wrapper: createWrapper() });
 
@@ -269,7 +270,7 @@ describe('RoleAudit', () => {
   });
 
   it('handles loading state', () => {
-    (roleApi.getRoleAuditLogs as jest.Mock).mockReturnValue(
+    (roleApi.getRoleAuditLogs as vi.Mock).mockReturnValue(
       new Promise(() => {})
     );
 
@@ -279,7 +280,7 @@ describe('RoleAudit', () => {
   });
 
   it('handles error state', async () => {
-    (roleApi.getRoleAuditLogs as jest.Mock).mockRejectedValue(
+    (roleApi.getRoleAuditLogs as vi.Mock).mockRejectedValue(
       new Error('Failed to load')
     );
 
@@ -293,7 +294,7 @@ describe('RoleAudit', () => {
   });
 
   it('shows empty state when no logs', async () => {
-    (roleApi.getRoleAuditLogs as jest.Mock).mockResolvedValue({ data: [] });
+    (roleApi.getRoleAuditLogs as vi.Mock).mockResolvedValue({ data: [] });
 
     render(<RoleAudit />, { wrapper: createWrapper() });
 
