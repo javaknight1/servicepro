@@ -4,6 +4,8 @@ import type {
   TenantMembership,
   UpdateMembershipRequest,
   SubscriptionHistoryResponse,
+  PreviewSubscriptionChangeRequest,
+  SubscriptionChangePreview,
 } from '@/types/membership';
 
 // Membership API endpoints
@@ -23,6 +25,16 @@ export const membershipApi = {
   getSubscriptionHistory: (tenantId: string) =>
     api.get<SubscriptionHistoryResponse>(
       `/v1/tenants/${tenantId}/membership/history`
+    ),
+
+  // Preview subscription change
+  previewSubscriptionChange: (
+    tenantId: string,
+    data: PreviewSubscriptionChangeRequest
+  ) =>
+    api.post<SubscriptionChangePreview>(
+      `/v1/tenants/${tenantId}/membership/preview`,
+      data
     ),
 };
 

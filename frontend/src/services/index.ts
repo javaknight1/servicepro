@@ -38,5 +38,9 @@ export { exportService } from './exportService';
 
 export { roleApi } from './roleApi';
 
+export { membershipApi } from './membershipService';
+
+export { billingApi } from './billingService';
+
 // Realtime services
 export * from './realtime';

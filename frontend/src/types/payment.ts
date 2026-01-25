@@ -470,3 +470,56 @@ export interface PaymentMethodActivityLog {
   userAgent?: string;
   createdAt: string;
 }
+
+// =============================================================================
+// Tenant Billing Types (for Subscription Payment Methods)
+// =============================================================================
+
+export interface SavedPaymentMethod {
+  id: string;
+  card_brand: string;
+  card_last_four: string;
+  card_exp_month: number;
+  card_exp_year: number;
+  is_default: boolean;
+  created_at: string;
+}
+
+export interface SavedPaymentMethodsResponse {
+  payment_methods: SavedPaymentMethod[];
+}
+
+export interface AddPaymentMethodRequest {
+  payment_method_id: string;
+  set_as_default?: boolean;
+}
+
+export interface SetupIntentResponse {
+  client_secret: string;
+}
+
+export type BillingEventStatus = 'succeeded' | 'failed' | 'pending';
+
+export interface BillingEvent {
+  id: string;
+  event_type: string;
+  amount_cents?: number;
+  currency: string;
+  status: BillingEventStatus;
+  description?: string;
+  stripe_invoice_url?: string;
+  created_at: string;
+}
+
+export interface BillingEventsResponse {
+  events: BillingEvent[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
+export interface BillingConfig {
+  stripe_enabled: boolean;
+  publishable_key?: string;
+}

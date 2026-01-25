@@ -71,6 +71,38 @@ export interface SubscriptionHistoryResponse {
   history: TenantSubscription[];
 }
 
+// Subscription change preview
+export interface PreviewSubscriptionChangeRequest {
+  tier_id: string;
+  billing_cycle: BillingCycle;
+}
+
+export interface SubscriptionChangePreview {
+  // Current plan info
+  current_tier_name: string;
+  current_price_cents: number;
+  current_billing_cycle: BillingCycle;
+  current_period_end?: string;
+  days_remaining: number;
+
+  // New plan info
+  new_tier_name: string;
+  new_price_cents: number;
+  new_billing_cycle: BillingCycle;
+
+  // Proration info
+  is_upgrade: boolean;
+  is_downgrade: boolean;
+  is_cancellation: boolean;
+  proration_credit_cents: number;
+  amount_due_today_cents: number;
+  next_billing_date?: string;
+  next_billing_amount_cents: number;
+
+  // Warnings/messages
+  warnings?: string[];
+}
+
 // Store state
 export interface MembershipState {
   tiers: MembershipTier[];

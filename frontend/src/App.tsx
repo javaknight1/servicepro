@@ -1,10 +1,13 @@
 import { BrowserRouter } from 'react-router-dom';
 import { AppRoutes } from './routes';
+import { StripeProvider } from './providers/StripeProvider';
 
 function App() {
   return (
     <BrowserRouter>
-      <AppRoutes />
+      <StripeProvider>
+        <AppRoutes />
+      </StripeProvider>
     </BrowserRouter>
   );
 }

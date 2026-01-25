@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CreditCard, ExternalLink, Crown } from 'lucide-react';
+import { ExternalLink, Crown } from 'lucide-react';
 import {
   Card,
   CardHeader,
@@ -12,6 +12,7 @@ import {
 } from '@components/shared';
 import { useMembershipStore, useTenantStore } from '@store';
 import { formatPrice } from '@/types/membership';
+import { BillingSection } from './BillingSection';
 
 export function MembershipTab() {
   const navigate = useNavigate();
@@ -193,36 +194,8 @@ export function MembershipTab() {
         </CardContent>
       </Card>
 
-      {/* Payment Method */}
-      <Card variant="elevated" padding="lg">
-        <CardHeader>
-          <CardTitle>Payment Method</CardTitle>
-          <CardDescription>
-            Manage your billing and payment information
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between py-4">
-            <div className="flex items-center space-x-4">
-              <div className="h-10 w-16 bg-neutral-100 rounded flex items-center justify-center">
-                <CreditCard className="h-6 w-6 text-neutral-400" />
-              </div>
-              <div>
-                <p className="font-medium text-neutral-900">
-                  Visa ending in 4242
-                </p>
-                <p className="text-sm text-neutral-500">Expires 12/2025</p>
-              </div>
-            </div>
-            <Button variant="outline" disabled>
-              Update
-            </Button>
-          </div>
-          <p className="text-xs text-neutral-400 mt-2">
-            Payment method management is coming soon.
-          </p>
-        </CardContent>
-      </Card>
+      {/* Billing Section */}
+      <BillingSection />
     </div>
   );
 }

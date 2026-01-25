@@ -1,16 +1,158 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useStripe, useElements, CardElement } from '@stripe/react-stripe-js';
 import { DashboardLayout } from '@components/layout';
-import { Card, CardContent, Button } from '@components/shared';
+import { Card, CardContent, Button, Modal } from '@components/shared';
 import { TierCard, BillingToggle } from '@components/membership';
-import { useMembershipStore, useTenantStore } from '@store';
+import { useMembershipStore, useTenantStore, useBillingStore } from '@store';
+import { useStripeContext } from '@/providers/StripeProvider';
+import { billingApi } from '@/services';
 import type { MembershipTier, BillingCycle } from '@/types/membership';
-import { ArrowLeft, AlertTriangle } from 'lucide-react';
+import {
+  ArrowLeft,
+  AlertTriangle,
+  CreditCard,
+  Loader2,
+  AlertCircle,
+} from 'lucide-react';
+
+// Separate component for adding a card (needs Elements context)
+interface AddCardModalContentProps {
+  tenantId: string;
+  onSuccess: () => void;
+  onCancel: () => void;
+}
+
+function AddCardModalContent({
+  tenantId,
+  onSuccess,
+  onCancel,
+}: AddCardModalContentProps) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const { addPaymentMethod } = useBillingStore();
+
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
+
+  const handleAddCard = async () => {
+    if (!stripe || !elements) {
+      return;
+    }
+
+    setIsProcessing(true);
+    setAddError(null);
+
+    try {
+      // Create setup intent
+      const setupResponse = await billingApi.createSetupIntent(tenantId);
+      const clientSecret = setupResponse.data.client_secret;
+
+      // Confirm the setup intent with the card element
+      const cardElement = elements.getElement(CardElement);
+      if (!cardElement) {
+        throw new Error('Card element not found');
+      }
+
+      const { setupIntent, error } = await stripe.confirmCardSetup(
+        clientSecret,
+        {
+          payment_method: {
+            card: cardElement,
+          },
+        }
+      );
+
+      if (error) {
+        throw new Error(error.message || 'Failed to add payment method');
+      }
+
+      if (!setupIntent?.payment_method) {
+        throw new Error('No payment method returned');
+      }
+
+      // Add the payment method to our backend (set as default since it's for subscription)
+      await addPaymentMethod(
+        tenantId,
+        setupIntent.payment_method as string,
+        true // Always set as default for subscription payment
+      );
+
+      cardElement.clear();
+      onSuccess();
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Failed to add card';
+      setAddError(message);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center space-x-3 text-amber-700 bg-amber-50 p-3 rounded-lg">
+        <CreditCard className="h-5 w-5 flex-shrink-0" />
+        <p className="text-sm">
+          A payment method is required for paid plans. Your card will be charged
+          at the start of each billing cycle.
+        </p>
+      </div>
+
+      {addError && (
+        <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-center text-red-700 text-sm">
+          <AlertCircle className="h-4 w-4 mr-2 flex-shrink-0" />
+          {addError}
+        </div>
+      )}
+
+      <div className="p-3 border border-neutral-300 rounded-lg">
+        <CardElement
+          options={{
+            style: {
+              base: {
+                fontSize: '16px',
+                color: '#1f2937',
+                '::placeholder': {
+                  color: '#9ca3af',
+                },
+              },
+              invalid: {
+                color: '#dc2626',
+              },
+            },
+          }}
+        />
+      </div>
+
+      <div className="flex justify-end space-x-3 pt-2">
+        <Button variant="outline" onClick={onCancel} disabled={isProcessing}>
+          Cancel
+        </Button>
+        <Button
+          variant="primary"
+          onClick={handleAddCard}
+          disabled={isProcessing || !stripe}
+        >
+          {isProcessing ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Processing...
+            </>
+          ) : (
+            'Add Card & Continue'
+          )}
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 export function ChangeMembershipPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { currentTenant } = useTenantStore();
+  const { isAvailable: isStripeAvailable } = useStripeContext();
   const {
     tiers,
     currentMembership,
@@ -18,13 +160,14 @@ export function ChangeMembershipPage() {
     error,
     loadTiers,
     loadMembership,
-    updateMembership,
-    clearError,
   } = useMembershipStore();
+  const { paymentMethods, loadPaymentMethods, loadConfig, isStripeEnabled } =
+    useBillingStore();
 
-  const [isUpdating, setIsUpdating] = useState(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
   const [billingCycle, setBillingCycle] = useState<BillingCycle>('monthly');
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [pendingTier, setPendingTier] = useState<MembershipTier | null>(null);
 
   // Get pre-selected tier from location state (if coming from pricing page)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -32,35 +175,84 @@ export function ChangeMembershipPage() {
 
   useEffect(() => {
     loadTiers();
-  }, [loadTiers]);
+    loadConfig();
+  }, [loadTiers, loadConfig]);
 
   useEffect(() => {
     if (currentTenant?.id) {
       loadMembership(currentTenant.id);
+      if (isStripeEnabled) {
+        loadPaymentMethods(currentTenant.id);
+      }
     }
-  }, [currentTenant?.id, loadMembership]);
+  }, [currentTenant?.id, isStripeEnabled, loadMembership, loadPaymentMethods]);
+
+  const hasPaymentMethod = paymentMethods.length > 0;
 
   const handleSelectTier = async (tier: MembershipTier) => {
     if (!currentTenant?.id) return;
 
-    setIsUpdating(true);
-    setUpdateError(null);
-    clearError();
+    // Check if this is a paid tier
+    const isPaidTier =
+      tier.monthly_price_cents > 0 || tier.annual_price_cents > 0;
 
-    try {
-      await updateMembership(currentTenant.id, tier.id, billingCycle);
-      // Navigate back to org settings on success
-      navigate('/settings/organization', {
-        state: { activeTab: 'membership', success: true },
-      });
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (err: any) {
-      setUpdateError(
-        err.response?.data?.message || 'Failed to update membership'
-      );
-    } finally {
-      setIsUpdating(false);
+    // If paid tier, check payment requirements
+    if (isPaidTier) {
+      // If Stripe is configured and available
+      if (isStripeEnabled && isStripeAvailable) {
+        // Check if user has a payment method
+        if (!hasPaymentMethod) {
+          setPendingTier(tier);
+          setShowPaymentModal(true);
+          return;
+        }
+      } else {
+        // Stripe is not configured - show error for paid tiers
+        setUpdateError(
+          'Payment processing is not configured. Please add a payment method in your organization settings first, or contact support.'
+        );
+        return;
+      }
     }
+
+    // Proceed to confirmation page
+    navigateToConfirmation(tier);
+  };
+
+  const navigateToConfirmation = (tier: MembershipTier) => {
+    const priceCents =
+      billingCycle === 'annual'
+        ? tier.annual_price_cents
+        : tier.monthly_price_cents;
+
+    // Navigate to confirmation page with tier details
+    navigate('/settings/organization/membership/confirm', {
+      state: {
+        tierId: tier.id,
+        tierName: tier.name,
+        tierDisplayName: tier.display_name,
+        billingCycle,
+        priceCents,
+      },
+    });
+  };
+
+  const handlePaymentSuccess = async () => {
+    setShowPaymentModal(false);
+    // Reload payment methods
+    if (currentTenant?.id) {
+      await loadPaymentMethods(currentTenant.id);
+    }
+    // Navigate to confirmation page
+    if (pendingTier) {
+      navigateToConfirmation(pendingTier);
+      setPendingTier(null);
+    }
+  };
+
+  const handlePaymentCancel = () => {
+    setShowPaymentModal(false);
+    setPendingTier(null);
   };
 
   const currentTierId = currentMembership?.tier?.id;
@@ -158,7 +350,7 @@ export function ChangeMembershipPage() {
                   tier={tier}
                   isCurrentTier={!isLegacyPlan && tier.id === currentTierId}
                   onSelect={handleSelectTier}
-                  disabled={isUpdating}
+                  disabled={false}
                   highlighted={
                     tier.name === 'basic' ||
                     (preSelectedTierId && tier.id === preSelectedTierId)
@@ -185,6 +377,21 @@ export function ChangeMembershipPage() {
           </>
         )}
       </div>
+
+      {/* Payment Method Modal - Only show when Stripe is available */}
+      {isStripeAvailable && (
+        <Modal
+          isOpen={showPaymentModal}
+          onClose={handlePaymentCancel}
+          title="Add Payment Method"
+        >
+          <AddCardModalContent
+            tenantId={currentTenant.id}
+            onSuccess={handlePaymentSuccess}
+            onCancel={handlePaymentCancel}
+          />
+        </Modal>
+      )}
     </DashboardLayout>
   );
 }

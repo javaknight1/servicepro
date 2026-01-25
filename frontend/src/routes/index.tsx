@@ -129,6 +129,14 @@ const ChangeMembershipPage = loadable(
   { chunkName: 'change-membership', delay: 100 }
 );
 
+const ConfirmMembershipPage = loadable(
+  () =>
+    import(
+      /* @ts-expect-error - dynamic import type */ /* webpackChunkName: "page-settings" */ '@pages/Settings'
+    ).then((m) => ({ default: m.ConfirmMembershipPage })),
+  { chunkName: 'confirm-membership', delay: 100 }
+);
+
 const PricingPage = loadable(
   () =>
     import(
@@ -364,6 +372,10 @@ export function AppRoutes() {
           path="/settings/organization/membership/change"
           element={<ChangeMembershipPage />}
         />
+        <Route
+          path="/settings/organization/membership/confirm"
+          element={<ConfirmMembershipPage />}
+        />
         <Route path="/team/members" element={<TeamMembersPage />} />
         <Route path="/team/roles" element={<TeamRolesPage />} />
         <Route path="/reports/revenue" element={<RevenueReportPage />} />
@@ -402,6 +414,7 @@ export const routePaths = {
   orgSettings: '/settings/organization',
   newOrg: '/settings/organization/new',
   changeMembership: '/settings/organization/membership/change',
+  confirmMembership: '/settings/organization/membership/confirm',
   pricing: '/pricing',
   team: {
     members: '/team/members',
