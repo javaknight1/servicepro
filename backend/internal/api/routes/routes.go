@@ -32,7 +32,11 @@ import (
 
 // Setup configures all API routes
 func Setup(router *gin.Engine, db *gorm.DB, redisClient *redis.Client, cfg *config.Config) {
-	// Apply security headers to all responses (must be first middleware)
+	// Apply CORS middleware first (must handle preflight OPTIONS requests before other middleware)
+	// This allows cross-origin requests from the configured frontend URL
+	router.Use(middleware.CORSMiddleware(&cfg.CORS, cfg.Server.Env))
+
+	// Apply security headers to all responses
 	// This adds protection against XSS, clickjacking, MIME sniffing, and other attacks
 	securityConfig := middleware.DefaultSecurityHeadersConfig(cfg.Server.Env)
 	router.Use(middleware.SecurityHeaders(securityConfig))

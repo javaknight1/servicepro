@@ -208,16 +208,6 @@ This document tracks technical improvements that should be implemented but are d
     - Standardized validation error response format
     - Validation rules documented
 
-- [ ] **CORS Configuration Review**
-  - **What**: Explicitly configure CORS for all environments
-  - **Why**: CORS may not be properly configured
-  - **Expected Result**: CORS properly restricts cross-origin requests
-  - **Acceptance Criteria**:
-    - Allowed origins configured per environment
-    - Credentials handling properly configured
-    - Preflight caching enabled
-    - No wildcard origins in production
-
 ### Testing
 
 - [ ] **Integration Tests for Critical Workflows**
@@ -1170,6 +1160,7 @@ _Move items here when completed with date and PR/commit reference_
 - [x] Subscription proration preview (2025-01-25)
 - [x] Local email development setup with Mailpit (2025-01-25)
 - [x] Security headers middleware (2025-01-25)
+- [x] CORS configuration with environment-specific origins (2025-01-25)
 
 ---
 

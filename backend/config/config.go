@@ -33,6 +33,7 @@ type Config struct {
 	OpenTelemetry OpenTelemetryConfig
 	PDF           PDFConfig
 	SNS           SNSConfig
+	CORS          CORSConfig
 }
 
 // AWSConfig holds AWS configuration
@@ -261,6 +262,26 @@ type SNSConfig struct {
 	Region string
 }
 
+// CORSConfig holds CORS (Cross-Origin Resource Sharing) configuration
+type CORSConfig struct {
+	// Enabled enables CORS handling
+	Enabled bool
+	// AllowedOrigins is a list of allowed origins (e.g., ["https://app.servicepro.com"])
+	// In development, defaults to ["http://localhost:3000", "http://localhost:5173"]
+	// IMPORTANT: Never use "*" in production with credentials
+	AllowedOrigins []string
+	// AllowedMethods is a list of allowed HTTP methods
+	AllowedMethods []string
+	// AllowedHeaders is a list of allowed request headers
+	AllowedHeaders []string
+	// ExposedHeaders is a list of headers exposed to the browser
+	ExposedHeaders []string
+	// AllowCredentials indicates whether credentials (cookies, auth headers) are allowed
+	AllowCredentials bool
+	// MaxAge is the max age (in seconds) for preflight request caching
+	MaxAge int
+}
+
 // Load reads configuration from environment variables
 func Load() *Config {
 	// Load .env file if it exists (for local development)
@@ -427,6 +448,15 @@ func Load() *Config {
 			Enabled:  getEnvAsBool("SNS_ENABLED", false),
 			TopicARN: getEnv("SNS_TOPIC_ARN", ""),
 			Region:   getEnv("SNS_REGION", ""),
+		},
+		CORS: CORSConfig{
+			Enabled:          getEnvAsBool("CORS_ENABLED", true),
+			AllowedOrigins:   getEnvAsStringSlice("CORS_ALLOWED_ORIGINS", []string{"http://localhost:3000", "http://localhost:5173"}),
+			AllowedMethods:   getEnvAsStringSlice("CORS_ALLOWED_METHODS", []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"}),
+			AllowedHeaders:   getEnvAsStringSlice("CORS_ALLOWED_HEADERS", []string{"Accept", "Authorization", "Content-Type", "X-Request-ID"}),
+			ExposedHeaders:   getEnvAsStringSlice("CORS_EXPOSED_HEADERS", []string{"X-Request-ID", "X-RateLimit-Remaining", "X-RateLimit-Reset"}),
+			AllowCredentials: getEnvAsBool("CORS_ALLOW_CREDENTIALS", true),
+			MaxAge:           getEnvAsInt("CORS_MAX_AGE", 86400), // 24 hours
 		},
 	}
 }
