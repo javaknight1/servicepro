@@ -17,7 +17,6 @@ This document tracks technical improvements that should be implemented but are d
 ### Sprint 2 - Observability & Email
 
 - [ ] Structured logging + correlation IDs
-- [ ] Local email dev setup (MailHog/Mailpit)
 - [ ] Email retry logic with exponential backoff
 - [ ] Expanded health checks (DB, Redis, S3)
 
@@ -132,16 +131,6 @@ This document tracks technical improvements that should be implemented but are d
     - Chunk breakdown visible
 
 ### Email Infrastructure
-
-- [ ] **Local Development Email Service**
-  - **What**: Configure MailHog or Mailpit for local email testing
-  - **Why**: Mock provider exists but no UI to view sent emails
-  - **Expected Result**: Developers can view all sent emails in browser
-  - **Acceptance Criteria**:
-    - MailHog/Mailpit added to docker-compose.yml
-    - Web UI accessible at localhost:8025
-    - SMTP configured for local development
-    - Documentation updated
 
 - [ ] **Email Rate Limiting for SES**
   - **What**: Implement token bucket rate limiter for SES sandbox limits
@@ -1178,6 +1167,7 @@ _Move items here when completed with date and PR/commit reference_
 - [x] Customer CRUD operations (2024-01-25)
 - [x] Membership system with Stripe integration (2025-01-25)
 - [x] Subscription proration preview (2025-01-25)
+- [x] Local email development setup with Mailpit (2025-01-25)
 
 ---
 

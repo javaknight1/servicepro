@@ -40,7 +40,7 @@ func GetRegisteredProviders() []Provider {
 // NewClient creates a new email client based on configuration.
 //
 // Provider selection order:
-// 1. If cfg.Server.Env == "development" -> Mock
+// 1. If cfg.SMTP.Host != "" -> SMTP (Mailpit for local development)
 // 2. If cfg.Resend.APIKey != "" -> Resend
 // 3. If cfg.AWS.Region != "" && cfg.SES.FromEmail != "" -> SES
 // 4. Fallback -> Mock
@@ -48,6 +48,7 @@ func GetRegisteredProviders() []Provider {
 // Note: Providers must be registered by importing their packages with blank imports:
 //
 //	import _ "github.com/javaknight1/servicepro/backend/pkg/clients/email/mock"
+//	import _ "github.com/javaknight1/servicepro/backend/pkg/clients/email/smtp"
 //	import _ "github.com/javaknight1/servicepro/backend/pkg/clients/email/ses"
 //	import _ "github.com/javaknight1/servicepro/backend/pkg/clients/email/resend"
 func NewClient(ctx context.Context, cfg *config.Config) (Client, error) {
@@ -72,9 +73,9 @@ func NewClient(ctx context.Context, cfg *config.Config) (Client, error) {
 
 // detectProvider determines which provider to use based on configuration
 func detectProvider(cfg *config.Config) Provider {
-	// 1. Development environment defaults to mock
-	if cfg.Server.Env == "development" {
-		return ProviderMock
+	// 1. Check for SMTP configuration (Mailpit for local development)
+	if cfg.SMTP.Host != "" {
+		return ProviderSMTP
 	}
 
 	// 2. Check for Resend credentials
@@ -87,7 +88,7 @@ func detectProvider(cfg *config.Config) Provider {
 		return ProviderSES
 	}
 
-	// 4. Fallback to mock
+	// 4. Fallback to mock (unit tests, CI without Docker)
 	return ProviderMock
 }
 

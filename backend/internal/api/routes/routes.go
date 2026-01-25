@@ -22,6 +22,7 @@ import (
 	_ "github.com/javaknight1/servicepro/backend/pkg/clients/email/mock"
 	_ "github.com/javaknight1/servicepro/backend/pkg/clients/email/resend"
 	_ "github.com/javaknight1/servicepro/backend/pkg/clients/email/ses"
+	_ "github.com/javaknight1/servicepro/backend/pkg/clients/email/smtp"
 
 	// Register storage providers (S3 works for AWS S3, Cloudflare R2, MinIO)
 	storageclient "github.com/javaknight1/servicepro/backend/pkg/clients/storage"
@@ -44,10 +45,10 @@ func Setup(router *gin.Engine, db *gorm.DB, redisClient *redis.Client, cfg *conf
 
 	// Initialize email service using the new unified client factory
 	// Provider is auto-detected based on configuration:
-	// - development env -> Mock
+	// - SMTP_HOST set -> SMTP (Mailpit for local development)
 	// - Resend API key present -> Resend
 	// - AWS SES configured -> SES
-	// - fallback -> Mock
+	// - fallback -> Mock (unit tests, CI)
 	emailClient, err := emailclient.NewClient(context.Background(), cfg)
 	if err != nil {
 		// If email client creation fails, this is critical

@@ -20,6 +20,7 @@ type Config struct {
 	RateLimit     RateLimitConfig
 	AWS           AWSConfig
 	S3Compatible  S3CompatibleConfig
+	SMTP          SMTPConfig
 	Resend        ResendConfig
 	BetterStack   BetterStackConfig
 	Stripe        StripeConfig
@@ -61,6 +62,18 @@ type ResendConfig struct {
 	APIKey    string
 	FromEmail string
 	FromName  string
+}
+
+// SMTPConfig holds SMTP email configuration (for Mailpit in development)
+type SMTPConfig struct {
+	Host      string
+	Port      int
+	Username  string
+	Password  string
+	FromEmail string
+	FromName  string
+	UseTLS    bool // Implicit TLS (port 465)
+	StartTLS  bool // STARTTLS (port 587)
 }
 
 // BetterStackConfig holds Better Stack (Logtail) monitoring configuration
@@ -308,6 +321,16 @@ func Load() *Config {
 			UsePathStyle:    getEnvAsBool("S3_COMPATIBLE_USE_PATH_STYLE", false),
 			DisableSSL:      getEnvAsBool("S3_COMPATIBLE_DISABLE_SSL", false),
 			PublicURL:       getEnv("S3_COMPATIBLE_PUBLIC_URL", ""),
+		},
+		SMTP: SMTPConfig{
+			Host:      getEnv("SMTP_HOST", ""),
+			Port:      getEnvAsInt("SMTP_PORT", 1025),
+			Username:  getEnv("SMTP_USERNAME", ""),
+			Password:  getEnv("SMTP_PASSWORD", ""),
+			FromEmail: getEnv("SMTP_FROM_EMAIL", "noreply@servicepro.local"),
+			FromName:  getEnv("SMTP_FROM_NAME", "ServicePro"),
+			UseTLS:    getEnvAsBool("SMTP_USE_TLS", false),
+			StartTLS:  getEnvAsBool("SMTP_START_TLS", false),
 		},
 		Resend: ResendConfig{
 			APIKey:    getEnv("RESEND_API_KEY", ""),
