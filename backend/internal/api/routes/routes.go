@@ -98,6 +98,7 @@ func Setup(router *gin.Engine, db *gorm.DB, redisClient *redis.Client, cfg *conf
 
 	// Initialize middleware
 	rateLimiter := middleware.NewRateLimiter(redisClient, &cfg.Auth)
+	apiRateLimiter := middleware.NewAPIRateLimiter(redisClient, &cfg.RateLimit)
 	permissionMiddleware := middleware.NewPermissionMiddleware(permissionChecker, jwtManager)
 
 	// Initialize handlers
@@ -123,6 +124,8 @@ func Setup(router *gin.Engine, db *gorm.DB, redisClient *redis.Client, cfg *conf
 
 	// API v1 routes
 	v1 := router.Group("/api/v1")
+	// Apply general rate limiting to all API routes
+	v1.Use(apiRateLimiter.DynamicRateLimit())
 	{
 		// Auth routes
 		auth := v1.Group("/auth")

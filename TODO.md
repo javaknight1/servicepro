@@ -4,48 +4,571 @@ This document tracks technical improvements that should be implemented but are d
 
 ---
 
-## High Priority
+## Sprint Roadmap
+
+### Sprint 1 - Production Readiness
+
+- [ ] Fly.io deployment setup
+- [ ] Migrate `db.Raw()` to GORM (SQL injection risk)
+- [ ] Add general API rate limiting
+- [ ] Enable Sentry error tracking
+- [ ] Remove console.log statements from frontend
+
+### Sprint 2 - Observability & Email
+
+- [ ] Structured logging + correlation IDs
+- [ ] Local email dev setup (MailHog/Mailpit)
+- [ ] Email retry logic with exponential backoff
+- [ ] Expanded health checks (DB, Redis, S3)
+
+### Sprint 3 - Testing & Security
+
+- [ ] Integration tests for 5 critical workflows
+- [ ] Security headers middleware
+- [ ] Input validation improvements
+- [ ] N+1 query fixes
+
+### Sprint 4 - Performance & Cleanup
+
+- [ ] Bundle analysis + optimization
+- [ ] Frontend type safety fixes
+- [ ] Query performance monitoring
+- [ ] Dead code elimination
+
+---
+
+## P0 - Critical (Blocks Production)
+
+### Infrastructure & Deployment
+
+- [ ] **Fly.io Backend Deployment**
+  - **What**: Create `fly.toml` configuration for backend service deployment
+  - **Why**: No deployment configuration exists; README says "coming soon"
+  - **Expected Result**: Backend deployable to Fly.io with single command
+  - **Acceptance Criteria**:
+    - `fly.toml` created with proper service configuration
+    - Environment variables documented
+    - Health check endpoint configured
+    - Auto-scaling rules defined
+
+- [ ] **Fly.io Deployment GitHub Action**
+  - **What**: Add deployment workflow to `.github/workflows/`
+  - **Why**: Automate deployments on merge to main
+  - **Expected Result**: Automatic staging deployment on main branch, manual production deployment
+  - **Acceptance Criteria**:
+    - Workflow triggers on main branch push
+    - Staging deploys automatically
+    - Production requires manual approval
+    - Rollback procedure documented
+
+- [ ] **Container Image Scanning (Trivy)**
+  - **What**: Add Trivy container scanning to CI pipeline
+  - **Why**: Detect vulnerabilities in Docker images before deployment
+  - **Expected Result**: CI fails if critical/high vulnerabilities found
+  - **Acceptance Criteria**:
+    - Trivy integrated into GitHub Actions
+    - Threshold set for blocking vulnerabilities
+    - Scan results visible in PR checks
+
+### Security - Critical
+
+- [ ] **Profile and Fix N+1 Queries**
+  - **What**: Audit list endpoints for N+1 query patterns
+  - **Why**: 58 Preload calls found; list endpoints likely have performance issues
+  - **Expected Result**: All list endpoints optimized with proper eager loading
+  - **Acceptance Criteria**:
+    - Customer list: single query + 1 for counts
+    - Job list: single query + 1 for related data
+    - Query count logged in development mode
+    - No endpoint exceeds 5 queries for list operations
+
+### Observability - Critical
+
+- [ ] **Enable Sentry Error Tracking**
+  - **What**: Configure and enable Sentry in production environment
+  - **Why**: Sentry client exists but may not be active; need production error visibility
+  - **Expected Result**: All unhandled errors reported to Sentry with context
+  - **Acceptance Criteria**:
+    - Sentry DSN configured in production
+    - Source maps uploaded for frontend errors
+    - User context attached to errors
+    - Release tracking enabled
+    - Alert rules configured for critical errors
+
+---
+
+## P1 - High Priority
+
+### Infrastructure
+
+- [ ] **Staging Environment Configuration**
+  - **What**: Create separate configuration for staging environment
+  - **Why**: Need environment parity for testing before production
+  - **Expected Result**: Isolated staging environment with production-like setup
+  - **Acceptance Criteria**:
+    - Separate Fly.io app for staging
+    - Staging database (isolated from production)
+    - Staging-specific environment variables
+    - Accessible at staging.servicepro.com (or similar)
+
+- [ ] **Dependency Vulnerability Scanning**
+  - **What**: Add Dependabot or Snyk to scan for vulnerable dependencies
+  - **Why**: Go modules and npm packages need continuous security monitoring
+  - **Expected Result**: Automatic PRs for security updates
+  - **Acceptance Criteria**:
+    - Dependabot configured for Go and npm
+    - Weekly security scans
+    - Critical vulnerabilities create blocking issues
+    - Auto-merge for patch-level security updates
+
+- [ ] **Bundle Size Monitoring in CI**
+  - **What**: Add bundle analysis to CI pipeline with size limits
+  - **Why**: Prevent frontend bundle bloat over time
+  - **Expected Result**: CI warns/fails if bundle exceeds threshold
+  - **Acceptance Criteria**:
+    - Bundle size reported in PR comments
+    - Warning at 500KB gzipped
+    - Failure at 750KB gzipped
+    - Chunk breakdown visible
+
+### Email Infrastructure
+
+- [ ] **Local Development Email Service**
+  - **What**: Configure MailHog or Mailpit for local email testing
+  - **Why**: Mock provider exists but no UI to view sent emails
+  - **Expected Result**: Developers can view all sent emails in browser
+  - **Acceptance Criteria**:
+    - MailHog/Mailpit added to docker-compose.yml
+    - Web UI accessible at localhost:8025
+    - SMTP configured for local development
+    - Documentation updated
+
+- [ ] **Email Rate Limiting for SES**
+  - **What**: Implement token bucket rate limiter for SES sandbox limits
+  - **Why**: SES sandbox limit is 14 emails/second; need to prevent throttling
+  - **Expected Result**: Emails queued and sent within rate limits
+  - **Acceptance Criteria**:
+    - Configurable tokens per second (default: 14)
+    - Automatic queuing when limit reached
+    - Metrics for queue depth and wait times
+    - Graceful handling of rate limit errors
+
+- [ ] **Email Retry Logic with Exponential Backoff**
+  - **What**: Add retry mechanism for transient email failures
+  - **Why**: Network issues and temporary provider errors cause lost emails
+  - **Expected Result**: Transient failures automatically retried
+  - **Acceptance Criteria**:
+    - Max 3 retries with exponential backoff
+    - Base delay: 1 second, max delay: 30 seconds
+    - Jitter added to prevent thundering herd
+    - Non-retryable errors (invalid email) fail immediately
+    - Failed emails logged with reason
+
+### Logging & Observability
+
+- [ ] **Request Correlation IDs**
+  - **What**: Add unique request ID to all log entries for tracing
+  - **Why**: Cannot trace requests across services/logs currently
+  - **Expected Result**: Every request has traceable ID in all logs
+  - **Acceptance Criteria**:
+    - X-Request-ID header generated if not provided
+    - ID propagated to all service calls
+    - ID included in all log entries
+    - ID returned in error responses
+    - Frontend includes ID in error reports
+
+- [ ] **Structured JSON Logging**
+  - **What**: Convert log output to structured JSON format
+  - **Why**: Better parsing in log aggregation systems
+  - **Expected Result**: All logs in JSON format with consistent fields
+  - **Acceptance Criteria**:
+    - JSON format in production
+    - Human-readable format in development
+    - Standard fields: timestamp, level, message, request_id, user_id
+    - Context fields for domain-specific data
+
+- [ ] **Expanded Health Checks**
+  - **What**: Add health checks for all dependencies (DB, Redis, S3)
+  - **Why**: Current /health only checks if server is running
+  - **Expected Result**: Comprehensive health status with dependency details
+  - **Acceptance Criteria**:
+    - `/health/live` - Is the server running? (for k8s liveness)
+    - `/health/ready` - Are all dependencies healthy? (for k8s readiness)
+    - Individual checks: database, redis, s3, stripe
+    - Response includes latency for each check
+    - Degraded state if non-critical dependency unhealthy
+
+- [ ] **HTTP Request Metrics**
+  - **What**: Add Prometheus metrics for HTTP requests
+  - **Why**: Need visibility into request latency and error rates
+  - **Expected Result**: Prometheus-compatible metrics endpoint
+  - **Acceptance Criteria**:
+    - `http_requests_total` counter by method, path, status
+    - `http_request_duration_seconds` histogram
+    - `http_requests_in_flight` gauge
+    - Metrics exposed at `/metrics`
+
+### Security
+
+- [ ] **Security Headers Middleware**
+  - **What**: Add middleware for security-related HTTP headers
+  - **Why**: Missing headers expose app to XSS, clickjacking, etc.
+  - **Expected Result**: All responses include security headers
+  - **Acceptance Criteria**:
+    - X-Frame-Options: DENY
+    - X-Content-Type-Options: nosniff
+    - X-XSS-Protection: 1; mode=block
+    - Referrer-Policy: strict-origin-when-cross-origin
+    - Content-Security-Policy (appropriate for app)
+    - Strict-Transport-Security in production
+
+- [ ] **Comprehensive Input Validation**
+  - **What**: Add request validators for all API endpoints
+  - **Why**: Inconsistent validation across endpoints
+  - **Expected Result**: All inputs validated with clear error messages
+  - **Acceptance Criteria**:
+    - Use `go-playground/validator` consistently
+    - Custom validators for business rules (email format, phone, etc.)
+    - Standardized validation error response format
+    - Validation rules documented
+
+- [ ] **CORS Configuration Review**
+  - **What**: Explicitly configure CORS for all environments
+  - **Why**: CORS may not be properly configured
+  - **Expected Result**: CORS properly restricts cross-origin requests
+  - **Acceptance Criteria**:
+    - Allowed origins configured per environment
+    - Credentials handling properly configured
+    - Preflight caching enabled
+    - No wildcard origins in production
 
 ### Testing
 
-- [ ] **Integration Tests** - Create comprehensive API integration tests with test database
-  - Test all CRUD operations for each entity (customers, jobs, quotes, invoices)
-  - Test authentication flows (login, register, password reset, token refresh)
-  - Test authorization (permission checks, role-based access)
-  - Test webhook handlers (Stripe, SES)
-  - Framework: Use `testify` with `sqlmock` and `miniredis` for mocking
+- [ ] **Integration Tests for Critical Workflows**
+  - **What**: Add integration tests for 5 critical user workflows
+  - **Why**: Only 9 integration tests exist currently
+  - **Expected Result**: End-to-end testing of critical paths
+  - **Workflows to test**:
+    1. User registration → email verification → login
+    2. Create customer → create job → complete job
+    3. Create quote → convert to invoice → mark paid
+    4. Stripe payment method → subscription change
+    5. Team member invite → accept → permissions check
+  - **Acceptance Criteria**:
+    - Tests run against real database (test container)
+    - Tests clean up after themselves
+    - Tests run in CI pipeline
+    - <30 second execution time
 
-- [ ] **Frontend E2E Tests** - Set up Cypress or Playwright for end-to-end testing
-  - Critical user flows: login, create customer, create job, generate invoice
-  - Payment flow testing with Stripe test mode
+- [ ] **E2E Testing Setup (Cypress/Playwright)**
+  - **What**: Set up end-to-end testing framework for frontend
+  - **Why**: No E2E tests exist; critical flows untested
+  - **Expected Result**: Automated browser tests for critical flows
+  - **Acceptance Criteria**:
+    - Framework installed and configured
+    - Tests for: login, create customer, create job
+    - Tests run in CI with video recording
+    - Test environment seeded with data
 
-### CI/CD Pipeline
+### Frontend Cleanup
 
-- [ ] **GitHub Actions Workflows** - Create CI/CD pipelines
+- [ ] **Remove Console.log Statements**
+  - **What**: Remove or replace 134 console.log/debugger statements
+  - **Why**: Debug logging in production; clutters browser console
+  - **Expected Result**: No debug logging in production builds
+  - **Acceptance Criteria**:
+    - All console.log removed or replaced with proper logger
+    - ESLint rule to prevent future additions
+    - Logger that only outputs in development
 
-  ```yaml
-  # Suggested workflow stages:
-  - lint (golangci-lint, eslint)
-  - test (unit tests, integration tests)
-  - build (Docker images)
-  - security-scan (trivy, snyk)
-  - deploy-staging (auto on main branch merge)
-  - deploy-preprod (manual approval)
-  - deploy-prod (manual approval + version tag)
-  ```
+- [ ] **Fix @ts-nocheck in Routes**
+  - **What**: Fix type inference issues in `/src/routes/index.tsx`
+  - **Why**: Entire file has TypeScript checking disabled
+  - **Expected Result**: Full type safety in routing
+  - **Acceptance Criteria**:
+    - Remove @ts-nocheck comment
+    - Fix all type errors
+    - Dynamic imports properly typed
+    - No regression in routing behavior
 
-- [ ] **Automated Security Scanning**
-  - Container image scanning with Trivy
-  - Dependency vulnerability scanning
-  - SAST scanning for code vulnerabilities
+---
 
-### Request Validation
+## P2 - Medium Priority
 
-- [ ] **Comprehensive Input Validation** - Add request validators for all endpoints
-  - Use `go-playground/validator` for struct validation
-  - Create custom validators for business rules
-  - Standardize validation error responses
-  - Document validation rules in OpenAPI spec
+### Infrastructure
+
+- [ ] **Infrastructure as Code (Terraform)**
+  - **What**: Add Terraform for cloud infrastructure management
+  - **Why**: Infrastructure changes should be versioned and reproducible
+  - **Expected Result**: All infrastructure defined in code
+  - **Acceptance Criteria**:
+    - Terraform modules for: database, redis, S3
+    - State stored in S3 with locking
+    - Separate workspaces for staging/production
+    - CI/CD integration for terraform apply
+
+### Email Infrastructure
+
+- [ ] **Redis-Backed Email Queue**
+  - **What**: Implement async email processing with persistence
+  - **Why**: Decouple email sending from request handling
+  - **Expected Result**: Emails queued and processed asynchronously
+  - **Acceptance Criteria**:
+    - Job priorities: low, normal, high, critical
+    - Job statuses: pending, processing, completed, failed, retrying
+    - Dead letter queue for failed emails
+    - Worker pool with configurable concurrency
+    - Scheduled sends (future dated emails)
+    - Dashboard for queue monitoring
+
+- [ ] **Email Batch Sending**
+  - **What**: Implement concurrent batch operations for bulk emails
+  - **Why**: Efficient handling of newsletters, notifications
+  - **Expected Result**: Bulk emails sent with controlled concurrency
+  - **Acceptance Criteria**:
+    - Configurable concurrency limit (default: 10)
+    - Aggregate results with success/failure counts
+    - Progress tracking for large batches
+    - Cancellation support
+
+### Logging & Observability
+
+- [ ] **Query Execution Time Logging**
+  - **What**: Log database query execution times
+  - **Why**: Identify slow queries in development and production
+  - **Expected Result**: Slow queries logged with context
+  - **Acceptance Criteria**:
+    - Log queries exceeding threshold (default: 100ms)
+    - Include query, parameters, duration
+    - Prometheus histogram for query times
+    - Alert on queries >1 second
+
+- [ ] **Business Metrics Dashboard**
+  - **What**: Track business metrics (customers, jobs, revenue)
+  - **Why**: Need visibility into business health
+  - **Expected Result**: Prometheus metrics for business KPIs
+  - **Acceptance Criteria**:
+    - Metrics: customers_total, jobs_created, jobs_completed
+    - Metrics: invoices_generated, revenue_total
+    - Metrics: quotes_sent, quotes_converted
+    - Grafana dashboard template provided
+
+### Testing
+
+- [ ] **Email Service Tests**
+  - **What**: Add unit tests for email sending service
+  - **Why**: Email sending currently untested
+  - **Expected Result**: Full test coverage for email service
+  - **Acceptance Criteria**:
+    - Tests for all email types (welcome, reset, verification)
+    - Mock provider used in tests
+    - Template rendering tested
+    - Error handling tested
+
+- [ ] **Stripe/Payment Flow Tests**
+  - **What**: Add tests for payment processing flows
+  - **Why**: Critical business logic untested
+  - **Expected Result**: Payment flows tested with Stripe test mode
+  - **Acceptance Criteria**:
+    - Setup intent creation tested
+    - Payment method attachment tested
+    - Subscription creation/change tested
+    - Webhook handling tested
+
+- [ ] **Frontend Service Layer Tests**
+  - **What**: Add tests for frontend services and API calls
+  - **Why**: Service layer has minimal test coverage
+  - **Expected Result**: Service methods tested with mocked API
+  - **Acceptance Criteria**:
+    - All membershipApi methods tested
+    - All billingApi methods tested
+    - Error handling tested
+    - Loading states tested
+
+- [ ] **Frontend Store Tests**
+  - **What**: Add tests for Zustand store actions
+  - **Why**: Store logic untested
+  - **Expected Result**: Store actions tested in isolation
+  - **Acceptance Criteria**:
+    - membershipStore actions tested
+    - billingStore actions tested
+    - State transitions verified
+    - Error states tested
+
+### Frontend Cleanup
+
+- [ ] **Audit useCallback/useMemo Usage**
+  - **What**: Review 203+ hook instances for necessity
+  - **Why**: May be over-optimizing; adds complexity
+  - **Expected Result**: Hooks used only where needed
+  - **Acceptance Criteria**:
+    - Document when to use memoization
+    - Remove unnecessary memoization
+    - No performance regression
+    - Guidelines in CONTRIBUTING.md
+
+- [ ] **Review Barrel Export Files**
+  - **What**: Audit 1978 lines of index.ts exports for unused exports
+  - **Why**: May have orphaned exports; adds to bundle
+  - **Expected Result**: Clean exports with no dead code
+  - **Acceptance Criteria**:
+    - Remove unused exports
+    - Add lint rule for unused exports
+    - Document export patterns
+
+- [ ] **Add Dead Code Detection**
+  - **What**: Add dead code detection to pre-commit hooks
+  - **Why**: Prevent future orphaned code
+  - **Expected Result**: CI/pre-commit catches unused code
+  - **Acceptance Criteria**:
+    - ts-prune or similar configured
+    - Pre-commit hook added
+    - CI job added
+    - Baseline established
+
+### Backend Cleanup
+
+- [ ] **Standardize API Error Responses**
+  - **What**: Create consistent error response format across all endpoints
+  - **Why**: Inconsistent error formats make client handling difficult
+  - **Expected Result**: All errors follow same structure
+  - **Acceptance Criteria**:
+    - Standard format: `{error: string, message: string, details?: object}`
+    - HTTP status codes used correctly
+    - Validation errors include field-level details
+    - Internal errors don't leak implementation details
+
+- [ ] **Resolve Payment Tracking TODOs**
+  - **What**: Implement 7 TODOs in payment tracking model
+  - **Why**: Incomplete payment tracking features
+  - **Expected Result**: Full payment tracking functionality
+  - **Acceptance Criteria**:
+    - All TODOs resolved or converted to issues
+    - Payment tracking working end-to-end
+    - Tests added for new functionality
+
+### Performance
+
+- [ ] **Frontend Bundle Analysis**
+  - **What**: Run bundle analysis and optimize large chunks
+  - **Why**: Need to understand and optimize bundle size
+  - **Expected Result**: Bundle size reduced; large dependencies identified
+  - **Acceptance Criteria**:
+    - Run `npm run build:analyze`
+    - Document findings
+    - Split large chunks
+    - Lazy load heavy components
+
+- [ ] **Redis Caching for Frequent Queries**
+  - **What**: Add caching for frequently accessed data
+  - **Why**: Reduce database load for common queries
+  - **Expected Result**: Faster response times for cached data
+  - **Queries to cache**:
+    - Customer counts per tenant
+    - Job statistics (pending, completed)
+    - User permissions
+  - **Acceptance Criteria**:
+    - Cache TTL configurable (default: 5 minutes)
+    - Cache invalidation on data changes
+    - Cache hit/miss metrics
+
+### Security
+
+- [ ] **Document Secrets Rotation Strategy**
+  - **What**: Create runbook for rotating all secrets
+  - **Why**: No documented procedure for secret rotation
+  - **Expected Result**: Clear procedure for rotating each secret
+  - **Secrets to document**:
+    - Database credentials
+    - JWT signing key
+    - Stripe API keys
+    - AWS credentials
+    - Redis password
+  - **Acceptance Criteria**:
+    - Runbook in docs/security/
+    - Zero-downtime rotation procedure
+    - Tested in staging
+
+---
+
+## P3 - Low Priority (Nice to Have)
+
+### Infrastructure
+
+- [ ] **Advanced Observability Setup**
+  - **What**: Complete Loki/BetterStack integration for log aggregation
+  - **Why**: Clients exist but may not be fully configured
+  - **Expected Result**: Centralized log aggregation with search
+  - **Acceptance Criteria**:
+    - Logs shipped to aggregation service
+    - Log retention configured
+    - Search and alerting enabled
+
+### Email
+
+- [ ] **Email Analytics (Open/Click Tracking)**
+  - **What**: Track email opens and link clicks
+  - **Why**: Measure email engagement for marketing
+  - **Expected Result**: Analytics for email campaigns
+  - **Acceptance Criteria**:
+    - Tracking pixel injection for opens
+    - Link wrapping for click tracking
+    - Opt-out management
+    - Analytics dashboard
+
+### Frontend
+
+- [ ] **Standardize Component Patterns**
+  - **What**: Create consistent patterns across all pages
+  - **Why**: Different pages use different patterns
+  - **Expected Result**: Consistent, maintainable components
+  - **Acceptance Criteria**:
+    - Component template documented
+    - Example component provided
+    - Existing components refactored gradually
+
+### Backend
+
+- [ ] **Implement GeoIP Lookup**
+  - **What**: Complete GeoIP stub in access control
+  - **Why**: Currently placeholder; needed for location-based features
+  - **Expected Result**: IP addresses resolved to locations
+  - **Acceptance Criteria**:
+    - MaxMind or similar integrated
+    - Database auto-updated
+    - Location available in request context
+
+- [ ] **Customer Email Validation**
+  - **What**: Complete TODO for customer email validation
+  - **Why**: Customer emails not validated
+  - **Expected Result**: Invalid emails rejected at creation
+  - **Acceptance Criteria**:
+    - Email format validation
+    - Optional MX record check
+    - Disposable email detection (optional)
+
+### Testing
+
+- [ ] **Target 80% Backend Test Coverage**
+  - **What**: Increase test coverage to 80%+
+  - **Why**: Long-term code quality goal
+  - **Expected Result**: Comprehensive test suite
+  - **Acceptance Criteria**:
+    - Coverage reported in CI
+    - Coverage gate at 80%
+    - Critical paths at 90%+
+
+### Performance
+
+- [ ] **Image Optimization Strategy**
+  - **What**: Implement image optimization for user uploads
+  - **Why**: Large images slow down pages
+  - **Expected Result**: Images automatically optimized
+  - **Acceptance Criteria**:
+    - Images resized on upload
+    - WebP format generated
+    - CDN integration
+    - Lazy loading implemented
 
 ---
 
@@ -243,112 +766,85 @@ The following advanced metrics features were identified in legacy code and shoul
 
 ---
 
-## Medium Priority
+## Future Features
 
-### Code Quality
+### Near-term Features
 
-- [ ] **Linting Configuration**
-  - Backend: Set up `golangci-lint` with custom rules
-    ```yaml
-    # .golangci.yml suggested linters:
-    - errcheck
-    - gosimple
-    - govet
-    - ineffassign
-    - staticcheck
-    - unused
-    - gofmt
-    - goimports
-    ```
-  - Frontend: Configure ESLint + Prettier with strict rules
-  - Add lint checks to CI pipeline
+- [ ] **Webhook Handling Improvements**
+  - Stripe event retry logic
+  - Webhook signature verification
+  - Event deduplication
+  - Webhook delivery status tracking
 
-- [ ] **Pre-commit Hooks** - Set up pre-commit framework
-  ```yaml
-  # .pre-commit-config.yaml
-  repos:
-    - repo: https://github.com/golangci/golangci-lint
-      hooks:
-        - id: golangci-lint
-    - repo: https://github.com/pre-commit/mirrors-eslint
-      hooks:
-        - id: eslint
-    - repo: https://github.com/pre-commit/pre-commit-hooks
-      hooks:
-        - id: trailing-whitespace
-        - id: end-of-file-fixer
-        - id: check-yaml
-        - id: check-json
-  ```
+- [ ] **Invoice PDF Generation**
+  - Template-based PDF generation
+  - Custom branding support
+  - Multiple languages
+  - Email attachment support
 
-### Developer Experience
+- [ ] **Email Templates Expansion**
+  - Job completion notification
+  - Quote expiration reminder
+  - Payment received confirmation
+  - Account activity summary
 
-- [ ] **Developer Environment Setup** - Improve local development experience
-  - Create `make dev` command for one-click setup
-  - Add hot-reload for both backend and frontend in Docker
-  - Create seed data scripts for local development
-  - Document common development workflows
+- [ ] **Dashboard KPI Improvements**
+  - Real-time metrics updates
+  - Customizable date ranges
+  - Export to CSV/PDF
+  - Comparative analysis (vs last period)
 
-- [ ] **ArgoCD Dev Environments** - Enable developer-specific deployments
-  - Create ArgoCD ApplicationSet for dynamic dev environments
-  - Template: `dev-{developer-name}` namespaces
-  - Auto-cleanup after inactivity
-  - Integrate with PR workflows
+### Medium-term Features
 
-### Infrastructure
+- [ ] **API Rate Limiting per User/Tenant**
+  - Tier-based rate limits
+  - Burst allowance
+  - Rate limit headers in responses
+  - Admin override capability
 
-- [ ] **Terraform State Migration** - Enable remote state management
-  - Uncomment and configure S3 backend in `main.tf`
-  - Set up DynamoDB table for state locking
-  - Migrate existing state to S3
-  - Document state management procedures
+- [ ] **Audit Logging**
+  - Track all data modifications
+  - Who, what, when, from where
+  - Audit log search and export
+  - Retention policy
 
-- [ ] **Terraform Modules** - Complete empty module implementations
-  - `modules/eks/` - EKS cluster configuration
-  - `modules/rds/` - RDS PostgreSQL setup
-  - `modules/elasticache/` - Redis cluster
-  - `modules/s3/` - S3 buckets with policies
+- [ ] **Two-Factor Authentication**
+  - TOTP (Google Authenticator)
+  - SMS backup codes
+  - Recovery codes
+  - Per-user enforcement
 
----
+- [ ] **Notification Preferences**
+  - Email notification settings
+  - In-app notification settings
+  - Frequency controls (immediate, daily digest, weekly)
+  - Channel preferences per notification type
 
-## Low Priority
+### Long-term Features
 
-### Documentation
+- [ ] **Public API for Integrations**
+  - API key management
+  - Rate limiting per key
+  - Webhook subscriptions
+  - OAuth2 support
 
-- [ ] **API Documentation** - Generate OpenAPI/Swagger specification
-  - Use `swaggo/swag` for auto-generation from Go comments
-  - Host interactive API docs at `/api/docs`
-  - Keep spec in sync with code changes
+- [ ] **Webhooks for Customers**
+  - Event subscriptions
+  - Retry with exponential backoff
+  - Webhook logs
+  - Testing tools
 
-- [ ] **Architecture Decision Records (ADRs)**
-  - Document key architectural decisions
-  - Include context, decision, and consequences
-  - Store in `docs/adr/` directory
+- [ ] **White-label / Custom Branding**
+  - Custom logo and colors
+  - Custom domain support
+  - Email template customization
+  - Pro tier feature
 
-### Observability
-
-- [ ] **Distributed Tracing** - Implement request tracing
-  - Add OpenTelemetry instrumentation
-  - Configure trace export to AWS X-Ray or Jaeger
-  - Add trace IDs to all log entries
-
-- [ ] **Custom Metrics** - Extend application metrics
-  - Business metrics (jobs created, invoices generated, etc.)
-  - Performance metrics (request latency percentiles)
-  - Error rate tracking by endpoint
-
-### Security
-
-- [ ] **Security Hardening**
-  - Implement CSP headers for frontend
-  - Add rate limiting per user (not just per IP)
-  - Implement request signing for webhooks
-  - Add audit logging for sensitive operations
-
-- [ ] **Secret Rotation** - Automate secret rotation
-  - Database credentials rotation
-  - JWT signing key rotation
-  - API key rotation procedures
+- [ ] **Mobile App / PWA**
+  - Job status updates
+  - Customer information access
+  - Push notifications
+  - Offline support
 
 ---
 
@@ -680,6 +1176,8 @@ _Move items here when completed with date and PR/commit reference_
 - [x] Initial project setup (2024-01-15)
 - [x] Basic authentication flow (2024-01-20)
 - [x] Customer CRUD operations (2024-01-25)
+- [x] Membership system with Stripe integration (2025-01-25)
+- [x] Subscription proration preview (2025-01-25)
 
 ---
 
@@ -687,19 +1185,27 @@ _Move items here when completed with date and PR/commit reference_
 
 ### Priority Definitions
 
-- **High**: Blocks production deployment or poses security risk
-- **Medium**: Improves developer experience or code quality
-- **Low**: Nice-to-have improvements
+- **P0 (Critical)**: Blocks production deployment or poses security risk
+- **P1 (High)**: Required for 1.0 release; significant user impact
+- **P2 (Medium)**: Improves developer experience or code quality
+- **P3 (Low)**: Nice-to-have improvements
 
 ### Adding New Items
 
 When adding new items, include:
 
-1. Clear description of what needs to be done
-2. Why it's important
-3. Any relevant context or links
-4. Suggested implementation approach if known
+1. **What**: Clear description of what needs to be done
+2. **Why**: Why it's important / what problem it solves
+3. **Expected Result**: What success looks like
+4. **Acceptance Criteria**: Specific, testable requirements
+
+### Sprint Planning
+
+- Sprints are 2 weeks
+- Each sprint should have 1-2 P0/P1 items max
+- Fill remaining capacity with P2/P3 items
+- Always include at least one testing task
 
 ---
 
-_Last updated: 2024-01-19_
+_Last updated: 2025-01-25_

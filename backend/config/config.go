@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -16,6 +17,7 @@ type Config struct {
 	Redis         RedisConfig
 	JWT           JWTConfig
 	Auth          AuthConfig
+	RateLimit     RateLimitConfig
 	AWS           AWSConfig
 	S3Compatible  S3CompatibleConfig
 	Resend        ResendConfig
@@ -102,6 +104,28 @@ type AuthConfig struct {
 	LockoutDuration   time.Duration
 	RateLimitWindow   time.Duration
 	RateLimitAttempts int
+}
+
+// RateLimitConfig holds API rate limiting configuration
+type RateLimitConfig struct {
+	// Enabled enables/disables rate limiting
+	Enabled bool
+	// UseRedis enables Redis-backed rate limiting (falls back to in-memory if false or Redis unavailable)
+	UseRedis bool
+	// AnonymousLimit is the max requests per minute for unauthenticated users (by IP)
+	AnonymousLimit int
+	// AuthenticatedLimit is the max requests per minute for authenticated users
+	AuthenticatedLimit int
+	// AdminLimit is the max requests per minute for admin users
+	AdminLimit int
+	// BurstMultiplier allows burst capacity (e.g., 1.5 = 50% burst above limit)
+	BurstMultiplier float64
+	// Window is the time window for rate limiting
+	Window time.Duration
+	// TrustedProxies is a list of trusted proxy IPs (for X-Forwarded-For handling)
+	TrustedProxies []string
+	// ExcludedPaths are paths excluded from rate limiting (e.g., health checks)
+	ExcludedPaths []string
 }
 
 // StripeConfig holds Stripe configuration
@@ -256,6 +280,17 @@ func Load() *Config {
 			LockoutDuration:   time.Minute * 30, // 30 minutes lockout
 			RateLimitWindow:   time.Minute * 15, // 15 minutes window
 			RateLimitAttempts: 5,                // 5 attempts per window
+		},
+		RateLimit: RateLimitConfig{
+			Enabled:            getEnvAsBool("RATE_LIMIT_ENABLED", true),
+			UseRedis:           getEnvAsBool("RATE_LIMIT_USE_REDIS", true),
+			AnonymousLimit:     getEnvAsInt("RATE_LIMIT_ANONYMOUS", 100),      // 100 req/min for anonymous
+			AuthenticatedLimit: getEnvAsInt("RATE_LIMIT_AUTHENTICATED", 1000), // 1000 req/min for authenticated
+			AdminLimit:         getEnvAsInt("RATE_LIMIT_ADMIN", 50),           // 50 req/min for admin endpoints
+			BurstMultiplier:    getEnvAsFloat("RATE_LIMIT_BURST", 1.2),        // 20% burst capacity
+			Window:             getEnvAsDuration("RATE_LIMIT_WINDOW", "1m"),   // 1 minute window
+			TrustedProxies:     getEnvAsStringSlice("RATE_LIMIT_TRUSTED_PROXIES", []string{}),
+			ExcludedPaths:      getEnvAsStringSlice("RATE_LIMIT_EXCLUDED_PATHS", []string{"/health", "/api/v1/version"}),
 		},
 		AWS: AWSConfig{
 			Region:          getEnv("AWS_REGION", "us-east-1"),
@@ -423,4 +458,33 @@ func getEnvAsFloat(key string, defaultValue float64) float64 {
 		return defaultValue
 	}
 	return value
+}
+
+// getEnvAsStringSlice reads an environment variable as comma-separated strings or returns a default value
+func getEnvAsStringSlice(key string, defaultValue []string) []string {
+	valueStr := os.Getenv(key)
+	if valueStr == "" {
+		return defaultValue
+	}
+	// Split by comma and trim whitespace
+	parts := make([]string, 0)
+	for _, part := range splitAndTrim(valueStr, ",") {
+		if part != "" {
+			parts = append(parts, part)
+		}
+	}
+	if len(parts) == 0 {
+		return defaultValue
+	}
+	return parts
+}
+
+// splitAndTrim splits a string by separator and trims whitespace from each part
+func splitAndTrim(s string, sep string) []string {
+	parts := make([]string, 0)
+	for _, part := range strings.Split(s, sep) {
+		trimmed := strings.TrimSpace(part)
+		parts = append(parts, trimmed)
+	}
+	return parts
 }
