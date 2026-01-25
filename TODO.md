@@ -9,7 +9,7 @@ This document tracks technical improvements that should be implemented but are d
 ### Sprint 1 - Production Readiness
 
 - [ ] Fly.io deployment setup
-- [ ] Migrate `db.Raw()` to GORM (SQL injection risk)
+- [x] Migrate `db.Raw()` to GORM (SQL injection risk)
 - [ ] Add general API rate limiting
 - [ ] Enable Sentry error tracking
 - [ ] Remove console.log statements from frontend

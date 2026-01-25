@@ -378,7 +378,7 @@ echo -e "
 ${GREEN}ServicePro development environment is ready!${NC}
 
 ${BLUE}Quick Start:${NC}
-  Backend:   cd backend && go run cmd/cmd/main.go
+  Backend:   cd backend && go run cmd//main.go
   Frontend:  cd frontend && npm run dev
 
   Or use Docker Compose:
