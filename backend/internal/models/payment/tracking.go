@@ -11,6 +11,8 @@ import (
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+
+	"github.com/javaknight1/servicepro/backend/internal/utils"
 )
 
 // StatusTracker interface defines methods for tracking payment status
@@ -351,16 +353,14 @@ func (s *StatusTrackerService) GetHistoryWithQuery(ctx context.Context, query *S
 		return nil, fmt.Errorf("failed to count history: %w", err)
 	}
 
-	// Apply sorting
-	orderBy := "created_at"
-	if query.OrderBy != "" {
-		orderBy = query.OrderBy
-	}
-	orderDir := "DESC"
-	if query.OrderDir != "" {
-		orderDir = query.OrderDir
-	}
-	db = db.Order(fmt.Sprintf("%s %s", orderBy, orderDir))
+	// Apply sorting (with SQL injection protection)
+	orderClause := utils.SafeOrderClause(
+		query.OrderBy,
+		query.OrderDir,
+		utils.PaymentHistoryAllowedSortColumns,
+		"created_at",
+	)
+	db = db.Order(orderClause)
 
 	// Apply pagination
 	if query.Limit > 0 {

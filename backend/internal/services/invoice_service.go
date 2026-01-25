@@ -11,6 +11,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/javaknight1/servicepro/backend/internal/models"
+	"github.com/javaknight1/servicepro/backend/internal/utils"
 )
 
 var (
@@ -268,16 +269,14 @@ func (s *InvoiceService) ListInvoices(ctx context.Context, filter *models.Invoic
 		return nil, fmt.Errorf("failed to count invoices: %w", err)
 	}
 
-	// Apply sorting
-	sortBy := "created_at"
-	if filter.SortBy != "" {
-		sortBy = filter.SortBy
-	}
-	sortOrder := "DESC"
-	if filter.SortOrder != "" {
-		sortOrder = filter.SortOrder
-	}
-	query = query.Order(fmt.Sprintf("%s %s", sortBy, sortOrder))
+	// Apply sorting (with SQL injection protection)
+	orderClause := utils.SafeOrderClause(
+		filter.SortBy,
+		filter.SortOrder,
+		utils.InvoiceAllowedSortColumns,
+		"created_at",
+	)
+	query = query.Order(orderClause)
 
 	// Apply pagination
 	page := 1

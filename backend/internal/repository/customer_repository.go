@@ -2,7 +2,6 @@ package repository
 
 import (
 	"errors"
-	"fmt"
 	"math"
 	"strings"
 
@@ -10,6 +9,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/javaknight1/servicepro/backend/internal/models"
+	"github.com/javaknight1/servicepro/backend/internal/utils"
 )
 
 var (
@@ -147,17 +147,13 @@ func (r *CustomerRepository) List(filter *models.CustomerListFilter) ([]models.C
 		return nil, 0, err
 	}
 
-	// Apply sorting
-	sortBy := filter.SortBy
-	if sortBy == "" {
-		sortBy = "created_at"
-	}
-	sortOrder := strings.ToUpper(filter.SortOrder)
-	if sortOrder != "ASC" && sortOrder != "DESC" {
-		sortOrder = "DESC"
-	}
-
-	orderClause := fmt.Sprintf("%s %s", sortBy, sortOrder)
+	// Apply sorting (with SQL injection protection)
+	orderClause := utils.SafeOrderClause(
+		filter.SortBy,
+		filter.SortOrder,
+		utils.CustomerAllowedSortColumns,
+		"created_at",
+	)
 	query = query.Order(orderClause)
 
 	// Apply pagination

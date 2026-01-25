@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
+	"github.com/javaknight1/servicepro/backend/internal/utils"
 )
 
 // PostgresEventStore implements EventStore using PostgreSQL
@@ -204,15 +206,14 @@ func (s *PostgresEventStore) buildQuery(q EventQuery, countOnly bool) (string, [
 	}
 
 	if !countOnly {
-		orderBy := "timestamp"
-		if q.OrderBy != "" {
-			orderBy = q.OrderBy
-		}
-		orderDir := "DESC"
-		if q.OrderDir != "" {
-			orderDir = strings.ToUpper(q.OrderDir)
-		}
-		query.WriteString(fmt.Sprintf(" ORDER BY %s %s", orderBy, orderDir))
+		// Apply sorting (with SQL injection protection)
+		orderClause := utils.SafeOrderClause(
+			q.OrderBy,
+			q.OrderDir,
+			utils.AnalyticsEventAllowedSortColumns,
+			"timestamp",
+		)
+		query.WriteString(" ORDER BY " + orderClause)
 
 		if q.Limit > 0 {
 			query.WriteString(fmt.Sprintf(" LIMIT $%d", argIndex))

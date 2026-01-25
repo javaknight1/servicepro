@@ -1,13 +1,13 @@
 package repository
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 
 	"github.com/javaknight1/servicepro/backend/internal/models"
+	"github.com/javaknight1/servicepro/backend/internal/utils"
 )
 
 // JobRepository implements JobRepositoryInterface using GORM
@@ -117,7 +117,7 @@ func (r *JobRepository) List(filter *models.JobListFilter) ([]models.Job, int64,
 		return nil, 0, err
 	}
 
-	// Apply sorting
+	// Apply sorting (with SQL injection protection)
 	sortField := "created_at"
 	sortOrder := "DESC"
 	if filter.SortBy != nil {
@@ -126,7 +126,8 @@ func (r *JobRepository) List(filter *models.JobListFilter) ([]models.Job, int64,
 	if filter.SortOrder != nil {
 		sortOrder = *filter.SortOrder
 	}
-	query = query.Order(fmt.Sprintf("%s %s", sortField, sortOrder))
+	orderClause := utils.SafeOrderClause(sortField, sortOrder, utils.JobAllowedSortColumns, "created_at")
+	query = query.Order(orderClause)
 
 	// Apply pagination
 	if filter.Limit != nil {
