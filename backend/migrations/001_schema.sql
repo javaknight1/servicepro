@@ -982,6 +982,7 @@ CREATE TABLE tenants (
     phone VARCHAR(20),
     logo_url TEXT,
     settings JSONB DEFAULT '{}',
+    stripe_customer_id VARCHAR(255) UNIQUE,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
@@ -991,6 +992,7 @@ CREATE TABLE tenants (
 CREATE INDEX idx_tenants_slug ON tenants(slug) WHERE deleted_at IS NULL;
 CREATE INDEX idx_tenants_owner ON tenants(owner_id) WHERE deleted_at IS NULL;
 CREATE INDEX idx_tenants_active ON tenants(is_active) WHERE deleted_at IS NULL AND is_active = TRUE;
+CREATE INDEX idx_tenants_stripe_customer_id ON tenants(stripe_customer_id) WHERE stripe_customer_id IS NOT NULL;
 
 CREATE TRIGGER trigger_tenants_updated_at BEFORE UPDATE ON tenants
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
@@ -1440,6 +1442,9 @@ CREATE TABLE tenant_subscriptions (
     status membership_status NOT NULL DEFAULT 'active',
     billing_cycle billing_cycle NOT NULL DEFAULT 'monthly',
     price_cents INTEGER NOT NULL DEFAULT 0, -- Locked-in price at time of subscription (for grandfathering)
+    stripe_subscription_id VARCHAR(255) UNIQUE,
+    stripe_price_id VARCHAR(255),
+    cancel_at_period_end BOOLEAN NOT NULL DEFAULT FALSE,
     started_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     ended_at TIMESTAMP WITH TIME ZONE,
     current_period_start TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -1454,6 +1459,7 @@ CREATE TABLE tenant_subscriptions (
 CREATE INDEX idx_tenant_subscriptions_tenant ON tenant_subscriptions(tenant_id);
 CREATE INDEX idx_tenant_subscriptions_status ON tenant_subscriptions(status) WHERE status = 'active';
 CREATE INDEX idx_tenant_subscriptions_tier ON tenant_subscriptions(tier_id);
+CREATE INDEX idx_tenant_subscriptions_stripe_id ON tenant_subscriptions(stripe_subscription_id) WHERE stripe_subscription_id IS NOT NULL;
 
 -- Ensure only one active subscription per tenant
 CREATE UNIQUE INDEX idx_tenant_subscriptions_active ON tenant_subscriptions(tenant_id)
@@ -1461,6 +1467,46 @@ CREATE UNIQUE INDEX idx_tenant_subscriptions_active ON tenant_subscriptions(tena
 
 CREATE TRIGGER trigger_tenant_subscriptions_updated_at BEFORE UPDATE ON tenant_subscriptions
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Payment methods table (Stripe)
+CREATE TABLE payment_methods (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    stripe_payment_method_id VARCHAR(255) NOT NULL UNIQUE,
+    card_brand VARCHAR(50) NOT NULL,
+    card_last_four VARCHAR(4) NOT NULL,
+    card_exp_month INTEGER NOT NULL,
+    card_exp_year INTEGER NOT NULL,
+    is_default BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_payment_methods_tenant ON payment_methods(tenant_id);
+CREATE INDEX idx_payment_methods_default ON payment_methods(tenant_id, is_default) WHERE is_default = TRUE;
+
+CREATE TRIGGER trigger_payment_methods_updated_at BEFORE UPDATE ON payment_methods
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Billing events table (for history/audit)
+CREATE TABLE billing_events (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    stripe_event_id VARCHAR(255) UNIQUE NOT NULL,
+    event_type VARCHAR(100) NOT NULL,
+    amount_cents INTEGER,
+    currency VARCHAR(3) DEFAULT 'usd',
+    status VARCHAR(50) NOT NULL,
+    description TEXT,
+    stripe_invoice_id VARCHAR(255),
+    stripe_invoice_url TEXT,
+    metadata JSONB,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_billing_events_tenant ON billing_events(tenant_id);
+CREATE INDEX idx_billing_events_created ON billing_events(created_at DESC);
+CREATE INDEX idx_billing_events_type ON billing_events(event_type);
 
 -- Seed membership tiers
 INSERT INTO membership_tiers (id, name, display_name, description, monthly_price_cents, annual_price_cents, features, sort_order) VALUES
@@ -1622,6 +1668,53 @@ BEGIN
     END IF;
 
     RETURN TRUE;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+-- ============================================================================
+-- STRIPE HELPER FUNCTIONS
+-- ============================================================================
+
+-- Helper function: Set default payment method
+CREATE OR REPLACE FUNCTION set_default_payment_method(
+    p_tenant_id UUID,
+    p_payment_method_id UUID
+) RETURNS VOID AS $$
+BEGIN
+    -- Remove default from all other payment methods for this tenant
+    UPDATE payment_methods
+    SET is_default = FALSE, updated_at = CURRENT_TIMESTAMP
+    WHERE tenant_id = p_tenant_id AND is_default = TRUE;
+
+    -- Set the new default
+    UPDATE payment_methods
+    SET is_default = TRUE, updated_at = CURRENT_TIMESTAMP
+    WHERE id = p_payment_method_id AND tenant_id = p_tenant_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Helper function: Get default payment method
+CREATE OR REPLACE FUNCTION get_default_payment_method(p_tenant_id UUID)
+RETURNS TABLE (
+    id UUID,
+    stripe_payment_method_id VARCHAR,
+    card_brand VARCHAR,
+    card_last_four VARCHAR,
+    card_exp_month INTEGER,
+    card_exp_year INTEGER
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        pm.id,
+        pm.stripe_payment_method_id,
+        pm.card_brand,
+        pm.card_last_four,
+        pm.card_exp_month,
+        pm.card_exp_year
+    FROM payment_methods pm
+    WHERE pm.tenant_id = p_tenant_id AND pm.is_default = TRUE
+    LIMIT 1;
 END;
 $$ LANGUAGE plpgsql STABLE;
 
