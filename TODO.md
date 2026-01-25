@@ -23,7 +23,6 @@ This document tracks technical improvements that should be implemented but are d
 ### Sprint 3 - Testing & Security
 
 - [ ] Integration tests for 5 critical workflows
-- [ ] Security headers middleware
 - [ ] Input validation improvements
 - [ ] N+1 query fixes
 
@@ -198,18 +197,6 @@ This document tracks technical improvements that should be implemented but are d
     - Metrics exposed at `/metrics`
 
 ### Security
-
-- [ ] **Security Headers Middleware**
-  - **What**: Add middleware for security-related HTTP headers
-  - **Why**: Missing headers expose app to XSS, clickjacking, etc.
-  - **Expected Result**: All responses include security headers
-  - **Acceptance Criteria**:
-    - X-Frame-Options: DENY
-    - X-Content-Type-Options: nosniff
-    - X-XSS-Protection: 1; mode=block
-    - Referrer-Policy: strict-origin-when-cross-origin
-    - Content-Security-Policy (appropriate for app)
-    - Strict-Transport-Security in production
 
 - [ ] **Comprehensive Input Validation**
   - **What**: Add request validators for all API endpoints
@@ -414,6 +401,20 @@ This document tracks technical improvements that should be implemented but are d
     - Pre-commit hook added
     - CI job added
     - Baseline established
+
+- [ ] **Complete Footer Links**
+  - **What**: Create pages and routes for all footer links currently pointing to "/"
+  - **Why**: Footer links (Features, Pricing, About, Contact, Privacy Policy, Terms of Service) are placeholders leading to homepage
+  - **Expected Result**: All footer links navigate to proper pages with appropriate content
+  - **Acceptance Criteria**:
+    - Features page created with product feature highlights
+    - Pricing page linked correctly (may already exist)
+    - About page created with company information
+    - Contact page created with contact form/information
+    - Privacy Policy page created with legal content
+    - Terms of Service page created with legal content
+    - All links in Footer.tsx updated to correct routes
+    - SEO meta tags added to each page
 
 ### Backend Cleanup
 
@@ -1168,6 +1169,7 @@ _Move items here when completed with date and PR/commit reference_
 - [x] Membership system with Stripe integration (2025-01-25)
 - [x] Subscription proration preview (2025-01-25)
 - [x] Local email development setup with Mailpit (2025-01-25)
+- [x] Security headers middleware (2025-01-25)
 
 ---
 

@@ -32,6 +32,11 @@ import (
 
 // Setup configures all API routes
 func Setup(router *gin.Engine, db *gorm.DB, redisClient *redis.Client, cfg *config.Config) {
+	// Apply security headers to all responses (must be first middleware)
+	// This adds protection against XSS, clickjacking, MIME sniffing, and other attacks
+	securityConfig := middleware.DefaultSecurityHeadersConfig(cfg.Server.Env)
+	router.Use(middleware.SecurityHeaders(securityConfig))
+
 	// Initialize repositories
 	userRepo := repository.NewUserRepositoryGorm(db)
 	customerRepo := repository.NewCustomerRepository(db)
