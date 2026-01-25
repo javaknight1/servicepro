@@ -248,3 +248,29 @@ func (r *TenantRepository) SetMemberActive(ctx context.Context, tenantID, userID
 		Where("tenant_id = ? AND user_id = ?", tenantID, userID).
 		Update("is_active", isActive).Error
 }
+
+// ============================================================================
+// Stripe Integration Methods
+// ============================================================================
+
+// GetByStripeCustomerID retrieves a tenant by their Stripe customer ID
+func (r *TenantRepository) GetByStripeCustomerID(ctx context.Context, stripeCustomerID string) (*models.Tenant, error) {
+	var tenant models.Tenant
+	err := r.db.WithContext(ctx).
+		Where("stripe_customer_id = ? AND deleted_at IS NULL", stripeCustomerID).
+		First(&tenant).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrTenantNotFound
+		}
+		return nil, err
+	}
+	return &tenant, nil
+}
+
+// UpdateStripeCustomerID sets the Stripe customer ID for a tenant
+func (r *TenantRepository) UpdateStripeCustomerID(ctx context.Context, tenantID uuid.UUID, stripeCustomerID string) error {
+	return r.db.WithContext(ctx).Model(&models.Tenant{}).
+		Where("id = ?", tenantID).
+		Update("stripe_customer_id", stripeCustomerID).Error
+}

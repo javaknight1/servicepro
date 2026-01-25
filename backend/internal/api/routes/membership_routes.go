@@ -33,5 +33,10 @@ func SetupMembershipRoutes(
 		tenants.GET("/:id/membership/history",
 			permMiddleware.RequirePermission(permissions.MembershipUpdate),
 			membershipHandler.GetSubscriptionHistory)
+
+		// Preview subscription change - requires membership.update permission
+		tenants.POST("/:id/membership/preview",
+			permMiddleware.RequirePermission(permissions.MembershipUpdate),
+			membershipHandler.PreviewSubscriptionChange)
 	}
 }

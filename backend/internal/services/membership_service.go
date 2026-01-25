@@ -14,9 +14,11 @@ import (
 )
 
 var (
-	ErrMembershipTierNotFound = errors.New("membership tier not found")
-	ErrNoActiveSubscription   = errors.New("no active subscription found")
-	ErrSameTier               = errors.New("tenant already on this tier")
+	ErrMembershipTierNotFound   = errors.New("membership tier not found")
+	ErrNoActiveSubscription     = errors.New("no active subscription found")
+	ErrSameTier                 = errors.New("tenant already on this tier")
+	ErrPaymentMethodRequired    = errors.New("payment method required for paid tier")
+	ErrStripeSubscriptionFailed = errors.New("failed to create subscription")
 )
 
 const (
@@ -27,12 +29,14 @@ const (
 // MembershipService handles membership business logic
 type MembershipService struct {
 	membershipRepo *repository.MembershipRepository
+	stripeService  *StripeService // Optional, nil if Stripe not configured
 }
 
 // NewMembershipService creates a new membership service
-func NewMembershipService(membershipRepo *repository.MembershipRepository) *MembershipService {
+func NewMembershipService(membershipRepo *repository.MembershipRepository, stripeService *StripeService) *MembershipService {
 	return &MembershipService{
 		membershipRepo: membershipRepo,
+		stripeService:  stripeService,
 	}
 }
 
@@ -120,10 +124,59 @@ func (s *MembershipService) UpdateTenantMembership(ctx context.Context, tenantID
 		priceCents = newTier.MonthlyPriceCents
 	}
 
-	// Update the subscription
+	// For paid tiers, handle Stripe subscription
+	var stripeSubscriptionID string
+	if priceCents > 0 && s.stripeService != nil && s.stripeService.IsConfigured() {
+		// Check if there's an existing Stripe subscription
+		if currentSub != nil && currentSub.StripeSubscriptionID != nil && *currentSub.StripeSubscriptionID != "" {
+			// Update existing subscription
+			stripeSub, err := s.stripeService.ChangeSubscription(ctx, *currentSub.StripeSubscriptionID, newTier.Name, req.BillingCycle)
+			if err != nil {
+				if errors.Is(err, ErrNoDefaultPaymentMethod) {
+					return nil, ErrPaymentMethodRequired
+				}
+				return nil, fmt.Errorf("failed to update Stripe subscription: %w", err)
+			}
+			stripeSubscriptionID = stripeSub.ID
+			log.Printf("[MEMBERSHIP] Changed Stripe subscription %s to tier %s", stripeSubscriptionID, newTier.Name)
+		} else {
+			// Create new subscription
+			stripeSub, err := s.stripeService.CreateSubscription(ctx, tenantID, newTier.Name, req.BillingCycle)
+			if err != nil {
+				if errors.Is(err, ErrNoDefaultPaymentMethod) {
+					return nil, ErrPaymentMethodRequired
+				}
+				return nil, fmt.Errorf("failed to create Stripe subscription: %w", err)
+			}
+			stripeSubscriptionID = stripeSub.ID
+			log.Printf("[MEMBERSHIP] Created Stripe subscription %s for tier %s", stripeSubscriptionID, newTier.Name)
+		}
+	} else if priceCents == 0 && currentSub != nil && currentSub.StripeSubscriptionID != nil && *currentSub.StripeSubscriptionID != "" {
+		// Downgrading to free tier - cancel existing Stripe subscription
+		if s.stripeService != nil && s.stripeService.IsConfigured() {
+			if err := s.stripeService.CancelSubscription(ctx, *currentSub.StripeSubscriptionID, true); err != nil {
+				log.Printf("[MEMBERSHIP] Warning: failed to cancel Stripe subscription: %v", err)
+				// Continue anyway - the subscription will be cancelled eventually
+			}
+		}
+	}
+
+	// Update the subscription in our database
 	changedByPtr := &changedBy
 	if err := s.membershipRepo.UpdateSubscription(ctx, tenantID, req.TierID, req.BillingCycle, priceCents, changedByPtr, req.ChangeReason); err != nil {
 		return nil, fmt.Errorf("failed to update subscription: %w", err)
+	}
+
+	// Update Stripe subscription ID if we have one
+	if stripeSubscriptionID != "" {
+		// Get the updated subscription to update its Stripe ID
+		updatedSub, err := s.membershipRepo.GetTenantSubscription(ctx, tenantID)
+		if err == nil && updatedSub != nil {
+			priceID, _ := s.stripeService.GetPriceIDForTier(newTier.Name, req.BillingCycle)
+			if err := s.membershipRepo.UpdateSubscriptionStripeID(ctx, updatedSub.ID, stripeSubscriptionID, priceID); err != nil {
+				log.Printf("[MEMBERSHIP] Warning: failed to save Stripe subscription ID: %v", err)
+			}
+		}
 	}
 
 	log.Printf("[MEMBERSHIP] Updated tenant %s to tier %s (%s) with %s billing at %d cents",
@@ -170,6 +223,78 @@ func (s *MembershipService) AssignDefaultTier(ctx context.Context, tenantID uuid
 
 	log.Printf("[MEMBERSHIP] Assigned default tier '%s' to tenant %s", DefaultTierName, tenantID)
 	return nil
+}
+
+// PreviewSubscriptionChange previews what will happen when changing subscriptions
+func (s *MembershipService) PreviewSubscriptionChange(ctx context.Context, tenantID uuid.UUID, req *models.PreviewSubscriptionChangeRequest) (*models.PreviewSubscriptionChangeResponse, error) {
+	// Get the new tier
+	newTier, err := s.membershipRepo.GetTierByID(ctx, req.TierID)
+	if err != nil {
+		if errors.Is(err, repository.ErrTierNotFound) {
+			return nil, ErrMembershipTierNotFound
+		}
+		return nil, fmt.Errorf("failed to get tier: %w", err)
+	}
+
+	// If Stripe is configured, use its preview
+	if s.stripeService != nil && s.stripeService.IsConfigured() {
+		return s.stripeService.PreviewSubscriptionChange(ctx, tenantID, newTier.Name, req.BillingCycle)
+	}
+
+	// Otherwise, do a simple manual calculation
+	response := &models.PreviewSubscriptionChangeResponse{
+		NewTierName:     newTier.DisplayName,
+		NewBillingCycle: req.BillingCycle,
+		Warnings:        []string{},
+	}
+
+	// Calculate new price
+	if req.BillingCycle == models.BillingCycleAnnual {
+		response.NewPriceCents = newTier.AnnualPriceCents
+	} else {
+		response.NewPriceCents = newTier.MonthlyPriceCents
+	}
+
+	// Get current subscription
+	currentSub, err := s.membershipRepo.GetTenantSubscription(ctx, tenantID)
+	if err == nil && currentSub != nil {
+		if currentSub.Tier != nil {
+			response.CurrentTierName = currentSub.Tier.DisplayName
+		}
+		response.CurrentPriceCents = currentSub.PriceCents
+		response.CurrentBillingCycle = currentSub.BillingCycle
+		response.CurrentPeriodEnd = currentSub.CurrentPeriodEnd
+
+		if currentSub.CurrentPeriodEnd != nil {
+			daysRemaining := int(time.Until(*currentSub.CurrentPeriodEnd).Hours() / 24)
+			if daysRemaining < 0 {
+				daysRemaining = 0
+			}
+			response.DaysRemaining = daysRemaining
+		}
+
+		response.IsUpgrade = response.NewPriceCents > response.CurrentPriceCents
+		response.IsDowngrade = response.NewPriceCents < response.CurrentPriceCents
+		response.IsCancellation = response.NewPriceCents == 0 && response.CurrentPriceCents > 0
+
+		if response.IsCancellation {
+			response.Warnings = append(response.Warnings,
+				fmt.Sprintf("Your current subscription will be cancelled immediately. You will lose %d days of remaining access.", response.DaysRemaining))
+		}
+	}
+
+	response.AmountDueTodayCents = response.NewPriceCents
+	now := time.Now()
+	if req.BillingCycle == models.BillingCycleAnnual {
+		nextBilling := now.AddDate(1, 0, 0)
+		response.NextBillingDate = &nextBilling
+	} else {
+		nextBilling := now.AddDate(0, 1, 0)
+		response.NextBillingDate = &nextBilling
+	}
+	response.NextBillingAmount = response.NewPriceCents
+
+	return response, nil
 }
 
 // GetSubscriptionHistory retrieves the subscription history for a tenant

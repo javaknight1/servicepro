@@ -115,6 +115,11 @@ func (h *MembershipHandler) UpdateTenantMembership(c *gin.Context) {
 				Error:   "same_tier",
 				Message: "Tenant is already on this membership tier",
 			})
+		case errors.Is(err, services.ErrPaymentMethodRequired):
+			c.JSON(http.StatusPaymentRequired, models.ErrorResponse{
+				Error:   "payment_method_required",
+				Message: "A payment method is required to upgrade to a paid tier. Please add a payment method first.",
+			})
 		default:
 			c.JSON(http.StatusInternalServerError, models.ErrorResponse{
 				Error:   "update_failed",
@@ -125,6 +130,48 @@ func (h *MembershipHandler) UpdateTenantMembership(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, membership)
+}
+
+// PreviewSubscriptionChange previews what will happen when changing subscriptions
+// POST /api/v1/tenants/:id/membership/preview
+func (h *MembershipHandler) PreviewSubscriptionChange(c *gin.Context) {
+	idStr := c.Param("id")
+	tenantID, err := uuid.Parse(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Error:   "invalid_id",
+			Message: "Invalid tenant ID format",
+		})
+		return
+	}
+
+	var req models.PreviewSubscriptionChangeRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Error:   "invalid_request",
+			Message: err.Error(),
+		})
+		return
+	}
+
+	preview, err := h.membershipService.PreviewSubscriptionChange(c.Request.Context(), tenantID, &req)
+	if err != nil {
+		switch {
+		case errors.Is(err, services.ErrMembershipTierNotFound):
+			c.JSON(http.StatusNotFound, models.ErrorResponse{
+				Error:   "tier_not_found",
+				Message: "Membership tier not found",
+			})
+		default:
+			c.JSON(http.StatusInternalServerError, models.ErrorResponse{
+				Error:   "preview_failed",
+				Message: "Failed to preview subscription change",
+			})
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, preview)
 }
 
 // GetSubscriptionHistory retrieves the subscription history for a tenant

@@ -121,6 +121,11 @@ type TenantSubscription struct {
 	CreatedAt          time.Time        `json:"created_at"`
 	UpdatedAt          time.Time        `json:"updated_at"`
 
+	// Stripe integration
+	StripeSubscriptionID *string `json:"stripe_subscription_id,omitempty" gorm:"uniqueIndex;size:255"`
+	StripePriceID        *string `json:"stripe_price_id,omitempty" gorm:"size:255"`
+	CancelAtPeriodEnd    bool    `json:"cancel_at_period_end" gorm:"not null;default:false"`
+
 	// Relations
 	Tenant *Tenant         `json:"tenant,omitempty" gorm:"foreignKey:TenantID"`
 	Tier   *MembershipTier `json:"tier,omitempty" gorm:"foreignKey:TierID"`
@@ -185,6 +190,7 @@ type TenantSubscriptionResponse struct {
 	EndedAt            *time.Time       `json:"ended_at,omitempty"`
 	CurrentPeriodStart time.Time        `json:"current_period_start"`
 	CurrentPeriodEnd   *time.Time       `json:"current_period_end,omitempty"`
+	CancelAtPeriodEnd  bool             `json:"cancel_at_period_end"`
 }
 
 // ToResponse converts a TenantSubscription model to TenantSubscriptionResponse
@@ -200,6 +206,7 @@ func (s *TenantSubscription) ToResponse() TenantSubscriptionResponse {
 		EndedAt:            s.EndedAt,
 		CurrentPeriodStart: s.CurrentPeriodStart,
 		CurrentPeriodEnd:   s.CurrentPeriodEnd,
+		CancelAtPeriodEnd:  s.CancelAtPeriodEnd,
 	}
 
 	if s.Tier != nil {
@@ -221,4 +228,37 @@ type UpdateMembershipRequest struct {
 // ListTiersResponse represents the response for listing all tiers
 type ListTiersResponse struct {
 	Tiers []MembershipTierResponse `json:"tiers"`
+}
+
+// PreviewSubscriptionChangeRequest represents the request to preview a subscription change
+type PreviewSubscriptionChangeRequest struct {
+	TierID       uuid.UUID    `json:"tier_id" binding:"required"`
+	BillingCycle BillingCycle `json:"billing_cycle" binding:"required,oneof=monthly annual"`
+}
+
+// PreviewSubscriptionChangeResponse represents the preview of a subscription change
+type PreviewSubscriptionChangeResponse struct {
+	// Current plan info
+	CurrentTierName     string       `json:"current_tier_name"`
+	CurrentPriceCents   int          `json:"current_price_cents"`
+	CurrentBillingCycle BillingCycle `json:"current_billing_cycle"`
+	CurrentPeriodEnd    *time.Time   `json:"current_period_end,omitempty"`
+	DaysRemaining       int          `json:"days_remaining"`
+
+	// New plan info
+	NewTierName     string       `json:"new_tier_name"`
+	NewPriceCents   int          `json:"new_price_cents"`
+	NewBillingCycle BillingCycle `json:"new_billing_cycle"`
+
+	// Proration info (for paid-to-paid changes)
+	IsUpgrade            bool       `json:"is_upgrade"`
+	IsDowngrade          bool       `json:"is_downgrade"`
+	IsCancellation       bool       `json:"is_cancellation"`        // Downgrading to free
+	ProrationCreditCents int        `json:"proration_credit_cents"` // Credit for unused time (positive = credit)
+	AmountDueTodayCents  int        `json:"amount_due_today_cents"` // What will be charged today
+	NextBillingDate      *time.Time `json:"next_billing_date,omitempty"`
+	NextBillingAmount    int        `json:"next_billing_amount_cents"`
+
+	// Warnings/messages
+	Warnings []string `json:"warnings,omitempty"`
 }

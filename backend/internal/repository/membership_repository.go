@@ -186,3 +186,51 @@ func (r *MembershipRepository) GetSubscriptionHistory(ctx context.Context, tenan
 	}
 	return subscriptions, nil
 }
+
+// ============================================================================
+// Stripe Integration Methods
+// ============================================================================
+
+// GetSubscriptionByStripeID retrieves a subscription by Stripe subscription ID
+func (r *MembershipRepository) GetSubscriptionByStripeID(ctx context.Context, stripeSubscriptionID string) (*models.TenantSubscription, error) {
+	var subscription models.TenantSubscription
+	err := r.db.WithContext(ctx).
+		Preload("Tier").
+		Where("stripe_subscription_id = ?", stripeSubscriptionID).
+		First(&subscription).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrSubscriptionNotFound
+		}
+		return nil, err
+	}
+	return &subscription, nil
+}
+
+// UpdateSubscriptionStripeID updates the Stripe subscription ID for a subscription
+func (r *MembershipRepository) UpdateSubscriptionStripeID(ctx context.Context, subscriptionID uuid.UUID, stripeSubscriptionID, stripePriceID string) error {
+	return r.db.WithContext(ctx).Model(&models.TenantSubscription{}).
+		Where("id = ?", subscriptionID).
+		Updates(map[string]any{
+			"stripe_subscription_id": stripeSubscriptionID,
+			"stripe_price_id":        stripePriceID,
+		}).Error
+}
+
+// UpdateSubscriptionFromStripe updates subscription fields from Stripe webhook data
+func (r *MembershipRepository) UpdateSubscriptionFromStripe(ctx context.Context, stripeSubscriptionID string, status models.MembershipStatus, currentPeriodEnd *time.Time, cancelAtPeriodEnd bool) error {
+	return r.db.WithContext(ctx).Model(&models.TenantSubscription{}).
+		Where("stripe_subscription_id = ?", stripeSubscriptionID).
+		Updates(map[string]any{
+			"status":               status,
+			"current_period_end":   currentPeriodEnd,
+			"cancel_at_period_end": cancelAtPeriodEnd,
+		}).Error
+}
+
+// CancelSubscriptionAtPeriodEnd marks a subscription to cancel at period end
+func (r *MembershipRepository) CancelSubscriptionAtPeriodEnd(ctx context.Context, subscriptionID uuid.UUID, cancel bool) error {
+	return r.db.WithContext(ctx).Model(&models.TenantSubscription{}).
+		Where("id = ?", subscriptionID).
+		Update("cancel_at_period_end", cancel).Error
+}

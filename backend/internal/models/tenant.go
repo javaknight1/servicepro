@@ -25,6 +25,9 @@ type Tenant struct {
 	UpdatedAt time.Time      `json:"updated_at"`
 	DeletedAt gorm.DeletedAt `json:"-" gorm:"index"`
 
+	// Stripe integration
+	StripeCustomerID *string `json:"stripe_customer_id,omitempty" gorm:"uniqueIndex;size:255"`
+
 	// Relations
 	Owner   *User        `json:"owner,omitempty" gorm:"foreignKey:OwnerID"`
 	Members []TenantUser `json:"members,omitempty" gorm:"foreignKey:TenantID"`

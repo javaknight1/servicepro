@@ -111,6 +111,16 @@ type StripeConfig struct {
 	WebhookSecret  string
 	LogLevel       string
 	MaxRetries     int
+	Prices         StripePrices
+}
+
+// StripePrices holds Stripe price IDs for subscription tiers
+type StripePrices struct {
+	FreeMonthly  string
+	BasicMonthly string
+	BasicYearly  string
+	ProMonthly   string
+	ProYearly    string
 }
 
 // SESConfig holds SES email service configuration
@@ -279,6 +289,13 @@ func Load() *Config {
 			WebhookSecret:  getEnv("STRIPE_WEBHOOK_SECRET", ""),
 			LogLevel:       getEnv("STRIPE_LOG_LEVEL", "info"),
 			MaxRetries:     getEnvAsInt("STRIPE_MAX_RETRIES", 3),
+			Prices: StripePrices{
+				FreeMonthly:  getEnv("STRIPE_PRICE_FREE_MONTHLY", ""),
+				BasicMonthly: getEnv("STRIPE_PRICE_BASIC_MONTHLY", ""),
+				BasicYearly:  getEnv("STRIPE_PRICE_BASIC_YEARLY", ""),
+				ProMonthly:   getEnv("STRIPE_PRICE_PRO_MONTHLY", ""),
+				ProYearly:    getEnv("STRIPE_PRICE_PRO_YEARLY", ""),
+			},
 		},
 		SES: SESConfig{
 			FromEmail:            getEnv("SES_FROM_EMAIL", getEnv("AWS_SES_FROM_EMAIL", "noreply@servicepro.com")),

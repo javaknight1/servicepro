@@ -518,11 +518,21 @@ func Setup(router *gin.Engine, db *gorm.DB, redisClient *redis.Client, cfg *conf
 
 	// Membership repository and service
 	membershipRepo := repository.NewMembershipRepository(db)
-	membershipService := services.NewMembershipService(membershipRepo)
+	paymentRepo := repository.NewPaymentRepository(db)
+
+	// Create StripeService if configured (used by both membership and billing)
+	var stripeService *services.StripeService
+	if cfg.Stripe.SecretKey != "" {
+		tenantRepoForStripe := repository.NewTenantRepository(db)
+		stripeService = services.NewStripeService(&cfg.Stripe, tenantRepoForStripe, membershipRepo, paymentRepo)
+	}
+
+	membershipService := services.NewMembershipService(membershipRepo, stripeService)
 	membershipHandler := handlers.NewMembershipHandler(membershipService)
 
 	// Tenant routes
 	tenantRepo := repository.NewTenantRepository(db)
+	tenantMiddleware := middleware.NewTenantMiddleware(tenantRepo)
 	tenantService := services.NewTenantService(tenantRepo, userRepo)
 	// Set the permission cache invalidator so tenant membership changes invalidate cached permissions
 	tenantService.SetPermissionInvalidator(permissionChecker)
@@ -548,6 +558,12 @@ func Setup(router *gin.Engine, db *gorm.DB, redisClient *redis.Client, cfg *conf
 	if err := SetupStripeRoutesWithPermissions(v1, permissionMiddleware, cfg); err != nil {
 		// Log error but don't fail - Stripe may not be configured in all environments
 		// In production, this should be handled more strictly
+		_ = err
+	}
+
+	// Billing routes (for subscription payment methods and billing history)
+	if err := SetupBillingRoutes(v1, db, permissionMiddleware, tenantMiddleware, cfg); err != nil {
+		// Log error but don't fail - Stripe may not be configured in all environments
 		_ = err
 	}
 }
