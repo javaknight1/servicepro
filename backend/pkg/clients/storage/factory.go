@@ -40,7 +40,7 @@ func GetRegisteredProviders() []Provider {
 // NewClient creates a new storage client based on configuration.
 //
 // Provider selection order:
-// 1. If S3Compatible is configured (bucket set) -> S3 (works for AWS S3, R2, MinIO)
+// 1. If S3Compatible is configured (bucket set) -> S3 (works with any S3-compatible service)
 // 2. Fallback -> Mock (for tests or when storage is not configured)
 //
 // Note: Providers must be registered by importing their packages with blank imports:
@@ -69,7 +69,7 @@ func NewClient(ctx context.Context, cfg *config.Config) (Client, error) {
 
 // detectProvider determines which provider to use based on configuration
 func detectProvider(cfg *config.Config) Provider {
-	// Use S3 if S3Compatible is configured (works for AWS S3, Cloudflare R2, MinIO)
+	// Use S3 if S3Compatible is configured (works with any S3-compatible service)
 	if cfg.S3Compatible.Bucket != "" && cfg.S3Compatible.AccessKeyID != "" {
 		return ProviderS3
 	}

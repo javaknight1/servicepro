@@ -42,10 +42,10 @@ func init() {
 	})
 }
 
-// Config holds configuration for the S3 storage client
-// Works with AWS S3, Cloudflare R2, MinIO, and other S3-compatible services
+// Config holds configuration for the S3-compatible storage client
+// Works with any S3-compatible service (AWS S3, Cloudflare R2, MinIO, etc.)
 type Config struct {
-	Endpoint        string // Custom endpoint (required for R2, MinIO; empty for AWS S3)
+	Endpoint        string // Custom endpoint for S3-compatible services (leave empty for AWS)
 	Bucket          string
 	Region          string
 	AccessKeyID     string
@@ -55,7 +55,7 @@ type Config struct {
 	PublicURL       string // Optional: base URL for public access (e.g., CDN or MinIO public URL)
 }
 
-// Client implements the storage.Client interface using AWS S3
+// Client implements the storage.Client interface using S3-compatible storage
 type Client struct {
 	client    *s3.Client
 	uploader  *manager.Uploader
@@ -70,14 +70,14 @@ func NewClient(ctx context.Context, cfg *Config) (*Client, error) {
 	}
 
 	if cfg.Region == "" {
-		return nil, fmt.Errorf("AWS region is required")
+		return nil, fmt.Errorf("region is required")
 	}
 
 	if cfg.Bucket == "" {
 		return nil, fmt.Errorf("bucket is required")
 	}
 
-	// Build AWS config options
+	// Build S3 SDK config options
 	var opts []func(*awsconfig.LoadOptions) error
 	opts = append(opts, awsconfig.WithRegion(cfg.Region))
 
@@ -92,10 +92,10 @@ func NewClient(ctx context.Context, cfg *Config) (*Client, error) {
 		))
 	}
 
-	// Load AWS configuration
+	// Load S3 SDK configuration
 	awsCfg, err := awsconfig.LoadDefaultConfig(ctx, opts...)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load AWS config: %w", err)
+		return nil, fmt.Errorf("failed to load S3 SDK config: %w", err)
 	}
 
 	// Build S3 client options

@@ -36,19 +36,19 @@ type Config struct {
 	CORS          CORSConfig
 }
 
-// AWSConfig holds AWS configuration
+// AWSConfig holds configuration for AWS-specific services (SES, CloudWatch, SNS)
+// Note: For S3-compatible storage, use S3CompatibleConfig instead
 type AWSConfig struct {
 	Region          string
 	SESFromEmail    string
-	S3Bucket        string
 	AccessKeyID     string
 	SecretAccessKey string
 }
 
 // S3CompatibleConfig holds S3-compatible storage configuration
-// Works with AWS S3, Cloudflare R2, MinIO, and other S3-compatible services
+// Works with any S3-compatible service (AWS S3, Cloudflare R2, MinIO, etc.)
 type S3CompatibleConfig struct {
-	Endpoint        string // Custom endpoint (required for R2, MinIO; empty for AWS S3)
+	Endpoint        string // Custom endpoint for S3-compatible services (leave empty for AWS)
 	Bucket          string
 	Region          string
 	AccessKeyID     string
@@ -240,7 +240,7 @@ type PDFConfig struct {
 	StorageType string
 	// LocalPath is the local directory for storing PDFs
 	LocalPath string
-	// S3Bucket is the S3 bucket for storing PDFs (uses AWS config for credentials)
+	// S3Bucket is the S3-compatible bucket for storing PDFs
 	S3Bucket string
 	// S3Prefix is the key prefix for PDFs in S3
 	S3Prefix string
@@ -329,7 +329,6 @@ func Load() *Config {
 		AWS: AWSConfig{
 			Region:          getEnv("AWS_REGION", "us-east-1"),
 			SESFromEmail:    getEnv("AWS_SES_FROM_EMAIL", "noreply@servicepro.com"),
-			S3Bucket:        getEnv("AWS_S3_BUCKET", "servicepro-uploads"),
 			AccessKeyID:     getEnv("AWS_ACCESS_KEY_ID", ""),
 			SecretAccessKey: getEnv("AWS_SECRET_ACCESS_KEY", ""),
 		},

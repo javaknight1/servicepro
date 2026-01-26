@@ -257,7 +257,7 @@ func NewConfigFromAppConfig(cfg *appconfig.Config) *Config {
 		pdfCfg.Storage.S3PublicURL = cfg.PDF.S3PublicURL
 	}
 
-	// Apply AWS region for S3
+	// Apply region for S3-compatible storage
 	if cfg.AWS.Region != "" {
 		pdfCfg.Storage.S3Region = cfg.AWS.Region
 	}
@@ -315,10 +315,10 @@ func (c *Config) Validate() error {
 }
 
 // =============================================================================
-// AWS S3 Client
+// S3-Compatible Storage Client
 // =============================================================================
 
-// S3Client wraps the AWS S3 client
+// S3Client wraps the S3-compatible storage client
 type S3Client struct {
 	client     *s3.Client
 	bucket     string
@@ -337,7 +337,7 @@ func NewS3Client(ctx context.Context, cfg *StorageConfig) (*S3Client, error) {
 
 	awsCfg, err := awsconfig.LoadDefaultConfig(ctx, opts...)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load AWS config: %w", err)
+		return nil, fmt.Errorf("failed to load S3 SDK config: %w", err)
 	}
 
 	clientOpts := []func(*s3.Options){}
@@ -377,10 +377,12 @@ func (c *S3Client) GetKey(filename string) string {
 }
 
 // GetPublicURL returns the public URL for a file
+// Note: The fallback URL format assumes AWS S3; configure S3PublicURL for other providers
 func (c *S3Client) GetPublicURL(filename string) string {
 	if c.publicURL != "" {
 		return fmt.Sprintf("%s/%s%s", c.publicURL, c.prefix, filename)
 	}
+	// Default fallback for AWS S3 - configure S3PublicURL for other S3-compatible providers
 	return fmt.Sprintf("https://%s.s3.amazonaws.com/%s%s", c.bucket, c.prefix, filename)
 }
 

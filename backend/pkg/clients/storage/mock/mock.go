@@ -20,7 +20,7 @@ import (
 func init() {
 	storage.RegisterProvider(storage.ProviderMock, func(ctx context.Context, cfg *config.Config) (storage.Client, error) {
 		mockCfg := &Config{
-			Bucket: cfg.AWS.S3Bucket,
+			Bucket: cfg.S3Compatible.Bucket,
 		}
 		if mockCfg.Bucket == "" {
 			mockCfg.Bucket = "mock-bucket"
