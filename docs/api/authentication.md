@@ -427,9 +427,14 @@ const fetchCustomers = async () => {
 JWT_SECRET=your-super-secret-key
 JWT_EXPIRY=3600  # seconds (1 hour)
 
-# Email Configuration
+# AWS Configuration (shared credentials)
 AWS_REGION=us-east-1
-SES_FROM_EMAIL=noreply@servicepro.com
+AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE
+AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYxxxxxxxxxx
+
+# AWS SES Email Configuration
+AWS_SES_FROM_EMAIL=noreply@servicepro.com
+AWS_SES_FROM_NAME=ServicePro
 
 # Password Reset
 RESET_PASSWORD_URL=http://localhost:3000/reset-password
