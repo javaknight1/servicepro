@@ -144,8 +144,8 @@ func NewSNSConfigFromAppConfig(cfg *appconfig.Config) *SNSConfig {
 	}
 
 	// Apply AWS region (SNS-specific takes precedence, then general AWS region)
-	if cfg.SNS.Region != "" {
-		snsCfg.Region = cfg.SNS.Region
+	if cfg.AWS.SNS.Region != "" {
+		snsCfg.Region = cfg.AWS.SNS.Region
 	} else if cfg.AWS.Region != "" {
 		snsCfg.Region = cfg.AWS.Region
 	}
@@ -159,8 +159,8 @@ func NewSNSConfigFromAppConfig(cfg *appconfig.Config) *SNSConfig {
 	}
 
 	// Apply default topic ARN if configured
-	if cfg.SNS.TopicARN != "" {
-		snsCfg.TopicARNs["default"] = cfg.SNS.TopicARN
+	if cfg.AWS.SNS.TopicARN != "" {
+		snsCfg.TopicARNs["default"] = cfg.AWS.SNS.TopicARN
 	}
 
 	return snsCfg

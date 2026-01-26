@@ -24,7 +24,6 @@ type Config struct {
 	Resend        ResendConfig
 	BetterStack   BetterStackConfig
 	Stripe        StripeConfig
-	SES           SESConfig
 	Sentry        SentryConfig
 	Health        HealthConfig
 	Analytics     AnalyticsConfig
@@ -32,17 +31,45 @@ type Config struct {
 	Prometheus    PrometheusConfig
 	OpenTelemetry OpenTelemetryConfig
 	PDF           PDFConfig
-	SNS           SNSConfig
 	CORS          CORSConfig
 }
 
-// AWSConfig holds configuration for AWS-specific services (SES, CloudWatch, SNS)
+// AWSConfig holds configuration for all AWS services (SES, SNS, CloudWatch, etc.)
 // Note: For S3-compatible storage, use S3CompatibleConfig instead
 type AWSConfig struct {
+	// Shared AWS credentials and region
 	Region          string
-	SESFromEmail    string
 	AccessKeyID     string
 	SecretAccessKey string
+
+	// AWS service-specific configurations
+	SES AWSSESConfig
+	SNS AWSSNSConfig
+}
+
+// AWSSESConfig holds AWS SES email service configuration
+type AWSSESConfig struct {
+	FromEmail            string
+	FromName             string
+	ReplyTo              string
+	ConfigurationSetName string  // SES configuration set for tracking
+	Domain               string  // Verified domain for sending
+	MaxSendRate          float64 // Max emails per second
+	DailyQuota           int64   // Daily sending limit
+	MaxRetries           int     // Retry attempts for failed sends
+	SandboxMode          bool    // Whether SES is in sandbox mode
+	EnableTracking       bool    // Enable open/click tracking
+	EnableDKIM           bool    // Enable DKIM signing
+	MetricsEnabled       bool    // Enable CloudWatch metrics
+	MetricsNamespace     string  // CloudWatch namespace for metrics
+	LogLevel             string  // Logging level (debug, info, warn, error)
+}
+
+// AWSSNSConfig holds AWS SNS configuration
+type AWSSNSConfig struct {
+	Enabled  bool
+	TopicARN string
+	Region   string // Optional: overrides AWS.Region for SNS
 }
 
 // S3CompatibleConfig holds S3-compatible storage configuration
@@ -161,49 +188,31 @@ type StripePrices struct {
 	ProYearly    string
 }
 
-// SESConfig holds SES email service configuration
-type SESConfig struct {
-	FromEmail            string
-	FromName             string
-	ReplyTo              string
-	ConfigurationSetName string
-	Domain               string
-	MaxSendRate          float64
-	DailyQuota           int64
-	MaxRetries           int
-	SandboxMode          bool
-	EnableTracking       bool
-	EnableDKIM           bool
-	MetricsEnabled       bool
-	MetricsNamespace     string
-	LogLevel             string
-}
-
 // SentryConfig holds error tracking configuration
 type SentryConfig struct {
-	DSN              string
-	Environment      string
-	Release          string
-	SampleRate       float64
-	TracesSampleRate float64
-	Debug            bool
-	ServerName       string
+	DSN              string  // Sentry DSN for error reporting
+	Environment      string  // Environment name (development, staging, production)
+	Release          string  // Application version/release
+	SampleRate       float64 // Error sample rate (0.0 to 1.0)
+	TracesSampleRate float64 // Performance tracing sample rate (0.0 to 1.0)
+	Debug            bool    // Enable Sentry debug mode
+	ServerName       string  // Server identifier
 }
 
 // HealthConfig holds health check configuration
 type HealthConfig struct {
-	Enabled       bool
-	CheckDatabase bool
-	CheckRedis    bool
-	CheckMemory   bool
-	CheckDisk     bool
-	CheckExternal bool
+	Enabled       bool // Enable health check endpoints
+	CheckDatabase bool // Include database connectivity check
+	CheckRedis    bool // Include Redis connectivity check
+	CheckMemory   bool // Include memory usage check
+	CheckDisk     bool // Include disk space check
+	CheckExternal bool // Include external service checks
 }
 
 // AnalyticsConfig holds analytics tracking configuration
 type AnalyticsConfig struct {
-	Enabled bool
-	Debug   bool
+	Enabled bool // Enable analytics tracking
+	Debug   bool // Enable debug logging for analytics
 }
 
 // LokiConfig holds Grafana Loki logging configuration
@@ -217,12 +226,12 @@ type LokiConfig struct {
 
 // PrometheusConfig holds Prometheus metrics configuration
 type PrometheusConfig struct {
-	Enabled      bool
-	MetricsPath  string
-	Namespace    string
-	Subsystem    string
-	PushGateway  string
-	PushInterval time.Duration
+	Enabled      bool          // Enable Prometheus metrics
+	MetricsPath  string        // HTTP path for metrics endpoint (default: /metrics)
+	Namespace    string        // Metrics namespace prefix
+	Subsystem    string        // Metrics subsystem prefix
+	PushGateway  string        // Push gateway URL (for batch jobs)
+	PushInterval time.Duration // Interval for pushing metrics
 }
 
 // OpenTelemetryConfig holds OpenTelemetry tracing configuration
@@ -250,16 +259,6 @@ type PDFConfig struct {
 	CompanyName string
 	// CompanyLogo path for branding
 	CompanyLogo string
-}
-
-// SNSConfig holds AWS SNS configuration
-type SNSConfig struct {
-	// Enabled enables SNS notifications
-	Enabled bool
-	// TopicARN is the default SNS topic ARN
-	TopicARN string
-	// Region overrides AWS.Region for SNS (optional)
-	Region string
 }
 
 // CORSConfig holds CORS (Cross-Origin Resource Sharing) configuration
@@ -328,9 +327,29 @@ func Load() *Config {
 		},
 		AWS: AWSConfig{
 			Region:          getEnv("AWS_REGION", "us-east-1"),
-			SESFromEmail:    getEnv("AWS_SES_FROM_EMAIL", "noreply@servicepro.com"),
 			AccessKeyID:     getEnv("AWS_ACCESS_KEY_ID", ""),
 			SecretAccessKey: getEnv("AWS_SECRET_ACCESS_KEY", ""),
+			SES: AWSSESConfig{
+				FromEmail:            getEnv("AWS_SES_FROM_EMAIL", "noreply@servicepro.com"),
+				FromName:             getEnv("AWS_SES_FROM_NAME", "ServicePro"),
+				ReplyTo:              getEnv("AWS_SES_REPLY_TO", ""),
+				ConfigurationSetName: getEnv("AWS_SES_CONFIGURATION_SET", ""),
+				Domain:               getEnv("AWS_SES_DOMAIN", ""),
+				MaxSendRate:          getEnvAsFloat("AWS_SES_MAX_SEND_RATE", 14.0),
+				DailyQuota:           int64(getEnvAsInt("AWS_SES_DAILY_QUOTA", 200)),
+				MaxRetries:           getEnvAsInt("AWS_SES_MAX_RETRIES", 3),
+				SandboxMode:          getEnvAsBool("AWS_SES_SANDBOX_MODE", true),
+				EnableTracking:       getEnvAsBool("AWS_SES_ENABLE_TRACKING", true),
+				EnableDKIM:           getEnvAsBool("AWS_SES_ENABLE_DKIM", true),
+				MetricsEnabled:       getEnvAsBool("AWS_SES_METRICS_ENABLED", true),
+				MetricsNamespace:     getEnv("AWS_SES_METRICS_NAMESPACE", "ServicePro/Email"),
+				LogLevel:             getEnv("AWS_SES_LOG_LEVEL", "info"),
+			},
+			SNS: AWSSNSConfig{
+				Enabled:  getEnvAsBool("AWS_SNS_ENABLED", false),
+				TopicARN: getEnv("AWS_SNS_TOPIC_ARN", ""),
+				Region:   getEnv("AWS_SNS_REGION", ""),
+			},
 		},
 		S3Compatible: S3CompatibleConfig{
 			Endpoint:        getEnv("S3_COMPATIBLE_ENDPOINT", ""),
@@ -374,22 +393,6 @@ func Load() *Config {
 				ProMonthly:   getEnv("STRIPE_PRICE_PRO_MONTHLY", ""),
 				ProYearly:    getEnv("STRIPE_PRICE_PRO_YEARLY", ""),
 			},
-		},
-		SES: SESConfig{
-			FromEmail:            getEnv("SES_FROM_EMAIL", getEnv("AWS_SES_FROM_EMAIL", "noreply@servicepro.com")),
-			FromName:             getEnv("SES_FROM_NAME", "ServicePro"),
-			ReplyTo:              getEnv("SES_REPLY_TO", ""),
-			ConfigurationSetName: getEnv("SES_CONFIGURATION_SET", ""),
-			Domain:               getEnv("SES_DOMAIN", ""),
-			MaxSendRate:          getEnvAsFloat("SES_MAX_SEND_RATE", 14.0),
-			DailyQuota:           int64(getEnvAsInt("SES_DAILY_QUOTA", 200)),
-			MaxRetries:           getEnvAsInt("SES_MAX_RETRIES", 3),
-			SandboxMode:          getEnvAsBool("SES_SANDBOX_MODE", true),
-			EnableTracking:       getEnvAsBool("SES_ENABLE_TRACKING", true),
-			EnableDKIM:           getEnvAsBool("SES_ENABLE_DKIM", true),
-			MetricsEnabled:       getEnvAsBool("SES_METRICS_ENABLED", true),
-			MetricsNamespace:     getEnv("SES_METRICS_NAMESPACE", "ServicePro/Email"),
-			LogLevel:             getEnv("SES_LOG_LEVEL", "info"),
 		},
 		Sentry: SentryConfig{
 			DSN:              getEnv("SENTRY_DSN", ""),
@@ -442,11 +445,6 @@ func Load() *Config {
 			S3PublicURL: getEnv("PDF_S3_PUBLIC_URL", ""),
 			CompanyName: getEnv("PDF_COMPANY_NAME", "ServicePro"),
 			CompanyLogo: getEnv("PDF_COMPANY_LOGO", ""),
-		},
-		SNS: SNSConfig{
-			Enabled:  getEnvAsBool("SNS_ENABLED", false),
-			TopicARN: getEnv("SNS_TOPIC_ARN", ""),
-			Region:   getEnv("SNS_REGION", ""),
 		},
 		CORS: CORSConfig{
 			Enabled:          getEnvAsBool("CORS_ENABLED", true),

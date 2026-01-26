@@ -22,9 +22,9 @@ func init() {
 			Region:          cfg.AWS.Region,
 			AccessKeyID:     cfg.AWS.AccessKeyID,
 			SecretAccessKey: cfg.AWS.SecretAccessKey,
-			FromEmail:       cfg.SES.FromEmail,
-			FromName:        cfg.SES.FromName,
-			ReplyTo:         cfg.SES.ReplyTo,
+			FromEmail:       cfg.AWS.SES.FromEmail,
+			FromName:        cfg.AWS.SES.FromName,
+			ReplyTo:         cfg.AWS.SES.ReplyTo,
 		}
 		return NewClient(ctx, sesCfg)
 	})

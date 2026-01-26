@@ -42,7 +42,7 @@ func GetRegisteredProviders() []Provider {
 // Provider selection order:
 // 1. If cfg.SMTP.Host != "" -> SMTP (Mailpit for local development)
 // 2. If cfg.Resend.APIKey != "" -> Resend
-// 3. If cfg.AWS.Region != "" && cfg.SES.FromEmail != "" -> SES
+// 3. If cfg.AWS.Region != "" && cfg.AWS.SES.FromEmail != "" -> SES
 // 4. Fallback -> Mock
 //
 // Note: Providers must be registered by importing their packages with blank imports:
@@ -84,7 +84,7 @@ func detectProvider(cfg *config.Config) Provider {
 	}
 
 	// 3. Check for SES credentials
-	if cfg.AWS.Region != "" && cfg.SES.FromEmail != "" {
+	if cfg.AWS.Region != "" && cfg.AWS.SES.FromEmail != "" {
 		return ProviderSES
 	}
 
