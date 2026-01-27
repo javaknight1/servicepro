@@ -662,6 +662,26 @@ CREATE TABLE invoice_audit_log (
 
 CREATE INDEX idx_invoice_audit_invoice ON invoice_audit_log(invoice_id);
 
+-- Invoice payments table (for tracking payments against invoices)
+CREATE TABLE invoice_payments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    invoice_id UUID NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,
+    amount DECIMAL(12, 2) NOT NULL CHECK (amount > 0),
+    payment_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    payment_method VARCHAR(50),
+    reference_number VARCHAR(100),
+    notes TEXT,
+    created_by UUID NOT NULL REFERENCES users(id),
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX idx_invoice_payments_invoice ON invoice_payments(invoice_id);
+CREATE INDEX idx_invoice_payments_date ON invoice_payments(payment_date);
+
+CREATE TRIGGER trigger_invoice_payments_updated_at BEFORE UPDATE ON invoice_payments
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
 -- ============================================================================
 -- 11. INVOICE TEMPLATES
 -- ============================================================================

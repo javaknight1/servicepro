@@ -101,7 +101,7 @@ export function InvoicesPage() {
       ),
     },
     {
-      key: 'total',
+      key: 'total_amount',
       header: 'Total',
       sortable: true,
       className: 'text-right',

@@ -38,6 +38,7 @@ type CreateInvoiceRequest struct {
 	DueDate        *time.Time              `json:"due_date,omitempty"`
 	PaymentTermID  *uuid.UUID              `json:"payment_term_id,omitempty"`
 	TaxRateID      *uuid.UUID              `json:"tax_rate_id,omitempty"`
+	TaxRate        *decimal.Decimal        `json:"tax_rate,omitempty"` // Direct tax rate (e.g., 0.07 for 7%)
 	PONumber       string                  `json:"po_number,omitempty"`
 	Notes          string                  `json:"notes,omitempty"`
 	DiscountAmount decimal.Decimal         `json:"discount_amount,omitempty"`
@@ -63,6 +64,7 @@ type UpdateInvoiceRequest struct {
 	DueDate            *time.Time              `json:"due_date,omitempty"`
 	PaymentTermID      *uuid.UUID              `json:"payment_term_id,omitempty"`
 	TaxRateID          *uuid.UUID              `json:"tax_rate_id,omitempty"`
+	TaxRate            *decimal.Decimal        `json:"tax_rate,omitempty"` // Direct tax rate (e.g., 0.07 for 7%)
 	PONumber           *string                 `json:"po_number,omitempty"`
 	Notes              *string                 `json:"notes,omitempty"`
 	DiscountAmount     *decimal.Decimal        `json:"discount_amount,omitempty"`
@@ -314,13 +316,32 @@ func (h *InvoiceHandler) CreateInvoice(c *gin.Context) {
 		invoice.DueDate = *req.DueDate
 	}
 
-	// Convert line items
+	// Convert line items and calculate totals
 	invoice.Lines = make([]models.InvoiceLine, len(req.Lines))
+	subtotal := decimal.Zero
+	totalTax := decimal.Zero
+
 	for i, lineReq := range req.Lines {
 		taxable := true
 		if lineReq.Taxable != nil {
 			taxable = *lineReq.Taxable
 		}
+
+		// Apply tax rate from request if provided
+		var lineTaxRate decimal.Decimal
+		if req.TaxRate != nil {
+			lineTaxRate = *req.TaxRate
+		}
+
+		// Calculate line total and tax
+		lineTotal := lineReq.Quantity.Mul(lineReq.UnitPrice).Sub(lineReq.DiscountAmount)
+		var lineTaxAmount decimal.Decimal
+		if taxable {
+			lineTaxAmount = lineTotal.Mul(lineTaxRate).Round(2)
+		}
+
+		subtotal = subtotal.Add(lineTotal)
+		totalTax = totalTax.Add(lineTaxAmount)
 
 		invoice.Lines[i] = models.InvoiceLine{
 			Description:        lineReq.Description,
@@ -330,11 +351,18 @@ func (h *InvoiceHandler) CreateInvoice(c *gin.Context) {
 			DiscountPercentage: lineReq.DiscountPercentage,
 			DiscountAmount:     lineReq.DiscountAmount,
 			Taxable:            taxable,
+			TaxRate:            lineTaxRate,
+			TaxAmount:          lineTaxAmount,
 			ProductID:          lineReq.ProductID,
 			ServiceID:          lineReq.ServiceID,
 			SortOrder:          i,
 		}
 	}
+
+	// Set invoice totals
+	invoice.Subtotal = subtotal
+	invoice.TaxAmount = totalTax
+	invoice.TotalAmount = subtotal.Add(totalTax).Sub(invoice.DiscountAmount)
 
 	// Create invoice
 	created, err := h.service.CreateInvoice(ctx, invoice, userID)
@@ -422,14 +450,33 @@ func (h *InvoiceHandler) UpdateInvoice(c *gin.Context) {
 		updates.TermsAndConditions = *req.TermsAndConditions
 	}
 
-	// Convert line items if provided
+	// Convert line items if provided and calculate totals
 	if req.Lines != nil {
 		updates.Lines = make([]models.InvoiceLine, len(req.Lines))
+		subtotal := decimal.Zero
+		totalTax := decimal.Zero
+
 		for i, lineReq := range req.Lines {
 			taxable := true
 			if lineReq.Taxable != nil {
 				taxable = *lineReq.Taxable
 			}
+
+			// Apply tax rate from request if provided
+			var lineTaxRate decimal.Decimal
+			if req.TaxRate != nil {
+				lineTaxRate = *req.TaxRate
+			}
+
+			// Calculate line total and tax
+			lineTotal := lineReq.Quantity.Mul(lineReq.UnitPrice).Sub(lineReq.DiscountAmount)
+			var lineTaxAmount decimal.Decimal
+			if taxable {
+				lineTaxAmount = lineTotal.Mul(lineTaxRate).Round(2)
+			}
+
+			subtotal = subtotal.Add(lineTotal)
+			totalTax = totalTax.Add(lineTaxAmount)
 
 			updates.Lines[i] = models.InvoiceLine{
 				Description:        lineReq.Description,
@@ -439,11 +486,22 @@ func (h *InvoiceHandler) UpdateInvoice(c *gin.Context) {
 				DiscountPercentage: lineReq.DiscountPercentage,
 				DiscountAmount:     lineReq.DiscountAmount,
 				Taxable:            taxable,
+				TaxRate:            lineTaxRate,
+				TaxAmount:          lineTaxAmount,
 				ProductID:          lineReq.ProductID,
 				ServiceID:          lineReq.ServiceID,
 				SortOrder:          i,
 			}
 		}
+
+		// Set invoice totals
+		discountAmount := decimal.Zero
+		if req.DiscountAmount != nil {
+			discountAmount = *req.DiscountAmount
+		}
+		updates.Subtotal = subtotal
+		updates.TaxAmount = totalTax
+		updates.TotalAmount = subtotal.Add(totalTax).Sub(discountAmount)
 	}
 
 	// Update invoice

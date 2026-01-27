@@ -39,7 +39,7 @@ export interface Invoice {
   subtotal: number;
   tax_rate: number;
   tax_amount: number;
-  total: number;
+  total_amount: number;
   amount_paid: number;
   amount_due: number;
   notes?: string;

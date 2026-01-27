@@ -133,7 +133,7 @@ type Invoice struct {
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"deleted_at,omitempty"`
 
 	// Relationships
-	Customer    *User            `gorm:"foreignKey:CustomerID" json:"customer,omitempty"`
+	Customer    *Customer        `gorm:"foreignKey:CustomerID" json:"customer,omitempty"`
 	PaymentTerm *PaymentTerm     `gorm:"foreignKey:PaymentTermID" json:"payment_term,omitempty"`
 	TaxRate     *TaxRate         `gorm:"foreignKey:TaxRateID" json:"tax_rate,omitempty"`
 	Lines       []InvoiceLine    `gorm:"foreignKey:InvoiceID" json:"lines,omitempty"`
