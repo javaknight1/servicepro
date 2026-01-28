@@ -9,6 +9,7 @@ import { getDisplayName } from '@/utils/avatar';
 function ProfileDropdown() {
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
+  const { reset: resetTenants } = useTenantStore();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const displayName = getDisplayName(
@@ -38,6 +39,7 @@ function ProfileDropdown() {
 
   const handleLogout = () => {
     setIsOpen(false);
+    resetTenants();
     logout();
   };
 

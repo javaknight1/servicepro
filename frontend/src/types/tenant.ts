@@ -70,6 +70,34 @@ export interface UpdateMemberRoleRequest {
   role_id: string;
 }
 
+// Invitation types
+export type InvitationStatus = 'pending' | 'accepted' | 'expired' | 'cancelled';
+
+export interface Invitation {
+  id: string;
+  tenant_id: string;
+  tenant_name: string;
+  email: string;
+  role_id: string;
+  role_name: string;
+  status: InvitationStatus;
+  invited_by_name: string;
+  expires_at: string;
+  accepted_at?: string;
+  created_at: string;
+  user_exists: boolean;
+  user_registered: boolean;
+}
+
+export interface InviteMemberRequest {
+  email: string;
+  role_id: string;
+}
+
+export interface InvitationsResponse {
+  invitations?: Invitation[];
+}
+
 // Response types
 export interface TenantListResponse {
   tenants: Tenant[];

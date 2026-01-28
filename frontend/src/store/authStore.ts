@@ -43,10 +43,18 @@ export const useAuthStore = create<AuthState>()(
         }
       },
 
-      register: async (email: string, password: string) => {
+      register: async (
+        email: string,
+        password: string,
+        invitationToken?: string
+      ) => {
         try {
           set({ isLoading: true });
-          await authApi.register({ email, password });
+          await authApi.register({
+            email,
+            password,
+            invitation_token: invitationToken,
+          });
           set({ isLoading: false });
           // Registration successful - user needs to verify email
         } catch (error) {

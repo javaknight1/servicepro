@@ -24,6 +24,7 @@ export interface LoginResponse {
 export interface RegisterRequest {
   email: string;
   password: string;
+  invitation_token?: string;
 }
 
 export interface RegisterResponse {
@@ -62,7 +63,11 @@ export interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string) => Promise<void>;
+  register: (
+    email: string,
+    password: string,
+    invitationToken?: string
+  ) => Promise<void>;
   logout: () => void;
   refreshAccessToken: () => Promise<void>;
   setUser: (user: User) => void;

@@ -81,6 +81,14 @@ const VerifyEmailPage = loadable(
   { chunkName: 'verify-email', delay: 100 }
 );
 
+const AcceptInvitationPage = loadable(
+  () =>
+    import(
+      /* @ts-expect-error - dynamic import type */ /* webpackChunkName: "page-auth" */ '@pages/AcceptInvitation'
+    ).then((m) => ({ default: m.AcceptInvitationPage })),
+  { chunkName: 'accept-invitation', delay: 100 }
+);
+
 // Protected pages with retry logic
 const DashboardPage = loadableWithRetry(
   () =>
@@ -349,6 +357,7 @@ export function AppRoutes() {
       <Route path="/verify-email" element={<VerifyEmailPage />} />
       <Route path="/unauthorized" element={<UnauthorizedPage />} />
       <Route path="/pricing" element={<PricingPage />} />
+      <Route path="/invitations/accept" element={<AcceptInvitationPage />} />
 
       {/* Protected routes - require authentication */}
       <Route element={<ProtectedRoute />}>
@@ -403,6 +412,7 @@ export const routePaths = {
   forgotPassword: '/forgot-password',
   resetPassword: '/reset-password',
   verifyEmail: '/verify-email',
+  acceptInvitation: '/invitations/accept',
   dashboard: '/dashboard',
   customers: '/customers',
   customerNew: '/customers/new',

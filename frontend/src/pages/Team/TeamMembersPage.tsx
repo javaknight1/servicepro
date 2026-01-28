@@ -14,30 +14,40 @@ import {
 } from '@components/shared';
 import { useTenantStore } from '@store';
 import { roleApi } from '@services/roleApi';
-import { UserPlus, Trash2, Shield, Search, Building2 } from 'lucide-react';
+import { tenantApi } from '@services/tenantService';
+import {
+  UserPlus,
+  Trash2,
+  Shield,
+  Search,
+  Building2,
+  Mail,
+  RefreshCw,
+  X,
+  Clock,
+} from 'lucide-react';
 import { getDisplayName } from '@/utils/avatar';
-import type { TenantMember } from '@/types/tenant';
+import type { TenantMember, Invitation } from '@/types/tenant';
 import type { Role } from '@/types/role';
 
 export function TeamMembersPage() {
-  const {
-    currentTenant,
-    getMembers,
-    addMember,
-    removeMember,
-    updateMemberRole,
-  } = useTenantStore();
+  const { currentTenant, getMembers, removeMember, updateMemberRole } =
+    useTenantStore();
 
   const [members, setMembers] = useState<TenantMember[]>([]);
+  const [pendingInvitations, setPendingInvitations] = useState<Invitation[]>(
+    []
+  );
   const [roles, setRoles] = useState<Role[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Add member modal
+  // Invite member modal
   const [showAddModal, setShowAddModal] = useState(false);
   const [newMemberEmail, setNewMemberEmail] = useState('');
   const [newMemberRoleId, setNewMemberRoleId] = useState('');
   const [isAdding, setIsAdding] = useState(false);
+  const [inviteError, setInviteError] = useState<string | null>(null);
 
   // Change role modal
   const [showRoleModal, setShowRoleModal] = useState(false);
@@ -60,6 +70,17 @@ export function TeamMembersPage() {
       const memberList = await getMembers(currentTenant.id);
       setMembers(memberList);
 
+      // Load pending invitations
+      try {
+        const invitationsResponse = await tenantApi.getPendingInvitations(
+          currentTenant.id
+        );
+        setPendingInvitations(invitationsResponse.data || []);
+      } catch (invErr) {
+        console.error('Failed to load invitations:', invErr);
+        setPendingInvitations([]);
+      }
+
       // Load roles separately (for the add member dropdown)
       try {
         const roleList = await roleApi.getRoles().then((res) => res.data);
@@ -75,24 +96,57 @@ export function TeamMembersPage() {
     }
   };
 
-  const handleAddMember = async (e: React.FormEvent) => {
+  const handleInviteMember = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentTenant || !newMemberEmail.trim()) return;
+    if (!currentTenant || !newMemberEmail.trim() || !newMemberRoleId) return;
 
     setIsAdding(true);
+    setInviteError(null);
     try {
-      await addMember(currentTenant.id, {
+      await tenantApi.inviteMember(currentTenant.id, {
         email: newMemberEmail.trim(),
-        role_id: newMemberRoleId || '00000000-0000-0000-0000-000000000004',
+        role_id: newMemberRoleId,
       });
       setShowAddModal(false);
       setNewMemberEmail('');
       setNewMemberRoleId('');
       loadData();
-    } catch (err) {
-      console.error('Failed to add member:', err);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (err: any) {
+      console.error('Failed to invite member:', err);
+      const errorMessage =
+        err.response?.data?.error || 'Failed to send invitation';
+      setInviteError(errorMessage);
     } finally {
       setIsAdding(false);
+    }
+  };
+
+  const handleCancelInvitation = async (invitation: Invitation) => {
+    if (!currentTenant) return;
+    if (
+      !confirm(
+        `Are you sure you want to cancel the invitation for ${invitation.email}?`
+      )
+    )
+      return;
+
+    try {
+      await tenantApi.cancelInvitation(currentTenant.id, invitation.id);
+      loadData();
+    } catch (err) {
+      console.error('Failed to cancel invitation:', err);
+    }
+  };
+
+  const handleResendInvitation = async (invitation: Invitation) => {
+    if (!currentTenant) return;
+
+    try {
+      await tenantApi.resendInvitation(currentTenant.id, invitation.id);
+      alert('Invitation resent successfully');
+    } catch (err) {
+      console.error('Failed to resend invitation:', err);
     }
   };
 
@@ -151,6 +205,14 @@ export function TeamMembersPage() {
     );
   });
 
+  const filteredInvitations = pendingInvitations.filter((invitation) => {
+    const searchLower = searchQuery.toLowerCase();
+    return (
+      invitation.email.toLowerCase().includes(searchLower) ||
+      invitation.role_name.toLowerCase().includes(searchLower)
+    );
+  });
+
   if (!currentTenant) {
     return (
       <DashboardLayout>
@@ -188,7 +250,7 @@ export function TeamMembersPage() {
           </div>
           <Button variant="primary" onClick={() => setShowAddModal(true)}>
             <UserPlus className="h-4 w-4 mr-2" />
-            Add Member
+            Invite Member
           </Button>
         </div>
 
@@ -219,95 +281,172 @@ export function TeamMembersPage() {
               <div className="py-8 text-center text-neutral-500">
                 Loading members...
               </div>
-            ) : filteredMembers.length === 0 ? (
+            ) : filteredMembers.length === 0 &&
+              filteredInvitations.length === 0 ? (
               <div className="py-8 text-center text-neutral-500">
                 {searchQuery
                   ? 'No members match your search'
                   : 'No members found'}
               </div>
             ) : (
-              <div className="divide-y divide-neutral-200">
-                {filteredMembers.map((member) => {
-                  const memberDisplayName = getDisplayName(
-                    member.email,
-                    member.first_name,
-                    member.last_name
-                  );
-                  const hasName = member.first_name || member.last_name;
+              <div className="space-y-6">
+                {/* Active Members */}
+                {filteredMembers.length > 0 && (
+                  <div className="divide-y divide-neutral-200">
+                    {filteredMembers.map((member) => {
+                      const memberDisplayName = getDisplayName(
+                        member.email,
+                        member.first_name,
+                        member.last_name
+                      );
+                      const hasName = member.first_name || member.last_name;
 
-                  return (
-                    <div
-                      key={member.id}
-                      className="flex items-center justify-between py-4"
-                    >
-                      <div className="flex items-center">
-                        <Avatar
-                          email={member.email}
-                          firstName={member.first_name}
-                          lastName={member.last_name}
-                          profilePictureUrl={member.profile_picture_url}
-                          size="md"
-                        />
-                        <div className="ml-4">
-                          <p className="text-sm font-medium text-neutral-900">
-                            {memberDisplayName}
-                          </p>
-                          {hasName && (
-                            <p className="text-xs text-neutral-500">
-                              {member.email}
-                            </p>
-                          )}
-                          <div className="flex items-center mt-1 space-x-2">
-                            <Badge variant="neutral">{member.role_name}</Badge>
-                            {!member.accepted_at && member.invited_at && (
-                              <Badge variant="warning">Pending Invite</Badge>
-                            )}
+                      return (
+                        <div
+                          key={member.id}
+                          className="flex items-center justify-between py-4"
+                        >
+                          <div className="flex items-center">
+                            <Avatar
+                              email={member.email}
+                              firstName={member.first_name}
+                              lastName={member.last_name}
+                              profilePictureUrl={member.profile_picture_url}
+                              size="md"
+                            />
+                            <div className="ml-4">
+                              <p className="text-sm font-medium text-neutral-900">
+                                {memberDisplayName}
+                              </p>
+                              {hasName && (
+                                <p className="text-xs text-neutral-500">
+                                  {member.email}
+                                </p>
+                              )}
+                              <div className="flex items-center mt-1 space-x-2">
+                                <Badge variant="neutral">
+                                  {member.role_name}
+                                </Badge>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => openChangeRoleModal(member)}
+                              title="Change role"
+                            >
+                              <Shield className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleRemoveMember(member)}
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                              title="Remove member"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           </div>
                         </div>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => openChangeRoleModal(member)}
-                          title="Change role"
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Pending Invitations */}
+                {filteredInvitations.length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-medium text-neutral-700 mb-3 flex items-center">
+                      <Clock className="h-4 w-4 mr-2" />
+                      Pending Invitations ({filteredInvitations.length})
+                    </h3>
+                    <div className="divide-y divide-neutral-200 bg-neutral-50 rounded-lg">
+                      {filteredInvitations.map((invitation) => (
+                        <div
+                          key={invitation.id}
+                          className="flex items-center justify-between py-4 px-4"
                         >
-                          <Shield className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleRemoveMember(member)}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                          title="Remove member"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
+                          <div className="flex items-center">
+                            <div className="h-10 w-10 rounded-full bg-neutral-200 flex items-center justify-center">
+                              <Mail className="h-5 w-5 text-neutral-500" />
+                            </div>
+                            <div className="ml-4">
+                              <p className="text-sm font-medium text-neutral-900">
+                                {invitation.email}
+                              </p>
+                              <div className="flex items-center mt-1 space-x-2">
+                                <Badge variant="neutral">
+                                  {invitation.role_name}
+                                </Badge>
+                                <Badge variant="warning">
+                                  {invitation.user_registered
+                                    ? 'Awaiting Acceptance'
+                                    : 'Awaiting Registration'}
+                                </Badge>
+                              </div>
+                              <p className="text-xs text-neutral-500 mt-1">
+                                Invited by {invitation.invited_by_name} &bull;
+                                Expires{' '}
+                                {new Date(
+                                  invitation.expires_at
+                                ).toLocaleDateString()}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleResendInvitation(invitation)}
+                              title="Resend invitation"
+                            >
+                              <RefreshCw className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleCancelInvitation(invitation)}
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                              title="Cancel invitation"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  );
-                })}
+                  </div>
+                )}
               </div>
             )}
           </CardContent>
         </Card>
       </div>
 
-      {/* Add Member Modal */}
+      {/* Invite Member Modal */}
       <Modal
         isOpen={showAddModal}
         onClose={() => {
           setShowAddModal(false);
           setNewMemberEmail('');
           setNewMemberRoleId('');
+          setInviteError(null);
         }}
-        title="Add Team Member"
+        title="Invite Team Member"
       >
-        <form onSubmit={handleAddMember} className="space-y-4">
+        <form onSubmit={handleInviteMember} className="space-y-4">
           <p className="text-sm text-neutral-600">
-            Invite a user to join your organization. They must already have an
-            account.
+            Send an invitation to join your organization. If they don't have an
+            account, they'll be prompted to register.
           </p>
+
+          {inviteError && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+              {inviteError}
+            </div>
+          )}
 
           <Input
             label="Email Address"
@@ -327,6 +466,7 @@ export function TeamMembersPage() {
               value={newMemberRoleId}
               onChange={(e) => setNewMemberRoleId(e.target.value)}
               className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              required
             >
               <option value="">Select a role</option>
               {roles.map((role) => (
@@ -345,8 +485,12 @@ export function TeamMembersPage() {
             >
               Cancel
             </Button>
-            <Button type="submit" variant="primary" disabled={isAdding}>
-              {isAdding ? 'Adding...' : 'Add Member'}
+            <Button
+              type="submit"
+              variant="primary"
+              disabled={isAdding || !newMemberRoleId}
+            >
+              {isAdding ? 'Sending...' : 'Send Invitation'}
             </Button>
           </div>
         </form>

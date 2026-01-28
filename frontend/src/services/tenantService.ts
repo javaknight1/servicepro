@@ -7,6 +7,8 @@ import type {
   AddMemberRequest,
   TenantListResponse,
   TenantMembersResponse,
+  Invitation,
+  InviteMemberRequest,
 } from '@/types/tenant';
 
 // Tenant API endpoints
@@ -37,6 +39,27 @@ export const tenantApi = {
     api.put(`/v1/tenants/${tenantId}/members/${userId}/role`, {
       role_id: roleId,
     }),
+
+  // Invitation management
+  inviteMember: (tenantId: string, data: InviteMemberRequest) =>
+    api.post<Invitation>(`/v1/tenants/${tenantId}/invitations`, data),
+
+  getPendingInvitations: (tenantId: string) =>
+    api.get<Invitation[]>(`/v1/tenants/${tenantId}/invitations`),
+
+  cancelInvitation: (tenantId: string, invitationId: string) =>
+    api.delete(`/v1/tenants/${tenantId}/invitations/${invitationId}`),
+
+  resendInvitation: (tenantId: string, invitationId: string) =>
+    api.post(`/v1/tenants/${tenantId}/invitations/${invitationId}/resend`),
+};
+
+// Public invitation endpoints (no auth required for token lookup)
+export const invitationApi = {
+  getByToken: (token: string) =>
+    api.get<Invitation>(`/v1/invitations/${token}`),
+
+  accept: (token: string) => api.post(`/v1/invitations/${token}/accept`),
 };
 
 export default tenantApi;
