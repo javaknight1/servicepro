@@ -12,6 +12,7 @@ import (
 func SetupTenantRoutes(
 	router *gin.RouterGroup,
 	tenantHandler *handlers.TenantHandler,
+	invitationHandler *handlers.InvitationHandler,
 	permMiddleware *middleware.PermissionMiddleware,
 ) {
 	// Tenant routes group with authentication
@@ -58,5 +59,33 @@ func SetupTenantRoutes(
 			// Update member role - only tenant admins can update roles (checked in handler)
 			members.PUT("/:userId/role", tenantHandler.UpdateMemberRole)
 		}
+
+		// Invitation management (uses :id to match other tenant routes)
+		invitations := tenants.Group("/:id/invitations")
+		{
+			// Invite member - only tenant admins can invite members
+			invitations.POST("", invitationHandler.InviteMember)
+
+			// Get pending invitations
+			invitations.GET("", invitationHandler.GetPendingInvitations)
+
+			// Cancel invitation
+			invitations.DELETE("/:invitation_id", invitationHandler.CancelInvitation)
+
+			// Resend invitation
+			invitations.POST("/:invitation_id/resend", invitationHandler.ResendInvitation)
+		}
+	}
+
+	// Invitation routes (mixed auth - some public, some protected)
+	invitationsGroup := router.Group("/invitations")
+	{
+		// Get invitation by token (for registration page) - PUBLIC, no auth required
+		invitationsGroup.GET("/:token", invitationHandler.GetInvitationByToken)
+
+		// Accept invitation (requires authentication) - PROTECTED
+		invitationsGroup.POST("/:token/accept",
+			permMiddleware.RequireAuth(),
+			invitationHandler.AcceptInvitation)
 	}
 }

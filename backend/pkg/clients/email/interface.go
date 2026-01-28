@@ -31,6 +31,10 @@ type Client interface {
 	// SendEmailVerificationSuccessEmail sends confirmation after successful email verification
 	SendEmailVerificationSuccessEmail(ctx context.Context, to string) error
 
+	// SendOrganizationInviteEmail sends an invitation to join an organization
+	// userExists indicates whether the user already has an account (affects email content)
+	SendOrganizationInviteEmail(ctx context.Context, to, orgName, inviterName, roleName, actionURL string, userExists bool) error
+
 	// Lifecycle methods
 
 	// HealthCheck verifies the email service is operational

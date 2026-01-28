@@ -146,6 +146,23 @@ func (c *Client) SendEmailVerificationSuccessEmail(ctx context.Context, to strin
 	return err
 }
 
+// SendOrganizationInviteEmail implements email.Client
+func (c *Client) SendOrganizationInviteEmail(ctx context.Context, to, orgName, inviterName, roleName, actionURL string, userExists bool) error {
+	var subject string
+	if userExists {
+		subject = fmt.Sprintf("You've been invited to join %s on ServicePro", orgName)
+		log.Printf("Mock: Sending organization invite to existing user %s for org %s (role: %s)", to, orgName, roleName)
+	} else {
+		subject = fmt.Sprintf("You've been invited to join %s on ServicePro", orgName)
+		log.Printf("Mock: Sending organization invite to new user %s for org %s (role: %s)", to, orgName, roleName)
+	}
+	log.Printf("Mock: *** INVITATION LINK: %s ***", actionURL)
+
+	msg := email.NewEmailMessage(to, subject, fmt.Sprintf("Invitation from %s to join %s. Action URL: %s", inviterName, orgName, actionURL))
+	_, err := c.Send(ctx, msg)
+	return err
+}
+
 // HealthCheck implements email.Client
 func (c *Client) HealthCheck(ctx context.Context) error {
 	return nil

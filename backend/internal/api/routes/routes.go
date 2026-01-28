@@ -113,7 +113,8 @@ func Setup(router *gin.Engine, db *gorm.DB, redisClient *redis.Client, cfg *conf
 
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(authService, rateLimiter)
-	registrationHandler := handlers.NewRegistrationHandler(registrationService)
+	// Note: invitationService is set to nil here and updated later after it's created
+	registrationHandler := handlers.NewRegistrationHandler(registrationService, nil)
 	passwordResetHandler := handlers.NewPasswordResetHandler(passwordResetService)
 	emailVerificationHandler := handlers.NewEmailVerificationHandler(emailVerificationService)
 	customerHandler := handlers.NewCustomerHandler(customerRepo)
@@ -552,7 +553,14 @@ func Setup(router *gin.Engine, db *gorm.DB, redisClient *redis.Client, cfg *conf
 	// Set the membership assigner so new tenants get a default membership tier
 	tenantService.SetMembershipAssigner(membershipService)
 	tenantHandler := handlers.NewTenantHandler(tenantService)
-	SetupTenantRoutes(v1, tenantHandler, permissionMiddleware)
+
+	// Invitation service for organization invitations
+	invitationService := services.NewInvitationService(db, emailClient, cfg.Server.FrontendURL)
+	invitationHandler := handlers.NewInvitationHandler(invitationService)
+	// Set invitation service on registration handler for auto-join on registration
+	registrationHandler.SetInvitationService(invitationService)
+
+	SetupTenantRoutes(v1, tenantHandler, invitationHandler, permissionMiddleware)
 
 	// Membership routes
 	SetupMembershipRoutes(v1, membershipHandler, permissionMiddleware)

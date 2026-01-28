@@ -426,6 +426,74 @@ func (c *Client) SendEmailVerificationSuccessEmail(ctx context.Context, to strin
 	return err
 }
 
+// SendOrganizationInviteEmail implements email.Client
+func (c *Client) SendOrganizationInviteEmail(ctx context.Context, to, orgName, inviterName, roleName, actionURL string, userExists bool) error {
+	var subject, headline, bodyText, buttonText string
+
+	if userExists {
+		subject = fmt.Sprintf("You've been invited to join %s on ServicePro", orgName)
+		headline = fmt.Sprintf("Join %s on ServicePro", orgName)
+		bodyText = fmt.Sprintf(`
+			<p>Hello,</p>
+			<p><strong>%s</strong> has invited you to join <strong>%s</strong> as a <strong>%s</strong>.</p>
+			<p>Click the button below to accept this invitation and join the organization:</p>
+		`, inviterName, orgName, roleName)
+		buttonText = "Accept Invitation"
+	} else {
+		subject = fmt.Sprintf("You've been invited to join %s on ServicePro", orgName)
+		headline = fmt.Sprintf("Join %s on ServicePro", orgName)
+		bodyText = fmt.Sprintf(`
+			<p>Hello,</p>
+			<p><strong>%s</strong> has invited you to join <strong>%s</strong> as a <strong>%s</strong>.</p>
+			<p>To accept this invitation, you'll need to create a ServicePro account first. Click the button below to get started:</p>
+		`, inviterName, orgName, roleName)
+		buttonText = "Create Account & Join"
+	}
+
+	body := fmt.Sprintf(`
+		<html>
+		<head>
+			<style>
+				body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+				.container { max-width: 600px; margin: 0 auto; padding: 20px; }
+				.header { background-color: #2196F3; color: white; padding: 20px; text-align: center; }
+				.content { padding: 20px; background-color: #f9f9f9; }
+				.button {
+					display: inline-block;
+					padding: 12px 24px;
+					background-color: #2196F3;
+					color: white;
+					text-decoration: none;
+					border-radius: 4px;
+					margin: 20px 0;
+				}
+				.info { color: #666; font-size: 14px; margin-top: 20px; }
+			</style>
+		</head>
+		<body>
+			<div class="container">
+				<div class="header">
+					<h1>%s</h1>
+				</div>
+				<div class="content">
+					%s
+					<p style="text-align: center;">
+						<a href="%s" class="button">%s</a>
+					</p>
+					<p class="info">This invitation will expire in 7 days.</p>
+					<p class="info">If you didn't expect this invitation, you can safely ignore this email.</p>
+					<p>Best regards,<br>The ServicePro Team</p>
+				</div>
+			</div>
+		</body>
+		</html>
+	`, headline, bodyText, actionURL, buttonText)
+
+	msg := email.NewEmailMessage(to, subject, body)
+	_, err := c.Send(ctx, msg)
+	return err
+}
+
 // HealthCheck implements email.Client
 func (c *Client) HealthCheck(ctx context.Context) error {
 	// Try to get account sending statistics as a health check

@@ -14,13 +14,20 @@ import (
 // RegistrationHandler handles user registration endpoints
 type RegistrationHandler struct {
 	registrationService services.RegistrationServiceInterface
+	invitationService   *services.InvitationService
 }
 
 // NewRegistrationHandler creates a new registration handler
-func NewRegistrationHandler(registrationService services.RegistrationServiceInterface) *RegistrationHandler {
+func NewRegistrationHandler(registrationService services.RegistrationServiceInterface, invitationService *services.InvitationService) *RegistrationHandler {
 	return &RegistrationHandler{
 		registrationService: registrationService,
+		invitationService:   invitationService,
 	}
+}
+
+// SetInvitationService sets the invitation service (for deferred initialization)
+func (h *RegistrationHandler) SetInvitationService(invitationService *services.InvitationService) {
+	h.invitationService = invitationService
 }
 
 // Register handles POST /api/v1/auth/register
@@ -97,6 +104,17 @@ func (h *RegistrationHandler) Register(c *gin.Context) {
 				Message: "An error occurred while processing your request",
 			})
 			return
+		}
+	}
+
+	// If an invitation token was provided, accept the invitation
+	if req.InvitationToken != nil && *req.InvitationToken != "" && h.invitationService != nil {
+		ctx := c.Request.Context()
+		if err := h.invitationService.AcceptInvitationOnRegistration(ctx, *req.InvitationToken, response.ID); err != nil {
+			// Log the error but don't fail registration
+			// The user is registered, they just didn't join the organization
+			// They can be re-invited later
+			_ = err
 		}
 	}
 

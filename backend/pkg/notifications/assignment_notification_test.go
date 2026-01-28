@@ -58,6 +58,11 @@ func (m *MockEmailService) SendEmailVerificationSuccessEmail(ctx context.Context
 	return args.Error(0)
 }
 
+func (m *MockEmailService) SendOrganizationInviteEmail(ctx context.Context, to, orgName, inviterName, roleName, actionURL string, userExists bool) error {
+	args := m.Called(ctx, to, orgName, inviterName, roleName, actionURL, userExists)
+	return args.Error(0)
+}
+
 func (m *MockEmailService) HealthCheck(ctx context.Context) error {
 	args := m.Called(ctx)
 	return args.Error(0)

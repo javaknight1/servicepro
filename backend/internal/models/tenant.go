@@ -101,6 +101,97 @@ func (TenantUser) TableName() string {
 	return "tenant_users"
 }
 
+// InvitationStatus represents the status of an invitation
+type InvitationStatus string
+
+const (
+	InvitationStatusPending   InvitationStatus = "pending"
+	InvitationStatusAccepted  InvitationStatus = "accepted"
+	InvitationStatusExpired   InvitationStatus = "expired"
+	InvitationStatusCancelled InvitationStatus = "cancelled"
+)
+
+// OrganizationInvitation represents an invitation to join an organization
+type OrganizationInvitation struct {
+	ID         uuid.UUID        `json:"id" gorm:"type:uuid;primary_key;default:uuid_generate_v4()"`
+	TenantID   uuid.UUID        `json:"tenant_id" gorm:"type:uuid;not null"`
+	Email      string           `json:"email" gorm:"not null;size:255"`
+	RoleID     uuid.UUID        `json:"role_id" gorm:"type:uuid;not null"`
+	Token      string           `json:"-" gorm:"not null;uniqueIndex;size:255"`
+	Status     InvitationStatus `json:"status" gorm:"type:invitation_status;not null;default:pending"`
+	InvitedBy  uuid.UUID        `json:"invited_by" gorm:"type:uuid;not null"`
+	ExpiresAt  time.Time        `json:"expires_at" gorm:"not null"`
+	AcceptedAt *time.Time       `json:"accepted_at,omitempty"`
+	CreatedAt  time.Time        `json:"created_at"`
+	UpdatedAt  time.Time        `json:"updated_at"`
+
+	// Relations
+	Tenant  *Tenant `json:"tenant,omitempty" gorm:"foreignKey:TenantID"`
+	Role    *Role   `json:"role,omitempty" gorm:"foreignKey:RoleID"`
+	Inviter *User   `json:"inviter,omitempty" gorm:"foreignKey:InvitedBy"`
+}
+
+// TableName specifies the table name for OrganizationInvitation
+func (OrganizationInvitation) TableName() string {
+	return "organization_invitations"
+}
+
+// IsExpired checks if the invitation has expired
+func (i *OrganizationInvitation) IsExpired() bool {
+	return time.Now().After(i.ExpiresAt)
+}
+
+// InvitationResponse represents the API response for an invitation
+type InvitationResponse struct {
+	ID             uuid.UUID        `json:"id"`
+	TenantID       uuid.UUID        `json:"tenant_id"`
+	TenantName     string           `json:"tenant_name"`
+	Email          string           `json:"email"`
+	RoleID         uuid.UUID        `json:"role_id"`
+	RoleName       string           `json:"role_name"`
+	Status         InvitationStatus `json:"status"`
+	InvitedByName  string           `json:"invited_by_name"`
+	ExpiresAt      time.Time        `json:"expires_at"`
+	AcceptedAt     *time.Time       `json:"accepted_at,omitempty"`
+	CreatedAt      time.Time        `json:"created_at"`
+	UserExists     bool             `json:"user_exists"`     // Whether the user is already registered
+	UserRegistered bool             `json:"user_registered"` // For member list display
+}
+
+// ToResponse converts an OrganizationInvitation to InvitationResponse
+func (i *OrganizationInvitation) ToResponse(userExists bool) InvitationResponse {
+	response := InvitationResponse{
+		ID:             i.ID,
+		TenantID:       i.TenantID,
+		Email:          i.Email,
+		RoleID:         i.RoleID,
+		Status:         i.Status,
+		ExpiresAt:      i.ExpiresAt,
+		AcceptedAt:     i.AcceptedAt,
+		CreatedAt:      i.CreatedAt,
+		UserExists:     userExists,
+		UserRegistered: userExists,
+	}
+
+	if i.Tenant != nil {
+		response.TenantName = i.Tenant.Name
+	}
+
+	if i.Role != nil {
+		response.RoleName = i.Role.Name
+	}
+
+	if i.Inviter != nil {
+		if i.Inviter.FirstName != nil && i.Inviter.LastName != nil {
+			response.InvitedByName = *i.Inviter.FirstName + " " + *i.Inviter.LastName
+		} else {
+			response.InvitedByName = i.Inviter.Email
+		}
+	}
+
+	return response
+}
+
 // ============================================================================
 // Request/Response types
 // ============================================================================

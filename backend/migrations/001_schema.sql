@@ -1040,6 +1040,32 @@ CREATE INDEX idx_tenant_users_active ON tenant_users(is_active) WHERE is_active 
 CREATE TRIGGER trigger_tenant_users_updated_at BEFORE UPDATE ON tenant_users
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+-- Organization invitations table (for inviting users who don't exist yet)
+CREATE TYPE invitation_status AS ENUM ('pending', 'accepted', 'expired', 'cancelled');
+
+CREATE TABLE organization_invitations (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    email VARCHAR(255) NOT NULL,
+    role_id UUID NOT NULL REFERENCES roles(id) ON DELETE RESTRICT,
+    token VARCHAR(255) NOT NULL UNIQUE,
+    status invitation_status NOT NULL DEFAULT 'pending',
+    invited_by UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    accepted_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT unique_pending_invitation UNIQUE (tenant_id, email)
+);
+
+CREATE INDEX idx_org_invitations_tenant ON organization_invitations(tenant_id);
+CREATE INDEX idx_org_invitations_email ON organization_invitations(email);
+CREATE INDEX idx_org_invitations_token ON organization_invitations(token);
+CREATE INDEX idx_org_invitations_status ON organization_invitations(status) WHERE status = 'pending';
+
+CREATE TRIGGER trigger_org_invitations_updated_at BEFORE UPDATE ON organization_invitations
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
 -- Add tenant_id to business tables (nullable for backwards compatibility)
 ALTER TABLE customers ADD COLUMN tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE;
 CREATE INDEX idx_customers_tenant ON customers(tenant_id) WHERE deleted_at IS NULL;
