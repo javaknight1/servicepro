@@ -13,6 +13,12 @@ import (
 	errortracking "github.com/javaknight1/servicepro/backend/pkg/clients/errortracking"
 	storageclient "github.com/javaknight1/servicepro/backend/pkg/clients/storage"
 	"github.com/javaknight1/servicepro/backend/pkg/database"
+
+	// Email providers - blank imports to register providers
+	_ "github.com/javaknight1/servicepro/backend/pkg/clients/email/mock"
+	_ "github.com/javaknight1/servicepro/backend/pkg/clients/email/resend"
+	_ "github.com/javaknight1/servicepro/backend/pkg/clients/email/ses"
+	_ "github.com/javaknight1/servicepro/backend/pkg/clients/email/smtp"
 )
 
 func main() {

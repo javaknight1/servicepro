@@ -23,7 +23,7 @@ export function Footer() {
             <ul className="space-y-2">
               <li>
                 <Link
-                  to="/"
+                  to="/features"
                   className="text-sm text-neutral-600 hover:text-neutral-900"
                 >
                   Features
@@ -31,7 +31,7 @@ export function Footer() {
               </li>
               <li>
                 <Link
-                  to="/"
+                  to="/pricing"
                   className="text-sm text-neutral-600 hover:text-neutral-900"
                 >
                   Pricing
@@ -47,7 +47,7 @@ export function Footer() {
             <ul className="space-y-2">
               <li>
                 <Link
-                  to="/"
+                  to="/about"
                   className="text-sm text-neutral-600 hover:text-neutral-900"
                 >
                   About
@@ -55,7 +55,7 @@ export function Footer() {
               </li>
               <li>
                 <Link
-                  to="/"
+                  to="/contact"
                   className="text-sm text-neutral-600 hover:text-neutral-900"
                 >
                   Contact
@@ -71,7 +71,7 @@ export function Footer() {
             <ul className="space-y-2">
               <li>
                 <Link
-                  to="/"
+                  to="/privacy"
                   className="text-sm text-neutral-600 hover:text-neutral-900"
                 >
                   Privacy Policy
@@ -79,7 +79,7 @@ export function Footer() {
               </li>
               <li>
                 <Link
-                  to="/"
+                  to="/terms"
                   className="text-sm text-neutral-600 hover:text-neutral-900"
                 >
                   Terms of Service

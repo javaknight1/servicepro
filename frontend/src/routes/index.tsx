@@ -153,6 +153,46 @@ const PricingPage = loadable(
   { chunkName: 'pricing', delay: 100 }
 );
 
+const FeaturesPage = loadable(
+  () =>
+    import(
+      /* @ts-expect-error - dynamic import type */ /* webpackChunkName: "page-features" */ '@pages/Features'
+    ).then((m) => ({ default: m.FeaturesPage })),
+  { chunkName: 'features', delay: 100 }
+);
+
+const AboutPage = loadable(
+  () =>
+    import(
+      /* @ts-expect-error - dynamic import type */ /* webpackChunkName: "page-about" */ '@pages/About'
+    ).then((m) => ({ default: m.AboutPage })),
+  { chunkName: 'about', delay: 100 }
+);
+
+const ContactPage = loadable(
+  () =>
+    import(
+      /* @ts-expect-error - dynamic import type */ /* webpackChunkName: "page-contact" */ '@pages/Contact'
+    ).then((m) => ({ default: m.ContactPage })),
+  { chunkName: 'contact', delay: 100 }
+);
+
+const PrivacyPolicyPage = loadable(
+  () =>
+    import(
+      /* @ts-expect-error - dynamic import type */ /* webpackChunkName: "page-legal" */ '@pages/Legal'
+    ).then((m) => ({ default: m.PrivacyPolicyPage })),
+  { chunkName: 'privacy-policy', delay: 100 }
+);
+
+const TermsOfServicePage = loadable(
+  () =>
+    import(
+      /* @ts-expect-error - dynamic import type */ /* webpackChunkName: "page-legal" */ '@pages/Legal'
+    ).then((m) => ({ default: m.TermsOfServicePage })),
+  { chunkName: 'terms-of-service', delay: 100 }
+);
+
 // Module pages
 const CustomersPage = loadable(
   () =>
@@ -357,6 +397,11 @@ export function AppRoutes() {
       <Route path="/verify-email" element={<VerifyEmailPage />} />
       <Route path="/unauthorized" element={<UnauthorizedPage />} />
       <Route path="/pricing" element={<PricingPage />} />
+      <Route path="/features" element={<FeaturesPage />} />
+      <Route path="/about" element={<AboutPage />} />
+      <Route path="/contact" element={<ContactPage />} />
+      <Route path="/privacy" element={<PrivacyPolicyPage />} />
+      <Route path="/terms" element={<TermsOfServicePage />} />
       <Route path="/invitations/accept" element={<AcceptInvitationPage />} />
 
       {/* Protected routes - require authentication */}
@@ -426,6 +471,11 @@ export const routePaths = {
   changeMembership: '/settings/organization/membership/change',
   confirmMembership: '/settings/organization/membership/confirm',
   pricing: '/pricing',
+  features: '/features',
+  about: '/about',
+  contact: '/contact',
+  privacy: '/privacy',
+  terms: '/terms',
   team: {
     members: '/team/members',
     roles: '/team/roles',
