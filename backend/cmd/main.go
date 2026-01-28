@@ -6,16 +6,13 @@ import (
 	"log"
 
 	"github.com/gin-gonic/gin"
+
 	"github.com/javaknight1/servicepro/backend/config"
 	"github.com/javaknight1/servicepro/backend/internal/api/routes"
 	emailclient "github.com/javaknight1/servicepro/backend/pkg/clients/email"
-	"github.com/javaknight1/servicepro/backend/pkg/clients/errortracking"
+	errortracking "github.com/javaknight1/servicepro/backend/pkg/clients/errortracking"
 	storageclient "github.com/javaknight1/servicepro/backend/pkg/clients/storage"
 	"github.com/javaknight1/servicepro/backend/pkg/database"
-
-	// Register errortracking providers (blank imports trigger init() registration)
-	_ "github.com/javaknight1/servicepro/backend/pkg/clients/errortracking/mock"
-	_ "github.com/javaknight1/servicepro/backend/pkg/clients/errortracking/sentry"
 )
 
 func main() {
