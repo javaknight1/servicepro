@@ -46,6 +46,33 @@ func setupTestDB(t *testing.T) *gorm.DB {
 	require.NoError(t, err)
 
 	err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS customers (
+			id TEXT PRIMARY KEY,
+			first_name TEXT NOT NULL,
+			last_name TEXT NOT NULL,
+			company_name TEXT,
+			email TEXT NOT NULL,
+			phone_primary TEXT NOT NULL,
+			phone_secondary TEXT,
+			billing_address_street TEXT NOT NULL,
+			billing_address_city TEXT NOT NULL,
+			billing_address_state TEXT NOT NULL,
+			billing_address_zip TEXT NOT NULL,
+			service_address_street TEXT,
+			service_address_city TEXT,
+			service_address_state TEXT,
+			service_address_zip TEXT,
+			customer_type TEXT NOT NULL DEFAULT 'residential',
+			status TEXT NOT NULL DEFAULT 'prospect',
+			notes TEXT,
+			created_at DATETIME,
+			updated_at DATETIME,
+			deleted_at DATETIME
+		)
+	`).Error
+	require.NoError(t, err)
+
+	err = db.Exec(`
 		CREATE TABLE IF NOT EXISTS payment_terms (
 			id TEXT PRIMARY KEY,
 			name TEXT NOT NULL,
@@ -196,13 +223,32 @@ func createTestTaxRate(t *testing.T, db *gorm.DB) uuid.UUID {
 	return rate.ID
 }
 
+// createTestCustomerInDB creates a test customer in the database
+func createTestCustomerInDB(t *testing.T, db *gorm.DB) uuid.UUID {
+	customer := models.Customer{
+		ID:                   uuid.New(),
+		FirstName:            "John",
+		LastName:             "Doe",
+		Email:                "john.doe@example.com",
+		PhonePrimary:         "555-1234",
+		BillingAddressStreet: "123 Main St",
+		BillingAddressCity:   "Anytown",
+		BillingAddressState:  "CA",
+		BillingAddressZip:    "12345",
+		CustomerType:         models.CustomerTypeResidential,
+		Status:               models.CustomerStatusActive,
+	}
+	require.NoError(t, db.Create(&customer).Error)
+	return customer.ID
+}
+
 func TestInvoiceService_CreateInvoice(t *testing.T) {
 	db := setupTestDB(t)
 	service := NewInvoiceService(db)
 	ctx := context.Background()
 
 	userID := createTestUser(t, db)
-	customerID := createTestUser(t, db)
+	customerID := createTestCustomerInDB(t, db)
 	paymentTermID := createTestPaymentTerm(t, db)
 	taxRateID := createTestTaxRate(t, db)
 
@@ -280,7 +326,7 @@ func TestInvoiceService_GetInvoice(t *testing.T) {
 	ctx := context.Background()
 
 	userID := createTestUser(t, db)
-	customerID := createTestUser(t, db)
+	customerID := createTestCustomerInDB(t, db)
 
 	// Create test invoice
 	invoice := &models.Invoice{
@@ -315,7 +361,7 @@ func TestInvoiceService_UpdateInvoice(t *testing.T) {
 	ctx := context.Background()
 
 	userID := createTestUser(t, db)
-	customerID := createTestUser(t, db)
+	customerID := createTestCustomerInDB(t, db)
 
 	// Create test invoice
 	invoice := &models.Invoice{
@@ -360,7 +406,7 @@ func TestInvoiceService_DeleteInvoice(t *testing.T) {
 	ctx := context.Background()
 
 	userID := createTestUser(t, db)
-	customerID := createTestUser(t, db)
+	customerID := createTestCustomerInDB(t, db)
 
 	t.Run("Delete draft invoice", func(t *testing.T) {
 		invoice := &models.Invoice{
@@ -523,7 +569,7 @@ func TestInvoiceService_RecordPayment(t *testing.T) {
 	ctx := context.Background()
 
 	userID := createTestUser(t, db)
-	customerID := createTestUser(t, db)
+	customerID := createTestCustomerInDB(t, db)
 
 	invoice := &models.Invoice{
 		CustomerID:  customerID,
@@ -588,7 +634,7 @@ func TestInvoiceService_SendInvoice(t *testing.T) {
 	ctx := context.Background()
 
 	userID := createTestUser(t, db)
-	customerID := createTestUser(t, db)
+	customerID := createTestCustomerInDB(t, db)
 
 	t.Run("Send valid invoice", func(t *testing.T) {
 		invoice := &models.Invoice{
