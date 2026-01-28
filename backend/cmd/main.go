@@ -6,10 +6,11 @@ import (
 	"log"
 
 	"github.com/gin-gonic/gin"
-
 	"github.com/javaknight1/servicepro/backend/config"
 	"github.com/javaknight1/servicepro/backend/internal/api/routes"
+	emailclient "github.com/javaknight1/servicepro/backend/pkg/clients/email"
 	"github.com/javaknight1/servicepro/backend/pkg/clients/errortracking"
+	storageclient "github.com/javaknight1/servicepro/backend/pkg/clients/storage"
 	"github.com/javaknight1/servicepro/backend/pkg/database"
 
 	// Register errortracking providers (blank imports trigger init() registration)
@@ -59,11 +60,19 @@ func main() {
 	}
 	defer redisClient.Close()
 
+	emailClient, err := emailclient.NewClient(context.Background(), cfg)
+	if err != nil {
+		panic(err)
+	}
+
+	// Initialize storage client (optional - may not be configured)
+	storageClient, _ := storageclient.NewClient(context.Background(), cfg)
+
 	// Initialize Gin router
 	router := gin.Default()
 
 	// Setup routes
-	routes.Setup(router, db, redisClient, cfg)
+	routes.Setup(router, db, redisClient, emailClient, storageClient, cfg)
 
 	// Start server
 	addr := fmt.Sprintf(":%s", cfg.Server.Port)

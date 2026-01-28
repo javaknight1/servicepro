@@ -43,7 +43,7 @@ func TestRegisterHandler_Success(t *testing.T) {
 
 	mockService.On("Register", "newuser@example.com", "SecurePass123!").Return(expectedResponse, nil)
 
-	handler := NewRegistrationHandler(mockService)
+	handler := NewRegistrationHandler(mockService, nil)
 
 	router := setupTestRouter()
 	router.POST("/register", handler.Register)
@@ -73,7 +73,7 @@ func TestRegisterHandler_Success(t *testing.T) {
 
 func TestRegisterHandler_InvalidRequest(t *testing.T) {
 	mockService := new(MockRegistrationService)
-	handler := NewRegistrationHandler(mockService)
+	handler := NewRegistrationHandler(mockService, nil)
 
 	router := setupTestRouter()
 	router.POST("/register", handler.Register)
@@ -95,7 +95,7 @@ func TestRegisterHandler_InvalidRequest(t *testing.T) {
 
 func TestRegisterHandler_InvalidEmail(t *testing.T) {
 	mockService := new(MockRegistrationService)
-	handler := NewRegistrationHandler(mockService)
+	handler := NewRegistrationHandler(mockService, nil)
 
 	// Note: Gin's binding validation catches invalid email format before service is called
 	// The service mock is not expected to be called because binding fails first
@@ -127,7 +127,7 @@ func TestRegisterHandler_InvalidEmail(t *testing.T) {
 
 func TestRegisterHandler_PasswordTooShort(t *testing.T) {
 	mockService := new(MockRegistrationService)
-	handler := NewRegistrationHandler(mockService)
+	handler := NewRegistrationHandler(mockService, nil)
 
 	// Note: Gin's binding validation catches password < 8 chars before service is called
 	// The service mock is not expected to be called because binding fails first
@@ -159,7 +159,7 @@ func TestRegisterHandler_PasswordTooShort(t *testing.T) {
 
 func TestRegisterHandler_WeakPassword(t *testing.T) {
 	mockService := new(MockRegistrationService)
-	handler := NewRegistrationHandler(mockService)
+	handler := NewRegistrationHandler(mockService, nil)
 
 	// Password is 8+ chars but fails service's strength requirements (no special chars, etc.)
 	mockService.On("Register", "user@example.com", "weakpass").Return(nil, services.ErrWeakPassword)
@@ -191,7 +191,7 @@ func TestRegisterHandler_WeakPassword(t *testing.T) {
 
 func TestRegisterHandler_EmailAlreadyExists(t *testing.T) {
 	mockService := new(MockRegistrationService)
-	handler := NewRegistrationHandler(mockService)
+	handler := NewRegistrationHandler(mockService, nil)
 
 	mockService.On("Register", "existing@example.com", "SecurePass123!").Return(nil, services.ErrEmailAlreadyExists)
 
@@ -222,7 +222,7 @@ func TestRegisterHandler_EmailAlreadyExists(t *testing.T) {
 
 func TestRegisterHandler_InternalError(t *testing.T) {
 	mockService := new(MockRegistrationService)
-	handler := NewRegistrationHandler(mockService)
+	handler := NewRegistrationHandler(mockService, nil)
 
 	mockService.On("Register", "user@example.com", "SecurePass123!").Return(nil, errors.New("database error"))
 
@@ -267,7 +267,7 @@ func TestRegisterHandler_PasswordValidationErrors(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			mockService := new(MockRegistrationService)
-			handler := NewRegistrationHandler(mockService)
+			handler := NewRegistrationHandler(mockService, nil)
 
 			mockService.On("Register", "user@example.com", "testpass").Return(nil, tc.returnError)
 
