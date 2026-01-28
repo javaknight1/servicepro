@@ -2,6 +2,36 @@
 
 All notable changes to ServicePro will be documented in this file.
 
+## [0.4.0] - 2026-01-28
+
+### Release Features
+
+| Type             | Description                                                                          | Commit                                                                                                 |
+| ---------------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
+| ✨ Features      | Created full backend API to handle all payment systems                               | [`1919e3b`](https://github.com/javaknight1/servicepro/commit/1919e3bb0fb63b16cfd39e8d6efe0dba37c5caf1) |
+| ✨ Features      | Integrated backend payment APIs to UI                                                | [`c4cc7a5`](https://github.com/javaknight1/servicepro/commit/c4cc7a57485d2534cd0063f3c886a3dd41c9b581) |
+| ✨ Features      | Added backend API to send invites to users registered and not registered to platform | [`cc14479`](https://github.com/javaknight1/servicepro/commit/cc14479282ca92443b8aa1444a5009d4a5cc1a20) |
+| ✨ Features      | Integrated new invite API into frontend                                              | [`af2e618`](https://github.com/javaknight1/servicepro/commit/af2e6185eb4156527c9ca1f163dc86598020d5eb) |
+| 🎯 Minor Changes | Added rating limiting to API                                                         | [`8380da5`](https://github.com/javaknight1/servicepro/commit/8380da561214805ae17379b09f6ae1f02f27991f) |
+| 🐛 Bug Fixes     | Fixed potential sql injection                                                        | [`1c55eb1`](https://github.com/javaknight1/servicepro/commit/1c55eb1b4ad792aab5b9589b25078f0daede6d8f) |
+| 🐛 Bug Fixes     | Added some security HTTP validation                                                  | [`4a04a96`](https://github.com/javaknight1/servicepro/commit/4a04a96164dba827e7ac6a6970b7779e028cee43) |
+| 🐛 Bug Fixes     | Integrated CORS middleware                                                           | [`66b040f`](https://github.com/javaknight1/servicepro/commit/66b040f1573cd71fc3117d13e51e226e77585359) |
+| 🐛 Bug Fixes     | Fixed incorrect path to cmd/main.go                                                  | [`bdc6b71`](https://github.com/javaknight1/servicepro/commit/bdc6b71d41168e6919b5cc621e539f414a8dd03e) |
+| 🐛 Bug Fixes     | Fixed issue gotten when editing invoices                                             | [`0b00ef0`](https://github.com/javaknight1/servicepro/commit/0b00ef0082248e20363d55bf37868d5f6515f56e) |
+
+### Dev Features
+
+| Type             | Description                                                            | Commit                                                                                                 |
+| ---------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| ♻️ Refactoring   | Updated comments and references to signal s3 agnostic                  | [`1b99ceb`](https://github.com/javaknight1/servicepro/commit/1b99ceb9fa54ed678b48813a6e73198fe36110ae) |
+| ♻️ Refactoring   | Clean up our config for the backend                                    | [`77fa078`](https://github.com/javaknight1/servicepro/commit/77fa078a097906fd10d603aedcbf50786b91c940) |
+| ♻️ Refactoring   | Simplify our routing library                                           | [`e435415`](https://github.com/javaknight1/servicepro/commit/e4354159dda097653f535f6cb1620f1e24396fdb) |
+| ✅ Tests         | Added SMTP local service to docker compose for local email development | [`47d0a70`](https://github.com/javaknight1/servicepro/commit/47d0a709670f03acf9efc6290864dc620dc0a025) |
+| ✅ Tests         | Fixed some backend unit tests for invoice                              | [`a7dc531`](https://github.com/javaknight1/servicepro/commit/a7dc531fb37f84d3571d1964f1c84c3d12f62ddd) |
+| 📚 Documentation | Update our docs with new info on env vars                              | [`25e0f9e`](https://github.com/javaknight1/servicepro/commit/25e0f9e61a9fcc3eafad36ae4644f8aa11d2a367) |
+| 🔧 Miscellaneous | Migrated .sql migrations into single migration file                    | [`dd89dae`](https://github.com/javaknight1/servicepro/commit/dd89dae55bf729f194e60bd69ef47b91b6f6491f) |
+| 🚀 CI/CD         | Fixed a linting error with main.go                                     | [`0a43808`](https://github.com/javaknight1/servicepro/commit/0a43808c6a4e67ad7526474d8b935d613b4ad566) |
+
 ## [0.3.0] - 2026-01-24
 
 ### Release Features
