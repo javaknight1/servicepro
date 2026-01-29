@@ -73,6 +73,16 @@ func (m *MockEmailService) Close() error {
 	return args.Error(0)
 }
 
+func (m *MockEmailService) SendInvoiceEmail(ctx context.Context, to string, invoice *models.Invoice, paymentURL string) error {
+	args := m.Called(ctx, to, invoice, paymentURL)
+	return args.Error(0)
+}
+
+func (m *MockEmailService) SendPaymentReceiptEmail(ctx context.Context, to string, invoice *models.Invoice) error {
+	args := m.Called(ctx, to, invoice)
+	return args.Error(0)
+}
+
 // MockSMSProviderTest is a mock implementation of SMSProvider for testing
 type MockSMSProviderTest struct {
 	mock.Mock
