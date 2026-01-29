@@ -3,13 +3,23 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { DashboardLayout } from '@components/layout';
 import { Button } from '@components/shared';
 import {
+  JobAssignmentsSection,
+  PendingAssignmentsSection,
+} from '@components/jobs';
+import {
   jobService,
   JobStatus,
   JobPriority,
   JobType,
+  JobAssignment,
+  CreateJobAssignment,
 } from '@services/jobService';
 import { customerService, Customer } from '@services/customerService';
 import { ArrowLeft, Save, Trash2, Loader2 } from 'lucide-react';
+
+interface PendingAssignment extends CreateJobAssignment {
+  user_name: string;
+}
 
 interface JobFormData {
   customer_id: string;
@@ -42,6 +52,10 @@ export function JobDetailPage() {
 
   const [formData, setFormData] = useState<JobFormData>(initialFormData);
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [assignments, setAssignments] = useState<JobAssignment[]>([]);
+  const [pendingAssignments, setPendingAssignments] = useState<
+    PendingAssignment[]
+  >([]);
   const [isLoading, setIsLoading] = useState(!isNew);
   const [isLoadingCustomers, setIsLoadingCustomers] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -85,11 +99,18 @@ export function JobDetailPage() {
         estimated_duration: job.estimated_duration?.toString() || '',
         internal_notes: job.internal_notes || '',
       });
+      setAssignments(job.assignments || []);
     } catch (err) {
       console.error('Failed to load job:', err);
       setError('Failed to load job details');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleAssignmentChange = () => {
+    if (id) {
+      loadJob(id);
     }
   };
 
@@ -107,29 +128,46 @@ export function JobDetailPage() {
     setIsSaving(true);
     setError(null);
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const submitData: Record<string, any> = {
-      customer_id: formData.customer_id,
-      title: formData.title,
-      description: formData.description || undefined,
-      job_type: formData.job_type,
-      priority: formData.priority,
-      scheduled_start_at: formData.scheduled_start_at
-        ? new Date(formData.scheduled_start_at).toISOString()
-        : undefined,
-      estimated_duration: formData.estimated_duration
-        ? parseInt(formData.estimated_duration)
-        : undefined,
-      internal_notes: formData.internal_notes || undefined,
-    };
-
     try {
       if (isNew) {
-        await jobService.createJob(submitData);
+        // Create new job with assignments
+        await jobService.createJob({
+          customer_id: formData.customer_id,
+          title: formData.title,
+          description: formData.description || undefined,
+          job_type: formData.job_type,
+          priority: formData.priority,
+          scheduled_start_at: formData.scheduled_start_at
+            ? new Date(formData.scheduled_start_at).toISOString()
+            : undefined,
+          estimated_duration: formData.estimated_duration
+            ? parseInt(formData.estimated_duration)
+            : undefined,
+          internal_notes: formData.internal_notes || undefined,
+          assignments:
+            pendingAssignments.length > 0
+              ? pendingAssignments.map((a) => ({
+                  user_id: a.user_id,
+                  role: a.role,
+                }))
+              : undefined,
+        });
       } else if (id) {
-        // For updates, include status
-        submitData.status = formData.status;
-        await jobService.updateJob(id, submitData);
+        // Update existing job
+        await jobService.updateJob(id, {
+          title: formData.title,
+          description: formData.description || undefined,
+          job_type: formData.job_type,
+          status: formData.status,
+          priority: formData.priority,
+          scheduled_start_at: formData.scheduled_start_at
+            ? new Date(formData.scheduled_start_at).toISOString()
+            : undefined,
+          estimated_duration: formData.estimated_duration
+            ? parseInt(formData.estimated_duration)
+            : undefined,
+          internal_notes: formData.internal_notes || undefined,
+        });
       }
       navigate('/jobs');
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -393,6 +431,21 @@ export function JobDetailPage() {
               className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
             />
           </div>
+
+          {isNew ? (
+            <PendingAssignmentsSection
+              assignments={pendingAssignments}
+              onAssignmentsChange={setPendingAssignments}
+            />
+          ) : (
+            id && (
+              <JobAssignmentsSection
+                jobId={id}
+                assignments={assignments}
+                onAssignmentChange={handleAssignmentChange}
+              />
+            )
+          )}
 
           <div className="flex items-center justify-between pt-4">
             <div>

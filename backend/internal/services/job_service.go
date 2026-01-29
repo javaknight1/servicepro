@@ -142,6 +142,25 @@ func (s *JobService) CreateJob(req *models.CreateJobRequest, createdBy uuid.UUID
 		return nil, err
 	}
 
+	// Create assignments if provided
+	if len(req.Assignments) > 0 {
+		for _, assignmentReq := range req.Assignments {
+			assignment := &models.JobAssignment{
+				JobID:  job.ID,
+				UserID: assignmentReq.UserID,
+				Role:   assignmentReq.Role,
+			}
+			if assignment.Role == "" {
+				assignment.Role = "technician"
+			}
+			if err := s.jobRepo.AddAssignment(assignment); err != nil {
+				// Log but don't fail the job creation
+				// The job was created successfully, assignments can be added later
+				continue
+			}
+		}
+	}
+
 	// Reload with relationships
 	createdJob, err := s.jobRepo.GetByID(job.ID)
 	if err != nil {

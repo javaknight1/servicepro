@@ -174,20 +174,27 @@ func (JobNote) TableName() string {
 	return "job_notes"
 }
 
+// CreateJobAssignmentRequest represents an assignment to be created with a job
+type CreateJobAssignmentRequest struct {
+	UserID uuid.UUID `json:"user_id" binding:"required"`
+	Role   string    `json:"role" binding:"omitempty"`
+}
+
 // CreateJobRequest represents the request payload for creating a job
 type CreateJobRequest struct {
-	CustomerID        uuid.UUID      `json:"customer_id" binding:"required"`
-	Title             string         `json:"title" binding:"required,max=200"`
-	Description       string         `json:"description" binding:"omitempty,max=5000"`
-	JobType           JobType        `json:"job_type" binding:"required,oneof=installation maintenance repair inspection emergency"`
-	Priority          JobPriority    `json:"priority" binding:"omitempty,oneof=low normal high urgent"`
-	ScheduledStartAt  *time.Time     `json:"scheduled_start_at"`
-	ScheduledEndAt    *time.Time     `json:"scheduled_end_at"`
-	EstimatedDuration int            `json:"estimated_duration" binding:"omitempty,min=0"` // in minutes
-	ServiceAddress    ServiceAddress `json:"service_address"`
-	EstimatedCost     float64        `json:"estimated_cost" binding:"omitempty,min=0"`
-	InternalNotes     *string        `json:"internal_notes"`
-	CustomerNotes     *string        `json:"customer_notes"`
+	CustomerID        uuid.UUID                    `json:"customer_id" binding:"required"`
+	Title             string                       `json:"title" binding:"required,max=200"`
+	Description       string                       `json:"description" binding:"omitempty,max=5000"`
+	JobType           JobType                      `json:"job_type" binding:"required,oneof=installation maintenance repair inspection emergency"`
+	Priority          JobPriority                  `json:"priority" binding:"omitempty,oneof=low normal high urgent"`
+	ScheduledStartAt  *time.Time                   `json:"scheduled_start_at"`
+	ScheduledEndAt    *time.Time                   `json:"scheduled_end_at"`
+	EstimatedDuration int                          `json:"estimated_duration" binding:"omitempty,min=0"` // in minutes
+	ServiceAddress    ServiceAddress               `json:"service_address"`
+	EstimatedCost     float64                      `json:"estimated_cost" binding:"omitempty,min=0"`
+	InternalNotes     *string                      `json:"internal_notes"`
+	CustomerNotes     *string                      `json:"customer_notes"`
+	Assignments       []CreateJobAssignmentRequest `json:"assignments" binding:"omitempty"`
 }
 
 // UpdateJobRequest represents the request payload for updating a job

@@ -42,6 +42,11 @@ export interface JobAssignment {
   notes?: string;
 }
 
+export interface CreateJobAssignment {
+  user_id: string;
+  role: string;
+}
+
 export interface JobMaterial {
   id: string;
   job_id: string;
@@ -134,6 +139,22 @@ export interface JobStats {
   cancelled_jobs: number;
 }
 
+export interface CreateJobRequest {
+  customer_id: string;
+  title: string;
+  description?: string;
+  job_type: JobType;
+  priority?: JobPriority;
+  scheduled_start_at?: string;
+  scheduled_end_at?: string;
+  estimated_duration?: number;
+  service_address?: ServiceAddress;
+  estimated_cost?: number;
+  internal_notes?: string;
+  customer_notes?: string;
+  assignments?: CreateJobAssignment[];
+}
+
 class JobService {
   private basePath = '/v1/jobs';
 
@@ -165,7 +186,7 @@ class JobService {
     return response.data;
   }
 
-  async createJob(data: Partial<Job>): Promise<Job> {
+  async createJob(data: CreateJobRequest): Promise<Job> {
     const response = await api.post<Job>(this.basePath, data);
     return response.data;
   }
@@ -206,6 +227,21 @@ class JobService {
   async getCustomerJobs(customerId: string): Promise<Job[]> {
     const response = await api.get<Job[]>(`/v1/customers/${customerId}/jobs`);
     return response.data;
+  }
+
+  async assignMember(
+    jobId: string,
+    userId: string,
+    role: string = 'technician'
+  ): Promise<void> {
+    await api.post(`${this.basePath}/${jobId}/assign`, {
+      technician_id: userId,
+      role,
+    });
+  }
+
+  async unassignMember(jobId: string, userId: string): Promise<void> {
+    await api.delete(`${this.basePath}/${jobId}/assign/${userId}`);
   }
 }
 
