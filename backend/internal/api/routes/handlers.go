@@ -44,6 +44,11 @@ func SetupHandlers(
 	// Invoice handler
 	h.Invoice = handlers.NewInvoiceHandler(svc.Invoice)
 
+	// Public invoice handler (for payment links - optional, depends on InvoicePayment service)
+	if svc.InvoicePayment != nil {
+		h.PublicInvoice = handlers.NewPublicInvoiceHandler(svc.InvoicePayment, svc.Invoice)
+	}
+
 	// Tenant handler
 	h.Tenant = handlers.NewTenantHandler(svc.Tenant)
 

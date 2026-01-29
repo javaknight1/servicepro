@@ -83,12 +83,16 @@ services:
     working_dir: /app
     ports:
       - '8080:8080'
+    env_file:
+      - ./backend/.env
     environment:
+      # Override specific vars for Docker networking
       - DATABASE_URL=postgresql://postgres:password@postgres:5432/servicepro?sslmode=disable
       - REDIS_URL=redis://redis:6379
       - PORT=8080
       - ENV=development
       - FRONTEND_URL=http://localhost:3000
+      - BACKEND_URL=http://localhost:8080
       # S3-compatible storage (MinIO)
       - S3_COMPATIBLE_ENDPOINT=http://minio:9000
       - S3_COMPATIBLE_BUCKET=servicepro-uploads
@@ -103,6 +107,8 @@ services:
       - SMTP_PORT=1025
       - SMTP_FROM_EMAIL=noreply@servicepro.local
       - SMTP_FROM_NAME=ServicePro
+      # Stripe webhook secret file (written by stripe-cli service)
+      - STRIPE_WEBHOOK_SECRET_FILE=/shared/stripe-webhook-secret
     depends_on:
       postgres:
         condition: service_healthy
@@ -115,6 +121,7 @@ services:
     volumes:
       - ./backend:/app
       - go-mod-cache:/go/pkg/mod
+      - stripe_webhook_secret:/shared:ro
     command: go run cmd/main.go
 
   frontend:
@@ -134,8 +141,27 @@ services:
       - /app/node_modules
     command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
 
+  # Stripe CLI for webhook forwarding (for payment testing)
+  # Requires STRIPE_SECRET_KEY to be set in backend/.env
+  stripe-cli:
+    image: stripe/stripe-cli:latest
+    container_name: servicepro-stripe-cli
+    env_file:
+      - ./backend/.env
+    environment:
+      - STRIPE_FORWARD_URL=http://backend:8080/api/v1/stripe/webhooks
+    volumes:
+      - ./scripts/stripe-listen.sh:/stripe-listen.sh:ro
+      - stripe_webhook_secret:/shared
+    depends_on:
+      - backend
+    entrypoint: /bin/sh
+    command: /stripe-listen.sh
+    restart: on-failure # Restart if STRIPE_SECRET_KEY is missing initially
+
 volumes:
   postgres_data:
   redis_data:
   minio_data:
   go-mod-cache:
+  stripe_webhook_secret:

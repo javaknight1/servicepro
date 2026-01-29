@@ -51,8 +51,12 @@ func SetupServices(
 	// Quote service
 	svc.Quote = services.NewQuoteService(repos.Quote)
 
-	// Invoice service
-	svc.Invoice = services.NewInvoiceService(db)
+	// Invoice service (with email client for sending invoices)
+	svc.Invoice = services.NewInvoiceServiceWithConfig(db, &services.InvoiceServiceConfig{
+		EmailClient: emailClient,
+		FrontendURL: cfg.Server.FrontendURL,
+		BackendURL:  cfg.Server.BackendURL,
+	})
 
 	// Revenue report service
 	svc.Revenue = services.NewRevenueReportService(db)
@@ -87,6 +91,26 @@ func SetupServices(
 			svc.StripeEvents = stripeService.NewEventProcessor()
 			svc.StripeEvents.RegisterDefaultHandlers()
 			svc.StripeWebhook = stripeService.NewWebhookHandler(cfg, svc.StripeEvents)
+
+			// Invoice payment service (for Stripe checkout)
+			invoicePaymentSvc, err := services.NewInvoicePaymentService(&services.InvoicePaymentServiceConfig{
+				StripeClient:   client,
+				InvoiceService: svc.Invoice,
+				SuccessURL:     cfg.Server.FrontendURL + "/invoices/payment-success",
+				CancelURL:      cfg.Server.FrontendURL + "/invoices/payment-cancelled",
+			})
+			if err != nil {
+				log.Printf("[SERVICES] Failed to create invoice payment service: %v", err)
+			} else {
+				svc.InvoicePayment = invoicePaymentSvc
+
+				// Register checkout.session.completed handler for invoice payments
+				invoicePaymentHandler := services.NewInvoicePaymentHandlerAdapter(svc.Invoice)
+				svc.StripeEvents.RegisterHandler(
+					stripeService.EventCheckoutSessionCompleted,
+					invoicePaymentHandler.CreateCheckoutCompletedHandler(),
+				)
+			}
 		}
 	}
 

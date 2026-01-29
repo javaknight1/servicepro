@@ -569,10 +569,18 @@ CREATE TABLE invoices (
     CONSTRAINT valid_due_date CHECK (due_date >= issue_date)
 );
 
+-- Payment token columns for online invoice payment
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS payment_token VARCHAR(64) UNIQUE;
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS payment_token_expires_at TIMESTAMP;
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS payment_token_voided_at TIMESTAMP;
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS stripe_checkout_session_id VARCHAR(255);
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS stripe_payment_intent_id VARCHAR(255);
+
 CREATE INDEX idx_invoices_customer ON invoices(customer_id);
 CREATE INDEX idx_invoices_status ON invoices(status);
 CREATE INDEX idx_invoices_due_date ON invoices(due_date);
 CREATE INDEX idx_invoices_deleted_at ON invoices(deleted_at) WHERE deleted_at IS NULL;
+CREATE INDEX idx_invoices_payment_token ON invoices(payment_token) WHERE payment_token IS NOT NULL;
 
 CREATE TRIGGER trigger_invoices_updated_at BEFORE UPDATE ON invoices
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

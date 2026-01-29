@@ -9,6 +9,7 @@ import (
 	"github.com/resend/resend-go/v2"
 
 	"github.com/javaknight1/servicepro/backend/config"
+	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/pkg/clients/email"
 )
 
@@ -461,6 +462,247 @@ func (c *Client) SendOrganizationInviteEmail(ctx context.Context, to, orgName, i
 		</body>
 		</html>
 	`, headline, bodyText, actionURL, buttonText)
+
+	msg := email.NewEmailMessage(to, subject, body)
+	_, err := c.Send(ctx, msg)
+	return err
+}
+
+// SendInvoiceEmail implements email.Client
+func (c *Client) SendInvoiceEmail(ctx context.Context, to string, invoice *models.Invoice, paymentURL string) error {
+	// Get customer name
+	customerName := "Valued Customer"
+	if invoice.Customer != nil {
+		if invoice.Customer.CompanyName != nil && *invoice.Customer.CompanyName != "" {
+			customerName = *invoice.Customer.CompanyName
+		} else {
+			customerName = invoice.Customer.FirstName + " " + invoice.Customer.LastName
+		}
+	}
+
+	subject := fmt.Sprintf("Invoice %s from ServicePro", invoice.InvoiceNumber)
+
+	// Build line items HTML
+	lineItemsHTML := ""
+	for _, line := range invoice.Lines {
+		lineTotal := line.Quantity.Mul(line.UnitPrice)
+		lineItemsHTML += fmt.Sprintf(`
+			<tr>
+				<td style="padding: 10px; border-bottom: 1px solid #eee;">%s</td>
+				<td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right;">%s</td>
+				<td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right;">$%s</td>
+				<td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right;">$%s</td>
+			</tr>
+		`, line.Description, line.Quantity.StringFixed(2), line.UnitPrice.StringFixed(2), lineTotal.StringFixed(2))
+	}
+
+	body := fmt.Sprintf(`
+		<html>
+		<head>
+			<style>
+				body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+				.container { max-width: 600px; margin: 0 auto; padding: 20px; }
+				.header { background-color: #2196F3; color: white; padding: 20px; text-align: center; }
+				.content { padding: 20px; background-color: #f9f9f9; }
+				.invoice-details { margin: 20px 0; }
+				.invoice-table { width: 100%%; border-collapse: collapse; margin: 20px 0; }
+				.invoice-table th { background-color: #f5f5f5; padding: 10px; text-align: left; border-bottom: 2px solid #ddd; }
+				.totals { margin-top: 20px; }
+				.totals-row { display: flex; justify-content: space-between; padding: 5px 0; }
+				.total-amount { font-size: 24px; font-weight: bold; color: #2196F3; }
+				.button {
+					display: inline-block;
+					padding: 15px 30px;
+					background-color: #4CAF50;
+					color: white;
+					text-decoration: none;
+					border-radius: 4px;
+					margin: 20px 0;
+					font-size: 18px;
+				}
+				.due-date { color: #d32f2f; font-weight: bold; }
+			</style>
+		</head>
+		<body>
+			<div class="container">
+				<div class="header">
+					<h1>Invoice from ServicePro</h1>
+				</div>
+				<div class="content">
+					<p>Hello %s,</p>
+					<p>Please find your invoice details below:</p>
+
+					<div class="invoice-details">
+						<p><strong>Invoice Number:</strong> %s</p>
+						<p><strong>Invoice Date:</strong> %s</p>
+						<p class="due-date"><strong>Due Date:</strong> %s</p>
+					</div>
+
+					<table class="invoice-table">
+						<thead>
+							<tr>
+								<th>Description</th>
+								<th style="text-align: right;">Qty</th>
+								<th style="text-align: right;">Price</th>
+								<th style="text-align: right;">Total</th>
+							</tr>
+						</thead>
+						<tbody>
+							%s
+						</tbody>
+					</table>
+
+					<div class="totals">
+						<div class="totals-row">
+							<span>Subtotal:</span>
+							<span>$%s</span>
+						</div>
+						<div class="totals-row">
+							<span>Tax:</span>
+							<span>$%s</span>
+						</div>
+						<div class="totals-row total-amount">
+							<span>Total Due:</span>
+							<span>$%s</span>
+						</div>
+					</div>
+
+					<p style="text-align: center; margin-top: 30px;">
+						<a href="%s" class="button">Pay Now</a>
+					</p>
+
+					<p style="color: #666; font-size: 14px; margin-top: 20px;">
+						Click the button above to pay securely online via Stripe.
+					</p>
+
+					<p>Best regards,<br>The ServicePro Team</p>
+				</div>
+			</div>
+		</body>
+		</html>
+	`, customerName, invoice.InvoiceNumber, invoice.IssueDate.Format("January 2, 2006"),
+		invoice.DueDate.Format("January 2, 2006"), lineItemsHTML,
+		invoice.Subtotal.StringFixed(2), invoice.TaxAmount.StringFixed(2),
+		invoice.TotalAmount.StringFixed(2), paymentURL)
+
+	msg := email.NewEmailMessage(to, subject, body)
+	_, err := c.Send(ctx, msg)
+	return err
+}
+
+// SendPaymentReceiptEmail implements email.Client
+func (c *Client) SendPaymentReceiptEmail(ctx context.Context, to string, invoice *models.Invoice) error {
+	// Get customer name
+	customerName := "Valued Customer"
+	if invoice.Customer != nil {
+		if invoice.Customer.CompanyName != nil && *invoice.Customer.CompanyName != "" {
+			customerName = *invoice.Customer.CompanyName
+		} else {
+			customerName = invoice.Customer.FirstName + " " + invoice.Customer.LastName
+		}
+	}
+
+	subject := fmt.Sprintf("Payment Receipt for Invoice %s - ServicePro", invoice.InvoiceNumber)
+
+	// Build line items HTML
+	lineItemsHTML := ""
+	for _, line := range invoice.Lines {
+		lineTotal := line.Quantity.Mul(line.UnitPrice)
+		lineItemsHTML += fmt.Sprintf(`
+			<tr>
+				<td style="padding: 10px; border-bottom: 1px solid #eee;">%s</td>
+				<td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right;">%s</td>
+				<td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right;">$%s</td>
+				<td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right;">$%s</td>
+			</tr>
+		`, line.Description, line.Quantity.StringFixed(2), line.UnitPrice.StringFixed(2), lineTotal.StringFixed(2))
+	}
+
+	body := fmt.Sprintf(`
+		<html>
+		<head>
+			<style>
+				body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+				.container { max-width: 600px; margin: 0 auto; padding: 20px; }
+				.header { background-color: #4CAF50; color: white; padding: 20px; text-align: center; }
+				.content { padding: 20px; background-color: #f9f9f9; }
+				.success-icon { font-size: 48px; text-align: center; margin: 20px 0; }
+				.invoice-details { margin: 20px 0; }
+				.invoice-table { width: 100%%; border-collapse: collapse; margin: 20px 0; }
+				.invoice-table th { background-color: #f5f5f5; padding: 10px; text-align: left; border-bottom: 2px solid #ddd; }
+				.totals { margin-top: 20px; }
+				.totals-row { display: flex; justify-content: space-between; padding: 5px 0; }
+				.total-amount { font-size: 24px; font-weight: bold; color: #4CAF50; }
+				.paid-stamp {
+					display: inline-block;
+					padding: 10px 20px;
+					background-color: #4CAF50;
+					color: white;
+					border-radius: 4px;
+					font-size: 18px;
+					font-weight: bold;
+				}
+			</style>
+		</head>
+		<body>
+			<div class="container">
+				<div class="header">
+					<h1>Payment Received!</h1>
+				</div>
+				<div class="content">
+					<div class="success-icon">&#10003;</div>
+
+					<p>Hello %s,</p>
+					<p>Thank you for your payment! This email confirms that we have received your payment.</p>
+
+					<div class="invoice-details">
+						<p><strong>Invoice Number:</strong> %s</p>
+						<p><strong>Payment Date:</strong> %s</p>
+						<p><span class="paid-stamp">PAID</span></p>
+					</div>
+
+					<table class="invoice-table">
+						<thead>
+							<tr>
+								<th>Description</th>
+								<th style="text-align: right;">Qty</th>
+								<th style="text-align: right;">Price</th>
+								<th style="text-align: right;">Total</th>
+							</tr>
+						</thead>
+						<tbody>
+							%s
+						</tbody>
+					</table>
+
+					<div class="totals">
+						<div class="totals-row">
+							<span>Subtotal:</span>
+							<span>$%s</span>
+						</div>
+						<div class="totals-row">
+							<span>Tax:</span>
+							<span>$%s</span>
+						</div>
+						<div class="totals-row total-amount">
+							<span>Amount Paid:</span>
+							<span>$%s</span>
+						</div>
+					</div>
+
+					<p style="margin-top: 30px;">
+						Thank you for your business! If you have any questions about this payment,
+						please don't hesitate to contact us.
+					</p>
+
+					<p>Best regards,<br>The ServicePro Team</p>
+				</div>
+			</div>
+		</body>
+		</html>
+	`, customerName, invoice.InvoiceNumber, time.Now().Format("January 2, 2006"),
+		lineItemsHTML, invoice.Subtotal.StringFixed(2), invoice.TaxAmount.StringFixed(2),
+		invoice.AmountPaid.StringFixed(2))
 
 	msg := email.NewEmailMessage(to, subject, body)
 	_, err := c.Send(ctx, msg)

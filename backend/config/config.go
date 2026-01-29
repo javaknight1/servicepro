@@ -115,6 +115,7 @@ type ServerConfig struct {
 	Port        string
 	Env         string
 	FrontendURL string
+	BackendURL  string
 }
 
 // DatabaseConfig holds database configuration
@@ -291,6 +292,7 @@ func Load() *Config {
 			Port:        getEnv("PORT", "8080"),
 			Env:         getEnv("ENV", "development"),
 			FrontendURL: getEnv("FRONTEND_URL", "http://localhost:3000"),
+			BackendURL:  getEnv("BACKEND_URL", "http://localhost:8080"),
 		},
 		Database: DatabaseConfig{
 			URL:             getEnv("DATABASE_URL", "postgresql://postgres:password@localhost:5432/servicepro?sslmode=disable"),
@@ -383,7 +385,7 @@ func Load() *Config {
 		Stripe: StripeConfig{
 			SecretKey:      getEnv("STRIPE_SECRET_KEY", ""),
 			PublishableKey: getEnv("STRIPE_PUBLISHABLE_KEY", ""),
-			WebhookSecret:  getEnv("STRIPE_WEBHOOK_SECRET", ""),
+			WebhookSecret:  getEnvOrFile("STRIPE_WEBHOOK_SECRET", "STRIPE_WEBHOOK_SECRET_FILE", ""),
 			LogLevel:       getEnv("STRIPE_LOG_LEVEL", "info"),
 			MaxRetries:     getEnvAsInt("STRIPE_MAX_RETRIES", 3),
 			Prices: StripePrices{
@@ -465,6 +467,33 @@ func getEnv(key, defaultValue string) string {
 		return defaultValue
 	}
 	return value
+}
+
+// getEnvOrFile returns the value from an environment variable, or if empty,
+// tries to read from a file specified by fileEnvKey. Falls back to defaultValue.
+// This is useful for secrets that may be provided by external processes (e.g., Stripe CLI).
+func getEnvOrFile(key, fileEnvKey, defaultValue string) string {
+	// First, try the environment variable
+	value := os.Getenv(key)
+	if value != "" {
+		return value
+	}
+
+	// If a file path is specified, try to read from it
+	filePath := os.Getenv(fileEnvKey)
+	if filePath != "" {
+		data, err := os.ReadFile(filePath)
+		if err == nil {
+			value = strings.TrimSpace(string(data))
+			if value != "" {
+				log.Printf("[CONFIG] Loaded %s from file: %s", key, filePath)
+				return value
+			}
+		}
+		// File doesn't exist yet - this is okay for Stripe CLI which writes it after startup
+	}
+
+	return defaultValue
 }
 
 // getEnvAsInt reads an environment variable as integer or returns a default value

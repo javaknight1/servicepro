@@ -56,6 +56,7 @@ type Services struct {
 	Job               *services.JobService
 	Quote             *services.QuoteService
 	Invoice           *services.InvoiceService
+	InvoicePayment    *services.InvoicePaymentService
 	Tenant            *services.TenantService
 	Invitation        *services.InvitationService
 	Membership        *services.MembershipService
@@ -93,6 +94,7 @@ type Handlers struct {
 	Job               *handlers.JobHandler
 	Quote             *handlers.QuoteHandler
 	Invoice           *handlers.InvoiceHandler
+	PublicInvoice     *handlers.PublicInvoiceHandler
 	Tenant            *handlers.TenantHandler
 	Invitation        *handlers.InvitationHandler
 	Role              *handlers.RoleHandler

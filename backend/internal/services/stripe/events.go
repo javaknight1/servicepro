@@ -180,6 +180,10 @@ const (
 	EventSubscriptionCreated = "customer.subscription.created"
 	EventSubscriptionUpdated = "customer.subscription.updated"
 	EventSubscriptionDeleted = "customer.subscription.deleted"
+
+	// Checkout Session Events
+	EventCheckoutSessionCompleted = "checkout.session.completed"
+	EventCheckoutSessionExpired   = "checkout.session.expired"
 )
 
 // PaymentIntentData represents parsed payment intent data from an event
@@ -334,6 +338,45 @@ func ParseRefund(event *stripe.Event) (*RefundData, error) {
 
 	if ref.PaymentIntent != nil {
 		data.PaymentIntentID = ref.PaymentIntent.ID
+	}
+
+	return data, nil
+}
+
+// CheckoutSessionData represents parsed checkout session data from an event
+type CheckoutSessionData struct {
+	ID              string
+	PaymentIntentID string
+	PaymentStatus   string
+	Status          string
+	CustomerEmail   string
+	AmountTotal     int64
+	Currency        string
+	Metadata        map[string]string
+}
+
+// ParseCheckoutSession parses a checkout session from an event
+func ParseCheckoutSession(event *stripe.Event) (*CheckoutSessionData, error) {
+	var session stripe.CheckoutSession
+	if err := json.Unmarshal(event.Data.Raw, &session); err != nil {
+		return nil, fmt.Errorf("failed to parse checkout session: %w", err)
+	}
+
+	data := &CheckoutSessionData{
+		ID:            session.ID,
+		PaymentStatus: string(session.PaymentStatus),
+		Status:        string(session.Status),
+		AmountTotal:   session.AmountTotal,
+		Currency:      string(session.Currency),
+		Metadata:      session.Metadata,
+	}
+
+	if session.PaymentIntent != nil {
+		data.PaymentIntentID = session.PaymentIntent.ID
+	}
+
+	if session.CustomerEmail != "" {
+		data.CustomerEmail = session.CustomerEmail
 	}
 
 	return data, nil

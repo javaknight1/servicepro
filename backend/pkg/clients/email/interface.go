@@ -2,6 +2,8 @@ package email
 
 import (
 	"context"
+
+	"github.com/javaknight1/servicepro/backend/internal/models"
 )
 
 // Client defines the interface for email operations.
@@ -34,6 +36,12 @@ type Client interface {
 	// SendOrganizationInviteEmail sends an invitation to join an organization
 	// userExists indicates whether the user already has an account (affects email content)
 	SendOrganizationInviteEmail(ctx context.Context, to, orgName, inviterName, roleName, actionURL string, userExists bool) error
+
+	// SendInvoiceEmail sends an invoice email with a payment link to the customer
+	SendInvoiceEmail(ctx context.Context, to string, invoice *models.Invoice, paymentURL string) error
+
+	// SendPaymentReceiptEmail sends a payment receipt email to the customer
+	SendPaymentReceiptEmail(ctx context.Context, to string, invoice *models.Invoice) error
 
 	// Lifecycle methods
 

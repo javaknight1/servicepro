@@ -8,6 +8,8 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -22,10 +24,11 @@ const defaultWebhookTolerance = 5 * time.Minute
 
 // WebhookHandler handles incoming Stripe webhooks
 type WebhookHandler struct {
-	webhookSecret    string
-	webhookTolerance time.Duration
-	eventProcessor   *EventProcessor
-	mu               sync.RWMutex
+	webhookSecret     string
+	webhookSecretFile string // Optional: path to file containing webhook secret (for dynamic loading)
+	webhookTolerance  time.Duration
+	eventProcessor    *EventProcessor
+	mu                sync.RWMutex
 
 	// Event tracking for idempotency
 	processedEvents map[string]time.Time
@@ -34,11 +37,24 @@ type WebhookHandler struct {
 
 // NewWebhookHandler creates a new webhook handler
 func NewWebhookHandler(cfg *config.Config, eventProcessor *EventProcessor) *WebhookHandler {
+	// Get webhook secret file path from environment (for Docker Compose with Stripe CLI)
+	webhookSecretFile := os.Getenv("STRIPE_WEBHOOK_SECRET_FILE")
+
 	handler := &WebhookHandler{
-		webhookSecret:    cfg.Stripe.WebhookSecret,
-		webhookTolerance: defaultWebhookTolerance,
-		eventProcessor:   eventProcessor,
-		processedEvents:  make(map[string]time.Time),
+		webhookSecret:     cfg.Stripe.WebhookSecret,
+		webhookSecretFile: webhookSecretFile,
+		webhookTolerance:  defaultWebhookTolerance,
+		eventProcessor:    eventProcessor,
+		processedEvents:   make(map[string]time.Time),
+	}
+
+	// Log webhook configuration status
+	if cfg.Stripe.WebhookSecret != "" {
+		log.Printf("[Stripe] Webhook handler initialized with secret (length=%d)", len(cfg.Stripe.WebhookSecret))
+	} else if webhookSecretFile != "" {
+		log.Printf("[Stripe] Webhook handler will read secret from file: %s", webhookSecretFile)
+	} else {
+		log.Printf("[Stripe] WARNING: Webhook secret is empty - webhooks will fail signature verification")
 	}
 
 	// Start cleanup goroutine for processed events
@@ -123,6 +139,8 @@ func (h *WebhookHandler) HandleWebhook(ctx context.Context, req *WebhookRequest)
 func (h *WebhookHandler) HandleHTTPWebhook(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
+	log.Printf("[Stripe] Webhook HTTP request received from %s", r.RemoteAddr)
+
 	// Read body
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -131,6 +149,8 @@ func (h *WebhookHandler) HandleHTTPWebhook(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	defer r.Body.Close()
+
+	log.Printf("[Stripe] Webhook body length: %d bytes", len(body))
 
 	// Get signature
 	signature := r.Header.Get("Stripe-Signature")
@@ -161,13 +181,54 @@ func (h *WebhookHandler) HandleHTTPWebhook(w http.ResponseWriter, r *http.Reques
 	h.sendJSONResponse(w, http.StatusOK, response)
 }
 
+// getWebhookSecret returns the webhook secret, reading from file if necessary
+func (h *WebhookHandler) getWebhookSecret() string {
+	h.mu.RLock()
+	secret := h.webhookSecret
+	h.mu.RUnlock()
+
+	// If we have a secret in memory, use it
+	if secret != "" {
+		return secret
+	}
+
+	// Try to read from file if configured
+	if h.webhookSecretFile != "" {
+		data, err := os.ReadFile(h.webhookSecretFile)
+		if err == nil {
+			secret = strings.TrimSpace(string(data))
+			if secret != "" {
+				// Cache it for future use
+				h.mu.Lock()
+				h.webhookSecret = secret
+				h.mu.Unlock()
+				log.Printf("[Stripe] Loaded webhook secret from file: %s", h.webhookSecretFile)
+				return secret
+			}
+		}
+	}
+
+	return ""
+}
+
 // verifySignature verifies the webhook signature and returns the parsed event
 func (h *WebhookHandler) verifySignature(payload []byte, signature string) (*stripe.Event, error) {
+	// Get the webhook secret (from memory or file)
+	secret := h.getWebhookSecret()
+	if secret == "" {
+		return nil, errors.New("webhook secret not configured")
+	}
+
 	// Construct event with signature verification
-	event, err := webhook.ConstructEvent(
+	// Use ConstructEventWithOptions to handle API version mismatches between
+	// Stripe CLI/dashboard and the stripe-go library version
+	event, err := webhook.ConstructEventWithOptions(
 		payload,
 		signature,
-		h.webhookSecret,
+		secret,
+		webhook.ConstructEventOptions{
+			IgnoreAPIVersionMismatch: true,
+		},
 	)
 
 	if err != nil {

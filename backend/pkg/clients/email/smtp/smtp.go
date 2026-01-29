@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/javaknight1/servicepro/backend/config"
+	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/pkg/clients/email"
 )
 
@@ -583,6 +584,68 @@ func (c *Client) SendOrganizationInviteEmail(ctx context.Context, to, orgName, i
 		</body>
 		</html>
 	`, headline, bodyText, actionURL, buttonText)
+
+	msg := email.NewEmailMessage(to, subject, body)
+	_, err := c.Send(ctx, msg)
+	return err
+}
+
+// SendInvoiceEmail implements email.Client
+func (c *Client) SendInvoiceEmail(ctx context.Context, to string, invoice *models.Invoice, paymentURL string) error {
+	customerName := "Valued Customer"
+	if invoice.Customer != nil {
+		if invoice.Customer.CompanyName != nil && *invoice.Customer.CompanyName != "" {
+			customerName = *invoice.Customer.CompanyName
+		} else {
+			customerName = invoice.Customer.FirstName + " " + invoice.Customer.LastName
+		}
+	}
+
+	subject := fmt.Sprintf("Invoice %s from ServicePro", invoice.InvoiceNumber)
+	body := fmt.Sprintf(`
+		<html>
+		<body>
+			<h1>Invoice from ServicePro</h1>
+			<p>Hello %s,</p>
+			<p>Please find your invoice details below:</p>
+			<p><strong>Invoice Number:</strong> %s</p>
+			<p><strong>Total Amount:</strong> $%s</p>
+			<p><strong>Due Date:</strong> %s</p>
+			<p><a href="%s" style="background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none;">Pay Now</a></p>
+			<p>Best regards,<br>The ServicePro Team</p>
+		</body>
+		</html>
+	`, customerName, invoice.InvoiceNumber, invoice.TotalAmount.StringFixed(2), invoice.DueDate.Format("January 2, 2006"), paymentURL)
+
+	msg := email.NewEmailMessage(to, subject, body)
+	_, err := c.Send(ctx, msg)
+	return err
+}
+
+// SendPaymentReceiptEmail implements email.Client
+func (c *Client) SendPaymentReceiptEmail(ctx context.Context, to string, invoice *models.Invoice) error {
+	customerName := "Valued Customer"
+	if invoice.Customer != nil {
+		if invoice.Customer.CompanyName != nil && *invoice.Customer.CompanyName != "" {
+			customerName = *invoice.Customer.CompanyName
+		} else {
+			customerName = invoice.Customer.FirstName + " " + invoice.Customer.LastName
+		}
+	}
+
+	subject := fmt.Sprintf("Payment Receipt for Invoice %s - ServicePro", invoice.InvoiceNumber)
+	body := fmt.Sprintf(`
+		<html>
+		<body>
+			<h1>Payment Received!</h1>
+			<p>Hello %s,</p>
+			<p>Thank you for your payment! This confirms we have received payment for:</p>
+			<p><strong>Invoice Number:</strong> %s</p>
+			<p><strong>Amount Paid:</strong> $%s</p>
+			<p>Best regards,<br>The ServicePro Team</p>
+		</body>
+		</html>
+	`, customerName, invoice.InvoiceNumber, invoice.AmountPaid.StringFixed(2))
 
 	msg := email.NewEmailMessage(to, subject, body)
 	_, err := c.Send(ctx, msg)

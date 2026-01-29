@@ -2,8 +2,11 @@ package services
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/base64"
 	"errors"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/google/uuid"
@@ -12,6 +15,14 @@ import (
 
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/utils"
+	"github.com/javaknight1/servicepro/backend/pkg/clients/email"
+)
+
+const (
+	// PaymentTokenExpiry is the duration a payment token is valid (30 days)
+	PaymentTokenExpiry = 30 * 24 * time.Hour
+	// PaymentTokenLength is the number of random bytes for the token
+	PaymentTokenLength = 32
 )
 
 var (
@@ -21,16 +32,45 @@ var (
 	ErrInvalidInvoiceData = errors.New("invalid invoice data")
 	// ErrInvoiceAlreadyPaid is returned when trying to modify a paid invoice
 	ErrInvoiceAlreadyPaid = errors.New("cannot modify paid invoice")
+	// ErrInvalidPaymentToken is returned when a payment token is invalid
+	ErrInvalidPaymentToken = errors.New("invalid payment token")
+	// ErrPaymentTokenExpired is returned when a payment token has expired
+	ErrPaymentTokenExpired = errors.New("payment token has expired")
+	// ErrPaymentTokenVoided is returned when a payment token has been voided
+	ErrPaymentTokenVoided = errors.New("payment token has been voided")
+	// ErrInvoiceNotPayable is returned when invoice is not in a payable status
+	ErrInvoiceNotPayable = errors.New("invoice is not in a payable status")
 )
 
 // InvoiceService handles invoice business logic
 type InvoiceService struct {
-	db *gorm.DB
+	db          *gorm.DB
+	emailClient email.Client
+	frontendURL string
+	backendURL  string
+}
+
+// InvoiceServiceConfig holds configuration for the invoice service
+type InvoiceServiceConfig struct {
+	EmailClient email.Client
+	FrontendURL string
+	BackendURL  string
 }
 
 // NewInvoiceService creates a new invoice service
 func NewInvoiceService(db *gorm.DB) *InvoiceService {
 	return &InvoiceService{db: db}
+}
+
+// NewInvoiceServiceWithConfig creates a new invoice service with configuration
+func NewInvoiceServiceWithConfig(db *gorm.DB, cfg *InvoiceServiceConfig) *InvoiceService {
+	svc := &InvoiceService{db: db}
+	if cfg != nil {
+		svc.emailClient = cfg.EmailClient
+		svc.frontendURL = cfg.FrontendURL
+		svc.backendURL = cfg.BackendURL
+	}
+	return svc
 }
 
 // CreateInvoice creates a new invoice with business logic
@@ -374,30 +414,59 @@ func (s *InvoiceService) RecordPayment(ctx context.Context, payment *models.Invo
 	return payment, nil
 }
 
-// SendInvoice marks an invoice as sent
+// SendInvoice marks an invoice as sent and generates a payment token
 func (s *InvoiceService) SendInvoice(ctx context.Context, id uuid.UUID) (*models.Invoice, error) {
 	invoice, err := s.GetInvoice(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 
-	// Validate invoice before sending
-	if err := s.validateForSending(invoice); err != nil {
-		return nil, err
+	// Allow sending draft invoices or resending already-sent invoices
+	if invoice.Status != models.InvoiceStatusDraft && invoice.Status != models.InvoiceStatusSent {
+		return nil, errors.New("only draft or sent invoices can be sent")
 	}
 
-	// Update status
+	// Validate invoice before sending (only for draft invoices)
+	if invoice.Status == models.InvoiceStatusDraft {
+		if err := s.validateForSending(invoice); err != nil {
+			return nil, err
+		}
+	}
+
+	// Generate new payment token
+	token, err := s.generatePaymentToken()
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate payment token: %w", err)
+	}
+
+	// Update invoice with new token and status
 	now := time.Now()
+	expiresAt := now.Add(PaymentTokenExpiry)
+
 	updates := map[string]interface{}{
-		"status":    models.InvoiceStatusSent,
-		"sent_date": now,
+		"status":                   models.InvoiceStatusSent,
+		"sent_date":                now,
+		"payment_token":            token,
+		"payment_token_expires_at": expiresAt,
+		"payment_token_voided_at":  nil, // Clear any previous voided timestamp
 	}
 
 	if err := s.db.WithContext(ctx).Model(&models.Invoice{}).Where("id = ?", id).Updates(updates).Error; err != nil {
 		return nil, fmt.Errorf("failed to send invoice: %w", err)
 	}
 
-	return s.GetInvoice(ctx, id)
+	// Reload invoice
+	invoice, err = s.GetInvoice(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	// Send email asynchronously if email client is configured
+	if s.emailClient != nil && invoice.Customer != nil {
+		go s.sendInvoiceEmail(invoice)
+	}
+
+	return invoice, nil
 }
 
 // CancelInvoice cancels an invoice
@@ -543,4 +612,147 @@ func (s *InvoiceService) CalculateTotals(invoice *models.Invoice) {
 	invoice.Subtotal = subtotal
 	invoice.TaxAmount = taxAmount
 	invoice.TotalAmount = subtotal.Add(taxAmount).Sub(invoice.DiscountAmount)
+}
+
+// GetInvoiceByPaymentToken retrieves an invoice by its payment token
+func (s *InvoiceService) GetInvoiceByPaymentToken(ctx context.Context, token string) (*models.Invoice, error) {
+	if token == "" {
+		return nil, ErrInvalidPaymentToken
+	}
+
+	var invoice models.Invoice
+	err := s.db.WithContext(ctx).
+		Preload("Customer").
+		Preload("Lines", func(db *gorm.DB) *gorm.DB {
+			return db.Order("sort_order ASC")
+		}).
+		Preload("PaymentTerm").
+		Preload("TaxRate").
+		First(&invoice, "payment_token = ?", token).Error
+
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrInvalidPaymentToken
+		}
+		return nil, fmt.Errorf("failed to get invoice by payment token: %w", err)
+	}
+
+	return &invoice, nil
+}
+
+// ValidatePaymentToken validates a payment token and returns the invoice if valid
+func (s *InvoiceService) ValidatePaymentToken(ctx context.Context, token string) (*models.Invoice, error) {
+	invoice, err := s.GetInvoiceByPaymentToken(ctx, token)
+	if err != nil {
+		return nil, err
+	}
+
+	// Check if token is voided
+	if invoice.PaymentTokenVoidedAt != nil {
+		return nil, ErrPaymentTokenVoided
+	}
+
+	// Check if token is expired
+	if invoice.PaymentTokenExpiresAt == nil || invoice.PaymentTokenExpiresAt.Before(time.Now()) {
+		return nil, ErrPaymentTokenExpired
+	}
+
+	// Check if invoice is in a payable status
+	if invoice.Status != models.InvoiceStatusSent {
+		return nil, ErrInvoiceNotPayable
+	}
+
+	return invoice, nil
+}
+
+// MarkInvoiceAsPaid marks an invoice as paid and stores Stripe payment information
+func (s *InvoiceService) MarkInvoiceAsPaid(ctx context.Context, id uuid.UUID, amountPaid decimal.Decimal, stripeCheckoutSessionID, stripePaymentIntentID string) (*models.Invoice, error) {
+	invoice, err := s.GetInvoice(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	// Check if already paid
+	if invoice.Status == models.InvoiceStatusPaid {
+		return invoice, nil // Idempotent
+	}
+
+	now := time.Now()
+
+	// Determine new status based on amount paid
+	newAmountPaid := invoice.AmountPaid.Add(amountPaid)
+	var newStatus models.InvoiceStatus
+	if newAmountPaid.GreaterThanOrEqual(invoice.TotalAmount) {
+		newStatus = models.InvoiceStatusPaid
+	} else {
+		newStatus = models.InvoiceStatusPartiallyPaid
+	}
+
+	updates := map[string]interface{}{
+		"status":                     newStatus,
+		"amount_paid":                newAmountPaid,
+		"paid_date":                  now,
+		"stripe_checkout_session_id": stripeCheckoutSessionID,
+		"stripe_payment_intent_id":   stripePaymentIntentID,
+	}
+
+	if err := s.db.WithContext(ctx).Model(&models.Invoice{}).Where("id = ?", id).Updates(updates).Error; err != nil {
+		return nil, fmt.Errorf("failed to mark invoice as paid: %w", err)
+	}
+
+	return s.GetInvoice(ctx, id)
+}
+
+// VoidPaymentToken voids the current payment token for an invoice
+func (s *InvoiceService) VoidPaymentToken(ctx context.Context, id uuid.UUID) error {
+	now := time.Now()
+	return s.db.WithContext(ctx).
+		Model(&models.Invoice{}).
+		Where("id = ? AND payment_token IS NOT NULL", id).
+		Update("payment_token_voided_at", now).Error
+}
+
+// generatePaymentToken generates a cryptographically secure random token
+func (s *InvoiceService) generatePaymentToken() (string, error) {
+	bytes := make([]byte, PaymentTokenLength)
+	if _, err := rand.Read(bytes); err != nil {
+		return "", fmt.Errorf("failed to generate random bytes: %w", err)
+	}
+	return base64.URLEncoding.EncodeToString(bytes), nil
+}
+
+// sendInvoiceEmail sends the invoice email to the customer
+func (s *InvoiceService) sendInvoiceEmail(invoice *models.Invoice) {
+	if invoice.Customer == nil || invoice.PaymentToken == nil {
+		log.Printf("[INVOICE-SERVICE] Cannot send invoice email: missing customer or payment token")
+		return
+	}
+
+	ctx := context.Background()
+
+	// Build payment URL - points to backend API which redirects to Stripe Checkout
+	paymentURL := fmt.Sprintf("%s/api/v1/public/invoices/pay/%s", s.backendURL, *invoice.PaymentToken)
+
+	// Send invoice email
+	if err := s.emailClient.SendInvoiceEmail(ctx, invoice.Customer.Email, invoice, paymentURL); err != nil {
+		log.Printf("[INVOICE-SERVICE] Failed to send invoice email to %s: %v", invoice.Customer.Email, err)
+	} else {
+		log.Printf("[INVOICE-SERVICE] Invoice email sent to %s for invoice %s", invoice.Customer.Email, invoice.InvoiceNumber)
+	}
+}
+
+// SendReceiptEmail sends a payment receipt email to the customer
+func (s *InvoiceService) SendReceiptEmail(invoice *models.Invoice) {
+	if s.emailClient == nil || invoice.Customer == nil {
+		log.Printf("[INVOICE-SERVICE] Cannot send receipt email: missing email client or customer")
+		return
+	}
+
+	ctx := context.Background()
+
+	if err := s.emailClient.SendPaymentReceiptEmail(ctx, invoice.Customer.Email, invoice); err != nil {
+		log.Printf("[INVOICE-SERVICE] Failed to send receipt email to %s: %v", invoice.Customer.Email, err)
+	} else {
+		log.Printf("[INVOICE-SERVICE] Receipt email sent to %s for invoice %s", invoice.Customer.Email, invoice.InvoiceNumber)
+	}
 }

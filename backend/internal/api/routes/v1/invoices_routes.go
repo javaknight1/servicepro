@@ -72,4 +72,24 @@ func SetupInvoiceRoutes(router *gin.RouterGroup, cfg *routeconfigs.RouteConfig) 
 		public.Use(publicRateLimiter.RateLimit())
 		public.GET("/:invoice_number", cfg.Handlers.Invoice.GetInvoice)
 	}
+
+	// Public invoice payment routes (no auth required, rate limited)
+	// These routes are used by customers to pay invoices via email links
+	// Only register if PublicInvoice handler is available (requires Stripe configuration)
+	if cfg.Handlers.PublicInvoice != nil {
+		paymentRateLimiter := middleware.NewSimpleRateLimiter(20, time.Minute)
+		payment := router.Group("/public/invoices")
+		{
+			payment.Use(paymentRateLimiter.RateLimit())
+
+			// Pay invoice - redirects to Stripe Checkout
+			payment.GET("/pay/:token", cfg.Handlers.PublicInvoice.PayInvoice)
+
+			// Get invoice details by payment token (for payment page display)
+			payment.GET("/details/:token", cfg.Handlers.PublicInvoice.GetInvoiceByToken)
+
+			// Validate payment token (check if valid without initiating payment)
+			payment.GET("/validate/:token", cfg.Handlers.PublicInvoice.ValidatePaymentToken)
+		}
+	}
 }

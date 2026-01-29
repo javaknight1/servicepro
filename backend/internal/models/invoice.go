@@ -125,6 +125,15 @@ type Invoice struct {
 	TermsAndConditions string `gorm:"type:text" json:"terms_and_conditions,omitempty"`
 	FooterText         string `gorm:"type:text" json:"footer_text,omitempty"`
 
+	// Payment token for online invoice payment
+	PaymentToken          *string    `gorm:"type:varchar(64);uniqueIndex" json:"payment_token,omitempty"`
+	PaymentTokenExpiresAt *time.Time `gorm:"type:timestamp" json:"payment_token_expires_at,omitempty"`
+	PaymentTokenVoidedAt  *time.Time `gorm:"type:timestamp" json:"payment_token_voided_at,omitempty"`
+
+	// Stripe payment tracking
+	StripeCheckoutSessionID *string `gorm:"type:varchar(255)" json:"stripe_checkout_session_id,omitempty"`
+	StripePaymentIntentID   *string `gorm:"type:varchar(255)" json:"stripe_payment_intent_id,omitempty"`
+
 	// Metadata
 	CreatedBy uuid.UUID      `gorm:"type:uuid;not null" json:"created_by"`
 	UpdatedBy *uuid.UUID     `gorm:"type:uuid" json:"updated_by,omitempty"`
@@ -151,6 +160,36 @@ func (i *Invoice) BeforeCreate(tx *gorm.DB) error {
 		i.ID = uuid.New()
 	}
 	return nil
+}
+
+// IsPaymentTokenValid checks if the payment token is valid for payment
+// A token is valid if:
+// - Token exists (not nil or empty)
+// - Token is not voided (PaymentTokenVoidedAt is nil)
+// - Token is not expired (PaymentTokenExpiresAt is in the future)
+// - Invoice status is "sent" (not paid, cancelled, or draft)
+func (i *Invoice) IsPaymentTokenValid() bool {
+	// Check if token exists
+	if i.PaymentToken == nil || *i.PaymentToken == "" {
+		return false
+	}
+
+	// Check if token is voided
+	if i.PaymentTokenVoidedAt != nil {
+		return false
+	}
+
+	// Check if token is expired
+	if i.PaymentTokenExpiresAt == nil || i.PaymentTokenExpiresAt.Before(time.Now()) {
+		return false
+	}
+
+	// Check if invoice is in a payable status
+	if i.Status != InvoiceStatusSent {
+		return false
+	}
+
+	return true
 }
 
 // InvoiceLine represents a line item in an invoice

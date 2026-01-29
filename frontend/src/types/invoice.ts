@@ -43,6 +43,11 @@ export interface Invoice {
   notes?: string;
   terms?: string;
   lines: InvoiceLineItem[];
+  // Payment token fields for online invoice payment
+  payment_token?: string;
+  payment_token_expires_at?: string;
+  stripe_checkout_session_id?: string;
+  stripe_payment_intent_id?: string;
   created_at: string;
   updated_at: string;
 }

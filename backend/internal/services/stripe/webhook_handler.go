@@ -48,6 +48,22 @@ type WebhookNotifier interface {
 // NoOpNotifier is a no-operation notifier for when notifications are disabled
 type NoOpNotifier struct{}
 
+// InvoicePaymentHandler interface for handling invoice payment events
+type InvoicePaymentHandler interface {
+	HandleInvoicePaymentCompleted(ctx context.Context, invoiceID string, amountPaidCents int64, checkoutSessionID, paymentIntentID string) error
+	SendInvoiceReceiptEmail(ctx context.Context, invoiceID string) error
+}
+
+// NoOpInvoicePaymentHandler is a no-operation handler for when invoice payment handling is disabled
+type NoOpInvoicePaymentHandler struct{}
+
+func (n *NoOpInvoicePaymentHandler) HandleInvoicePaymentCompleted(ctx context.Context, invoiceID string, amountPaidCents int64, checkoutSessionID, paymentIntentID string) error {
+	return nil
+}
+func (n *NoOpInvoicePaymentHandler) SendInvoiceReceiptEmail(ctx context.Context, invoiceID string) error {
+	return nil
+}
+
 func (n *NoOpNotifier) NotifyPaymentSucceeded(ctx context.Context, paymentID string, amount int64, currency string) error {
 	return nil
 }
@@ -98,10 +114,11 @@ func DefaultWebhookHandlerConfig() *WebhookHandlerConfig {
 
 // WebhookHandlerService handles Stripe webhooks with database logging and retry support
 type WebhookHandlerService struct {
-	config    *WebhookHandlerConfig
-	db        *gorm.DB
-	notifier  WebhookNotifier
-	processor *EventProcessor
+	config                *WebhookHandlerConfig
+	db                    *gorm.DB
+	notifier              WebhookNotifier
+	invoicePaymentHandler InvoicePaymentHandler
+	processor             *EventProcessor
 
 	// In-memory idempotency cache
 	processedEvents map[string]time.Time
@@ -130,19 +147,27 @@ func NewWebhookHandlerService(
 	processor := NewEventProcessor()
 
 	service := &WebhookHandlerService{
-		config:          config,
-		db:              db,
-		notifier:        notifier,
-		processor:       processor,
-		processedEvents: make(map[string]time.Time),
-		retryQueue:      make(chan *models.WebhookEvent, 1000),
-		stopChan:        make(chan struct{}),
+		config:                config,
+		db:                    db,
+		notifier:              notifier,
+		invoicePaymentHandler: &NoOpInvoicePaymentHandler{},
+		processor:             processor,
+		processedEvents:       make(map[string]time.Time),
+		retryQueue:            make(chan *models.WebhookEvent, 1000),
+		stopChan:              make(chan struct{}),
 	}
 
 	// Register event handlers
 	service.registerEventHandlers()
 
 	return service
+}
+
+// SetInvoicePaymentHandler sets the invoice payment handler for processing invoice payment webhooks
+func (s *WebhookHandlerService) SetInvoicePaymentHandler(handler InvoicePaymentHandler) {
+	if handler != nil {
+		s.invoicePaymentHandler = handler
+	}
 }
 
 // Start starts the background retry processor
@@ -309,6 +334,9 @@ func (s *WebhookHandlerService) registerEventHandlers() {
 	// Refund Events
 	s.processor.RegisterHandler(EventRefundCreated, s.handleRefundCreated)
 	s.processor.RegisterHandler(EventRefundUpdated, s.handleRefundUpdated)
+
+	// Checkout Session Events
+	s.processor.RegisterHandler(EventCheckoutSessionCompleted, s.handleCheckoutSessionCompleted)
 
 	log.Printf("[Stripe] Registered webhook event handlers")
 }
@@ -618,6 +646,59 @@ func (s *WebhookHandlerService) handleRefundUpdated(ctx context.Context, event *
 	}
 
 	log.Printf("[Stripe] Refund updated: id=%s, status=%s", ref.ID, ref.Status)
+
+	return nil
+}
+
+// =============================================================================
+// Checkout Session Handlers
+// =============================================================================
+
+func (s *WebhookHandlerService) handleCheckoutSessionCompleted(ctx context.Context, event *stripe.Event) error {
+	session, err := ParseCheckoutSession(event)
+	if err != nil {
+		return fmt.Errorf("failed to parse checkout session: %w", err)
+	}
+
+	log.Printf("[Stripe] Checkout session completed: id=%s, payment_status=%s",
+		session.ID, session.PaymentStatus)
+
+	// Check if this is an invoice payment
+	paymentType, hasPaymentType := session.Metadata["payment_type"]
+	invoiceID, hasInvoiceID := session.Metadata["invoice_id"]
+
+	if !hasPaymentType || paymentType != "invoice" || !hasInvoiceID {
+		log.Printf("[Stripe] Checkout session %s is not an invoice payment, skipping", session.ID)
+		return nil
+	}
+
+	// Verify payment was successful
+	if session.PaymentStatus != "paid" {
+		log.Printf("[Stripe] Checkout session %s payment status is %s, not marking invoice as paid",
+			session.ID, session.PaymentStatus)
+		return nil
+	}
+
+	// Handle the invoice payment
+	if err := s.invoicePaymentHandler.HandleInvoicePaymentCompleted(
+		ctx,
+		invoiceID,
+		session.AmountTotal,
+		session.ID,
+		session.PaymentIntentID,
+	); err != nil {
+		log.Printf("[Stripe] Failed to handle invoice payment for invoice %s: %v", invoiceID, err)
+		return fmt.Errorf("failed to handle invoice payment: %w", err)
+	}
+
+	log.Printf("[Stripe] Invoice %s marked as paid via checkout session %s", invoiceID, session.ID)
+
+	// Send receipt email asynchronously
+	go func() {
+		if err := s.invoicePaymentHandler.SendInvoiceReceiptEmail(context.Background(), invoiceID); err != nil {
+			log.Printf("[Stripe] Failed to send receipt email for invoice %s: %v", invoiceID, err)
+		}
+	}()
 
 	return nil
 }

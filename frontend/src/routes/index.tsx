@@ -266,6 +266,22 @@ const InvoiceDetailPage = loadable(
   { chunkName: 'invoice-detail', delay: 100 }
 );
 
+const PaymentSuccessPage = loadable(
+  () =>
+    import(
+      /* @ts-expect-error - dynamic import type */ /* webpackChunkName: "page-invoices" */ '@pages/Invoices'
+    ).then((m) => ({ default: m.PaymentSuccessPage })),
+  { chunkName: 'payment-success', delay: 100 }
+);
+
+const PaymentCancelledPage = loadable(
+  () =>
+    import(
+      /* @ts-expect-error - dynamic import type */ /* webpackChunkName: "page-invoices" */ '@pages/Invoices'
+    ).then((m) => ({ default: m.PaymentCancelledPage })),
+  { chunkName: 'payment-cancelled', delay: 100 }
+);
+
 // Team pages
 const TeamMembersPage = loadable(
   () =>
@@ -418,6 +434,14 @@ export function AppRoutes() {
         <Route path="/quotes/:id" element={<QuoteDetailPage />} />
         <Route path="/invoices" element={<InvoicesPage />} />
         <Route path="/invoices/new" element={<InvoiceDetailPage />} />
+        <Route
+          path="/invoices/payment-success"
+          element={<PaymentSuccessPage />}
+        />
+        <Route
+          path="/invoices/payment-cancelled"
+          element={<PaymentCancelledPage />}
+        />
         <Route path="/invoices/:id" element={<InvoiceDetailPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/settings/organization" element={<OrgSettingsPage />} />

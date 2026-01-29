@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/javaknight1/servicepro/backend/config"
+	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/pkg/clients/email"
 )
 
@@ -159,6 +160,33 @@ func (c *Client) SendOrganizationInviteEmail(ctx context.Context, to, orgName, i
 	log.Printf("Mock: *** INVITATION LINK: %s ***", actionURL)
 
 	msg := email.NewEmailMessage(to, subject, fmt.Sprintf("Invitation from %s to join %s. Action URL: %s", inviterName, orgName, actionURL))
+	_, err := c.Send(ctx, msg)
+	return err
+}
+
+// SendInvoiceEmail implements email.Client
+func (c *Client) SendInvoiceEmail(ctx context.Context, to string, invoice *models.Invoice, paymentURL string) error {
+	log.Printf("Mock: Sending invoice email to %s for invoice %s", to, invoice.InvoiceNumber)
+	log.Printf("Mock: *** PAYMENT LINK: %s ***", paymentURL)
+
+	subject := fmt.Sprintf("Invoice %s from ServicePro", invoice.InvoiceNumber)
+	body := fmt.Sprintf("Invoice #%s - Total: $%s. Pay here: %s",
+		invoice.InvoiceNumber, invoice.TotalAmount.StringFixed(2), paymentURL)
+
+	msg := email.NewEmailMessage(to, subject, body)
+	_, err := c.Send(ctx, msg)
+	return err
+}
+
+// SendPaymentReceiptEmail implements email.Client
+func (c *Client) SendPaymentReceiptEmail(ctx context.Context, to string, invoice *models.Invoice) error {
+	log.Printf("Mock: Sending payment receipt email to %s for invoice %s", to, invoice.InvoiceNumber)
+
+	subject := fmt.Sprintf("Payment Receipt for Invoice %s - ServicePro", invoice.InvoiceNumber)
+	body := fmt.Sprintf("Payment received for Invoice #%s - Amount Paid: $%s. Thank you!",
+		invoice.InvoiceNumber, invoice.AmountPaid.StringFixed(2))
+
+	msg := email.NewEmailMessage(to, subject, body)
 	_, err := c.Send(ctx, msg)
 	return err
 }

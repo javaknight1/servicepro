@@ -1,10 +1,23 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { DashboardLayout } from '@components/layout';
-import { Button } from '@components/shared';
-import { invoiceService, Invoice } from '@services/invoiceService';
+import { Button, Badge } from '@components/shared';
+import {
+  invoiceService,
+  Invoice,
+  InvoiceStatus,
+} from '@services/invoiceService';
 import { customerService, Customer } from '@services/customerService';
-import { ArrowLeft, Save, Trash2, Loader2, Plus, X } from 'lucide-react';
+import {
+  ArrowLeft,
+  Save,
+  Trash2,
+  Loader2,
+  Plus,
+  X,
+  Send,
+  Mail,
+} from 'lucide-react';
 
 interface InvoiceFormData {
   customer_id: string;
@@ -50,7 +63,14 @@ export function InvoiceDetailPage() {
   const [isLoadingCustomers, setIsLoadingCustomers] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [invoiceStatus, setInvoiceStatus] = useState<InvoiceStatus>(
+    InvoiceStatus.DRAFT
+  );
+  const [invoiceNumber, setInvoiceNumber] = useState<string>('');
+  const [showSendConfirmation, setShowSendConfirmation] = useState(false);
+  const [customerEmail, setCustomerEmail] = useState<string>('');
 
   useEffect(() => {
     loadCustomers();
@@ -106,6 +126,13 @@ export function InvoiceDetailPage() {
             unit_price: line.unit_price,
           }))
         );
+      }
+      // Set invoice status and number
+      setInvoiceStatus(invoice.status || InvoiceStatus.DRAFT);
+      setInvoiceNumber(invoice.invoice_number || '');
+      // Set customer email if available
+      if (invoice.customer?.email) {
+        setCustomerEmail(invoice.customer.email);
       }
     } catch (err) {
       console.error('Failed to load invoice:', err);
@@ -249,6 +276,62 @@ export function InvoiceDetailPage() {
     }
   };
 
+  const handleSendInvoice = async () => {
+    if (!id || isNew) return;
+
+    setIsSending(true);
+    setError(null);
+    try {
+      const updatedInvoice = await invoiceService.sendInvoice(id);
+      setInvoiceStatus(updatedInvoice.status || InvoiceStatus.SENT);
+      setShowSendConfirmation(false);
+      // Show success message or navigate
+      alert('Invoice sent successfully!');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (err: any) {
+      console.error('Failed to send invoice:', err);
+      setError(
+        err?.response?.data?.message ||
+          err?.response?.data?.error ||
+          'Failed to send invoice'
+      );
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  // Update customer email when customer selection changes
+  const handleCustomerChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const { value } = e.target;
+    setFormData((prev) => ({ ...prev, customer_id: value }));
+    const selectedCustomer = customers.find((c) => c.id === value);
+    if (selectedCustomer?.email) {
+      setCustomerEmail(selectedCustomer.email);
+    } else {
+      setCustomerEmail('');
+    }
+  };
+
+  const getStatusBadgeVariant = (
+    status: InvoiceStatus
+  ): 'success' | 'warning' | 'error' | 'info' | 'neutral' => {
+    switch (status) {
+      case InvoiceStatus.PAID:
+        return 'success';
+      case InvoiceStatus.SENT:
+      case InvoiceStatus.VIEWED:
+        return 'info';
+      case InvoiceStatus.OVERDUE:
+        return 'error';
+      case InvoiceStatus.PARTIALLY_PAID:
+        return 'warning';
+      case InvoiceStatus.CANCELLED:
+        return 'neutral';
+      default:
+        return 'neutral';
+    }
+  };
+
   if (isLoading) {
     return (
       <DashboardLayout>
@@ -262,18 +345,48 @@ export function InvoiceDetailPage() {
   return (
     <DashboardLayout>
       <div className="p-6 lg:p-8 max-w-4xl mx-auto">
-        <div className="flex items-center gap-4 mb-6">
-          <Button
-            variant="ghost"
-            onClick={() => navigate('/invoices')}
-            className="flex items-center gap-2"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back
-          </Button>
-          <h1 className="text-2xl font-bold text-neutral-900">
-            {isNew ? 'Create Invoice' : 'Edit Invoice'}
-          </h1>
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              onClick={() => navigate('/invoices')}
+              className="flex items-center gap-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back
+            </Button>
+            <h1 className="text-2xl font-bold text-neutral-900">
+              {isNew ? 'Create Invoice' : `Invoice ${invoiceNumber}`}
+            </h1>
+            {!isNew && (
+              <Badge variant={getStatusBadgeVariant(invoiceStatus)}>
+                {invoiceStatus.charAt(0).toUpperCase() +
+                  invoiceStatus.slice(1).replace('_', ' ')}
+              </Badge>
+            )}
+          </div>
+          {!isNew && invoiceStatus === InvoiceStatus.DRAFT && (
+            <Button
+              type="button"
+              variant="primary"
+              onClick={() => setShowSendConfirmation(true)}
+              className="flex items-center gap-2"
+            >
+              <Send className="h-4 w-4" />
+              Send Invoice
+            </Button>
+          )}
+          {!isNew && invoiceStatus === InvoiceStatus.SENT && (
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setShowSendConfirmation(true)}
+              className="flex items-center gap-2"
+            >
+              <Send className="h-4 w-4" />
+              Resend Invoice
+            </Button>
+          )}
         </div>
 
         {error && (
@@ -300,7 +413,7 @@ export function InvoiceDetailPage() {
                   id="customer_id"
                   name="customer_id"
                   value={formData.customer_id}
-                  onChange={handleChange}
+                  onChange={handleCustomerChange}
                   required
                   disabled={isLoadingCustomers}
                   className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
@@ -580,6 +693,72 @@ export function InvoiceDetailPage() {
             </div>
           </div>
         </form>
+
+        {/* Send Confirmation Modal */}
+        {showSendConfirmation && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 bg-primary-100 rounded-full">
+                  <Mail className="h-6 w-6 text-primary-600" />
+                </div>
+                <h2 className="text-xl font-semibold text-neutral-900">
+                  {invoiceStatus === InvoiceStatus.SENT
+                    ? 'Resend Invoice'
+                    : 'Send Invoice'}
+                </h2>
+              </div>
+
+              <p className="text-neutral-600 mb-4">
+                {invoiceStatus === InvoiceStatus.SENT
+                  ? 'This will generate a new payment link and send the invoice again to:'
+                  : 'This will send the invoice with a payment link to:'}
+              </p>
+
+              <div
+                data-testid="send-confirmation"
+                className="p-3 bg-neutral-100 rounded-lg mb-6"
+              >
+                <p className="font-medium text-neutral-900">
+                  {customerEmail || 'No email address available'}
+                </p>
+              </div>
+
+              {!customerEmail && (
+                <p className="text-amber-600 text-sm mb-4">
+                  Warning: The customer does not have an email address. The
+                  invoice will be marked as sent but no email will be delivered.
+                </p>
+              )}
+
+              <div className="flex justify-end gap-3">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setShowSendConfirmation(false)}
+                  disabled={isSending}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  variant="primary"
+                  onClick={handleSendInvoice}
+                  disabled={isSending}
+                  data-testid="confirm-send"
+                  className="flex items-center gap-2"
+                >
+                  {isSending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
+                  {isSending ? 'Sending...' : 'Confirm & Send'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </DashboardLayout>
   );
