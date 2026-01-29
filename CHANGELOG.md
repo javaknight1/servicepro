@@ -2,6 +2,22 @@
 
 All notable changes to ServicePro will be documented in this file.
 
+## [0.5.0] - 2026-01-29
+
+### Release Features
+
+| Type             | Description                                                                     | Commit                                                                                                 |
+| ---------------- | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| ✨ Features      | Added ability to add users to jobs                                              | [`3a56f9e`](https://github.com/javaknight1/servicepro/commit/3a56f9e69b17538d542979c5d2658c887f72a0d3) |
+| ✨ Features      | Create entire pipeline for creating and sending invoices and accepting payments | [`b76480c`](https://github.com/javaknight1/servicepro/commit/b76480c37a65e46623214586e7dee13cae447e61) |
+| 🎯 Minor Changes | Created pages with links in footer                                              | [`0d7218c`](https://github.com/javaknight1/servicepro/commit/0d7218c96c8945a6d78f0e143f4b98d344b30db1) |
+
+### Dev Features
+
+| Type     | Description                                | Commit                                                                                                 |
+| -------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
+| ✅ Tests | Fixed some backend unit tests for invoices | [`7640b6a`](https://github.com/javaknight1/servicepro/commit/7640b6a4fcab5c6a572053e22b99204884b6bf86) |
+
 ## [0.4.0] - 2026-01-28
 
 ### Release Features

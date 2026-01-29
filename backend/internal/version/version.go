@@ -2,7 +2,7 @@
 package version
 
 var (
-	Version   = "0.4.0"
-	GitCommit = "0a43808"
-	BuildTime = "2026-01-28T03:16:47Z"
+	Version   = "0.5.0"
+	GitCommit = "7640b6a"
+	BuildTime = "2026-01-29T03:37:51Z"
 )
