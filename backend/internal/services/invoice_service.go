@@ -46,6 +46,7 @@ var (
 type InvoiceService struct {
 	db          *gorm.DB
 	emailClient email.Client
+	pdfService  *DocumentPDFService
 	frontendURL string
 	backendURL  string
 }
@@ -53,6 +54,7 @@ type InvoiceService struct {
 // InvoiceServiceConfig holds configuration for the invoice service
 type InvoiceServiceConfig struct {
 	EmailClient email.Client
+	PDFService  *DocumentPDFService
 	FrontendURL string
 	BackendURL  string
 }
@@ -67,6 +69,7 @@ func NewInvoiceServiceWithConfig(db *gorm.DB, cfg *InvoiceServiceConfig) *Invoic
 	svc := &InvoiceService{db: db}
 	if cfg != nil {
 		svc.emailClient = cfg.EmailClient
+		svc.pdfService = cfg.PDFService
 		svc.frontendURL = cfg.FrontendURL
 		svc.backendURL = cfg.BackendURL
 	}
@@ -721,7 +724,7 @@ func (s *InvoiceService) generatePaymentToken() (string, error) {
 	return base64.URLEncoding.EncodeToString(bytes), nil
 }
 
-// sendInvoiceEmail sends the invoice email to the customer
+// sendInvoiceEmail sends the invoice email to the customer with PDF attachment
 func (s *InvoiceService) sendInvoiceEmail(invoice *models.Invoice) {
 	if invoice.Customer == nil || invoice.PaymentToken == nil {
 		log.Printf("[INVOICE-SERVICE] Cannot send invoice email: missing customer or payment token")
@@ -733,15 +736,40 @@ func (s *InvoiceService) sendInvoiceEmail(invoice *models.Invoice) {
 	// Build payment URL - points to backend API which redirects to Stripe Checkout
 	paymentURL := fmt.Sprintf("%s/api/v1/public/invoices/pay/%s", s.backendURL, *invoice.PaymentToken)
 
+	var pdfAttachment *email.Attachment
+	var downloadURL string
+
+	// Generate PDF if PDF service is configured
+	if s.pdfService != nil {
+		pdfResult, err := s.pdfService.GenerateInvoicePDF(ctx, invoice)
+		if err != nil {
+			log.Printf("[INVOICE-SERVICE] Failed to generate PDF for invoice %s: %v", invoice.InvoiceNumber, err)
+		} else {
+			pdfAttachment = &email.Attachment{
+				Filename:    pdfResult.FileName,
+				Content:     pdfResult.Content,
+				ContentType: "application/pdf",
+			}
+
+			// Get download URL
+			url, _, err := s.pdfService.GetInvoicePDFURL(ctx, invoice.ID)
+			if err != nil {
+				log.Printf("[INVOICE-SERVICE] Failed to get download URL for invoice %s: %v", invoice.InvoiceNumber, err)
+			} else {
+				downloadURL = url
+			}
+		}
+	}
+
 	// Send invoice email
-	if err := s.emailClient.SendInvoiceEmail(ctx, invoice.Customer.Email, invoice, paymentURL); err != nil {
+	if err := s.emailClient.SendInvoiceEmail(ctx, invoice.Customer.Email, invoice, paymentURL, pdfAttachment, downloadURL); err != nil {
 		log.Printf("[INVOICE-SERVICE] Failed to send invoice email to %s: %v", invoice.Customer.Email, err)
 	} else {
 		log.Printf("[INVOICE-SERVICE] Invoice email sent to %s for invoice %s", invoice.Customer.Email, invoice.InvoiceNumber)
 	}
 }
 
-// SendReceiptEmail sends a payment receipt email to the customer
+// SendReceiptEmail sends a payment receipt email to the customer with PDF attachment
 func (s *InvoiceService) SendReceiptEmail(invoice *models.Invoice) {
 	if s.emailClient == nil || invoice.Customer == nil {
 		log.Printf("[INVOICE-SERVICE] Cannot send receipt email: missing email client or customer")
@@ -750,9 +778,159 @@ func (s *InvoiceService) SendReceiptEmail(invoice *models.Invoice) {
 
 	ctx := context.Background()
 
-	if err := s.emailClient.SendPaymentReceiptEmail(ctx, invoice.Customer.Email, invoice); err != nil {
+	var pdfAttachment *email.Attachment
+	var downloadURL string
+
+	// Generate receipt PDF if PDF service is configured
+	if s.pdfService != nil {
+		pdfResult, err := s.pdfService.GenerateReceiptPDF(ctx, invoice)
+		if err != nil {
+			log.Printf("[INVOICE-SERVICE] Failed to generate receipt PDF for invoice %s: %v", invoice.InvoiceNumber, err)
+		} else {
+			pdfAttachment = &email.Attachment{
+				Filename:    pdfResult.FileName,
+				Content:     pdfResult.Content,
+				ContentType: "application/pdf",
+			}
+
+			// Get download URL
+			url, _, err := s.pdfService.GetReceiptPDFURL(ctx, invoice.ID)
+			if err != nil {
+				log.Printf("[INVOICE-SERVICE] Failed to get download URL for receipt %s: %v", invoice.InvoiceNumber, err)
+			} else {
+				downloadURL = url
+			}
+		}
+	}
+
+	// Send receipt email
+	if err := s.emailClient.SendPaymentReceiptEmail(ctx, invoice.Customer.Email, invoice, pdfAttachment, downloadURL); err != nil {
 		log.Printf("[INVOICE-SERVICE] Failed to send receipt email to %s: %v", invoice.Customer.Email, err)
 	} else {
 		log.Printf("[INVOICE-SERVICE] Receipt email sent to %s for invoice %s", invoice.Customer.Email, invoice.InvoiceNumber)
 	}
+}
+
+// GetInvoicePDFURL returns a presigned URL for downloading the invoice PDF
+func (s *InvoiceService) GetInvoicePDFURL(ctx context.Context, id uuid.UUID) (string, time.Time, error) {
+	// Verify invoice exists
+	invoice, err := s.GetInvoice(ctx, id)
+	if err != nil {
+		return "", time.Time{}, err
+	}
+
+	if s.pdfService == nil {
+		return "", time.Time{}, errors.New("PDF service not configured")
+	}
+
+	// Check if PDF exists, generate if not
+	url, expiresAt, err := s.pdfService.GetInvoicePDFURL(ctx, id)
+	if err != nil {
+		// PDF doesn't exist, generate it first
+		_, err = s.pdfService.GenerateInvoicePDF(ctx, invoice)
+		if err != nil {
+			return "", time.Time{}, fmt.Errorf("failed to generate invoice PDF: %w", err)
+		}
+
+		// Try to get URL again
+		url, expiresAt, err = s.pdfService.GetInvoicePDFURL(ctx, id)
+		if err != nil {
+			return "", time.Time{}, fmt.Errorf("failed to get invoice PDF URL: %w", err)
+		}
+	}
+
+	return url, expiresAt, nil
+}
+
+// DownloadInvoicePDF returns the invoice PDF content directly
+func (s *InvoiceService) DownloadInvoicePDF(ctx context.Context, id uuid.UUID) ([]byte, string, error) {
+	// Verify invoice exists
+	invoice, err := s.GetInvoice(ctx, id)
+	if err != nil {
+		return nil, "", err
+	}
+
+	if s.pdfService == nil {
+		return nil, "", errors.New("PDF service not configured")
+	}
+
+	// Try to download existing PDF
+	content, filename, err := s.pdfService.DownloadInvoicePDF(ctx, id)
+	if err != nil {
+		// PDF doesn't exist, generate it first
+		result, genErr := s.pdfService.GenerateInvoicePDF(ctx, invoice)
+		if genErr != nil {
+			return nil, "", fmt.Errorf("failed to generate invoice PDF: %w", genErr)
+		}
+		return result.Content, result.FileName, nil
+	}
+
+	return content, filename, nil
+}
+
+// GetReceiptPDFURL returns a presigned URL for downloading the receipt PDF
+func (s *InvoiceService) GetReceiptPDFURL(ctx context.Context, id uuid.UUID) (string, time.Time, error) {
+	// Verify invoice exists
+	invoice, err := s.GetInvoice(ctx, id)
+	if err != nil {
+		return "", time.Time{}, err
+	}
+
+	// Only allow receipt download for paid invoices
+	if invoice.Status != models.InvoiceStatusPaid {
+		return "", time.Time{}, errors.New("receipt only available for paid invoices")
+	}
+
+	if s.pdfService == nil {
+		return "", time.Time{}, errors.New("PDF service not configured")
+	}
+
+	// Check if PDF exists, generate if not
+	url, expiresAt, err := s.pdfService.GetReceiptPDFURL(ctx, id)
+	if err != nil {
+		// PDF doesn't exist, generate it first
+		_, err = s.pdfService.GenerateReceiptPDF(ctx, invoice)
+		if err != nil {
+			return "", time.Time{}, fmt.Errorf("failed to generate receipt PDF: %w", err)
+		}
+
+		// Try to get URL again
+		url, expiresAt, err = s.pdfService.GetReceiptPDFURL(ctx, id)
+		if err != nil {
+			return "", time.Time{}, fmt.Errorf("failed to get receipt PDF URL: %w", err)
+		}
+	}
+
+	return url, expiresAt, nil
+}
+
+// DownloadReceiptPDF returns the receipt PDF content directly
+func (s *InvoiceService) DownloadReceiptPDF(ctx context.Context, id uuid.UUID) ([]byte, string, error) {
+	// Verify invoice exists
+	invoice, err := s.GetInvoice(ctx, id)
+	if err != nil {
+		return nil, "", err
+	}
+
+	// Only allow receipt download for paid invoices
+	if invoice.Status != models.InvoiceStatusPaid {
+		return nil, "", errors.New("receipt only available for paid invoices")
+	}
+
+	if s.pdfService == nil {
+		return nil, "", errors.New("PDF service not configured")
+	}
+
+	// Try to download existing PDF
+	content, filename, err := s.pdfService.DownloadReceiptPDF(ctx, id)
+	if err != nil {
+		// PDF doesn't exist, generate it first
+		result, genErr := s.pdfService.GenerateReceiptPDF(ctx, invoice)
+		if genErr != nil {
+			return nil, "", fmt.Errorf("failed to generate receipt PDF: %w", genErr)
+		}
+		return result.Content, result.FileName, nil
+	}
+
+	return content, filename, nil
 }

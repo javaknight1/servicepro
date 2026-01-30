@@ -2,6 +2,8 @@ package handlers
 
 import (
 	"errors"
+	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -585,6 +587,56 @@ func (h *QuoteHandler) GetQuoteStats(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, stats)
+}
+
+// GetQuotePDF handles GET /api/v1/quotes/:id/pdf
+// @Summary Get quote PDF download URL
+// @Description Returns a presigned URL for downloading the quote PDF
+// @Tags quotes
+// @Accept json
+// @Produce application/pdf
+// @Param id path string true "Quote ID"
+// @Success 200 {file} binary "PDF file"
+// @Failure 400 {object} models.ErrorResponse "Invalid ID"
+// @Failure 404 {object} models.ErrorResponse "Quote not found"
+// @Failure 500 {object} models.ErrorResponse "Internal server error"
+// @Router /api/v1/quotes/{id}/pdf [get]
+func (h *QuoteHandler) GetQuotePDF(c *gin.Context) {
+	// Parse quote ID
+	idStr := c.Param("id")
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Error:   "invalid_id",
+			Message: "Invalid quote ID format",
+		})
+		return
+	}
+
+	// Download PDF content directly
+	content, filename, err := h.quoteService.DownloadQuotePDF(id)
+	if err != nil {
+		if errors.Is(err, services.ErrQuoteNotFound) {
+			c.JSON(http.StatusNotFound, models.ErrorResponse{
+				Error:   "not_found",
+				Message: "Quote not found",
+			})
+			return
+		}
+
+		log.Printf("[QUOTE-HANDLER] Failed to get quote PDF for %s: %v", id, err)
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
+			Error:   "internal_error",
+			Message: "Failed to get quote PDF: " + err.Error(),
+		})
+		return
+	}
+
+	// Stream PDF directly to client
+	c.Header("Content-Type", "application/pdf")
+	c.Header("Content-Disposition", "attachment; filename=\""+filename+"\"")
+	c.Header("Content-Length", fmt.Sprintf("%d", len(content)))
+	c.Data(http.StatusOK, "application/pdf", content)
 }
 
 // getUserIDFromContext extracts user ID from gin context

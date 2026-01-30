@@ -73,13 +73,18 @@ func (m *MockEmailService) Close() error {
 	return args.Error(0)
 }
 
-func (m *MockEmailService) SendInvoiceEmail(ctx context.Context, to string, invoice *models.Invoice, paymentURL string) error {
-	args := m.Called(ctx, to, invoice, paymentURL)
+func (m *MockEmailService) SendQuoteEmail(ctx context.Context, to string, quote *models.Quote, pdfAttachment *email.Attachment, downloadURL string) error {
+	args := m.Called(ctx, to, quote, pdfAttachment, downloadURL)
 	return args.Error(0)
 }
 
-func (m *MockEmailService) SendPaymentReceiptEmail(ctx context.Context, to string, invoice *models.Invoice) error {
-	args := m.Called(ctx, to, invoice)
+func (m *MockEmailService) SendInvoiceEmail(ctx context.Context, to string, invoice *models.Invoice, paymentURL string, pdfAttachment *email.Attachment, downloadURL string) error {
+	args := m.Called(ctx, to, invoice, paymentURL, pdfAttachment, downloadURL)
+	return args.Error(0)
+}
+
+func (m *MockEmailService) SendPaymentReceiptEmail(ctx context.Context, to string, invoice *models.Invoice, pdfAttachment *email.Attachment, downloadURL string) error {
+	args := m.Called(ctx, to, invoice, pdfAttachment, downloadURL)
 	return args.Error(0)
 }
 

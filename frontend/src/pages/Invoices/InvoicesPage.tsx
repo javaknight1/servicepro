@@ -16,6 +16,7 @@ import {
 } from '@services/invoiceService';
 import { Receipt, Plus, Search } from 'lucide-react';
 import { getInvoiceStatusLabel, formatCurrency } from '@app-types';
+import { InvoiceActionsMenu } from '@components/invoices';
 
 export function InvoicesPage() {
   const navigate = useNavigate();
@@ -140,6 +141,18 @@ export function InvoicesPage() {
           </span>
         );
       },
+    },
+    {
+      key: 'actions',
+      header: '',
+      className: 'w-12',
+      render: (_, row) => (
+        <InvoiceActionsMenu
+          invoiceId={row.id}
+          status={row.status}
+          onInvoiceSent={loadInvoices}
+        />
+      ),
     },
   ];
 

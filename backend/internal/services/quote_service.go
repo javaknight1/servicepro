@@ -1,13 +1,17 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"log"
+	"time"
 
 	"github.com/google/uuid"
 
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/repository"
+	"github.com/javaknight1/servicepro/backend/pkg/clients/email"
 )
 
 var (
@@ -41,7 +45,7 @@ type QuoteServiceInterface interface {
 	UpdateQuote(id uuid.UUID, req *models.QuoteRequest, userID uuid.UUID) (*models.QuoteResponse, error)
 	// DeleteQuote soft deletes a quote
 	DeleteQuote(id uuid.UUID) error
-	// SendQuote marks a quote as sent
+	// SendQuote marks a quote as sent and sends email with PDF
 	SendQuote(id uuid.UUID) error
 	// AcceptQuote marks a quote as accepted
 	AcceptQuote(id uuid.UUID) error
@@ -51,6 +55,10 @@ type QuoteServiceInterface interface {
 	GetQuotesByCustomer(customerID uuid.UUID) ([]models.QuoteResponse, error)
 	// GetQuoteStats retrieves quote statistics
 	GetQuoteStats() (*QuoteStats, error)
+	// GetQuotePDFURL returns a presigned URL for downloading the quote PDF
+	GetQuotePDFURL(id uuid.UUID) (string, time.Time, error)
+	// DownloadQuotePDF returns the quote PDF content directly
+	DownloadQuotePDF(id uuid.UUID) ([]byte, string, error)
 }
 
 // QuoteStats represents quote statistics
@@ -65,7 +73,15 @@ type QuoteStats struct {
 
 // QuoteService implements QuoteServiceInterface
 type QuoteService struct {
-	quoteRepo repository.QuoteRepositoryInterface
+	quoteRepo   repository.QuoteRepositoryInterface
+	pdfService  *DocumentPDFService
+	emailClient email.Client
+}
+
+// QuoteServiceConfig holds configuration for the quote service
+type QuoteServiceConfig struct {
+	PDFService  *DocumentPDFService
+	EmailClient email.Client
 }
 
 // NewQuoteService creates a new quote service
@@ -73,6 +89,16 @@ func NewQuoteService(quoteRepo repository.QuoteRepositoryInterface) *QuoteServic
 	return &QuoteService{
 		quoteRepo: quoteRepo,
 	}
+}
+
+// NewQuoteServiceWithConfig creates a new quote service with configuration
+func NewQuoteServiceWithConfig(quoteRepo repository.QuoteRepositoryInterface, cfg *QuoteServiceConfig) *QuoteService {
+	svc := &QuoteService{quoteRepo: quoteRepo}
+	if cfg != nil {
+		svc.pdfService = cfg.PDFService
+		svc.emailClient = cfg.EmailClient
+	}
+	return svc
 }
 
 // CreateQuote creates a new quote
@@ -258,15 +284,126 @@ func (s *QuoteService) DeleteQuote(id uuid.UUID) error {
 	return nil
 }
 
-// SendQuote marks a quote as sent
+// SendQuote marks a quote as sent and sends email with PDF
 func (s *QuoteService) SendQuote(id uuid.UUID) error {
+	// Fetch the quote first
+	quote, err := s.quoteRepo.GetByID(id)
+	if err != nil {
+		return ErrQuoteNotFound
+	}
+
+	// Check if quote can be sent (must be draft)
+	if quote.Status != models.QuoteStatusDraft {
+		return ErrQuoteCannotBeSent
+	}
+
+	// Mark as sent
 	if err := s.quoteRepo.MarkAsSent(id); err != nil {
 		if err.Error() == "quote not found" {
 			return ErrQuoteNotFound
 		}
 		return ErrQuoteCannotBeSent
 	}
+
+	// Send email with PDF asynchronously
+	if s.pdfService != nil && s.emailClient != nil && quote.Customer != nil && quote.Customer.Email != "" {
+		go func() {
+			ctx := context.Background()
+
+			// Generate PDF
+			pdfResult, err := s.pdfService.GenerateQuotePDF(ctx, quote)
+			if err != nil {
+				log.Printf("[QUOTE-SERVICE] Failed to generate PDF for quote %s: %v", quote.QuoteNumber, err)
+				return
+			}
+
+			// Get download URL
+			downloadURL, _, err := s.pdfService.GetQuotePDFURL(ctx, id)
+			if err != nil {
+				log.Printf("[QUOTE-SERVICE] Failed to get download URL for quote %s: %v", quote.QuoteNumber, err)
+				// Continue without download URL
+				downloadURL = ""
+			}
+
+			// Create attachment
+			attachment := &email.Attachment{
+				Filename:    pdfResult.FileName,
+				Content:     pdfResult.Content,
+				ContentType: "application/pdf",
+			}
+
+			// Send email
+			if err := s.emailClient.SendQuoteEmail(ctx, quote.Customer.Email, quote, attachment, downloadURL); err != nil {
+				log.Printf("[QUOTE-SERVICE] Failed to send quote email for %s: %v", quote.QuoteNumber, err)
+				return
+			}
+
+			log.Printf("[QUOTE-SERVICE] Successfully sent quote email for %s to %s", quote.QuoteNumber, quote.Customer.Email)
+		}()
+	}
+
 	return nil
+}
+
+// GetQuotePDFURL returns a presigned URL for downloading the quote PDF
+func (s *QuoteService) GetQuotePDFURL(id uuid.UUID) (string, time.Time, error) {
+	// Verify quote exists
+	quote, err := s.quoteRepo.GetByID(id)
+	if err != nil {
+		return "", time.Time{}, ErrQuoteNotFound
+	}
+
+	if s.pdfService == nil {
+		return "", time.Time{}, errors.New("PDF service not configured")
+	}
+
+	ctx := context.Background()
+
+	// Check if PDF exists, generate if not
+	url, expiresAt, err := s.pdfService.GetQuotePDFURL(ctx, id)
+	if err != nil {
+		// PDF doesn't exist, generate it first
+		_, err = s.pdfService.GenerateQuotePDF(ctx, quote)
+		if err != nil {
+			return "", time.Time{}, fmt.Errorf("failed to generate quote PDF: %w", err)
+		}
+
+		// Try to get URL again
+		url, expiresAt, err = s.pdfService.GetQuotePDFURL(ctx, id)
+		if err != nil {
+			return "", time.Time{}, fmt.Errorf("failed to get quote PDF URL: %w", err)
+		}
+	}
+
+	return url, expiresAt, nil
+}
+
+// DownloadQuotePDF returns the quote PDF content directly
+func (s *QuoteService) DownloadQuotePDF(id uuid.UUID) ([]byte, string, error) {
+	// Verify quote exists
+	quote, err := s.quoteRepo.GetByID(id)
+	if err != nil {
+		return nil, "", ErrQuoteNotFound
+	}
+
+	if s.pdfService == nil {
+		return nil, "", errors.New("PDF service not configured")
+	}
+
+	ctx := context.Background()
+
+	// Try to download existing PDF
+	content, filename, err := s.pdfService.DownloadQuotePDF(ctx, id)
+	if err != nil {
+		// PDF doesn't exist, generate it first
+		result, genErr := s.pdfService.GenerateQuotePDF(ctx, quote)
+		if genErr != nil {
+			return nil, "", fmt.Errorf("failed to generate quote PDF: %w", genErr)
+		}
+		return result.Content, result.FileName, nil
+	}
+
+	return content, filename, nil
 }
 
 // AcceptQuote marks a quote as accepted

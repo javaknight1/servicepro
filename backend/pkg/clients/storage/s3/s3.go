@@ -320,7 +320,16 @@ func (c *Client) GetPresignedURL(ctx context.Context, key string, expiration tim
 		return "", fmt.Errorf("failed to generate presigned URL: %w", err)
 	}
 
-	return presignResult.URL, nil
+	url := presignResult.URL
+
+	// If PublicURL is configured, replace the internal endpoint with the public one
+	// This is needed for Docker/local development where the internal endpoint (e.g., minio:9000)
+	// is not accessible from the browser
+	if c.config.PublicURL != "" && c.config.Endpoint != "" {
+		url = strings.Replace(url, c.config.Endpoint, strings.TrimSuffix(c.config.PublicURL, "/"), 1)
+	}
+
+	return url, nil
 }
 
 // GetPresignedUploadURL implements storage.Client

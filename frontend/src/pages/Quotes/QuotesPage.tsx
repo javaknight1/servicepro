@@ -13,6 +13,7 @@ import { quoteService, QuoteFilters } from '@services/quoteService';
 import type { Quote } from '@app-types/quote';
 import { FileText, Plus, Search } from 'lucide-react';
 import { formatCurrency } from '@app-types';
+import { QuoteActionsMenu } from '@components/quotes';
 
 const getQuoteStatusLabel = (status: string): string => {
   const labels: Record<string, string> = {
@@ -123,6 +124,18 @@ export function QuotesPage() {
         >
           {new Date(value as string).toLocaleDateString()}
         </span>
+      ),
+    },
+    {
+      key: 'actions',
+      header: '',
+      className: 'w-12',
+      render: (_, row) => (
+        <QuoteActionsMenu
+          quoteId={row.id}
+          status={row.status}
+          onQuoteSent={loadQuotes}
+        />
       ),
     },
   ];

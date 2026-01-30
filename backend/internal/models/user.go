@@ -90,6 +90,13 @@ type ErrorResponse struct {
 	Details []string `json:"details,omitempty"`
 }
 
+// PDFDownloadResponse represents a response with PDF download URL
+type PDFDownloadResponse struct {
+	DownloadURL string    `json:"download_url"`
+	ExpiresAt   time.Time `json:"expires_at"`
+	Filename    string    `json:"filename"`
+}
+
 // ProfilePictureUploadResponse represents the response for profile picture upload
 type ProfilePictureUploadResponse struct {
 	ProfilePictureURL string `json:"profile_picture_url"`

@@ -14,7 +14,7 @@ import (
 type Quote struct {
 	ID            uuid.UUID       `json:"id" gorm:"type:uuid;primary_key;default:uuid_generate_v4()"`
 	CustomerID    uuid.UUID       `json:"customer_id" gorm:"type:uuid;not null;index"`
-	Customer      *User           `json:"customer,omitempty" gorm:"foreignKey:CustomerID;constraint:OnDelete:CASCADE"`
+	Customer      *Customer       `json:"customer,omitempty" gorm:"foreignKey:CustomerID;constraint:OnDelete:CASCADE"`
 	QuoteNumber   string          `json:"quote_number" gorm:"type:varchar(50);uniqueIndex;not null"`
 	Status        QuoteStatus     `json:"status" gorm:"type:quote_status;not null;default:'draft';index"`
 	ValidUntil    time.Time       `json:"valid_until" gorm:"not null;index"`

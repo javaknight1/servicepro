@@ -101,7 +101,7 @@ services:
       - S3_COMPATIBLE_SECRET_ACCESS_KEY=minioadmin
       - S3_COMPATIBLE_USE_PATH_STYLE=true
       - S3_COMPATIBLE_DISABLE_SSL=true
-      - S3_COMPATIBLE_PUBLIC_URL=http://localhost:9000/servicepro-uploads
+      - S3_COMPATIBLE_PUBLIC_URL=http://localhost:9000
       # SMTP (Mailpit for local development)
       - SMTP_HOST=mailpit
       - SMTP_PORT=1025

@@ -705,3 +705,81 @@ func (h *InvoiceHandler) CancelInvoice(c *gin.Context) {
 
 	c.JSON(http.StatusOK, invoice)
 }
+
+// GetInvoicePDF godoc
+// @Summary Get invoice PDF download URL
+// @Description Returns a presigned URL for downloading the invoice PDF
+// @Tags invoices
+// @Accept json
+// @Produce json
+// @Param id path string true "Invoice ID"
+// @Success 200 {file} binary "PDF file"
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /invoices/{id}/pdf [get]
+// @Security BearerAuth
+func (h *InvoiceHandler) GetInvoicePDF(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Invalid invoice ID"})
+		return
+	}
+
+	content, filename, err := h.service.DownloadInvoicePDF(ctx, id)
+	if err != nil {
+		if err == services.ErrInvoiceNotFound {
+			c.JSON(http.StatusNotFound, ErrorResponse{Error: "Invoice not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to get invoice PDF: " + err.Error()})
+		return
+	}
+
+	// Stream PDF directly to client
+	c.Header("Content-Type", "application/pdf")
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", filename))
+	c.Header("Content-Length", fmt.Sprintf("%d", len(content)))
+	c.Data(http.StatusOK, "application/pdf", content)
+}
+
+// GetReceiptPDF godoc
+// @Summary Get receipt PDF
+// @Description Downloads the payment receipt PDF directly
+// @Tags invoices
+// @Accept json
+// @Produce application/pdf
+// @Param id path string true "Invoice ID"
+// @Success 200 {file} binary "PDF file"
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /invoices/{id}/receipt/pdf [get]
+// @Security BearerAuth
+func (h *InvoiceHandler) GetReceiptPDF(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Invalid invoice ID"})
+		return
+	}
+
+	content, filename, err := h.service.DownloadReceiptPDF(ctx, id)
+	if err != nil {
+		if err == services.ErrInvoiceNotFound {
+			c.JSON(http.StatusNotFound, ErrorResponse{Error: "Invoice not found"})
+			return
+		}
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
+		return
+	}
+
+	// Stream PDF directly to client
+	c.Header("Content-Type", "application/pdf")
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", filename))
+	c.Header("Content-Length", fmt.Sprintf("%d", len(content)))
+	c.Data(http.StatusOK, "application/pdf", content)
+}

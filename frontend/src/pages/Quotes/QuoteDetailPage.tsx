@@ -5,7 +5,16 @@ import { Button } from '@components/shared';
 import { quoteService } from '@services/quoteService';
 import { customerService, Customer } from '@services/customerService';
 import type { Quote, LineItemFormData } from '@app-types/quote';
-import { ArrowLeft, Save, Trash2, Loader2, Plus, X } from 'lucide-react';
+import {
+  ArrowLeft,
+  Save,
+  Trash2,
+  Loader2,
+  Plus,
+  X,
+  Send,
+  Download,
+} from 'lucide-react';
 
 interface QuoteFormData {
   customer_id: string;
@@ -43,6 +52,9 @@ export function QuoteDetailPage() {
   const [isLoadingCustomers, setIsLoadingCustomers] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isSendingQuote, setIsSendingQuote] = useState(false);
+  const [isDownloadingPDF, setIsDownloadingPDF] = useState(false);
+  const [quoteStatus, setQuoteStatus] = useState<string>('draft');
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -97,6 +109,7 @@ export function QuoteDetailPage() {
           }))
         );
       }
+      setQuoteStatus(quote.status || 'draft');
     } catch (err) {
       console.error('Failed to load quote:', err);
       setError('Failed to load quote details');
@@ -233,6 +246,36 @@ export function QuoteDetailPage() {
     }
   };
 
+  const handleSendQuote = async () => {
+    if (!id || isNew || quoteStatus !== 'draft') return;
+
+    setIsSendingQuote(true);
+    setError(null);
+    try {
+      await quoteService.sendQuote(id);
+      setQuoteStatus('sent');
+    } catch (err: unknown) {
+      console.error('Failed to send quote:', err);
+      const error = err as { response?: { data?: { message?: string } } };
+      setError(error?.response?.data?.message || 'Failed to send quote');
+    } finally {
+      setIsSendingQuote(false);
+    }
+  };
+
+  const handleDownloadPDF = async () => {
+    if (!id || isNew) return;
+
+    setIsDownloadingPDF(true);
+    try {
+      await quoteService.downloadQuotePDF(id);
+    } catch (err) {
+      console.error('Failed to download PDF:', err);
+    } finally {
+      setIsDownloadingPDF(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <DashboardLayout>
@@ -246,18 +289,52 @@ export function QuoteDetailPage() {
   return (
     <DashboardLayout>
       <div className="p-6 lg:p-8 max-w-4xl mx-auto">
-        <div className="flex items-center gap-4 mb-6">
-          <Button
-            variant="ghost"
-            onClick={() => navigate('/quotes')}
-            className="flex items-center gap-2"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back
-          </Button>
-          <h1 className="text-2xl font-bold text-neutral-900">
-            {isNew ? 'Create Quote' : 'Edit Quote'}
-          </h1>
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              onClick={() => navigate('/quotes')}
+              className="flex items-center gap-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back
+            </Button>
+            <h1 className="text-2xl font-bold text-neutral-900">
+              {isNew ? 'Create Quote' : 'Edit Quote'}
+            </h1>
+          </div>
+          {!isNew && (
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={handleSendQuote}
+                disabled={quoteStatus !== 'draft' || isSendingQuote}
+                className="flex items-center gap-2"
+              >
+                {isSendingQuote ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+                Send Quote
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={handleDownloadPDF}
+                disabled={isDownloadingPDF}
+                className="flex items-center gap-2"
+              >
+                {isDownloadingPDF ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Download className="h-4 w-4" />
+                )}
+                Download PDF
+              </Button>
+            </div>
+          )}
         </div>
 
         {error && (

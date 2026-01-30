@@ -100,6 +100,19 @@ func (m *MockQuoteService) GetQuoteStats() (*services.QuoteStats, error) {
 	return args.Get(0).(*services.QuoteStats), args.Error(1)
 }
 
+func (m *MockQuoteService) GetQuotePDFURL(id uuid.UUID) (string, time.Time, error) {
+	args := m.Called(id)
+	return args.String(0), args.Get(1).(time.Time), args.Error(2)
+}
+
+func (m *MockQuoteService) DownloadQuotePDF(id uuid.UUID) ([]byte, string, error) {
+	args := m.Called(id)
+	if args.Get(0) == nil {
+		return nil, "", args.Error(2)
+	}
+	return args.Get(0).([]byte), args.String(1), args.Error(2)
+}
+
 func setupQuoteTestRouter() *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	return gin.New()

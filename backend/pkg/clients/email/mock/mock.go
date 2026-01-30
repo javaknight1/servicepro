@@ -164,29 +164,60 @@ func (c *Client) SendOrganizationInviteEmail(ctx context.Context, to, orgName, i
 	return err
 }
 
+// SendQuoteEmail implements email.Client
+func (c *Client) SendQuoteEmail(ctx context.Context, to string, quote *models.Quote, pdfAttachment *email.Attachment, downloadURL string) error {
+	log.Printf("Mock: Sending quote email to %s for quote %s", to, quote.QuoteNumber)
+	if downloadURL != "" {
+		log.Printf("Mock: *** DOWNLOAD LINK: %s ***", downloadURL)
+	}
+
+	subject := fmt.Sprintf("Quote %s from ServicePro", quote.QuoteNumber)
+	body := fmt.Sprintf("Quote #%s - Total: $%s. Valid until: %s",
+		quote.QuoteNumber, quote.Total.StringFixed(2), quote.ValidUntil.Format("January 2, 2006"))
+
+	msg := email.NewEmailMessage(to, subject, body)
+	if pdfAttachment != nil {
+		msg.WithAttachment(*pdfAttachment)
+	}
+	_, err := c.Send(ctx, msg)
+	return err
+}
+
 // SendInvoiceEmail implements email.Client
-func (c *Client) SendInvoiceEmail(ctx context.Context, to string, invoice *models.Invoice, paymentURL string) error {
+func (c *Client) SendInvoiceEmail(ctx context.Context, to string, invoice *models.Invoice, paymentURL string, pdfAttachment *email.Attachment, downloadURL string) error {
 	log.Printf("Mock: Sending invoice email to %s for invoice %s", to, invoice.InvoiceNumber)
 	log.Printf("Mock: *** PAYMENT LINK: %s ***", paymentURL)
+	if downloadURL != "" {
+		log.Printf("Mock: *** DOWNLOAD LINK: %s ***", downloadURL)
+	}
 
 	subject := fmt.Sprintf("Invoice %s from ServicePro", invoice.InvoiceNumber)
 	body := fmt.Sprintf("Invoice #%s - Total: $%s. Pay here: %s",
 		invoice.InvoiceNumber, invoice.TotalAmount.StringFixed(2), paymentURL)
 
 	msg := email.NewEmailMessage(to, subject, body)
+	if pdfAttachment != nil {
+		msg.WithAttachment(*pdfAttachment)
+	}
 	_, err := c.Send(ctx, msg)
 	return err
 }
 
 // SendPaymentReceiptEmail implements email.Client
-func (c *Client) SendPaymentReceiptEmail(ctx context.Context, to string, invoice *models.Invoice) error {
+func (c *Client) SendPaymentReceiptEmail(ctx context.Context, to string, invoice *models.Invoice, pdfAttachment *email.Attachment, downloadURL string) error {
 	log.Printf("Mock: Sending payment receipt email to %s for invoice %s", to, invoice.InvoiceNumber)
+	if downloadURL != "" {
+		log.Printf("Mock: *** DOWNLOAD LINK: %s ***", downloadURL)
+	}
 
 	subject := fmt.Sprintf("Payment Receipt for Invoice %s - ServicePro", invoice.InvoiceNumber)
 	body := fmt.Sprintf("Payment received for Invoice #%s - Amount Paid: $%s. Thank you!",
 		invoice.InvoiceNumber, invoice.AmountPaid.StringFixed(2))
 
 	msg := email.NewEmailMessage(to, subject, body)
+	if pdfAttachment != nil {
+		msg.WithAttachment(*pdfAttachment)
+	}
 	_, err := c.Send(ctx, msg)
 	return err
 }

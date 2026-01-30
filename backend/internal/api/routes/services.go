@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"context"
 	"log"
 
 	"github.com/redis/go-redis/v9"
@@ -8,6 +9,7 @@ import (
 
 	"github.com/javaknight1/servicepro/backend/config"
 	"github.com/javaknight1/servicepro/backend/internal/services"
+	"github.com/javaknight1/servicepro/backend/internal/services/pdf"
 	permissionsSvc "github.com/javaknight1/servicepro/backend/internal/services/permissions"
 	stripeService "github.com/javaknight1/servicepro/backend/internal/services/stripe"
 	"github.com/javaknight1/servicepro/backend/pkg/auth"
@@ -48,12 +50,33 @@ func SetupServices(
 	// Job service
 	svc.Job = services.NewJobService(repos.Job, repos.Customer, db)
 
-	// Quote service
-	svc.Quote = services.NewQuoteService(repos.Quote)
+	// Document PDF service (for generating quote/invoice/receipt PDFs)
+	var documentPDFService *services.DocumentPDFService
+	if storageClient != nil {
+		pdfConfig := pdf.DefaultConfig()
+		pdfConfig.Storage.Type = "local" // Use local storage for temp files, upload to S3 via storage client
+		pdfConfig.Storage.LocalPath = "./exports/pdf"
+		pdfGenerator, err := pdf.NewGenerator(context.Background(), pdfConfig, nil)
+		if err != nil {
+			log.Printf("[SERVICES] Failed to create PDF generator: %v", err)
+		} else {
+			documentPDFService = services.NewDocumentPDFService(pdfGenerator, storageClient)
+			log.Println("[SERVICES] Document PDF service initialized")
+		}
+	} else {
+		log.Println("[SERVICES] Document PDF service not available (storage client not configured)")
+	}
 
-	// Invoice service (with email client for sending invoices)
+	// Quote service (with PDF and email for sending quotes)
+	svc.Quote = services.NewQuoteServiceWithConfig(repos.Quote, &services.QuoteServiceConfig{
+		PDFService:  documentPDFService,
+		EmailClient: emailClient,
+	})
+
+	// Invoice service (with email client and PDF service for sending invoices)
 	svc.Invoice = services.NewInvoiceServiceWithConfig(db, &services.InvoiceServiceConfig{
 		EmailClient: emailClient,
+		PDFService:  documentPDFService,
 		FrontendURL: cfg.Server.FrontendURL,
 		BackendURL:  cfg.Server.BackendURL,
 	})

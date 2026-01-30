@@ -19,6 +19,10 @@ import (
 	_ "github.com/javaknight1/servicepro/backend/pkg/clients/email/resend"
 	_ "github.com/javaknight1/servicepro/backend/pkg/clients/email/ses"
 	_ "github.com/javaknight1/servicepro/backend/pkg/clients/email/smtp"
+
+	// Storage providers - blank imports to register providers
+	_ "github.com/javaknight1/servicepro/backend/pkg/clients/storage/mock"
+	_ "github.com/javaknight1/servicepro/backend/pkg/clients/storage/s3"
 )
 
 func main() {

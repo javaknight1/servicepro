@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -495,8 +496,43 @@ func (c *Client) SendOrganizationInviteEmail(ctx context.Context, to, orgName, i
 	return err
 }
 
+// SendQuoteEmail implements email.Client
+func (c *Client) SendQuoteEmail(ctx context.Context, to string, quote *models.Quote, pdfAttachment *email.Attachment, downloadURL string) error {
+	customerName := "Valued Customer"
+	if quote.Customer != nil {
+		name := strings.TrimSpace(quote.Customer.FirstName + " " + quote.Customer.LastName)
+		if name != "" {
+			customerName = name
+		} else if quote.Customer.CompanyName != nil && *quote.Customer.CompanyName != "" {
+			customerName = *quote.Customer.CompanyName
+		}
+	}
+
+	subject := fmt.Sprintf("Quote %s from ServicePro", quote.QuoteNumber)
+	body := fmt.Sprintf(`
+		<html>
+		<body>
+			<h1>Quote from ServicePro</h1>
+			<p>Hello %s,</p>
+			<p>Please find your quote details below:</p>
+			<p><strong>Quote Number:</strong> %s</p>
+			<p><strong>Total Amount:</strong> $%s</p>
+			<p><strong>Valid Until:</strong> %s</p>
+			<p>Best regards,<br>The ServicePro Team</p>
+		</body>
+		</html>
+	`, customerName, quote.QuoteNumber, quote.Total.StringFixed(2), quote.ValidUntil.Format("January 2, 2006"))
+
+	msg := email.NewEmailMessage(to, subject, body)
+	if pdfAttachment != nil {
+		msg.WithAttachment(*pdfAttachment)
+	}
+	_, err := c.Send(ctx, msg)
+	return err
+}
+
 // SendInvoiceEmail implements email.Client
-func (c *Client) SendInvoiceEmail(ctx context.Context, to string, invoice *models.Invoice, paymentURL string) error {
+func (c *Client) SendInvoiceEmail(ctx context.Context, to string, invoice *models.Invoice, paymentURL string, pdfAttachment *email.Attachment, downloadURL string) error {
 	customerName := "Valued Customer"
 	if invoice.Customer != nil {
 		if invoice.Customer.CompanyName != nil && *invoice.Customer.CompanyName != "" {
@@ -523,12 +559,15 @@ func (c *Client) SendInvoiceEmail(ctx context.Context, to string, invoice *model
 	`, customerName, invoice.InvoiceNumber, invoice.TotalAmount.StringFixed(2), invoice.DueDate.Format("January 2, 2006"), paymentURL)
 
 	msg := email.NewEmailMessage(to, subject, body)
+	if pdfAttachment != nil {
+		msg.WithAttachment(*pdfAttachment)
+	}
 	_, err := c.Send(ctx, msg)
 	return err
 }
 
 // SendPaymentReceiptEmail implements email.Client
-func (c *Client) SendPaymentReceiptEmail(ctx context.Context, to string, invoice *models.Invoice) error {
+func (c *Client) SendPaymentReceiptEmail(ctx context.Context, to string, invoice *models.Invoice, pdfAttachment *email.Attachment, downloadURL string) error {
 	customerName := "Valued Customer"
 	if invoice.Customer != nil {
 		if invoice.Customer.CompanyName != nil && *invoice.Customer.CompanyName != "" {
@@ -553,6 +592,9 @@ func (c *Client) SendPaymentReceiptEmail(ctx context.Context, to string, invoice
 	`, customerName, invoice.InvoiceNumber, invoice.AmountPaid.StringFixed(2))
 
 	msg := email.NewEmailMessage(to, subject, body)
+	if pdfAttachment != nil {
+		msg.WithAttachment(*pdfAttachment)
+	}
 	_, err := c.Send(ctx, msg)
 	return err
 }

@@ -37,11 +37,20 @@ type Client interface {
 	// userExists indicates whether the user already has an account (affects email content)
 	SendOrganizationInviteEmail(ctx context.Context, to, orgName, inviterName, roleName, actionURL string, userExists bool) error
 
+	// SendQuoteEmail sends a quote email with optional PDF attachment
+	// pdfAttachment can be nil if no attachment is needed
+	// downloadURL is an optional presigned URL for downloading the PDF
+	SendQuoteEmail(ctx context.Context, to string, quote *models.Quote, pdfAttachment *Attachment, downloadURL string) error
+
 	// SendInvoiceEmail sends an invoice email with a payment link to the customer
-	SendInvoiceEmail(ctx context.Context, to string, invoice *models.Invoice, paymentURL string) error
+	// pdfAttachment can be nil if no attachment is needed
+	// downloadURL is an optional presigned URL for downloading the PDF
+	SendInvoiceEmail(ctx context.Context, to string, invoice *models.Invoice, paymentURL string, pdfAttachment *Attachment, downloadURL string) error
 
 	// SendPaymentReceiptEmail sends a payment receipt email to the customer
-	SendPaymentReceiptEmail(ctx context.Context, to string, invoice *models.Invoice) error
+	// pdfAttachment can be nil if no attachment is needed
+	// downloadURL is an optional presigned URL for downloading the PDF
+	SendPaymentReceiptEmail(ctx context.Context, to string, invoice *models.Invoice, pdfAttachment *Attachment, downloadURL string) error
 
 	// Lifecycle methods
 

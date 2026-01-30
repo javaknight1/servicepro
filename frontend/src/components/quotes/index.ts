@@ -14,6 +14,7 @@ export { QuoteDetail } from './QuoteDetail';
 export { QuoteStatusBadge } from './QuoteStatusBadge';
 export { QuoteStatusTimeline } from './QuoteStatusTimeline';
 export { QuoteStatusActions } from './QuoteStatusActions';
+export { QuoteActionsMenu } from './QuoteActionsMenu';
 
 // Hooks
 export {

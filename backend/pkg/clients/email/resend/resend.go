@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/resend/resend-go/v2"
@@ -468,8 +469,134 @@ func (c *Client) SendOrganizationInviteEmail(ctx context.Context, to, orgName, i
 	return err
 }
 
+// SendQuoteEmail implements email.Client
+func (c *Client) SendQuoteEmail(ctx context.Context, to string, quote *models.Quote, pdfAttachment *email.Attachment, downloadURL string) error {
+	// Get customer name
+	customerName := "Valued Customer"
+	if quote.Customer != nil {
+		name := strings.TrimSpace(quote.Customer.FirstName + " " + quote.Customer.LastName)
+		if name != "" {
+			customerName = name
+		} else if quote.Customer.CompanyName != nil && *quote.Customer.CompanyName != "" {
+			customerName = *quote.Customer.CompanyName
+		}
+	}
+
+	subject := fmt.Sprintf("Quote %s from ServicePro", quote.QuoteNumber)
+
+	// Build line items HTML
+	lineItemsHTML := ""
+	for _, item := range quote.Items {
+		lineItemsHTML += fmt.Sprintf(`
+			<tr>
+				<td style="padding: 10px; border-bottom: 1px solid #eee;">%s</td>
+				<td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right;">%s</td>
+				<td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right;">$%s</td>
+				<td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right;">$%s</td>
+			</tr>
+		`, item.Description, item.Quantity.StringFixed(2), item.UnitPrice.StringFixed(2), item.Total.StringFixed(2))
+	}
+
+	// Build download PDF link if provided
+	downloadPDFHTML := ""
+	if downloadURL != "" {
+		downloadPDFHTML = fmt.Sprintf(`
+			<p style="text-align: center; margin-top: 20px;">
+				<a href="%s" style="color: #2196F3; text-decoration: underline;">Download PDF</a>
+			</p>
+		`, downloadURL)
+	}
+
+	body := fmt.Sprintf(`
+		<html>
+		<head>
+			<style>
+				body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+				.container { max-width: 600px; margin: 0 auto; padding: 20px; }
+				.header { background-color: #2196F3; color: white; padding: 20px; text-align: center; }
+				.content { padding: 20px; background-color: #f9f9f9; }
+				.quote-details { margin: 20px 0; }
+				.quote-table { width: 100%%; border-collapse: collapse; margin: 20px 0; }
+				.quote-table th { background-color: #f5f5f5; padding: 10px; text-align: left; border-bottom: 2px solid #ddd; }
+				.totals { margin-top: 20px; }
+				.totals-row { display: flex; justify-content: space-between; padding: 5px 0; }
+				.total-amount { font-size: 24px; font-weight: bold; color: #2196F3; }
+				.valid-until { color: #FF9800; font-weight: bold; }
+			</style>
+		</head>
+		<body>
+			<div class="container">
+				<div class="header">
+					<h1>Quote from ServicePro</h1>
+				</div>
+				<div class="content">
+					<p>Hello %s,</p>
+					<p>Thank you for your interest in our services. Please find your quote details below:</p>
+
+					<div class="quote-details">
+						<p><strong>Quote Number:</strong> %s</p>
+						<p><strong>Quote Date:</strong> %s</p>
+						<p class="valid-until"><strong>Valid Until:</strong> %s</p>
+					</div>
+
+					<table class="quote-table">
+						<thead>
+							<tr>
+								<th>Description</th>
+								<th style="text-align: right;">Qty</th>
+								<th style="text-align: right;">Price</th>
+								<th style="text-align: right;">Total</th>
+							</tr>
+						</thead>
+						<tbody>
+							%s
+						</tbody>
+					</table>
+
+					<div class="totals">
+						<div class="totals-row">
+							<span>Subtotal:</span>
+							<span>$%s</span>
+						</div>
+						<div class="totals-row">
+							<span>Tax:</span>
+							<span>$%s</span>
+						</div>
+						<div class="totals-row total-amount">
+							<span>Total:</span>
+							<span>$%s</span>
+						</div>
+					</div>
+
+					%s
+
+					<p style="margin-top: 30px;">
+						If you have any questions about this quote, please don't hesitate to contact us.
+					</p>
+
+					<p>Best regards,<br>The ServicePro Team</p>
+				</div>
+			</div>
+		</body>
+		</html>
+	`, customerName, quote.QuoteNumber, quote.CreatedAt.Format("January 2, 2006"),
+		quote.ValidUntil.Format("January 2, 2006"), lineItemsHTML,
+		quote.Subtotal.StringFixed(2), quote.TaxAmount.StringFixed(2),
+		quote.Total.StringFixed(2), downloadPDFHTML)
+
+	msg := email.NewEmailMessage(to, subject, body)
+
+	// Attach PDF if provided
+	if pdfAttachment != nil {
+		msg.WithAttachment(*pdfAttachment)
+	}
+
+	_, err := c.Send(ctx, msg)
+	return err
+}
+
 // SendInvoiceEmail implements email.Client
-func (c *Client) SendInvoiceEmail(ctx context.Context, to string, invoice *models.Invoice, paymentURL string) error {
+func (c *Client) SendInvoiceEmail(ctx context.Context, to string, invoice *models.Invoice, paymentURL string, pdfAttachment *email.Attachment, downloadURL string) error {
 	// Get customer name
 	customerName := "Valued Customer"
 	if invoice.Customer != nil {
@@ -494,6 +621,16 @@ func (c *Client) SendInvoiceEmail(ctx context.Context, to string, invoice *model
 				<td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right;">$%s</td>
 			</tr>
 		`, line.Description, line.Quantity.StringFixed(2), line.UnitPrice.StringFixed(2), lineTotal.StringFixed(2))
+	}
+
+	// Build download PDF link if provided
+	downloadPDFHTML := ""
+	if downloadURL != "" {
+		downloadPDFHTML = fmt.Sprintf(`
+			<p style="text-align: center; margin-top: 10px;">
+				<a href="%s" style="color: #2196F3; text-decoration: underline;">Download PDF</a>
+			</p>
+		`, downloadURL)
 	}
 
 	body := fmt.Sprintf(`
@@ -571,6 +708,8 @@ func (c *Client) SendInvoiceEmail(ctx context.Context, to string, invoice *model
 						<a href="%s" class="button">Pay Now</a>
 					</p>
 
+					%s
+
 					<p style="color: #666; font-size: 14px; margin-top: 20px;">
 						Click the button above to pay securely online via Stripe.
 					</p>
@@ -583,15 +722,21 @@ func (c *Client) SendInvoiceEmail(ctx context.Context, to string, invoice *model
 	`, customerName, invoice.InvoiceNumber, invoice.IssueDate.Format("January 2, 2006"),
 		invoice.DueDate.Format("January 2, 2006"), lineItemsHTML,
 		invoice.Subtotal.StringFixed(2), invoice.TaxAmount.StringFixed(2),
-		invoice.TotalAmount.StringFixed(2), paymentURL)
+		invoice.TotalAmount.StringFixed(2), paymentURL, downloadPDFHTML)
 
 	msg := email.NewEmailMessage(to, subject, body)
+
+	// Attach PDF if provided
+	if pdfAttachment != nil {
+		msg.WithAttachment(*pdfAttachment)
+	}
+
 	_, err := c.Send(ctx, msg)
 	return err
 }
 
 // SendPaymentReceiptEmail implements email.Client
-func (c *Client) SendPaymentReceiptEmail(ctx context.Context, to string, invoice *models.Invoice) error {
+func (c *Client) SendPaymentReceiptEmail(ctx context.Context, to string, invoice *models.Invoice, pdfAttachment *email.Attachment, downloadURL string) error {
 	// Get customer name
 	customerName := "Valued Customer"
 	if invoice.Customer != nil {
@@ -616,6 +761,16 @@ func (c *Client) SendPaymentReceiptEmail(ctx context.Context, to string, invoice
 				<td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right;">$%s</td>
 			</tr>
 		`, line.Description, line.Quantity.StringFixed(2), line.UnitPrice.StringFixed(2), lineTotal.StringFixed(2))
+	}
+
+	// Build download PDF link if provided
+	downloadPDFHTML := ""
+	if downloadURL != "" {
+		downloadPDFHTML = fmt.Sprintf(`
+			<p style="text-align: center; margin-top: 20px;">
+				<a href="%s" style="color: #4CAF50; text-decoration: underline;">Download Receipt PDF</a>
+			</p>
+		`, downloadURL)
 	}
 
 	body := fmt.Sprintf(`
@@ -690,6 +845,8 @@ func (c *Client) SendPaymentReceiptEmail(ctx context.Context, to string, invoice
 						</div>
 					</div>
 
+					%s
+
 					<p style="margin-top: 30px;">
 						Thank you for your business! If you have any questions about this payment,
 						please don't hesitate to contact us.
@@ -702,9 +859,15 @@ func (c *Client) SendPaymentReceiptEmail(ctx context.Context, to string, invoice
 		</html>
 	`, customerName, invoice.InvoiceNumber, time.Now().Format("January 2, 2006"),
 		lineItemsHTML, invoice.Subtotal.StringFixed(2), invoice.TaxAmount.StringFixed(2),
-		invoice.AmountPaid.StringFixed(2))
+		invoice.AmountPaid.StringFixed(2), downloadPDFHTML)
 
 	msg := email.NewEmailMessage(to, subject, body)
+
+	// Attach PDF if provided
+	if pdfAttachment != nil {
+		msg.WithAttachment(*pdfAttachment)
+	}
+
 	_, err := c.Send(ctx, msg)
 	return err
 }

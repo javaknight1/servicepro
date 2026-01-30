@@ -59,5 +59,10 @@ func SetupQuoteRoutes(router *gin.RouterGroup, cfg *routeconfigs.RouteConfig) {
 		quotes.POST("/:id/reject",
 			cfg.Middleware.PermMiddleware.RequirePermission(permissions.QuotesApprove),
 			cfg.Handlers.Quote.RejectQuote)
+
+		// Get quote PDF download URL - requires "quotes.read" permission
+		quotes.GET("/:id/pdf",
+			cfg.Middleware.PermMiddleware.RequirePermission(permissions.QuotesRead),
+			cfg.Handlers.Quote.GetQuotePDF)
 	}
 }

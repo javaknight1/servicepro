@@ -63,6 +63,16 @@ func SetupInvoiceRoutes(router *gin.RouterGroup, cfg *routeconfigs.RouteConfig) 
 		invoices.POST("/:id/cancel",
 			cfg.Middleware.PermMiddleware.RequirePermission(permissions.InvoicesUpdate),
 			cfg.Handlers.Invoice.CancelInvoice)
+
+		// Get invoice PDF download URL - requires "invoices.read" permission
+		invoices.GET("/:id/pdf",
+			cfg.Middleware.PermMiddleware.RequirePermission(permissions.InvoicesRead),
+			cfg.Handlers.Invoice.GetInvoicePDF)
+
+		// Get receipt PDF download URL - requires "invoices.read" permission
+		invoices.GET("/:id/receipt/pdf",
+			cfg.Middleware.PermMiddleware.RequirePermission(permissions.InvoicesRead),
+			cfg.Handlers.Invoice.GetReceiptPDF)
 	}
 
 	// Public invoice routes (e.g., for customer portal)

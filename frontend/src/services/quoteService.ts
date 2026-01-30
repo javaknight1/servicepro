@@ -1,6 +1,12 @@
 import api from './api';
 import { Quote, QuoteListResponse, QuoteStats } from '../types/quote';
 
+export interface PDFDownloadResponse {
+  download_url: string;
+  expires_at: string;
+  filename: string;
+}
+
 export interface QuoteFilters {
   customer_id?: string;
   status?: string;
@@ -119,6 +125,46 @@ class QuoteService {
       `/v1/customers/${customerId}/quotes`
     );
     return response.data;
+  }
+
+  /**
+   * Get quote PDF download URL (legacy - returns URL)
+   */
+  async getQuotePDF(id: string): Promise<PDFDownloadResponse> {
+    const response = await api.get<PDFDownloadResponse>(
+      `${this.basePath}/${id}/pdf`
+    );
+    return response.data;
+  }
+
+  /**
+   * Download quote PDF directly and trigger browser download
+   */
+  async downloadQuotePDF(id: string, filename?: string): Promise<void> {
+    const response = await api.get(`${this.basePath}/${id}/pdf`, {
+      responseType: 'blob',
+    });
+
+    // Get filename from Content-Disposition header or use provided/default
+    const contentDisposition = response.headers['content-disposition'];
+    let downloadFilename = filename || `quote-${id}.pdf`;
+    if (contentDisposition) {
+      const match = contentDisposition.match(/filename="?([^"]+)"?/);
+      if (match) {
+        downloadFilename = match[1];
+      }
+    }
+
+    // Create blob URL and trigger download
+    const blob = new Blob([response.data], { type: 'application/pdf' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = downloadFilename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
   }
 }
 

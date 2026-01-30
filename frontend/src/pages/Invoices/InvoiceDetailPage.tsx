@@ -17,6 +17,8 @@ import {
   X,
   Send,
   Mail,
+  Download,
+  FileText,
 } from 'lucide-react';
 
 interface InvoiceFormData {
@@ -64,6 +66,8 @@ export function InvoiceDetailPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [isDownloadingInvoice, setIsDownloadingInvoice] = useState(false);
+  const [isDownloadingReceipt, setIsDownloadingReceipt] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [invoiceStatus, setInvoiceStatus] = useState<InvoiceStatus>(
     InvoiceStatus.DRAFT
@@ -300,6 +304,32 @@ export function InvoiceDetailPage() {
     }
   };
 
+  const handleDownloadInvoicePDF = async () => {
+    if (!id || isNew) return;
+
+    setIsDownloadingInvoice(true);
+    try {
+      await invoiceService.downloadInvoicePDF(id);
+    } catch (err) {
+      console.error('Failed to download invoice PDF:', err);
+    } finally {
+      setIsDownloadingInvoice(false);
+    }
+  };
+
+  const handleDownloadReceiptPDF = async () => {
+    if (!id || isNew) return;
+
+    setIsDownloadingReceipt(true);
+    try {
+      await invoiceService.downloadReceiptPDF(id);
+    } catch (err) {
+      console.error('Failed to download receipt PDF:', err);
+    } finally {
+      setIsDownloadingReceipt(false);
+    }
+  };
+
   // Update customer email when customer selection changes
   const handleCustomerChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const { value } = e.target;
@@ -386,6 +416,40 @@ export function InvoiceDetailPage() {
               <Send className="h-4 w-4" />
               Resend Invoice
             </Button>
+          )}
+          {!isNew && (
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={handleDownloadInvoicePDF}
+                disabled={isDownloadingInvoice}
+                className="flex items-center gap-2"
+              >
+                {isDownloadingInvoice ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Download className="h-4 w-4" />
+                )}
+                Download PDF
+              </Button>
+              {invoiceStatus === InvoiceStatus.PAID && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={handleDownloadReceiptPDF}
+                  disabled={isDownloadingReceipt}
+                  className="flex items-center gap-2"
+                >
+                  {isDownloadingReceipt ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <FileText className="h-4 w-4" />
+                  )}
+                  Download Receipt
+                </Button>
+              )}
+            </div>
           )}
         </div>
 

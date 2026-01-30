@@ -140,6 +140,45 @@ type QuoteData struct {
 	AcceptanceTerms string `json:"acceptance_terms,omitempty"`
 }
 
+// ReceiptData contains data for receipt generation
+type ReceiptData struct {
+	BaseDocumentData
+
+	// Receipt specific fields
+	ReceiptNumber    string    `json:"receipt_number"`
+	InvoiceNumber    string    `json:"invoice_number"`
+	PaymentDate      time.Time `json:"payment_date"`
+	PaymentMethod    string    `json:"payment_method,omitempty"`
+	PaymentReference string    `json:"payment_reference,omitempty"`
+
+	// Line items (same as invoice)
+	LineItems []InvoiceLineItem `json:"line_items"`
+
+	// Totals
+	Subtotal   float64 `json:"subtotal"`
+	TaxRate    float64 `json:"tax_rate"`
+	TaxAmount  float64 `json:"tax_amount"`
+	Discount   float64 `json:"discount,omitempty"`
+	Total      float64 `json:"total"`
+	AmountPaid float64 `json:"amount_paid"`
+}
+
+// GetType returns the template type for receipt
+func (d *ReceiptData) GetType() TemplateType {
+	return TemplateTypeReceipt
+}
+
+// Validate validates receipt data
+func (d *ReceiptData) Validate() error {
+	if d.ReceiptNumber == "" && d.DocumentNumber == "" {
+		return fmt.Errorf("%w: receipt number required", ErrInvalidContent)
+	}
+	if d.CustomerName == "" {
+		return fmt.Errorf("%w: customer name required", ErrInvalidContent)
+	}
+	return nil
+}
+
 // QuoteLineItem represents a line item on a quote
 type QuoteLineItem struct {
 	Description string  `json:"description"`
@@ -327,6 +366,7 @@ func NewTemplateRegistry() *TemplateRegistry {
 	// Register default templates
 	r.RegisterTemplate(TemplateTypeInvoice, renderInvoiceTemplate)
 	r.RegisterTemplate(TemplateTypeQuote, renderQuoteTemplate)
+	r.RegisterTemplate(TemplateTypeReceipt, renderReceiptTemplate)
 	r.RegisterTemplate(TemplateTypeWorkOrder, renderWorkOrderTemplate)
 	r.RegisterTemplate(TemplateTypeServiceReport, renderServiceReportTemplate)
 
@@ -734,6 +774,122 @@ func renderServiceReportTemplate(pdf *gofpdf.Fpdf, data TemplateData, config *Co
 	renderSignatureBlock(pdf, config, "Technician Signature:", reportData.TechnicianSignature)
 
 	return nil
+}
+
+// renderReceiptTemplate renders a payment receipt document
+func renderReceiptTemplate(pdf *gofpdf.Fpdf, data TemplateData, config *Config) error {
+	receiptData, ok := data.(*ReceiptData)
+	if !ok {
+		return fmt.Errorf("%w: expected ReceiptData", ErrInvalidContent)
+	}
+
+	receiptNumber := receiptData.ReceiptNumber
+	if receiptNumber == "" {
+		receiptNumber = receiptData.DocumentNumber
+	}
+
+	// Render header
+	renderDocumentHeader(pdf, config, "PAYMENT RECEIPT", receiptNumber)
+
+	// Add PAID stamp
+	renderPaidStamp(pdf, config)
+
+	// Customer info section
+	pdf.SetY(pdf.GetY() + 5)
+	renderCustomerSection(pdf, config, &receiptData.BaseDocumentData)
+
+	// Receipt details
+	pdf.SetY(pdf.GetY() + 5)
+	renderKeyValuePair(pdf, config, "Receipt Date:", formatDate(receiptData.PaymentDate))
+	renderKeyValuePair(pdf, config, "Invoice Number:", receiptData.InvoiceNumber)
+	if receiptData.PaymentMethod != "" {
+		renderKeyValuePair(pdf, config, "Payment Method:", receiptData.PaymentMethod)
+	}
+	if receiptData.PaymentReference != "" {
+		renderKeyValuePair(pdf, config, "Reference:", receiptData.PaymentReference)
+	}
+
+	// Line items table
+	pdf.SetY(pdf.GetY() + 10)
+	headers := []string{"Description", "Qty", "Unit Price", "Amount"}
+	widths := []float64{90, 20, 35, 35}
+
+	var rows [][]string
+	for _, item := range receiptData.LineItems {
+		rows = append(rows, []string{
+			item.Description,
+			fmt.Sprintf("%.2f", item.Quantity),
+			formatCurrency(item.UnitPrice),
+			formatCurrency(item.Amount),
+		})
+	}
+	renderTable(pdf, config, headers, widths, rows)
+
+	// Totals
+	pdf.SetY(pdf.GetY() + 5)
+	totalsX := 145.0
+	renderTotalLine(pdf, config, totalsX, "Subtotal:", receiptData.Subtotal)
+	if receiptData.Discount > 0 {
+		renderTotalLine(pdf, config, totalsX, "Discount:", -receiptData.Discount)
+	}
+	if receiptData.TaxAmount > 0 {
+		taxLabel := fmt.Sprintf("Tax (%.1f%%):", receiptData.TaxRate)
+		renderTotalLine(pdf, config, totalsX, taxLabel, receiptData.TaxAmount)
+	}
+	pdf.SetFont(config.Fonts.DefaultFamily, "B", config.Fonts.SizeBody)
+	renderTotalLine(pdf, config, totalsX, "Total:", receiptData.Total)
+
+	// Amount paid with green styling
+	pdf.SetY(pdf.GetY() + 5)
+	pdf.SetTextColor(34, 139, 34) // Forest green
+	pdf.SetFont(config.Fonts.DefaultFamily, "B", config.Fonts.SizeBody+2)
+	pdf.SetX(totalsX)
+	pdf.Cell(25, 6, "Amount Paid:")
+	pdf.Cell(30, 6, formatCurrency(receiptData.AmountPaid))
+	pdf.SetTextColor(0, 0, 0) // Reset to black
+
+	// Thank you message
+	pdf.SetY(pdf.GetY() + 25)
+	pdf.SetFont(config.Fonts.DefaultFamily, "I", config.Fonts.SizeBody)
+	pdf.SetTextColor(100, 100, 100)
+	pdf.Cell(0, 6, "Thank you for your payment!")
+	pdf.SetTextColor(0, 0, 0)
+
+	// Notes
+	if receiptData.Notes != "" {
+		renderNotesSection(pdf, config, receiptData.Notes)
+	}
+
+	return nil
+}
+
+// renderPaidStamp renders a "PAID" stamp on the receipt
+func renderPaidStamp(pdf *gofpdf.Fpdf, config *Config) {
+	// Save current state
+	currentFont, currentSize := pdf.GetFontSize()
+
+	// Position stamp in upper right area
+	pdf.SetXY(150, 45)
+
+	// Green "PAID" text with border
+	pdf.SetTextColor(34, 139, 34) // Forest green
+	pdf.SetDrawColor(34, 139, 34)
+	pdf.SetFont(config.Fonts.DefaultFamily, "B", 24)
+
+	// Draw border
+	pdf.SetLineWidth(1.5)
+	pdf.Rect(145, 42, 45, 18, "D")
+
+	// Draw text centered in border
+	pdf.SetXY(145, 46)
+	pdf.CellFormat(45, 10, "PAID", "", 0, "C", false, 0, "")
+
+	// Restore state
+	pdf.SetTextColor(0, 0, 0)
+	pdf.SetDrawColor(0, 0, 0)
+	pdf.SetLineWidth(0.2)
+	pdf.SetFont(config.Fonts.DefaultFamily, "", currentSize)
+	_ = currentFont // Font family doesn't need explicit restoration
 }
 
 // =============================================================================

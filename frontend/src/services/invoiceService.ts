@@ -85,6 +85,12 @@ export interface PaymentRequest {
   notes?: string;
 }
 
+export interface PDFDownloadResponse {
+  download_url: string;
+  expires_at: string;
+  filename: string;
+}
+
 class InvoiceService {
   private basePath = '/v1/invoices';
 
@@ -164,6 +170,82 @@ class InvoiceService {
       `/v1/customers/${customerId}/invoices`
     );
     return response.data;
+  }
+
+  /**
+   * Get invoice PDF download URL (legacy)
+   */
+  async getInvoicePDF(id: string): Promise<PDFDownloadResponse> {
+    const response = await api.get<PDFDownloadResponse>(
+      `${this.basePath}/${id}/pdf`
+    );
+    return response.data;
+  }
+
+  /**
+   * Get receipt PDF download URL (legacy)
+   */
+  async getReceiptPDF(id: string): Promise<PDFDownloadResponse> {
+    const response = await api.get<PDFDownloadResponse>(
+      `${this.basePath}/${id}/receipt/pdf`
+    );
+    return response.data;
+  }
+
+  /**
+   * Download invoice PDF directly and trigger browser download
+   */
+  async downloadInvoicePDF(id: string, filename?: string): Promise<void> {
+    const response = await api.get(`${this.basePath}/${id}/pdf`, {
+      responseType: 'blob',
+    });
+
+    const contentDisposition = response.headers['content-disposition'];
+    let downloadFilename = filename || `invoice-${id}.pdf`;
+    if (contentDisposition) {
+      const match = contentDisposition.match(/filename="?([^"]+)"?/);
+      if (match) {
+        downloadFilename = match[1];
+      }
+    }
+
+    const blob = new Blob([response.data], { type: 'application/pdf' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = downloadFilename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  }
+
+  /**
+   * Download receipt PDF directly and trigger browser download
+   */
+  async downloadReceiptPDF(id: string, filename?: string): Promise<void> {
+    const response = await api.get(`${this.basePath}/${id}/receipt/pdf`, {
+      responseType: 'blob',
+    });
+
+    const contentDisposition = response.headers['content-disposition'];
+    let downloadFilename = filename || `receipt-${id}.pdf`;
+    if (contentDisposition) {
+      const match = contentDisposition.match(/filename="?([^"]+)"?/);
+      if (match) {
+        downloadFilename = match[1];
+      }
+    }
+
+    const blob = new Blob([response.data], { type: 'application/pdf' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = downloadFilename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
   }
 }
 
