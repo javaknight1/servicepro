@@ -1,7 +1,8 @@
-.PHONY: help lint lint-fix lint-check test format format-check dev up down migrate
+.PHONY: help lint lint-fix lint-check test format format-check dev up down migrate seed
 .PHONY: test-unit test-integration test-e2e test-all
 .PHONY: coverage ci ci-local ci-lint ci-backend ci-frontend
 .PHONY: docker-dev docker-down docker-clean docker-logs docker-ps
+.PHONY: db-fresh db-fresh-seed db-reset hash-password
 
 # =============================================================================
 # Centralized Tool Versions (used by CI and pre-commit)
@@ -20,7 +21,9 @@ help:
 	@echo "  dev-backend  - Start backend server (requires dev-db)"
 	@echo "  dev-frontend - Start frontend dev server"
 	@echo "  migrate      - Run database migrations"
+	@echo "  seed         - Load dev test data (user, orgs, customers, jobs, quotes)"
 	@echo "  db-reset     - Reset database (WARNING: deletes all data)"
+	@echo "  db-fresh-seed - Reset database AND load test data (recommended for dev)"
 	@echo ""
 	@echo "Setup:"
 	@echo "  setup        - Complete setup (install deps, start db)"
@@ -193,8 +196,16 @@ down: docker-down
 
 migrate:
 	@echo "Running database migrations..."
-	@cat backend/migrations/*.sql | docker exec -i servicepro-postgres psql -U postgres -d servicepro
+	@cat backend/migrations/001_schema.sql | docker exec -i servicepro-postgres psql -U postgres -d servicepro
 	@echo "Migrations complete!"
+
+seed:
+	@echo "Running development seed data..."
+	@cat backend/migrations/002_seed_dev.sql | docker exec -i servicepro-postgres psql -U postgres -d servicepro
+	@echo ""
+	@echo "Seed data loaded!"
+	@echo "  Login: dev@servicepro.local"
+	@echo "  Password: password123"
 
 db-reset:
 	@echo "WARNING: This will delete all data!"
@@ -206,19 +217,51 @@ db-reset:
 		echo "Cancelled."; \
 	fi
 
+# Wait for postgres to be ready (used by other targets)
+db-wait:
+	@echo "Waiting for PostgreSQL to be ready..."
+	@until docker exec servicepro-postgres pg_isready -U postgres -d servicepro > /dev/null 2>&1; do \
+		echo "  PostgreSQL not ready, waiting..."; \
+		sleep 2; \
+	done
+	@echo "PostgreSQL is ready!"
+
 # Quick database fresh start (no confirmation - use for dev)
 db-fresh:
 	@echo "Resetting database..."
 	@docker compose down -v 2>/dev/null || true
-	@docker compose up -d postgres redis minio
-	@echo "Waiting for PostgreSQL to be ready..."
-	@sleep 5
+	@docker compose up -d postgres redis minio mailpit
+	@make db-wait
 	@make migrate
+	@echo ""
 	@echo "Database reset complete!"
+	@echo "Run 'make seed' to add dev test data"
 
-setup: install-deps dev-db migrate
+# Fresh database with seed data (one command for dev)
+db-fresh-seed: db-fresh seed
+	@echo ""
+	@echo "============================================"
+	@echo "Database ready with test data!"
+	@echo ""
+	@echo "Test credentials:"
+	@echo "  Email:    dev@servicepro.local"
+	@echo "  Password: password123"
+	@echo ""
+	@echo "Next: Run 'docker compose up' to start all services"
+	@echo "============================================"
+
+# Generate bcrypt hash for a password (useful for updating seed data)
+# Usage: make hash-password or make hash-password PASSWORD=mysecretpass
+hash-password:
+	@cd backend && go run ../scripts/hash-password.go $(PASSWORD)
+
+setup: install-deps dev-db migrate seed
 	@echo ""
 	@echo "✅ Setup complete!"
+	@echo ""
+	@echo "Test credentials:"
+	@echo "  Email:    dev@servicepro.local"
+	@echo "  Password: password123"
 	@echo ""
 	@echo "Next steps:"
 	@echo "  1. Start backend:  make dev-backend"
