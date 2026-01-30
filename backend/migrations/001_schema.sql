@@ -197,6 +197,16 @@ CREATE TABLE customers (
     customer_type customer_type NOT NULL DEFAULT 'residential',
     status customer_status NOT NULL DEFAULT 'prospect',
     notes TEXT,
+    -- Contact preferences
+    preferred_contact_method VARCHAR(20) NOT NULL DEFAULT 'any',
+    do_not_email BOOLEAN NOT NULL DEFAULT FALSE,
+    do_not_call BOOLEAN NOT NULL DEFAULT FALSE,
+    do_not_sms BOOLEAN NOT NULL DEFAULT FALSE,
+    do_not_mail BOOLEAN NOT NULL DEFAULT FALSE,
+    -- Marketing consent tracking
+    marketing_consent BOOLEAN NOT NULL DEFAULT FALSE,
+    marketing_consent_at TIMESTAMP WITH TIME ZONE,
+    marketing_consent_ip VARCHAR(45), -- Supports IPv6
     search_vector tsvector GENERATED ALWAYS AS (
         setweight(to_tsvector('english', COALESCE(first_name, '')), 'A') ||
         setweight(to_tsvector('english', COALESCE(last_name, '')), 'A') ||

@@ -1,0 +1,79 @@
+# Fly.io Configuration for ServicePro Backend API
+# Documentation: https://fly.io/docs/reference/configuration/
+
+# App name - this becomes your subdomain: servicepro-api.fly.dev
+# You can change this to any unique name
+app = "servicepro-api"
+
+# Primary region where your app runs
+# iad = Ashburn, Virginia (US East) - good default for US users
+# See all regions: https://fly.io/docs/reference/regions/
+primary_region = "iad"
+
+# Build configuration - tells Fly.io to use our Dockerfile
+[build]
+  dockerfile = "Dockerfile"
+
+# Environment variables (non-sensitive only!)
+# Secrets like DATABASE_URL go in `fly secrets set`, not here
+[env]
+  ENV = "production"
+  PORT = "8080"
+  GIN_MODE = "release"
+
+  # Health check configuration
+  HEALTH_ENABLED = "true"
+  HEALTH_CHECK_DATABASE = "true"
+  HEALTH_CHECK_REDIS = "true"
+  HEALTH_CHECK_MEMORY = "true"
+
+# HTTP service configuration
+[http_service]
+  # Port your app listens on inside the container
+  internal_port = 8080
+
+  # Force HTTPS (HTTP requests redirect to HTTPS)
+  force_https = true
+
+  # Auto-start/stop machines based on traffic (saves money)
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+
+  # Minimum machines always running (1 = always available)
+  min_machines_running = 1
+
+  # Which process group to run (default is "app")
+  processes = ["app"]
+
+  # Concurrency settings - how many connections per machine
+  [http_service.concurrency]
+    type = "connections"
+    hard_limit = 250
+    soft_limit = 200
+
+# Health check - Fly.io uses this to know if your app is healthy
+# If health checks fail, Fly.io won't route traffic to that machine
+[[http_service.checks]]
+  # How often to check
+  interval = "30s"
+
+  # How long to wait for response
+  timeout = "5s"
+
+  # Grace period after startup before checking
+  grace_period = "15s"
+
+  # HTTP method and path
+  method = "GET"
+  path = "/health"
+
+# VM configuration - the actual machine specs
+[[vm]]
+  # shared = shared CPU (cheaper), performance = dedicated CPU
+  cpu_kind = "shared"
+
+  # Number of CPUs
+  cpus = 1
+
+  # Memory in MB (256, 512, 1024, 2048, etc.)
+  memory = "512mb"

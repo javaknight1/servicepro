@@ -3,7 +3,11 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { DashboardLayout } from '@components/layout';
 import { Button } from '@components/shared';
 import { customerService } from '@services/customerService';
-import type { CustomerType, CustomerStatus } from '@app-types/customer';
+import type {
+  CustomerType,
+  CustomerStatus,
+  PreferredContactMethod,
+} from '@app-types/customer';
 import { ArrowLeft, Save, Trash2, Loader2 } from 'lucide-react';
 
 interface CustomerFormData {
@@ -24,6 +28,14 @@ interface CustomerFormData {
   customer_type: CustomerType;
   status: CustomerStatus;
   notes: string;
+  // Contact preferences
+  preferred_contact_method: PreferredContactMethod;
+  do_not_email: boolean;
+  do_not_call: boolean;
+  do_not_sms: boolean;
+  do_not_mail: boolean;
+  // Marketing consent
+  marketing_consent: boolean;
 }
 
 const initialFormData: CustomerFormData = {
@@ -44,6 +56,14 @@ const initialFormData: CustomerFormData = {
   customer_type: 'residential',
   status: 'prospect',
   notes: '',
+  // Contact preferences
+  preferred_contact_method: 'any',
+  do_not_email: false,
+  do_not_call: false,
+  do_not_sms: false,
+  do_not_mail: false,
+  // Marketing consent
+  marketing_consent: false,
 };
 
 export function CustomerDetailPage() {
@@ -87,6 +107,14 @@ export function CustomerDetailPage() {
         customer_type: customer.customer_type || 'residential',
         status: customer.status || 'prospect',
         notes: customer.notes || '',
+        // Contact preferences
+        preferred_contact_method: customer.preferred_contact_method || 'any',
+        do_not_email: customer.do_not_email || false,
+        do_not_call: customer.do_not_call || false,
+        do_not_sms: customer.do_not_sms || false,
+        do_not_mail: customer.do_not_mail || false,
+        // Marketing consent
+        marketing_consent: customer.marketing_consent || false,
       });
       setUseServiceAddress(!!customer.service_address_street);
     } catch (err) {
@@ -587,6 +615,125 @@ export function CustomerDetailPage() {
                   rows={4}
                   className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                 />
+              </div>
+            </div>
+          </div>
+
+          {/* Contact Preferences */}
+          <div className="bg-white rounded-lg border border-neutral-200 p-6">
+            <h2 className="text-lg font-semibold text-neutral-900 mb-4">
+              Contact Preferences
+            </h2>
+
+            <div className="space-y-6">
+              <div>
+                <label
+                  htmlFor="preferred_contact_method"
+                  className="block text-sm font-medium text-neutral-700 mb-1"
+                >
+                  Preferred Contact Method
+                </label>
+                <select
+                  id="preferred_contact_method"
+                  name="preferred_contact_method"
+                  value={formData.preferred_contact_method}
+                  onChange={handleChange}
+                  className="w-full max-w-xs px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                >
+                  <option value="any">Any</option>
+                  <option value="email">Email</option>
+                  <option value="phone">Phone</option>
+                  <option value="sms">SMS</option>
+                  <option value="mail">Mail</option>
+                </select>
+              </div>
+
+              <div>
+                <p className="text-sm font-medium text-neutral-700 mb-3">
+                  Do Not Contact Via
+                </p>
+                <div className="flex flex-wrap gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      name="do_not_email"
+                      checked={formData.do_not_email}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          do_not_email: e.target.checked,
+                        }))
+                      }
+                      className="rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
+                    />
+                    <span className="text-sm text-neutral-600">Email</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      name="do_not_call"
+                      checked={formData.do_not_call}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          do_not_call: e.target.checked,
+                        }))
+                      }
+                      className="rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
+                    />
+                    <span className="text-sm text-neutral-600">Phone</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      name="do_not_sms"
+                      checked={formData.do_not_sms}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          do_not_sms: e.target.checked,
+                        }))
+                      }
+                      className="rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
+                    />
+                    <span className="text-sm text-neutral-600">SMS</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      name="do_not_mail"
+                      checked={formData.do_not_mail}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          do_not_mail: e.target.checked,
+                        }))
+                      }
+                      className="rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
+                    />
+                    <span className="text-sm text-neutral-600">Mail</span>
+                  </label>
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-neutral-200">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    name="marketing_consent"
+                    checked={formData.marketing_consent}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        marketing_consent: e.target.checked,
+                      }))
+                    }
+                    className="rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
+                  />
+                  <span className="text-sm text-neutral-700">
+                    Customer has consented to receive marketing communications
+                  </span>
+                </label>
               </div>
             </div>
           </div>

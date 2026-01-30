@@ -9,6 +9,7 @@ export type CustomerSegment =
   | 'new';
 export type CustomerType = 'residential' | 'commercial';
 export type CustomerStatus = 'active' | 'inactive' | 'prospect';
+export type PreferredContactMethod = 'email' | 'phone' | 'sms' | 'mail' | 'any';
 
 export interface Customer {
   id: string;
@@ -24,6 +25,15 @@ export interface Customer {
   customer_type: CustomerType;
   status: CustomerStatus;
   notes?: string;
+  // Contact preferences
+  preferred_contact_method: PreferredContactMethod;
+  do_not_email: boolean;
+  do_not_call: boolean;
+  do_not_sms: boolean;
+  do_not_mail: boolean;
+  // Marketing consent
+  marketing_consent: boolean;
+  marketing_consent_at?: string;
   created_at: string;
   updated_at: string;
 }
@@ -69,6 +79,19 @@ export const getCustomerTypeLabel = (type: CustomerType): string => {
     commercial: 'Commercial',
   };
   return labels[type] || type;
+};
+
+export const getPreferredContactMethodLabel = (
+  method: PreferredContactMethod
+): string => {
+  const labels: Record<PreferredContactMethod, string> = {
+    email: 'Email',
+    phone: 'Phone',
+    sms: 'SMS',
+    mail: 'Mail',
+    any: 'Any',
+  };
+  return labels[method] || method;
 };
 
 // Customer Report Types

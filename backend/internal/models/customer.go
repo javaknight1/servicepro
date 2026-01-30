@@ -24,6 +24,17 @@ const (
 	CustomerStatusProspect CustomerStatus = "prospect"
 )
 
+// PreferredContactMethod represents how a customer prefers to be contacted
+type PreferredContactMethod string
+
+const (
+	ContactMethodEmail PreferredContactMethod = "email"
+	ContactMethodPhone PreferredContactMethod = "phone"
+	ContactMethodSMS   PreferredContactMethod = "sms"
+	ContactMethodMail  PreferredContactMethod = "mail"
+	ContactMethodAny   PreferredContactMethod = "any"
+)
+
 // Customer represents a customer in the system
 type Customer struct {
 	ID                   uuid.UUID      `json:"id" gorm:"type:uuid;primary_key;default:uuid_generate_v4()"`
@@ -44,9 +55,22 @@ type Customer struct {
 	CustomerType         CustomerType   `json:"customer_type" gorm:"type:customer_type;not null;default:'residential'"`
 	Status               CustomerStatus `json:"status" gorm:"type:customer_status;not null;default:'prospect'"`
 	Notes                *string        `json:"notes" gorm:"type:text"`
-	CreatedAt            time.Time      `json:"created_at"`
-	UpdatedAt            time.Time      `json:"updated_at"`
-	DeletedAt            gorm.DeletedAt `json:"-" gorm:"index"`
+
+	// Contact preferences
+	PreferredContactMethod PreferredContactMethod `json:"preferred_contact_method" gorm:"type:varchar(20);default:'any'"`
+	DoNotEmail             bool                   `json:"do_not_email" gorm:"default:false"`
+	DoNotCall              bool                   `json:"do_not_call" gorm:"default:false"`
+	DoNotSMS               bool                   `json:"do_not_sms" gorm:"default:false"`
+	DoNotMail              bool                   `json:"do_not_mail" gorm:"default:false"`
+
+	// Marketing consent tracking
+	MarketingConsent   bool       `json:"marketing_consent" gorm:"default:false"`
+	MarketingConsentAt *time.Time `json:"marketing_consent_at" gorm:"type:timestamp"`
+	MarketingConsentIP *string    `json:"marketing_consent_ip" gorm:"type:varchar(45)"` // Supports IPv6
+
+	CreatedAt time.Time      `json:"created_at"`
+	UpdatedAt time.Time      `json:"updated_at"`
+	DeletedAt gorm.DeletedAt `json:"-" gorm:"index"`
 }
 
 // TableName specifies the table name for Customer model
@@ -99,6 +123,16 @@ type CreateCustomerRequest struct {
 	CustomerType         CustomerType   `json:"customer_type" binding:"required,oneof=residential commercial"`
 	Status               CustomerStatus `json:"status" binding:"omitempty,oneof=active inactive prospect"`
 	Notes                *string        `json:"notes" binding:"omitempty"`
+
+	// Contact preferences
+	PreferredContactMethod PreferredContactMethod `json:"preferred_contact_method" binding:"omitempty,oneof=email phone sms mail any"`
+	DoNotEmail             *bool                  `json:"do_not_email" binding:"omitempty"`
+	DoNotCall              *bool                  `json:"do_not_call" binding:"omitempty"`
+	DoNotSMS               *bool                  `json:"do_not_sms" binding:"omitempty"`
+	DoNotMail              *bool                  `json:"do_not_mail" binding:"omitempty"`
+
+	// Marketing consent
+	MarketingConsent *bool `json:"marketing_consent" binding:"omitempty"`
 }
 
 // UpdateCustomerRequest represents the request payload for updating a customer
@@ -120,6 +154,16 @@ type UpdateCustomerRequest struct {
 	CustomerType         *CustomerType   `json:"customer_type" binding:"omitempty,oneof=residential commercial"`
 	Status               *CustomerStatus `json:"status" binding:"omitempty,oneof=active inactive prospect"`
 	Notes                *string         `json:"notes" binding:"omitempty"`
+
+	// Contact preferences
+	PreferredContactMethod *PreferredContactMethod `json:"preferred_contact_method" binding:"omitempty,oneof=email phone sms mail any"`
+	DoNotEmail             *bool                   `json:"do_not_email" binding:"omitempty"`
+	DoNotCall              *bool                   `json:"do_not_call" binding:"omitempty"`
+	DoNotSMS               *bool                   `json:"do_not_sms" binding:"omitempty"`
+	DoNotMail              *bool                   `json:"do_not_mail" binding:"omitempty"`
+
+	// Marketing consent
+	MarketingConsent *bool `json:"marketing_consent" binding:"omitempty"`
 }
 
 // CustomerResponse represents the response payload for a customer
@@ -145,36 +189,55 @@ type CustomerResponse struct {
 	CustomerType         CustomerType   `json:"customer_type"`
 	Status               CustomerStatus `json:"status"`
 	Notes                *string        `json:"notes"`
-	CreatedAt            time.Time      `json:"created_at"`
-	UpdatedAt            time.Time      `json:"updated_at"`
+
+	// Contact preferences
+	PreferredContactMethod PreferredContactMethod `json:"preferred_contact_method"`
+	DoNotEmail             bool                   `json:"do_not_email"`
+	DoNotCall              bool                   `json:"do_not_call"`
+	DoNotSMS               bool                   `json:"do_not_sms"`
+	DoNotMail              bool                   `json:"do_not_mail"`
+
+	// Marketing consent
+	MarketingConsent   bool       `json:"marketing_consent"`
+	MarketingConsentAt *time.Time `json:"marketing_consent_at"`
+
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 // ToResponse converts a Customer model to a CustomerResponse
 func (c *Customer) ToResponse() CustomerResponse {
 	return CustomerResponse{
-		ID:                   c.ID,
-		FirstName:            c.FirstName,
-		LastName:             c.LastName,
-		DisplayName:          c.GetDisplayName(),
-		CompanyName:          c.CompanyName,
-		Email:                c.Email,
-		PhonePrimary:         c.PhonePrimary,
-		PhoneSecondary:       c.PhoneSecondary,
-		BillingAddressStreet: c.BillingAddressStreet,
-		BillingAddressCity:   c.BillingAddressCity,
-		BillingAddressState:  c.BillingAddressState,
-		BillingAddressZip:    c.BillingAddressZip,
-		BillingAddressFull:   c.GetBillingAddress(),
-		ServiceAddressStreet: c.ServiceAddressStreet,
-		ServiceAddressCity:   c.ServiceAddressCity,
-		ServiceAddressState:  c.ServiceAddressState,
-		ServiceAddressZip:    c.ServiceAddressZip,
-		ServiceAddressFull:   c.GetServiceAddress(),
-		CustomerType:         c.CustomerType,
-		Status:               c.Status,
-		Notes:                c.Notes,
-		CreatedAt:            c.CreatedAt,
-		UpdatedAt:            c.UpdatedAt,
+		ID:                     c.ID,
+		FirstName:              c.FirstName,
+		LastName:               c.LastName,
+		DisplayName:            c.GetDisplayName(),
+		CompanyName:            c.CompanyName,
+		Email:                  c.Email,
+		PhonePrimary:           c.PhonePrimary,
+		PhoneSecondary:         c.PhoneSecondary,
+		BillingAddressStreet:   c.BillingAddressStreet,
+		BillingAddressCity:     c.BillingAddressCity,
+		BillingAddressState:    c.BillingAddressState,
+		BillingAddressZip:      c.BillingAddressZip,
+		BillingAddressFull:     c.GetBillingAddress(),
+		ServiceAddressStreet:   c.ServiceAddressStreet,
+		ServiceAddressCity:     c.ServiceAddressCity,
+		ServiceAddressState:    c.ServiceAddressState,
+		ServiceAddressZip:      c.ServiceAddressZip,
+		ServiceAddressFull:     c.GetServiceAddress(),
+		CustomerType:           c.CustomerType,
+		Status:                 c.Status,
+		Notes:                  c.Notes,
+		PreferredContactMethod: c.PreferredContactMethod,
+		DoNotEmail:             c.DoNotEmail,
+		DoNotCall:              c.DoNotCall,
+		DoNotSMS:               c.DoNotSMS,
+		DoNotMail:              c.DoNotMail,
+		MarketingConsent:       c.MarketingConsent,
+		MarketingConsentAt:     c.MarketingConsentAt,
+		CreatedAt:              c.CreatedAt,
+		UpdatedAt:              c.UpdatedAt,
 	}
 }
 

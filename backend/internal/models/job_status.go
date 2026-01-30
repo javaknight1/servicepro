@@ -99,6 +99,12 @@ func GetStatusTransitionRules() []StatusTransitionRule {
 		},
 		{
 			From:         JobStatusScheduled,
+			To:           JobStatusCompleted,
+			RequiresNote: false,
+			ValidateFunc: nil, // Allow direct completion for quick jobs or retroactive updates
+		},
+		{
+			From:         JobStatusScheduled,
 			To:           JobStatusCancelled,
 			RequiresNote: true,
 			ValidateFunc: nil,

@@ -1,5 +1,9 @@
 import api from './api';
-import type { CustomerType, CustomerStatus } from '../types/customer';
+import type {
+  CustomerType,
+  CustomerStatus,
+  PreferredContactMethod,
+} from '../types/customer';
 
 export interface Customer {
   id: string;
@@ -23,6 +27,15 @@ export interface Customer {
   customer_type: CustomerType;
   status: CustomerStatus;
   notes?: string;
+  // Contact preferences
+  preferred_contact_method: PreferredContactMethod;
+  do_not_email: boolean;
+  do_not_call: boolean;
+  do_not_sms: boolean;
+  do_not_mail: boolean;
+  // Marketing consent
+  marketing_consent: boolean;
+  marketing_consent_at?: string;
   created_at: string;
   updated_at: string;
 }

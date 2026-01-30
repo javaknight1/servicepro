@@ -84,6 +84,30 @@ func (h *CustomerHandler) CreateCustomer(c *gin.Context) {
 		CustomerType:         req.CustomerType,
 		Status:               req.Status,
 		Notes:                req.Notes,
+		// Contact preferences
+		PreferredContactMethod: req.PreferredContactMethod,
+	}
+
+	// Set contact preference defaults from request
+	if req.DoNotEmail != nil {
+		customer.DoNotEmail = *req.DoNotEmail
+	}
+	if req.DoNotCall != nil {
+		customer.DoNotCall = *req.DoNotCall
+	}
+	if req.DoNotSMS != nil {
+		customer.DoNotSMS = *req.DoNotSMS
+	}
+	if req.DoNotMail != nil {
+		customer.DoNotMail = *req.DoNotMail
+	}
+	if req.MarketingConsent != nil {
+		customer.MarketingConsent = *req.MarketingConsent
+	}
+
+	// Set default preferred contact method if not provided
+	if customer.PreferredContactMethod == "" {
+		customer.PreferredContactMethod = models.ContactMethodAny
 	}
 
 	// Set default status if not provided
@@ -253,6 +277,25 @@ func (h *CustomerHandler) UpdateCustomer(c *gin.Context) {
 	}
 	if req.Notes != nil {
 		customer.Notes = req.Notes
+	}
+	// Contact preferences
+	if req.PreferredContactMethod != nil {
+		customer.PreferredContactMethod = *req.PreferredContactMethod
+	}
+	if req.DoNotEmail != nil {
+		customer.DoNotEmail = *req.DoNotEmail
+	}
+	if req.DoNotCall != nil {
+		customer.DoNotCall = *req.DoNotCall
+	}
+	if req.DoNotSMS != nil {
+		customer.DoNotSMS = *req.DoNotSMS
+	}
+	if req.DoNotMail != nil {
+		customer.DoNotMail = *req.DoNotMail
+	}
+	if req.MarketingConsent != nil {
+		customer.MarketingConsent = *req.MarketingConsent
 	}
 
 	// Update customer
