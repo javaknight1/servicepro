@@ -101,6 +101,10 @@ type JobRepositoryInterface interface {
 	// Statistics
 	GetJobStats() (map[string]interface{}, error)
 	GetTechnicianWorkload(userID uuid.UUID) (map[string]interface{}, error)
+
+	// Status transition operations
+	CreateStatusTransition(transition *models.JobStatusTransition) error
+	GetStatusHistory(jobID uuid.UUID, limit, offset int, sortOrder string) ([]models.JobStatusTransition, int64, error)
 }
 
 // =============================================================================

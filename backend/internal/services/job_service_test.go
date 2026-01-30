@@ -139,6 +139,16 @@ func (m *MockJobRepository) GetTechnicianWorkload(userID uuid.UUID) (map[string]
 	return args.Get(0).(map[string]interface{}), args.Error(1)
 }
 
+func (m *MockJobRepository) CreateStatusTransition(transition *models.JobStatusTransition) error {
+	args := m.Called(transition)
+	return args.Error(0)
+}
+
+func (m *MockJobRepository) GetStatusHistory(jobID uuid.UUID, limit, offset int, sortOrder string) ([]models.JobStatusTransition, int64, error) {
+	args := m.Called(jobID, limit, offset, sortOrder)
+	return args.Get(0).([]models.JobStatusTransition), args.Get(1).(int64), args.Error(2)
+}
+
 // MockCustomerRepository is a mock implementation of CustomerRepositoryInterface
 type MockCustomerRepository struct {
 	mock.Mock

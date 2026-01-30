@@ -248,6 +248,16 @@ const JobDetailPage = loadable(
   { chunkName: 'job-detail', delay: 100 }
 );
 
+const JobStatusHistoryPage = loadable(
+  () =>
+    import(
+      /* @ts-expect-error - dynamic import type */ /* webpackChunkName: "page-jobs" */ '@pages/Jobs'
+    ).then((m) => ({
+      default: m.JobStatusHistoryPage,
+    })),
+  { chunkName: 'job-status-history', delay: 100 }
+);
+
 const QuoteDetailPage = loadable(
   () =>
     import(
@@ -429,6 +439,7 @@ export function AppRoutes() {
         <Route path="/jobs" element={<JobsPage />} />
         <Route path="/jobs/new" element={<JobDetailPage />} />
         <Route path="/jobs/:id" element={<JobDetailPage />} />
+        <Route path="/jobs/:id/history" element={<JobStatusHistoryPage />} />
         <Route path="/quotes" element={<QuotesPage />} />
         <Route path="/quotes/new" element={<QuoteDetailPage />} />
         <Route path="/quotes/:id" element={<QuoteDetailPage />} />

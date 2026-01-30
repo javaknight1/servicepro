@@ -64,10 +64,14 @@ type StatusTransitionRule struct {
 // GetAllValidStatuses returns all valid job statuses
 func GetAllValidStatuses() []JobStatus {
 	return []JobStatus{
+		JobStatusNew,
 		JobStatusScheduled,
+		JobStatusEnRoute,
 		JobStatusInProgress,
 		JobStatusOnHold,
 		JobStatusCompleted,
+		JobStatusInvoiced,
+		JobStatusPaid,
 		JobStatusCancelled,
 	}
 }
@@ -85,26 +89,61 @@ func IsValidStatus(status JobStatus) bool {
 // GetStatusTransitionRules returns the state machine transition rules
 func GetStatusTransitionRules() []StatusTransitionRule {
 	return []StatusTransitionRule{
+		// From New
+		{
+			From:         JobStatusNew,
+			To:           JobStatusScheduled,
+			RequiresNote: false,
+			ValidateFunc: nil,
+		},
+		{
+			From:         JobStatusNew,
+			To:           JobStatusCancelled,
+			RequiresNote: true,
+			ValidateFunc: nil,
+		},
+
 		// From Scheduled
+		{
+			From:         JobStatusScheduled,
+			To:           JobStatusEnRoute,
+			RequiresNote: false,
+			ValidateFunc: nil,
+		},
 		{
 			From:         JobStatusScheduled,
 			To:           JobStatusInProgress,
 			RequiresNote: false,
-			ValidateFunc: func(job *Job) error {
-				if len(job.Assignments) == 0 {
-					return fmt.Errorf("%w: job must have at least one assignment before starting", ErrStatusValidation)
-				}
-				return nil
-			},
+			ValidateFunc: nil,
 		},
 		{
 			From:         JobStatusScheduled,
-			To:           JobStatusCompleted,
+			To:           JobStatusNew,
 			RequiresNote: false,
-			ValidateFunc: nil, // Allow direct completion for quick jobs or retroactive updates
+			ValidateFunc: nil, // Backward transition
 		},
 		{
 			From:         JobStatusScheduled,
+			To:           JobStatusCancelled,
+			RequiresNote: true,
+			ValidateFunc: nil,
+		},
+
+		// From EnRoute
+		{
+			From:         JobStatusEnRoute,
+			To:           JobStatusInProgress,
+			RequiresNote: false,
+			ValidateFunc: nil,
+		},
+		{
+			From:         JobStatusEnRoute,
+			To:           JobStatusScheduled,
+			RequiresNote: false,
+			ValidateFunc: nil, // Backward transition
+		},
+		{
+			From:         JobStatusEnRoute,
 			To:           JobStatusCancelled,
 			RequiresNote: true,
 			ValidateFunc: nil,
@@ -121,12 +160,19 @@ func GetStatusTransitionRules() []StatusTransitionRule {
 			From:         JobStatusInProgress,
 			To:           JobStatusCompleted,
 			RequiresNote: false,
-			ValidateFunc: func(job *Job) error {
-				if job.ActualStartAt == nil {
-					return fmt.Errorf("%w: actual_start_at is required for completion", ErrMissingRequiredField)
-				}
-				return nil
-			},
+			ValidateFunc: nil,
+		},
+		{
+			From:         JobStatusInProgress,
+			To:           JobStatusEnRoute,
+			RequiresNote: false,
+			ValidateFunc: nil, // Backward transition
+		},
+		{
+			From:         JobStatusInProgress,
+			To:           JobStatusScheduled,
+			RequiresNote: false,
+			ValidateFunc: nil, // Backward transition
 		},
 		{
 			From:         JobStatusInProgress,
@@ -149,8 +195,71 @@ func GetStatusTransitionRules() []StatusTransitionRule {
 			ValidateFunc: nil,
 		},
 
-		// From Completed (no transitions allowed)
-		// From Cancelled (no transitions allowed)
+		// From Completed
+		{
+			From:         JobStatusCompleted,
+			To:           JobStatusInvoiced,
+			RequiresNote: false,
+			ValidateFunc: nil,
+		},
+		{
+			From:         JobStatusCompleted,
+			To:           JobStatusInProgress,
+			RequiresNote: false,
+			ValidateFunc: nil, // Backward transition
+		},
+		{
+			From:         JobStatusCompleted,
+			To:           JobStatusCancelled,
+			RequiresNote: true,
+			ValidateFunc: nil,
+		},
+
+		// From Invoiced
+		{
+			From:         JobStatusInvoiced,
+			To:           JobStatusPaid,
+			RequiresNote: false,
+			ValidateFunc: nil,
+		},
+		{
+			From:         JobStatusInvoiced,
+			To:           JobStatusCompleted,
+			RequiresNote: false,
+			ValidateFunc: nil, // Backward transition
+		},
+
+		// From Paid
+		{
+			From:         JobStatusPaid,
+			To:           JobStatusInvoiced,
+			RequiresNote: false,
+			ValidateFunc: nil, // Backward transition (e.g., refund scenario)
+		},
+
+		// From Cancelled (terminal - no outgoing transitions)
+	}
+}
+
+// GetNextLogicalStatus returns the next forward status in the workflow
+func GetNextLogicalStatus(current JobStatus) JobStatus {
+	switch current {
+	case JobStatusNew:
+		return JobStatusScheduled
+	case JobStatusScheduled:
+		return JobStatusInProgress // Skip en_route by default
+	case JobStatusEnRoute:
+		return JobStatusInProgress
+	case JobStatusInProgress:
+		return JobStatusCompleted
+	case JobStatusOnHold:
+		return JobStatusInProgress
+	case JobStatusCompleted:
+		return JobStatusInvoiced
+	case JobStatusInvoiced:
+		return JobStatusPaid
+	default:
+		return "" // No next status for paid or cancelled
 	}
 }
 
@@ -235,13 +344,19 @@ func GetAllowedTransitions(currentStatus JobStatus) []JobStatus {
 
 // IsTerminalStatus checks if a status is terminal (no outgoing transitions)
 func IsTerminalStatus(status JobStatus) bool {
-	return status == JobStatusCompleted || status == JobStatusCancelled
+	// Only cancelled is truly terminal - paid can go back to invoiced
+	return status == JobStatusCancelled
+}
+
+// IsFinalStatus checks if a status is at the end of the workflow (paid or cancelled)
+func IsFinalStatus(status JobStatus) bool {
+	return status == JobStatusPaid || status == JobStatusCancelled
 }
 
 // StatusChangeRequest represents a request to change job status
 type StatusChangeRequest struct {
 	JobID    uuid.UUID              `json:"job_id"`
-	ToStatus JobStatus              `json:"to_status" binding:"required,oneof=scheduled in_progress on_hold completed cancelled"`
+	ToStatus JobStatus              `json:"to_status" binding:"required,oneof=new scheduled en_route in_progress on_hold completed invoiced paid cancelled"`
 	Reason   StatusTransitionReason `json:"reason" binding:"omitempty,oneof=start_work complete_work customer_request technical_issue schedule_change cancellation resume other"`
 	Notes    *string                `json:"notes,omitempty"`
 }
@@ -314,7 +429,15 @@ func (t *JobStatusTransition) ToResponse() StatusTransitionResponse {
 	}
 
 	if t.ChangedByUser != nil {
-		response.ChangedByName = t.ChangedByUser.Email
+		firstName := ""
+		lastName := ""
+		if t.ChangedByUser.FirstName != nil {
+			firstName = *t.ChangedByUser.FirstName
+		}
+		if t.ChangedByUser.LastName != nil {
+			lastName = *t.ChangedByUser.LastName
+		}
+		response.ChangedByName = firstName + " " + lastName
 	}
 
 	return response

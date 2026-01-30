@@ -165,6 +165,22 @@ func (m *MockJobService) GetCustomerJobs(customerID uuid.UUID, limit, offset int
 	return args.Get(0).([]models.JobResponse), args.Get(1).(int64), args.Error(2)
 }
 
+func (m *MockJobService) TransitionStatus(jobID uuid.UUID, toStatus models.JobStatus, reason string, notes *string, userID uuid.UUID, userRole models.UserRole) (*models.JobResponse, error) {
+	args := m.Called(jobID, toStatus, reason, notes, userID, userRole)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.JobResponse), args.Error(1)
+}
+
+func (m *MockJobService) GetStatusHistory(jobID uuid.UUID, limit, offset int, sortOrder string) (*models.StatusHistoryResponse, error) {
+	args := m.Called(jobID, limit, offset, sortOrder)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.StatusHistoryResponse), args.Error(1)
+}
+
 // Helper functions
 func setupJobTestRouter() *gin.Engine {
 	gin.SetMode(gin.TestMode)

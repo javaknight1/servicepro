@@ -10,7 +10,8 @@ import {
 } from '@components/shared';
 import type { Column } from '@components/shared';
 import { jobService, Job, JobFilters } from '@services/jobService';
-import { Briefcase, Plus, Search } from 'lucide-react';
+import { JobActionsMenu, JobFlowModal } from '@components/jobs';
+import { Briefcase, Plus, Search, Info } from 'lucide-react';
 import { getJobStatusLabel, getJobPriorityLabel } from '@app-types';
 
 export function JobsPage() {
@@ -25,6 +26,7 @@ export function JobsPage() {
     sort_order: 'desc',
   });
   const [searchQuery, setSearchQuery] = useState('');
+  const [isFlowModalOpen, setIsFlowModalOpen] = useState(false);
 
   useEffect(() => {
     loadJobs();
@@ -124,17 +126,26 @@ export function JobsPage() {
         </span>
       ),
     },
+    {
+      key: 'actions',
+      header: '',
+      render: (_, row) => <JobActionsMenu jobId={row.id} />,
+    },
   ];
 
   return (
     <DashboardLayout>
       <div className="p-6 lg:p-8">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-          <div>
+          <div className="flex items-center gap-2">
             <h1 className="text-2xl font-bold text-neutral-900">Jobs</h1>
-            <p className="text-neutral-600 mt-1">
-              Track and manage service jobs
-            </p>
+            <button
+              onClick={() => setIsFlowModalOpen(true)}
+              className="p-1 rounded-full hover:bg-neutral-100"
+              aria-label="View job flow info"
+            >
+              <Info className="h-5 w-5 text-neutral-400" />
+            </button>
           </div>
           <Button
             variant="primary"
@@ -145,6 +156,7 @@ export function JobsPage() {
             Create Job
           </Button>
         </div>
+        <p className="text-neutral-600 mb-6">Track and manage service jobs</p>
 
         <form onSubmit={handleSearch} className="mb-6">
           <div className="relative max-w-md">
@@ -195,6 +207,11 @@ export function JobsPage() {
             }}
           />
         )}
+
+        <JobFlowModal
+          isOpen={isFlowModalOpen}
+          onClose={() => setIsFlowModalOpen(false)}
+        />
       </div>
     </DashboardLayout>
   );

@@ -5,6 +5,7 @@ import { Button } from '@components/shared';
 import {
   JobAssignmentsSection,
   PendingAssignmentsSection,
+  StatusTransitionButton,
 } from '@components/jobs';
 import {
   jobService,
@@ -13,6 +14,7 @@ import {
   JobType,
   JobAssignment,
   CreateJobAssignment,
+  Job,
 } from '@services/jobService';
 import { customerService, Customer } from '@services/customerService';
 import { ArrowLeft, Save, Trash2, Loader2 } from 'lucide-react';
@@ -31,6 +33,9 @@ interface JobFormData {
   scheduled_start_at: string;
   estimated_duration: string;
   internal_notes: string;
+  customer_notes: string;
+  special_instructions: string;
+  required_materials: string;
 }
 
 const initialFormData: JobFormData = {
@@ -38,11 +43,14 @@ const initialFormData: JobFormData = {
   title: '',
   description: '',
   job_type: JobType.MAINTENANCE,
-  status: JobStatus.SCHEDULED,
+  status: JobStatus.NEW,
   priority: JobPriority.NORMAL,
   scheduled_start_at: '',
   estimated_duration: '',
   internal_notes: '',
+  customer_notes: '',
+  special_instructions: '',
+  required_materials: '',
 };
 
 export function JobDetailPage() {
@@ -51,6 +59,7 @@ export function JobDetailPage() {
   const isNew = !id || id === 'new';
 
   const [formData, setFormData] = useState<JobFormData>(initialFormData);
+  const [currentJob, setCurrentJob] = useState<Job | null>(null);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [assignments, setAssignments] = useState<JobAssignment[]>([]);
   const [pendingAssignments, setPendingAssignments] = useState<
@@ -86,18 +95,22 @@ export function JobDetailPage() {
     setError(null);
     try {
       const job = await jobService.getJob(jobId);
+      setCurrentJob(job);
       setFormData({
         customer_id: job.customer_id || '',
         title: job.title || '',
         description: job.description || '',
         job_type: job.job_type || JobType.MAINTENANCE,
-        status: job.status || JobStatus.SCHEDULED,
+        status: job.status || JobStatus.NEW,
         priority: job.priority || JobPriority.NORMAL,
         scheduled_start_at: job.scheduled_start_at
           ? job.scheduled_start_at.slice(0, 16)
           : '',
         estimated_duration: job.estimated_duration?.toString() || '',
         internal_notes: job.internal_notes || '',
+        customer_notes: job.customer_notes || '',
+        special_instructions: job.special_instructions || '',
+        required_materials: job.required_materials || '',
       });
       setAssignments(job.assignments || []);
     } catch (err) {
@@ -144,6 +157,9 @@ export function JobDetailPage() {
             ? parseInt(formData.estimated_duration)
             : undefined,
           internal_notes: formData.internal_notes || undefined,
+          customer_notes: formData.customer_notes || undefined,
+          special_instructions: formData.special_instructions || undefined,
+          required_materials: formData.required_materials || undefined,
           assignments:
             pendingAssignments.length > 0
               ? pendingAssignments.map((a) => ({
@@ -167,6 +183,9 @@ export function JobDetailPage() {
             ? parseInt(formData.estimated_duration)
             : undefined,
           internal_notes: formData.internal_notes || undefined,
+          customer_notes: formData.customer_notes || undefined,
+          special_instructions: formData.special_instructions || undefined,
+          required_materials: formData.required_materials || undefined,
         });
       }
       navigate('/jobs');
@@ -214,7 +233,7 @@ export function JobDetailPage() {
   return (
     <DashboardLayout>
       <div className="p-6 lg:p-8 max-w-4xl mx-auto">
-        <div className="flex items-center gap-4 mb-6">
+        <div className="flex items-center gap-4 mb-4">
           <Button
             variant="ghost"
             onClick={() => navigate('/jobs')}
@@ -227,6 +246,22 @@ export function JobDetailPage() {
             {isNew ? 'Create Job' : 'Edit Job'}
           </h1>
         </div>
+
+        {!isNew && currentJob && (
+          <div className="mb-6">
+            <StatusTransitionButton
+              job={currentJob}
+              onStatusChange={(updatedJob) => {
+                setCurrentJob(updatedJob);
+                setFormData((prev) => ({
+                  ...prev,
+                  status: updatedJob.status,
+                }));
+              }}
+              disabled={isSaving}
+            />
+          </div>
+        )}
 
         {error && (
           <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
@@ -363,10 +398,14 @@ export function JobDetailPage() {
                     onChange={handleChange}
                     className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                   >
+                    <option value={JobStatus.NEW}>New</option>
                     <option value={JobStatus.SCHEDULED}>Scheduled</option>
+                    <option value={JobStatus.EN_ROUTE}>En Route</option>
                     <option value={JobStatus.IN_PROGRESS}>In Progress</option>
                     <option value={JobStatus.ON_HOLD}>On Hold</option>
                     <option value={JobStatus.COMPLETED}>Completed</option>
+                    <option value={JobStatus.INVOICED}>Invoiced</option>
+                    <option value={JobStatus.PAID}>Paid</option>
                     <option value={JobStatus.CANCELLED}>Cancelled</option>
                   </select>
                 </div>
@@ -415,6 +454,65 @@ export function JobDetailPage() {
                 />
               </div>
             </div>
+          </div>
+
+          <div className="bg-white rounded-lg border border-neutral-200 p-6">
+            <h2 className="text-lg font-semibold text-neutral-900 mb-4">
+              Job Instructions
+            </h2>
+
+            <div className="space-y-4">
+              <div>
+                <label
+                  htmlFor="special_instructions"
+                  className="block text-sm font-medium text-neutral-700 mb-1"
+                >
+                  Special Instructions
+                </label>
+                <textarea
+                  id="special_instructions"
+                  name="special_instructions"
+                  value={formData.special_instructions}
+                  onChange={handleChange}
+                  rows={3}
+                  placeholder="Any special instructions for technicians..."
+                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="required_materials"
+                  className="block text-sm font-medium text-neutral-700 mb-1"
+                >
+                  Required Materials
+                </label>
+                <textarea
+                  id="required_materials"
+                  name="required_materials"
+                  value={formData.required_materials}
+                  onChange={handleChange}
+                  rows={3}
+                  placeholder="List any materials needed for this job..."
+                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg border border-neutral-200 p-6">
+            <h2 className="text-lg font-semibold text-neutral-900 mb-4">
+              Customer Notes
+            </h2>
+            <textarea
+              id="customer_notes"
+              name="customer_notes"
+              value={formData.customer_notes}
+              onChange={handleChange}
+              rows={4}
+              placeholder="Notes visible to customers (e.g., appointment details, preparation instructions)..."
+              className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            />
           </div>
 
           <div className="bg-white rounded-lg border border-neutral-200 p-6">

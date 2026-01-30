@@ -1265,3 +1265,118 @@ func (h *JobHandler) GetCustomerJobs(c *gin.Context) {
 		TotalPages: totalPages,
 	})
 }
+
+// TransitionStatus handles POST /api/v1/jobs/:id/transition
+// @Summary Transition job status
+// @Description Transition a job to a new status
+// @Tags jobs
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Job ID (UUID)"
+// @Param request body models.StatusChangeRequest true "Status transition request"
+// @Success 200 {object} models.JobResponse
+// @Failure 400 {object} models.ErrorResponse "Invalid request or invalid transition"
+// @Failure 401 {object} models.ErrorResponse "Unauthorized"
+// @Failure 403 {object} models.ErrorResponse "Forbidden"
+// @Failure 404 {object} models.ErrorResponse "Job not found"
+// @Failure 500 {object} models.ErrorResponse "Internal server error"
+// @Router /api/v1/jobs/{id}/transition [post]
+func (h *JobHandler) TransitionStatus(c *gin.Context) {
+	// Get user info from context
+	userID, userRole, err := h.getUserContext(c)
+	if err != nil {
+		return // response already sent
+	}
+
+	// Parse job ID
+	jobID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Error:   "invalid_id",
+			Message: "Invalid job ID format",
+		})
+		return
+	}
+
+	// Parse request body
+	var req models.StatusChangeRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Error:   "invalid_request",
+			Message: "Invalid request: " + err.Error(),
+		})
+		return
+	}
+
+	// Transition status
+	job, err := h.jobService.TransitionStatus(jobID, req.ToStatus, string(req.Reason), req.Notes, userID, userRole)
+	if err != nil {
+		switch {
+		case errors.Is(err, services.ErrJobNotFound):
+			c.JSON(http.StatusNotFound, models.ErrorResponse{
+				Error:   "job_not_found",
+				Message: "Job not found",
+			})
+		case errors.Is(err, services.ErrUnauthorized):
+			c.JSON(http.StatusForbidden, models.ErrorResponse{
+				Error:   "forbidden",
+				Message: "You do not have permission to transition this job",
+			})
+		default:
+			log.Printf("Error transitioning job status: %v", err)
+			c.JSON(http.StatusBadRequest, models.ErrorResponse{
+				Error:   "transition_failed",
+				Message: err.Error(),
+			})
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, job)
+}
+
+// GetStatusHistory handles GET /api/v1/jobs/:id/status-history
+// @Summary Get job status history
+// @Description Retrieve the status transition history for a job
+// @Tags jobs
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Job ID (UUID)"
+// @Param limit query int false "Limit (default: 20)"
+// @Param offset query int false "Offset (default: 0)"
+// @Param sort query string false "Sort order: 'asc' or 'desc' (default: 'desc')"
+// @Success 200 {object} models.StatusHistoryResponse
+// @Failure 400 {object} models.ErrorResponse "Invalid request"
+// @Failure 401 {object} models.ErrorResponse "Unauthorized"
+// @Failure 500 {object} models.ErrorResponse "Internal server error"
+// @Router /api/v1/jobs/{id}/status-history [get]
+func (h *JobHandler) GetStatusHistory(c *gin.Context) {
+	// Parse job ID
+	jobID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Error:   "invalid_id",
+			Message: "Invalid job ID format",
+		})
+		return
+	}
+
+	// Parse query params
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
+	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+	sortOrder := c.DefaultQuery("sort", "desc")
+
+	// Get status history
+	history, err := h.jobService.GetStatusHistory(jobID, limit, offset, sortOrder)
+	if err != nil {
+		log.Printf("Error getting status history: %v", err)
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
+			Error:   "internal_error",
+			Message: "Failed to retrieve status history",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, history)
+}

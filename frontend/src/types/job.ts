@@ -1,8 +1,12 @@
 export enum JobStatus {
+  NEW = 'new',
   SCHEDULED = 'scheduled',
+  EN_ROUTE = 'en_route',
   IN_PROGRESS = 'in_progress',
   ON_HOLD = 'on_hold',
   COMPLETED = 'completed',
+  INVOICED = 'invoiced',
+  PAID = 'paid',
   CANCELLED = 'cancelled',
 }
 
@@ -97,6 +101,9 @@ export interface Job {
   internal_notes?: string;
   customer_notes?: string;
   completion_notes?: string;
+  special_instructions?: string;
+  required_materials?: string;
+  next_status?: JobStatus;
   requires_follow_up?: boolean;
   follow_up_date?: string;
   warnings?: string[];
@@ -132,15 +139,58 @@ export interface JobStats {
   cancelled_jobs: number;
 }
 
+export interface JobStatusTransition {
+  id: string;
+  job_id: string;
+  job_number: string;
+  from_status: JobStatus;
+  to_status: JobStatus;
+  reason?: string;
+  notes?: string;
+  changed_by: string;
+  changed_by_name: string;
+  transitioned_at: string;
+}
+
+export interface StatusHistoryResponse {
+  transitions: JobStatusTransition[];
+  total: number;
+}
+
+export interface TransitionStatusRequest {
+  to_status: JobStatus;
+  reason?: string;
+  notes?: string;
+}
+
 export const getJobStatusLabel = (status: JobStatus): string => {
   const labels: Record<JobStatus, string> = {
+    [JobStatus.NEW]: 'New',
     [JobStatus.SCHEDULED]: 'Scheduled',
+    [JobStatus.EN_ROUTE]: 'En Route',
     [JobStatus.IN_PROGRESS]: 'In Progress',
     [JobStatus.ON_HOLD]: 'On Hold',
     [JobStatus.COMPLETED]: 'Completed',
+    [JobStatus.INVOICED]: 'Invoiced',
+    [JobStatus.PAID]: 'Paid',
     [JobStatus.CANCELLED]: 'Cancelled',
   };
   return labels[status] || status;
+};
+
+export const getNextStatusLabel = (
+  nextStatus: JobStatus | undefined
+): string => {
+  if (!nextStatus) return '';
+  const labels: Partial<Record<JobStatus, string>> = {
+    [JobStatus.SCHEDULED]: 'Set Scheduled',
+    [JobStatus.EN_ROUTE]: 'Set En Route',
+    [JobStatus.IN_PROGRESS]: 'Start Job',
+    [JobStatus.COMPLETED]: 'Complete Job',
+    [JobStatus.INVOICED]: 'Mark Invoiced',
+    [JobStatus.PAID]: 'Mark Paid',
+  };
+  return labels[nextStatus] || `Set ${getJobStatusLabel(nextStatus)}`;
 };
 
 export const getJobPriorityLabel = (priority: JobPriority): string => {

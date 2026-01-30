@@ -1,10 +1,14 @@
 import api from './api';
 
 export enum JobStatus {
+  NEW = 'new',
   SCHEDULED = 'scheduled',
+  EN_ROUTE = 'en_route',
   IN_PROGRESS = 'in_progress',
   ON_HOLD = 'on_hold',
   COMPLETED = 'completed',
+  INVOICED = 'invoiced',
+  PAID = 'paid',
   CANCELLED = 'cancelled',
 }
 
@@ -104,6 +108,9 @@ export interface Job {
   internal_notes?: string;
   customer_notes?: string;
   completion_notes?: string;
+  special_instructions?: string;
+  required_materials?: string;
+  next_status?: JobStatus;
   requires_follow_up?: boolean;
   follow_up_date?: string;
   warnings?: string[];
@@ -152,7 +159,27 @@ export interface CreateJobRequest {
   estimated_cost?: number;
   internal_notes?: string;
   customer_notes?: string;
+  special_instructions?: string;
+  required_materials?: string;
   assignments?: CreateJobAssignment[];
+}
+
+export interface JobStatusTransition {
+  id: string;
+  job_id: string;
+  job_number: string;
+  from_status: JobStatus;
+  to_status: JobStatus;
+  reason?: string;
+  notes?: string;
+  changed_by: string;
+  changed_by_name: string;
+  transitioned_at: string;
+}
+
+export interface StatusHistoryResponse {
+  transitions: JobStatusTransition[];
+  total: number;
 }
 
 class JobService {
@@ -242,6 +269,38 @@ class JobService {
 
   async unassignMember(jobId: string, userId: string): Promise<void> {
     await api.delete(`${this.basePath}/${jobId}/assign/${userId}`);
+  }
+
+  async transitionStatus(
+    jobId: string,
+    toStatus: JobStatus,
+    reason?: string,
+    notes?: string
+  ): Promise<Job> {
+    const response = await api.post<Job>(
+      `${this.basePath}/${jobId}/transition`,
+      {
+        to_status: toStatus,
+        reason,
+        notes,
+      }
+    );
+    return response.data;
+  }
+
+  async getStatusHistory(
+    jobId: string,
+    limit: number = 20,
+    offset: number = 0,
+    sort: 'asc' | 'desc' = 'desc'
+  ): Promise<StatusHistoryResponse> {
+    const response = await api.get<StatusHistoryResponse>(
+      `${this.basePath}/${jobId}/status-history`,
+      {
+        params: { limit, offset, sort },
+      }
+    );
+    return response.data;
   }
 }
 

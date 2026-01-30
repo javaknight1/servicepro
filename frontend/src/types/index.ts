@@ -42,6 +42,7 @@ export {
   JobPriority,
   getJobStatusLabel,
   getJobPriorityLabel,
+  getNextStatusLabel,
 } from './job';
 
 export type {

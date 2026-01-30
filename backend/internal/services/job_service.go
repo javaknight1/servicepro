@@ -64,6 +64,10 @@ type JobServiceInterface interface {
 	// Statistics
 	GetJobStats() (map[string]interface{}, error)
 	GetTechnicianWorkload(userID uuid.UUID) (map[string]interface{}, error)
+
+	// Status transition operations
+	TransitionStatus(jobID uuid.UUID, toStatus models.JobStatus, reason string, notes *string, userID uuid.UUID, userRole models.UserRole) (*models.JobResponse, error)
+	GetStatusHistory(jobID uuid.UUID, limit, offset int, sortOrder string) (*models.StatusHistoryResponse, error)
 }
 
 // JobService handles job business logic
@@ -117,20 +121,22 @@ func (s *JobService) CreateJob(req *models.CreateJobRequest, createdBy uuid.UUID
 
 	// Create job
 	job := &models.Job{
-		CustomerID:        req.CustomerID,
-		Title:             req.Title,
-		Description:       req.Description,
-		JobType:           req.JobType,
-		Status:            models.JobStatusScheduled,
-		Priority:          req.Priority,
-		ScheduledStartAt:  req.ScheduledStartAt,
-		ScheduledEndAt:    req.ScheduledEndAt,
-		EstimatedDuration: req.EstimatedDuration,
-		EstimatedCost:     req.EstimatedCost,
-		ServiceAddress:    serviceAddress,
-		InternalNotes:     req.InternalNotes,
-		CustomerNotes:     req.CustomerNotes,
-		CreatedBy:         createdBy,
+		CustomerID:          req.CustomerID,
+		Title:               req.Title,
+		Description:         req.Description,
+		JobType:             req.JobType,
+		Status:              models.JobStatusNew,
+		Priority:            req.Priority,
+		ScheduledStartAt:    req.ScheduledStartAt,
+		ScheduledEndAt:      req.ScheduledEndAt,
+		EstimatedDuration:   req.EstimatedDuration,
+		EstimatedCost:       req.EstimatedCost,
+		ServiceAddress:      serviceAddress,
+		InternalNotes:       req.InternalNotes,
+		CustomerNotes:       req.CustomerNotes,
+		SpecialInstructions: req.SpecialInstructions,
+		RequiredMaterials:   req.RequiredMaterials,
+		CreatedBy:           createdBy,
 	}
 
 	// Set default priority if not provided
@@ -141,6 +147,9 @@ func (s *JobService) CreateJob(req *models.CreateJobRequest, createdBy uuid.UUID
 	if err := s.jobRepo.Create(job); err != nil {
 		return nil, err
 	}
+
+	// Record initial status transition
+	_ = s.recordStatusTransition(job.ID, "", models.JobStatusNew, string(models.ReasonOther), nil, createdBy)
 
 	// Create assignments if provided
 	if len(req.Assignments) > 0 {
@@ -279,6 +288,12 @@ func (s *JobService) UpdateJob(id uuid.UUID, req *models.UpdateJobRequest, userI
 	}
 	if req.CompletionNotes != nil {
 		job.CompletionNotes = req.CompletionNotes
+	}
+	if req.SpecialInstructions != nil {
+		job.SpecialInstructions = req.SpecialInstructions
+	}
+	if req.RequiredMaterials != nil {
+		job.RequiredMaterials = req.RequiredMaterials
 	}
 	if req.RequiresFollowUp != nil {
 		job.RequiresFollowUp = *req.RequiresFollowUp
@@ -438,6 +453,8 @@ func (s *JobService) StartJob(id uuid.UUID, userID uuid.UUID, userRole models.Us
 		return nil, err
 	}
 
+	previousStatus := job.Status
+
 	// Update status and set actual start time
 	now := time.Now()
 	job.Status = models.JobStatusInProgress
@@ -447,6 +464,9 @@ func (s *JobService) StartJob(id uuid.UUID, userID uuid.UUID, userRole models.Us
 	if err := s.jobRepo.Update(job); err != nil {
 		return nil, err
 	}
+
+	// Record status transition
+	_ = s.recordStatusTransition(id, previousStatus, models.JobStatusInProgress, string(models.ReasonStartWork), nil, userID)
 
 	updatedJob, err := s.jobRepo.GetByID(id)
 	if err != nil {
@@ -477,6 +497,8 @@ func (s *JobService) CompleteJob(id uuid.UUID, completionNotes string, userID uu
 		return nil, err
 	}
 
+	previousStatus := job.Status
+
 	// Update status and set actual end time
 	now := time.Now()
 	job.Status = models.JobStatusCompleted
@@ -487,6 +509,13 @@ func (s *JobService) CompleteJob(id uuid.UUID, completionNotes string, userID uu
 	if err := s.jobRepo.Update(job); err != nil {
 		return nil, err
 	}
+
+	// Record status transition
+	var notes *string
+	if completionNotes != "" {
+		notes = &completionNotes
+	}
+	_ = s.recordStatusTransition(id, previousStatus, models.JobStatusCompleted, string(models.ReasonCompleteWork), notes, userID)
 
 	updatedJob, err := s.jobRepo.GetByID(id)
 	if err != nil {
@@ -517,6 +546,8 @@ func (s *JobService) CancelJob(id uuid.UUID, reason string, userID uuid.UUID, us
 		return nil, err
 	}
 
+	previousStatus := job.Status
+
 	// Update status and add cancellation note
 	job.Status = models.JobStatusCancelled
 	if reason != "" {
@@ -532,6 +563,13 @@ func (s *JobService) CancelJob(id uuid.UUID, reason string, userID uuid.UUID, us
 	if err := s.jobRepo.Update(job); err != nil {
 		return nil, err
 	}
+
+	// Record status transition
+	var notes *string
+	if reason != "" {
+		notes = &reason
+	}
+	_ = s.recordStatusTransition(id, previousStatus, models.JobStatusCancelled, string(models.ReasonCancellation), notes, userID)
 
 	updatedJob, err := s.jobRepo.GetByID(id)
 	if err != nil {
@@ -562,6 +600,8 @@ func (s *JobService) PutOnHold(id uuid.UUID, reason string, userID uuid.UUID, us
 		return nil, err
 	}
 
+	previousStatus := job.Status
+
 	// Update status and add reason
 	job.Status = models.JobStatusOnHold
 	if reason != "" {
@@ -577,6 +617,13 @@ func (s *JobService) PutOnHold(id uuid.UUID, reason string, userID uuid.UUID, us
 	if err := s.jobRepo.Update(job); err != nil {
 		return nil, err
 	}
+
+	// Record status transition
+	var notes *string
+	if reason != "" {
+		notes = &reason
+	}
+	_ = s.recordStatusTransition(id, previousStatus, models.JobStatusOnHold, string(models.ReasonTechnicalIssue), notes, userID)
 
 	updatedJob, err := s.jobRepo.GetByID(id)
 	if err != nil {
@@ -612,6 +659,8 @@ func (s *JobService) ResumeJob(id uuid.UUID, userID uuid.UUID, userRole models.U
 		return nil, err
 	}
 
+	previousStatus := job.Status
+
 	// Update status
 	job.Status = models.JobStatusInProgress
 	job.UpdatedBy = &userID
@@ -619,6 +668,9 @@ func (s *JobService) ResumeJob(id uuid.UUID, userID uuid.UUID, userRole models.U
 	if err := s.jobRepo.Update(job); err != nil {
 		return nil, err
 	}
+
+	// Record status transition
+	_ = s.recordStatusTransition(id, previousStatus, models.JobStatusInProgress, string(models.ReasonResume), nil, userID)
 
 	updatedJob, err := s.jobRepo.GetByID(id)
 	if err != nil {
@@ -814,4 +866,106 @@ func (s *JobService) GetJobStats() (map[string]interface{}, error) {
 // GetTechnicianWorkload retrieves workload statistics for a technician
 func (s *JobService) GetTechnicianWorkload(userID uuid.UUID) (map[string]interface{}, error) {
 	return s.jobRepo.GetTechnicianWorkload(userID)
+}
+
+// recordStatusTransition records a status change in the transition history
+func (s *JobService) recordStatusTransition(jobID uuid.UUID, fromStatus, toStatus models.JobStatus, reason string, notes *string, changedBy uuid.UUID) error {
+	transition := &models.JobStatusTransition{
+		JobID:          jobID,
+		FromStatus:     fromStatus,
+		ToStatus:       toStatus,
+		Reason:         models.StatusTransitionReason(reason),
+		Notes:          notes,
+		ChangedBy:      changedBy,
+		TransitionedAt: time.Now(),
+	}
+	return s.jobRepo.CreateStatusTransition(transition)
+}
+
+// TransitionStatus transitions a job to a new status
+func (s *JobService) TransitionStatus(jobID uuid.UUID, toStatus models.JobStatus, reason string, notes *string, userID uuid.UUID, userRole models.UserRole) (*models.JobResponse, error) {
+	job, err := s.jobRepo.GetByID(jobID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrJobNotFound
+		}
+		return nil, err
+	}
+
+	// Check permissions
+	if err := s.validator.CanUserModifyJob(job, userID, userRole); err != nil {
+		return nil, ErrUnauthorized
+	}
+
+	// Validate the transition
+	if err := models.ValidateTransition(job, toStatus, notes); err != nil {
+		return nil, err
+	}
+
+	// No-op if same status
+	if job.Status == toStatus {
+		response := job.ToResponse()
+		return &response, nil
+	}
+
+	previousStatus := job.Status
+
+	// Update the status
+	job.Status = toStatus
+	job.UpdatedBy = &userID
+
+	// Update timestamps based on status
+	now := time.Now()
+	switch toStatus {
+	case models.JobStatusInProgress:
+		if job.ActualStartAt == nil {
+			job.ActualStartAt = &now
+		}
+	case models.JobStatusCompleted:
+		job.ActualEndAt = &now
+	}
+
+	if err := s.jobRepo.Update(job); err != nil {
+		return nil, err
+	}
+
+	// Record the transition
+	if err := s.recordStatusTransition(jobID, previousStatus, toStatus, reason, notes, userID); err != nil {
+		// Log but don't fail the transition
+	}
+
+	// Reload with relationships
+	updatedJob, err := s.jobRepo.GetByID(jobID)
+	if err != nil {
+		return nil, err
+	}
+
+	response := updatedJob.ToResponse()
+	return &response, nil
+}
+
+// GetStatusHistory retrieves the status history for a job
+func (s *JobService) GetStatusHistory(jobID uuid.UUID, limit, offset int, sortOrder string) (*models.StatusHistoryResponse, error) {
+	// Set defaults
+	if limit <= 0 {
+		limit = 20
+	}
+	if sortOrder != "asc" && sortOrder != "desc" {
+		sortOrder = "desc"
+	}
+
+	transitions, total, err := s.jobRepo.GetStatusHistory(jobID, limit, offset, sortOrder)
+	if err != nil {
+		return nil, err
+	}
+
+	responses := make([]models.StatusTransitionResponse, len(transitions))
+	for i, transition := range transitions {
+		responses[i] = transition.ToResponse()
+	}
+
+	return &models.StatusHistoryResponse{
+		Transitions: responses,
+		Total:       total,
+	}, nil
 }

@@ -19,7 +19,7 @@ CREATE TYPE customer_type AS ENUM ('residential', 'commercial');
 CREATE TYPE customer_status AS ENUM ('active', 'inactive', 'prospect');
 
 -- Job enums
-CREATE TYPE job_status AS ENUM ('scheduled', 'in_progress', 'on_hold', 'completed', 'cancelled');
+CREATE TYPE job_status AS ENUM ('new', 'scheduled', 'en_route', 'in_progress', 'on_hold', 'completed', 'invoiced', 'paid', 'cancelled');
 CREATE TYPE job_priority AS ENUM ('low', 'normal', 'high', 'urgent');
 CREATE TYPE job_type AS ENUM ('installation', 'maintenance', 'repair', 'inspection', 'emergency');
 
@@ -240,7 +240,7 @@ CREATE TABLE jobs (
     title VARCHAR(200) NOT NULL,
     description TEXT,
     job_type job_type NOT NULL,
-    status job_status NOT NULL DEFAULT 'scheduled',
+    status job_status NOT NULL DEFAULT 'new',
     priority job_priority NOT NULL DEFAULT 'normal',
     scheduled_start_at TIMESTAMP,
     scheduled_end_at TIMESTAMP,
@@ -259,6 +259,8 @@ CREATE TABLE jobs (
     internal_notes TEXT,
     customer_notes TEXT,
     completion_notes TEXT,
+    special_instructions TEXT,
+    required_materials TEXT,
     requires_follow_up BOOLEAN DEFAULT FALSE,
     follow_up_date TIMESTAMP,
     created_by UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
@@ -324,6 +326,23 @@ CREATE TABLE job_notes (
 );
 
 CREATE INDEX idx_job_notes_job ON job_notes(job_id);
+
+-- Job status transitions (history tracking)
+CREATE TABLE job_status_transitions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    job_id UUID NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
+    from_status job_status NOT NULL,
+    to_status job_status NOT NULL,
+    reason VARCHAR(50),
+    notes TEXT,
+    changed_by UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    transitioned_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_job_status_transitions_job ON job_status_transitions(job_id);
+CREATE INDEX idx_job_status_transitions_changed_by ON job_status_transitions(changed_by);
+CREATE INDEX idx_job_status_transitions_transitioned_at ON job_status_transitions(transitioned_at);
 
 -- ============================================================================
 -- 8. SCHEDULING

@@ -87,6 +87,16 @@ func SetupJobRoutes(router *gin.RouterGroup, cfg *routeconfigs.RouteConfig) {
 			cfg.Middleware.PermMiddleware.RequirePermission(permissions.JobsUpdate),
 			cfg.Handlers.Job.ResumeJob)
 
+		// Status transition endpoint
+		jobs.POST("/:id/transition",
+			cfg.Middleware.PermMiddleware.RequirePermission(permissions.JobsUpdate),
+			cfg.Handlers.Job.TransitionStatus)
+
+		// Status history endpoint
+		jobs.GET("/:id/status-history",
+			cfg.Middleware.PermMiddleware.RequirePermission(permissions.JobsRead),
+			cfg.Handlers.Job.GetStatusHistory)
+
 		// Job assignments - require "jobs.assign" permission
 		jobs.POST("/:id/assign",
 			cfg.Middleware.PermMiddleware.RequirePermission(permissions.JobsAssign),

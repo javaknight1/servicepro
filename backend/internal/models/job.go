@@ -11,10 +11,14 @@ import (
 type JobStatus string
 
 const (
+	JobStatusNew        JobStatus = "new"
 	JobStatusScheduled  JobStatus = "scheduled"
+	JobStatusEnRoute    JobStatus = "en_route"
 	JobStatusInProgress JobStatus = "in_progress"
 	JobStatusOnHold     JobStatus = "on_hold"
 	JobStatusCompleted  JobStatus = "completed"
+	JobStatusInvoiced   JobStatus = "invoiced"
+	JobStatusPaid       JobStatus = "paid"
 	JobStatusCancelled  JobStatus = "cancelled"
 )
 
@@ -41,39 +45,41 @@ const (
 
 // Job represents a service job/work order
 type Job struct {
-	ID                uuid.UUID       `json:"id" gorm:"type:uuid;primary_key;default:uuid_generate_v4()"`
-	JobNumber         string          `json:"job_number" gorm:"type:varchar(50);uniqueIndex;not null"`
-	CustomerID        uuid.UUID       `json:"customer_id" gorm:"type:uuid;not null;index"`
-	Customer          *Customer       `json:"customer,omitempty" gorm:"foreignKey:CustomerID;constraint:OnDelete:RESTRICT"`
-	Title             string          `json:"title" gorm:"type:varchar(200);not null"`
-	Description       string          `json:"description" gorm:"type:text"`
-	JobType           JobType         `json:"job_type" gorm:"type:varchar(50);not null;index"`
-	Status            JobStatus       `json:"status" gorm:"type:varchar(50);not null;default:'scheduled';index"`
-	Priority          JobPriority     `json:"priority" gorm:"type:varchar(50);not null;default:'normal';index"`
-	ScheduledStartAt  *time.Time      `json:"scheduled_start_at" gorm:"index"`
-	ScheduledEndAt    *time.Time      `json:"scheduled_end_at"`
-	ActualStartAt     *time.Time      `json:"actual_start_at"`
-	ActualEndAt       *time.Time      `json:"actual_end_at"`
-	EstimatedDuration int             `json:"estimated_duration"` // in minutes
-	ActualDuration    int             `json:"actual_duration"`    // in minutes
-	ServiceAddress    ServiceAddress  `json:"service_address" gorm:"embedded;embeddedPrefix:service_"`
-	EstimatedCost     float64         `json:"estimated_cost" gorm:"type:decimal(10,2)"`
-	ActualCost        float64         `json:"actual_cost" gorm:"type:decimal(10,2)"`
-	TaxAmount         float64         `json:"tax_amount" gorm:"type:decimal(10,2)"`
-	TotalAmount       float64         `json:"total_amount" gorm:"type:decimal(10,2)"`
-	Assignments       []JobAssignment `json:"assignments,omitempty" gorm:"foreignKey:JobID;constraint:OnDelete:CASCADE"`
-	Materials         []JobMaterial   `json:"materials,omitempty" gorm:"foreignKey:JobID;constraint:OnDelete:CASCADE"`
-	Notes             []JobNote       `json:"notes,omitempty" gorm:"foreignKey:JobID;constraint:OnDelete:CASCADE"`
-	InternalNotes     *string         `json:"internal_notes,omitempty" gorm:"type:text"`
-	CustomerNotes     *string         `json:"customer_notes,omitempty" gorm:"type:text"`
-	CompletionNotes   *string         `json:"completion_notes,omitempty" gorm:"type:text"`
-	RequiresFollowUp  bool            `json:"requires_follow_up" gorm:"default:false"`
-	FollowUpDate      *time.Time      `json:"follow_up_date"`
-	CreatedBy         uuid.UUID       `json:"created_by" gorm:"type:uuid;not null"`
-	UpdatedBy         *uuid.UUID      `json:"updated_by" gorm:"type:uuid"`
-	CreatedAt         time.Time       `json:"created_at"`
-	UpdatedAt         time.Time       `json:"updated_at"`
-	DeletedAt         gorm.DeletedAt  `json:"-" gorm:"index"`
+	ID                  uuid.UUID       `json:"id" gorm:"type:uuid;primary_key;default:uuid_generate_v4()"`
+	JobNumber           string          `json:"job_number" gorm:"type:varchar(50);uniqueIndex;not null"`
+	CustomerID          uuid.UUID       `json:"customer_id" gorm:"type:uuid;not null;index"`
+	Customer            *Customer       `json:"customer,omitempty" gorm:"foreignKey:CustomerID;constraint:OnDelete:RESTRICT"`
+	Title               string          `json:"title" gorm:"type:varchar(200);not null"`
+	Description         string          `json:"description" gorm:"type:text"`
+	JobType             JobType         `json:"job_type" gorm:"type:varchar(50);not null;index"`
+	Status              JobStatus       `json:"status" gorm:"type:varchar(50);not null;default:'scheduled';index"`
+	Priority            JobPriority     `json:"priority" gorm:"type:varchar(50);not null;default:'normal';index"`
+	ScheduledStartAt    *time.Time      `json:"scheduled_start_at" gorm:"index"`
+	ScheduledEndAt      *time.Time      `json:"scheduled_end_at"`
+	ActualStartAt       *time.Time      `json:"actual_start_at"`
+	ActualEndAt         *time.Time      `json:"actual_end_at"`
+	EstimatedDuration   int             `json:"estimated_duration"` // in minutes
+	ActualDuration      int             `json:"actual_duration"`    // in minutes
+	ServiceAddress      ServiceAddress  `json:"service_address" gorm:"embedded;embeddedPrefix:service_"`
+	EstimatedCost       float64         `json:"estimated_cost" gorm:"type:decimal(10,2)"`
+	ActualCost          float64         `json:"actual_cost" gorm:"type:decimal(10,2)"`
+	TaxAmount           float64         `json:"tax_amount" gorm:"type:decimal(10,2)"`
+	TotalAmount         float64         `json:"total_amount" gorm:"type:decimal(10,2)"`
+	Assignments         []JobAssignment `json:"assignments,omitempty" gorm:"foreignKey:JobID;constraint:OnDelete:CASCADE"`
+	Materials           []JobMaterial   `json:"materials,omitempty" gorm:"foreignKey:JobID;constraint:OnDelete:CASCADE"`
+	Notes               []JobNote       `json:"notes,omitempty" gorm:"foreignKey:JobID;constraint:OnDelete:CASCADE"`
+	InternalNotes       *string         `json:"internal_notes,omitempty" gorm:"type:text"`
+	CustomerNotes       *string         `json:"customer_notes,omitempty" gorm:"type:text"`
+	CompletionNotes     *string         `json:"completion_notes,omitempty" gorm:"type:text"`
+	SpecialInstructions *string         `json:"special_instructions,omitempty" gorm:"type:text"`
+	RequiredMaterials   *string         `json:"required_materials,omitempty" gorm:"type:text"`
+	RequiresFollowUp    bool            `json:"requires_follow_up" gorm:"default:false"`
+	FollowUpDate        *time.Time      `json:"follow_up_date"`
+	CreatedBy           uuid.UUID       `json:"created_by" gorm:"type:uuid;not null"`
+	UpdatedBy           *uuid.UUID      `json:"updated_by" gorm:"type:uuid"`
+	CreatedAt           time.Time       `json:"created_at"`
+	UpdatedAt           time.Time       `json:"updated_at"`
+	DeletedAt           gorm.DeletedAt  `json:"-" gorm:"index"`
 }
 
 // ServiceAddress represents the address where service will be performed
@@ -182,77 +188,84 @@ type CreateJobAssignmentRequest struct {
 
 // CreateJobRequest represents the request payload for creating a job
 type CreateJobRequest struct {
-	CustomerID        uuid.UUID                    `json:"customer_id" binding:"required"`
-	Title             string                       `json:"title" binding:"required,max=200"`
-	Description       string                       `json:"description" binding:"omitempty,max=5000"`
-	JobType           JobType                      `json:"job_type" binding:"required,oneof=installation maintenance repair inspection emergency"`
-	Priority          JobPriority                  `json:"priority" binding:"omitempty,oneof=low normal high urgent"`
-	ScheduledStartAt  *time.Time                   `json:"scheduled_start_at"`
-	ScheduledEndAt    *time.Time                   `json:"scheduled_end_at"`
-	EstimatedDuration int                          `json:"estimated_duration" binding:"omitempty,min=0"` // in minutes
-	ServiceAddress    ServiceAddress               `json:"service_address"`
-	EstimatedCost     float64                      `json:"estimated_cost" binding:"omitempty,min=0"`
-	InternalNotes     *string                      `json:"internal_notes"`
-	CustomerNotes     *string                      `json:"customer_notes"`
-	Assignments       []CreateJobAssignmentRequest `json:"assignments" binding:"omitempty"`
+	CustomerID          uuid.UUID                    `json:"customer_id" binding:"required"`
+	Title               string                       `json:"title" binding:"required,max=200"`
+	Description         string                       `json:"description" binding:"omitempty,max=5000"`
+	JobType             JobType                      `json:"job_type" binding:"required,oneof=installation maintenance repair inspection emergency"`
+	Priority            JobPriority                  `json:"priority" binding:"omitempty,oneof=low normal high urgent"`
+	ScheduledStartAt    *time.Time                   `json:"scheduled_start_at"`
+	ScheduledEndAt      *time.Time                   `json:"scheduled_end_at"`
+	EstimatedDuration   int                          `json:"estimated_duration" binding:"omitempty,min=0"` // in minutes
+	ServiceAddress      ServiceAddress               `json:"service_address"`
+	EstimatedCost       float64                      `json:"estimated_cost" binding:"omitempty,min=0"`
+	InternalNotes       *string                      `json:"internal_notes"`
+	CustomerNotes       *string                      `json:"customer_notes"`
+	SpecialInstructions *string                      `json:"special_instructions"`
+	RequiredMaterials   *string                      `json:"required_materials"`
+	Assignments         []CreateJobAssignmentRequest `json:"assignments" binding:"omitempty"`
 }
 
 // UpdateJobRequest represents the request payload for updating a job
 type UpdateJobRequest struct {
-	Title             *string         `json:"title" binding:"omitempty,max=200"`
-	Description       *string         `json:"description" binding:"omitempty,max=5000"`
-	JobType           *JobType        `json:"job_type" binding:"omitempty,oneof=installation maintenance repair inspection emergency"`
-	Status            *JobStatus      `json:"status" binding:"omitempty,oneof=scheduled in_progress on_hold completed cancelled"`
-	Priority          *JobPriority    `json:"priority" binding:"omitempty,oneof=low normal high urgent"`
-	ScheduledStartAt  *time.Time      `json:"scheduled_start_at"`
-	ScheduledEndAt    *time.Time      `json:"scheduled_end_at"`
-	ActualStartAt     *time.Time      `json:"actual_start_at"`
-	ActualEndAt       *time.Time      `json:"actual_end_at"`
-	EstimatedDuration *int            `json:"estimated_duration" binding:"omitempty,min=0"`
-	ServiceAddress    *ServiceAddress `json:"service_address"`
-	EstimatedCost     *float64        `json:"estimated_cost" binding:"omitempty,min=0"`
-	ActualCost        *float64        `json:"actual_cost" binding:"omitempty,min=0"`
-	TaxAmount         *float64        `json:"tax_amount" binding:"omitempty,min=0"`
-	InternalNotes     *string         `json:"internal_notes"`
-	CustomerNotes     *string         `json:"customer_notes"`
-	CompletionNotes   *string         `json:"completion_notes"`
-	RequiresFollowUp  *bool           `json:"requires_follow_up"`
-	FollowUpDate      *time.Time      `json:"follow_up_date"`
+	Title               *string         `json:"title" binding:"omitempty,max=200"`
+	Description         *string         `json:"description" binding:"omitempty,max=5000"`
+	JobType             *JobType        `json:"job_type" binding:"omitempty,oneof=installation maintenance repair inspection emergency"`
+	Status              *JobStatus      `json:"status" binding:"omitempty,oneof=new scheduled en_route in_progress on_hold completed invoiced paid cancelled"`
+	Priority            *JobPriority    `json:"priority" binding:"omitempty,oneof=low normal high urgent"`
+	ScheduledStartAt    *time.Time      `json:"scheduled_start_at"`
+	ScheduledEndAt      *time.Time      `json:"scheduled_end_at"`
+	ActualStartAt       *time.Time      `json:"actual_start_at"`
+	ActualEndAt         *time.Time      `json:"actual_end_at"`
+	EstimatedDuration   *int            `json:"estimated_duration" binding:"omitempty,min=0"`
+	ServiceAddress      *ServiceAddress `json:"service_address"`
+	EstimatedCost       *float64        `json:"estimated_cost" binding:"omitempty,min=0"`
+	ActualCost          *float64        `json:"actual_cost" binding:"omitempty,min=0"`
+	TaxAmount           *float64        `json:"tax_amount" binding:"omitempty,min=0"`
+	InternalNotes       *string         `json:"internal_notes"`
+	CustomerNotes       *string         `json:"customer_notes"`
+	CompletionNotes     *string         `json:"completion_notes"`
+	SpecialInstructions *string         `json:"special_instructions"`
+	RequiredMaterials   *string         `json:"required_materials"`
+	RequiresFollowUp    *bool           `json:"requires_follow_up"`
+	FollowUpDate        *time.Time      `json:"follow_up_date"`
 }
 
 // JobResponse represents the response payload for a job
 type JobResponse struct {
-	ID                uuid.UUID               `json:"id"`
-	JobNumber         string                  `json:"job_number"`
-	CustomerID        uuid.UUID               `json:"customer_id"`
-	Customer          *CustomerResponse       `json:"customer,omitempty"`
-	Title             string                  `json:"title"`
-	Description       string                  `json:"description"`
-	JobType           JobType                 `json:"job_type"`
-	Status            JobStatus               `json:"status"`
-	Priority          JobPriority             `json:"priority"`
-	ScheduledStartAt  *time.Time              `json:"scheduled_start_at,omitempty"`
-	ScheduledEndAt    *time.Time              `json:"scheduled_end_at,omitempty"`
-	ActualStartAt     *time.Time              `json:"actual_start_at,omitempty"`
-	ActualEndAt       *time.Time              `json:"actual_end_at,omitempty"`
-	EstimatedDuration int                     `json:"estimated_duration"`
-	ActualDuration    int                     `json:"actual_duration"`
-	ServiceAddress    ServiceAddress          `json:"service_address"`
-	EstimatedCost     float64                 `json:"estimated_cost"`
-	ActualCost        float64                 `json:"actual_cost"`
-	TaxAmount         float64                 `json:"tax_amount"`
-	TotalAmount       float64                 `json:"total_amount"`
-	Assignments       []JobAssignmentResponse `json:"assignments,omitempty"`
-	Materials         []JobMaterialResponse   `json:"materials,omitempty"`
-	Notes             []JobNoteResponse       `json:"notes,omitempty"`
-	InternalNotes     *string                 `json:"internal_notes,omitempty"`
-	CustomerNotes     *string                 `json:"customer_notes,omitempty"`
-	CompletionNotes   *string                 `json:"completion_notes,omitempty"`
-	RequiresFollowUp  bool                    `json:"requires_follow_up"`
-	FollowUpDate      *time.Time              `json:"follow_up_date,omitempty"`
-	Warnings          []string                `json:"warnings,omitempty"`
-	CreatedAt         time.Time               `json:"created_at"`
-	UpdatedAt         time.Time               `json:"updated_at"`
+	ID                  uuid.UUID               `json:"id"`
+	JobNumber           string                  `json:"job_number"`
+	CustomerID          uuid.UUID               `json:"customer_id"`
+	Customer            *CustomerResponse       `json:"customer,omitempty"`
+	Title               string                  `json:"title"`
+	Description         string                  `json:"description"`
+	JobType             JobType                 `json:"job_type"`
+	Status              JobStatus               `json:"status"`
+	Priority            JobPriority             `json:"priority"`
+	ScheduledStartAt    *time.Time              `json:"scheduled_start_at,omitempty"`
+	ScheduledEndAt      *time.Time              `json:"scheduled_end_at,omitempty"`
+	ActualStartAt       *time.Time              `json:"actual_start_at,omitempty"`
+	ActualEndAt         *time.Time              `json:"actual_end_at,omitempty"`
+	EstimatedDuration   int                     `json:"estimated_duration"`
+	ActualDuration      int                     `json:"actual_duration"`
+	ServiceAddress      ServiceAddress          `json:"service_address"`
+	EstimatedCost       float64                 `json:"estimated_cost"`
+	ActualCost          float64                 `json:"actual_cost"`
+	TaxAmount           float64                 `json:"tax_amount"`
+	TotalAmount         float64                 `json:"total_amount"`
+	Assignments         []JobAssignmentResponse `json:"assignments,omitempty"`
+	Materials           []JobMaterialResponse   `json:"materials,omitempty"`
+	Notes               []JobNoteResponse       `json:"notes,omitempty"`
+	InternalNotes       *string                 `json:"internal_notes,omitempty"`
+	CustomerNotes       *string                 `json:"customer_notes,omitempty"`
+	CompletionNotes     *string                 `json:"completion_notes,omitempty"`
+	SpecialInstructions *string                 `json:"special_instructions,omitempty"`
+	RequiredMaterials   *string                 `json:"required_materials,omitempty"`
+	RequiresFollowUp    bool                    `json:"requires_follow_up"`
+	FollowUpDate        *time.Time              `json:"follow_up_date,omitempty"`
+	NextStatus          *JobStatus              `json:"next_status,omitempty"`
+	Warnings            []string                `json:"warnings,omitempty"`
+	CreatedAt           time.Time               `json:"created_at"`
+	UpdatedAt           time.Time               `json:"updated_at"`
 }
 
 // JobAssignmentResponse represents the response for a job assignment
@@ -321,32 +334,40 @@ type JobListResponse struct {
 // ToResponse converts a Job model to JobResponse
 func (j *Job) ToResponse() JobResponse {
 	response := JobResponse{
-		ID:                j.ID,
-		JobNumber:         j.JobNumber,
-		CustomerID:        j.CustomerID,
-		Title:             j.Title,
-		Description:       j.Description,
-		JobType:           j.JobType,
-		Status:            j.Status,
-		Priority:          j.Priority,
-		ScheduledStartAt:  j.ScheduledStartAt,
-		ScheduledEndAt:    j.ScheduledEndAt,
-		ActualStartAt:     j.ActualStartAt,
-		ActualEndAt:       j.ActualEndAt,
-		EstimatedDuration: j.EstimatedDuration,
-		ActualDuration:    j.ActualDuration,
-		ServiceAddress:    j.ServiceAddress,
-		EstimatedCost:     j.EstimatedCost,
-		ActualCost:        j.ActualCost,
-		TaxAmount:         j.TaxAmount,
-		TotalAmount:       j.TotalAmount,
-		InternalNotes:     j.InternalNotes,
-		CustomerNotes:     j.CustomerNotes,
-		CompletionNotes:   j.CompletionNotes,
-		RequiresFollowUp:  j.RequiresFollowUp,
-		FollowUpDate:      j.FollowUpDate,
-		CreatedAt:         j.CreatedAt,
-		UpdatedAt:         j.UpdatedAt,
+		ID:                  j.ID,
+		JobNumber:           j.JobNumber,
+		CustomerID:          j.CustomerID,
+		Title:               j.Title,
+		Description:         j.Description,
+		JobType:             j.JobType,
+		Status:              j.Status,
+		Priority:            j.Priority,
+		ScheduledStartAt:    j.ScheduledStartAt,
+		ScheduledEndAt:      j.ScheduledEndAt,
+		ActualStartAt:       j.ActualStartAt,
+		ActualEndAt:         j.ActualEndAt,
+		EstimatedDuration:   j.EstimatedDuration,
+		ActualDuration:      j.ActualDuration,
+		ServiceAddress:      j.ServiceAddress,
+		EstimatedCost:       j.EstimatedCost,
+		ActualCost:          j.ActualCost,
+		TaxAmount:           j.TaxAmount,
+		TotalAmount:         j.TotalAmount,
+		InternalNotes:       j.InternalNotes,
+		CustomerNotes:       j.CustomerNotes,
+		CompletionNotes:     j.CompletionNotes,
+		SpecialInstructions: j.SpecialInstructions,
+		RequiredMaterials:   j.RequiredMaterials,
+		RequiresFollowUp:    j.RequiresFollowUp,
+		FollowUpDate:        j.FollowUpDate,
+		CreatedAt:           j.CreatedAt,
+		UpdatedAt:           j.UpdatedAt,
+	}
+
+	// Add next logical status
+	nextStatus := GetNextLogicalStatus(j.Status)
+	if nextStatus != "" {
+		response.NextStatus = &nextStatus
 	}
 
 	// Include customer if loaded

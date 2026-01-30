@@ -426,3 +426,39 @@ func (r *JobRepository) GetTechnicianWorkload(userID uuid.UUID) (map[string]inte
 
 	return workload, nil
 }
+
+// CreateStatusTransition creates a new status transition record
+func (r *JobRepository) CreateStatusTransition(transition *models.JobStatusTransition) error {
+	return r.db.Create(transition).Error
+}
+
+// GetStatusHistory retrieves status transition history for a job
+func (r *JobRepository) GetStatusHistory(jobID uuid.UUID, limit, offset int, sortOrder string) ([]models.JobStatusTransition, int64, error) {
+	var transitions []models.JobStatusTransition
+	var total int64
+
+	query := r.db.Model(&models.JobStatusTransition{}).Where("job_id = ?", jobID)
+
+	// Count total
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	// Apply sorting
+	order := "transitioned_at DESC"
+	if sortOrder == "asc" {
+		order = "transitioned_at ASC"
+	}
+
+	// Get transitions with preloaded relationships
+	err := r.db.
+		Where("job_id = ?", jobID).
+		Preload("ChangedByUser").
+		Preload("Job").
+		Order(order).
+		Limit(limit).
+		Offset(offset).
+		Find(&transitions).Error
+
+	return transitions, total, err
+}
