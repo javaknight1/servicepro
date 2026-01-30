@@ -116,9 +116,51 @@ make lint       # Run linters
 make clean      # Clean build artifacts
 ```
 
+## External Services
+
+ServicePro uses a cost-optimized production stack that's **completely free** for early-stage validation (~50 MAU):
+
+| Service                                               | Purpose             | Free Tier                    | Documentation                                                          |
+| ----------------------------------------------------- | ------------------- | ---------------------------- | ---------------------------------------------------------------------- |
+| [Fly.io](https://fly.io)                              | Backend hosting     | 3 shared VMs, 160GB outbound | [docs/services/fly-io.md](docs/services/fly-io.md)                     |
+| [Cloudflare Pages](https://pages.cloudflare.com)      | Frontend hosting    | Unlimited requests           | [docs/services/cloudflare-pages.md](docs/services/cloudflare-pages.md) |
+| [Neon](https://neon.tech)                             | PostgreSQL database | 0.5GB storage                | [docs/services/neon.md](docs/services/neon.md)                         |
+| [Upstash](https://upstash.com)                        | Redis cache         | 10K commands/day             | [docs/services/upstash.md](docs/services/upstash.md)                   |
+| [Cloudflare R2](https://developers.cloudflare.com/r2) | File storage        | 10GB, zero egress            | [docs/services/cloudflare-r2.md](docs/services/cloudflare-r2.md)       |
+| [Resend](https://resend.com)                          | Transactional email | 3K emails/month              | [docs/services/resend.md](docs/services/resend.md)                     |
+| [Stripe](https://stripe.com)                          | Payment processing  | No monthly fee               | [docs/services/stripe.md](docs/services/stripe.md)                     |
+
+### Future Services (Coming Soon)
+
+| Service                                              | Purpose                     | Status     |
+| ---------------------------------------------------- | --------------------------- | ---------- |
+| [Sentry](https://sentry.io)                          | Error tracking & monitoring | Planned    |
+| [PostHog](https://posthog.com)                       | Product analytics           | Planned    |
+| [Cloudflare Workers](https://workers.cloudflare.com) | Edge functions              | Planned    |
+| [Twilio](https://twilio.com)                         | SMS notifications           | Planned    |
+| [OpenAI](https://openai.com)                         | AI features                 | Evaluating |
+
+For detailed service documentation, see [docs/services/](docs/services/).
+
 ## Deployment
 
-> **Coming Soon**: Deployment documentation will be added once hosting infrastructure is finalized.
+See [docs/deployment/](docs/deployment/) for complete deployment guides.
+
+### Quick Deploy (Backend)
+
+```bash
+# Install Fly CLI
+brew install flyctl
+
+# Login and deploy
+fly auth login
+cd backend
+fly deploy --app servicepro-api
+```
+
+### Quick Deploy (Frontend)
+
+Frontend auto-deploys via Cloudflare Pages when pushing to `master`.
 
 ## Contributing
 

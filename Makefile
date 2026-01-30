@@ -49,6 +49,19 @@ help:
 	@echo "  ci           - Run full CI pipeline (legacy)"
 	@echo "  ci-quick     - Run quick CI (lint + unit tests)"
 	@echo ""
+	@echo "Deployment:"
+	@echo "  deploy-backend   - Deploy backend to Fly.io"
+	@echo "  deploy-frontend  - Deploy frontend to Cloudflare Pages"
+	@echo "  deploy           - Deploy both backend and frontend"
+	@echo "  logs-prod        - View production backend logs"
+	@echo "  status-prod      - Check production backend status"
+	@echo "  ssh-prod         - SSH into production backend"
+	@echo "  secrets-list     - View production secrets (names only)"
+	@echo "  migrate-prod     - Run migrations on production"
+	@echo "  health-prod      - Health check production"
+	@echo "  scale-backend    - View backend scale settings"
+	@echo "  restart-prod     - Restart production backend"
+	@echo ""
 	@echo "Docker:"
 	@echo "  docker-dev   - Start dev environment (hot reload)"
 	@echo "  docker-down  - Stop all containers"
@@ -343,6 +356,64 @@ coverage-view:
 	@echo "Opening coverage reports..."
 	@open backend/coverage.html || xdg-open backend/coverage.html 2>/dev/null || true
 	@open frontend/coverage/index.html || xdg-open frontend/coverage/index.html 2>/dev/null || true
+
+# =============================================================================
+# Deployment
+# =============================================================================
+
+# Deploy backend to Fly.io
+deploy-backend:
+	@echo "Deploying backend to Fly.io..."
+	@cd backend && fly deploy --app servicepro-api
+	@echo "✓ Backend deployed!"
+
+# Deploy frontend to Cloudflare Pages
+deploy-frontend:
+	@echo "Building and deploying frontend to Cloudflare Pages..."
+	@cd frontend && npm ci && npm run build
+	@cd frontend && wrangler pages deploy dist --project-name=servicepro
+	@echo "✓ Frontend deployed!"
+
+# Deploy both
+deploy: deploy-backend deploy-frontend
+	@echo "✓ Full deployment complete!"
+
+# View backend logs
+logs-prod:
+	@fly logs --app servicepro-api
+
+# Check backend status
+status-prod:
+	@fly status --app servicepro-api
+
+# SSH into production backend
+ssh-prod:
+	@fly ssh console --app servicepro-api
+
+# View production secrets (names only)
+secrets-list:
+	@fly secrets list --app servicepro-api
+
+# Run migrations on production
+migrate-prod:
+	@echo "Running migrations on production..."
+	@psql $(DATABASE_URL) < backend/migrations/001_schema.sql
+	@echo "✓ Migrations complete!"
+
+# Health check production
+health-prod:
+	@curl -s https://servicepro-api.fly.dev/health | jq .
+
+# Scale backend
+scale-backend:
+	@echo "Current scale:"
+	@fly scale show --app servicepro-api
+
+# Restart production backend
+restart-prod:
+	@echo "Restarting production backend..."
+	@fly apps restart servicepro-api
+	@echo "✓ Restarted!"
 
 # =============================================================================
 # CI/CD
