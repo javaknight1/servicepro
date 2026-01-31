@@ -1,0 +1,61 @@
+version: 2
+updates:
+  # Frontend npm dependencies
+  - package-ecosystem: 'npm'
+    directory: '/frontend'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+      time: '09:00'
+      timezone: 'America/New_York'
+    open-pull-requests-limit: 10
+    labels:
+      - 'dependencies'
+      - 'frontend'
+    commit-message:
+      prefix: 'fix'
+    groups:
+      # Group minor and patch updates together to reduce PR noise
+      npm-minor-patch:
+        patterns:
+          - '*'
+        update-types:
+          - 'minor'
+          - 'patch'
+
+  # Backend Go dependencies
+  - package-ecosystem: 'gomod'
+    directory: '/backend'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+      time: '09:00'
+      timezone: 'America/New_York'
+    open-pull-requests-limit: 10
+    labels:
+      - 'dependencies'
+      - 'backend'
+    commit-message:
+      prefix: 'fix'
+    groups:
+      # Group minor and patch updates together
+      go-minor-patch:
+        patterns:
+          - '*'
+        update-types:
+          - 'minor'
+          - 'patch'
+
+  # GitHub Actions
+  - package-ecosystem: 'github-actions'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+      time: '09:00'
+      timezone: 'America/New_York'
+    labels:
+      - 'dependencies'
+      - 'ci'
+    commit-message:
+      prefix: 'fix'

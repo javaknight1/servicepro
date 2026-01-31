@@ -3,6 +3,8 @@ name: CI Lint and Tests
 on:
   push:
     branches: [master]
+  pull_request:
+    branches: [master]
 
 # Cancel in-progress runs for the same branch
 concurrency:
