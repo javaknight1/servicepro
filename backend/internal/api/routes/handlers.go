@@ -14,8 +14,8 @@ func SetupHandlers(
 ) *Handlers {
 	h := &Handlers{}
 
-	// Auth handler
-	h.Auth = handlers.NewAuthHandler(svc.Auth, mw.RateLimiter)
+	// Auth handler (with cookie manager for httpOnly token storage)
+	h.Auth = handlers.NewAuthHandler(svc.Auth, mw.RateLimiter, mw.CookieManager)
 
 	// Registration handler
 	h.Registration = handlers.NewRegistrationHandler(svc.Registration, svc.Invitation)

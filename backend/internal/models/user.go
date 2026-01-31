@@ -55,11 +55,18 @@ type LoginRequest struct {
 	Password string `json:"password" binding:"required,min=8"`
 }
 
-// LoginResponse represents the login response payload
+// LoginResponse represents the login response payload (used internally by auth service)
 type LoginResponse struct {
 	Token        string `json:"token"`
 	RefreshToken string `json:"refreshToken"`
 	ExpiresIn    int    `json:"expiresIn"` // in seconds
+}
+
+// LoginCookieResponse represents the login response when using httpOnly cookies
+// Tokens are sent via cookies, not in the response body
+type LoginCookieResponse struct {
+	Message   string `json:"message"`
+	ExpiresIn int    `json:"expiresIn"` // in seconds, for client-side expiry tracking
 }
 
 // RegisterRequest represents the registration request payload

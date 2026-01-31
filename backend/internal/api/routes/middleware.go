@@ -18,11 +18,14 @@ func SetupMiddleware(
 	// JWT Manager
 	jwtManager := auth.NewJWTManager(&cfg.JWT)
 
+	// Cookie Manager for httpOnly JWT cookies
+	cookieManager := auth.NewCookieManager(&cfg.Cookie, cfg.JWT.AccessExpiration, cfg.JWT.RefreshExpiration)
+
 	// Permission checker
 	permChecker := permissionsSvc.NewPermissionChecker(repos.Permission, redisClient)
 
-	// Permission middleware
-	permMiddleware := middleware.NewPermissionMiddleware(permChecker, jwtManager)
+	// Permission middleware (with cookie support)
+	permMiddleware := middleware.NewPermissionMiddleware(permChecker, jwtManager, cookieManager, cfg.Cookie.AccessTokenName)
 
 	// Tenant middleware
 	tenantMW := middleware.NewTenantMiddleware(repos.Tenant)
@@ -33,6 +36,7 @@ func SetupMiddleware(
 
 	return &Middleware{
 		JWTManager:     jwtManager,
+		CookieManager:  cookieManager,
 		PermChecker:    permChecker,
 		PermMiddleware: permMiddleware,
 		TenantMW:       tenantMW,

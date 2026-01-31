@@ -17,6 +17,7 @@ type Config struct {
 	Redis         RedisConfig
 	JWT           JWTConfig
 	Auth          AuthConfig
+	Cookie        CookieConfig
 	RateLimit     RateLimitConfig
 	AWS           AWSConfig
 	S3Compatible  S3CompatibleConfig
@@ -146,6 +147,22 @@ type AuthConfig struct {
 	LockoutDuration   time.Duration
 	RateLimitWindow   time.Duration
 	RateLimitAttempts int
+}
+
+// CookieConfig holds HTTP cookie configuration for JWT tokens
+type CookieConfig struct {
+	// Domain is the domain for cookies (e.g., ".servicepro.com" for production)
+	Domain string
+	// Secure indicates if cookies should only be sent over HTTPS
+	Secure bool
+	// SameSite controls cross-site cookie behavior ("Strict", "Lax", or "None")
+	SameSite string
+	// AccessTokenName is the cookie name for the access token
+	AccessTokenName string
+	// RefreshTokenName is the cookie name for the refresh token
+	RefreshTokenName string
+	// RefreshTokenPath restricts refresh token cookie to auth endpoints
+	RefreshTokenPath string
 }
 
 // RateLimitConfig holds API rate limiting configuration
@@ -320,6 +337,14 @@ func Load() *Config {
 			LockoutDuration:   time.Minute * 30, // 30 minutes lockout
 			RateLimitWindow:   time.Minute * 15, // 15 minutes window
 			RateLimitAttempts: 5,                // 5 attempts per window
+		},
+		Cookie: CookieConfig{
+			Domain:           getEnv("COOKIE_DOMAIN", ""),          // Empty for development (localhost)
+			Secure:           getEnvAsBool("COOKIE_SECURE", false), // true in production (HTTPS only)
+			SameSite:         getEnv("COOKIE_SAMESITE", "Lax"),     // Lax provides CSRF protection
+			AccessTokenName:  getEnv("COOKIE_ACCESS_TOKEN_NAME", "access_token"),
+			RefreshTokenName: getEnv("COOKIE_REFRESH_TOKEN_NAME", "refresh_token"),
+			RefreshTokenPath: getEnv("COOKIE_REFRESH_TOKEN_PATH", "/api/v1/auth"),
 		},
 		RateLimit: RateLimitConfig{
 			Enabled:            getEnvAsBool("RATE_LIMIT_ENABLED", true),

@@ -9,19 +9,22 @@ import (
 	"github.com/javaknight1/servicepro/backend/internal/api/middleware"
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/services"
+	"github.com/javaknight1/servicepro/backend/pkg/auth"
 )
 
 // AuthHandler handles authentication endpoints
 type AuthHandler struct {
-	authService services.AuthServiceInterface
-	rateLimiter middleware.RateLimiterInterface
+	authService   services.AuthServiceInterface
+	rateLimiter   middleware.RateLimiterInterface
+	cookieManager *auth.CookieManager
 }
 
 // NewAuthHandler creates a new auth handler
-func NewAuthHandler(authService services.AuthServiceInterface, rateLimiter middleware.RateLimiterInterface) *AuthHandler {
+func NewAuthHandler(authService services.AuthServiceInterface, rateLimiter middleware.RateLimiterInterface, cookieManager *auth.CookieManager) *AuthHandler {
 	return &AuthHandler{
-		authService: authService,
-		rateLimiter: rateLimiter,
+		authService:   authService,
+		rateLimiter:   rateLimiter,
+		cookieManager: cookieManager,
 	}
 }
 
@@ -95,8 +98,14 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	// Clear rate limit on successful login
 	_ = h.rateLimiter.ClearLoginAttempts(req.Email)
 
-	// Return success response
-	c.JSON(http.StatusOK, response)
+	// Set tokens as httpOnly cookies
+	h.cookieManager.SetTokens(c, response.Token, response.RefreshToken)
+
+	// Return success response without tokens in body (they're in cookies)
+	c.JSON(http.StatusOK, models.LoginCookieResponse{
+		Message:   "Login successful",
+		ExpiresIn: response.ExpiresIn,
+	})
 }
 
 // RefreshToken handles POST /api/v1/auth/refresh
@@ -105,31 +114,29 @@ func (h *AuthHandler) Login(c *gin.Context) {
 // @Tags auth
 // @Accept json
 // @Produce json
-// @Param request body object{refresh_token=string} true "Refresh token"
-// @Success 200 {object} models.LoginResponse
-// @Failure 400 {object} models.ErrorResponse "Invalid request"
+// @Success 200 {object} models.LoginCookieResponse
 // @Failure 401 {object} models.ErrorResponse "Invalid or expired refresh token"
 // @Failure 403 {object} models.ErrorResponse "Account locked"
 // @Failure 500 {object} models.ErrorResponse "Internal server error"
 // @Router /api/v1/auth/refresh [post]
 func (h *AuthHandler) RefreshToken(c *gin.Context) {
-	var req struct {
-		RefreshToken string `json:"refresh_token" binding:"required"`
-	}
-
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+	// Get refresh token from cookie
+	refreshToken, err := h.cookieManager.GetRefreshToken(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, models.ErrorResponse{
 			Error:   "invalid_request",
-			Message: "Refresh token is required",
+			Message: "Refresh token not found",
 		})
 		return
 	}
 
 	// Attempt to refresh tokens
-	response, err := h.authService.RefreshToken(req.RefreshToken)
+	response, err := h.authService.RefreshToken(refreshToken)
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrInvalidRefreshToken):
+			// Clear invalid cookies
+			h.cookieManager.ClearTokens(c)
 			c.JSON(http.StatusUnauthorized, models.ErrorResponse{
 				Error:   "invalid_token",
 				Message: "Invalid or expired refresh token",
@@ -137,6 +144,7 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 			return
 
 		case errors.Is(err, services.ErrAccountLocked):
+			h.cookieManager.ClearTokens(c)
 			c.JSON(http.StatusForbidden, models.ErrorResponse{
 				Error:   "account_locked",
 				Message: "Account is locked. Please contact support.",
@@ -144,6 +152,7 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 			return
 
 		case errors.Is(err, services.ErrEmailNotVerified):
+			h.cookieManager.ClearTokens(c)
 			c.JSON(http.StatusForbidden, models.ErrorResponse{
 				Error:   "email_not_verified",
 				Message: "Please verify your email address. Check your inbox for the verification link.",
@@ -159,5 +168,28 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 		}
 	}
 
-	c.JSON(http.StatusOK, response)
+	// Set new tokens as httpOnly cookies
+	h.cookieManager.SetTokens(c, response.Token, response.RefreshToken)
+
+	// Return success response without tokens in body
+	c.JSON(http.StatusOK, models.LoginCookieResponse{
+		Message:   "Token refreshed successfully",
+		ExpiresIn: response.ExpiresIn,
+	})
+}
+
+// Logout handles POST /api/v1/auth/logout
+// @Summary User logout
+// @Description Clear authentication cookies
+// @Tags auth
+// @Produce json
+// @Success 200 {object} object{message=string}
+// @Router /api/v1/auth/logout [post]
+func (h *AuthHandler) Logout(c *gin.Context) {
+	// Clear both access and refresh token cookies
+	h.cookieManager.ClearTokens(c)
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Logged out successfully",
+	})
 }

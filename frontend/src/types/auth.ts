@@ -15,9 +15,9 @@ export interface LoginRequest {
   password: string;
 }
 
+// LoginResponse is now cookie-based - no tokens in body
 export interface LoginResponse {
-  token: string;
-  refreshToken: string;
+  message: string;
   expiresIn: number; // in seconds
 }
 
@@ -58,8 +58,6 @@ export interface ErrorResponse {
 
 export interface AuthState {
   user: User | null;
-  token: string | null;
-  refreshToken: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
@@ -68,9 +66,10 @@ export interface AuthState {
     password: string,
     invitationToken?: string
   ) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   refreshAccessToken: () => Promise<void>;
   setUser: (user: User) => void;
   updateProfilePicture: (url: string | null) => void;
   fetchCurrentUser: () => Promise<void>;
+  checkAuth: () => Promise<boolean>;
 }

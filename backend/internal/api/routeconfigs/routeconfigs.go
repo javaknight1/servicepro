@@ -75,6 +75,7 @@ type Services struct {
 // Middleware holds all middleware instances
 type Middleware struct {
 	JWTManager     *auth.JWTManager
+	CookieManager  *auth.CookieManager
 	PermChecker    *permissionsSvc.PermissionChecker
 	PermMiddleware *middleware.PermissionMiddleware
 	TenantMW       *middleware.TenantMiddleware

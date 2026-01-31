@@ -5,7 +5,6 @@ import axios, {
 } from 'axios';
 import type {
   LoginRequest,
-  LoginResponse,
   RegisterRequest,
   RegisterResponse,
   PasswordResetRequestRequest,
@@ -23,19 +22,16 @@ const api: AxiosInstance = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true, // Required for httpOnly cookies to be sent with requests
 });
 
 // Storage key for current tenant (matches tenantStore)
 const CURRENT_TENANT_KEY = 'current_tenant_id';
 
-// Request interceptor - add auth token and tenant ID to requests
+// Request interceptor - add tenant ID to requests
+// Note: Auth tokens are handled via httpOnly cookies (automatically sent with withCredentials: true)
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    const token = localStorage.getItem('access_token');
-    if (token && config.headers) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-
     // Add tenant ID header if available
     const tenantId = localStorage.getItem(CURRENT_TENANT_KEY);
     if (tenantId && config.headers) {
@@ -50,6 +46,7 @@ api.interceptors.request.use(
 );
 
 // Response interceptor - handle token refresh
+// Tokens are in httpOnly cookies, so refresh is handled automatically by the backend
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError<ApiError>) => {
@@ -62,34 +59,14 @@ api.interceptors.response.use(
       originalRequest._retry = true;
 
       try {
-        const refreshToken = localStorage.getItem('refresh_token');
-        if (!refreshToken) {
-          throw new Error('No refresh token available');
-        }
+        // Attempt to refresh the token via cookie
+        // The refresh token cookie is automatically sent with this request
+        await axios.post('/api/v1/auth/refresh', {}, { withCredentials: true });
 
-        // Attempt to refresh the token (backend expects snake_case)
-        const response = await axios.post<LoginResponse>(
-          '/api/v1/auth/refresh',
-          {
-            refresh_token: refreshToken,
-          }
-        );
-
-        const { token, refreshToken: newRefreshToken } = response.data;
-
-        // Save new tokens
-        localStorage.setItem('access_token', token);
-        localStorage.setItem('refresh_token', newRefreshToken);
-
-        // Retry the original request with new token
-        if (originalRequest.headers) {
-          originalRequest.headers.Authorization = `Bearer ${token}`;
-        }
+        // Retry the original request (new access token cookie is automatically set)
         return api(originalRequest);
       } catch (refreshError) {
-        // Refresh failed - clear ALL auth-related storage and redirect to login
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
+        // Refresh failed - clear local auth state and redirect to login
         localStorage.removeItem('auth-storage'); // Clear zustand persisted auth state
         localStorage.removeItem('tenant-storage'); // Clear tenant state
         localStorage.removeItem(CURRENT_TENANT_KEY);
@@ -102,18 +79,23 @@ api.interceptors.response.use(
   }
 );
 
+// Login response type for cookie-based auth (no tokens in body)
+interface LoginCookieResponse {
+  message: string;
+  expiresIn: number;
+}
+
 // Auth API endpoints
 export const authApi = {
   login: (data: LoginRequest) =>
-    api.post<LoginResponse>('/v1/auth/login', data),
+    api.post<LoginCookieResponse>('/v1/auth/login', data),
 
   register: (data: RegisterRequest) =>
     api.post<RegisterResponse>('/v1/auth/register', data),
 
-  refreshToken: (refreshToken: string) =>
-    api.post<LoginResponse>('/v1/auth/refresh', {
-      refresh_token: refreshToken,
-    }),
+  refreshToken: () => api.post<LoginCookieResponse>('/v1/auth/refresh', {}),
+
+  logout: () => api.post('/v1/auth/logout', {}),
 
   requestPasswordReset: (data: PasswordResetRequestRequest) =>
     api.post('/v1/auth/reset-request', data),

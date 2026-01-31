@@ -135,12 +135,23 @@ func setupTestEnvironment(t *testing.T) (*gorm.DB, *redis.Client, *miniredis.Min
 	}
 	jwtManager := auth.NewJWTManager(jwtConfig)
 
+	// Setup cookie manager for tests
+	cookieConfig := &config.CookieConfig{
+		Domain:           "",
+		Secure:           false,
+		SameSite:         "Lax",
+		AccessTokenName:  "access_token",
+		RefreshTokenName: "refresh_token",
+		RefreshTokenPath: "/api/v1/auth",
+	}
+	cookieManager := auth.NewCookieManager(cookieConfig, time.Hour, 24*time.Hour)
+
 	// Setup permission checker
 	permRepo := repository.NewPermissionRepository(db)
 	permChecker := permissions.NewPermissionChecker(permRepo, redisClient)
 
 	// Setup middleware
-	middleware := NewPermissionMiddleware(permChecker, jwtManager)
+	middleware := NewPermissionMiddleware(permChecker, jwtManager, cookieManager, cookieConfig.AccessTokenName)
 
 	return db, redisClient, mr, jwtManager, middleware
 }

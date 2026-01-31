@@ -7,13 +7,16 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
+	"github.com/javaknight1/servicepro/backend/config"
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/services"
+	"github.com/javaknight1/servicepro/backend/pkg/auth"
 )
 
 // MockAuthService is a mock implementation of AuthService
@@ -64,11 +67,23 @@ func setupTestRouter() *gin.Engine {
 	return gin.New()
 }
 
+func createTestCookieManager() *auth.CookieManager {
+	cfg := &config.CookieConfig{
+		Domain:           "",
+		Secure:           false,
+		SameSite:         "Lax",
+		AccessTokenName:  "access_token",
+		RefreshTokenName: "refresh_token",
+		RefreshTokenPath: "/api/v1/auth",
+	}
+	return auth.NewCookieManager(cfg, time.Hour, 7*24*time.Hour)
+}
+
 func TestLogin_Success(t *testing.T) {
 	mockAuthService := new(MockAuthService)
 	mockRateLimiter := new(MockRateLimiter)
 
-	handler := NewAuthHandler(mockAuthService, mockRateLimiter)
+	handler := NewAuthHandler(mockAuthService, mockRateLimiter, createTestCookieManager())
 
 	expectedResponse := &models.LoginResponse{
 		Token:        "test-access-token",
@@ -96,12 +111,30 @@ func TestLogin_Success(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	var response models.LoginResponse
+	// Verify response body (tokens are now in cookies, not body)
+	var response models.LoginCookieResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(t, err)
-	assert.Equal(t, expectedResponse.Token, response.Token)
-	assert.Equal(t, expectedResponse.RefreshToken, response.RefreshToken)
+	assert.Equal(t, "Login successful", response.Message)
 	assert.Equal(t, expectedResponse.ExpiresIn, response.ExpiresIn)
+
+	// Verify cookies are set
+	cookies := w.Result().Cookies()
+	var accessTokenCookie, refreshTokenCookie *http.Cookie
+	for _, cookie := range cookies {
+		if cookie.Name == "access_token" {
+			accessTokenCookie = cookie
+		} else if cookie.Name == "refresh_token" {
+			refreshTokenCookie = cookie
+		}
+	}
+
+	assert.NotNil(t, accessTokenCookie, "access_token cookie should be set")
+	assert.NotNil(t, refreshTokenCookie, "refresh_token cookie should be set")
+	assert.Equal(t, expectedResponse.Token, accessTokenCookie.Value)
+	assert.Equal(t, expectedResponse.RefreshToken, refreshTokenCookie.Value)
+	assert.True(t, accessTokenCookie.HttpOnly, "access_token should be httpOnly")
+	assert.True(t, refreshTokenCookie.HttpOnly, "refresh_token should be httpOnly")
 
 	mockAuthService.AssertExpectations(t)
 	mockRateLimiter.AssertExpectations(t)
@@ -111,7 +144,7 @@ func TestLogin_InvalidRequest(t *testing.T) {
 	mockAuthService := new(MockAuthService)
 	mockRateLimiter := new(MockRateLimiter)
 
-	handler := NewAuthHandler(mockAuthService, mockRateLimiter)
+	handler := NewAuthHandler(mockAuthService, mockRateLimiter, createTestCookieManager())
 
 	router := setupTestRouter()
 	router.POST("/login", handler.Login)
@@ -135,7 +168,7 @@ func TestLogin_InvalidCredentials(t *testing.T) {
 	mockAuthService := new(MockAuthService)
 	mockRateLimiter := new(MockRateLimiter)
 
-	handler := NewAuthHandler(mockAuthService, mockRateLimiter)
+	handler := NewAuthHandler(mockAuthService, mockRateLimiter, createTestCookieManager())
 
 	mockAuthService.On("Login", "test@example.com", "WrongPassword").Return(nil, services.ErrInvalidCredentials)
 
@@ -168,7 +201,7 @@ func TestLogin_AccountLocked(t *testing.T) {
 	mockAuthService := new(MockAuthService)
 	mockRateLimiter := new(MockRateLimiter)
 
-	handler := NewAuthHandler(mockAuthService, mockRateLimiter)
+	handler := NewAuthHandler(mockAuthService, mockRateLimiter, createTestCookieManager())
 
 	mockAuthService.On("Login", "test@example.com", "SecurePassword123!").Return(nil, services.ErrAccountLocked)
 
@@ -201,7 +234,7 @@ func TestLogin_InternalError(t *testing.T) {
 	mockAuthService := new(MockAuthService)
 	mockRateLimiter := new(MockRateLimiter)
 
-	handler := NewAuthHandler(mockAuthService, mockRateLimiter)
+	handler := NewAuthHandler(mockAuthService, mockRateLimiter, createTestCookieManager())
 
 	mockAuthService.On("Login", "test@example.com", "SecurePassword123!").Return(nil, errors.New("database error"))
 

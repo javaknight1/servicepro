@@ -7,25 +7,17 @@ export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
       user: null,
-      token: null,
-      refreshToken: null,
       isAuthenticated: false,
       isLoading: false,
 
       login: async (email: string, password: string) => {
         try {
           set({ isLoading: true });
-          const response = await authApi.login({ email, password });
-          const { token, refreshToken, expiresIn: _expiresIn } = response.data;
+          // Login sets httpOnly cookies automatically
+          await authApi.login({ email, password });
 
-          // Save tokens to localStorage
-          localStorage.setItem('access_token', token);
-          localStorage.setItem('refresh_token', refreshToken);
-
-          // Update state
+          // Update state (tokens are in httpOnly cookies, not accessible to JS)
           set({
-            token,
-            refreshToken,
             isAuthenticated: true,
             isLoading: false,
           });
@@ -63,42 +55,30 @@ export const useAuthStore = create<AuthState>()(
         }
       },
 
-      logout: () => {
-        // Clear tokens from localStorage
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
+      logout: async () => {
+        try {
+          // Call backend to clear httpOnly cookies
+          await authApi.logout();
+        } catch (error) {
+          // Even if the API call fails, clear local state
+          console.error('Logout API call failed:', error);
+        }
 
-        // Clear state
+        // Clear local state
         set({
           user: null,
-          token: null,
-          refreshToken: null,
           isAuthenticated: false,
         });
       },
 
       refreshAccessToken: async () => {
         try {
-          const currentRefreshToken = get().refreshToken;
-          if (!currentRefreshToken) {
-            throw new Error('No refresh token available');
-          }
-
-          const response = await authApi.refreshToken(currentRefreshToken);
-          const { token, refreshToken } = response.data;
-
-          // Save new tokens
-          localStorage.setItem('access_token', token);
-          localStorage.setItem('refresh_token', refreshToken);
-
-          // Update state
-          set({
-            token,
-            refreshToken,
-          });
+          // Refresh token cookie is sent automatically
+          await authApi.refreshToken();
+          // New access token cookie is set automatically by the backend
         } catch (error) {
           // Refresh failed - logout user
-          get().logout();
+          await get().logout();
           throw error;
         }
       },
@@ -120,8 +100,8 @@ export const useAuthStore = create<AuthState>()(
       },
 
       fetchCurrentUser: async () => {
-        const token = get().token;
-        if (!token) return;
+        // Check if authenticated (cookies are sent automatically)
+        if (!get().isAuthenticated) return;
 
         try {
           const response = await userApi.getCurrentUser();
@@ -130,12 +110,22 @@ export const useAuthStore = create<AuthState>()(
           console.error('Failed to fetch current user:', error);
         }
       },
+
+      checkAuth: async () => {
+        // Try to fetch current user to verify authentication
+        try {
+          const response = await userApi.getCurrentUser();
+          set({ user: response.data, isAuthenticated: true });
+          return true;
+        } catch {
+          set({ user: null, isAuthenticated: false });
+          return false;
+        }
+      },
     }),
     {
       name: 'auth-storage',
       partialize: (state) => ({
-        token: state.token,
-        refreshToken: state.refreshToken,
         isAuthenticated: state.isAuthenticated,
         user: state.user,
       }),

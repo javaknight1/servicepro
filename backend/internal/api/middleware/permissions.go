@@ -25,45 +25,61 @@ const (
 
 // PermissionMiddleware handles permission checking for routes
 type PermissionMiddleware struct {
-	checker    *permissions.PermissionChecker
-	jwtManager *auth.JWTManager
+	checker         *permissions.PermissionChecker
+	jwtManager      *auth.JWTManager
+	cookieManager   *auth.CookieManager
+	accessTokenName string
 }
 
 // NewPermissionMiddleware creates a new permission middleware
-func NewPermissionMiddleware(checker *permissions.PermissionChecker, jwtManager *auth.JWTManager) *PermissionMiddleware {
+func NewPermissionMiddleware(checker *permissions.PermissionChecker, jwtManager *auth.JWTManager, cookieManager *auth.CookieManager, accessTokenName string) *PermissionMiddleware {
 	return &PermissionMiddleware{
-		checker:    checker,
-		jwtManager: jwtManager,
+		checker:         checker,
+		jwtManager:      jwtManager,
+		cookieManager:   cookieManager,
+		accessTokenName: accessTokenName,
 	}
 }
 
 // RequireAuth is a middleware that validates JWT and sets user context
 // This should be applied before any permission checks
+// Token is read from httpOnly cookie first, with fallback to Authorization header for backward compatibility
 func (pm *PermissionMiddleware) RequireAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Extract token from Authorization header
-		authHeader := c.GetHeader("Authorization")
-		if authHeader == "" {
-			c.JSON(http.StatusUnauthorized, models.ErrorResponse{
-				Error:   "unauthorized",
-				Message: "Missing authorization header",
-			})
-			c.Abort()
-			return
+		var tokenString string
+
+		// Try to get token from httpOnly cookie first
+		if pm.cookieManager != nil {
+			if cookieToken, err := pm.cookieManager.GetAccessToken(c); err == nil && cookieToken != "" {
+				tokenString = cookieToken
+			}
 		}
 
-		// Parse Bearer token
-		parts := strings.SplitN(authHeader, " ", 2)
-		if len(parts) != 2 || parts[0] != "Bearer" {
-			c.JSON(http.StatusUnauthorized, models.ErrorResponse{
-				Error:   "unauthorized",
-				Message: "Invalid authorization header format",
-			})
-			c.Abort()
-			return
-		}
+		// Fall back to Authorization header if no cookie found (backward compatibility)
+		if tokenString == "" {
+			authHeader := c.GetHeader("Authorization")
+			if authHeader == "" {
+				c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+					Error:   "unauthorized",
+					Message: "Authentication required",
+				})
+				c.Abort()
+				return
+			}
 
-		tokenString := parts[1]
+			// Parse Bearer token
+			parts := strings.SplitN(authHeader, " ", 2)
+			if len(parts) != 2 || parts[0] != "Bearer" {
+				c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+					Error:   "unauthorized",
+					Message: "Invalid authorization header format",
+				})
+				c.Abort()
+				return
+			}
+
+			tokenString = parts[1]
+		}
 
 		// Validate token
 		claims, err := pm.jwtManager.ValidateToken(tokenString)
