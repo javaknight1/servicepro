@@ -1,6 +1,7 @@
-import { useState, useRef, useEffect } from 'react';
-import { MoreVertical, Send, Download, FileText, Loader2 } from 'lucide-react';
+import { useState } from 'react';
+import { Send, Download, FileText } from 'lucide-react';
 import { invoiceService, InvoiceStatus } from '../../services/invoiceService';
+import { DropdownMenu, DropdownMenuItem } from '../shared/DropdownMenu';
 
 interface InvoiceActionsMenuProps {
   invoiceId: string;
@@ -15,29 +16,11 @@ export function InvoiceActionsMenu({
   onSendInvoice,
   onInvoiceSent,
 }: InvoiceActionsMenuProps) {
-  const [isOpen, setIsOpen] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [isDownloadingInvoice, setIsDownloadingInvoice] = useState(false);
   const [isDownloadingReceipt, setIsDownloadingReceipt] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    }
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const handleClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setIsOpen(!isOpen);
-  };
-
-  const handleSendInvoice = async (e: React.MouseEvent) => {
+  const handleSendInvoice = async (e: React.MouseEvent, close: () => void) => {
     e.stopPropagation();
     if (!canSend) return;
 
@@ -53,11 +36,14 @@ export function InvoiceActionsMenu({
       console.error('Failed to send invoice:', error);
     } finally {
       setIsSending(false);
-      setIsOpen(false);
+      close();
     }
   };
 
-  const handleDownloadInvoicePDF = async (e: React.MouseEvent) => {
+  const handleDownloadInvoicePDF = async (
+    e: React.MouseEvent,
+    close: () => void
+  ) => {
     e.stopPropagation();
     setIsDownloadingInvoice(true);
     try {
@@ -66,11 +52,14 @@ export function InvoiceActionsMenu({
       console.error('Failed to download invoice PDF:', error);
     } finally {
       setIsDownloadingInvoice(false);
-      setIsOpen(false);
+      close();
     }
   };
 
-  const handleDownloadReceiptPDF = async (e: React.MouseEvent) => {
+  const handleDownloadReceiptPDF = async (
+    e: React.MouseEvent,
+    close: () => void
+  ) => {
     e.stopPropagation();
     setIsDownloadingReceipt(true);
     try {
@@ -79,7 +68,7 @@ export function InvoiceActionsMenu({
       console.error('Failed to download receipt PDF:', error);
     } finally {
       setIsDownloadingReceipt(false);
-      setIsOpen(false);
+      close();
     }
   };
 
@@ -88,63 +77,32 @@ export function InvoiceActionsMenu({
   const isPaid = status === InvoiceStatus.PAID;
 
   return (
-    <div className="relative" ref={menuRef}>
-      <button
-        onClick={handleClick}
-        className="p-1 rounded-md hover:bg-neutral-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
-        aria-label="Invoice actions"
-      >
-        <MoreVertical className="h-5 w-5 text-neutral-500" />
-      </button>
-
-      {isOpen && (
-        <div className="absolute right-0 mt-1 w-48 bg-white rounded-md shadow-lg border border-neutral-200 z-10">
-          <div className="py-1">
-            <button
-              onClick={handleSendInvoice}
-              disabled={!canSend || isSending}
-              className={`w-full flex items-center gap-2 px-4 py-2 text-sm ${
-                canSend
-                  ? 'text-neutral-700 hover:bg-neutral-100'
-                  : 'text-neutral-400 cursor-not-allowed'
-              }`}
-            >
-              {isSending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4" />
-              )}
-              Send Invoice
-            </button>
-            <button
-              onClick={handleDownloadInvoicePDF}
-              disabled={isDownloadingInvoice}
-              className="w-full flex items-center gap-2 px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-100"
-            >
-              {isDownloadingInvoice ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Download className="h-4 w-4" />
-              )}
-              Download Invoice
-            </button>
-            {isPaid && (
-              <button
-                onClick={handleDownloadReceiptPDF}
-                disabled={isDownloadingReceipt}
-                className="w-full flex items-center gap-2 px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-100"
-              >
-                {isDownloadingReceipt ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <FileText className="h-4 w-4" />
-                )}
-                Download Receipt
-              </button>
-            )}
-          </div>
-        </div>
+    <DropdownMenu buttonLabel="Invoice actions">
+      {(close) => (
+        <>
+          <DropdownMenuItem
+            onClick={(e) => handleSendInvoice(e, close)}
+            disabled={!canSend}
+            isLoading={isSending}
+            icon={<Send className="h-4 w-4" />}
+            label="Send Invoice"
+          />
+          <DropdownMenuItem
+            onClick={(e) => handleDownloadInvoicePDF(e, close)}
+            isLoading={isDownloadingInvoice}
+            icon={<Download className="h-4 w-4" />}
+            label="Download Invoice"
+          />
+          {isPaid && (
+            <DropdownMenuItem
+              onClick={(e) => handleDownloadReceiptPDF(e, close)}
+              isLoading={isDownloadingReceipt}
+              icon={<FileText className="h-4 w-4" />}
+              label="Download Receipt"
+            />
+          )}
+        </>
       )}
-    </div>
+    </DropdownMenu>
   );
 }

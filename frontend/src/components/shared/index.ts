@@ -15,6 +15,11 @@ export { DataTable } from './DataTable';
 export { EmptyState } from './EmptyState';
 export { Avatar } from './Avatar';
 export { ImageCropModal } from './ImageCropModal';
+export {
+  DropdownMenu,
+  DropdownMenuItem,
+  DropdownMenuDivider,
+} from './DropdownMenu';
 
 export type { ButtonProps } from './Button';
 export type { InputProps } from './Input';

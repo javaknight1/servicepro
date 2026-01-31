@@ -1,15 +1,12 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  MoreVertical,
-  Send,
-  Download,
-  Loader2,
-  Check,
-  X,
-  Copy,
-} from 'lucide-react';
+import { Send, Download, Check, X, Copy } from 'lucide-react';
 import { quoteService } from '../../services/quoteService';
+import {
+  DropdownMenu,
+  DropdownMenuItem,
+  DropdownMenuDivider,
+} from '../shared/DropdownMenu';
 
 interface QuoteActionsMenuProps {
   quoteId: string;
@@ -27,30 +24,12 @@ export function QuoteActionsMenu({
   onStatusChange,
 }: QuoteActionsMenuProps) {
   const navigate = useNavigate();
-  const [isOpen, setIsOpen] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [isAccepting, setIsAccepting] = useState(false);
   const [isDeclining, setIsDeclining] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    }
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const handleClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setIsOpen(!isOpen);
-  };
-
-  const handleSendQuote = async (e: React.MouseEvent) => {
+  const handleSendQuote = async (e: React.MouseEvent, close: () => void) => {
     e.stopPropagation();
     if (status !== 'draft') return;
 
@@ -66,11 +45,11 @@ export function QuoteActionsMenu({
       console.error('Failed to send quote:', error);
     } finally {
       setIsSending(false);
-      setIsOpen(false);
+      close();
     }
   };
 
-  const handleDownloadPDF = async (e: React.MouseEvent) => {
+  const handleDownloadPDF = async (e: React.MouseEvent, close: () => void) => {
     e.stopPropagation();
     setIsDownloading(true);
     try {
@@ -79,11 +58,11 @@ export function QuoteActionsMenu({
       console.error('Failed to download PDF:', error);
     } finally {
       setIsDownloading(false);
-      setIsOpen(false);
+      close();
     }
   };
 
-  const handleAcceptQuote = async (e: React.MouseEvent) => {
+  const handleAcceptQuote = async (e: React.MouseEvent, close: () => void) => {
     e.stopPropagation();
     setIsAccepting(true);
     try {
@@ -93,11 +72,11 @@ export function QuoteActionsMenu({
       console.error('Failed to accept quote:', error);
     } finally {
       setIsAccepting(false);
-      setIsOpen(false);
+      close();
     }
   };
 
-  const handleDeclineQuote = async (e: React.MouseEvent) => {
+  const handleDeclineQuote = async (e: React.MouseEvent, close: () => void) => {
     e.stopPropagation();
     setIsDeclining(true);
     try {
@@ -107,13 +86,13 @@ export function QuoteActionsMenu({
       console.error('Failed to decline quote:', error);
     } finally {
       setIsDeclining(false);
-      setIsOpen(false);
+      close();
     }
   };
 
-  const handleCloneQuote = (e: React.MouseEvent) => {
+  const handleCloneQuote = (e: React.MouseEvent, close: () => void) => {
     e.stopPropagation();
-    setIsOpen(false);
+    close();
     navigate(`/quotes/new?clone=${quoteId}`);
   };
 
@@ -121,85 +100,48 @@ export function QuoteActionsMenu({
   const canAcceptDecline = status === 'sent' || status === 'viewed';
 
   return (
-    <div className="relative" ref={menuRef}>
-      <button
-        onClick={handleClick}
-        className="p-1 rounded-md hover:bg-neutral-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
-        aria-label="Quote actions"
-      >
-        <MoreVertical className="h-5 w-5 text-neutral-500" />
-      </button>
-
-      {isOpen && (
-        <div className="absolute right-0 mt-1 w-48 bg-white rounded-md shadow-lg border border-neutral-200 z-10">
-          <div className="py-1">
-            <button
-              onClick={handleSendQuote}
-              disabled={!canSend || isSending}
-              className={`w-full flex items-center gap-2 px-4 py-2 text-sm ${
-                canSend
-                  ? 'text-neutral-700 hover:bg-neutral-100'
-                  : 'text-neutral-400 cursor-not-allowed'
-              }`}
-            >
-              {isSending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4" />
-              )}
-              Send Quote
-            </button>
-            <button
-              onClick={handleDownloadPDF}
-              disabled={isDownloading}
-              className="w-full flex items-center gap-2 px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-100"
-            >
-              {isDownloading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Download className="h-4 w-4" />
-              )}
-              Download PDF
-            </button>
-            <button
-              onClick={handleCloneQuote}
-              className="w-full flex items-center gap-2 px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-100"
-            >
-              <Copy className="h-4 w-4" />
-              Clone Quote
-            </button>
-            {canAcceptDecline && (
-              <>
-                <div className="border-t border-neutral-200 my-1" />
-                <button
-                  onClick={handleAcceptQuote}
-                  disabled={isAccepting}
-                  className="w-full flex items-center gap-2 px-4 py-2 text-sm text-green-700 hover:bg-green-50"
-                >
-                  {isAccepting ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Check className="h-4 w-4" />
-                  )}
-                  Accept Quote
-                </button>
-                <button
-                  onClick={handleDeclineQuote}
-                  disabled={isDeclining}
-                  className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-700 hover:bg-red-50"
-                >
-                  {isDeclining ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <X className="h-4 w-4" />
-                  )}
-                  Decline Quote
-                </button>
-              </>
-            )}
-          </div>
-        </div>
+    <DropdownMenu buttonLabel="Quote actions">
+      {(close) => (
+        <>
+          <DropdownMenuItem
+            onClick={(e) => handleSendQuote(e, close)}
+            disabled={!canSend}
+            isLoading={isSending}
+            icon={<Send className="h-4 w-4" />}
+            label="Send Quote"
+          />
+          <DropdownMenuItem
+            onClick={(e) => handleDownloadPDF(e, close)}
+            isLoading={isDownloading}
+            icon={<Download className="h-4 w-4" />}
+            label="Download PDF"
+          />
+          <DropdownMenuItem
+            onClick={(e) => handleCloneQuote(e, close)}
+            icon={<Copy className="h-4 w-4" />}
+            label="Clone Quote"
+          />
+          {canAcceptDecline && (
+            <>
+              <DropdownMenuDivider />
+              <DropdownMenuItem
+                onClick={(e) => handleAcceptQuote(e, close)}
+                isLoading={isAccepting}
+                icon={<Check className="h-4 w-4" />}
+                label="Accept Quote"
+                variant="success"
+              />
+              <DropdownMenuItem
+                onClick={(e) => handleDeclineQuote(e, close)}
+                isLoading={isDeclining}
+                icon={<X className="h-4 w-4" />}
+                label="Decline Quote"
+                variant="danger"
+              />
+            </>
+          )}
+        </>
       )}
-    </div>
+    </DropdownMenu>
   );
 }
