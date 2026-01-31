@@ -18,7 +18,7 @@
     "audit:deps": "node scripts/audit-deps.js"
   },
   "dependencies": {
-    "@headlessui/react": "^1.7.18",
+    "@headlessui/react": "^2.2.9",
     "@hookform/resolvers": "^3.3.4",
     "@react-pdf/renderer": "^4.3.2",
     "@stripe/react-stripe-js": "^5.4.1",
