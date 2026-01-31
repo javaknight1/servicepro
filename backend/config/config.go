@@ -283,11 +283,16 @@ type CORSConfig struct {
 }
 
 // Load reads configuration from environment variables
+// Default values that should NEVER be used in production
+const (
+	insecureJWTSecretDefault = "your-secret-key-change-this-in-production"
+)
+
 func Load() *Config {
 	// Load .env file if it exists (for local development)
 	_ = godotenv.Load()
 
-	return &Config{
+	cfg := &Config{
 		Server: ServerConfig{
 			Port:        getEnv("PORT", "8080"),
 			Env:         getEnv("ENV", "development"),
@@ -457,6 +462,44 @@ func Load() *Config {
 			AllowCredentials: getEnvAsBool("CORS_ALLOW_CREDENTIALS", true),
 			MaxAge:           getEnvAsInt("CORS_MAX_AGE", 86400), // 24 hours
 		},
+	}
+
+	// Validate configuration for production environments
+	validateConfig(cfg)
+
+	return cfg
+}
+
+// validateConfig checks that security-critical configuration is properly set.
+// Missing or insecure values will cause the application to exit in ALL environments.
+// Security should be consistent - there's no good reason to run with insecure defaults.
+func validateConfig(cfg *Config) {
+	var errors []string
+
+	// Check JWT secret - required in all environments
+	if cfg.JWT.Secret == "" {
+		errors = append(errors, "JWT_SECRET is required but not set")
+	} else if cfg.JWT.Secret == insecureJWTSecretDefault {
+		errors = append(errors, "JWT_SECRET is using the insecure default value - please set a unique secret (hint: use 'openssl rand -base64 32' to generate one)")
+	} else if len(cfg.JWT.Secret) < 32 {
+		errors = append(errors, "JWT_SECRET must be at least 32 characters for security")
+	}
+
+	// Check Stripe webhook secret (required if Stripe is configured)
+	if cfg.Stripe.SecretKey != "" && cfg.Stripe.WebhookSecret == "" {
+		errors = append(errors, "STRIPE_WEBHOOK_SECRET is required when Stripe is configured - webhooks without signature verification are a security risk")
+	}
+
+	// Any configuration errors are fatal
+	if len(errors) > 0 {
+		log.Println("[CONFIG] Configuration errors detected:")
+		for _, err := range errors {
+			log.Printf("[CONFIG]   - %s", err)
+		}
+		log.Println("[CONFIG]")
+		log.Println("[CONFIG] To fix: copy .env.example to .env and configure the required values")
+		log.Println("[CONFIG] Generate a secure JWT secret with: openssl rand -base64 32")
+		log.Fatal("[CONFIG] Application cannot start with insecure configuration.")
 	}
 }
 
