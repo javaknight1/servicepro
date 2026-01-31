@@ -40,7 +40,6 @@ export const QuoteStatusTimeline: React.FC<QuoteStatusTimelineProps> = ({
       [QuoteStatus.VIEWED]: 'bg-purple-500',
       [QuoteStatus.ACCEPTED]: 'bg-green-500',
       [QuoteStatus.DECLINED]: 'bg-red-500',
-      [QuoteStatus.REJECTED]: 'bg-red-500',
       [QuoteStatus.EXPIRED]: 'bg-yellow-500',
     };
     return colors[status];

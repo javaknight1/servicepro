@@ -9,7 +9,6 @@ export enum QuoteStatus {
   VIEWED = 'viewed',
   ACCEPTED = 'accepted',
   DECLINED = 'declined',
-  REJECTED = 'rejected',
   EXPIRED = 'expired',
 }
 
@@ -76,7 +75,7 @@ export interface QuoteStats {
   draft_quotes: number;
   sent_quotes: number;
   accepted_quotes: number;
-  rejected_quotes: number;
+  declined_quotes: number;
   expired_quotes: number;
 }
 

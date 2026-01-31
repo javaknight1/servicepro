@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { DashboardLayout } from '@components/layout';
 import { Button } from '@components/shared';
 import { quoteService } from '@services/quoteService';
@@ -14,6 +14,8 @@ import {
   X,
   Send,
   Download,
+  Check,
+  XCircle,
 } from 'lucide-react';
 
 interface QuoteFormData {
@@ -41,7 +43,10 @@ const emptyLineItem: LineItemFormData = {
 export function QuoteDetailPage() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
+  const cloneFromId = searchParams.get('clone');
   const isNew = !id || id === 'new';
+  const isCloning = isNew && !!cloneFromId;
 
   const [formData, setFormData] = useState<QuoteFormData>(initialFormData);
   const [lineItems, setLineItems] = useState<LineItemFormData[]>([
@@ -53,6 +58,8 @@ export function QuoteDetailPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSendingQuote, setIsSendingQuote] = useState(false);
+  const [isAcceptingQuote, setIsAcceptingQuote] = useState(false);
+  const [isDecliningQuote, setIsDecliningQuote] = useState(false);
   const [isDownloadingPDF, setIsDownloadingPDF] = useState(false);
   const [quoteStatus, setQuoteStatus] = useState<string>('draft');
   const [error, setError] = useState<string | null>(null);
@@ -61,6 +68,9 @@ export function QuoteDetailPage() {
     loadCustomers();
     if (!isNew && id) {
       loadQuote(id);
+    } else if (isCloning && cloneFromId) {
+      // Load source quote for cloning
+      loadQuoteForCloning(cloneFromId);
     } else {
       // Set default valid_until to 30 days from now
       const defaultDate = new Date();
@@ -70,7 +80,7 @@ export function QuoteDetailPage() {
         valid_until: defaultDate.toISOString().split('T')[0],
       }));
     }
-  }, [id, isNew]);
+  }, [id, isNew, isCloning, cloneFromId]);
 
   const loadCustomers = async () => {
     setIsLoadingCustomers(true);
@@ -113,6 +123,44 @@ export function QuoteDetailPage() {
     } catch (err) {
       console.error('Failed to load quote:', err);
       setError('Failed to load quote details');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loadQuoteForCloning = async (sourceQuoteId: string) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const quote = await quoteService.getQuote(sourceQuoteId);
+      // Convert tax_rate from decimal (0.07) back to percentage (7) for display
+      const taxRatePercent = quote.tax_rate
+        ? (quote.tax_rate * 100).toString()
+        : '0';
+      // Set default valid_until to 30 days from now for the cloned quote
+      const defaultDate = new Date();
+      defaultDate.setDate(defaultDate.getDate() + 30);
+      setFormData({
+        customer_id: quote.customer_id || '',
+        valid_until: defaultDate.toISOString().split('T')[0],
+        tax_rate: taxRatePercent,
+        notes: quote.notes || '',
+        terms: quote.terms || '',
+      });
+      if (quote.items && quote.items.length > 0) {
+        setLineItems(
+          quote.items.map((item) => ({
+            description: item.description,
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+          }))
+        );
+      }
+      // New cloned quote starts as draft
+      setQuoteStatus('draft');
+    } catch (err) {
+      console.error('Failed to load quote for cloning:', err);
+      setError('Failed to load source quote for cloning');
     } finally {
       setIsLoading(false);
     }
@@ -276,6 +324,42 @@ export function QuoteDetailPage() {
     }
   };
 
+  const handleAcceptQuote = async () => {
+    if (!id || isNew) return;
+
+    setIsAcceptingQuote(true);
+    setError(null);
+    try {
+      await quoteService.acceptQuote(id);
+      setQuoteStatus('accepted');
+    } catch (err: unknown) {
+      console.error('Failed to accept quote:', err);
+      const error = err as { response?: { data?: { message?: string } } };
+      setError(error?.response?.data?.message || 'Failed to accept quote');
+    } finally {
+      setIsAcceptingQuote(false);
+    }
+  };
+
+  const handleDeclineQuote = async () => {
+    if (!id || isNew) return;
+
+    setIsDecliningQuote(true);
+    setError(null);
+    try {
+      await quoteService.rejectQuote(id);
+      setQuoteStatus('declined');
+    } catch (err: unknown) {
+      console.error('Failed to decline quote:', err);
+      const error = err as { response?: { data?: { message?: string } } };
+      setError(error?.response?.data?.message || 'Failed to decline quote');
+    } finally {
+      setIsDecliningQuote(false);
+    }
+  };
+
+  const canAcceptDecline = quoteStatus === 'sent' || quoteStatus === 'viewed';
+
   if (isLoading) {
     return (
       <DashboardLayout>
@@ -300,7 +384,11 @@ export function QuoteDetailPage() {
               Back
             </Button>
             <h1 className="text-2xl font-bold text-neutral-900">
-              {isNew ? 'Create Quote' : 'Edit Quote'}
+              {isCloning
+                ? 'Clone Quote'
+                : isNew
+                  ? 'Create Quote'
+                  : 'Edit Quote'}
             </h1>
           </div>
           {!isNew && (
@@ -333,6 +421,38 @@ export function QuoteDetailPage() {
                 )}
                 Download PDF
               </Button>
+              {canAcceptDecline && (
+                <>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={handleAcceptQuote}
+                    disabled={isAcceptingQuote}
+                    className="flex items-center gap-2 text-green-700 border-green-300 hover:bg-green-50"
+                  >
+                    {isAcceptingQuote ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Check className="h-4 w-4" />
+                    )}
+                    Accept
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={handleDeclineQuote}
+                    disabled={isDecliningQuote}
+                    className="flex items-center gap-2 text-red-700 border-red-300 hover:bg-red-50"
+                  >
+                    {isDecliningQuote ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <XCircle className="h-4 w-4" />
+                    )}
+                    Decline
+                  </Button>
+                </>
+              )}
             </div>
           )}
         </div>

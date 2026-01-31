@@ -632,7 +632,7 @@ func TestGetQuoteStats_Success(t *testing.T) {
 		DraftQuotes:    30,
 		SentQuotes:     40,
 		AcceptedQuotes: 20,
-		RejectedQuotes: 5,
+		DeclinedQuotes: 5,
 		ExpiredQuotes:  5,
 	}
 

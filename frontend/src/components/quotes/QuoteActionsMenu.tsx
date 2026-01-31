@@ -1,5 +1,14 @@
 import { useState, useRef, useEffect } from 'react';
-import { MoreVertical, Send, Download, Loader2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import {
+  MoreVertical,
+  Send,
+  Download,
+  Loader2,
+  Check,
+  X,
+  Copy,
+} from 'lucide-react';
 import { quoteService } from '../../services/quoteService';
 
 interface QuoteActionsMenuProps {
@@ -7,6 +16,7 @@ interface QuoteActionsMenuProps {
   status: string;
   onSendQuote?: () => void;
   onQuoteSent?: () => void;
+  onStatusChange?: () => void;
 }
 
 export function QuoteActionsMenu({
@@ -14,9 +24,13 @@ export function QuoteActionsMenu({
   status,
   onSendQuote,
   onQuoteSent,
+  onStatusChange,
 }: QuoteActionsMenuProps) {
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [isAccepting, setIsAccepting] = useState(false);
+  const [isDeclining, setIsDeclining] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -69,7 +83,42 @@ export function QuoteActionsMenu({
     }
   };
 
+  const handleAcceptQuote = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsAccepting(true);
+    try {
+      await quoteService.acceptQuote(quoteId);
+      onStatusChange?.();
+    } catch (error) {
+      console.error('Failed to accept quote:', error);
+    } finally {
+      setIsAccepting(false);
+      setIsOpen(false);
+    }
+  };
+
+  const handleDeclineQuote = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsDeclining(true);
+    try {
+      await quoteService.rejectQuote(quoteId);
+      onStatusChange?.();
+    } catch (error) {
+      console.error('Failed to decline quote:', error);
+    } finally {
+      setIsDeclining(false);
+      setIsOpen(false);
+    }
+  };
+
+  const handleCloneQuote = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsOpen(false);
+    navigate(`/quotes/new?clone=${quoteId}`);
+  };
+
   const canSend = status === 'draft';
+  const canAcceptDecline = status === 'sent' || status === 'viewed';
 
   return (
     <div className="relative" ref={menuRef}>
@@ -112,6 +161,42 @@ export function QuoteActionsMenu({
               )}
               Download PDF
             </button>
+            <button
+              onClick={handleCloneQuote}
+              className="w-full flex items-center gap-2 px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-100"
+            >
+              <Copy className="h-4 w-4" />
+              Clone Quote
+            </button>
+            {canAcceptDecline && (
+              <>
+                <div className="border-t border-neutral-200 my-1" />
+                <button
+                  onClick={handleAcceptQuote}
+                  disabled={isAccepting}
+                  className="w-full flex items-center gap-2 px-4 py-2 text-sm text-green-700 hover:bg-green-50"
+                >
+                  {isAccepting ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Check className="h-4 w-4" />
+                  )}
+                  Accept Quote
+                </button>
+                <button
+                  onClick={handleDeclineQuote}
+                  disabled={isDeclining}
+                  className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-700 hover:bg-red-50"
+                >
+                  {isDeclining ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <X className="h-4 w-4" />
+                  )}
+                  Decline Quote
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}

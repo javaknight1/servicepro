@@ -58,7 +58,6 @@ export function getStatusBadgeVariant(status: string): BadgeVariant {
     viewed: 'info',
     accepted: 'success',
     declined: 'error',
-    rejected: 'error',
     expired: 'warning',
 
     // Job statuses

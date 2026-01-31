@@ -164,7 +164,6 @@ export function DashboardPage() {
       viewed: 'Viewed',
       accepted: 'Accepted',
       declined: 'Declined',
-      rejected: 'Rejected',
       expired: 'Expired',
     };
     return labels[status] || status;

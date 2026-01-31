@@ -67,7 +67,7 @@ type QuoteStats struct {
 	DraftQuotes    int64 `json:"draft_quotes"`
 	SentQuotes     int64 `json:"sent_quotes"`
 	AcceptedQuotes int64 `json:"accepted_quotes"`
-	RejectedQuotes int64 `json:"rejected_quotes"`
+	DeclinedQuotes int64 `json:"declined_quotes"`
 	ExpiredQuotes  int64 `json:"expired_quotes"`
 }
 
@@ -465,9 +465,9 @@ func (s *QuoteService) GetQuoteStats() (*QuoteStats, error) {
 		return nil, fmt.Errorf("failed to get accepted count: %w", err)
 	}
 
-	rejected, err := s.quoteRepo.GetQuoteCountByStatus(models.QuoteStatusDeclined)
+	declined, err := s.quoteRepo.GetQuoteCountByStatus(models.QuoteStatusDeclined)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get rejected count: %w", err)
+		return nil, fmt.Errorf("failed to get declined count: %w", err)
 	}
 
 	expired, err := s.quoteRepo.GetQuoteCountByStatus(models.QuoteStatusExpired)
@@ -480,7 +480,7 @@ func (s *QuoteService) GetQuoteStats() (*QuoteStats, error) {
 		DraftQuotes:    draft,
 		SentQuotes:     sent,
 		AcceptedQuotes: accepted,
-		RejectedQuotes: rejected,
+		DeclinedQuotes: declined,
 		ExpiredQuotes:  expired,
 	}, nil
 }

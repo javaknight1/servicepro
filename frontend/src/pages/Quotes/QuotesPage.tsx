@@ -22,7 +22,6 @@ const getQuoteStatusLabel = (status: string): string => {
     viewed: 'Viewed',
     accepted: 'Accepted',
     declined: 'Declined',
-    rejected: 'Rejected',
     expired: 'Expired',
   };
   return labels[status] || status;
@@ -135,6 +134,7 @@ export function QuotesPage() {
           quoteId={row.id}
           status={row.status}
           onQuoteSent={loadQuotes}
+          onStatusChange={loadQuotes}
         />
       ),
     },

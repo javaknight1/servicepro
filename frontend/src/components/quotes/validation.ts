@@ -191,7 +191,7 @@ export const quoteFormSchema = z
 
     // Status
     status: z
-      .enum(['draft', 'sent', 'accepted', 'rejected', 'expired'])
+      .enum(['draft', 'sent', 'viewed', 'accepted', 'declined', 'expired'])
       .default('draft'),
   })
   .refine(
