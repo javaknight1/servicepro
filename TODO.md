@@ -226,13 +226,13 @@ This document tracks technical improvements that should be implemented but are d
     - Tests run in CI pipeline
     - <30 second execution time
 
-- [ ] **E2E Testing Setup (Cypress/Playwright)**
+- [x] **E2E Testing Setup (Cypress/Playwright)**
   - **What**: Set up end-to-end testing framework for frontend
   - **Why**: No E2E tests exist; critical flows untested
   - **Expected Result**: Automated browser tests for critical flows
   - **Acceptance Criteria**:
-    - Framework installed and configured
-    - Tests for: login, create customer, create job
+    - Framework installed and configured ✓
+    - Tests for: login, create customer, create job ✓ (auth, customers, jobs, invoices, quotes, payments)
     - Tests run in CI with video recording
     - Test environment seeded with data
 
@@ -756,11 +756,10 @@ The following advanced metrics features were identified in legacy code and shoul
   - Event deduplication
   - Webhook delivery status tracking
 
-- [ ] **Invoice PDF Generation**
+- [x] **Invoice PDF Generation**
   - Template-based PDF generation
-  - Custom branding support
-  - Multiple languages
   - Email attachment support
+  - _Note: Multiple languages and custom branding not yet implemented_
 
 - [ ] **Email Templates Expansion**
   - Job completion notification
@@ -832,7 +831,7 @@ The following advanced metrics features were identified in legacy code and shoul
 
 These features exist in the codebase but are not wired into the application routes. They represent completed or near-complete implementations that should be integrated.
 
-### Job Status State Machine (High Priority)
+### Job Status State Machine (High Priority) - MOSTLY COMPLETE
 
 A robust job status management system with state machine validation, concurrency protection, and audit trail.
 
@@ -846,26 +845,26 @@ A robust job status management system with state machine validation, concurrency
 - Notification dispatch on status changes
 - Transition metrics for monitoring
 
-**API Endpoints to wire up:**
+**API Endpoints (implemented):**
 
-- `POST /api/v1/jobs/:id/status` - Change job status
-- `GET /api/v1/jobs/:id/status/history` - Get status change history
-- `GET /api/v1/jobs/:id/status/transitions` - Get allowed transitions
-- `POST /api/v1/jobs/:id/status/validate` - Validate without applying
-- `POST /api/v1/jobs/status/bulk` - Bulk status change
-- `GET /api/v1/jobs/status/statistics` - Status statistics
+- [x] `POST /api/v1/jobs/:id/transition` - Change job status
+- [x] `GET /api/v1/jobs/:id/status-history` - Get status change history
+- [ ] `GET /api/v1/jobs/:id/status/transitions` - Get allowed transitions
+- [ ] `POST /api/v1/jobs/:id/status/validate` - Validate without applying
+- [ ] `POST /api/v1/jobs/status/bulk` - Bulk status change
+- [ ] `GET /api/v1/jobs/status/statistics` - Status statistics
 
-**Files that were removed (rebuild from this spec):**
+**Files implemented:**
 
-- `internal/services/status_service.go` - StatusService with state machine logic
-- `internal/api/handlers/status_handler.go` - HTTP handlers
+- `internal/models/job_status.go` - JobStatusTransition model
+- `internal/services/job_service.go` - Status transition logic
+- `internal/api/handlers/job_handler.go` - TransitionStatus and GetStatusHistory handlers
 
-**Integration requirements:**
+**Remaining integration requirements:**
 
-- [ ] Wire StatusHandler into routes.go
-- [ ] Add `JobStatusTransition` model and migration
 - [ ] Connect to existing notification service for status change alerts
-- [ ] Add status validation to existing job update endpoints
+- [ ] Add allowed transitions endpoint
+- [ ] Add bulk status change endpoint
 
 ---
 
@@ -1077,22 +1076,22 @@ Stripe payment integration was removed due to model/service mismatches.
 - Method signature mismatches between handler and service
 - `PaymentIntentResult` missing `ReceiptURL` field
 
-### Invoice Templates / PDF Generation (High Priority)
+### Invoice Templates / PDF Generation (Partially Complete)
 
-Invoice template system for generating PDF invoices was removed due to service method mismatches.
+PDF generation for invoices, quotes, and receipts is now working via `document_pdf_service.go`. Template CRUD management UI is not yet implemented.
 
-**Files to restore:**
+**Completed:**
 
-- [ ] `backend/internal/api/handlers/invoice_template_handler.go` - Template CRUD and PDF generation
+- [x] PDF generation for quotes, invoices, receipts (`backend/internal/services/document_pdf_service.go`)
+- [x] PDF download endpoints (`GET /api/v1/quotes/:id/pdf`, `/invoices/:id/pdf`, `/invoices/:id/receipt/pdf`)
+- [x] PDF attachments in emails
+- [x] PDF templates (`backend/internal/services/pdf/templates.go`)
+
+**Remaining (template management UI):**
+
+- [ ] `backend/internal/api/handlers/invoice_template_handler.go` - Template CRUD
 - [ ] `backend/internal/api/routes/invoice_template_routes.go` - Template route definitions
-
-**Issues to fix:**
-
-- `SetDefaultTemplate` returns 1 value but handler expects 2
-- `GeneratePDF` method signature mismatch
-- `GeneratePreviewFromContent` method signature mismatch
-- `DeleteAsset` method signature mismatch
-- `stringPtr` function redeclared
+- [ ] Frontend template management UI
 
 ### Error Tracking - Sentry (Medium Priority)
 
@@ -1161,6 +1160,15 @@ _Move items here when completed with date and PR/commit reference_
 - [x] Local email development setup with Mailpit (2025-01-25)
 - [x] Security headers middleware (2025-01-25)
 - [x] CORS configuration with environment-specific origins (2025-01-25)
+- [x] Job status state machine with transition validation (2025-01-29)
+- [x] Job status history tracking (2025-01-29)
+- [x] PDF generation for quotes, invoices, and receipts (2025-01-30)
+- [x] PDF attachments in quote/invoice/receipt emails (2025-01-30)
+- [x] PDF download endpoints for quotes, invoices, receipts (2025-01-30)
+- [x] Clone quote functionality (2025-01-30)
+- [x] Quote accept/decline actions in UI (2025-01-30)
+- [x] Dropdown menus with portal rendering (fixes table overflow clipping) (2025-01-30)
+- [x] Cypress E2E testing setup with tests for auth, customers, jobs, invoices, quotes, payments
 
 ---
 
@@ -1191,4 +1199,4 @@ When adding new items, include:
 
 ---
 
-_Last updated: 2025-01-25_
+_Last updated: 2025-01-30_
