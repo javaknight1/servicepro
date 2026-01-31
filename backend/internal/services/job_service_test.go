@@ -314,6 +314,7 @@ func TestJobService_CreateJob_Success(t *testing.T) {
 			job.ID = uuid.New()
 		}
 	})
+	mockJobRepo.On("CreateStatusTransition", mock.AnythingOfType("*models.JobStatusTransition")).Return(nil)
 	mockJobRepo.On("GetByID", mock.AnythingOfType("uuid.UUID")).Return(&models.Job{
 		ID:         uuid.New(),
 		CustomerID: customerID,
@@ -491,6 +492,7 @@ func TestJobService_StartJob_Success(t *testing.T) {
 
 	mockJobRepo.On("GetByID", job.ID).Return(job, nil)
 	mockJobRepo.On("Update", mock.AnythingOfType("*models.Job")).Return(nil)
+	mockJobRepo.On("CreateStatusTransition", mock.AnythingOfType("*models.JobStatusTransition")).Return(nil)
 
 	response, err := service.StartJob(job.ID, job.CreatedBy, models.UserRoleTechnician)
 
@@ -512,6 +514,7 @@ func TestJobService_CompleteJob_Success(t *testing.T) {
 
 	mockJobRepo.On("GetByID", job.ID).Return(job, nil)
 	mockJobRepo.On("Update", mock.AnythingOfType("*models.Job")).Return(nil)
+	mockJobRepo.On("CreateStatusTransition", mock.AnythingOfType("*models.JobStatusTransition")).Return(nil)
 
 	response, err := service.CompleteJob(job.ID, "Job completed successfully", job.CreatedBy, models.UserRoleTechnician)
 
@@ -531,6 +534,7 @@ func TestJobService_CancelJob_AdminSuccess(t *testing.T) {
 
 	mockJobRepo.On("GetByID", job.ID).Return(job, nil)
 	mockJobRepo.On("Update", mock.AnythingOfType("*models.Job")).Return(nil)
+	mockJobRepo.On("CreateStatusTransition", mock.AnythingOfType("*models.JobStatusTransition")).Return(nil)
 
 	response, err := service.CancelJob(job.ID, "Customer requested cancellation", adminID, models.UserRoleAdmin)
 
