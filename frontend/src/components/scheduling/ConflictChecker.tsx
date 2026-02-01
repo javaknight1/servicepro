@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import api from '../../services/api';
 import {
   ConflictCheckerProps,
   ConflictCheckRequest,
@@ -69,20 +70,12 @@ export const ConflictChecker: React.FC<ConflictCheckerProps> = ({
         location,
       };
 
-      const response = await fetch('/api/v1/conflicts/check', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify(request),
-      });
+      const response = await api.post<ConflictCheckResponse>(
+        '/v1/conflicts/check',
+        request
+      );
 
-      if (!response.ok) {
-        throw new Error(`Conflict check failed: ${response.statusText}`);
-      }
-
-      const data: ConflictCheckResponse = await response.json();
+      const data = response.data;
       setConflictResponse(data);
 
       // Notify parent component

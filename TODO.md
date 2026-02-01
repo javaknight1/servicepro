@@ -6,6 +6,33 @@ This document tracks technical improvements that should be implemented but are d
 
 ---
 
+## Task Index
+
+Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to reference a task.
+
+| ID   | Priority | Category | Task                                         |
+| ---- | -------- | -------- | -------------------------------------------- |
+| T001 | P0       | Backend  | Recovery middleware Sentry integration       |
+| T002 | P0       | Frontend | Centralize direct fetch() calls              |
+| T003 | P0       | Frontend | Add CSP/HSTS headers to nginx.conf           |
+| T004 | P0       | Infra    | Create GitHub Actions CI/CD workflows        |
+| T005 | P0       | Backend  | Expose /metrics endpoint for Prometheus      |
+| T006 | P1       | Backend  | Structured JSON logging (replace fmt.Printf) |
+| T007 | P1       | Frontend | Fix `any` types (50 instances)               |
+| T008 | P1       | Frontend | Remove @ts-nocheck directives                |
+| T009 | P1       | Frontend | Enable noUnusedLocals/noUnusedParameters     |
+| T010 | P1       | Backend  | Apply error tracking middleware              |
+| T011 | P1       | Infra    | Staging environment configuration            |
+| T012 | P1       | Infra    | Bundle size monitoring in CI                 |
+| T013 | P2       | Testing  | Increase frontend test coverage to 70%+      |
+| T014 | P2       | Testing  | Integration tests for critical workflows     |
+| T015 | P2       | Docs     | Generate OpenAPI/Swagger documentation       |
+| T016 | P2       | Perf     | Frontend bundle analysis + optimization      |
+| T017 | P2       | Perf     | Query performance monitoring                 |
+| T018 | P2       | Cleanup  | Dead code elimination                        |
+
+---
+
 ## Sprint Roadmap
 
 ### Sprint 1 - Production Readiness (CURRENT)
@@ -17,37 +44,37 @@ This document tracks technical improvements that should be implemented but are d
 - [x] Apply MaxMultipartMemory to router ✓
 - [x] Apply TrustedProxies to router ✓
 - [x] Deep health checks (DB + Redis) ✓
-- [ ] Recovery middleware Sentry integration
+- [ ] **T001** - Recovery middleware Sentry integration
 
 **Frontend Critical:**
 
-- [ ] Fix localStorage token access in ConflictChecker.tsx
-- [ ] Centralize direct fetch() calls (5 files)
-- [ ] Add CSP/HSTS headers to nginx.conf
+- [x] Fix localStorage token access in ConflictChecker.tsx ✓
+- [ ] **T002** - Centralize direct fetch() calls
+- [ ] **T003** - Add CSP/HSTS headers to nginx.conf
 
 **Infrastructure:**
 
-- [ ] Create GitHub Actions CI/CD workflows
+- [ ] **T004** - Create GitHub Actions CI/CD workflows
 
 ### Sprint 2 - Observability & Type Safety
 
-- [ ] Expose /metrics endpoint for Prometheus
-- [ ] Structured logging (replace fmt.Printf)
-- [ ] Fix 50 `any` types in frontend
-- [ ] Remove @ts-nocheck directives
-- [ ] Enable noUnusedLocals/noUnusedParameters
+- [ ] **T005** - Expose /metrics endpoint for Prometheus
+- [ ] **T006** - Structured logging (replace fmt.Printf)
+- [ ] **T007** - Fix 50 `any` types in frontend
+- [ ] **T008** - Remove @ts-nocheck directives
+- [ ] **T009** - Enable noUnusedLocals/noUnusedParameters
 
 ### Sprint 3 - Testing & Documentation
 
-- [ ] Increase frontend test coverage to 70%+
-- [ ] Integration tests for critical workflows
-- [ ] Generate OpenAPI/Swagger documentation
+- [ ] **T013** - Increase frontend test coverage to 70%+
+- [ ] **T014** - Integration tests for critical workflows
+- [ ] **T015** - Generate OpenAPI/Swagger documentation
 
 ### Sprint 4 - Performance & Cleanup
 
-- [ ] Bundle analysis + optimization
-- [ ] Query performance monitoring
-- [ ] Dead code elimination
+- [ ] **T016** - Bundle analysis + optimization
+- [ ] **T017** - Query performance monitoring
+- [ ] **T018** - Dead code elimination
 
 ---
 
@@ -68,6 +95,7 @@ This document tracks technical improvements that should be implemented but are d
 - [x] MaxMultipartMemory - Configurable via SERVER_MAX_MULTIPART_MEMORY env var, applied to router
 - [x] TrustedProxies - Configurable via SERVER_TRUSTED_PROXIES env var, applied to router
 - [x] Deep health checks - /health, /health/live, /health/ready with DB + Redis connectivity checks
+- [x] localStorage token fix - ConflictChecker.tsx now uses api service with httpOnly cookies
 
 ---
 
@@ -75,7 +103,7 @@ This document tracks technical improvements that should be implemented but are d
 
 ### Backend Server Configuration
 
-- [ ] **Recovery Middleware Sentry Integration**
+- [ ] **T001: Recovery Middleware Sentry Integration**
   - **File**: `backend/internal/api/middleware/error_handler.go:107`
   - **What**: Send panics to error tracking client instead of fmt.Printf
   - **Why**: Panics logged to stdout but not visible in monitoring
@@ -85,33 +113,20 @@ This document tracks technical improvements that should be implemented but are d
     - Include stack trace and request context
     - Remove fmt.Printf panic logging
 
-### Frontend Critical (VERIFIED MISSING)
+### Frontend Critical
 
-- [ ] **Fix localStorage Token Access**
-  - **File**: `frontend/src/components/scheduling/ConflictChecker.tsx:76`
-  - **What**: Remove `localStorage.getItem('token')` and use centralized API service
-  - **Why**: Tokens in localStorage are vulnerable to XSS attacks
-  - **Expected Result**: All API calls use httpOnly cookie auth
-  - **Acceptance Criteria**:
-    - Use `api.post()` from services/api.ts instead of direct fetch
-    - Remove all localStorage.getItem('token') references
-    - Verify ConflictChecker works with cookie auth
-
-- [ ] **Centralize Direct fetch() Calls**
-  - **What**: Refactor 5 files using direct fetch() to use centralized API service
+- [ ] **T002: Centralize Direct fetch() Calls**
+  - **What**: Refactor files using direct fetch() to use centralized API service
   - **Why**: Bypasses auth handling, error handling, and interceptors
   - **Files to fix**:
-    - [ ] `frontend/src/components/scheduling/ConflictChecker.tsx:72`
     - [ ] `frontend/src/components/quotes/utils/pdfGenerator.tsx:416`
     - [ ] `frontend/src/components/quotes/hooks/useQuoteCalculations.ts:96`
-    - [ ] `frontend/src/components/payments/methods/AddPaymentMethod.tsx:88`
-    - [ ] `frontend/src/components/health/HealthDashboard.tsx:223`
   - **Acceptance Criteria**:
     - All API calls go through `frontend/src/services/api.ts`
     - No direct `fetch('/api/...')` calls remain
     - Error handling consistent across all calls
 
-- [ ] **Add Security Headers to nginx.conf**
+- [ ] **T003: Add Security Headers to nginx.conf**
   - **File**: `frontend/nginx.conf`
   - **What**: Add Content-Security-Policy and Strict-Transport-Security headers
   - **Why**: Missing critical security headers for production
@@ -123,7 +138,7 @@ This document tracks technical improvements that should be implemented but are d
 
 ### Infrastructure & Deployment
 
-- [ ] **Create GitHub Actions CI/CD Workflows**
+- [ ] **T004: Create GitHub Actions CI/CD Workflows**
   - **Directory**: `.github/workflows/` (MISSING)
   - **What**: Add CI/CD pipeline for automated testing and deployment
   - **Why**: No automated testing or deployment currently
@@ -134,19 +149,9 @@ This document tracks technical improvements that should be implemented but are d
     - [ ] `deploy-staging.yml` - Auto-deploy to staging on main merge
     - [ ] `deploy-production.yml` - Manual deploy to production
 
-- [ ] **Fly.io Backend Deployment**
-  - **What**: Create `fly.toml` configuration for backend service deployment
-  - **Why**: No deployment configuration exists; README says "coming soon"
-  - **Expected Result**: Backend deployable to Fly.io with single command
-  - **Acceptance Criteria**:
-    - `fly.toml` created with proper service configuration
-    - Environment variables documented
-    - Health check endpoint configured
-    - Auto-scaling rules defined
-
 ### Observability - Critical
 
-- [ ] **Expose /metrics Endpoint**
+- [ ] **T005: Expose /metrics Endpoint**
   - **What**: Add Prometheus metrics endpoint to routes
   - **Why**: Prometheus client exists at `pkg/clients/metrics/prometheus/` but not exposed
   - **Expected Result**: Metrics scrapeable by monitoring systems
@@ -159,9 +164,9 @@ This document tracks technical improvements that should be implemented but are d
 
 ## P1 - High Priority
 
-### Frontend Type Safety (VERIFIED MISSING)
+### Frontend Type Safety
 
-- [ ] **Fix `any` Types (50 instances across 28 files)**
+- [ ] **T007: Fix `any` Types (50 instances across 28 files)**
   - **What**: Replace `any` with proper TypeScript types
   - **Why**: Type safety gaps undermine TypeScript benefits
   - **Priority files**:
@@ -175,7 +180,7 @@ This document tracks technical improvements that should be implemented but are d
     - [ ] `frontend/src/types/template.ts` (3 instances)
   - **Command**: `grep -r ": any" frontend/src --include="*.ts" --include="*.tsx"`
 
-- [ ] **Remove @ts-nocheck Directives**
+- [ ] **T008: Remove @ts-nocheck Directives**
   - **What**: Fix underlying type issues instead of suppressing
   - **Files**:
     - [ ] `frontend/src/routes/index.tsx:2` - Fix dynamic import type inference
@@ -185,7 +190,7 @@ This document tracks technical improvements that should be implemented but are d
     - Fix all resulting type errors
     - No regression in functionality
 
-- [ ] **Enable Strict TypeScript Checks**
+- [ ] **T009: Enable Strict TypeScript Checks**
   - **File**: `frontend/tsconfig.json:20-21`
   - **What**: Set `noUnusedLocals: true` and `noUnusedParameters: true`
   - **Why**: Currently disabled; dead code accumulates silently
@@ -194,9 +199,9 @@ This document tracks technical improvements that should be implemented but are d
     - Fix all resulting errors
     - Add to CI checks
 
-### Backend Observability (VERIFIED MISSING)
+### Backend Observability
 
-- [ ] **Structured JSON Logging**
+- [ ] **T006: Structured JSON Logging**
   - **What**: Replace `fmt.Printf` and `log.Printf` with structured logger (zap/logrus)
   - **Why**: Current logging not parseable by log aggregation systems
   - **Files using fmt.Printf/log.Printf**:
@@ -208,7 +213,7 @@ This document tracks technical improvements that should be implemented but are d
     - Human-readable in development
     - Standard fields: timestamp, level, message, request_id, user_id
 
-- [ ] **Apply Error Tracking Middleware**
+- [ ] **T010: Apply Error Tracking Middleware**
   - **What**: Wire error tracking HTTPMiddleware into Gin router
   - **Why**: Client created at `cmd/main.go:43` but middleware not applied
   - **Expected Result**: Request context enriched, errors auto-captured
@@ -219,7 +224,7 @@ This document tracks technical improvements that should be implemented but are d
 
 ### Infrastructure
 
-- [ ] **Staging Environment Configuration**
+- [ ] **T011: Staging Environment Configuration**
   - **What**: Create separate configuration for staging environment
   - **Why**: Need environment parity for testing before production
   - **Expected Result**: Isolated staging environment with production-like setup

@@ -64,6 +64,26 @@ When adding new features that require permissions:
 4. Update `PermissionsByResource()` map
 5. Add permission grants to `001_schema.sql` seed data
 
+## TODO Task Management
+
+The `/TODO.md` file uses an indexed task system. Each task has a unique ID (e.g., T001, T002).
+
+When implementing a task from TODO.md:
+
+1. Look up the task by its ID in the Task Index table
+2. Find the detailed description in the appropriate priority section (P0, P1, P2, P3)
+3. After completing, mark it complete in both the Sprint Roadmap and the detailed section
+4. Move completed items to the "Verified Complete" section with a brief description
+
+When adding new tasks to TODO.md:
+
+1. Assign the next available ID (T019, T020, etc.)
+2. Add to the Task Index table with priority, category, and brief description
+3. Add to the appropriate Sprint Roadmap section with the ID
+4. Add detailed description in the appropriate priority section (P0/P1/P2/P3)
+
+---
+
 ## Environment Variables
 
 **IMPORTANT: Always update both `.env` files when adding new environment variables.**
