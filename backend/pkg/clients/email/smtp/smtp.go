@@ -198,7 +198,7 @@ func (c *Client) Send(ctx context.Context, msg *email.EmailMessage) (*email.Send
 
 // sendMail sends the email using the configured SMTP settings
 func (c *Client) sendMail(from string, to []string, msg []byte) error {
-	addr := fmt.Sprintf("%s:%d", c.config.Host, c.config.Port)
+	addr := net.JoinHostPort(c.config.Host, fmt.Sprintf("%d", c.config.Port))
 
 	// For Mailpit and other dev servers, we use plain SMTP without auth
 	if c.config.Username == "" && c.config.Password == "" && !c.config.UseTLS && !c.config.StartTLS {
@@ -695,7 +695,7 @@ func (c *Client) SendPaymentReceiptEmail(ctx context.Context, to string, invoice
 
 // HealthCheck implements email.Client
 func (c *Client) HealthCheck(ctx context.Context) error {
-	addr := fmt.Sprintf("%s:%d", c.config.Host, c.config.Port)
+	addr := net.JoinHostPort(c.config.Host, fmt.Sprintf("%d", c.config.Port))
 	conn, err := net.DialTimeout("tcp", addr, 5*time.Second)
 	if err != nil {
 		return fmt.Errorf("SMTP health check failed: %w", err)

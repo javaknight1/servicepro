@@ -7,9 +7,8 @@ export function PaymentSuccessPage() {
   const [sessionId] = useState(searchParams.get('session_id'));
 
   useEffect(() => {
-    if (sessionId) {
-      console.log('Payment completed with session:', sessionId);
-    }
+    // Session ID is captured for potential analytics/tracking
+    // The actual payment verification happens server-side via Stripe webhooks
   }, [sessionId]);
 
   return (

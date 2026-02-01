@@ -1,5 +1,5 @@
 import { Modal, Button } from '@components/shared';
-import { ArrowRight, ArrowDown } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 
 interface JobFlowModalProps {
   isOpen: boolean;
