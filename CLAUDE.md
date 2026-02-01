@@ -63,3 +63,25 @@ When adding new features that require permissions:
 3. Update `DefaultRolePermissions()` for appropriate roles
 4. Update `PermissionsByResource()` map
 5. Add permission grants to `001_schema.sql` seed data
+
+## Environment Variables
+
+**IMPORTANT: Always update both `.env` files when adding new environment variables.**
+
+When adding new environment variables to the backend:
+
+1. Add to `/backend/.env.example`:
+   - Include a descriptive comment explaining the variable
+   - Use placeholder/example values for sensitive data (e.g., `sk_test_xxxx`, `your-api-key-here`)
+   - Use actual default values for non-sensitive configuration
+
+2. Add to `/backend/.env`:
+   - For sensitive values that need to be obtained elsewhere, add a `# TODO:` comment
+   - For non-sensitive defaults, use the same values as `.env.example`
+   - Example: `STRIPE_API_KEY=  # TODO: Get from Stripe Dashboard`
+
+3. Update `/backend/config/config.go`:
+   - Add the field to the appropriate config struct
+   - Add the `getEnv()` call in `Load()` with a sensible default
+
+This ensures developers can quickly set up their environment by copying `.env.example` to `.env`.

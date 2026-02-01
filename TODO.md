@@ -2,42 +2,147 @@
 
 This document tracks technical improvements that should be implemented but are deferred for future development cycles.
 
+**Last Updated: 2026-02-01**
+
 ---
 
 ## Sprint Roadmap
 
-### Sprint 1 - Production Readiness
+### Sprint 1 - Production Readiness (CURRENT)
 
-- [ ] Fly.io deployment setup
-- [x] Migrate `db.Raw()` to GORM (SQL injection risk)
-- [ ] Add general API rate limiting
-- [ ] Enable Sentry error tracking
-- [ ] Remove console.log statements from frontend
+**Backend Critical:**
 
-### Sprint 2 - Observability & Email
+- [x] Graceful shutdown with SIGTERM handling ✓
+- [x] HTTP server timeouts (Read/Write/Idle) ✓
+- [x] Apply MaxMultipartMemory to router ✓
+- [x] Apply TrustedProxies to router ✓
+- [ ] Deep health checks (DB + Redis)
+- [ ] Recovery middleware Sentry integration
 
-- [ ] Structured logging + correlation IDs
-- [ ] Email retry logic with exponential backoff
-- [ ] Expanded health checks (DB, Redis, S3)
+**Frontend Critical:**
 
-### Sprint 3 - Testing & Security
+- [ ] Fix localStorage token access in ConflictChecker.tsx
+- [ ] Centralize direct fetch() calls (5 files)
+- [ ] Add CSP/HSTS headers to nginx.conf
 
-- [ ] Integration tests for 5 critical workflows
-- [ ] Input validation improvements
-- [ ] N+1 query fixes
+**Infrastructure:**
+
+- [ ] Create GitHub Actions CI/CD workflows
+
+### Sprint 2 - Observability & Type Safety
+
+- [ ] Expose /metrics endpoint for Prometheus
+- [ ] Structured logging (replace fmt.Printf)
+- [ ] Fix 50 `any` types in frontend
+- [ ] Remove @ts-nocheck directives
+- [ ] Enable noUnusedLocals/noUnusedParameters
+
+### Sprint 3 - Testing & Documentation
+
+- [ ] Increase frontend test coverage to 70%+
+- [ ] Integration tests for critical workflows
+- [ ] Generate OpenAPI/Swagger documentation
 
 ### Sprint 4 - Performance & Cleanup
 
 - [ ] Bundle analysis + optimization
-- [ ] Frontend type safety fixes
 - [ ] Query performance monitoring
 - [ ] Dead code elimination
 
 ---
 
+## Verified Complete ✓
+
+- [x] Rate limiting - Multi-tier with Redis backing, applied globally via DynamicRateLimit()
+- [x] PDF generation - Quotes, Invoices, Receipts with S3 storage and email attachments
+- [x] SMS integration - TextBelt, SNS, Mock providers with pluggable architecture
+- [x] httpOnly cookies - SameSite=Lax for CSRF protection
+- [x] Security headers (backend) - CSP, HSTS, X-Frame-Options in middleware
+- [x] Error tracking client - Sentry integration at pkg/clients/errortracking
+- [x] .env in .gitignore - Properly excluded (lines 42-50)
+- [x] Console.log stripping - Terser `drop_console: true` in production build
+- [x] Migrate `db.Raw()` to GORM (SQL injection risk)
+- [x] Cypress E2E testing - Auth, customers, jobs, invoices, quotes, payments
+- [x] Graceful shutdown - SIGTERM/SIGINT handling with 30s timeout in cmd/main.go
+- [x] HTTP server timeouts - ReadTimeout, WriteTimeout, IdleTimeout, ReadHeaderTimeout configured via http.Server
+- [x] MaxMultipartMemory - Configurable via SERVER_MAX_MULTIPART_MEMORY env var, applied to router
+- [x] TrustedProxies - Configurable via SERVER_TRUSTED_PROXIES env var, applied to router
+
+---
+
 ## P0 - Critical (Blocks Production)
 
+### Backend Server Configuration
+
+- [ ] **Deep Health Checks**
+  - **File**: `backend/internal/api/routes/routes.go:33-37`
+  - **What**: Add database and Redis connectivity checks to /health
+  - **Why**: Current health check just returns `{"status": "healthy"}` without checking dependencies
+  - **Expected Result**: Kubernetes detects degraded services
+  - **Acceptance Criteria**:
+    - `/health/live` - Basic liveness (server running)
+    - `/health/ready` - Readiness with DB + Redis checks
+    - Response includes latency for each check
+    - Returns 503 if any critical dependency unhealthy
+
+- [ ] **Recovery Middleware Sentry Integration**
+  - **File**: `backend/internal/api/middleware/error_handler.go:107`
+  - **What**: Send panics to error tracking client instead of fmt.Printf
+  - **Why**: Panics logged to stdout but not visible in monitoring
+  - **Expected Result**: All panics captured in Sentry
+  - **Acceptance Criteria**:
+    - Use error tracking client to capture panics
+    - Include stack trace and request context
+    - Remove fmt.Printf panic logging
+
+### Frontend Critical (VERIFIED MISSING)
+
+- [ ] **Fix localStorage Token Access**
+  - **File**: `frontend/src/components/scheduling/ConflictChecker.tsx:76`
+  - **What**: Remove `localStorage.getItem('token')` and use centralized API service
+  - **Why**: Tokens in localStorage are vulnerable to XSS attacks
+  - **Expected Result**: All API calls use httpOnly cookie auth
+  - **Acceptance Criteria**:
+    - Use `api.post()` from services/api.ts instead of direct fetch
+    - Remove all localStorage.getItem('token') references
+    - Verify ConflictChecker works with cookie auth
+
+- [ ] **Centralize Direct fetch() Calls**
+  - **What**: Refactor 5 files using direct fetch() to use centralized API service
+  - **Why**: Bypasses auth handling, error handling, and interceptors
+  - **Files to fix**:
+    - [ ] `frontend/src/components/scheduling/ConflictChecker.tsx:72`
+    - [ ] `frontend/src/components/quotes/utils/pdfGenerator.tsx:416`
+    - [ ] `frontend/src/components/quotes/hooks/useQuoteCalculations.ts:96`
+    - [ ] `frontend/src/components/payments/methods/AddPaymentMethod.tsx:88`
+    - [ ] `frontend/src/components/health/HealthDashboard.tsx:223`
+  - **Acceptance Criteria**:
+    - All API calls go through `frontend/src/services/api.ts`
+    - No direct `fetch('/api/...')` calls remain
+    - Error handling consistent across all calls
+
+- [ ] **Add Security Headers to nginx.conf**
+  - **File**: `frontend/nginx.conf`
+  - **What**: Add Content-Security-Policy and Strict-Transport-Security headers
+  - **Why**: Missing critical security headers for production
+  - **Expected Result**: Frontend protected from XSS and downgrade attacks
+  - **Acceptance Criteria**:
+    - Add `add_header Content-Security-Policy "default-src 'self'; ..." always;`
+    - Add `add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;`
+    - Test headers appear in browser dev tools
+
 ### Infrastructure & Deployment
+
+- [ ] **Create GitHub Actions CI/CD Workflows**
+  - **Directory**: `.github/workflows/` (MISSING)
+  - **What**: Add CI/CD pipeline for automated testing and deployment
+  - **Why**: No automated testing or deployment currently
+  - **Expected Result**: PRs tested, staging auto-deployed, production manual
+  - **Workflows to create**:
+    - [ ] `ci.yml` - Lint, type-check, test on PR
+    - [ ] `build.yml` - Build verification for both apps
+    - [ ] `deploy-staging.yml` - Auto-deploy to staging on main merge
+    - [ ] `deploy-production.yml` - Manual deploy to production
 
 - [ ] **Fly.io Backend Deployment**
   - **What**: Create `fly.toml` configuration for backend service deployment
@@ -49,53 +154,78 @@ This document tracks technical improvements that should be implemented but are d
     - Health check endpoint configured
     - Auto-scaling rules defined
 
-- [ ] **Fly.io Deployment GitHub Action**
-  - **What**: Add deployment workflow to `.github/workflows/`
-  - **Why**: Automate deployments on merge to main
-  - **Expected Result**: Automatic staging deployment on main branch, manual production deployment
-  - **Acceptance Criteria**:
-    - Workflow triggers on main branch push
-    - Staging deploys automatically
-    - Production requires manual approval
-    - Rollback procedure documented
-
-- [ ] **Container Image Scanning (Trivy)**
-  - **What**: Add Trivy container scanning to CI pipeline
-  - **Why**: Detect vulnerabilities in Docker images before deployment
-  - **Expected Result**: CI fails if critical/high vulnerabilities found
-  - **Acceptance Criteria**:
-    - Trivy integrated into GitHub Actions
-    - Threshold set for blocking vulnerabilities
-    - Scan results visible in PR checks
-
-### Security - Critical
-
-- [ ] **Profile and Fix N+1 Queries**
-  - **What**: Audit list endpoints for N+1 query patterns
-  - **Why**: 58 Preload calls found; list endpoints likely have performance issues
-  - **Expected Result**: All list endpoints optimized with proper eager loading
-  - **Acceptance Criteria**:
-    - Customer list: single query + 1 for counts
-    - Job list: single query + 1 for related data
-    - Query count logged in development mode
-    - No endpoint exceeds 5 queries for list operations
-
 ### Observability - Critical
 
-- [ ] **Enable Sentry Error Tracking**
-  - **What**: Configure and enable Sentry in production environment
-  - **Why**: Sentry client exists but may not be active; need production error visibility
-  - **Expected Result**: All unhandled errors reported to Sentry with context
+- [ ] **Expose /metrics Endpoint**
+  - **What**: Add Prometheus metrics endpoint to routes
+  - **Why**: Prometheus client exists at `pkg/clients/metrics/prometheus/` but not exposed
+  - **Expected Result**: Metrics scrapeable by monitoring systems
   - **Acceptance Criteria**:
-    - Sentry DSN configured in production
-    - Source maps uploaded for frontend errors
-    - User context attached to errors
-    - Release tracking enabled
-    - Alert rules configured for critical errors
+    - Add `router.GET("/metrics", ...)` with Prometheus handler
+    - Metrics include request count, latency, error rates
+    - Exclude /metrics from rate limiting
 
 ---
 
 ## P1 - High Priority
+
+### Frontend Type Safety (VERIFIED MISSING)
+
+- [ ] **Fix `any` Types (50 instances across 28 files)**
+  - **What**: Replace `any` with proper TypeScript types
+  - **Why**: Type safety gaps undermine TypeScript benefits
+  - **Priority files**:
+    - [ ] `frontend/src/services/api.ts` (1 instance)
+    - [ ] `frontend/src/pages/Invoices/InvoiceDetailPage.tsx` (3 instances)
+    - [ ] `frontend/src/pages/Quotes/QuoteDetailPage.tsx` (2 instances)
+    - [ ] `frontend/src/pages/Jobs/JobDetailPage.tsx` (2 instances)
+    - [ ] `frontend/src/components/filters/FilterBar.tsx` (4 instances)
+    - [ ] `frontend/src/components/templates/TemplatePreview.tsx` (5 instances)
+    - [ ] `frontend/src/types/chart.ts` (2 instances)
+    - [ ] `frontend/src/types/template.ts` (3 instances)
+  - **Command**: `grep -r ": any" frontend/src --include="*.ts" --include="*.tsx"`
+
+- [ ] **Remove @ts-nocheck Directives**
+  - **What**: Fix underlying type issues instead of suppressing
+  - **Files**:
+    - [ ] `frontend/src/routes/index.tsx:2` - Fix dynamic import type inference
+    - [ ] `frontend/src/utils/performance.ts:2` - Add browser API types
+  - **Acceptance Criteria**:
+    - Remove @ts-nocheck comments
+    - Fix all resulting type errors
+    - No regression in functionality
+
+- [ ] **Enable Strict TypeScript Checks**
+  - **File**: `frontend/tsconfig.json:20-21`
+  - **What**: Set `noUnusedLocals: true` and `noUnusedParameters: true`
+  - **Why**: Currently disabled; dead code accumulates silently
+  - **Acceptance Criteria**:
+    - Enable both flags
+    - Fix all resulting errors
+    - Add to CI checks
+
+### Backend Observability (VERIFIED MISSING)
+
+- [ ] **Structured JSON Logging**
+  - **What**: Replace `fmt.Printf` and `log.Printf` with structured logger (zap/logrus)
+  - **Why**: Current logging not parseable by log aggregation systems
+  - **Files using fmt.Printf/log.Printf**:
+    - `backend/internal/api/middleware/logger.go:92`
+    - `backend/internal/api/middleware/error_handler.go:107`
+    - Multiple service files
+  - **Acceptance Criteria**:
+    - JSON format in production
+    - Human-readable in development
+    - Standard fields: timestamp, level, message, request_id, user_id
+
+- [ ] **Apply Error Tracking Middleware**
+  - **What**: Wire error tracking HTTPMiddleware into Gin router
+  - **Why**: Client created at `cmd/main.go:43` but middleware not applied
+  - **Expected Result**: Request context enriched, errors auto-captured
+  - **Acceptance Criteria**:
+    - Add Gin-compatible middleware wrapper
+    - Panics captured with full context
+    - User/tenant info attached to errors
 
 ### Infrastructure
 
@@ -238,24 +368,13 @@ This document tracks technical improvements that should be implemented but are d
 
 ### Frontend Cleanup
 
-- [ ] **Remove Console.log Statements**
-  - **What**: Remove or replace 134 console.log/debugger statements
-  - **Why**: Debug logging in production; clutters browser console
-  - **Expected Result**: No debug logging in production builds
-  - **Acceptance Criteria**:
-    - All console.log removed or replaced with proper logger
-    - ESLint rule to prevent future additions
-    - Logger that only outputs in development
+- [x] **Remove Console.log Statements** ✓ VERIFIED COMPLETE
+  - **Status**: Production build already strips console.log via Terser
+  - **Config**: `frontend/config/optimization.ts:64` - `drop_console: process.env.NODE_ENV === 'production'`
+  - **Note**: 189 console statements exist in source but are removed in production build
 
-- [ ] **Fix @ts-nocheck in Routes**
-  - **What**: Fix type inference issues in `/src/routes/index.tsx`
-  - **Why**: Entire file has TypeScript checking disabled
-  - **Expected Result**: Full type safety in routing
-  - **Acceptance Criteria**:
-    - Remove @ts-nocheck comment
-    - Fix all type errors
-    - Dynamic imports properly typed
-    - No regression in routing behavior
+- [ ] **Fix @ts-nocheck in Routes** (MOVED TO P1 - Type Safety)
+  - See P1 section for details
 
 ---
 

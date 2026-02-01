@@ -2,8 +2,13 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/gin-gonic/gin"
 
@@ -92,13 +97,50 @@ func main() {
 	// Initialize Gin router
 	router := gin.Default()
 
+	// Apply Gin-specific configuration
+	router.MaxMultipartMemory = cfg.Server.MaxMultipartMemory
+	if len(cfg.Server.TrustedProxies) > 0 {
+		if err := router.SetTrustedProxies(cfg.Server.TrustedProxies); err != nil {
+			log.Printf("Warning: Failed to set trusted proxies: %v", err)
+		}
+	}
+
 	// Setup routes
 	routes.Setup(router, db, redisClient, emailClient, storageClient, smsClient, cfg)
 
-	// Start server
+	// Create HTTP server with timeouts
 	addr := fmt.Sprintf(":%s", cfg.Server.Port)
-	log.Printf("Starting server on %s", addr)
-	if err := router.Run(addr); err != nil {
-		log.Fatalf("Failed to start server: %v", err)
+	srv := &http.Server{
+		Addr:              addr,
+		Handler:           router,
+		ReadTimeout:       cfg.Server.ReadTimeout,
+		WriteTimeout:      cfg.Server.WriteTimeout,
+		IdleTimeout:       cfg.Server.IdleTimeout,
+		ReadHeaderTimeout: cfg.Server.ReadHeaderTimeout,
 	}
+
+	// Start server in a goroutine
+	go func() {
+		log.Printf("Starting server on %s", addr)
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Fatalf("Failed to start server: %v", err)
+		}
+	}()
+
+	// Set up signal handling for graceful shutdown
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+	log.Println("Shutting down server...")
+
+	// Create shutdown context with timeout
+	ctx, cancel := context.WithTimeout(context.Background(), cfg.Server.ShutdownTimeout)
+	defer cancel()
+
+	// Attempt graceful shutdown
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Printf("Server forced to shutdown: %v", err)
+	}
+
+	log.Println("Server exited gracefully")
 }

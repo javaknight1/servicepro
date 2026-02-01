@@ -162,6 +162,17 @@ type ServerConfig struct {
 	Env         string
 	FrontendURL string
 	BackendURL  string
+
+	// HTTP server timeouts for production hardening
+	ReadTimeout       time.Duration // Max time to read request (including body)
+	WriteTimeout      time.Duration // Max time to write response
+	IdleTimeout       time.Duration // Max time for keep-alive connections
+	ReadHeaderTimeout time.Duration // Max time to read request headers
+	ShutdownTimeout   time.Duration // Max time to wait for graceful shutdown
+
+	// Gin-specific settings
+	MaxMultipartMemory int64    // Max memory for multipart form parsing (bytes)
+	TrustedProxies     []string // List of trusted proxy IPs for X-Forwarded-For
 }
 
 // DatabaseConfig holds database configuration
@@ -360,6 +371,17 @@ func Load() *Config {
 			Env:         getEnv("ENV", "development"),
 			FrontendURL: getEnv("FRONTEND_URL", "http://localhost:3000"),
 			BackendURL:  getEnv("BACKEND_URL", "http://localhost:8080"),
+
+			// HTTP server timeouts - sensible defaults for production
+			ReadTimeout:       getEnvAsDuration("SERVER_READ_TIMEOUT", "30s"),
+			WriteTimeout:      getEnvAsDuration("SERVER_WRITE_TIMEOUT", "30s"),
+			IdleTimeout:       getEnvAsDuration("SERVER_IDLE_TIMEOUT", "120s"),
+			ReadHeaderTimeout: getEnvAsDuration("SERVER_READ_HEADER_TIMEOUT", "10s"),
+			ShutdownTimeout:   getEnvAsDuration("SERVER_SHUTDOWN_TIMEOUT", "30s"),
+
+			// Gin settings
+			MaxMultipartMemory: int64(getEnvAsInt("SERVER_MAX_MULTIPART_MEMORY", 32)) << 20, // Default 32MB
+			TrustedProxies:     getEnvAsStringSlice("SERVER_TRUSTED_PROXIES", []string{}),
 		},
 		Database: DatabaseConfig{
 			URL:             getEnv("DATABASE_URL", "postgresql://postgres:password@localhost:5432/servicepro?sslmode=disable"),
