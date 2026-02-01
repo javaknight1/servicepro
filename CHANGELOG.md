@@ -2,6 +2,54 @@
 
 All notable changes to ServicePro will be documented in this file.
 
+## [0.6.0] - 2026-02-01
+
+### Release Features
+
+| Type             | Description                                                     | Commit                                                                                                 |
+| ---------------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| ✨ Features      | Jobs have a status flow                                         | [`11023e6`](https://github.com/javaknight1/servicepro/commit/11023e62c124596b7220809f87ad7a89df8f5c2a) |
+| ✨ Features      | Download quote and invoice pdfs from dashboard                  | [`0bad53e`](https://github.com/javaknight1/servicepro/commit/0bad53e4843f942cf446993e1068f3d4bfa6f27a) |
+| ✨ Features      | Created multiple statuses for quotes                            | [`b3728c0`](https://github.com/javaknight1/servicepro/commit/b3728c05649d76d3bc4513901889fb4bfdea1a64) |
+| ✨ Features      | Create pkg to send SMS                                          | [`ed154af`](https://github.com/javaknight1/servicepro/commit/ed154af821456262c9ce02bbba5b0d94aede373a) |
+| 🎯 Minor Changes | Added new fields to customer to set contact preference          | [`b533bc5`](https://github.com/javaknight1/servicepro/commit/b533bc546903795f509ab1a35de0c937e443b4b1) |
+| 🐛 Bug Fixes     | Fixed issue with Row Menu Item getting cut off                  | [`5205c72`](https://github.com/javaknight1/servicepro/commit/5205c7223c4e14885549f82b095be6cfcdb281df) |
+| 🐛 Bug Fixes     | Enforce random secret JWT key                                   | [`37f8bf4`](https://github.com/javaknight1/servicepro/commit/37f8bf4973eab32b97529eef8522b0b2a0c68290) |
+| 🐛 Bug Fixes     | Moved JWT token storage from localstorage to httpOnly cookies   | [`ea4f9d7`](https://github.com/javaknight1/servicepro/commit/ea4f9d72af2f8a40943c10391fc550de181a89c8) |
+| 🐛 Bug Fixes     | Bump @hookform/resolvers from 3.10.0 to 5.2.2 in /frontend      | [`56bcdcb`](https://github.com/javaknight1/servicepro/commit/56bcdcb7d48547e0b41e33e6fd9c00e8a5d3b275) |
+| 🐛 Bug Fixes     | Bump softprops/action-gh-release from 1 to 2                    | [`3fda576`](https://github.com/javaknight1/servicepro/commit/3fda576db5741d7245580adc185ee4ffb25aec2c) |
+| 🐛 Bug Fixes     | Bump actions/setup-python from 5 to 6                           | [`ca22afd`](https://github.com/javaknight1/servicepro/commit/ca22afda850a4238518aa33bcbbf5888f53d0db2) |
+| 🐛 Bug Fixes     | Bump the go-minor-patch group in /backend with 13 updates       | [`a8fcfbc`](https://github.com/javaknight1/servicepro/commit/a8fcfbc4358600cee04184c05742990905b3f766) |
+| 🐛 Bug Fixes     | Bump eslint-plugin-react-hooks from 4.6.2 to 7.0.1 in /frontend | [`6decc03`](https://github.com/javaknight1/servicepro/commit/6decc03ca29b6e8789bf15f9225f95a4549abb9d) |
+| 🐛 Bug Fixes     | Bump actions/checkout from 4 to 6                               | [`4eb4b53`](https://github.com/javaknight1/servicepro/commit/4eb4b5317a2ceb65d971e2cbf01df6ecf5fc6ab8) |
+| 🐛 Bug Fixes     | Bump tailwindcss from 3.4.18 to 4.1.18 in /frontend             | [`aaf5b3c`](https://github.com/javaknight1/servicepro/commit/aaf5b3cf23b67d15ea0d991a8ba281bfa7922cd0) |
+| 🐛 Bug Fixes     | Bump vite from 5.4.21 to 7.3.1 in /frontend                     | [`2312ce8`](https://github.com/javaknight1/servicepro/commit/2312ce81476cd790587ea9d2d509791071fbe664) |
+| 🐛 Bug Fixes     | Bump react-dom and @types/react-dom in /frontend                | [`1fc7cf5`](https://github.com/javaknight1/servicepro/commit/1fc7cf51830db97ca52433076083e648641326bf) |
+| 🐛 Bug Fixes     | Bump the npm-minor-patch group in /frontend with 19 updates     | [`969bebe`](https://github.com/javaknight1/servicepro/commit/969bebee126833956667a752d626c828beda194f) |
+| 🐛 Bug Fixes     | Bump react and @types/react in /frontend                        | [`35b2a27`](https://github.com/javaknight1/servicepro/commit/35b2a274d23139f9f879cd41aaf84718d94d0763) |
+| 🐛 Bug Fixes     | Bump @headlessui/react from 1.7.19 to 2.2.9 in /frontend        | [`5748ec0`](https://github.com/javaknight1/servicepro/commit/5748ec03d9007111ee1f096bb67242ca42ecd59a) |
+| 🐛 Bug Fixes     | Bump actions/setup-node from 4 to 6                             | [`bb36ca9`](https://github.com/javaknight1/servicepro/commit/bb36ca97b2d7d2bf48bdda4c81196d7f9f862567) |
+| 🐛 Bug Fixes     | Bump react-router-dom from 6.30.2 to 7.13.0 in /frontend        | [`360228c`](https://github.com/javaknight1/servicepro/commit/360228cff8d394f1a7cb283c242686729d7a3d5a) |
+| 🐛 Bug Fixes     | Bump rollup-plugin-visualizer from 5.14.0 to 6.0.5 in /frontend | [`299988b`](https://github.com/javaknight1/servicepro/commit/299988bf3e24f4187309428474a4fe5597c66507) |
+| 🐛 Bug Fixes     | Bump @vitejs/plugin-react from 4.7.0 to 5.1.2 in /frontend      | [`5b4ce8e`](https://github.com/javaknight1/servicepro/commit/5b4ce8e5d9fb9a5dc71e3a65bbd1147547664bda) |
+| 🐛 Bug Fixes     | Updated packages                                                | [`82a6f50`](https://github.com/javaknight1/servicepro/commit/82a6f50b1cf2df3593200b51eda163081be29099) |
+| 🐛 Bug Fixes     | Fixed linting with invalud package-lock.json                    | [`caddf2a`](https://github.com/javaknight1/servicepro/commit/caddf2a2579ae15601b6b1ee744e0cc851a3e9d1) |
+| 🐛 Bug Fixes     | Bump zod from 3.25.76 to 4.3.6 in /frontend                     | [`1eefc69`](https://github.com/javaknight1/servicepro/commit/1eefc697fb6261506681c977e48487fe13f46817) |
+| 🐛 Bug Fixes     | Bump vite-plugin-pwa from 0.21.2 to 1.2.0 in /frontend          | [`144a1a5`](https://github.com/javaknight1/servicepro/commit/144a1a5b9987dff04ca8f99f9f77bd3e63cda196) |
+| 🐛 Bug Fixes     | Bump zustand from 4.5.7 to 5.0.10 in /frontend                  | [`20c5c3e`](https://github.com/javaknight1/servicepro/commit/20c5c3e56920ee7a202dc2f3f5182500ca6cd5af) |
+| 🐛 Bug Fixes     | Bump actions/cache from 4 to 5                                  | [`2fdfdee`](https://github.com/javaknight1/servicepro/commit/2fdfdee629ba8c16caf29fc547ccc9ead3c15ad3) |
+| 🐛 Bug Fixes     | Fixed linting with invalud package-lock.json                    | [`0643eed`](https://github.com/javaknight1/servicepro/commit/0643eedf08465096ee01dee592eb67394b54a59a) |
+| 🐛 Bug Fixes     | Fixed linting and vulnerabilities from audit                    | [`f8b549b`](https://github.com/javaknight1/servicepro/commit/f8b549bf105d1edf7e20faa3e3c66ccdb6c2fec9) |
+
+### Dev Features
+
+| Type             | Description                                                        | Commit                                                                                                 |
+| ---------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
+| ✅ Tests         | Seed database for development                                      | [`9b59b88`](https://github.com/javaknight1/servicepro/commit/9b59b8886d61c7b3908d135bc815d0f886e44f35) |
+| ✅ Tests         | Added dependabot that would check if any dependencies are outdated | [`feecf1c`](https://github.com/javaknight1/servicepro/commit/feecf1cd3b06f4ad39adc71407fdc3d0763600b5) |
+| ✅ Tests         | Fixed the failing unit tests for PDFs and emailing                 | [`00bc2b1`](https://github.com/javaknight1/servicepro/commit/00bc2b13a801164ba107f58c439bab8c1836b89b) |
+| 📚 Documentation | Updated TODO with new tasks completed                              | [`0a8bc24`](https://github.com/javaknight1/servicepro/commit/0a8bc24d4547ac4357bb85a94d0ed0a722eb8481) |
+
 ## [0.5.0] - 2026-01-29
 
 ### Release Features
