@@ -16,7 +16,7 @@ This document tracks technical improvements that should be implemented but are d
 - [x] HTTP server timeouts (Read/Write/Idle) ✓
 - [x] Apply MaxMultipartMemory to router ✓
 - [x] Apply TrustedProxies to router ✓
-- [ ] Deep health checks (DB + Redis)
+- [x] Deep health checks (DB + Redis) ✓
 - [ ] Recovery middleware Sentry integration
 
 **Frontend Critical:**
@@ -67,23 +67,13 @@ This document tracks technical improvements that should be implemented but are d
 - [x] HTTP server timeouts - ReadTimeout, WriteTimeout, IdleTimeout, ReadHeaderTimeout configured via http.Server
 - [x] MaxMultipartMemory - Configurable via SERVER_MAX_MULTIPART_MEMORY env var, applied to router
 - [x] TrustedProxies - Configurable via SERVER_TRUSTED_PROXIES env var, applied to router
+- [x] Deep health checks - /health, /health/live, /health/ready with DB + Redis connectivity checks
 
 ---
 
 ## P0 - Critical (Blocks Production)
 
 ### Backend Server Configuration
-
-- [ ] **Deep Health Checks**
-  - **File**: `backend/internal/api/routes/routes.go:33-37`
-  - **What**: Add database and Redis connectivity checks to /health
-  - **Why**: Current health check just returns `{"status": "healthy"}` without checking dependencies
-  - **Expected Result**: Kubernetes detects degraded services
-  - **Acceptance Criteria**:
-    - `/health/live` - Basic liveness (server running)
-    - `/health/ready` - Readiness with DB + Redis checks
-    - Response includes latency for each check
-    - Returns 503 if any critical dependency unhealthy
 
 - [ ] **Recovery Middleware Sentry Integration**
   - **File**: `backend/internal/api/middleware/error_handler.go:107`
