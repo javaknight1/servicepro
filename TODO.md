@@ -10,26 +10,26 @@ This document tracks technical improvements that should be implemented but are d
 
 Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to reference a task.
 
-| ID   | Priority | Category | Task                                         |
-| ---- | -------- | -------- | -------------------------------------------- |
-| T001 | P0       | Backend  | Recovery middleware Sentry integration       |
-| T002 | P0       | Frontend | Centralize direct fetch() calls              |
-| T003 | P0       | Frontend | Add CSP/HSTS headers to nginx.conf           |
-| T004 | P0       | Infra    | Create GitHub Actions CI/CD workflows        |
-| T005 | P0       | Backend  | Expose /metrics endpoint for Prometheus      |
-| T006 | P1       | Backend  | Structured JSON logging (replace fmt.Printf) |
-| T007 | P1       | Frontend | Fix `any` types (50 instances)               |
-| T008 | P1       | Frontend | Remove @ts-nocheck directives                |
-| T009 | P1       | Frontend | Enable noUnusedLocals/noUnusedParameters     |
-| T010 | P1       | Backend  | Apply error tracking middleware              |
-| T011 | P1       | Infra    | Staging environment configuration            |
-| T012 | P1       | Infra    | Bundle size monitoring in CI                 |
-| T013 | P2       | Testing  | Increase frontend test coverage to 70%+      |
-| T014 | P2       | Testing  | Integration tests for critical workflows     |
-| T015 | P2       | Docs     | Generate OpenAPI/Swagger documentation       |
-| T016 | P2       | Perf     | Frontend bundle analysis + optimization      |
-| T017 | P2       | Perf     | Query performance monitoring                 |
-| T018 | P2       | Cleanup  | Dead code elimination                        |
+| ID       | Priority | Category     | Task                                         |
+| -------- | -------- | ------------ | -------------------------------------------- |
+| T001     | P0       | Backend      | Recovery middleware Sentry integration       |
+| ~~T002~~ | ~~P0~~   | ~~Frontend~~ | ~~Centralize direct fetch() calls~~ ✓        |
+| T003     | P0       | Frontend     | Add CSP/HSTS headers to nginx.conf           |
+| T004     | P0       | Infra        | Create GitHub Actions CI/CD workflows        |
+| T005     | P0       | Backend      | Expose /metrics endpoint for Prometheus      |
+| T006     | P1       | Backend      | Structured JSON logging (replace fmt.Printf) |
+| T007     | P1       | Frontend     | Fix `any` types (50 instances)               |
+| T008     | P1       | Frontend     | Remove @ts-nocheck directives                |
+| T009     | P1       | Frontend     | Enable noUnusedLocals/noUnusedParameters     |
+| T010     | P1       | Backend      | Apply error tracking middleware              |
+| T011     | P1       | Infra        | Staging environment configuration            |
+| T012     | P1       | Infra        | Bundle size monitoring in CI                 |
+| T013     | P2       | Testing      | Increase frontend test coverage to 70%+      |
+| T014     | P2       | Testing      | Integration tests for critical workflows     |
+| T015     | P2       | Docs         | Generate OpenAPI/Swagger documentation       |
+| T016     | P2       | Perf         | Frontend bundle analysis + optimization      |
+| T017     | P2       | Perf         | Query performance monitoring                 |
+| T018     | P2       | Cleanup      | Dead code elimination                        |
 
 ---
 
@@ -49,7 +49,7 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 **Frontend Critical:**
 
 - [x] Fix localStorage token access in ConflictChecker.tsx ✓
-- [ ] **T002** - Centralize direct fetch() calls
+- [x] **T002** - Centralize direct fetch() calls ✓
 - [ ] **T003** - Add CSP/HSTS headers to nginx.conf
 
 **Infrastructure:**
@@ -96,6 +96,7 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 - [x] TrustedProxies - Configurable via SERVER_TRUSTED_PROXIES env var, applied to router
 - [x] Deep health checks - /health, /health/live, /health/ready with DB + Redis connectivity checks
 - [x] localStorage token fix - ConflictChecker.tsx now uses api service with httpOnly cookies
+- [x] T002: Centralized fetch() calls - pdfGenerator.tsx, useQuoteCalculations.ts now use api service
 
 ---
 
@@ -115,16 +116,10 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 
 ### Frontend Critical
 
-- [ ] **T002: Centralize Direct fetch() Calls**
-  - **What**: Refactor files using direct fetch() to use centralized API service
-  - **Why**: Bypasses auth handling, error handling, and interceptors
-  - **Files to fix**:
-    - [ ] `frontend/src/components/quotes/utils/pdfGenerator.tsx:416`
-    - [ ] `frontend/src/components/quotes/hooks/useQuoteCalculations.ts:96`
-  - **Acceptance Criteria**:
-    - All API calls go through `frontend/src/services/api.ts`
-    - No direct `fetch('/api/...')` calls remain
-    - Error handling consistent across all calls
+- [x] **T002: Centralize Direct fetch() Calls** ✓ COMPLETE
+  - All API calls now go through `frontend/src/services/api.ts`
+  - Fixed: `pdfGenerator.tsx`, `useQuoteCalculations.ts`
+  - No direct `fetch('/api/...')` calls remain
 
 - [ ] **T003: Add Security Headers to nginx.conf**
   - **File**: `frontend/nginx.conf`

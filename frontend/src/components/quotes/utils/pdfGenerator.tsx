@@ -10,6 +10,7 @@ import {
   pdf,
 } from '@react-pdf/renderer';
 import { Quote, LineItem } from '../../../types/quote';
+import api from '../../../services/api';
 
 /**
  * PDF Styles
@@ -412,22 +413,12 @@ export const emailQuotePDF = async (
       const base64data = reader.result as string;
 
       try {
-        // This would call your email service API
-        const response = await fetch('/api/v1/quotes/email', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            quote_id: quote.id,
-            recipient_email: recipientEmail,
-            pdf_data: base64data,
-          }),
+        // Call the email service API using centralized api service
+        await api.post('/v1/quotes/email', {
+          quote_id: quote.id,
+          recipient_email: recipientEmail,
+          pdf_data: base64data,
         });
-
-        if (!response.ok) {
-          throw new Error('Failed to send email');
-        }
 
         resolve();
       } catch (error) {

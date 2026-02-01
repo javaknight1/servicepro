@@ -2,6 +2,7 @@ import { useMemo, useEffect } from 'react';
 import { UseFormSetValue, UseFormWatch } from 'react-hook-form';
 import { LineItem } from '../../../types/quote';
 import { QuoteFormData } from '../validation';
+import api from '../../../services/api';
 
 /**
  * Hook for real-time quote calculations
@@ -91,16 +92,11 @@ export const useTaxRateLookup = (zipCode: string) => {
       setError(null);
 
       try {
-        // This would call the tax service API
-        // For now, using a simple lookup table
-        const response = await fetch(`/api/v1/tax/rate?zip_code=${zipCode}`);
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch tax rate');
-        }
-
-        const data = await response.json();
-        setTaxRate(data.combined_rate || '0');
+        // Call the tax service API using centralized api service
+        const response = await api.get<{ combined_rate?: string }>(
+          `/v1/tax/rate?zip_code=${zipCode}`
+        );
+        setTaxRate(response.data.combined_rate || '0');
       } catch (err) {
         setError(
           err instanceof Error ? err.message : 'Failed to lookup tax rate'
