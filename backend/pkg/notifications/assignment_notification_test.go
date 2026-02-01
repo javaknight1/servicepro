@@ -13,6 +13,7 @@ import (
 
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/pkg/clients/email"
+	"github.com/javaknight1/servicepro/backend/pkg/clients/sms"
 )
 
 // MockEmailService is a mock implementation of email.Client interface
@@ -88,14 +89,67 @@ func (m *MockEmailService) SendPaymentReceiptEmail(ctx context.Context, to strin
 	return args.Error(0)
 }
 
-// MockSMSProviderTest is a mock implementation of SMSProvider for testing
-type MockSMSProviderTest struct {
+// MockSMSClient is a mock implementation of sms.Client interface
+type MockSMSClient struct {
 	mock.Mock
 }
 
-func (m *MockSMSProviderTest) SendSMS(ctx context.Context, to, message string) error {
-	args := m.Called(ctx, to, message)
+func (m *MockSMSClient) Send(ctx context.Context, msg *sms.SMSMessage) (*sms.SendResult, error) {
+	args := m.Called(ctx, msg)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*sms.SendResult), args.Error(1)
+}
+
+func (m *MockSMSClient) SendBatch(ctx context.Context, messages []*sms.SMSMessage) []sms.SendResult {
+	args := m.Called(ctx, messages)
+	return args.Get(0).([]sms.SendResult)
+}
+
+func (m *MockSMSClient) SendOTP(ctx context.Context, phoneNumber, otp string, expiryMinutes int) error {
+	args := m.Called(ctx, phoneNumber, otp, expiryMinutes)
 	return args.Error(0)
+}
+
+func (m *MockSMSClient) SendNotification(ctx context.Context, phoneNumber, message string) error {
+	args := m.Called(ctx, phoneNumber, message)
+	return args.Error(0)
+}
+
+func (m *MockSMSClient) SendJobUpdate(ctx context.Context, phoneNumber, jobNumber, status, message string) error {
+	args := m.Called(ctx, phoneNumber, jobNumber, status, message)
+	return args.Error(0)
+}
+
+func (m *MockSMSClient) SendAppointmentReminder(ctx context.Context, phoneNumber, appointmentTime, jobDescription string) error {
+	args := m.Called(ctx, phoneNumber, appointmentTime, jobDescription)
+	return args.Error(0)
+}
+
+func (m *MockSMSClient) SendInvoiceNotification(ctx context.Context, phoneNumber, invoiceNumber, amount, paymentURL string) error {
+	args := m.Called(ctx, phoneNumber, invoiceNumber, amount, paymentURL)
+	return args.Error(0)
+}
+
+func (m *MockSMSClient) SendPaymentConfirmation(ctx context.Context, phoneNumber, invoiceNumber, amount string) error {
+	args := m.Called(ctx, phoneNumber, invoiceNumber, amount)
+	return args.Error(0)
+}
+
+func (m *MockSMSClient) HealthCheck(ctx context.Context) error {
+	args := m.Called(ctx)
+	return args.Error(0)
+}
+
+func (m *MockSMSClient) Close() error {
+	args := m.Called()
+	return args.Error(0)
+}
+
+func (m *MockSMSClient) GetProviderInfo() sms.ProviderInfo {
+	args := m.Called()
+	return args.Get(0).(sms.ProviderInfo)
 }
 
 // TestNewNotificationService tests service creation
@@ -107,16 +161,30 @@ func TestNewNotificationService(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotNil(t, service)
 	assert.NotNil(t, service.emailClient)
-	assert.NotNil(t, service.smsProvider)
+	assert.Nil(t, service.smsClient) // SMS client is optional
+	assert.NotNil(t, service.templates)
+}
+
+// TestNewNotificationService_WithSMS tests service creation with SMS client
+func TestNewNotificationService_WithSMS(t *testing.T) {
+	mockEmailService := new(MockEmailService)
+	mockSMSClient := new(MockSMSClient)
+
+	service, err := NewNotificationService(mockEmailService, mockSMSClient)
+
+	require.NoError(t, err)
+	assert.NotNil(t, service)
+	assert.NotNil(t, service.emailClient)
+	assert.NotNil(t, service.smsClient)
 	assert.NotNil(t, service.templates)
 }
 
 // TestSendNotification_Email tests sending email notification
 func TestSendNotification_Email(t *testing.T) {
 	mockEmailService := new(MockEmailService)
-	mockSMSProvider := new(MockSMSProviderTest)
+	mockSMSClient := new(MockSMSClient)
 
-	service, err := NewNotificationService(mockEmailService, mockSMSProvider)
+	service, err := NewNotificationService(mockEmailService, mockSMSClient)
 	require.NoError(t, err)
 
 	ctx := context.Background()
@@ -145,9 +213,9 @@ func TestSendNotification_Email(t *testing.T) {
 // TestSendNotification_EmailError tests email notification error
 func TestSendNotification_EmailError(t *testing.T) {
 	mockEmailService := new(MockEmailService)
-	mockSMSProvider := new(MockSMSProviderTest)
+	mockSMSClient := new(MockSMSClient)
 
-	service, err := NewNotificationService(mockEmailService, mockSMSProvider)
+	service, err := NewNotificationService(mockEmailService, mockSMSClient)
 	require.NoError(t, err)
 
 	ctx := context.Background()
@@ -175,9 +243,9 @@ func TestSendNotification_EmailError(t *testing.T) {
 // TestSendNotification_SMS tests sending SMS notification
 func TestSendNotification_SMS(t *testing.T) {
 	mockEmailService := new(MockEmailService)
-	mockSMSProvider := new(MockSMSProviderTest)
+	mockSMSClient := new(MockSMSClient)
 
-	service, err := NewNotificationService(mockEmailService, mockSMSProvider)
+	service, err := NewNotificationService(mockEmailService, mockSMSClient)
 	require.NoError(t, err)
 
 	ctx := context.Background()
@@ -193,7 +261,7 @@ func TestSendNotification_SMS(t *testing.T) {
 		},
 	}
 
-	mockSMSProvider.On("SendSMS", ctx, "+1234567890", mock.Anything).Return(nil)
+	mockSMSClient.On("SendNotification", ctx, "+1234567890", mock.Anything).Return(nil)
 
 	result, err := service.SendNotification(ctx, req)
 
@@ -201,15 +269,43 @@ func TestSendNotification_SMS(t *testing.T) {
 	assert.NotNil(t, result)
 	assert.True(t, result.Success)
 	assert.Equal(t, ChannelSMS, result.Channel)
-	mockSMSProvider.AssertExpectations(t)
+	mockSMSClient.AssertExpectations(t)
+}
+
+// TestSendNotification_SMS_NoClient tests SMS notification when client is nil
+func TestSendNotification_SMS_NoClient(t *testing.T) {
+	mockEmailService := new(MockEmailService)
+
+	service, err := NewNotificationService(mockEmailService, nil) // No SMS client
+	require.NoError(t, err)
+
+	ctx := context.Background()
+	req := &NotificationRequest{
+		RecipientID:    uuid.New(),
+		RecipientEmail: "tech@example.com",
+		RecipientPhone: "+1234567890",
+		Channel:        ChannelSMS,
+		Priority:       PriorityHigh,
+		Subject:        "Test SMS",
+		TemplateData: map[string]interface{}{
+			"Message": "Test SMS message",
+		},
+	}
+
+	// Should succeed silently when SMS client is not configured
+	result, err := service.SendNotification(ctx, req)
+
+	require.NoError(t, err)
+	assert.NotNil(t, result)
+	assert.True(t, result.Success) // Succeeds by skipping
 }
 
 // TestSendNotification_InvalidChannel tests invalid notification channel
 func TestSendNotification_InvalidChannel(t *testing.T) {
 	mockEmailService := new(MockEmailService)
-	mockSMSProvider := new(MockSMSProviderTest)
+	mockSMSClient := new(MockSMSClient)
 
-	service, err := NewNotificationService(mockEmailService, mockSMSProvider)
+	service, err := NewNotificationService(mockEmailService, mockSMSClient)
 	require.NoError(t, err)
 
 	ctx := context.Background()
@@ -232,9 +328,9 @@ func TestSendNotification_InvalidChannel(t *testing.T) {
 // TestSendMultiChannelNotification_Success tests multi-channel notification
 func TestSendMultiChannelNotification_Success(t *testing.T) {
 	mockEmailService := new(MockEmailService)
-	mockSMSProvider := new(MockSMSProviderTest)
+	mockSMSClient := new(MockSMSClient)
 
-	service, err := NewNotificationService(mockEmailService, mockSMSProvider)
+	service, err := NewNotificationService(mockEmailService, mockSMSClient)
 	require.NoError(t, err)
 
 	ctx := context.Background()
@@ -261,7 +357,7 @@ func TestSendMultiChannelNotification_Success(t *testing.T) {
 	mockEmailService.On("Send", mock.Anything, mock.MatchedBy(func(msg *email.EmailMessage) bool {
 		return len(msg.To) > 0 && msg.To[0] == "tech@example.com" && msg.Subject == "Email Notification"
 	})).Return(&email.SendResult{Success: true}, nil)
-	mockSMSProvider.On("SendSMS", ctx, "+1234567890", mock.Anything).Return(nil)
+	mockSMSClient.On("SendNotification", ctx, "+1234567890", mock.Anything).Return(nil)
 
 	results, err := service.SendMultiChannelNotification(ctx, reqs)
 
@@ -270,15 +366,15 @@ func TestSendMultiChannelNotification_Success(t *testing.T) {
 	assert.True(t, results[0].Success)
 	assert.True(t, results[1].Success)
 	mockEmailService.AssertExpectations(t)
-	mockSMSProvider.AssertExpectations(t)
+	mockSMSClient.AssertExpectations(t)
 }
 
 // TestSendMultiChannelNotification_PartialFailure tests partial failures
 func TestSendMultiChannelNotification_PartialFailure(t *testing.T) {
 	mockEmailService := new(MockEmailService)
-	mockSMSProvider := new(MockSMSProviderTest)
+	mockSMSClient := new(MockSMSClient)
 
-	service, err := NewNotificationService(mockEmailService, mockSMSProvider)
+	service, err := NewNotificationService(mockEmailService, mockSMSClient)
 	require.NoError(t, err)
 
 	ctx := context.Background()
@@ -305,7 +401,7 @@ func TestSendMultiChannelNotification_PartialFailure(t *testing.T) {
 	mockEmailService.On("Send", mock.Anything, mock.MatchedBy(func(msg *email.EmailMessage) bool {
 		return len(msg.To) > 0 && msg.To[0] == "tech@example.com" && msg.Subject == "Email Notification"
 	})).Return(&email.SendResult{Success: true}, nil)
-	mockSMSProvider.On("SendSMS", ctx, "+1234567890", mock.Anything).Return(errors.New("SMS error"))
+	mockSMSClient.On("SendNotification", ctx, "+1234567890", mock.Anything).Return(errors.New("SMS error"))
 
 	results, err := service.SendMultiChannelNotification(ctx, reqs)
 
@@ -325,15 +421,15 @@ func TestSendMultiChannelNotification_PartialFailure(t *testing.T) {
 	assert.Equal(t, 1, successCount, "Expected 1 successful notification")
 	assert.Equal(t, 1, failureCount, "Expected 1 failed notification")
 	mockEmailService.AssertExpectations(t)
-	mockSMSProvider.AssertExpectations(t)
+	mockSMSClient.AssertExpectations(t)
 }
 
 // TestSendMultiChannelNotification_AllFailures tests all failures
 func TestSendMultiChannelNotification_AllFailures(t *testing.T) {
 	mockEmailService := new(MockEmailService)
-	mockSMSProvider := new(MockSMSProviderTest)
+	mockSMSClient := new(MockSMSClient)
 
-	service, err := NewNotificationService(mockEmailService, mockSMSProvider)
+	service, err := NewNotificationService(mockEmailService, mockSMSClient)
 	require.NoError(t, err)
 
 	ctx := context.Background()
@@ -364,9 +460,9 @@ func TestSendMultiChannelNotification_AllFailures(t *testing.T) {
 // TestSendAssignmentCreatedNotification tests assignment created notification
 func TestSendAssignmentCreatedNotification(t *testing.T) {
 	mockEmailService := new(MockEmailService)
-	mockSMSProvider := new(MockSMSProviderTest)
+	mockSMSClient := new(MockSMSClient)
 
-	service, err := NewNotificationService(mockEmailService, mockSMSProvider)
+	service, err := NewNotificationService(mockEmailService, mockSMSClient)
 	require.NoError(t, err)
 
 	ctx := context.Background()
@@ -404,9 +500,9 @@ func TestSendAssignmentCreatedNotification(t *testing.T) {
 // TestSendAssignmentUpdatedNotification tests assignment updated notification
 func TestSendAssignmentUpdatedNotification(t *testing.T) {
 	mockEmailService := new(MockEmailService)
-	mockSMSProvider := new(MockSMSProviderTest)
+	mockSMSClient := new(MockSMSClient)
 
-	service, err := NewNotificationService(mockEmailService, mockSMSProvider)
+	service, err := NewNotificationService(mockEmailService, mockSMSClient)
 	require.NoError(t, err)
 
 	ctx := context.Background()
@@ -444,9 +540,9 @@ func TestSendAssignmentUpdatedNotification(t *testing.T) {
 // TestSendAssignmentRemovedNotification tests assignment removed notification
 func TestSendAssignmentRemovedNotification(t *testing.T) {
 	mockEmailService := new(MockEmailService)
-	mockSMSProvider := new(MockSMSProviderTest)
+	mockSMSClient := new(MockSMSClient)
 
-	service, err := NewNotificationService(mockEmailService, mockSMSProvider)
+	service, err := NewNotificationService(mockEmailService, mockSMSClient)
 	require.NoError(t, err)
 
 	ctx := context.Background()
@@ -464,9 +560,9 @@ func TestSendAssignmentRemovedNotification(t *testing.T) {
 // TestSendBulkNotifications_Success tests bulk notifications
 func TestSendBulkNotifications_Success(t *testing.T) {
 	mockEmailService := new(MockEmailService)
-	mockSMSProvider := new(MockSMSProviderTest)
+	mockSMSClient := new(MockSMSClient)
 
-	service, err := NewNotificationService(mockEmailService, mockSMSProvider)
+	service, err := NewNotificationService(mockEmailService, mockSMSClient)
 	require.NoError(t, err)
 
 	ctx := context.Background()
@@ -508,9 +604,9 @@ func TestSendBulkNotifications_Success(t *testing.T) {
 // TestSendBulkNotifications_PartialFailure tests bulk notifications with partial failures
 func TestSendBulkNotifications_PartialFailure(t *testing.T) {
 	mockEmailService := new(MockEmailService)
-	mockSMSProvider := new(MockSMSProviderTest)
+	mockSMSClient := new(MockSMSClient)
 
-	service, err := NewNotificationService(mockEmailService, mockSMSProvider)
+	service, err := NewNotificationService(mockEmailService, mockSMSClient)
 	require.NoError(t, err)
 
 	ctx := context.Background()
@@ -563,9 +659,9 @@ func TestSendBulkNotifications_PartialFailure(t *testing.T) {
 // TestSendNotification_InvalidRecipient tests invalid recipient
 func TestSendNotification_InvalidRecipient(t *testing.T) {
 	mockEmailService := new(MockEmailService)
-	mockSMSProvider := new(MockSMSProviderTest)
+	mockSMSClient := new(MockSMSClient)
 
-	service, err := NewNotificationService(mockEmailService, mockSMSProvider)
+	service, err := NewNotificationService(mockEmailService, mockSMSClient)
 	require.NoError(t, err)
 
 	ctx := context.Background()
@@ -598,9 +694,9 @@ func TestSendNotification_PriorityLevels(t *testing.T) {
 	for _, priority := range priorities {
 		t.Run(string(priority), func(t *testing.T) {
 			mockEmailService := new(MockEmailService)
-			mockSMSProvider := new(MockSMSProviderTest)
+			mockSMSClient := new(MockSMSClient)
 
-			service, err := NewNotificationService(mockEmailService, mockSMSProvider)
+			service, err := NewNotificationService(mockEmailService, mockSMSClient)
 			require.NoError(t, err)
 
 			ctx := context.Background()

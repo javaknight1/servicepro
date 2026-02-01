@@ -23,6 +23,12 @@ import (
 	// Storage providers - blank imports to register providers
 	_ "github.com/javaknight1/servicepro/backend/pkg/clients/storage/mock"
 	_ "github.com/javaknight1/servicepro/backend/pkg/clients/storage/s3"
+
+	// SMS providers - blank imports to register providers
+	smsclient "github.com/javaknight1/servicepro/backend/pkg/clients/sms"
+	_ "github.com/javaknight1/servicepro/backend/pkg/clients/sms/mock"
+	_ "github.com/javaknight1/servicepro/backend/pkg/clients/sms/sns"
+	_ "github.com/javaknight1/servicepro/backend/pkg/clients/sms/textbelt"
 )
 
 func main() {
@@ -75,11 +81,19 @@ func main() {
 	// Initialize storage client (optional - may not be configured)
 	storageClient, _ := storageclient.NewClient(context.Background(), cfg)
 
+	// Initialize SMS client (optional - may not be configured)
+	smsClient, err := smsclient.NewClient(context.Background(), cfg)
+	if err != nil {
+		log.Printf("SMS client not initialized: %v (SMS notifications disabled)", err)
+	} else {
+		log.Printf("SMS client initialized: %s", smsClient.GetProviderInfo().DisplayName)
+	}
+
 	// Initialize Gin router
 	router := gin.Default()
 
 	// Setup routes
-	routes.Setup(router, db, redisClient, emailClient, storageClient, cfg)
+	routes.Setup(router, db, redisClient, emailClient, storageClient, smsClient, cfg)
 
 	// Start server
 	addr := fmt.Sprintf(":%s", cfg.Server.Port)

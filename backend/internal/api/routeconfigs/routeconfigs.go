@@ -13,6 +13,7 @@ import (
 	stripeService "github.com/javaknight1/servicepro/backend/internal/services/stripe"
 	"github.com/javaknight1/servicepro/backend/pkg/auth"
 	emailclient "github.com/javaknight1/servicepro/backend/pkg/clients/email"
+	smsclient "github.com/javaknight1/servicepro/backend/pkg/clients/sms"
 	storageclient "github.com/javaknight1/servicepro/backend/pkg/clients/storage"
 )
 
@@ -32,6 +33,7 @@ type Clients struct {
 	Redis   *redis.Client
 	Email   emailclient.Client
 	Storage storageclient.Client
+	SMS     smsclient.Client
 }
 
 // Repositories holds all repository instances

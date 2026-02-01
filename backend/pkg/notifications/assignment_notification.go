@@ -14,6 +14,7 @@ import (
 
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/pkg/clients/email"
+	"github.com/javaknight1/servicepro/backend/pkg/clients/sms"
 )
 
 var (
@@ -103,38 +104,19 @@ type NotificationServiceInterface interface {
 // NotificationService handles sending notifications
 type NotificationService struct {
 	emailClient email.Client
-	smsProvider SMSProvider // Interface for SMS provider
+	smsClient   sms.Client // SMS client from pkg/clients/sms
 	templates   *template.Template
 	logger      *log.Logger
 	mu          sync.RWMutex
 }
 
-// SMSProvider defines interface for SMS providers (Twilio, AWS SNS, etc.)
-type SMSProvider interface {
-	SendSMS(ctx context.Context, to, message string) error
-}
-
-// MockSMSProvider is a mock implementation for development
-type MockSMSProvider struct {
-	logger *log.Logger
-}
-
-func (m *MockSMSProvider) SendSMS(ctx context.Context, to, message string) error {
-	m.logger.Printf("[Mock SMS] To: %s, Message: %s", to, message)
-	return nil
-}
-
 // NewNotificationService creates a new notification service
-func NewNotificationService(emailClient email.Client, smsProvider SMSProvider) (*NotificationService, error) {
+// smsClient can be nil if SMS notifications are not needed
+func NewNotificationService(emailClient email.Client, smsClient sms.Client) (*NotificationService, error) {
 	service := &NotificationService{
 		emailClient: emailClient,
-		smsProvider: smsProvider,
+		smsClient:   smsClient,
 		logger:      log.New(log.Writer(), "[NotificationService] ", log.LstdFlags),
-	}
-
-	// Initialize with mock SMS if none provided
-	if service.smsProvider == nil {
-		service.smsProvider = &MockSMSProvider{logger: service.logger}
 	}
 
 	// Parse templates
@@ -534,6 +516,12 @@ func (s *NotificationService) sendSMSNotification(ctx context.Context, req *Noti
 		return ErrInvalidRecipient
 	}
 
+	// Check if SMS client is available
+	if s.smsClient == nil {
+		s.logger.Printf("SMS client not configured, skipping SMS notification to %s", req.RecipientPhone)
+		return nil
+	}
+
 	// Render SMS template
 	var message bytes.Buffer
 	tmpl := s.templates.Lookup("assignment_created_sms")
@@ -545,7 +533,8 @@ func (s *NotificationService) sendSMSNotification(ctx context.Context, req *Noti
 		return fmt.Errorf("%w: %v", ErrTemplateParsing, err)
 	}
 
-	return s.smsProvider.SendSMS(ctx, req.RecipientPhone, message.String())
+	// Use the new SMS client
+	return s.smsClient.SendNotification(ctx, req.RecipientPhone, message.String())
 }
 
 func (s *NotificationService) prepareAssignmentData(assignment *models.JobAssignment, job *models.Job, technician *models.User) map[string]string {

@@ -33,6 +33,51 @@ type Config struct {
 	OpenTelemetry OpenTelemetryConfig
 	PDF           PDFConfig
 	CORS          CORSConfig
+	SMS           SMSConfig
+}
+
+// SMSConfig holds SMS service configuration
+type SMSConfig struct {
+	// DefaultProvider can be set to force a specific provider
+	// If empty, auto-detection is used based on available credentials
+	DefaultProvider string
+
+	// SenderID is the sender name/number shown to recipients (where supported)
+	SenderID string
+
+	// TextBelt configuration (free tier provider)
+	TextBelt TextBeltConfig
+
+	// Rate limiting
+	RateLimit SMSRateLimitConfig
+}
+
+// TextBeltConfig holds TextBelt API configuration
+// TextBelt offers 1 free SMS/day, or unlimited with a paid key
+// Website: https://textbelt.com/
+type TextBeltConfig struct {
+	// APIKey is the TextBelt API key
+	// Use "textbelt" for free tier (1 SMS/day)
+	// Use a paid key for production
+	APIKey string
+
+	// Enabled allows explicitly enabling/disabling TextBelt
+	Enabled bool
+}
+
+// SMSRateLimitConfig holds SMS rate limiting configuration
+type SMSRateLimitConfig struct {
+	// Enabled enables rate limiting for SMS
+	Enabled bool
+
+	// MaxPerMinute is the maximum SMS per minute
+	MaxPerMinute int
+
+	// MaxPerDay is the maximum SMS per day
+	MaxPerDay int
+
+	// BurstSize is the maximum burst size
+	BurstSize int
 }
 
 // AWSConfig holds configuration for all AWS services (SES, SNS, CloudWatch, etc.)
@@ -486,6 +531,20 @@ func Load() *Config {
 			ExposedHeaders:   getEnvAsStringSlice("CORS_EXPOSED_HEADERS", []string{"X-Request-ID", "X-RateLimit-Remaining", "X-RateLimit-Reset"}),
 			AllowCredentials: getEnvAsBool("CORS_ALLOW_CREDENTIALS", true),
 			MaxAge:           getEnvAsInt("CORS_MAX_AGE", 86400), // 24 hours
+		},
+		SMS: SMSConfig{
+			DefaultProvider: getEnv("SMS_DEFAULT_PROVIDER", ""),
+			SenderID:        getEnv("SMS_SENDER_ID", "ServicePro"),
+			TextBelt: TextBeltConfig{
+				APIKey:  getEnv("TEXTBELT_API_KEY", ""),
+				Enabled: getEnvAsBool("TEXTBELT_ENABLED", false),
+			},
+			RateLimit: SMSRateLimitConfig{
+				Enabled:      getEnvAsBool("SMS_RATE_LIMIT_ENABLED", true),
+				MaxPerMinute: getEnvAsInt("SMS_RATE_LIMIT_MAX_PER_MINUTE", 10),
+				MaxPerDay:    getEnvAsInt("SMS_RATE_LIMIT_MAX_PER_DAY", 100),
+				BurstSize:    getEnvAsInt("SMS_RATE_LIMIT_BURST_SIZE", 5),
+			},
 		},
 	}
 
