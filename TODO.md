@@ -14,7 +14,7 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 | -------- | -------- | ------------ | -------------------------------------------- |
 | T001     | P0       | Backend      | Recovery middleware Sentry integration       |
 | ~~T002~~ | ~~P0~~   | ~~Frontend~~ | ~~Centralize direct fetch() calls~~ ✓        |
-| T003     | P0       | Frontend     | Add CSP/HSTS headers to nginx.conf           |
+| ~~T003~~ | ~~P0~~   | ~~Frontend~~ | ~~Add CSP/HSTS headers to nginx.conf~~ ✓     |
 | T004     | P0       | Infra        | Create GitHub Actions CI/CD workflows        |
 | T005     | P0       | Backend      | Expose /metrics endpoint for Prometheus      |
 | T006     | P1       | Backend      | Structured JSON logging (replace fmt.Printf) |
@@ -50,7 +50,7 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 
 - [x] Fix localStorage token access in ConflictChecker.tsx ✓
 - [x] **T002** - Centralize direct fetch() calls ✓
-- [ ] **T003** - Add CSP/HSTS headers to nginx.conf
+- [x] **T003** - Add CSP/HSTS headers to nginx.conf ✓
 
 **Infrastructure:**
 
@@ -97,6 +97,7 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 - [x] Deep health checks - /health, /health/live, /health/ready with DB + Redis connectivity checks
 - [x] localStorage token fix - ConflictChecker.tsx now uses api service with httpOnly cookies
 - [x] T002: Centralized fetch() calls - pdfGenerator.tsx, useQuoteCalculations.ts now use api service
+- [x] T003: nginx security headers - CSP, HSTS, Permissions-Policy added to nginx.conf
 
 ---
 
@@ -121,15 +122,11 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
   - Fixed: `pdfGenerator.tsx`, `useQuoteCalculations.ts`
   - No direct `fetch('/api/...')` calls remain
 
-- [ ] **T003: Add Security Headers to nginx.conf**
-  - **File**: `frontend/nginx.conf`
-  - **What**: Add Content-Security-Policy and Strict-Transport-Security headers
-  - **Why**: Missing critical security headers for production
-  - **Expected Result**: Frontend protected from XSS and downgrade attacks
-  - **Acceptance Criteria**:
-    - Add `add_header Content-Security-Policy "default-src 'self'; ..." always;`
-    - Add `add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;`
-    - Test headers appear in browser dev tools
+- [x] **T003: Add Security Headers to nginx.conf** ✓ COMPLETE
+  - Added HSTS: `max-age=31536000; includeSubDomains`
+  - Added CSP: `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; ...`
+  - Added Permissions-Policy to disable unused browser features
+  - Updated Referrer-Policy to `strict-origin-when-cross-origin`
 
 ### Infrastructure & Deployment
 

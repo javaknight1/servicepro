@@ -28,6 +28,9 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 # Copy custom nginx configuration as template
 COPY nginx.conf /etc/nginx/templates/default.conf.template
 
+# Copy security headers include file
+COPY security-headers.conf /etc/nginx/security-headers.conf
+
 # Default backend URL (can be overridden at runtime)
 ENV BACKEND_URL=http://backend:8080
 
