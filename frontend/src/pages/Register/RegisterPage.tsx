@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -33,7 +33,6 @@ const registerSchema = z
 type RegisterFormData = z.infer<typeof registerSchema>;
 
 export function RegisterPage() {
-  const _navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const register_action = useAuthStore((state) => state.register);
   const [error, setError] = useState<string>('');

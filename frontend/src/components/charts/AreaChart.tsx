@@ -1,6 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import React, { useMemo, forwardRef, memo, useRef, useEffect } from 'react';
-import { ChartData, ChartOptions, Chart as ChartJS } from 'chart.js';
+import { ChartData, ChartOptions } from 'chart.js';
 import BaseChart from './BaseChart';
 import {
   AreaChartProps,
@@ -51,8 +51,6 @@ const AreaChart = forwardRef<ChartRef, AreaChartProps>(
     },
     ref
   ) => {
-    const _chartRef = useRef<ChartJS | null>(null);
-
     // Build chart data with gradients
     const chartData: ChartData<'line'> = useMemo(() => {
       return {

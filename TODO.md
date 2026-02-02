@@ -20,7 +20,7 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 | ~~T006~~ | ~~P1~~   | ~~Backend~~  | ~~Structured JSON logging (replace fmt.Printf)~~ ✓ |
 | ~~T007~~ | ~~P1~~   | ~~Frontend~~ | ~~Fix `any` types (50 instances)~~ ✓               |
 | ~~T008~~ | ~~P1~~   | ~~Frontend~~ | ~~Remove @ts-nocheck directives~~ ✓                |
-| T009     | P1       | Frontend     | Enable noUnusedLocals/noUnusedParameters           |
+| ~~T009~~ | ~~P1~~   | ~~Frontend~~ | ~~Enable noUnusedLocals/noUnusedParameters~~ ✓     |
 | T010     | P1       | Backend      | Apply error tracking middleware                    |
 | T011     | P1       | Infra        | Staging environment configuration                  |
 | T012     | P1       | Infra        | Bundle size monitoring in CI                       |
@@ -62,7 +62,7 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 - [x] **T006** - Structured logging (replace fmt.Printf) ✓
 - [x] **T007** - Fix 50 `any` types in frontend ✓
 - [x] **T008** - Remove @ts-nocheck directives ✓
-- [ ] **T009** - Enable noUnusedLocals/noUnusedParameters
+- [x] **T009** - Enable noUnusedLocals/noUnusedParameters ✓
 
 ### Sprint 3 - Testing & Documentation
 
@@ -104,6 +104,7 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 - [x] T006: Structured JSON logging - Migrated all fmt.Printf/log.Printf to structured logging client with global logger pattern
 - [x] T007: Fix `any` types - Replaced 50+ `any` types with proper TypeScript types, created error utility, fixed all test mocks
 - [x] T008: Remove @ts-nocheck - Removed directives from routes/index.tsx and performance.ts, added browser API type declarations
+- [x] T009: Enable noUnusedLocals/noUnusedParameters - Enabled strict checks, removed 17 instances of dead code
 
 ---
 
@@ -168,14 +169,14 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
   - Added browser API interfaces: `PerformanceEventTiming`, `LayoutShiftEntry`, `ExtendedPerformanceObserverInit`, `DocumentWithPrerendering`
   - All type errors resolved, type-check passes
 
-- [ ] **T009: Enable Strict TypeScript Checks**
-  - **File**: `frontend/tsconfig.json:20-21`
-  - **What**: Set `noUnusedLocals: true` and `noUnusedParameters: true`
-  - **Why**: Currently disabled; dead code accumulates silently
-  - **Acceptance Criteria**:
-    - Enable both flags
-    - Fix all resulting errors
-    - Add to CI checks
+- [x] **T009: Enable Strict TypeScript Checks** ✓ COMPLETE
+  - Enabled `noUnusedLocals: true` and `noUnusedParameters: true` in tsconfig.json
+  - Fixed 17 issues:
+    - Removed 7 unused `React` imports (modern JSX transform doesn't need them)
+    - Removed unused variables: `_chartRef`, `_handleItemsChange`, `_bulkAssignMutation`, `_formatValue`, `_navigate`, `_API_BASE_URL`
+    - Removed unused `_offlineFallback` Route (dead code in service-worker.ts)
+    - Prefixed unused callback parameters with `_` (TypeScript convention)
+  - Type-check passes, dead code will now be caught at compile time
 
 ### Backend Observability
 

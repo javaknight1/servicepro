@@ -4,7 +4,7 @@
  * Displays real-time health status of all system components
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 // Types
 interface CheckResult {

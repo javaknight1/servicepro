@@ -72,29 +72,6 @@ export const TemplatePreview: React.FC<TemplatePreviewProps> = ({
     }
   };
 
-  const _formatValue = (
-    value: TemplateVariableValue,
-    type: TemplateVariable['type']
-  ) => {
-    if (value === null || value === undefined) return '';
-
-    switch (type) {
-      case 'currency':
-        return typeof value === 'number' ? `$${value.toFixed(2)}` : value;
-      case 'date':
-        if (value instanceof Date) {
-          return value.toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-          });
-        }
-        return value;
-      default:
-        return String(value);
-    }
-  };
-
   const validateVariable = (
     varDef: TemplateVariable,
     value: TemplateVariableValue

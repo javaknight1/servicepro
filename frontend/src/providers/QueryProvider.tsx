@@ -34,7 +34,7 @@ const queryCache = new QueryCache({
       // You could dispatch to a toast/notification system here
     }
   },
-  onSuccess: (data, query) => {
+  onSuccess: (_data, query) => {
     // Log successful queries in development
     if (import.meta.env.DEV) {
       // eslint-disable-next-line no-console
@@ -270,7 +270,7 @@ export function PendingMutationsIndicator() {
     const checkPending = async () => {
       if ('serviceWorker' in navigator && 'SyncManager' in window) {
         // Check for pending background sync
-        const _registration = await navigator.serviceWorker.ready;
+        await navigator.serviceWorker.ready;
         // Note: SyncManager API is limited, this is simplified
         setPendingCount(0);
       }

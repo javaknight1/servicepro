@@ -301,8 +301,6 @@ export function useServiceWorker(): UseServiceWorkerReturn {
 // Update Prompt Component
 // =============================================================================
 
-import React from 'react';
-
 interface UpdatePromptProps {
   onUpdate: () => void;
   onDismiss: () => void;

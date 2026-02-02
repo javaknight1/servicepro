@@ -5,7 +5,7 @@
  * Provides analytics functionality throughout the React application
  */
 
-import React, {
+import {
   createContext,
   useContext,
   useEffect,

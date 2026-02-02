@@ -8,7 +8,7 @@
  */
 
 import { precacheAndRoute, cleanupOutdatedCaches } from 'workbox-precaching';
-import { registerRoute, NavigationRoute, Route } from 'workbox-routing';
+import { registerRoute, NavigationRoute } from 'workbox-routing';
 import {
   CacheFirst,
   NetworkFirst,
@@ -31,8 +31,6 @@ const CACHE_NAMES = {
   images: 'servicepro-images-v1',
   fonts: 'servicepro-fonts-v1',
 };
-
-const _API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 // =============================================================================
 // Precache Static Assets
@@ -377,71 +375,6 @@ async function invalidateCachePatterns(patterns: string[]): Promise<void> {
     }
   }
 }
-
-// =============================================================================
-// Offline Fallback
-// =============================================================================
-
-// Provide offline fallback for navigation requests
-const _offlineFallback = new Route(
-  ({ request }) => request.mode === 'navigate',
-  async () => {
-    const cache = await caches.open(CACHE_NAMES.static);
-    const cachedResponse = await cache.match('/offline.html');
-
-    if (cachedResponse) {
-      return cachedResponse;
-    }
-
-    // Return a basic offline page if no cached version exists
-    return new Response(
-      `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Offline - ServicePro</title>
-          <style>
-            body {
-              font-family: system-ui, sans-serif;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              height: 100vh;
-              margin: 0;
-              background: #f5f5f5;
-            }
-            .container {
-              text-align: center;
-              padding: 20px;
-            }
-            h1 { color: #333; }
-            p { color: #666; }
-            button {
-              margin-top: 20px;
-              padding: 10px 20px;
-              font-size: 16px;
-              cursor: pointer;
-            }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <h1>You're Offline</h1>
-            <p>Please check your internet connection and try again.</p>
-            <button onclick="location.reload()">Retry</button>
-          </div>
-        </body>
-      </html>
-      `,
-      {
-        headers: { 'Content-Type': 'text/html' },
-      }
-    );
-  }
-);
-
-// Register offline fallback as catch handler
-// This is only used when all other strategies fail
 
 // eslint-disable-next-line no-console
 console.log('Service Worker: Registered and ready');

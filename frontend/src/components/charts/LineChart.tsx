@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import React, { useMemo, forwardRef, memo } from 'react';
+import { useMemo, forwardRef, memo } from 'react';
 import { ChartData, ChartOptions } from 'chart.js';
 import BaseChart from './BaseChart';
 import {
@@ -105,7 +105,7 @@ const LineChart = forwardRef<ChartRef, LineChartProps>(
           x: {
             ticks: xAxisFormat
               ? {
-                  callback: function (value, index) {
+                  callback: function (_value, index) {
                     const label = labels[index];
                     return xAxisFormat(label);
                   },

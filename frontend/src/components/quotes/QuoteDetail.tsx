@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -13,7 +13,7 @@ import { LineItemList } from './LineItemList';
 import { TotalCalculator } from './TotalCalculator';
 import { downloadQuotePDF, previewQuotePDF } from './utils/pdfGenerator';
 import { quoteService } from '../../services/quoteService';
-import { Quote, LineItem, QuoteStatus } from '../../types/quote';
+import { Quote, QuoteStatus } from '../../types/quote';
 
 interface QuoteDetailProps {
   quoteId?: string;
@@ -116,15 +116,6 @@ export const QuoteDetail: React.FC<QuoteDetailProps> = ({
 
   // Line items management
   const items = watch('items') || [];
-  const _handleItemsChange = useCallback(
-    (updatedItems: LineItem[]) => {
-      setValue('items', updatedItems, {
-        shouldValidate: true,
-        shouldDirty: true,
-      });
-    },
-    [setValue]
-  );
 
   // PDF handlers
   const handleDownloadPDF = async () => {

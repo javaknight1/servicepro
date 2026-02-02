@@ -9,7 +9,7 @@ import {
   CardContent,
   Modal,
 } from '@components/shared';
-import { useRoles, useDeleteRole, useBulkAssignRoles } from '@hooks/useRoles';
+import { useRoles, useDeleteRole } from '@hooks/useRoles';
 import { RoleForm } from './RoleForm';
 import type { Role } from '@app-types/role';
 
@@ -29,7 +29,6 @@ export function RoleManager({ onRoleSelect }: RoleManagerProps) {
 
   // Mutations
   const deleteRoleMutation = useDeleteRole();
-  const _bulkAssignMutation = useBulkAssignRoles();
 
   // Filtered roles based on search
   const filteredRoles = roles.filter(
