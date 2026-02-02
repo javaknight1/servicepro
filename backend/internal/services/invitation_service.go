@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"log"
 	"strings"
 	"time"
 
@@ -15,6 +14,7 @@ import (
 
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/pkg/clients/email"
+	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"
 )
 
 // Invitation errors
@@ -394,30 +394,30 @@ func (s *InvitationService) ResendInvitation(ctx context.Context, invitationID u
 // sendExistingUserInviteEmail sends invitation email to an existing user
 func (s *InvitationService) sendExistingUserInviteEmail(ctx context.Context, toEmail, orgName, inviterName, roleName, acceptURL string) {
 	if s.emailClient == nil {
-		log.Printf("[INVITATION] Email client not configured, skipping email to %s", toEmail)
+		logging.Warn(ctx, "[INVITATION] Email client not configured, skipping email", map[string]any{"to_email": toEmail})
 		return
 	}
 
 	err := s.emailClient.SendOrganizationInviteEmail(ctx, toEmail, orgName, inviterName, roleName, acceptURL, true)
 	if err != nil {
-		log.Printf("[INVITATION] Failed to send invite email to %s: %v", toEmail, err)
+		logging.Error(ctx, "[INVITATION] Failed to send invite email", map[string]any{"to_email": toEmail, "error": err})
 	} else {
-		log.Printf("[INVITATION] Sent organization invite email to existing user %s for %s", toEmail, orgName)
+		logging.Info(ctx, "[INVITATION] Sent organization invite email to existing user", map[string]any{"to_email": toEmail, "org_name": orgName})
 	}
 }
 
 // sendNewUserInviteEmail sends invitation email to a new user
 func (s *InvitationService) sendNewUserInviteEmail(ctx context.Context, toEmail, orgName, inviterName, roleName, registerURL string) {
 	if s.emailClient == nil {
-		log.Printf("[INVITATION] Email client not configured, skipping email to %s", toEmail)
+		logging.Warn(ctx, "[INVITATION] Email client not configured, skipping email", map[string]any{"to_email": toEmail})
 		return
 	}
 
 	err := s.emailClient.SendOrganizationInviteEmail(ctx, toEmail, orgName, inviterName, roleName, registerURL, false)
 	if err != nil {
-		log.Printf("[INVITATION] Failed to send invite email to %s: %v", toEmail, err)
+		logging.Error(ctx, "[INVITATION] Failed to send invite email", map[string]any{"to_email": toEmail, "error": err})
 	} else {
-		log.Printf("[INVITATION] Sent registration invite email to new user %s for %s", toEmail, orgName)
+		logging.Info(ctx, "[INVITATION] Sent registration invite email to new user", map[string]any{"to_email": toEmail, "org_name": orgName})
 	}
 }
 

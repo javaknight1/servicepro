@@ -1,14 +1,15 @@
 package database
 
 import (
+	"context"
 	"fmt"
-	"log"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 
 	"github.com/javaknight1/servicepro/backend/config"
+	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"
 )
 
 // NewGormDB creates a new GORM database connection
@@ -40,6 +41,6 @@ func NewGormDB(cfg *config.DatabaseConfig) (*gorm.DB, error) {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
-	log.Println("Successfully connected to PostgreSQL database via GORM")
+	logging.Info(context.Background(), "Successfully connected to PostgreSQL database via GORM", nil)
 	return db, nil
 }

@@ -1,13 +1,14 @@
 package database
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
-	"log"
 
 	_ "github.com/lib/pq"
 
 	"github.com/javaknight1/servicepro/backend/config"
+	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"
 )
 
 // NewPostgresDB creates a new PostgreSQL database connection
@@ -27,6 +28,6 @@ func NewPostgresDB(cfg *config.DatabaseConfig) (*sql.DB, error) {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
-	log.Println("Successfully connected to PostgreSQL database")
+	logging.Info(context.Background(), "Successfully connected to PostgreSQL database", nil)
 	return db, nil
 }

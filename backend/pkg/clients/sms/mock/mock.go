@@ -3,11 +3,11 @@ package mock
 import (
 	"context"
 	"fmt"
-	"log"
 	"sync"
 	"time"
 
 	"github.com/javaknight1/servicepro/backend/config"
+	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"
 	"github.com/javaknight1/servicepro/backend/pkg/clients/sms"
 )
 
@@ -61,7 +61,7 @@ func (c *Client) Send(ctx context.Context, msg *sms.SMSMessage) (*sms.SendResult
 	c.SentMessages = append(c.SentMessages, msg)
 
 	// Log the SMS
-	log.Printf("[SMS-MOCK] To=%s Content=%q (Segments: %d)", msg.PhoneNumber, msg.Content, msg.CalculateSegments())
+	logging.Info(ctx, "[SMS-MOCK] Sent", map[string]any{"phone_number": msg.PhoneNumber, "content": msg.Content, "segments": msg.CalculateSegments()})
 
 	result := &sms.SendResult{
 		Success:      true,
@@ -99,7 +99,7 @@ func (c *Client) SendBatch(ctx context.Context, messages []*sms.SMSMessage) []sm
 
 // SendOTP implements sms.Client
 func (c *Client) SendOTP(ctx context.Context, phoneNumber, otp string, expiryMinutes int) error {
-	log.Printf("[SMS-MOCK] OTP to %s: %s (expires in %d minutes)", phoneNumber, otp, expiryMinutes)
+	logging.Info(ctx, "[SMS-MOCK] OTP", map[string]any{"phone_number": phoneNumber, "otp": otp, "expiry_minutes": expiryMinutes})
 
 	msg := sms.NewSMSMessage(phoneNumber, fmt.Sprintf("Your verification code is: %s. Valid for %d minutes.", otp, expiryMinutes)).
 		WithMessageType(sms.MessageTypeOTP).
@@ -110,7 +110,7 @@ func (c *Client) SendOTP(ctx context.Context, phoneNumber, otp string, expiryMin
 
 // SendNotification implements sms.Client
 func (c *Client) SendNotification(ctx context.Context, phoneNumber, message string) error {
-	log.Printf("[SMS-MOCK] Notification to %s: %s", phoneNumber, message)
+	logging.Info(ctx, "[SMS-MOCK] Notification", map[string]any{"phone_number": phoneNumber, "message": message})
 
 	msg := sms.NewSMSMessage(phoneNumber, message).
 		WithMessageType(sms.MessageTypeNotification)
@@ -121,7 +121,7 @@ func (c *Client) SendNotification(ctx context.Context, phoneNumber, message stri
 // SendJobUpdate implements sms.Client
 func (c *Client) SendJobUpdate(ctx context.Context, phoneNumber, jobNumber, status, message string) error {
 	content := fmt.Sprintf("Job #%s - %s: %s", jobNumber, status, message)
-	log.Printf("[SMS-MOCK] Job update to %s: %s", phoneNumber, content)
+	logging.Info(ctx, "[SMS-MOCK] Job update", map[string]any{"phone_number": phoneNumber, "content": content})
 
 	msg := sms.NewSMSMessage(phoneNumber, content).
 		WithMessageType(sms.MessageTypeNotification).
@@ -134,7 +134,7 @@ func (c *Client) SendJobUpdate(ctx context.Context, phoneNumber, jobNumber, stat
 // SendAppointmentReminder implements sms.Client
 func (c *Client) SendAppointmentReminder(ctx context.Context, phoneNumber, appointmentTime, jobDescription string) error {
 	content := fmt.Sprintf("Reminder: Your appointment for %s is scheduled at %s.", jobDescription, appointmentTime)
-	log.Printf("[SMS-MOCK] Appointment reminder to %s: %s", phoneNumber, content)
+	logging.Info(ctx, "[SMS-MOCK] Appointment reminder", map[string]any{"phone_number": phoneNumber, "content": content})
 
 	msg := sms.NewSMSMessage(phoneNumber, content).
 		WithMessageType(sms.MessageTypeReminder).
@@ -146,7 +146,7 @@ func (c *Client) SendAppointmentReminder(ctx context.Context, phoneNumber, appoi
 // SendInvoiceNotification implements sms.Client
 func (c *Client) SendInvoiceNotification(ctx context.Context, phoneNumber, invoiceNumber, amount, paymentURL string) error {
 	content := fmt.Sprintf("Invoice #%s for $%s is ready. Pay online: %s", invoiceNumber, amount, paymentURL)
-	log.Printf("[SMS-MOCK] Invoice notification to %s: %s", phoneNumber, content)
+	logging.Info(ctx, "[SMS-MOCK] Invoice notification", map[string]any{"phone_number": phoneNumber, "content": content})
 
 	msg := sms.NewSMSMessage(phoneNumber, content).
 		WithMessageType(sms.MessageTypeTransactional).
@@ -159,7 +159,7 @@ func (c *Client) SendInvoiceNotification(ctx context.Context, phoneNumber, invoi
 // SendPaymentConfirmation implements sms.Client
 func (c *Client) SendPaymentConfirmation(ctx context.Context, phoneNumber, invoiceNumber, amount string) error {
 	content := fmt.Sprintf("Payment received! Invoice #%s - $%s. Thank you!", invoiceNumber, amount)
-	log.Printf("[SMS-MOCK] Payment confirmation to %s: %s", phoneNumber, content)
+	logging.Info(ctx, "[SMS-MOCK] Payment confirmation", map[string]any{"phone_number": phoneNumber, "content": content})
 
 	msg := sms.NewSMSMessage(phoneNumber, content).
 		WithMessageType(sms.MessageTypeTransactional).

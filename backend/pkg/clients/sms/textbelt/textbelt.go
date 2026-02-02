@@ -14,13 +14,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
 
 	"github.com/javaknight1/servicepro/backend/config"
+	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"
 	"github.com/javaknight1/servicepro/backend/pkg/clients/sms"
 )
 
@@ -148,11 +148,11 @@ func (c *Client) Send(ctx context.Context, msg *sms.SMSMessage) (*sms.SendResult
 		if tbResp.Error == "" {
 			result.Error = "SMS delivery failed"
 		}
-		log.Printf("[SMS-TEXTBELT] Failed to send to %s: %s", msg.PhoneNumber, result.Error)
+		logging.Error(ctx, "[SMS-TEXTBELT] Failed to send", map[string]any{"phone_number": msg.PhoneNumber, "error": result.Error})
 		return result, fmt.Errorf("TextBelt error: %s", result.Error)
 	}
 
-	log.Printf("[SMS-TEXTBELT] Sent to %s (ID: %s, Quota remaining: %d)", msg.PhoneNumber, tbResp.TextID, tbResp.QuotaRemaining)
+	logging.Info(ctx, "[SMS-TEXTBELT] Sent", map[string]any{"phone_number": msg.PhoneNumber, "text_id": tbResp.TextID, "quota_remaining": tbResp.QuotaRemaining})
 	return result, nil
 }
 

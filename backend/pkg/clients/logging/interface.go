@@ -2,6 +2,7 @@ package logging
 
 import (
 	"context"
+	"sync"
 )
 
 // Client defines the interface for logging operations.
@@ -114,3 +115,76 @@ func WithTenantID(ctx context.Context, tenantID string) context.Context {
 func WithRequestID(ctx context.Context, requestID string) context.Context {
 	return context.WithValue(ctx, ContextKeyRequestID, requestID)
 }
+
+// Global logger instance
+var (
+	globalMu     sync.RWMutex
+	globalLogger Client
+)
+
+// SetDefault sets the global default logger.
+// This should be called once during application initialization.
+func SetDefault(logger Client) {
+	globalMu.Lock()
+	defer globalMu.Unlock()
+	globalLogger = logger
+}
+
+// L returns the global logger. If no logger has been set, it returns a no-op logger.
+// This is the primary way to access the logger throughout the application.
+func L() Client {
+	globalMu.RLock()
+	defer globalMu.RUnlock()
+	if globalLogger == nil {
+		return &noopClient{}
+	}
+	return globalLogger
+}
+
+// Default returns the global logger (alias for L).
+func Default() Client {
+	return L()
+}
+
+// Convenience functions that use the global logger
+
+// Debug logs a debug message using the global logger
+func Debug(ctx context.Context, msg string, fields map[string]any) {
+	L().Debug(ctx, msg, fields)
+}
+
+// Info logs an info message using the global logger
+func Info(ctx context.Context, msg string, fields map[string]any) {
+	L().Info(ctx, msg, fields)
+}
+
+// Warn logs a warning message using the global logger
+func Warn(ctx context.Context, msg string, fields map[string]any) {
+	L().Warn(ctx, msg, fields)
+}
+
+// Error logs an error message using the global logger
+func Error(ctx context.Context, msg string, fields map[string]any) {
+	L().Error(ctx, msg, fields)
+}
+
+// Fatal logs a fatal message using the global logger
+func Fatal(ctx context.Context, msg string, fields map[string]any) {
+	L().Fatal(ctx, msg, fields)
+}
+
+// noopClient is a no-op implementation used when no logger is configured
+type noopClient struct{}
+
+func (n *noopClient) Log(ctx context.Context, entry *LogEntry) error               { return nil }
+func (n *noopClient) LogBatch(ctx context.Context, entries []*LogEntry) error      { return nil }
+func (n *noopClient) Debug(ctx context.Context, msg string, fields map[string]any) {}
+func (n *noopClient) Info(ctx context.Context, msg string, fields map[string]any)  {}
+func (n *noopClient) Warn(ctx context.Context, msg string, fields map[string]any)  {}
+func (n *noopClient) Error(ctx context.Context, msg string, fields map[string]any) {}
+func (n *noopClient) Fatal(ctx context.Context, msg string, fields map[string]any) {}
+func (n *noopClient) WithFields(fields map[string]any) Client                      { return n }
+func (n *noopClient) WithSource(source string) Client                              { return n }
+func (n *noopClient) Flush() error                                                 { return nil }
+func (n *noopClient) Close() error                                                 { return nil }
+func (n *noopClient) Handler() any                                                 { return nil }

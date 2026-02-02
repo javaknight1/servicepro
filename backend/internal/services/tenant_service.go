@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"regexp"
 	"strings"
 	"time"
@@ -13,6 +12,7 @@ import (
 
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/repository"
+	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"
 )
 
 var (
@@ -71,9 +71,9 @@ func (s *TenantService) SetMembershipAssigner(assigner MembershipAssigner) {
 func (s *TenantService) invalidatePermissionCache(ctx context.Context, userID uuid.UUID) {
 	if s.permInvalidator != nil {
 		if err := s.permInvalidator.InvalidateUserPermissions(ctx, userID); err != nil {
-			log.Printf("[WARN] Failed to invalidate permission cache for user %s: %v", userID, err)
+			logging.Warn(ctx, "[TENANT] Failed to invalidate permission cache for user", map[string]any{"user_id": userID, "error": err})
 		} else {
-			log.Printf("[TENANT] Invalidated permission cache for user %s", userID)
+			logging.Info(ctx, "[TENANT] Invalidated permission cache for user", map[string]any{"user_id": userID})
 		}
 	}
 }
@@ -113,7 +113,7 @@ func (s *TenantService) CreateTenant(ctx context.Context, req *models.CreateTena
 		return nil, fmt.Errorf("failed to create tenant: %w", err)
 	}
 
-	log.Printf("[TENANT] Created tenant: ID=%s, Name=%s, OwnerID=%s", tenant.ID, tenant.Name, ownerID)
+	logging.Info(ctx, "[TENANT] Created tenant", map[string]any{"tenant_id": tenant.ID, "name": tenant.Name, "owner_id": ownerID})
 
 	// Add owner as admin member
 	adminRoleID, _ := uuid.Parse("00000000-0000-0000-0000-000000000002") // admin role
@@ -127,17 +127,16 @@ func (s *TenantService) CreateTenant(ctx context.Context, req *models.CreateTena
 		IsActive:   true,
 	}
 
-	log.Printf("[TENANT] Adding owner as member: MembershipID=%s, TenantID=%s, UserID=%s, RoleID=%s",
-		membership.ID, membership.TenantID, membership.UserID, membership.RoleID)
+	logging.Info(ctx, "[TENANT] Adding owner as member", map[string]any{"membership_id": membership.ID, "tenant_id": membership.TenantID, "user_id": membership.UserID, "role_id": membership.RoleID})
 
 	if err := s.tenantRepo.AddMember(ctx, membership); err != nil {
-		log.Printf("[TENANT] ERROR adding member: %v", err)
+		logging.Error(ctx, "[TENANT] Error adding member", map[string]any{"error": err})
 		// Rollback tenant creation
 		_ = s.tenantRepo.Delete(ctx, tenant.ID)
 		return nil, fmt.Errorf("failed to add owner as member: %w", err)
 	}
 
-	log.Printf("[TENANT] Successfully added owner as member")
+	logging.Info(ctx, "[TENANT] Successfully added owner as member", nil)
 
 	// Invalidate permission cache for the owner so they get their new permissions
 	s.invalidatePermissionCache(ctx, ownerID)
@@ -145,15 +144,15 @@ func (s *TenantService) CreateTenant(ctx context.Context, req *models.CreateTena
 	// Verify the membership was created
 	belongs, err := s.tenantRepo.UserBelongsToTenant(ctx, ownerID, tenant.ID)
 	if err != nil {
-		log.Printf("[TENANT] WARNING: Could not verify membership: %v", err)
+		logging.Warn(ctx, "[TENANT] Could not verify membership", map[string]any{"error": err})
 	} else {
-		log.Printf("[TENANT] Membership verification: UserBelongsToTenant=%v", belongs)
+		logging.Info(ctx, "[TENANT] Membership verification", map[string]any{"user_belongs_to_tenant": belongs})
 	}
 
 	// Assign default membership tier (Free)
 	if s.membershipAssigner != nil {
 		if err := s.membershipAssigner.AssignDefaultTier(ctx, tenant.ID); err != nil {
-			log.Printf("[TENANT] WARNING: Could not assign default membership tier: %v", err)
+			logging.Warn(ctx, "[TENANT] Could not assign default membership tier", map[string]any{"error": err})
 			// Don't fail tenant creation for this
 		}
 	}

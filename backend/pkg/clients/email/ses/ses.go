@@ -3,7 +3,6 @@ package ses
 import (
 	"context"
 	"fmt"
-	"log"
 	"strings"
 	"time"
 
@@ -16,6 +15,7 @@ import (
 	"github.com/javaknight1/servicepro/backend/config"
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/pkg/clients/email"
+	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"
 )
 
 func init() {
@@ -606,7 +606,7 @@ func (c *Client) HealthCheck(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("SES health check failed: %w", err)
 	}
-	log.Printf("SES health check passed")
+	logging.Info(ctx, "SES health check passed", nil)
 	return nil
 }
 

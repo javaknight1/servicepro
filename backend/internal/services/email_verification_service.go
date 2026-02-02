@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/google/uuid"
@@ -13,6 +12,7 @@ import (
 	"github.com/javaknight1/servicepro/backend/internal/repository"
 	"github.com/javaknight1/servicepro/backend/pkg/auth"
 	"github.com/javaknight1/servicepro/backend/pkg/clients/email"
+	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"
 )
 
 const (
@@ -104,13 +104,14 @@ func (s *EmailVerificationService) SendVerificationEmail(userID uuid.UUID) error
 	// Update verification_sent_at timestamp
 	now := time.Now()
 	if err := gormRepo.UpdateVerificationSentAt(userID, &now); err != nil {
-		log.Printf("Failed to update verification_sent_at for user %s: %v", userID, err)
+		logging.Error(ctx, "[EMAIL-VERIFICATION] Failed to update verification_sent_at for user", map[string]any{"user_id": userID, "error": err})
 	}
 
 	// Send verification email asynchronously
 	go func() {
-		if err := s.emailClient.SendEmailVerificationEmail(context.Background(), user.Email, verificationToken, s.verificationURL); err != nil {
-			log.Printf("Failed to send verification email to %s: %v", user.Email, err)
+		bgCtx := context.Background()
+		if err := s.emailClient.SendEmailVerificationEmail(bgCtx, user.Email, verificationToken, s.verificationURL); err != nil {
+			logging.Error(bgCtx, "[EMAIL-VERIFICATION] Failed to send verification email", map[string]any{"email": user.Email, "error": err})
 		}
 	}()
 
@@ -162,8 +163,9 @@ func (s *EmailVerificationService) VerifyEmail(token string) error {
 
 	// Send confirmation email asynchronously
 	go func() {
-		if err := s.emailClient.SendEmailVerificationSuccessEmail(context.Background(), user.Email); err != nil {
-			log.Printf("Failed to send verification success email to %s: %v", user.Email, err)
+		bgCtx := context.Background()
+		if err := s.emailClient.SendEmailVerificationSuccessEmail(bgCtx, user.Email); err != nil {
+			logging.Error(bgCtx, "[EMAIL-VERIFICATION] Failed to send verification success email", map[string]any{"email": user.Email, "error": err})
 		}
 	}()
 
@@ -183,7 +185,7 @@ func (s *EmailVerificationService) ResendVerificationEmail(emailAddr string) err
 		if errors.Is(err, repository.ErrUserNotFound) {
 			// For security, don't reveal if email exists
 			// Return success but don't send email
-			log.Printf("Verification resend requested for non-existent email: %s", emailAddr)
+			logging.Info(context.Background(), "[EMAIL-VERIFICATION] Verification resend requested for non-existent email", map[string]any{"email": emailAddr})
 			return nil
 		}
 		return err
@@ -205,43 +207,44 @@ func (s *EmailVerificationService) SendReminderEmails() error {
 		return errors.New("GORM repository required for email verification")
 	}
 
+	ctx := context.Background()
+
 	// Get unverified users who were sent verification 24+ hours ago
 	users, err := gormRepo.GetUnverifiedUsersForReminder(ReminderThreshold)
 	if err != nil {
 		return fmt.Errorf("failed to get unverified users: %w", err)
 	}
 
-	log.Printf("Sending verification reminders to %d users", len(users))
+	logging.Info(ctx, "[EMAIL-VERIFICATION] Sending verification reminders", map[string]any{"user_count": len(users)})
 
 	// Send reminder to each user
 	for _, user := range users {
 		// Generate new verification token
 		verificationToken, err := auth.GenerateEmailVerificationToken()
 		if err != nil {
-			log.Printf("Failed to generate token for user %s: %v", user.ID, err)
+			logging.Error(ctx, "[EMAIL-VERIFICATION] Failed to generate token for user", map[string]any{"user_id": user.ID, "error": err})
 			continue
 		}
 
 		// Store token in Redis
-		ctx := context.Background()
 		key := VerificationTokenPrefix + verificationToken
 		err = s.redisClient.Set(ctx, key, user.Email, VerificationTokenExpiry).Err()
 		if err != nil {
-			log.Printf("Failed to store verification token for user %s: %v", user.ID, err)
+			logging.Error(ctx, "[EMAIL-VERIFICATION] Failed to store verification token for user", map[string]any{"user_id": user.ID, "error": err})
 			continue
 		}
 
 		// Update verification_sent_at
 		now := time.Now()
 		if err := gormRepo.UpdateVerificationSentAt(user.ID, &now); err != nil {
-			log.Printf("Failed to update verification_sent_at for user %s: %v", user.ID, err)
+			logging.Error(ctx, "[EMAIL-VERIFICATION] Failed to update verification_sent_at for user", map[string]any{"user_id": user.ID, "error": err})
 		}
 
 		// Send reminder email (not async for batch processing)
-		if err := s.emailClient.SendEmailVerificationReminderEmail(context.Background(), user.Email, verificationToken, s.verificationURL); err != nil {
-			log.Printf("Failed to send verification reminder to %s: %v", user.Email, err)
+		if err := s.emailClient.SendEmailVerificationReminderEmail(ctx, user.Email, verificationToken, s.verificationURL); err != nil {
+			logging.Error(ctx, "[EMAIL-VERIFICATION] Failed to send verification reminder", map[string]any{"email": user.Email, "error": err})
 		} else {
-			log.Printf("Sent verification reminder to %s", user.Email)
+			logging.Info(ctx, "[EMAIL-VERIFICATION] Sent verification reminder", map[string]any{"email": user.Email})
 		}
 
 		// Add small delay to avoid overwhelming email service
@@ -253,14 +256,15 @@ func (s *EmailVerificationService) SendReminderEmails() error {
 
 // HandleBounce handles AWS SES bounce notifications
 func (s *EmailVerificationService) HandleBounce(emailAddr string) error {
-	log.Printf("Processing bounce for email: %s", emailAddr)
+	ctx := context.Background()
+	logging.Info(ctx, "[EMAIL-VERIFICATION] Processing bounce for email", map[string]any{"email": emailAddr})
 
 	// Get user by email
 	user, err := s.userRepo.GetByEmail(emailAddr)
 	if err != nil {
 		if errors.Is(err, repository.ErrUserNotFound) {
 			// Email might have been deleted
-			log.Printf("Bounce received for non-existent user: %s", emailAddr)
+			logging.Info(ctx, "[EMAIL-VERIFICATION] Bounce received for non-existent user", map[string]any{"email": emailAddr})
 			return nil
 		}
 		return err
@@ -275,7 +279,7 @@ func (s *EmailVerificationService) HandleBounce(emailAddr string) error {
 
 		// Mark bounce in database (we could add a bounced field later)
 		// For now, just log it
-		log.Printf("Hard bounce received for unverified user %s (%s)", user.ID, emailAddr)
+		logging.Warn(ctx, "[EMAIL-VERIFICATION] Hard bounce received for unverified user", map[string]any{"user_id": user.ID, "email": emailAddr})
 
 		// Could implement:
 		// - Flag account as having invalid email
@@ -285,7 +289,7 @@ func (s *EmailVerificationService) HandleBounce(emailAddr string) error {
 
 		// Update verification_sent_at to null to prevent reminder sends
 		if err := gormRepo.UpdateVerificationSentAt(user.ID, nil); err != nil {
-			log.Printf("Failed to clear verification_sent_at for bounced user %s: %v", user.ID, err)
+			logging.Error(ctx, "[EMAIL-VERIFICATION] Failed to clear verification_sent_at for bounced user", map[string]any{"user_id": user.ID, "error": err})
 		}
 	}
 

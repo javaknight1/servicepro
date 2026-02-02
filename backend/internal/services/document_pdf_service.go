@@ -3,7 +3,6 @@ package services
 import (
 	"context"
 	"fmt"
-	"log"
 	"strings"
 	"time"
 
@@ -11,6 +10,7 @@ import (
 
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/services/pdf"
+	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"
 	"github.com/javaknight1/servicepro/backend/pkg/clients/storage"
 )
 
@@ -71,7 +71,7 @@ func (s *DocumentPDFService) GenerateQuotePDF(ctx context.Context, quote *models
 		return nil, fmt.Errorf("failed to upload quote PDF: %w", err)
 	}
 
-	log.Printf("[DOCUMENT-PDF] Generated quote PDF: %s (size: %d bytes)", s3Key, result.Size)
+	logging.Info(ctx, "[DOCUMENT-PDF] Generated quote PDF", map[string]any{"s3_key": s3Key, "size_bytes": result.Size})
 
 	return &PDFResult{
 		S3Key:    s3Key,
@@ -111,7 +111,7 @@ func (s *DocumentPDFService) GenerateInvoicePDF(ctx context.Context, invoice *mo
 		return nil, fmt.Errorf("failed to upload invoice PDF: %w", err)
 	}
 
-	log.Printf("[DOCUMENT-PDF] Generated invoice PDF: %s (size: %d bytes)", s3Key, result.Size)
+	logging.Info(ctx, "[DOCUMENT-PDF] Generated invoice PDF", map[string]any{"s3_key": s3Key, "size_bytes": result.Size})
 
 	return &PDFResult{
 		S3Key:    s3Key,
@@ -151,7 +151,7 @@ func (s *DocumentPDFService) GenerateReceiptPDF(ctx context.Context, invoice *mo
 		return nil, fmt.Errorf("failed to upload receipt PDF: %w", err)
 	}
 
-	log.Printf("[DOCUMENT-PDF] Generated receipt PDF: %s (size: %d bytes)", s3Key, result.Size)
+	logging.Info(ctx, "[DOCUMENT-PDF] Generated receipt PDF", map[string]any{"s3_key": s3Key, "size_bytes": result.Size})
 
 	return &PDFResult{
 		S3Key:    s3Key,

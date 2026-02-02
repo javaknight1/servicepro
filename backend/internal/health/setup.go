@@ -1,13 +1,14 @@
 package health
 
 import (
+	"context"
 	"database/sql"
-	"log"
 	"time"
 
 	"github.com/redis/go-redis/v9"
 
 	"github.com/javaknight1/servicepro/backend/config"
+	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"
 )
 
 // Default intervals for health checks
@@ -36,6 +37,7 @@ type SetupOptions struct {
 
 // Setup creates and configures a complete health check system
 func Setup(opts SetupOptions) (*Checker, *Runner, *UptimeTracker, *Notifier) {
+	ctx := context.Background()
 	cfg := opts.Config
 
 	// Create checker
@@ -55,7 +57,7 @@ func Setup(opts SetupOptions) (*Checker, *Runner, *UptimeTracker, *Notifier) {
 			Critical: true,
 			Check:    DatabaseCheck(opts.DB),
 		})
-		log.Println("[Health] Registered database check")
+		logging.Info(ctx, "Registered database check", map[string]any{"source": "health"})
 	}
 
 	// Register Redis check
@@ -67,7 +69,7 @@ func Setup(opts SetupOptions) (*Checker, *Runner, *UptimeTracker, *Notifier) {
 			Critical: false, // Redis may be optional
 			Check:    RedisCheck(opts.Redis),
 		})
-		log.Println("[Health] Registered Redis check")
+		logging.Info(ctx, "Registered Redis check", map[string]any{"source": "health"})
 	}
 
 	// Register memory check
@@ -79,7 +81,7 @@ func Setup(opts SetupOptions) (*Checker, *Runner, *UptimeTracker, *Notifier) {
 			Critical: false,
 			Check:    MemoryCheck(80.0, 95.0), // Warning at 80%, critical at 95%
 		})
-		log.Println("[Health] Registered memory check")
+		logging.Info(ctx, "Registered memory check", map[string]any{"source": "health"})
 	}
 
 	// Create uptime tracker
@@ -103,17 +105,17 @@ func Setup(opts SetupOptions) (*Checker, *Runner, *UptimeTracker, *Notifier) {
 			channel = "#alerts"
 		}
 		notifier.AddChannel(NewSlackChannel(opts.SlackWebhook, channel, "Health Check Bot"))
-		log.Println("[Health] Added Slack notification channel")
+		logging.Info(ctx, "Added Slack notification channel", map[string]any{"source": "health"})
 	}
 
 	if opts.PagerDutyKey != "" {
 		notifier.AddChannel(NewPagerDutyChannel(opts.PagerDutyKey))
-		log.Println("[Health] Added PagerDuty notification channel")
+		logging.Info(ctx, "Added PagerDuty notification channel", map[string]any{"source": "health"})
 	}
 
 	if opts.WebhookURL != "" {
 		notifier.AddChannel(NewWebhookChannel(opts.WebhookURL, opts.WebhookHeaders))
-		log.Println("[Health] Added webhook notification channel")
+		logging.Info(ctx, "Added webhook notification channel", map[string]any{"source": "health"})
 	}
 
 	// Always add log channel
@@ -138,11 +140,11 @@ func QuickSetup(db *sql.DB, redisClient *redis.Client) (*Checker, *Runner, *Upti
 // StartHealthSystem starts the health check system
 func StartHealthSystem(runner *Runner) {
 	runner.Start()
-	log.Println("[Health] Health check system started")
+	logging.Info(context.Background(), "Health check system started", map[string]any{"source": "health"})
 }
 
 // StopHealthSystem stops the health check system
 func StopHealthSystem(runner *Runner) {
 	runner.Stop()
-	log.Println("[Health] Health check system stopped")
+	logging.Info(context.Background(), "Health check system stopped", map[string]any{"source": "health"})
 }

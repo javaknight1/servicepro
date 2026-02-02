@@ -5,13 +5,13 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
-	"log"
 	"net/http"
 	"sync"
 	"time"
 
 	"github.com/javaknight1/servicepro/backend/config"
 	"github.com/javaknight1/servicepro/backend/pkg/clients/errortracking"
+	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"
 )
 
 func init() {
@@ -155,8 +155,7 @@ func (c *Client) AddBreadcrumb(ctx context.Context, breadcrumb *errortracking.Br
 	c.mu.Unlock()
 
 	if c.config.PrintToStdout {
-		log.Printf("[BREADCRUMB] %s: %s (category=%s, data=%v)",
-			breadcrumb.Type, breadcrumb.Message, breadcrumb.Category, breadcrumb.Data)
+		logging.Info(ctx, "[ERRORTRACKING-MOCK] Breadcrumb", map[string]any{"type": breadcrumb.Type, "message": breadcrumb.Message, "category": breadcrumb.Category, "data": breadcrumb.Data})
 	}
 }
 
@@ -317,8 +316,7 @@ func (c *Client) printEvent(event *errortracking.Event, eventID errortracking.Ev
 		msg = event.Message
 	}
 
-	log.Printf("[ERROR_TRACKING] %s (event_id=%s, level=%s, tags=%v, extra=%v)",
-		msg, eventID, event.Level, event.Tags, event.Extra)
+	logging.Info(context.Background(), "[ERRORTRACKING-MOCK] Event captured", map[string]any{"message": msg, "event_id": eventID, "level": event.Level, "tags": event.Tags, "extra": event.Extra})
 }
 
 // GetEvents returns all stored events (for testing)

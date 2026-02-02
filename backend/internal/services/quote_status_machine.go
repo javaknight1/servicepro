@@ -10,6 +10,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/javaknight1/servicepro/backend/internal/models"
+	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"
 )
 
 var (
@@ -183,9 +184,10 @@ func (sm *QuoteStatusMachine) Transition(ctx context.Context, transition *models
 
 			// Send notification asynchronously (don't block transaction)
 			go func() {
-				if err := sm.notificationSvc.SendQuoteStatusNotification(context.Background(), notification); err != nil {
+				bgCtx := context.Background()
+				if err := sm.notificationSvc.SendQuoteStatusNotification(bgCtx, notification); err != nil {
 					// Log error but don't fail the transaction
-					fmt.Printf("Failed to send notification: %v\n", err)
+					logging.Error(bgCtx, "[QUOTE-STATUS] Failed to send notification", map[string]any{"error": err})
 				}
 			}()
 		}
@@ -355,7 +357,7 @@ func (sm *QuoteStatusMachine) CheckAndExpireQuotes(ctx context.Context) error {
 	for _, quote := range quotes {
 		if err := sm.ExpireQuote(ctx, quote.ID); err != nil {
 			// Log error but continue with other quotes
-			fmt.Printf("Failed to expire quote %s: %v\n", quote.ID, err)
+			logging.Error(ctx, "[QUOTE-STATUS] Failed to expire quote", map[string]any{"quote_id": quote.ID, "error": err})
 		}
 	}
 

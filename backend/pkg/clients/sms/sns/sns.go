@@ -10,7 +10,6 @@ package sns
 import (
 	"context"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -20,6 +19,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sns/types"
 
 	"github.com/javaknight1/servicepro/backend/config"
+	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"
 	"github.com/javaknight1/servicepro/backend/pkg/clients/sms"
 )
 
@@ -167,7 +167,7 @@ func (c *Client) Send(ctx context.Context, msg *sms.SMSMessage) (*sms.SendResult
 
 	output, err := c.snsClient.Publish(ctx, input)
 	if err != nil {
-		log.Printf("[SMS-SNS] Failed to send to %s: %v", msg.PhoneNumber, err)
+		logging.Error(ctx, "[SMS-SNS] Failed to send", map[string]any{"phone_number": msg.PhoneNumber, "error": err})
 		return &sms.SendResult{
 			Success:     false,
 			Provider:    sms.ProviderSNS,
@@ -181,7 +181,7 @@ func (c *Client) Send(ctx context.Context, msg *sms.SMSMessage) (*sms.SendResult
 		messageID = *output.MessageId
 	}
 
-	log.Printf("[SMS-SNS] Sent to %s (MessageID: %s)", msg.PhoneNumber, messageID)
+	logging.Info(ctx, "[SMS-SNS] Sent", map[string]any{"phone_number": msg.PhoneNumber, "message_id": messageID})
 
 	return &sms.SendResult{
 		Success:      true,

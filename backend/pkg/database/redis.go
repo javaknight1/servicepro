@@ -3,11 +3,11 @@ package database
 import (
 	"context"
 	"fmt"
-	"log"
 
 	"github.com/redis/go-redis/v9"
 
 	"github.com/javaknight1/servicepro/backend/config"
+	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"
 )
 
 // NewRedisClient creates a new Redis client
@@ -31,6 +31,6 @@ func NewRedisClient(cfg *config.RedisConfig) (*redis.Client, error) {
 		return nil, fmt.Errorf("failed to ping Redis: %w", err)
 	}
 
-	log.Println("Successfully connected to Redis")
+	logging.Info(ctx, "Successfully connected to Redis", nil)
 	return client, nil
 }

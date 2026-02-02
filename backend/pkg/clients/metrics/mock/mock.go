@@ -3,12 +3,12 @@ package mock
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"sync"
 	"time"
 
 	"github.com/javaknight1/servicepro/backend/config"
+	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"
 	"github.com/javaknight1/servicepro/backend/pkg/clients/metrics"
 )
 
@@ -252,9 +252,7 @@ func (c *Client) applyDefaults(data *metrics.MetricData) {
 }
 
 func (c *Client) printMetric(data *metrics.MetricData) {
-	timestamp := data.Timestamp.Format(time.RFC3339)
-	log.Printf("[METRIC] %s %s=%f type=%s unit=%s dimensions=%v",
-		timestamp, data.Name, data.Value, data.Type, data.Unit, data.Dimensions)
+	logging.Info(context.Background(), "[METRICS-MOCK] Metric recorded", map[string]any{"timestamp": data.Timestamp.Format(time.RFC3339), "name": data.Name, "value": data.Value, "type": data.Type, "unit": data.Unit, "dimensions": data.Dimensions})
 }
 
 // GetRecordedMetrics returns all recorded metrics (for testing)
@@ -295,7 +293,7 @@ func (c *mockCounter) Add(v float64) {
 	c.mu.Unlock()
 
 	if c.client.config.PrintToStdout {
-		log.Printf("[COUNTER] %s += %f (total: %f) labels=%v", c.name, v, c.value, c.labelValues)
+		logging.Info(context.Background(), "[METRICS-MOCK] Counter add", map[string]any{"name": c.name, "delta": v, "total": c.value, "labels": c.labelValues})
 	}
 }
 
@@ -327,7 +325,7 @@ func (g *mockGauge) Set(v float64) {
 	g.mu.Unlock()
 
 	if g.client.config.PrintToStdout {
-		log.Printf("[GAUGE] %s = %f labels=%v", g.name, v, g.labelValues)
+		logging.Info(context.Background(), "[METRICS-MOCK] Gauge set", map[string]any{"name": g.name, "value": v, "labels": g.labelValues})
 	}
 }
 
@@ -345,7 +343,7 @@ func (g *mockGauge) Add(v float64) {
 	g.mu.Unlock()
 
 	if g.client.config.PrintToStdout {
-		log.Printf("[GAUGE] %s += %f (total: %f) labels=%v", g.name, v, g.value, g.labelValues)
+		logging.Info(context.Background(), "[METRICS-MOCK] Gauge add", map[string]any{"name": g.name, "delta": v, "total": g.value, "labels": g.labelValues})
 	}
 }
 
@@ -355,7 +353,7 @@ func (g *mockGauge) Sub(v float64) {
 	g.mu.Unlock()
 
 	if g.client.config.PrintToStdout {
-		log.Printf("[GAUGE] %s -= %f (total: %f) labels=%v", g.name, v, g.value, g.labelValues)
+		logging.Info(context.Background(), "[METRICS-MOCK] Gauge sub", map[string]any{"name": g.name, "delta": v, "total": g.value, "labels": g.labelValues})
 	}
 }
 
@@ -390,7 +388,7 @@ func (h *mockHistogram) Observe(v float64) {
 	h.mu.Unlock()
 
 	if h.client.config.PrintToStdout {
-		log.Printf("[HISTOGRAM] %s observed %f (count: %d, sum: %f) labels=%v", h.name, v, h.count, h.sum, h.labelValues)
+		logging.Info(context.Background(), "[METRICS-MOCK] Histogram observed", map[string]any{"name": h.name, "value": v, "count": h.count, "sum": h.sum, "labels": h.labelValues})
 	}
 }
 
@@ -427,7 +425,7 @@ func (s *mockSummary) Observe(v float64) {
 	s.mu.Unlock()
 
 	if s.client.config.PrintToStdout {
-		log.Printf("[SUMMARY] %s observed %f (count: %d, sum: %f) labels=%v", s.name, v, s.count, s.sum, s.labelValues)
+		logging.Info(context.Background(), "[METRICS-MOCK] Summary observed", map[string]any{"name": s.name, "value": v, "count": s.count, "sum": s.sum, "labels": s.labelValues})
 	}
 }
 

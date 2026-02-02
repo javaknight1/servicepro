@@ -2,11 +2,11 @@ package analytics
 
 import (
 	"context"
-	"log"
 	"sync"
 	"time"
 
 	appconfig "github.com/javaknight1/servicepro/backend/config"
+	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"
 )
 
 // TrackerConfig holds configuration for the analytics tracker
@@ -119,8 +119,11 @@ func (t *Tracker) start() {
 	go t.flusher()
 
 	if t.config.Debug {
-		log.Printf("[Analytics] Started with %d workers, batch size %d, flush interval %s",
-			t.config.Workers, t.config.BatchSize, t.config.FlushInterval)
+		logging.Info(context.Background(), "[Analytics] Started", map[string]any{
+			"workers":       t.config.Workers,
+			"batchSize":     t.config.BatchSize,
+			"flushInterval": t.config.FlushInterval.String(),
+		})
 	}
 }
 
@@ -151,7 +154,7 @@ func (t *Tracker) flusher() {
 			return
 		case <-ticker.C:
 			if err := t.Flush(t.ctx); err != nil {
-				log.Printf("[Analytics] Flush error: %v", err)
+				logging.Error(t.ctx, "[Analytics] Flush error", map[string]any{"error": err.Error()})
 			}
 		}
 	}
@@ -184,9 +187,9 @@ func (t *Tracker) flushBuffer() {
 	t.mu.Unlock()
 
 	if err := t.saveWithRetry(t.ctx, events); err != nil {
-		log.Printf("[Analytics] Failed to save %d events: %v", len(events), err)
+		logging.Error(t.ctx, "[Analytics] Failed to save events", map[string]any{"count": len(events), "error": err.Error()})
 	} else if t.config.Debug {
-		log.Printf("[Analytics] Saved %d events", len(events))
+		logging.Info(t.ctx, "[Analytics] Saved events", map[string]any{"count": len(events)})
 	}
 }
 
@@ -230,7 +233,7 @@ func (t *Tracker) Track(ctx context.Context, event *Event) error {
 	default:
 		// Queue is full, try to flush and retry
 		if t.config.Debug {
-			log.Printf("[Analytics] Queue full, dropping event: %s", event.Name)
+			logging.Warn(ctx, "[Analytics] Queue full, dropping event", map[string]any{"eventName": string(event.Name)})
 		}
 		return nil
 	}

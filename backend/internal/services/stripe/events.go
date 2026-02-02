@@ -5,10 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"sync"
 
 	"github.com/stripe/stripe-go/v76"
+
+	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"
 )
 
 // EventHandler is a function that processes a specific event type
@@ -48,7 +49,7 @@ func (p *EventProcessor) RegisterHandler(eventType string, handler EventHandler)
 	defer p.mu.Unlock()
 
 	p.handlers[eventType] = append(p.handlers[eventType], handler)
-	log.Printf("[Stripe] Registered handler for event type: %s", eventType)
+	logging.Info(context.Background(), "[Stripe] Registered handler for event type", map[string]any{"event_type": eventType})
 }
 
 // ProcessEvent processes a Stripe webhook event
@@ -62,7 +63,7 @@ func (p *EventProcessor) ProcessEvent(ctx context.Context, event *stripe.Event) 
 	p.stats.EventCounts[string(event.Type)]++
 	p.statsLock.Unlock()
 
-	log.Printf("[Stripe] Processing event: id=%s, type=%s", event.ID, event.Type)
+	logging.Info(ctx, "[Stripe] Processing event", map[string]any{"event_id": event.ID, "event_type": event.Type})
 
 	// Get handlers for this event type
 	p.mu.RLock()
@@ -70,7 +71,7 @@ func (p *EventProcessor) ProcessEvent(ctx context.Context, event *stripe.Event) 
 	p.mu.RUnlock()
 
 	if !exists || len(handlers) == 0 {
-		log.Printf("[Stripe] No handlers registered for event type: %s", event.Type)
+		logging.Info(ctx, "[Stripe] No handlers registered for event type", map[string]any{"event_type": event.Type})
 		// Not an error - just no handlers registered
 		p.statsLock.Lock()
 		p.stats.SuccessfullyProcessed++
@@ -82,8 +83,7 @@ func (p *EventProcessor) ProcessEvent(ctx context.Context, event *stripe.Event) 
 	var lastErr error
 	for _, handler := range handlers {
 		if err := handler(ctx, event); err != nil {
-			log.Printf("[Stripe] Handler failed for event %s (type %s): %v",
-				event.ID, event.Type, err)
+			logging.Error(ctx, "[Stripe] Handler failed for event", map[string]any{"event_id": event.ID, "event_type": event.Type, "error": err})
 			lastErr = err
 			// Continue processing other handlers
 		}
@@ -100,7 +100,7 @@ func (p *EventProcessor) ProcessEvent(ctx context.Context, event *stripe.Event) 
 	p.stats.SuccessfullyProcessed++
 	p.statsLock.Unlock()
 
-	log.Printf("[Stripe] Event processed successfully: id=%s, type=%s", event.ID, event.Type)
+	logging.Info(ctx, "[Stripe] Event processed successfully", map[string]any{"event_id": event.ID, "event_type": event.Type})
 
 	return nil
 }
@@ -392,8 +392,7 @@ func DefaultPaymentSucceededHandler() EventHandler {
 			return err
 		}
 
-		log.Printf("[Stripe] Payment succeeded: id=%s, amount=%d, currency=%s",
-			pi.ID, pi.Amount, pi.Currency)
+		logging.Info(ctx, "[Stripe] Payment succeeded", map[string]any{"id": pi.ID, "amount": pi.Amount, "currency": pi.Currency})
 
 		return nil
 	}
@@ -407,8 +406,7 @@ func DefaultPaymentFailedHandler() EventHandler {
 			return err
 		}
 
-		log.Printf("[Stripe] Payment failed: id=%s, amount=%d, currency=%s",
-			pi.ID, pi.Amount, pi.Currency)
+		logging.Warn(ctx, "[Stripe] Payment failed", map[string]any{"id": pi.ID, "amount": pi.Amount, "currency": pi.Currency})
 
 		return nil
 	}
@@ -422,8 +420,7 @@ func DefaultChargeRefundedHandler() EventHandler {
 			return err
 		}
 
-		log.Printf("[Stripe] Charge refunded: id=%s, amount=%d, currency=%s",
-			ch.ID, ch.Amount, ch.Currency)
+		logging.Info(ctx, "[Stripe] Charge refunded", map[string]any{"id": ch.ID, "amount": ch.Amount, "currency": ch.Currency})
 
 		return nil
 	}
@@ -437,7 +434,7 @@ func DefaultCustomerCreatedHandler() EventHandler {
 			return err
 		}
 
-		log.Printf("[Stripe] Customer created: id=%s, email=%s", cust.ID, cust.Email)
+		logging.Info(ctx, "[Stripe] Customer created", map[string]any{"id": cust.ID, "email": cust.Email})
 
 		return nil
 	}
@@ -455,5 +452,5 @@ func (p *EventProcessor) RegisterDefaultHandlers() {
 	// Customer Events
 	p.RegisterHandler(EventCustomerCreated, DefaultCustomerCreatedHandler())
 
-	log.Printf("[Stripe] Registered default event handlers")
+	logging.Info(context.Background(), "[Stripe] Registered default event handlers", nil)
 }

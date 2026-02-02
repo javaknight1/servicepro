@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/google/uuid"
@@ -18,6 +17,7 @@ import (
 	"github.com/javaknight1/servicepro/backend/config"
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/repository"
+	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"
 )
 
 var (
@@ -102,7 +102,7 @@ func (s *StripeService) GetOrCreateStripeCustomer(ctx context.Context, tenantID 
 		return "", fmt.Errorf("failed to save Stripe customer ID: %w", err)
 	}
 
-	log.Printf("[STRIPE] Created customer %s for tenant %s", cust.ID, tenantID)
+	logging.Info(ctx, "[STRIPE] Created customer", map[string]any{"customer_id": cust.ID, "tenant_id": tenantID})
 	return cust.ID, nil
 }
 
@@ -138,7 +138,7 @@ func (s *StripeService) CreateSetupIntent(ctx context.Context, tenantID uuid.UUI
 		return nil, fmt.Errorf("failed to create setup intent: %w", err)
 	}
 
-	log.Printf("[STRIPE] Created setup intent %s for tenant %s", si.ID, tenantID)
+	logging.Info(ctx, "[STRIPE] Created setup intent", map[string]any{"setup_intent_id": si.ID, "tenant_id": tenantID})
 	return &models.CreateSetupIntentResponse{
 		ClientSecret: si.ClientSecret,
 	}, nil
@@ -199,7 +199,7 @@ func (s *StripeService) AddPaymentMethod(ctx context.Context, tenantID uuid.UUID
 	// Set as default if requested or if it's the first payment method
 	if setAsDefault {
 		if err := s.SetDefaultPaymentMethod(ctx, tenantID, savedPM.ID); err != nil {
-			log.Printf("[STRIPE] Warning: failed to set default payment method: %v", err)
+			logging.Warn(ctx, "[STRIPE] Failed to set default payment method", map[string]any{"error": err})
 		}
 		savedPM.IsDefault = true
 	} else {
@@ -207,13 +207,13 @@ func (s *StripeService) AddPaymentMethod(ctx context.Context, tenantID uuid.UUID
 		methods, err := s.paymentRepo.GetSavedPaymentMethodsByTenantID(ctx, tenantID)
 		if err == nil && len(methods) == 1 {
 			if err := s.SetDefaultPaymentMethod(ctx, tenantID, savedPM.ID); err != nil {
-				log.Printf("[STRIPE] Warning: failed to set default payment method: %v", err)
+				logging.Warn(ctx, "[STRIPE] Failed to set default payment method", map[string]any{"error": err})
 			}
 			savedPM.IsDefault = true
 		}
 	}
 
-	log.Printf("[STRIPE] Added payment method %s for tenant %s", savedPM.ID, tenantID)
+	logging.Info(ctx, "[STRIPE] Added payment method", map[string]any{"payment_method_id": savedPM.ID, "tenant_id": tenantID})
 	response := savedPM.ToSavedPaymentMethodResponse()
 	return &response, nil
 }
@@ -257,7 +257,7 @@ func (s *StripeService) SetDefaultPaymentMethod(ctx context.Context, tenantID, p
 			}
 			_, err = customer.Update(*tenant.StripeCustomerID, params)
 			if err != nil {
-				log.Printf("[STRIPE] Warning: failed to update Stripe default payment method: %v", err)
+				logging.Warn(ctx, "[STRIPE] Failed to update Stripe default payment method", map[string]any{"error": err})
 			}
 		}
 	}
@@ -281,7 +281,7 @@ func (s *StripeService) DeletePaymentMethod(ctx context.Context, tenantID, payme
 	if s.IsConfigured() {
 		_, err = paymentmethod.Detach(pm.StripePaymentMethodID, nil)
 		if err != nil {
-			log.Printf("[STRIPE] Warning: failed to detach payment method from Stripe: %v", err)
+			logging.Warn(ctx, "[STRIPE] Failed to detach payment method from Stripe", map[string]any{"error": err})
 		}
 	}
 
@@ -359,7 +359,7 @@ func (s *StripeService) CreateSubscription(ctx context.Context, tenantID uuid.UU
 		return nil, fmt.Errorf("failed to create subscription: %w", err)
 	}
 
-	log.Printf("[STRIPE] Created subscription %s for tenant %s", sub.ID, tenantID)
+	logging.Info(ctx, "[STRIPE] Created subscription", map[string]any{"subscription_id": sub.ID, "tenant_id": tenantID})
 	return sub, nil
 }
 
@@ -386,7 +386,7 @@ func (s *StripeService) CancelSubscription(ctx context.Context, stripeSubscripti
 		}
 	}
 
-	log.Printf("[STRIPE] Cancelled subscription %s (immediate: %v)", stripeSubscriptionID, immediate)
+	logging.Info(ctx, "[STRIPE] Cancelled subscription", map[string]any{"subscription_id": stripeSubscriptionID, "immediate": immediate})
 	return nil
 }
 
@@ -404,7 +404,7 @@ func (s *StripeService) ReactivateSubscription(ctx context.Context, stripeSubscr
 		return fmt.Errorf("failed to reactivate subscription: %w", err)
 	}
 
-	log.Printf("[STRIPE] Reactivated subscription %s", stripeSubscriptionID)
+	logging.Info(ctx, "[STRIPE] Reactivated subscription", map[string]any{"subscription_id": stripeSubscriptionID})
 	return nil
 }
 
@@ -445,7 +445,7 @@ func (s *StripeService) ChangeSubscription(ctx context.Context, stripeSubscripti
 		return nil, fmt.Errorf("failed to update subscription: %w", err)
 	}
 
-	log.Printf("[STRIPE] Changed subscription %s to %s (%s)", stripeSubscriptionID, newTierName, billingCycle)
+	logging.Info(ctx, "[STRIPE] Changed subscription", map[string]any{"subscription_id": stripeSubscriptionID, "tier_name": newTierName, "billing_cycle": billingCycle})
 	return updatedSub, nil
 }
 
@@ -526,7 +526,7 @@ func (s *StripeService) PreviewSubscriptionChange(ctx context.Context, tenantID 
 	if s.IsConfigured() && currentSub.StripeSubscriptionID != nil && *currentSub.StripeSubscriptionID != "" {
 		preview, err := s.previewStripeInvoice(ctx, tenantID, *currentSub.StripeSubscriptionID, newTierName, billingCycle)
 		if err != nil {
-			log.Printf("[STRIPE] Warning: failed to preview invoice: %v", err)
+			logging.Warn(ctx, "[STRIPE] Failed to preview invoice", map[string]any{"error": err})
 			// Fall back to manual calculation
 			response.AmountDueTodayCents = response.NewPriceCents
 		} else {
@@ -666,7 +666,7 @@ func (s *StripeService) RecordBillingEvent(ctx context.Context, tenantID uuid.UU
 		return fmt.Errorf("failed to check billing event existence: %w", err)
 	}
 	if exists {
-		log.Printf("[STRIPE] Skipping duplicate billing event: %s", event.StripeEventID)
+		logging.Info(ctx, "[STRIPE] Skipping duplicate billing event", map[string]any{"stripe_event_id": event.StripeEventID})
 		return nil
 	}
 
@@ -675,7 +675,7 @@ func (s *StripeService) RecordBillingEvent(ctx context.Context, tenantID uuid.UU
 		return fmt.Errorf("failed to create billing event: %w", err)
 	}
 
-	log.Printf("[STRIPE] Recorded billing event %s for tenant %s", event.StripeEventID, tenantID)
+	logging.Info(ctx, "[STRIPE] Recorded billing event", map[string]any{"stripe_event_id": event.StripeEventID, "tenant_id": tenantID})
 	return nil
 }
 
@@ -708,7 +708,7 @@ func (s *StripeService) HandleSubscriptionUpdated(ctx context.Context, sub *stri
 		return fmt.Errorf("failed to update subscription: %w", err)
 	}
 
-	log.Printf("[STRIPE] Updated subscription %s: status=%s, cancel_at_period_end=%v", stripeSubID, status, sub.CancelAtPeriodEnd)
+	logging.Info(ctx, "[STRIPE] Updated subscription", map[string]any{"subscription_id": stripeSubID, "status": status, "cancel_at_period_end": sub.CancelAtPeriodEnd})
 	return nil
 }
 
@@ -721,6 +721,6 @@ func (s *StripeService) HandleSubscriptionDeleted(ctx context.Context, sub *stri
 		return fmt.Errorf("failed to update subscription: %w", err)
 	}
 
-	log.Printf("[STRIPE] Subscription %s deleted", stripeSubID)
+	logging.Info(ctx, "[STRIPE] Subscription deleted", map[string]any{"subscription_id": stripeSubID})
 	return nil
 }

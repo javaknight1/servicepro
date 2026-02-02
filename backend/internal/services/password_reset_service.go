@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -12,6 +11,7 @@ import (
 	"github.com/javaknight1/servicepro/backend/internal/repository"
 	"github.com/javaknight1/servicepro/backend/pkg/auth"
 	"github.com/javaknight1/servicepro/backend/pkg/clients/email"
+	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"
 )
 
 const (
@@ -69,7 +69,7 @@ func (s *PasswordResetService) RequestPasswordReset(emailAddr string) error {
 		if errors.Is(err, repository.ErrUserNotFound) {
 			// For security, don't reveal if email exists
 			// Return success but don't send email
-			log.Printf("Password reset requested for non-existent email: %s", emailAddr)
+			logging.Info(context.Background(), "[PASSWORD-RESET] Password reset requested for non-existent email", map[string]any{"email": emailAddr})
 			return nil
 		}
 		return err
@@ -93,8 +93,9 @@ func (s *PasswordResetService) RequestPasswordReset(emailAddr string) error {
 
 	// Send reset email asynchronously
 	go func() {
-		if err := s.emailClient.SendPasswordResetEmail(context.Background(), user.Email, resetToken, s.resetURL); err != nil {
-			log.Printf("Failed to send password reset email to %s: %v", user.Email, err)
+		bgCtx := context.Background()
+		if err := s.emailClient.SendPasswordResetEmail(bgCtx, user.Email, resetToken, s.resetURL); err != nil {
+			logging.Error(bgCtx, "[PASSWORD-RESET] Failed to send password reset email", map[string]any{"email": user.Email, "error": err})
 		}
 	}()
 
@@ -154,8 +155,9 @@ func (s *PasswordResetService) ResetPassword(token, newPassword string) error {
 
 	// Send confirmation email asynchronously
 	go func() {
-		if err := s.emailClient.SendPasswordResetConfirmationEmail(context.Background(), user.Email); err != nil {
-			log.Printf("Failed to send password reset confirmation email to %s: %v", user.Email, err)
+		bgCtx := context.Background()
+		if err := s.emailClient.SendPasswordResetConfirmationEmail(bgCtx, user.Email); err != nil {
+			logging.Error(bgCtx, "[PASSWORD-RESET] Failed to send password reset confirmation email", map[string]any{"email": user.Email, "error": err})
 		}
 	}()
 

@@ -3,10 +3,10 @@ package errortracking
 import (
 	"context"
 	"fmt"
-	"log"
 	"sync"
 
 	"github.com/javaknight1/servicepro/backend/config"
+	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"
 )
 
 // ConstructorFunc is a function that creates a Client
@@ -54,7 +54,7 @@ func NewClient(ctx context.Context, cfg *config.Config) (Client, error) {
 	}
 
 	provider := detectProvider(cfg)
-	log.Printf("Error tracking client: using provider %q", provider)
+	logging.Info(ctx, "[ERRORTRACKING] Using provider", map[string]any{"provider": provider})
 
 	constructorsMu.RLock()
 	constructor, ok := constructors[provider]

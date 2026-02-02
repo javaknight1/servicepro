@@ -2,9 +2,10 @@ package health
 
 import (
 	"context"
-	"log"
 	"sync"
 	"time"
+
+	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"
 )
 
 // Runner manages periodic health check execution
@@ -98,7 +99,7 @@ func (r *Runner) Start() {
 		go r.runCheckLoop(name, interval)
 	}
 
-	log.Printf("[Health] Runner started with %d checks", len(checks))
+	logging.Info(context.Background(), "Runner started", map[string]any{"check_count": len(checks), "source": "health"})
 }
 
 // Stop stops the health check runner
@@ -113,7 +114,7 @@ func (r *Runner) Stop() {
 	r.mu.Unlock()
 
 	r.wg.Wait()
-	log.Println("[Health] Runner stopped")
+	logging.Info(context.Background(), "Runner stopped", map[string]any{"source": "health"})
 }
 
 // IsRunning returns true if the runner is active

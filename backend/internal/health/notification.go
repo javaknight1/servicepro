@@ -5,10 +5,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"sync"
 	"time"
+
+	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"
 )
 
 // NotificationConfig holds notification configuration
@@ -129,7 +130,11 @@ func (n *Notifier) OnStatusChange(name string, oldStatus, newStatus Status) {
 	for _, channel := range n.config.Channels {
 		go func(ch NotificationChannel) {
 			if err := ch.Send(ctx, notification); err != nil {
-				log.Printf("[Health] Failed to send notification via %s: %v", ch.Name(), err)
+				logging.Error(ctx, "Failed to send notification", map[string]any{
+					"channel": ch.Name(),
+					"error":   err.Error(),
+					"source":  "health",
+				})
 			}
 		}(channel)
 	}
@@ -380,14 +385,14 @@ func (l *LogChannel) Name() string {
 }
 
 func (l *LogChannel) Send(ctx context.Context, notification Notification) error {
-	log.Printf("%s [%s] %s: %s (check: %s, status: %s)",
-		l.Prefix,
-		notification.Severity,
-		notification.Title,
-		notification.Message,
-		notification.CheckName,
-		notification.Status,
-	)
+	logging.Info(ctx, notification.Title, map[string]any{
+		"prefix":     l.Prefix,
+		"severity":   string(notification.Severity),
+		"message":    notification.Message,
+		"check_name": notification.CheckName,
+		"status":     string(notification.Status),
+		"source":     "health",
+	})
 	return nil
 }
 
@@ -417,7 +422,11 @@ func (e *EmailChannel) Name() string {
 
 func (e *EmailChannel) Send(ctx context.Context, notification Notification) error {
 	// Placeholder - actual implementation would use net/smtp
-	log.Printf("[Email] Would send email to %v: %s", e.To, notification.Title)
+	logging.Info(ctx, "Would send email", map[string]any{
+		"to":     e.To,
+		"title":  notification.Title,
+		"source": "email",
+	})
 	return nil
 }
 

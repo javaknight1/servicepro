@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"mime"
 	"net/http"
 	"path/filepath"
@@ -23,6 +22,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 
 	"github.com/javaknight1/servicepro/backend/config"
+	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"
 	"github.com/javaknight1/servicepro/backend/pkg/clients/storage"
 )
 
@@ -520,7 +520,7 @@ func (c *Client) HealthCheck(ctx context.Context) error {
 		return fmt.Errorf("S3 health check failed: %w", err)
 	}
 
-	log.Printf("S3 health check passed for bucket %s", c.config.Bucket)
+	logging.Info(ctx, "S3 health check passed", map[string]any{"bucket": c.config.Bucket})
 	return nil
 }
 

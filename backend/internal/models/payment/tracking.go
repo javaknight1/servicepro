@@ -13,6 +13,7 @@ import (
 	"gorm.io/gorm/clause"
 
 	"github.com/javaknight1/servicepro/backend/internal/utils"
+	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"
 )
 
 // StatusTracker interface defines methods for tracking payment status
@@ -250,7 +251,7 @@ func (s *StatusTrackerService) UpdateStatus(ctx context.Context, transition *Sta
 
 		if err := tx.Create(&audit).Error; err != nil {
 			// Log but don't fail the transaction
-			fmt.Printf("Warning: failed to create audit log: %v\n", err)
+			logging.Warn(ctx, "Failed to create audit log", map[string]any{"error": err.Error()})
 		}
 
 		// Queue notifications if requested

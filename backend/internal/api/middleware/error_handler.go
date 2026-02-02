@@ -9,6 +9,7 @@ import (
 	"github.com/go-playground/validator/v10"
 
 	"github.com/javaknight1/servicepro/backend/pkg/clients/errortracking"
+	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"
 )
 
 // ErrorResponse represents a standardized error response
@@ -144,8 +145,14 @@ func RecoveryMiddleware(errorTracker errortracking.Client) gin.HandlerFunc {
 					errorTracker.CaptureException(c.Request.Context(), err)
 				}
 
-				// Always log to stdout as fallback
-				fmt.Printf("[PANIC] %v\nStack trace:\n%s\n", err, stack)
+				// Log the panic using structured logging
+				logging.Error(c.Request.Context(), "Panic recovered", map[string]any{
+					"error":       err.Error(),
+					"stack_trace": stack,
+					"method":      c.Request.Method,
+					"path":        c.Request.URL.Path,
+					"client_ip":   c.ClientIP(),
+				})
 
 				c.JSON(http.StatusInternalServerError, ErrorResponse{
 					Error:   "Internal server error",

@@ -5,12 +5,12 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
-	"log"
 	"net/http"
 	"sync"
 	"time"
 
 	"github.com/javaknight1/servicepro/backend/config"
+	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"
 	"github.com/javaknight1/servicepro/backend/pkg/clients/tracing"
 )
 
@@ -120,8 +120,7 @@ func (c *Client) StartSpan(ctx context.Context, name string, opts ...tracing.Spa
 	}
 
 	if c.config.PrintToStdout {
-		log.Printf("[TRACE] Starting span: %s (trace_id=%s, span_id=%s, parent=%s)",
-			name, spanCtx.TraceID, spanCtx.SpanID, spanCtx.ParentSpanID)
+		logging.Info(ctx, "[TRACING-MOCK] Starting span", map[string]any{"name": name, "trace_id": spanCtx.TraceID, "span_id": spanCtx.SpanID, "parent_span_id": spanCtx.ParentSpanID})
 	}
 
 	return c.ContextWithSpan(ctx, span), span
@@ -277,8 +276,7 @@ func (s *mockSpan) EndWithOptions(opts ...tracing.SpanEndOption) {
 
 	if s.client.config.PrintToStdout {
 		duration := s.endTime.Sub(s.startTime)
-		log.Printf("[TRACE] Ending span: %s (trace_id=%s, span_id=%s, duration=%v, status=%s)",
-			s.name, s.context.TraceID, s.context.SpanID, duration, s.status.String())
+		logging.Info(context.Background(), "[TRACING-MOCK] Ending span", map[string]any{"name": s.name, "trace_id": s.context.TraceID, "span_id": s.context.SpanID, "duration": duration.String(), "status": s.status.String()})
 	}
 
 	if s.client.config.StoreSpans {
@@ -334,7 +332,7 @@ func (s *mockSpan) AddEvent(name string, attrs map[string]any) {
 	s.mu.Unlock()
 
 	if s.client.config.PrintToStdout {
-		log.Printf("[TRACE] Event: %s in span %s attrs=%v", name, s.name, attrs)
+		logging.Info(context.Background(), "[TRACING-MOCK] Event", map[string]any{"event_name": name, "span_name": s.name, "attrs": attrs})
 	}
 }
 
@@ -350,7 +348,7 @@ func (s *mockSpan) RecordError(err error) {
 	s.mu.Unlock()
 
 	if s.client.config.PrintToStdout {
-		log.Printf("[TRACE] Error in span %s: %v", s.name, err)
+		logging.Error(context.Background(), "[TRACING-MOCK] Error in span", map[string]any{"span_name": s.name, "error": err})
 	}
 }
 

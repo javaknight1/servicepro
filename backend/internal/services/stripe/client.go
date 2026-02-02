@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"sync"
 	"time"
 
@@ -16,6 +15,7 @@ import (
 	"github.com/stripe/stripe-go/v76/refund"
 
 	"github.com/javaknight1/servicepro/backend/config"
+	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"
 )
 
 // Default configuration values
@@ -90,7 +90,7 @@ func NewClient(cfg *config.Config) (*Client, error) {
 		rateLimiter:    newRateLimiter(defaultRequestsPerSecond),
 	}
 
-	log.Printf("Stripe client initialized in %s mode", environment)
+	logging.Info(context.Background(), "Stripe client initialized", map[string]any{"mode": environment})
 
 	return client, nil
 }
@@ -226,16 +226,16 @@ func (c *Client) CreatePaymentIntent(ctx context.Context, params *PaymentIntentP
 	stripeParams.Context = ctx
 
 	// Log the request
-	log.Printf("Creating payment intent: amount=%d, currency=%s", params.Amount, params.Currency)
+	logging.Info(ctx, "Creating payment intent", map[string]any{"amount": params.Amount, "currency": params.Currency})
 
 	// Create payment intent
 	pi, err := paymentintent.New(stripeParams)
 	if err != nil {
-		log.Printf("Failed to create payment intent: %v", err)
+		logging.Error(ctx, "Failed to create payment intent", map[string]any{"error": err})
 		return nil, fmt.Errorf("failed to create payment intent: %w", err)
 	}
 
-	log.Printf("Payment intent created: id=%s, status=%s", pi.ID, pi.Status)
+	logging.Info(ctx, "Payment intent created", map[string]any{"id": pi.ID, "status": pi.Status})
 
 	return c.paymentIntentToResult(pi), nil
 }
@@ -255,7 +255,7 @@ func (c *Client) GetPaymentIntent(ctx context.Context, id string) (*PaymentInten
 
 	pi, err := paymentintent.Get(id, params)
 	if err != nil {
-		log.Printf("Failed to get payment intent: id=%s, error=%v", id, err)
+		logging.Error(ctx, "Failed to get payment intent", map[string]any{"id": id, "error": err})
 		return nil, fmt.Errorf("failed to get payment intent: %w", err)
 	}
 
@@ -278,15 +278,15 @@ func (c *Client) ConfirmPaymentIntent(ctx context.Context, id string, paymentMet
 	}
 	params.Context = ctx
 
-	log.Printf("Confirming payment intent: id=%s", id)
+	logging.Info(ctx, "Confirming payment intent", map[string]any{"id": id})
 
 	pi, err := paymentintent.Confirm(id, params)
 	if err != nil {
-		log.Printf("Failed to confirm payment intent: id=%s, error=%v", id, err)
+		logging.Error(ctx, "Failed to confirm payment intent", map[string]any{"id": id, "error": err})
 		return nil, fmt.Errorf("failed to confirm payment intent: %w", err)
 	}
 
-	log.Printf("Payment intent confirmed: id=%s, status=%s", pi.ID, pi.Status)
+	logging.Info(ctx, "Payment intent confirmed", map[string]any{"id": pi.ID, "status": pi.Status})
 
 	return c.paymentIntentToResult(pi), nil
 }
@@ -307,15 +307,15 @@ func (c *Client) CancelPaymentIntent(ctx context.Context, id string, reason *str
 	}
 	params.Context = ctx
 
-	log.Printf("Canceling payment intent: id=%s", id)
+	logging.Info(ctx, "Canceling payment intent", map[string]any{"id": id})
 
 	pi, err := paymentintent.Cancel(id, params)
 	if err != nil {
-		log.Printf("Failed to cancel payment intent: id=%s, error=%v", id, err)
+		logging.Error(ctx, "Failed to cancel payment intent", map[string]any{"id": id, "error": err})
 		return nil, fmt.Errorf("failed to cancel payment intent: %w", err)
 	}
 
-	log.Printf("Payment intent canceled: id=%s", pi.ID)
+	logging.Info(ctx, "Payment intent canceled", map[string]any{"id": pi.ID})
 
 	return c.paymentIntentToResult(pi), nil
 }
@@ -336,15 +336,15 @@ func (c *Client) CapturePaymentIntent(ctx context.Context, id string, amountToCa
 	}
 	params.Context = ctx
 
-	log.Printf("Capturing payment intent: id=%s", id)
+	logging.Info(ctx, "Capturing payment intent", map[string]any{"id": id})
 
 	pi, err := paymentintent.Capture(id, params)
 	if err != nil {
-		log.Printf("Failed to capture payment intent: id=%s, error=%v", id, err)
+		logging.Error(ctx, "Failed to capture payment intent", map[string]any{"id": id, "error": err})
 		return nil, fmt.Errorf("failed to capture payment intent: %w", err)
 	}
 
-	log.Printf("Payment intent captured: id=%s, amount=%d", pi.ID, pi.Amount)
+	logging.Info(ctx, "Payment intent captured", map[string]any{"id": pi.ID, "amount": pi.Amount})
 
 	return c.paymentIntentToResult(pi), nil
 }
@@ -420,15 +420,15 @@ func (c *Client) CreateCustomer(ctx context.Context, params *CustomerParams) (*C
 
 	stripeParams.Context = ctx
 
-	log.Printf("Creating Stripe customer: email=%s", stringPtrValue(params.Email))
+	logging.Info(ctx, "Creating Stripe customer", map[string]any{"email": stringPtrValue(params.Email)})
 
 	cust, err := customer.New(stripeParams)
 	if err != nil {
-		log.Printf("Failed to create customer: %v", err)
+		logging.Error(ctx, "Failed to create customer", map[string]any{"error": err})
 		return nil, fmt.Errorf("failed to create customer: %w", err)
 	}
 
-	log.Printf("Customer created: id=%s", cust.ID)
+	logging.Info(ctx, "Customer created", map[string]any{"id": cust.ID})
 
 	return c.customerToResult(cust), nil
 }
@@ -448,7 +448,7 @@ func (c *Client) GetCustomer(ctx context.Context, id string) (*CustomerResult, e
 
 	cust, err := customer.Get(id, params)
 	if err != nil {
-		log.Printf("Failed to get customer: id=%s, error=%v", id, err)
+		logging.Error(ctx, "Failed to get customer", map[string]any{"id": id, "error": err})
 		return nil, fmt.Errorf("failed to get customer: %w", err)
 	}
 
@@ -532,18 +532,19 @@ func (c *Client) CreateRefund(ctx context.Context, params *RefundParams) (*Refun
 
 	stripeParams.Context = ctx
 
-	log.Printf("Creating refund: charge=%s, payment_intent=%s, amount=%v",
-		stringPtrValue(params.ChargeID),
-		stringPtrValue(params.PaymentIntentID),
-		params.Amount)
+	logging.Info(ctx, "Creating refund", map[string]any{
+		"charge":         stringPtrValue(params.ChargeID),
+		"payment_intent": stringPtrValue(params.PaymentIntentID),
+		"amount":         params.Amount,
+	})
 
 	ref, err := refund.New(stripeParams)
 	if err != nil {
-		log.Printf("Failed to create refund: %v", err)
+		logging.Error(ctx, "Failed to create refund", map[string]any{"error": err})
 		return nil, fmt.Errorf("failed to create refund: %w", err)
 	}
 
-	log.Printf("Refund created: id=%s, status=%s", ref.ID, ref.Status)
+	logging.Info(ctx, "Refund created", map[string]any{"id": ref.ID, "status": ref.Status})
 
 	return c.refundToResult(ref), nil
 }

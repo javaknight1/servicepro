@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
@@ -13,6 +12,7 @@ import (
 
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	stripeClient "github.com/javaknight1/servicepro/backend/internal/services/stripe"
+	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"
 )
 
 var (
@@ -109,11 +109,11 @@ func (s *InvoicePaymentService) CreateCheckoutSessionForInvoice(ctx context.Cont
 	// Create the checkout session
 	sess, err := session.New(params)
 	if err != nil {
-		log.Printf("[INVOICE-PAYMENT] Failed to create checkout session for invoice %s: %v", invoice.ID, err)
+		logging.Error(ctx, "[INVOICE-PAYMENT] Failed to create checkout session for invoice", map[string]any{"invoice_id": invoice.ID, "error": err})
 		return nil, fmt.Errorf("%w: %v", ErrCheckoutSessionCreationFailed, err)
 	}
 
-	log.Printf("[INVOICE-PAYMENT] Created checkout session %s for invoice %s", sess.ID, invoice.ID)
+	logging.Info(ctx, "[INVOICE-PAYMENT] Created checkout session for invoice", map[string]any{"session_id": sess.ID, "invoice_id": invoice.ID})
 
 	return &CheckoutSessionResult{
 		SessionID:   sess.ID,

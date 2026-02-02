@@ -3,13 +3,13 @@ package permissions
 import (
 	"context"
 	"fmt"
-	"log"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/services/permissions"
+	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"
 )
 
 // HandlerWithPermissionCheck wraps a handler function with permission checking
@@ -38,7 +38,7 @@ func RequirePermission(checker *permissions.PermissionChecker, permissionName st
 		ctx := context.Background()
 		hasPermission, err := checker.CheckPermission(ctx, userID, permissionName)
 		if err != nil {
-			log.Printf("[ERROR] Permission check failed: %v", err)
+			logging.Error(ctx, "[PERMISSIONS] Permission check failed", map[string]any{"error": err})
 			c.JSON(500, models.ErrorResponse{
 				Error:   "permission_check_failed",
 				Message: "Failed to verify permissions",
@@ -48,7 +48,7 @@ func RequirePermission(checker *permissions.PermissionChecker, permissionName st
 		}
 
 		if !hasPermission {
-			log.Printf("[SECURITY] Access denied for user %s to permission %s", userID, permissionName)
+			logging.Warn(ctx, "[SECURITY] Access denied", map[string]any{"user_id": userID, "permission": permissionName})
 			c.JSON(403, models.ErrorResponse{
 				Error:   "forbidden",
 				Message: fmt.Sprintf("Missing required permission: %s", permissionName),
@@ -78,7 +78,7 @@ func RequireResourceAction(checker *permissions.PermissionChecker, resource, act
 		ctx := context.Background()
 		hasPermission, err := checker.CheckResourceAction(ctx, userID, resource, action)
 		if err != nil {
-			log.Printf("[ERROR] Resource action check failed: %v", err)
+			logging.Error(ctx, "[PERMISSIONS] Resource action check failed", map[string]any{"error": err})
 			c.JSON(500, models.ErrorResponse{
 				Error:   "permission_check_failed",
 				Message: "Failed to verify permissions",
@@ -88,7 +88,7 @@ func RequireResourceAction(checker *permissions.PermissionChecker, resource, act
 		}
 
 		if !hasPermission {
-			log.Printf("[SECURITY] Access denied for user %s to %s.%s", userID, resource, action)
+			logging.Warn(ctx, "[SECURITY] Access denied", map[string]any{"user_id": userID, "resource": resource, "action": action})
 			c.JSON(403, models.ErrorResponse{
 				Error:   "forbidden",
 				Message: fmt.Sprintf("You do not have permission to %s %s", action, resource),
@@ -145,7 +145,7 @@ func (rp *RouteProtection) ProtectAdmin(handler HandlerWithPermissionCheck) gin.
 		ctx := context.Background()
 		isAdmin, err := rp.checker.IsAdmin(ctx, userID)
 		if err != nil {
-			log.Printf("[ERROR] Admin check failed: %v", err)
+			logging.Error(ctx, "[PERMISSIONS] Admin check failed", map[string]any{"error": err})
 			c.JSON(500, models.ErrorResponse{
 				Error:   "permission_check_failed",
 				Message: "Failed to verify admin status",
@@ -155,7 +155,7 @@ func (rp *RouteProtection) ProtectAdmin(handler HandlerWithPermissionCheck) gin.
 		}
 
 		if !isAdmin {
-			log.Printf("[SECURITY] Non-admin user %s attempted admin access", userID)
+			logging.Warn(ctx, "[SECURITY] Non-admin user attempted admin access", map[string]any{"user_id": userID})
 			c.JSON(403, models.ErrorResponse{
 				Error:   "forbidden",
 				Message: "Administrator privileges required",
@@ -184,7 +184,7 @@ func (rp *RouteProtection) ProtectSuperAdmin(handler HandlerWithPermissionCheck)
 		ctx := context.Background()
 		isSuperAdmin, err := rp.checker.IsSuperAdmin(ctx, userID)
 		if err != nil {
-			log.Printf("[ERROR] Super admin check failed: %v", err)
+			logging.Error(ctx, "[PERMISSIONS] Super admin check failed", map[string]any{"error": err})
 			c.JSON(500, models.ErrorResponse{
 				Error:   "permission_check_failed",
 				Message: "Failed to verify super admin status",
@@ -194,7 +194,7 @@ func (rp *RouteProtection) ProtectSuperAdmin(handler HandlerWithPermissionCheck)
 		}
 
 		if !isSuperAdmin {
-			log.Printf("[SECURITY] Non-super-admin user %s attempted super admin access", userID)
+			logging.Warn(ctx, "[SECURITY] Non-super-admin user attempted super admin access", map[string]any{"user_id": userID})
 			c.JSON(403, models.ErrorResponse{
 				Error:   "forbidden",
 				Message: "Super administrator privileges required",
@@ -324,7 +324,7 @@ func getUserIDFromContext(c *gin.Context) (uuid.UUID, error) {
 func CanUserPerform(ctx context.Context, checker *permissions.PermissionChecker, userID uuid.UUID, permissionName string) bool {
 	hasPermission, err := checker.CheckPermission(ctx, userID, permissionName)
 	if err != nil {
-		log.Printf("[WARN] Permission check error for user %s: %v", userID, err)
+		logging.Warn(ctx, "[PERMISSIONS] Permission check error", map[string]any{"user_id": userID, "error": err})
 		return false
 	}
 	return hasPermission
@@ -334,7 +334,7 @@ func CanUserPerform(ctx context.Context, checker *permissions.PermissionChecker,
 func CanUserPerformAction(ctx context.Context, checker *permissions.PermissionChecker, userID uuid.UUID, resource, action string) bool {
 	hasPermission, err := checker.CheckResourceAction(ctx, userID, resource, action)
 	if err != nil {
-		log.Printf("[WARN] Resource action check error for user %s: %v", userID, err)
+		logging.Warn(ctx, "[PERMISSIONS] Resource action check error", map[string]any{"user_id": userID, "error": err})
 		return false
 	}
 	return hasPermission

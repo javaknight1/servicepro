@@ -12,6 +12,7 @@ import (
 
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/repository"
+	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"
 	csvpkg "github.com/javaknight1/servicepro/backend/pkg/csv"
 )
 
@@ -228,7 +229,7 @@ func (s *ImportService) ProcessImport(
 		if processedRows%10 == 0 {
 			if err := s.UpdateJobProgress(ctx, jobID, processedRows, successfulRows, failedRows); err != nil {
 				// Log error but continue processing
-				fmt.Printf("Failed to update progress: %v\n", err)
+				logging.Error(ctx, "[IMPORT] Failed to update progress", map[string]any{"error": err})
 			}
 		}
 	}
@@ -236,13 +237,13 @@ func (s *ImportService) ProcessImport(
 	// Save all import errors
 	if len(importErrors) > 0 {
 		if err := s.db.Create(&importErrors).Error; err != nil {
-			fmt.Printf("Failed to save import errors: %v\n", err)
+			logging.Error(ctx, "[IMPORT] Failed to save import errors", map[string]any{"error": err})
 		}
 	}
 
 	// Final progress update
 	if err := s.UpdateJobProgress(ctx, jobID, processedRows, successfulRows, failedRows); err != nil {
-		fmt.Printf("Failed to update final progress: %v\n", err)
+		logging.Error(ctx, "[IMPORT] Failed to update final progress", map[string]any{"error": err})
 	}
 
 	// Update job status

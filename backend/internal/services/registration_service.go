@@ -3,12 +3,12 @@ package services
 import (
 	"context"
 	"errors"
-	"log"
 
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/repository"
 	"github.com/javaknight1/servicepro/backend/pkg/auth"
 	"github.com/javaknight1/servicepro/backend/pkg/clients/email"
+	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"
 )
 
 var (
@@ -82,14 +82,15 @@ func (s *RegistrationService) Register(emailAddr, password string) (*models.Regi
 
 	// Send email verification (async, don't fail registration if email fails)
 	go func() {
+		bgCtx := context.Background()
 		if s.verificationService != nil {
 			if err := s.verificationService.SendVerificationEmail(user.ID); err != nil {
-				log.Printf("Failed to send verification email to %s: %v", user.Email, err)
+				logging.Error(bgCtx, "[REGISTRATION] Failed to send verification email", map[string]any{"email": user.Email, "error": err})
 			}
 		} else {
 			// Fallback to welcome email if verification service not configured
-			if err := s.emailClient.SendWelcomeEmail(context.Background(), user.Email, user.Email); err != nil {
-				log.Printf("Failed to send welcome email to %s: %v", user.Email, err)
+			if err := s.emailClient.SendWelcomeEmail(bgCtx, user.Email, user.Email); err != nil {
+				logging.Error(bgCtx, "[REGISTRATION] Failed to send welcome email", map[string]any{"email": user.Email, "error": err})
 			}
 		}
 	}()

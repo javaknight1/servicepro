@@ -7,13 +7,13 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
-	"log"
 	"sort"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/javaknight1/servicepro/backend/config"
+	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"
 	"github.com/javaknight1/servicepro/backend/pkg/clients/storage"
 )
 
@@ -117,7 +117,7 @@ func (c *Client) uploadData(data []byte, input *storage.UploadInput) (*storage.U
 
 	c.objects[key] = obj
 
-	log.Printf("Mock storage: uploaded %s (%d bytes)", key, len(data))
+	logging.Info(context.Background(), "[STORAGE-MOCK] uploaded", map[string]any{"key": key, "size": len(data)})
 
 	return &storage.UploadOutput{
 		Key:         key,
@@ -140,7 +140,7 @@ func (c *Client) Download(ctx context.Context, input *storage.DownloadInput) (*s
 		return nil, fmt.Errorf("object not found: %s", input.Key)
 	}
 
-	log.Printf("Mock storage: downloaded %s (%d bytes)", input.Key, len(obj.Data))
+	logging.Info(ctx, "[STORAGE-MOCK] downloaded", map[string]any{"key": input.Key, "size": len(obj.Data)})
 
 	return &storage.DownloadOutput{
 		Body:         io.NopCloser(bytes.NewReader(obj.Data)),
@@ -175,7 +175,7 @@ func (c *Client) GetPresignedURL(ctx context.Context, key string, expiration tim
 
 	// Return a mock presigned URL
 	url := fmt.Sprintf("mock://%s/%s?presigned=true&expires=%d", c.config.Bucket, key, time.Now().Add(expiration).Unix())
-	log.Printf("Mock storage: generated presigned download URL for %s", key)
+	logging.Info(ctx, "[STORAGE-MOCK] generated presigned download URL", map[string]any{"key": key})
 	return url, nil
 }
 
@@ -183,7 +183,7 @@ func (c *Client) GetPresignedURL(ctx context.Context, key string, expiration tim
 func (c *Client) GetPresignedUploadURL(ctx context.Context, key, contentType string, expiration time.Duration) (string, error) {
 	// Return a mock presigned upload URL
 	url := fmt.Sprintf("mock://%s/%s?presigned=true&upload=true&expires=%d", c.config.Bucket, key, time.Now().Add(expiration).Unix())
-	log.Printf("Mock storage: generated presigned upload URL for %s", key)
+	logging.Info(ctx, "[STORAGE-MOCK] generated presigned upload URL", map[string]any{"key": key})
 	return url, nil
 }
 
@@ -197,7 +197,7 @@ func (c *Client) Delete(ctx context.Context, key string) error {
 	}
 
 	delete(c.objects, key)
-	log.Printf("Mock storage: deleted %s", key)
+	logging.Info(ctx, "[STORAGE-MOCK] deleted", map[string]any{"key": key})
 	return nil
 }
 
@@ -327,7 +327,7 @@ func (c *Client) Copy(ctx context.Context, sourceKey, destKey string) (*storage.
 
 	c.objects[destKey] = dest
 
-	log.Printf("Mock storage: copied %s to %s", sourceKey, destKey)
+	logging.Info(ctx, "[STORAGE-MOCK] copied", map[string]any{"source_key": sourceKey, "dest_key": destKey})
 
 	return &storage.CopyOutput{
 		ETag:         dest.ETag,
@@ -349,7 +349,7 @@ func (c *Client) Move(ctx context.Context, sourceKey, destKey string) error {
 
 // HealthCheck implements storage.Client
 func (c *Client) HealthCheck(ctx context.Context) error {
-	log.Printf("Mock storage: health check passed")
+	logging.Info(ctx, "[STORAGE-MOCK] health check passed", nil)
 	return nil
 }
 

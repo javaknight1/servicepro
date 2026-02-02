@@ -3,13 +3,13 @@ package mock
 import (
 	"context"
 	"fmt"
-	"log"
 	"sync"
 	"time"
 
 	"github.com/javaknight1/servicepro/backend/config"
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/pkg/clients/email"
+	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"
 )
 
 func init() {
@@ -72,7 +72,7 @@ func (c *Client) Send(ctx context.Context, msg *email.EmailMessage) (*email.Send
 	c.SentEmails = append(c.SentEmails, msg)
 
 	// Log the email
-	log.Printf("Mock email: To=%v Subject=%q", msg.To, msg.Subject)
+	logging.Info(ctx, "[EMAIL-MOCK] Sent", map[string]any{"to": msg.To, "subject": msg.Subject})
 
 	result := &email.SendResult{
 		Success:   true,
@@ -89,7 +89,7 @@ func (c *Client) Send(ctx context.Context, msg *email.EmailMessage) (*email.Send
 
 // SendWelcomeEmail implements email.Client
 func (c *Client) SendWelcomeEmail(ctx context.Context, to, name string) error {
-	log.Printf("Mock: Sending welcome email to %s (name: %s)", to, name)
+	logging.Info(ctx, "[EMAIL-MOCK] Sending welcome email", map[string]any{"to": to, "name": name})
 
 	msg := email.NewEmailMessage(to, "Welcome to ServicePro!", fmt.Sprintf("Welcome, %s!", name))
 	_, err := c.Send(ctx, msg)
@@ -99,8 +99,7 @@ func (c *Client) SendWelcomeEmail(ctx context.Context, to, name string) error {
 // SendPasswordResetEmail implements email.Client
 func (c *Client) SendPasswordResetEmail(ctx context.Context, to, resetToken, resetURL string) error {
 	fullResetURL := fmt.Sprintf("%s?token=%s", resetURL, resetToken)
-	log.Printf("Mock: Sending password reset email to %s", to)
-	log.Printf("Mock: *** RESET LINK: %s ***", fullResetURL)
+	logging.Info(ctx, "[EMAIL-MOCK] Sending password reset email", map[string]any{"to": to, "reset_link": fullResetURL})
 
 	msg := email.NewEmailMessage(to, "Password Reset Request - ServicePro", fmt.Sprintf("Reset your password: %s", fullResetURL))
 	_, err := c.Send(ctx, msg)
@@ -109,7 +108,7 @@ func (c *Client) SendPasswordResetEmail(ctx context.Context, to, resetToken, res
 
 // SendPasswordResetConfirmationEmail implements email.Client
 func (c *Client) SendPasswordResetConfirmationEmail(ctx context.Context, to string) error {
-	log.Printf("Mock: Sending password reset confirmation email to %s", to)
+	logging.Info(ctx, "[EMAIL-MOCK] Sending password reset confirmation email", map[string]any{"to": to})
 
 	msg := email.NewEmailMessage(to, "Password Successfully Reset - ServicePro", "Your password has been successfully reset.")
 	_, err := c.Send(ctx, msg)
@@ -119,8 +118,7 @@ func (c *Client) SendPasswordResetConfirmationEmail(ctx context.Context, to stri
 // SendEmailVerificationEmail implements email.Client
 func (c *Client) SendEmailVerificationEmail(ctx context.Context, to, verificationToken, verificationURL string) error {
 	fullURL := fmt.Sprintf("%s?token=%s", verificationURL, verificationToken)
-	log.Printf("Mock: Sending email verification to %s", to)
-	log.Printf("Mock: *** VERIFICATION LINK: %s ***", fullURL)
+	logging.Info(ctx, "[EMAIL-MOCK] Sending email verification", map[string]any{"to": to, "verification_link": fullURL})
 
 	msg := email.NewEmailMessage(to, "Verify Your Email Address - ServicePro", fmt.Sprintf("Verify your email: %s", fullURL))
 	_, err := c.Send(ctx, msg)
@@ -130,8 +128,7 @@ func (c *Client) SendEmailVerificationEmail(ctx context.Context, to, verificatio
 // SendEmailVerificationReminderEmail implements email.Client
 func (c *Client) SendEmailVerificationReminderEmail(ctx context.Context, to, verificationToken, verificationURL string) error {
 	fullURL := fmt.Sprintf("%s?token=%s", verificationURL, verificationToken)
-	log.Printf("Mock: Sending email verification reminder to %s", to)
-	log.Printf("Mock: *** VERIFICATION LINK: %s ***", fullURL)
+	logging.Info(ctx, "[EMAIL-MOCK] Sending email verification reminder", map[string]any{"to": to, "verification_link": fullURL})
 
 	msg := email.NewEmailMessage(to, "Reminder: Verify Your Email Address - ServicePro", fmt.Sprintf("Verify your email: %s", fullURL))
 	_, err := c.Send(ctx, msg)
@@ -140,7 +137,7 @@ func (c *Client) SendEmailVerificationReminderEmail(ctx context.Context, to, ver
 
 // SendEmailVerificationSuccessEmail implements email.Client
 func (c *Client) SendEmailVerificationSuccessEmail(ctx context.Context, to string) error {
-	log.Printf("Mock: Sending email verification success to %s", to)
+	logging.Info(ctx, "[EMAIL-MOCK] Sending email verification success", map[string]any{"to": to})
 
 	msg := email.NewEmailMessage(to, "Email Verified Successfully - ServicePro", "Your email has been successfully verified.")
 	_, err := c.Send(ctx, msg)
@@ -152,12 +149,11 @@ func (c *Client) SendOrganizationInviteEmail(ctx context.Context, to, orgName, i
 	var subject string
 	if userExists {
 		subject = fmt.Sprintf("You've been invited to join %s on ServicePro", orgName)
-		log.Printf("Mock: Sending organization invite to existing user %s for org %s (role: %s)", to, orgName, roleName)
+		logging.Info(ctx, "[EMAIL-MOCK] Sending organization invite to existing user", map[string]any{"to": to, "org_name": orgName, "role": roleName, "invitation_link": actionURL})
 	} else {
 		subject = fmt.Sprintf("You've been invited to join %s on ServicePro", orgName)
-		log.Printf("Mock: Sending organization invite to new user %s for org %s (role: %s)", to, orgName, roleName)
+		logging.Info(ctx, "[EMAIL-MOCK] Sending organization invite to new user", map[string]any{"to": to, "org_name": orgName, "role": roleName, "invitation_link": actionURL})
 	}
-	log.Printf("Mock: *** INVITATION LINK: %s ***", actionURL)
 
 	msg := email.NewEmailMessage(to, subject, fmt.Sprintf("Invitation from %s to join %s. Action URL: %s", inviterName, orgName, actionURL))
 	_, err := c.Send(ctx, msg)
@@ -166,10 +162,7 @@ func (c *Client) SendOrganizationInviteEmail(ctx context.Context, to, orgName, i
 
 // SendQuoteEmail implements email.Client
 func (c *Client) SendQuoteEmail(ctx context.Context, to string, quote *models.Quote, pdfAttachment *email.Attachment, downloadURL string) error {
-	log.Printf("Mock: Sending quote email to %s for quote %s", to, quote.QuoteNumber)
-	if downloadURL != "" {
-		log.Printf("Mock: *** DOWNLOAD LINK: %s ***", downloadURL)
-	}
+	logging.Info(ctx, "[EMAIL-MOCK] Sending quote email", map[string]any{"to": to, "quote_number": quote.QuoteNumber, "download_url": downloadURL})
 
 	subject := fmt.Sprintf("Quote %s from ServicePro", quote.QuoteNumber)
 	body := fmt.Sprintf("Quote #%s - Total: $%s. Valid until: %s",
@@ -185,11 +178,7 @@ func (c *Client) SendQuoteEmail(ctx context.Context, to string, quote *models.Qu
 
 // SendInvoiceEmail implements email.Client
 func (c *Client) SendInvoiceEmail(ctx context.Context, to string, invoice *models.Invoice, paymentURL string, pdfAttachment *email.Attachment, downloadURL string) error {
-	log.Printf("Mock: Sending invoice email to %s for invoice %s", to, invoice.InvoiceNumber)
-	log.Printf("Mock: *** PAYMENT LINK: %s ***", paymentURL)
-	if downloadURL != "" {
-		log.Printf("Mock: *** DOWNLOAD LINK: %s ***", downloadURL)
-	}
+	logging.Info(ctx, "[EMAIL-MOCK] Sending invoice email", map[string]any{"to": to, "invoice_number": invoice.InvoiceNumber, "payment_url": paymentURL, "download_url": downloadURL})
 
 	subject := fmt.Sprintf("Invoice %s from ServicePro", invoice.InvoiceNumber)
 	body := fmt.Sprintf("Invoice #%s - Total: $%s. Pay here: %s",
@@ -205,10 +194,7 @@ func (c *Client) SendInvoiceEmail(ctx context.Context, to string, invoice *model
 
 // SendPaymentReceiptEmail implements email.Client
 func (c *Client) SendPaymentReceiptEmail(ctx context.Context, to string, invoice *models.Invoice, pdfAttachment *email.Attachment, downloadURL string) error {
-	log.Printf("Mock: Sending payment receipt email to %s for invoice %s", to, invoice.InvoiceNumber)
-	if downloadURL != "" {
-		log.Printf("Mock: *** DOWNLOAD LINK: %s ***", downloadURL)
-	}
+	logging.Info(ctx, "[EMAIL-MOCK] Sending payment receipt email", map[string]any{"to": to, "invoice_number": invoice.InvoiceNumber, "download_url": downloadURL})
 
 	subject := fmt.Sprintf("Payment Receipt for Invoice %s - ServicePro", invoice.InvoiceNumber)
 	body := fmt.Sprintf("Payment received for Invoice #%s - Amount Paid: $%s. Thank you!",

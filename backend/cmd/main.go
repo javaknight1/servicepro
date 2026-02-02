@@ -39,23 +39,37 @@ import (
 	metricsclient "github.com/javaknight1/servicepro/backend/pkg/clients/metrics"
 	_ "github.com/javaknight1/servicepro/backend/pkg/clients/metrics/mock"
 	_ "github.com/javaknight1/servicepro/backend/pkg/clients/metrics/prometheus"
+
+	// Logging providers - blank imports to register providers
+	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"
+	_ "github.com/javaknight1/servicepro/backend/pkg/clients/logging/mock"
 )
 
 func main() {
 	// Load configuration
 	cfg := config.Load()
 
+	// Initialize logging client first so all subsequent initialization can use it
+	logClient, err := logging.NewClient(context.Background(), cfg)
+	if err != nil {
+		log.Printf("Warning: Failed to initialize logging client: %v", err)
+	} else {
+		logging.SetDefault(logClient)
+		defer logClient.Close()
+	}
+
 	// Initialize error tracking using the unified client factory
 	// Provider is auto-detected based on configuration:
 	// - development env -> Mock
 	// - Sentry DSN configured -> Sentry
 	// - fallback -> Mock
-	errorTrackingClient, err := errortracking.NewClient(context.Background(), cfg)
+	ctx := context.Background()
+	errorTrackingClient, err := errortracking.NewClient(ctx, cfg)
 	if err != nil {
-		log.Printf("Warning: Failed to initialize error tracking: %v", err)
+		logging.Warn(ctx, "Failed to initialize error tracking", map[string]any{"error": err.Error()})
 	} else {
 		defer errorTrackingClient.Close()
-		log.Println("Error tracking initialized")
+		logging.Info(ctx, "Error tracking initialized", nil)
 	}
 
 	// Set Gin mode based on environment
@@ -66,46 +80,58 @@ func main() {
 	// Connect to PostgreSQL using GORM
 	db, err := database.NewGormDB(&cfg.Database)
 	if err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
+		logging.Fatal(ctx, "Failed to connect to database", map[string]any{"error": err.Error()})
+		os.Exit(1)
 	}
+	logging.Info(ctx, "Database connected", nil)
 
 	// Get underlying SQL DB for cleanup
 	sqlDB, err := db.DB()
 	if err != nil {
-		log.Fatalf("Failed to get database instance: %v", err)
+		logging.Fatal(ctx, "Failed to get database instance", map[string]any{"error": err.Error()})
+		os.Exit(1)
 	}
 	defer sqlDB.Close()
 
 	// Connect to Redis
 	redisClient, err := database.NewRedisClient(&cfg.Redis)
 	if err != nil {
-		log.Fatalf("Failed to connect to Redis: %v", err)
+		logging.Fatal(ctx, "Failed to connect to Redis", map[string]any{"error": err.Error()})
+		os.Exit(1)
 	}
 	defer redisClient.Close()
+	logging.Info(ctx, "Redis connected", nil)
 
-	emailClient, err := emailclient.NewClient(context.Background(), cfg)
+	emailClient, err := emailclient.NewClient(ctx, cfg)
 	if err != nil {
-		panic(err)
+		logging.Fatal(ctx, "Failed to initialize email client", map[string]any{"error": err.Error()})
+		os.Exit(1)
 	}
+	logging.Info(ctx, "Email client initialized", nil)
 
 	// Initialize storage client (optional - may not be configured)
-	storageClient, _ := storageclient.NewClient(context.Background(), cfg)
+	storageClient, err := storageclient.NewClient(ctx, cfg)
+	if err != nil {
+		logging.Warn(ctx, "Storage client not initialized", map[string]any{"error": err.Error()})
+	} else if storageClient != nil {
+		logging.Info(ctx, "Storage client initialized", nil)
+	}
 
 	// Initialize SMS client (optional - may not be configured)
-	smsClient, err := smsclient.NewClient(context.Background(), cfg)
+	smsClient, err := smsclient.NewClient(ctx, cfg)
 	if err != nil {
-		log.Printf("SMS client not initialized: %v (SMS notifications disabled)", err)
+		logging.Warn(ctx, "SMS client not initialized", map[string]any{"error": err.Error(), "note": "SMS notifications disabled"})
 	} else {
-		log.Printf("SMS client initialized: %s", smsClient.GetProviderInfo().DisplayName)
+		logging.Info(ctx, "SMS client initialized", map[string]any{"provider": smsClient.GetProviderInfo().DisplayName})
 	}
 
 	// Initialize metrics client (for Prometheus /metrics endpoint)
-	metricsClient, err := metricsclient.NewClient(context.Background(), cfg)
+	metricsClient, err := metricsclient.NewClient(ctx, cfg)
 	if err != nil {
-		log.Printf("Metrics client not initialized: %v", err)
+		logging.Warn(ctx, "Metrics client not initialized", map[string]any{"error": err.Error()})
 	} else {
 		defer metricsClient.Close()
-		log.Println("Metrics client initialized")
+		logging.Info(ctx, "Metrics client initialized", nil)
 	}
 
 	// Initialize Gin router
@@ -118,7 +144,7 @@ func main() {
 	router.MaxMultipartMemory = cfg.Server.MaxMultipartMemory
 	if len(cfg.Server.TrustedProxies) > 0 {
 		if err := router.SetTrustedProxies(cfg.Server.TrustedProxies); err != nil {
-			log.Printf("Warning: Failed to set trusted proxies: %v", err)
+			logging.Warn(ctx, "Failed to set trusted proxies", map[string]any{"error": err.Error()})
 		}
 	}
 
@@ -138,9 +164,10 @@ func main() {
 
 	// Start server in a goroutine
 	go func() {
-		log.Printf("Starting server on %s", addr)
+		logging.Info(ctx, "Starting server", map[string]any{"addr": addr})
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Fatalf("Failed to start server: %v", err)
+			logging.Fatal(ctx, "Failed to start server", map[string]any{"error": err.Error()})
+			os.Exit(1)
 		}
 	}()
 
@@ -148,16 +175,16 @@ func main() {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
-	log.Println("Shutting down server...")
+	logging.Info(ctx, "Shutting down server...", nil)
 
 	// Create shutdown context with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), cfg.Server.ShutdownTimeout)
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), cfg.Server.ShutdownTimeout)
 	defer cancel()
 
 	// Attempt graceful shutdown
-	if err := srv.Shutdown(ctx); err != nil {
-		log.Printf("Server forced to shutdown: %v", err)
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		logging.Error(ctx, "Server forced to shutdown", map[string]any{"error": err.Error()})
 	}
 
-	log.Println("Server exited gracefully")
+	logging.Info(ctx, "Server exited gracefully", nil)
 }

@@ -3,7 +3,6 @@ package resend
 import (
 	"context"
 	"fmt"
-	"log"
 	"strings"
 	"time"
 
@@ -12,6 +11,7 @@ import (
 	"github.com/javaknight1/servicepro/backend/config"
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/pkg/clients/email"
+	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"
 )
 
 func init() {
@@ -876,7 +876,7 @@ func (c *Client) SendPaymentReceiptEmail(ctx context.Context, to string, invoice
 func (c *Client) HealthCheck(ctx context.Context) error {
 	// Resend doesn't have a dedicated health check endpoint
 	// We could try to get the API key info or just return nil
-	log.Printf("Resend health check: API key configured")
+	logging.Info(ctx, "Resend health check: API key configured", nil)
 	return nil
 }
 

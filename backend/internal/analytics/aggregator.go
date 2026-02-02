@@ -4,11 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log"
 	"sync"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"
 )
 
 // AggregatorConfig holds configuration for the analytics aggregator
@@ -101,8 +101,11 @@ func (a *Aggregator) Start() {
 	go a.runJob("cleanup", 24*time.Hour, a.cleanup)
 
 	if a.config.Debug {
-		log.Printf("[Analytics Aggregator] Started with hourly=%s, daily=%s, weekly=%s",
-			a.config.HourlyInterval, a.config.DailyInterval, a.config.WeeklyInterval)
+		logging.Info(context.Background(), "[Analytics Aggregator] Started", map[string]any{
+			"hourlyInterval": a.config.HourlyInterval.String(),
+			"dailyInterval":  a.config.DailyInterval.String(),
+			"weeklyInterval": a.config.WeeklyInterval.String(),
+		})
 	}
 }
 
@@ -138,9 +141,9 @@ func (a *Aggregator) runJob(name string, interval time.Duration, fn func(context
 		case <-ticker.C:
 			start := time.Now()
 			if err := fn(a.ctx); err != nil {
-				log.Printf("[Analytics Aggregator] %s job failed: %v", name, err)
+				logging.Error(a.ctx, "[Analytics Aggregator] Job failed", map[string]any{"job": name, "error": err.Error()})
 			} else if a.config.Debug {
-				log.Printf("[Analytics Aggregator] %s job completed in %s", name, time.Since(start))
+				logging.Info(a.ctx, "[Analytics Aggregator] Job completed", map[string]any{"job": name, "duration": time.Since(start).String()})
 			}
 		}
 	}
@@ -509,7 +512,7 @@ func (a *Aggregator) cleanup(ctx context.Context) error {
 		return fmt.Errorf("failed to delete old events: %w", err)
 	}
 	if a.config.Debug && eventsDeleted > 0 {
-		log.Printf("[Analytics Aggregator] Deleted %d events older than %s", eventsDeleted, eventsBefore)
+		logging.Info(ctx, "[Analytics Aggregator] Deleted old events", map[string]any{"count": eventsDeleted, "olderThan": eventsBefore.String()})
 	}
 
 	// Delete old hourly metrics
@@ -519,7 +522,7 @@ func (a *Aggregator) cleanup(ctx context.Context) error {
 		return fmt.Errorf("failed to delete old hourly metrics: %w", err)
 	}
 	if a.config.Debug && hourlyDeleted > 0 {
-		log.Printf("[Analytics Aggregator] Deleted %d hourly metrics older than %s", hourlyDeleted, hourlyBefore)
+		logging.Info(ctx, "[Analytics Aggregator] Deleted old hourly metrics", map[string]any{"count": hourlyDeleted, "olderThan": hourlyBefore.String()})
 	}
 
 	// Delete old daily metrics
@@ -529,7 +532,7 @@ func (a *Aggregator) cleanup(ctx context.Context) error {
 		return fmt.Errorf("failed to delete old daily metrics: %w", err)
 	}
 	if a.config.Debug && dailyDeleted > 0 {
-		log.Printf("[Analytics Aggregator] Deleted %d daily metrics older than %s", dailyDeleted, dailyBefore)
+		logging.Info(ctx, "[Analytics Aggregator] Deleted old daily metrics", map[string]any{"count": dailyDeleted, "olderThan": dailyBefore.String()})
 	}
 
 	return nil

@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/google/uuid"
@@ -12,6 +11,7 @@ import (
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/repository"
 	"github.com/javaknight1/servicepro/backend/pkg/clients/email"
+	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"
 )
 
 var (
@@ -313,14 +313,14 @@ func (s *QuoteService) SendQuote(id uuid.UUID) error {
 			// Generate PDF
 			pdfResult, err := s.pdfService.GenerateQuotePDF(ctx, quote)
 			if err != nil {
-				log.Printf("[QUOTE-SERVICE] Failed to generate PDF for quote %s: %v", quote.QuoteNumber, err)
+				logging.Error(ctx, "[QUOTE-SERVICE] Failed to generate PDF for quote", map[string]any{"quote_number": quote.QuoteNumber, "error": err})
 				return
 			}
 
 			// Get download URL
 			downloadURL, _, err := s.pdfService.GetQuotePDFURL(ctx, id)
 			if err != nil {
-				log.Printf("[QUOTE-SERVICE] Failed to get download URL for quote %s: %v", quote.QuoteNumber, err)
+				logging.Error(ctx, "[QUOTE-SERVICE] Failed to get download URL for quote", map[string]any{"quote_number": quote.QuoteNumber, "error": err})
 				// Continue without download URL
 				downloadURL = ""
 			}
@@ -334,11 +334,11 @@ func (s *QuoteService) SendQuote(id uuid.UUID) error {
 
 			// Send email
 			if err := s.emailClient.SendQuoteEmail(ctx, quote.Customer.Email, quote, attachment, downloadURL); err != nil {
-				log.Printf("[QUOTE-SERVICE] Failed to send quote email for %s: %v", quote.QuoteNumber, err)
+				logging.Error(ctx, "[QUOTE-SERVICE] Failed to send quote email", map[string]any{"quote_number": quote.QuoteNumber, "error": err})
 				return
 			}
 
-			log.Printf("[QUOTE-SERVICE] Successfully sent quote email for %s to %s", quote.QuoteNumber, quote.Customer.Email)
+			logging.Info(ctx, "[QUOTE-SERVICE] Successfully sent quote email", map[string]any{"quote_number": quote.QuoteNumber, "customer_email": quote.Customer.Email})
 		}()
 	}
 

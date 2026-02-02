@@ -6,7 +6,6 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/google/uuid"
@@ -16,6 +15,7 @@ import (
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/utils"
 	"github.com/javaknight1/servicepro/backend/pkg/clients/email"
+	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"
 )
 
 const (
@@ -726,12 +726,12 @@ func (s *InvoiceService) generatePaymentToken() (string, error) {
 
 // sendInvoiceEmail sends the invoice email to the customer with PDF attachment
 func (s *InvoiceService) sendInvoiceEmail(invoice *models.Invoice) {
+	ctx := context.Background()
+
 	if invoice.Customer == nil || invoice.PaymentToken == nil {
-		log.Printf("[INVOICE-SERVICE] Cannot send invoice email: missing customer or payment token")
+		logging.Warn(ctx, "[INVOICE-SERVICE] Cannot send invoice email: missing customer or payment token", nil)
 		return
 	}
-
-	ctx := context.Background()
 
 	// Build payment URL - points to backend API which redirects to Stripe Checkout
 	paymentURL := fmt.Sprintf("%s/api/v1/public/invoices/pay/%s", s.backendURL, *invoice.PaymentToken)
@@ -743,7 +743,7 @@ func (s *InvoiceService) sendInvoiceEmail(invoice *models.Invoice) {
 	if s.pdfService != nil {
 		pdfResult, err := s.pdfService.GenerateInvoicePDF(ctx, invoice)
 		if err != nil {
-			log.Printf("[INVOICE-SERVICE] Failed to generate PDF for invoice %s: %v", invoice.InvoiceNumber, err)
+			logging.Error(ctx, "[INVOICE-SERVICE] Failed to generate PDF for invoice", map[string]any{"invoice_number": invoice.InvoiceNumber, "error": err})
 		} else {
 			pdfAttachment = &email.Attachment{
 				Filename:    pdfResult.FileName,
@@ -754,7 +754,7 @@ func (s *InvoiceService) sendInvoiceEmail(invoice *models.Invoice) {
 			// Get download URL
 			url, _, err := s.pdfService.GetInvoicePDFURL(ctx, invoice.ID)
 			if err != nil {
-				log.Printf("[INVOICE-SERVICE] Failed to get download URL for invoice %s: %v", invoice.InvoiceNumber, err)
+				logging.Error(ctx, "[INVOICE-SERVICE] Failed to get download URL for invoice", map[string]any{"invoice_number": invoice.InvoiceNumber, "error": err})
 			} else {
 				downloadURL = url
 			}
@@ -763,20 +763,20 @@ func (s *InvoiceService) sendInvoiceEmail(invoice *models.Invoice) {
 
 	// Send invoice email
 	if err := s.emailClient.SendInvoiceEmail(ctx, invoice.Customer.Email, invoice, paymentURL, pdfAttachment, downloadURL); err != nil {
-		log.Printf("[INVOICE-SERVICE] Failed to send invoice email to %s: %v", invoice.Customer.Email, err)
+		logging.Error(ctx, "[INVOICE-SERVICE] Failed to send invoice email", map[string]any{"customer_email": invoice.Customer.Email, "error": err})
 	} else {
-		log.Printf("[INVOICE-SERVICE] Invoice email sent to %s for invoice %s", invoice.Customer.Email, invoice.InvoiceNumber)
+		logging.Info(ctx, "[INVOICE-SERVICE] Invoice email sent", map[string]any{"customer_email": invoice.Customer.Email, "invoice_number": invoice.InvoiceNumber})
 	}
 }
 
 // SendReceiptEmail sends a payment receipt email to the customer with PDF attachment
 func (s *InvoiceService) SendReceiptEmail(invoice *models.Invoice) {
+	ctx := context.Background()
+
 	if s.emailClient == nil || invoice.Customer == nil {
-		log.Printf("[INVOICE-SERVICE] Cannot send receipt email: missing email client or customer")
+		logging.Warn(ctx, "[INVOICE-SERVICE] Cannot send receipt email: missing email client or customer", nil)
 		return
 	}
-
-	ctx := context.Background()
 
 	var pdfAttachment *email.Attachment
 	var downloadURL string
@@ -785,7 +785,7 @@ func (s *InvoiceService) SendReceiptEmail(invoice *models.Invoice) {
 	if s.pdfService != nil {
 		pdfResult, err := s.pdfService.GenerateReceiptPDF(ctx, invoice)
 		if err != nil {
-			log.Printf("[INVOICE-SERVICE] Failed to generate receipt PDF for invoice %s: %v", invoice.InvoiceNumber, err)
+			logging.Error(ctx, "[INVOICE-SERVICE] Failed to generate receipt PDF for invoice", map[string]any{"invoice_number": invoice.InvoiceNumber, "error": err})
 		} else {
 			pdfAttachment = &email.Attachment{
 				Filename:    pdfResult.FileName,
@@ -796,7 +796,7 @@ func (s *InvoiceService) SendReceiptEmail(invoice *models.Invoice) {
 			// Get download URL
 			url, _, err := s.pdfService.GetReceiptPDFURL(ctx, invoice.ID)
 			if err != nil {
-				log.Printf("[INVOICE-SERVICE] Failed to get download URL for receipt %s: %v", invoice.InvoiceNumber, err)
+				logging.Error(ctx, "[INVOICE-SERVICE] Failed to get download URL for receipt", map[string]any{"invoice_number": invoice.InvoiceNumber, "error": err})
 			} else {
 				downloadURL = url
 			}
@@ -805,9 +805,9 @@ func (s *InvoiceService) SendReceiptEmail(invoice *models.Invoice) {
 
 	// Send receipt email
 	if err := s.emailClient.SendPaymentReceiptEmail(ctx, invoice.Customer.Email, invoice, pdfAttachment, downloadURL); err != nil {
-		log.Printf("[INVOICE-SERVICE] Failed to send receipt email to %s: %v", invoice.Customer.Email, err)
+		logging.Error(ctx, "[INVOICE-SERVICE] Failed to send receipt email", map[string]any{"customer_email": invoice.Customer.Email, "error": err})
 	} else {
-		log.Printf("[INVOICE-SERVICE] Receipt email sent to %s for invoice %s", invoice.Customer.Email, invoice.InvoiceNumber)
+		logging.Info(ctx, "[INVOICE-SERVICE] Receipt email sent", map[string]any{"customer_email": invoice.Customer.Email, "invoice_number": invoice.InvoiceNumber})
 	}
 }
 

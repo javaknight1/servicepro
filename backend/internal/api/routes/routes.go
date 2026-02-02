@@ -1,7 +1,7 @@
 package routes
 
 import (
-	"log"
+	"context"
 
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
@@ -14,6 +14,7 @@ import (
 	"github.com/javaknight1/servicepro/backend/internal/health"
 	emailclient "github.com/javaknight1/servicepro/backend/pkg/clients/email"
 	"github.com/javaknight1/servicepro/backend/pkg/clients/errortracking"
+	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"
 	metricsclient "github.com/javaknight1/servicepro/backend/pkg/clients/metrics"
 	smsclient "github.com/javaknight1/servicepro/backend/pkg/clients/sms"
 	storageclient "github.com/javaknight1/servicepro/backend/pkg/clients/storage"
@@ -47,10 +48,12 @@ func Setup(router *gin.Engine, db *gorm.DB, redisClient *redis.Client, email ema
 
 // setupHealthEndpoints configures health check endpoints with deep dependency checks
 func setupHealthEndpoints(router *gin.Engine, db *gorm.DB, redisClient *redis.Client, cfg *config.Config) {
+	ctx := context.Background()
+
 	// Get the underlying sql.DB for health checks
 	sqlDB, err := db.DB()
 	if err != nil {
-		log.Printf("[Health] Warning: Could not get sql.DB for health checks: %v", err)
+		logging.Warn(ctx, "Could not get sql.DB for health checks", map[string]any{"error": err.Error(), "source": "health"})
 	}
 
 	// Setup health checker with configured checks
@@ -78,18 +81,20 @@ func setupHealthEndpoints(router *gin.Engine, db *gorm.DB, redisClient *redis.Cl
 	// Kubernetes removes pod from service if this fails
 	router.GET("/health/ready", healthHandler.Ready)
 
-	log.Println("[Health] Health check endpoints registered: /health, /health/live, /health/ready")
+	logging.Info(ctx, "Health check endpoints registered", map[string]any{"endpoints": "/health, /health/live, /health/ready", "source": "health"})
 }
 
 // setupMetricsEndpoint configures the Prometheus metrics endpoint
 func setupMetricsEndpoint(router *gin.Engine, metrics metricsclient.Client, cfg *config.Config) {
+	ctx := context.Background()
+
 	if !cfg.Prometheus.Enabled {
-		log.Println("[Metrics] Prometheus metrics disabled (set PROMETHEUS_ENABLED=true to enable)")
+		logging.Info(ctx, "Prometheus metrics disabled", map[string]any{"note": "set PROMETHEUS_ENABLED=true to enable", "source": "metrics"})
 		return
 	}
 
 	if metrics == nil {
-		log.Println("[Metrics] Warning: Metrics client is nil, skipping /metrics endpoint")
+		logging.Warn(ctx, "Metrics client is nil, skipping /metrics endpoint", map[string]any{"source": "metrics"})
 		return
 	}
 
@@ -101,7 +106,7 @@ func setupMetricsEndpoint(router *gin.Engine, metrics metricsclient.Client, cfg 
 	// Wrap the Prometheus HTTP handler for Gin
 	router.GET(metricsPath, gin.WrapH(metrics.Handler()))
 
-	log.Printf("[Metrics] Prometheus metrics endpoint registered: %s", metricsPath)
+	logging.Info(ctx, "Prometheus metrics endpoint registered", map[string]any{"path": metricsPath, "source": "metrics"})
 }
 
 // NewRouteConfig creates a new RouteConfig with all dependencies initialized

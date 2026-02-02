@@ -4,12 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 
 	"github.com/javaknight1/servicepro/backend/internal/models"
+	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"
 )
 
 var (
@@ -142,44 +142,47 @@ func (r *TenantRepository) GetUserTenants(ctx context.Context, userID uuid.UUID)
 
 // UserBelongsToTenant checks if a user is a member of a tenant
 func (r *TenantRepository) UserBelongsToTenant(ctx context.Context, userID, tenantID uuid.UUID) (bool, error) {
-	log.Printf("[TENANT-REPO] UserBelongsToTenant: userID=%s, tenantID=%s", userID, tenantID)
+	logging.Info(ctx, "[TENANT-REPO] UserBelongsToTenant", map[string]any{"userID": userID.String(), "tenantID": tenantID.String()})
 
 	var count int64
 	err := r.db.WithContext(ctx).Model(&models.TenantUser{}).
 		Where("user_id = ? AND tenant_id = ? AND is_active = ?", userID, tenantID, true).
 		Count(&count).Error
 	if err != nil {
-		log.Printf("[TENANT-REPO] UserBelongsToTenant: Error=%v", err)
+		logging.Error(ctx, "[TENANT-REPO] UserBelongsToTenant error", map[string]any{"error": err.Error()})
 		return false, err
 	}
 
-	log.Printf("[TENANT-REPO] UserBelongsToTenant: count=%d, result=%v", count, count > 0)
+	logging.Info(ctx, "[TENANT-REPO] UserBelongsToTenant result", map[string]any{"count": count, "result": count > 0})
 	return count > 0, nil
 }
 
 // AddMember adds a user to a tenant
 func (r *TenantRepository) AddMember(ctx context.Context, membership *models.TenantUser) error {
-	log.Printf("[TENANT-REPO] AddMember: tenantID=%s, userID=%s, roleID=%s",
-		membership.TenantID, membership.UserID, membership.RoleID)
+	logging.Info(ctx, "[TENANT-REPO] AddMember", map[string]any{
+		"tenantID": membership.TenantID.String(),
+		"userID":   membership.UserID.String(),
+		"roleID":   membership.RoleID.String(),
+	})
 
 	// Check if already a member
 	var count int64
 	if err := r.db.WithContext(ctx).Model(&models.TenantUser{}).
 		Where("tenant_id = ? AND user_id = ?", membership.TenantID, membership.UserID).
 		Count(&count).Error; err != nil {
-		log.Printf("[TENANT-REPO] AddMember: Error checking existing membership: %v", err)
+		logging.Error(ctx, "[TENANT-REPO] AddMember: Error checking existing membership", map[string]any{"error": err.Error()})
 		return err
 	}
 	if count > 0 {
-		log.Printf("[TENANT-REPO] AddMember: User already a member (count=%d)", count)
+		logging.Warn(ctx, "[TENANT-REPO] AddMember: User already a member", map[string]any{"count": count})
 		return ErrUserAlreadyInTenant
 	}
 
 	err := r.db.WithContext(ctx).Create(membership).Error
 	if err != nil {
-		log.Printf("[TENANT-REPO] AddMember: Error creating membership: %v", err)
+		logging.Error(ctx, "[TENANT-REPO] AddMember: Error creating membership", map[string]any{"error": err.Error()})
 	} else {
-		log.Printf("[TENANT-REPO] AddMember: Successfully created membership")
+		logging.Info(ctx, "[TENANT-REPO] AddMember: Successfully created membership", nil)
 	}
 	return err
 }

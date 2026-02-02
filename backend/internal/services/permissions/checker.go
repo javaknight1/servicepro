@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/google/uuid"
@@ -12,6 +11,7 @@ import (
 
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/repository"
+	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"
 )
 
 const (
@@ -45,7 +45,7 @@ func (pc *PermissionChecker) CheckPermission(ctx context.Context, userID uuid.UU
 	defer func() {
 		duration := time.Since(start)
 		if duration > 100*time.Millisecond {
-			log.Printf("[PERF] Permission check for user %s took %v", userID, duration)
+			logging.Warn(ctx, "[PERF] Permission check took too long", map[string]any{"user_id": userID, "duration": duration})
 		}
 	}()
 
@@ -67,7 +67,7 @@ func (pc *PermissionChecker) CheckResourceAction(ctx context.Context, userID uui
 	defer func() {
 		duration := time.Since(start)
 		if duration > 100*time.Millisecond {
-			log.Printf("[PERF] Resource action check for user %s took %v", userID, duration)
+			logging.Warn(ctx, "[PERF] Resource action check took too long", map[string]any{"user_id": userID, "duration": duration})
 		}
 	}()
 
@@ -133,10 +133,10 @@ func (pc *PermissionChecker) InvalidateUserPermissions(ctx context.Context, user
 	cacheKey := pc.getCacheKey(userID)
 	err := pc.redis.Del(ctx, cacheKey).Err()
 	if err != nil {
-		log.Printf("[WARN] Failed to invalidate permissions cache for user %s: %v", userID, err)
+		logging.Warn(ctx, "[PERMISSIONS] Failed to invalidate permissions cache for user", map[string]any{"user_id": userID, "error": err})
 		return err
 	}
-	log.Printf("[INFO] Invalidated permissions cache for user %s", userID)
+	logging.Info(ctx, "[PERMISSIONS] Invalidated permissions cache for user", map[string]any{"user_id": userID})
 	return nil
 }
 
@@ -163,16 +163,16 @@ func (pc *PermissionChecker) getUserPermissions(ctx context.Context, userID uuid
 		// Cache hit - deserialize and return
 		var permissions []models.Permission
 		if err := json.Unmarshal([]byte(cached), &permissions); err != nil {
-			log.Printf("[WARN] Failed to unmarshal cached permissions for user %s: %v", userID, err)
+			logging.Warn(ctx, "[PERMISSIONS] Failed to unmarshal cached permissions for user", map[string]any{"user_id": userID, "error": err})
 			// Fall through to fetch from DB
 		} else {
-			log.Printf("[DEBUG] Cache hit for user permissions: %s", userID)
+			logging.Info(ctx, "[PERMISSIONS] Cache hit for user permissions", map[string]any{"user_id": userID})
 			return permissions, nil
 		}
 	}
 
 	// Cache miss or error - fetch from database
-	log.Printf("[DEBUG] Cache miss for user permissions: %s", userID)
+	logging.Info(ctx, "[PERMISSIONS] Cache miss for user permissions", map[string]any{"user_id": userID})
 	permissions, err := pc.repo.GetUserPermissions(userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch permissions from database: %w", err)
@@ -181,7 +181,7 @@ func (pc *PermissionChecker) getUserPermissions(ctx context.Context, userID uuid
 	// Cache the permissions
 	if err := pc.cachePermissions(ctx, userID, permissions); err != nil {
 		// Log error but don't fail the request
-		log.Printf("[WARN] Failed to cache permissions for user %s: %v", userID, err)
+		logging.Warn(ctx, "[PERMISSIONS] Failed to cache permissions for user", map[string]any{"user_id": userID, "error": err})
 	}
 
 	return permissions, nil
@@ -203,7 +203,7 @@ func (pc *PermissionChecker) cachePermissions(ctx context.Context, userID uuid.U
 		return fmt.Errorf("failed to set cache: %w", err)
 	}
 
-	log.Printf("[DEBUG] Cached permissions for user %s (TTL: %v)", userID, permissionsCacheTTL)
+	logging.Info(ctx, "[PERMISSIONS] Cached permissions for user", map[string]any{"user_id": userID, "ttl": permissionsCacheTTL})
 	return nil
 }
 

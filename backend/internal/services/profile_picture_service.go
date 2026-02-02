@@ -14,6 +14,7 @@ import (
 	"github.com/nfnt/resize"
 
 	"github.com/javaknight1/servicepro/backend/internal/repository"
+	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"
 	"github.com/javaknight1/servicepro/backend/pkg/clients/storage"
 )
 
@@ -127,7 +128,7 @@ func (s *ProfilePictureService) DeleteProfilePicture(ctx context.Context, userID
 	// Delete from storage
 	if err := s.storageClient.Delete(ctx, filename); err != nil {
 		// Log but don't fail - the file might not exist
-		fmt.Printf("Warning: failed to delete profile picture from storage: %v\n", err)
+		logging.Warn(ctx, "[PROFILE-PICTURE] Failed to delete profile picture from storage", map[string]any{"error": err})
 	}
 
 	// Clear the profile picture URL in database

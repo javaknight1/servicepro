@@ -3,12 +3,12 @@ package services
 import (
 	"context"
 	"fmt"
-	"log"
 
 	"github.com/google/uuid"
 	"github.com/stripe/stripe-go/v76"
 
 	stripeClient "github.com/javaknight1/servicepro/backend/internal/services/stripe"
+	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"
 )
 
 // InvoicePaymentHandlerAdapter implements the stripe.InvoicePaymentHandler interface
@@ -49,8 +49,7 @@ func (a *InvoicePaymentHandlerAdapter) HandleInvoicePaymentCompleted(
 		return fmt.Errorf("failed to mark invoice as paid: %w", err)
 	}
 
-	log.Printf("[INVOICE-PAYMENT-HANDLER] Invoice %s marked as paid: amount=$%s, session=%s",
-		invoiceID, amountPaid.StringFixed(2), checkoutSessionID)
+	logging.Info(ctx, "[INVOICE-PAYMENT-HANDLER] Invoice marked as paid", map[string]any{"invoice_id": invoiceID, "amount": amountPaid.StringFixed(2), "session_id": checkoutSessionID})
 
 	return nil
 }
@@ -88,26 +87,24 @@ func (a *InvoicePaymentHandlerAdapter) CreateCheckoutCompletedHandler() stripeCl
 		invoiceIDStr, ok := session.Metadata["invoice_id"]
 		if !ok {
 			// Not an invoice payment, ignore
-			log.Printf("[INVOICE-PAYMENT-HANDLER] Checkout session %s has no invoice_id metadata, skipping", session.ID)
+			logging.Info(ctx, "[INVOICE-PAYMENT-HANDLER] Checkout session has no invoice_id metadata, skipping", map[string]any{"session_id": session.ID})
 			return nil
 		}
 
 		paymentType, _ := session.Metadata["payment_type"]
 		if paymentType != "invoice" {
 			// Not an invoice payment type, ignore
-			log.Printf("[INVOICE-PAYMENT-HANDLER] Checkout session %s is not an invoice payment, skipping", session.ID)
+			logging.Info(ctx, "[INVOICE-PAYMENT-HANDLER] Checkout session is not an invoice payment, skipping", map[string]any{"session_id": session.ID})
 			return nil
 		}
 
 		// Verify payment was successful
 		if session.PaymentStatus != "paid" {
-			log.Printf("[INVOICE-PAYMENT-HANDLER] Checkout session %s payment status is %s, not paid",
-				session.ID, session.PaymentStatus)
+			logging.Info(ctx, "[INVOICE-PAYMENT-HANDLER] Checkout session payment status is not paid", map[string]any{"session_id": session.ID, "payment_status": session.PaymentStatus})
 			return nil
 		}
 
-		log.Printf("[INVOICE-PAYMENT-HANDLER] Processing invoice payment: invoice_id=%s, session=%s, amount=%d",
-			invoiceIDStr, session.ID, session.AmountTotal)
+		logging.Info(ctx, "[INVOICE-PAYMENT-HANDLER] Processing invoice payment", map[string]any{"invoice_id": invoiceIDStr, "session_id": session.ID, "amount": session.AmountTotal})
 
 		// Mark invoice as paid
 		if err := a.HandleInvoicePaymentCompleted(ctx, invoiceIDStr, session.AmountTotal, session.ID, session.PaymentIntentID); err != nil {
@@ -117,7 +114,7 @@ func (a *InvoicePaymentHandlerAdapter) CreateCheckoutCompletedHandler() stripeCl
 		// Send receipt email
 		if err := a.SendInvoiceReceiptEmail(ctx, invoiceIDStr); err != nil {
 			// Log but don't fail - payment was already processed
-			log.Printf("[INVOICE-PAYMENT-HANDLER] Failed to send receipt email for invoice %s: %v", invoiceIDStr, err)
+			logging.Error(ctx, "[INVOICE-PAYMENT-HANDLER] Failed to send receipt email for invoice", map[string]any{"invoice_id": invoiceIDStr, "error": err})
 		}
 
 		return nil

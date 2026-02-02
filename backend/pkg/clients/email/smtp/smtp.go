@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"log"
 	"net"
 	"net/smtp"
 	"strings"
@@ -13,6 +12,7 @@ import (
 	"github.com/javaknight1/servicepro/backend/config"
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/pkg/clients/email"
+	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"
 )
 
 func init() {
@@ -701,7 +701,7 @@ func (c *Client) HealthCheck(ctx context.Context) error {
 		return fmt.Errorf("SMTP health check failed: %w", err)
 	}
 	conn.Close()
-	log.Printf("SMTP health check passed: %s", addr)
+	logging.Info(ctx, "SMTP health check passed", map[string]any{"address": addr})
 	return nil
 }
 

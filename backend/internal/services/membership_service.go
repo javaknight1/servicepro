@@ -4,13 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/google/uuid"
 
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/repository"
+	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"
 )
 
 var (
@@ -138,7 +138,7 @@ func (s *MembershipService) UpdateTenantMembership(ctx context.Context, tenantID
 				return nil, fmt.Errorf("failed to update Stripe subscription: %w", err)
 			}
 			stripeSubscriptionID = stripeSub.ID
-			log.Printf("[MEMBERSHIP] Changed Stripe subscription %s to tier %s", stripeSubscriptionID, newTier.Name)
+			logging.Info(ctx, "[MEMBERSHIP] Changed Stripe subscription", map[string]any{"subscription_id": stripeSubscriptionID, "tier_name": newTier.Name})
 		} else {
 			// Create new subscription
 			stripeSub, err := s.stripeService.CreateSubscription(ctx, tenantID, newTier.Name, req.BillingCycle)
@@ -149,13 +149,13 @@ func (s *MembershipService) UpdateTenantMembership(ctx context.Context, tenantID
 				return nil, fmt.Errorf("failed to create Stripe subscription: %w", err)
 			}
 			stripeSubscriptionID = stripeSub.ID
-			log.Printf("[MEMBERSHIP] Created Stripe subscription %s for tier %s", stripeSubscriptionID, newTier.Name)
+			logging.Info(ctx, "[MEMBERSHIP] Created Stripe subscription", map[string]any{"subscription_id": stripeSubscriptionID, "tier_name": newTier.Name})
 		}
 	} else if priceCents == 0 && currentSub != nil && currentSub.StripeSubscriptionID != nil && *currentSub.StripeSubscriptionID != "" {
 		// Downgrading to free tier - cancel existing Stripe subscription
 		if s.stripeService != nil && s.stripeService.IsConfigured() {
 			if err := s.stripeService.CancelSubscription(ctx, *currentSub.StripeSubscriptionID, true); err != nil {
-				log.Printf("[MEMBERSHIP] Warning: failed to cancel Stripe subscription: %v", err)
+				logging.Warn(ctx, "[MEMBERSHIP] Failed to cancel Stripe subscription", map[string]any{"error": err})
 				// Continue anyway - the subscription will be cancelled eventually
 			}
 		}
@@ -174,13 +174,12 @@ func (s *MembershipService) UpdateTenantMembership(ctx context.Context, tenantID
 		if err == nil && updatedSub != nil {
 			priceID, _ := s.stripeService.GetPriceIDForTier(newTier.Name, req.BillingCycle)
 			if err := s.membershipRepo.UpdateSubscriptionStripeID(ctx, updatedSub.ID, stripeSubscriptionID, priceID); err != nil {
-				log.Printf("[MEMBERSHIP] Warning: failed to save Stripe subscription ID: %v", err)
+				logging.Warn(ctx, "[MEMBERSHIP] Failed to save Stripe subscription ID", map[string]any{"error": err})
 			}
 		}
 	}
 
-	log.Printf("[MEMBERSHIP] Updated tenant %s to tier %s (%s) with %s billing at %d cents",
-		tenantID, newTier.Name, newTier.DisplayName, req.BillingCycle, priceCents)
+	logging.Info(ctx, "[MEMBERSHIP] Updated tenant membership", map[string]any{"tenant_id": tenantID, "tier_name": newTier.Name, "tier_display_name": newTier.DisplayName, "billing_cycle": req.BillingCycle, "price_cents": priceCents})
 
 	// Return the updated membership
 	return s.GetTenantMembership(ctx, tenantID)
@@ -192,7 +191,7 @@ func (s *MembershipService) AssignDefaultTier(ctx context.Context, tenantID uuid
 	freeTier, err := s.membershipRepo.GetTierByName(ctx, DefaultTierName)
 	if err != nil {
 		if errors.Is(err, repository.ErrTierNotFound) {
-			log.Printf("[MEMBERSHIP] WARNING: Default tier '%s' not found, skipping assignment", DefaultTierName)
+			logging.Warn(ctx, "[MEMBERSHIP] Default tier not found, skipping assignment", map[string]any{"tier_name": DefaultTierName})
 			return nil
 		}
 		return fmt.Errorf("failed to get default tier: %w", err)
@@ -215,13 +214,13 @@ func (s *MembershipService) AssignDefaultTier(ctx context.Context, tenantID uuid
 
 	if err := s.membershipRepo.CreateSubscription(ctx, subscription); err != nil {
 		if errors.Is(err, repository.ErrActiveSubscription) {
-			log.Printf("[MEMBERSHIP] Tenant %s already has an active subscription", tenantID)
+			logging.Info(ctx, "[MEMBERSHIP] Tenant already has an active subscription", map[string]any{"tenant_id": tenantID})
 			return nil
 		}
 		return fmt.Errorf("failed to create subscription: %w", err)
 	}
 
-	log.Printf("[MEMBERSHIP] Assigned default tier '%s' to tenant %s", DefaultTierName, tenantID)
+	logging.Info(ctx, "[MEMBERSHIP] Assigned default tier to tenant", map[string]any{"tier_name": DefaultTierName, "tenant_id": tenantID})
 	return nil
 }
 
