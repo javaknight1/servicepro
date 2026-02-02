@@ -3,6 +3,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { DashboardLayout } from '@components/layout';
 import { Button } from '@components/shared';
 import { quoteService } from '@services/quoteService';
+import { getErrorMessage } from '@/utils/error';
 import { customerService, Customer } from '@services/customerService';
 import type { Quote, LineItemFormData } from '@app-types/quote';
 import {
@@ -263,14 +264,9 @@ export function QuoteDetailPage() {
         );
       }
       navigate('/quotes');
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to save quote:', err);
-      setError(
-        err?.response?.data?.message ||
-          err?.response?.data?.error ||
-          'Failed to save quote'
-      );
+      setError(getErrorMessage(err, 'Failed to save quote'));
     } finally {
       setIsSaving(false);
     }
@@ -285,10 +281,9 @@ export function QuoteDetailPage() {
     try {
       await quoteService.deleteQuote(id);
       navigate('/quotes');
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to delete quote:', err);
-      setError(err?.response?.data?.message || 'Failed to delete quote');
+      setError(getErrorMessage(err, 'Failed to delete quote'));
     } finally {
       setIsDeleting(false);
     }

@@ -28,6 +28,26 @@ import {
 } from './types';
 import { CalendarEvent } from './CalendarEvent';
 import { CalendarToolbar } from './CalendarToolbar';
+
+// Types for react-big-calendar callbacks
+interface DragDropCallbackArgs {
+  event: JobEvent;
+  start: Date | string;
+  end: Date | string;
+  isAllDay?: boolean;
+}
+
+interface ResizeCallbackArgs {
+  event: JobEvent;
+  start: Date | string;
+  end: Date | string;
+}
+
+interface ToolbarCallbackProps {
+  date: Date;
+  onNavigate: (action: 'PREV' | 'NEXT' | 'TODAY') => void;
+  label: string;
+}
 import { calendarStyles, getEventStyles, cn } from './styles';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 
@@ -144,12 +164,11 @@ export const Calendar: React.FC<CalendarProps> = ({
 
   // Handle event drop (drag and drop)
   const handleEventDrop = useCallback(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    async ({ event, start, end, isAllDay }: any) => {
+    async ({ event, start, end, isAllDay }: DragDropCallbackArgs) => {
       if (!onEventDrop) return;
 
       const dragData: DragDropEvent = {
-        event: event as JobEvent,
+        event: event,
         start: new Date(start),
         end: new Date(end),
         isAllDay: isAllDay || false,
@@ -167,12 +186,11 @@ export const Calendar: React.FC<CalendarProps> = ({
 
   // Handle event resize
   const handleEventResize = useCallback(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    async ({ event, start, end }: any) => {
+    async ({ event, start, end }: ResizeCallbackArgs) => {
       if (!onEventResize) return;
 
       const resizeData: ResizeEvent = {
-        event: event as JobEvent,
+        event: event,
         start: new Date(start),
         end: new Date(end),
       };
@@ -247,8 +265,7 @@ export const Calendar: React.FC<CalendarProps> = ({
 
   // Custom toolbar component
   const ToolbarComponent = useCallback(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (toolbarProps: any) => (
+    (toolbarProps: ToolbarCallbackProps) => (
       <CalendarToolbar
         date={toolbarProps.date}
         view={currentView}

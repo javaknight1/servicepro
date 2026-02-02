@@ -8,6 +8,11 @@ import { useMembershipStore, useTenantStore, useBillingStore } from '@store';
 import { useStripeContext } from '@/providers/StripeProvider';
 import { billingApi } from '@/services';
 import type { MembershipTier, BillingCycle } from '@/types/membership';
+
+/** Expected shape of location.state when navigating to this page */
+interface ChangeMembershipLocationState {
+  selectedTierId?: string;
+}
 import {
   ArrowLeft,
   AlertTriangle,
@@ -170,8 +175,8 @@ export function ChangeMembershipPage() {
   const [pendingTier, setPendingTier] = useState<MembershipTier | null>(null);
 
   // Get pre-selected tier from location state (if coming from pricing page)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const preSelectedTierId = (location.state as any)?.selectedTierId;
+  const locationState = location.state as ChangeMembershipLocationState | null;
+  const preSelectedTierId = locationState?.selectedTierId;
 
   useEffect(() => {
     loadTiers();
@@ -353,7 +358,7 @@ export function ChangeMembershipPage() {
                   disabled={false}
                   highlighted={
                     tier.name === 'basic' ||
-                    (preSelectedTierId && tier.id === preSelectedTierId)
+                    (!!preSelectedTierId && tier.id === preSelectedTierId)
                   }
                   billingCycle={billingCycle}
                 />

@@ -54,6 +54,13 @@ This approach is used during development. When we push to production, we will im
 - Follow existing component patterns in `/frontend/src/components/shared/`
 - Use TypeScript strict mode
 
+**IMPORTANT: Never use `any` type.** Always use proper TypeScript types:
+
+- For unknown error types in catch blocks, use `unknown` and the `getErrorMessage()` utility from `/frontend/src/utils/error.ts`
+- For third-party library callbacks, create typed interfaces (see examples in `/frontend/src/components/calendar/types.ts`)
+- For test mocks, create proper mock interfaces instead of using `as any`
+- If you must cast an incomplete mock object, use `as unknown as ProperType` instead of `as any`
+
 ## Permissions
 
 When adding new features that require permissions:

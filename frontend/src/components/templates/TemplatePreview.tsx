@@ -5,6 +5,8 @@ import type {
   QuoteTemplate,
   TemplateVariable,
   TemplateVariableMap,
+  TemplateVariableValue,
+  TemplateLineItem,
   TemplateRenderResult,
 } from '../../types/template';
 
@@ -48,8 +50,7 @@ export const TemplatePreview: React.FC<TemplatePreviewProps> = ({
     setVariables({ ...defaultVars, ...initialVariables });
   }, [template, initialVariables]);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleVariableChange = (name: string, value: any) => {
+  const handleVariableChange = (name: string, value: TemplateVariableValue) => {
     const newVariables = { ...variables, [name]: value };
     setVariables(newVariables);
     onVariableChange?.(newVariables);
@@ -71,8 +72,10 @@ export const TemplatePreview: React.FC<TemplatePreviewProps> = ({
     }
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const _formatValue = (value: any, type: TemplateVariable['type']) => {
+  const _formatValue = (
+    value: TemplateVariableValue,
+    type: TemplateVariable['type']
+  ) => {
     if (value === null || value === undefined) return '';
 
     switch (type) {
@@ -94,8 +97,7 @@ export const TemplatePreview: React.FC<TemplatePreviewProps> = ({
 
   const validateVariable = (
     varDef: TemplateVariable,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    value: any
+    value: TemplateVariableValue
   ): string | null => {
     if (varDef.required && !value) {
       return `${varDef.label} is required`;
@@ -122,7 +124,8 @@ export const TemplatePreview: React.FC<TemplatePreviewProps> = ({
     }
 
     if (varDef.type === 'number' || varDef.type === 'currency') {
-      const numValue = typeof value === 'number' ? value : parseFloat(value);
+      const numValue =
+        typeof value === 'number' ? value : parseFloat(String(value));
       if (isNaN(numValue)) return 'Invalid number';
 
       if (
@@ -179,11 +182,14 @@ export const TemplatePreview: React.FC<TemplatePreviewProps> = ({
                   )}
                   <input
                     type={getInputType(varDef.type)}
-                    value={value || ''}
+                    value={
+                      value instanceof Date
+                        ? value.toISOString().split('T')[0]
+                        : (value ?? '')
+                    }
                     onChange={(e) => {
                       const inputValue = e.target.value;
-                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                      let parsedValue: any = inputValue;
+                      let parsedValue: TemplateVariableValue = inputValue;
 
                       if (
                         varDef.type === 'number' ||
@@ -325,8 +331,12 @@ export const TemplatePreview: React.FC<TemplatePreviewProps> = ({
                         </thead>
                         <tbody className="divide-y divide-gray-200 bg-white">
                           {renderResult.line_items.map(
-                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                            (item: any, index: number) => (
+                            (
+                              item: TemplateLineItem & {
+                                total?: number | string;
+                              },
+                              index: number
+                            ) => (
                               <tr key={index}>
                                 <td className="px-4 py-3 text-sm text-gray-900">
                                   {item.description}
@@ -335,10 +345,10 @@ export const TemplatePreview: React.FC<TemplatePreviewProps> = ({
                                   {item.quantity}
                                 </td>
                                 <td className="px-4 py-3 text-right text-sm text-gray-900">
-                                  ${parseFloat(item.unit_price).toFixed(2)}
+                                  ${Number(item.unit_price).toFixed(2)}
                                 </td>
                                 <td className="px-4 py-3 text-right text-sm font-medium text-gray-900">
-                                  ${parseFloat(item.total).toFixed(2)}
+                                  ${Number(item.total ?? 0).toFixed(2)}
                                 </td>
                               </tr>
                             )

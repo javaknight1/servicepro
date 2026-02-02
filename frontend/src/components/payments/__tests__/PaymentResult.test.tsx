@@ -163,7 +163,7 @@ describe('PaymentResult', () => {
         error: {
           type: 'card_error',
           message: 'Insufficient funds',
-        } as any,
+        } as unknown as import('@stripe/stripe-js').StripeError,
       };
 
       render(<PaymentResult result={resultWithStripeError} />);

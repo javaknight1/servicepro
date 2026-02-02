@@ -17,6 +17,7 @@ import {
   Job,
 } from '@services/jobService';
 import { customerService, Customer } from '@services/customerService';
+import { getErrorMessage } from '@/utils/error';
 import { ArrowLeft, Save, Trash2, Loader2 } from 'lucide-react';
 
 interface PendingAssignment extends CreateJobAssignment {
@@ -189,14 +190,9 @@ export function JobDetailPage() {
         });
       }
       navigate('/jobs');
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to save job:', err);
-      setError(
-        err?.response?.data?.message ||
-          err?.response?.data?.error ||
-          'Failed to save job'
-      );
+      setError(getErrorMessage(err, 'Failed to save job'));
     } finally {
       setIsSaving(false);
     }
@@ -211,10 +207,9 @@ export function JobDetailPage() {
     try {
       await jobService.deleteJob(id);
       navigate('/jobs');
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to delete job:', err);
-      setError(err?.response?.data?.message || 'Failed to delete job');
+      setError(getErrorMessage(err, 'Failed to delete job'));
     } finally {
       setIsDeleting(false);
     }

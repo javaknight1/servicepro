@@ -27,6 +27,15 @@ export enum JobPriority {
 export type CalendarView = 'day' | 'week' | 'month' | 'agenda';
 
 /**
+ * Calendar resource (e.g., technician, equipment)
+ */
+export interface CalendarResource {
+  id: string;
+  title: string;
+  color?: string;
+}
+
+/**
  * Job event interface for calendar
  */
 export interface JobEvent extends RBCEvent {
@@ -42,8 +51,7 @@ export interface JobEvent extends RBCEvent {
   customerId?: string;
   customerName?: string;
   location?: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  resource?: any;
+  resource?: CalendarResource | string;
 }
 
 /**

@@ -88,13 +88,25 @@ export interface SkippedDate {
 }
 
 /**
+ * Generated Schedule Instance
+ */
+export interface GeneratedSchedule {
+  id: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  title: string;
+  location?: string;
+  assignedTechIds: string[];
+}
+
+/**
  * Generation Result
  */
 export interface GenerationResult {
   generatedCount: number;
   skippedCount: number;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  schedules: any[];
+  schedules: GeneratedSchedule[];
   skippedDates?: SkippedDate[];
 }
 

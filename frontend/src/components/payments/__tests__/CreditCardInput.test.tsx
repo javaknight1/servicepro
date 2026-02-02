@@ -1,10 +1,30 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { StripeCardElementChangeEvent } from '@stripe/stripe-js';
+import type {
+  StripeCardElementChangeEvent,
+  StripeCardElementOptions,
+} from '@stripe/stripe-js';
+
+/** Props for mocked CardElement component */
+interface MockCardElementProps {
+  onChange?: (event: StripeCardElementChangeEvent) => void;
+  onFocus?: () => void;
+  onBlur?: () => void;
+  onReady?: () => void;
+  options?: StripeCardElementOptions;
+  id?: string;
+}
 
 // Mock Stripe Elements
 vi.mock('@stripe/react-stripe-js', () => ({
-  CardElement: ({ onChange, onFocus, onBlur, onReady, options, id }: any) => (
+  CardElement: ({
+    onChange,
+    onFocus,
+    onBlur,
+    onReady,
+    options,
+    id,
+  }: MockCardElementProps) => (
     <div
       data-testid="stripe-card-element"
       id={id}

@@ -77,8 +77,7 @@ export const RecurringForm: React.FC<RecurringFormProps> = ({
 
   const handleInputChange = (
     field: keyof RecurringPatternRequest,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    value: any
+    value: RecurringPatternRequest[keyof RecurringPatternRequest]
   ) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     // Clear error for this field

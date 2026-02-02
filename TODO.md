@@ -18,7 +18,7 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 | ~~T004~~ | ~~P0~~   | ~~Infra~~    | ~~Create GitHub Actions CI/CD workflows~~ ✓        |
 | ~~T005~~ | ~~P0~~   | ~~Backend~~  | ~~Expose /metrics endpoint for Prometheus~~ ✓      |
 | ~~T006~~ | ~~P1~~   | ~~Backend~~  | ~~Structured JSON logging (replace fmt.Printf)~~ ✓ |
-| T007     | P1       | Frontend     | Fix `any` types (50 instances)                     |
+| ~~T007~~ | ~~P1~~   | ~~Frontend~~ | ~~Fix `any` types (50 instances)~~ ✓               |
 | T008     | P1       | Frontend     | Remove @ts-nocheck directives                      |
 | T009     | P1       | Frontend     | Enable noUnusedLocals/noUnusedParameters           |
 | T010     | P1       | Backend      | Apply error tracking middleware                    |
@@ -60,7 +60,7 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 
 - [x] **T005** - Expose /metrics endpoint for Prometheus ✓
 - [x] **T006** - Structured logging (replace fmt.Printf) ✓
-- [ ] **T007** - Fix 50 `any` types in frontend
+- [x] **T007** - Fix 50 `any` types in frontend ✓
 - [ ] **T008** - Remove @ts-nocheck directives
 - [ ] **T009** - Enable noUnusedLocals/noUnusedParameters
 
@@ -102,6 +102,7 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 - [x] T004: GitHub Actions CI/CD - checks.yml, release.yml, deploy-release.yml already exist
 - [x] T005: Prometheus /metrics endpoint - Enabled via PROMETHEUS_ENABLED=true, uses existing prometheus client
 - [x] T006: Structured JSON logging - Migrated all fmt.Printf/log.Printf to structured logging client with global logger pattern
+- [x] T007: Fix `any` types - Replaced 50+ `any` types with proper TypeScript types, created error utility, fixed all test mocks
 
 ---
 
@@ -149,19 +150,14 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 
 ### Frontend Type Safety
 
-- [ ] **T007: Fix `any` Types (50 instances across 28 files)**
-  - **What**: Replace `any` with proper TypeScript types
-  - **Why**: Type safety gaps undermine TypeScript benefits
-  - **Priority files**:
-    - [ ] `frontend/src/services/api.ts` (1 instance)
-    - [ ] `frontend/src/pages/Invoices/InvoiceDetailPage.tsx` (3 instances)
-    - [ ] `frontend/src/pages/Quotes/QuoteDetailPage.tsx` (2 instances)
-    - [ ] `frontend/src/pages/Jobs/JobDetailPage.tsx` (2 instances)
-    - [ ] `frontend/src/components/filters/FilterBar.tsx` (4 instances)
-    - [ ] `frontend/src/components/templates/TemplatePreview.tsx` (5 instances)
-    - [ ] `frontend/src/types/chart.ts` (2 instances)
-    - [ ] `frontend/src/types/template.ts` (3 instances)
-  - **Command**: `grep -r ": any" frontend/src --include="*.ts" --include="*.tsx"`
+- [x] **T007: Fix `any` Types** ✓ COMPLETE
+  - Replaced 50+ `any` types with proper TypeScript types
+  - Created `src/utils/error.ts` utility for type-safe error handling
+  - Fixed type definition files: template.ts, chart.ts, recurring/types.ts, calendar/types.ts
+  - Fixed page components: CustomerDetailPage, InvoiceDetailPage, QuoteDetailPage, JobDetailPage, etc.
+  - Fixed components: FilterBar.tsx, TemplatePreview.tsx, Calendar.tsx, RecurringForm.tsx, etc.
+  - Fixed stores: tenantStore.ts with proper error handling
+  - Fixed all test mocks with proper TypeScript interfaces (MockCardElementProps, etc.)
 
 - [ ] **T008: Remove @ts-nocheck Directives**
   - **What**: Fix underlying type issues instead of suppressing

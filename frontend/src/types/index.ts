@@ -8,6 +8,7 @@ export type {
   PasswordResetConfirmRequest,
   VerifyEmailRequest,
   ResendVerificationRequest,
+  UpdateUserRequest,
   ErrorResponse,
   AuthState,
 } from './auth';

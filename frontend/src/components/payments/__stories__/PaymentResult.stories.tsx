@@ -265,8 +265,7 @@ export const FailedWithStripeError: Story = {
         code: 'card_declined',
         message: 'Your card was declined.',
         decline_code: 'generic_decline',
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } as any,
+      } as unknown as import('@stripe/stripe-js').StripeError,
     },
     onRetry: action('retry'),
     onClose: action('close'),

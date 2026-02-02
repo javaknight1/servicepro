@@ -2,6 +2,20 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { PaymentSummaryData } from '../../../types/payment';
+import type {
+  StripeCardElementChangeEvent,
+  StripeCardElementOptions,
+} from '@stripe/stripe-js';
+
+/** Props for mocked CardElement component */
+interface MockCardElementProps {
+  onChange?: (event: Partial<StripeCardElementChangeEvent>) => void;
+  onFocus?: () => void;
+  onBlur?: () => void;
+  onReady?: () => void;
+  options?: StripeCardElementOptions;
+  id?: string;
+}
 
 // Create mock objects with vi.hoisted() to ensure they're available before vi.mock runs
 const { mockStripe, mockElements } = vi.hoisted(() => ({
@@ -20,7 +34,14 @@ vi.mock('@stripe/react-stripe-js', () => ({
   ),
   useStripe: () => mockStripe,
   useElements: () => mockElements,
-  CardElement: ({ onChange, onFocus, onBlur, onReady, _options, id }: any) => (
+  CardElement: ({
+    onChange,
+    onFocus,
+    onBlur,
+    onReady,
+    options: _options,
+    id,
+  }: MockCardElementProps) => (
     <div
       data-testid="stripe-card-element"
       id={id}
@@ -206,7 +227,7 @@ describe('PaymentForm', () => {
       ),
       useStripe: () => mockStripe,
       useElements: () => mockElements,
-      CardElement: ({ onChange }: any) => (
+      CardElement: ({ onChange }: MockCardElementProps) => (
         <div
           data-testid="stripe-card-element"
           onClick={() =>

@@ -380,8 +380,9 @@ const BaseChart = forwardRef<ChartRef, InternalBaseChartProps>(
           const chart = chartRef.current;
           if (chart) {
             chart.data.labels = labels;
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            chart.data.datasets = datasets as any;
+            // DatasetConfig is compatible with Chart.js dataset at runtime
+            chart.data.datasets =
+              datasets as unknown as typeof chart.data.datasets;
             chart.update();
           }
         },

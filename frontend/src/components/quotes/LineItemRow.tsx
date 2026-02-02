@@ -1,6 +1,21 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { LineItem, LineItemValidationErrors } from '../../types/quote';
 
+/** Props for drag handle element from drag-and-drop libraries */
+interface DragHandleProps {
+  role?: string;
+  tabIndex?: number;
+  'aria-grabbed'?: boolean;
+  'aria-describedby'?: string;
+  draggable?: boolean;
+  onDragStart?: React.DragEventHandler;
+  onDragOver?: React.DragEventHandler;
+  onKeyDown?: React.KeyboardEventHandler;
+  onMouseDown?: React.MouseEventHandler;
+  onTouchStart?: React.TouchEventHandler;
+  [key: string]: unknown; // Allow additional drag-and-drop library props
+}
+
 interface LineItemRowProps {
   item: LineItem;
   index: number;
@@ -9,8 +24,7 @@ interface LineItemRowProps {
   onDuplicate?: (id: string) => void;
   isSelected?: boolean;
   onSelect?: (id: string, selected: boolean) => void;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  dragHandleProps?: any;
+  dragHandleProps?: DragHandleProps;
   isDragging?: boolean;
   isEditable?: boolean;
 }

@@ -501,7 +501,7 @@ describe('Export Utilities', () => {
           click: clickMock,
           href: '',
           download: '',
-        } as any;
+        } as unknown as HTMLAnchorElement;
       }
       return document.createElement(tag);
     });

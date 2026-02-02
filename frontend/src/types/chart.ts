@@ -3,7 +3,13 @@
  * Built on Chart.js with React integration
  */
 
-import type { ChartType, Plugin, AnimationSpec, Chart } from 'chart.js';
+import type {
+  ChartType,
+  Plugin,
+  AnimationSpec,
+  Chart,
+  ActiveElement,
+} from 'chart.js';
 
 // Color palette for charts
 export const chartColors = {
@@ -146,11 +152,17 @@ export interface BaseChartProps {
   /** Callback when chart is ready */
   onReady?: (chart: Chart) => void;
   /** Callback on click */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  onClick?: (event: MouseEvent, elements: any[], chart: Chart) => void;
+  onClick?: (
+    event: MouseEvent,
+    elements: ActiveElement[],
+    chart: Chart
+  ) => void;
   /** Callback on hover */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  onHover?: (event: MouseEvent, elements: any[], chart: Chart) => void;
+  onHover?: (
+    event: MouseEvent,
+    elements: ActiveElement[],
+    chart: Chart
+  ) => void;
   /** Accessible label */
   ariaLabel?: string;
 }

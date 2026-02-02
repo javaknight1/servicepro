@@ -3,13 +3,15 @@
  * Matches backend API models
  */
 
+/** Value types that can be stored in a template variable */
+export type TemplateVariableValue = string | number | Date | null;
+
 export interface TemplateVariable {
   name: string;
   type: 'text' | 'number' | 'date' | 'currency';
   label: string;
   description?: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  default_value?: any;
+  default_value?: TemplateVariableValue;
   required: boolean;
   placeholder?: string;
   validation?: VariableValidation;
@@ -69,8 +71,7 @@ export interface TemplateCategory {
 }
 
 export interface TemplateVariableMap {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  [key: string]: any;
+  [key: string]: TemplateVariableValue;
 }
 
 export interface TemplateRenderRequest {
@@ -81,8 +82,7 @@ export interface TemplateRenderRequest {
 
 export interface TemplateRenderResult {
   content: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  line_items: any[];
+  line_items: TemplateLineItem[];
   payment_terms: string;
   delivery_info: string;
   warranty_info: string;

@@ -16,6 +16,7 @@ import {
 import { useTenantStore } from '@store';
 import { tenantApi } from '@services/tenantService';
 import { roleApi } from '@services/roleApi';
+import { getErrorMessage } from '@/utils/error';
 import {
   Building2,
   Users,
@@ -167,12 +168,9 @@ export function OrgSettingsPage() {
       setNewMemberEmail('');
       setNewMemberRoleId('');
       loadMembers();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to invite member:', err);
-      const errorMessage =
-        err.response?.data?.error || 'Failed to send invitation';
-      setInviteError(errorMessage);
+      setInviteError(getErrorMessage(err, 'Failed to send invitation'));
     } finally {
       setIsInviting(false);
     }

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { tenantApi } from '@/services/tenantService';
+import { getErrorMessage } from '@/utils/error';
 import type {
   Tenant,
   TenantState,
@@ -39,11 +40,9 @@ export const useTenantStore = create<TenantState>()(
 
             set({ currentTenant: savedTenant || tenants[0] });
           }
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        } catch (error: any) {
+        } catch (error) {
           set({
-            error:
-              error.response?.data?.message || 'Failed to load organizations',
+            error: getErrorMessage(error, 'Failed to load organizations'),
             isLoading: false,
           });
           throw error;
@@ -82,11 +81,9 @@ export const useTenantStore = create<TenantState>()(
           }));
 
           return newTenant;
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        } catch (error: any) {
+        } catch (error) {
           set({
-            error:
-              error.response?.data?.message || 'Failed to create organization',
+            error: getErrorMessage(error, 'Failed to create organization'),
             isLoading: false,
           });
           throw error;
@@ -111,11 +108,9 @@ export const useTenantStore = create<TenantState>()(
           }));
 
           return updatedTenant;
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        } catch (error: any) {
+        } catch (error) {
           set({
-            error:
-              error.response?.data?.message || 'Failed to update organization',
+            error: getErrorMessage(error, 'Failed to update organization'),
             isLoading: false,
           });
           throw error;
@@ -138,11 +133,9 @@ export const useTenantStore = create<TenantState>()(
                 : currentTenant,
             isLoading: false,
           });
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        } catch (error: any) {
+        } catch (error) {
           set({
-            error:
-              error.response?.data?.message || 'Failed to delete organization',
+            error: getErrorMessage(error, 'Failed to delete organization'),
             isLoading: false,
           });
           throw error;

@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { DashboardLayout } from '@components/layout';
 import { Button } from '@components/shared';
 import { customerService } from '@services/customerService';
+import { getErrorMessage } from '@/utils/error';
 import type {
   CustomerType,
   CustomerStatus,
@@ -171,14 +172,9 @@ export function CustomerDetailPage() {
         await customerService.updateCustomer(id, submitData);
       }
       navigate('/customers');
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to save customer:', err);
-      setError(
-        err?.response?.data?.message ||
-          err?.response?.data?.error ||
-          'Failed to save customer'
-      );
+      setError(getErrorMessage(err, 'Failed to save customer'));
     } finally {
       setIsSaving(false);
     }
@@ -196,10 +192,9 @@ export function CustomerDetailPage() {
     try {
       await customerService.deleteCustomer(id);
       navigate('/customers');
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to delete customer:', err);
-      setError(err?.response?.data?.message || 'Failed to delete customer');
+      setError(getErrorMessage(err, 'Failed to delete customer'));
     } finally {
       setIsDeleting(false);
     }

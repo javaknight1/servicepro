@@ -5,6 +5,7 @@ import {
   FilterConfig,
   FilterValue,
   ActiveFilter,
+  DateRange,
   formatFilterValue,
 } from '../../types/filter';
 import { FilterProvider, useFilters, useFilter } from './FilterState';
@@ -563,10 +564,8 @@ const FilterItem: React.FC<FilterItemProps> = memo(({ config }) => {
       case 'date':
         return (
           <DateRangePicker
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            value={value as any}
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            onChange={setValue as any}
+            value={value as DateRange | null}
+            onChange={setValue as (value: DateRange | null) => void}
             placeholder={config.placeholder}
           />
         );
@@ -574,10 +573,8 @@ const FilterItem: React.FC<FilterItemProps> = memo(({ config }) => {
       case 'daterange':
         return (
           <DateRangePicker
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            value={value as any}
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            onChange={setValue as any}
+            value={value as DateRange | null}
+            onChange={setValue as (value: DateRange | null) => void}
             placeholder={config.placeholder}
             minDate={config.min as Date}
             maxDate={config.max as Date}

@@ -7,6 +7,7 @@ import {
   Invoice,
   InvoiceStatus,
 } from '@services/invoiceService';
+import { getErrorMessage } from '@/utils/error';
 import { customerService, Customer } from '@services/customerService';
 import {
   ArrowLeft,
@@ -248,14 +249,9 @@ export function InvoiceDetailPage() {
         );
       }
       navigate('/invoices');
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to save invoice:', err);
-      setError(
-        err?.response?.data?.message ||
-          err?.response?.data?.error ||
-          'Failed to save invoice'
-      );
+      setError(getErrorMessage(err, 'Failed to save invoice'));
     } finally {
       setIsSaving(false);
     }
@@ -271,10 +267,9 @@ export function InvoiceDetailPage() {
     try {
       await invoiceService.deleteInvoice(id);
       navigate('/invoices');
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to delete invoice:', err);
-      setError(err?.response?.data?.message || 'Failed to delete invoice');
+      setError(getErrorMessage(err, 'Failed to delete invoice'));
     } finally {
       setIsDeleting(false);
     }
@@ -291,14 +286,9 @@ export function InvoiceDetailPage() {
       setShowSendConfirmation(false);
       // Show success message or navigate
       alert('Invoice sent successfully!');
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to send invoice:', err);
-      setError(
-        err?.response?.data?.message ||
-          err?.response?.data?.error ||
-          'Failed to send invoice'
-      );
+      setError(getErrorMessage(err, 'Failed to send invoice'));
     } finally {
       setIsSending(false);
     }

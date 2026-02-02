@@ -348,7 +348,13 @@ export const VariableEditor: React.FC<VariableEditorProps> = ({
                         ? 'date'
                         : 'text'
                   }
-                  value={editingVariable.default_value || ''}
+                  value={
+                    editingVariable.default_value instanceof Date
+                      ? editingVariable.default_value
+                          .toISOString()
+                          .split('T')[0]
+                      : (editingVariable.default_value ?? '')
+                  }
                   onChange={(e) =>
                     updateEditingVariable({
                       default_value:

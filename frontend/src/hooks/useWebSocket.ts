@@ -7,8 +7,7 @@ export interface WebSocketMessage {
   event: string;
   status: string;
   timestamp: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  data?: any;
+  data?: Record<string, unknown>;
 }
 
 export interface WebSocketOptions {

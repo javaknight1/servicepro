@@ -1,6 +1,14 @@
 /* eslint-disable react-refresh/only-export-components */
 import { useState, useEffect } from 'react';
-import { PatternPreviewProps, RecurrenceType, DAYS_OF_WEEK } from './types';
+import {
+  PatternPreviewProps,
+  RecurrenceType,
+  DAYS_OF_WEEK,
+  RecurringPatternRequest,
+  RecurringPatternResponse,
+} from './types';
+
+type PatternType = RecurringPatternRequest | RecurringPatternResponse;
 
 /**
  * Format date for display
@@ -29,8 +37,7 @@ const formatTime = (timeStr: string): string => {
  * Generate preview occurrences client-side
  */
 const generatePreviewOccurrences = (
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  pattern: any,
+  pattern: PatternType,
   previewMonths: number
 ): Date[] => {
   const occurrences: Date[] = [];
@@ -116,8 +123,7 @@ const generatePreviewOccurrences = (
 /**
  * Pattern Description Generator
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const generateDescription = (pattern: any): string => {
+const generateDescription = (pattern: PatternType): string => {
   const parts: string[] = [];
 
   // Frequency
