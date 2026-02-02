@@ -180,11 +180,21 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
 // =============================================================================
 
 /**
- * Creates a loadable component with Suspense and Error Boundary
+ * Type for dynamic import results.
+ * Uses a generic object type to handle union types from dynamic imports.
+ * eslint-disable-next-line @typescript-eslint/no-explicit-any - Required for dynamic import compatibility
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function loadable<P = any>(
-  importFn: () => Promise<{ default: ComponentType<P> }>,
+type DynamicImportModule = { default: ComponentType<any> };
+
+/**
+ * Creates a loadable component with Suspense and Error Boundary.
+ * Accepts any import function that resolves to a module with a default export.
+ * The function handles TypeScript's union type inference from dynamic imports
+ * by accepting unknown and casting internally.
+ */
+export function loadable<P extends object = object>(
+  importFn: () => Promise<DynamicImportModule>,
   options: LoadableOptions = {}
 ): ComponentType<P> {
   const {
@@ -219,12 +229,12 @@ export function loadable<P = any>(
 
         const module = await Promise.race([loadPromise, timeoutPromise]);
         trackChunkLoad(chunkName, startTime);
-        return module;
+        return module as { default: ComponentType<P> };
       }
 
       const module = await loadPromise;
       trackChunkLoad(chunkName, startTime);
-      return module;
+      return module as { default: ComponentType<P> };
     } catch (error) {
       // Re-throw for error boundary to catch
       throw error;
@@ -241,12 +251,12 @@ export function loadable<P = any>(
         loadingFallback
       );
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const AnyLazyComponent = LazyComponent as React.ComponentType<any>;
+    const TypedLazyComponent =
+      LazyComponent as unknown as React.ComponentType<P>;
     return (
       <ErrorBoundary fallback={errorFallback}>
         <Suspense fallback={delayedFallback}>
-          <AnyLazyComponent {...props} />
+          <TypedLazyComponent {...props} />
         </Suspense>
       </ErrorBoundary>
     );
@@ -363,16 +373,17 @@ interface RetryOptions {
 }
 
 /**
- * Creates a loadable component with retry logic
+ * Creates a loadable component with retry logic.
+ * Uses the same permissive typing as loadable to handle dynamic import unions.
  */
-export function loadableWithRetry<P extends object>(
-  importFn: () => Promise<{ default: ComponentType<P> }>,
+export function loadableWithRetry<P extends object = object>(
+  importFn: () => Promise<DynamicImportModule>,
   loadableOptions: LoadableOptions = {},
   retryOptions: RetryOptions = {}
 ): ComponentType<P> {
   const { retries = 3, delay = 1000, onRetry } = retryOptions;
 
-  const retryImport = async (): Promise<{ default: ComponentType<P> }> => {
+  const retryImport = async (): Promise<DynamicImportModule> => {
     let lastError: Error | null = null;
 
     for (let attempt = 1; attempt <= retries; attempt++) {
@@ -393,7 +404,7 @@ export function loadableWithRetry<P extends object>(
     throw lastError;
   };
 
-  return loadable(retryImport, loadableOptions);
+  return loadable<P>(retryImport, loadableOptions);
 }
 
 // =============================================================================

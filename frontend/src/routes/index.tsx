@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment */
-// @ts-nocheck - TODO: Fix dynamic import type inference issues
 /**
  * =============================================================================
  * Application Routes
@@ -30,7 +28,7 @@ import {
 const LandingPage = loadable(
   async () => {
     const m = await import(
-      /* @ts-expect-error - dynamic import type */ /* webpackChunkName: "page-landing" */ '@pages/Landing'
+      /* webpackChunkName: "page-landing" */ '@pages/Landing'
     );
     return { default: m.LandingPage };
   },
@@ -39,9 +37,7 @@ const LandingPage = loadable(
 
 const LoginPage = loadable(
   async () => {
-    const m = await import(
-      /* @ts-expect-error - dynamic import type */ /* webpackChunkName: "page-auth" */ '@pages/Login'
-    );
+    const m = await import(/* webpackChunkName: "page-auth" */ '@pages/Login');
     return { default: m.LoginPage };
   },
   { chunkName: 'login', delay: 100 }
@@ -49,9 +45,7 @@ const LoginPage = loadable(
 
 const RegisterPage = loadable(
   () =>
-    import(
-      /* @ts-expect-error - dynamic import type */ /* webpackChunkName: "page-auth" */ '@pages/Register'
-    ).then((m) => ({
+    import(/* webpackChunkName: "page-auth" */ '@pages/Register').then((m) => ({
       default: m.RegisterPage,
     })),
   { chunkName: 'register', delay: 100 }
@@ -59,42 +53,42 @@ const RegisterPage = loadable(
 
 const ForgotPasswordPage = loadable(
   () =>
-    import(
-      /* @ts-expect-error - dynamic import type */ /* webpackChunkName: "page-auth" */ '@pages/ForgotPassword'
-    ).then((m) => ({ default: m.ForgotPasswordPage })),
+    import(/* webpackChunkName: "page-auth" */ '@pages/ForgotPassword').then(
+      (m) => ({ default: m.ForgotPasswordPage })
+    ),
   { chunkName: 'forgot-password', delay: 100 }
 );
 
 const ResetPasswordPage = loadable(
   () =>
-    import(
-      /* @ts-expect-error - dynamic import type */ /* webpackChunkName: "page-auth" */ '@pages/ResetPassword'
-    ).then((m) => ({ default: m.ResetPasswordPage })),
+    import(/* webpackChunkName: "page-auth" */ '@pages/ResetPassword').then(
+      (m) => ({ default: m.ResetPasswordPage })
+    ),
   { chunkName: 'reset-password', delay: 100 }
 );
 
 const VerifyEmailPage = loadable(
   () =>
-    import(
-      /* @ts-expect-error - dynamic import type */ /* webpackChunkName: "page-auth" */ '@pages/VerifyEmail'
-    ).then((m) => ({ default: m.VerifyEmailPage })),
+    import(/* webpackChunkName: "page-auth" */ '@pages/VerifyEmail').then(
+      (m) => ({ default: m.VerifyEmailPage })
+    ),
   { chunkName: 'verify-email', delay: 100 }
 );
 
 const AcceptInvitationPage = loadable(
   () =>
-    import(
-      /* @ts-expect-error - dynamic import type */ /* webpackChunkName: "page-auth" */ '@pages/AcceptInvitation'
-    ).then((m) => ({ default: m.AcceptInvitationPage })),
+    import(/* webpackChunkName: "page-auth" */ '@pages/AcceptInvitation').then(
+      (m) => ({ default: m.AcceptInvitationPage })
+    ),
   { chunkName: 'accept-invitation', delay: 100 }
 );
 
 // Protected pages with retry logic
 const DashboardPage = loadableWithRetry(
   () =>
-    import(
-      /* @ts-expect-error - dynamic import type */ /* webpackChunkName: "page-dashboard" */ '@pages/Dashboard'
-    ).then((m) => ({ default: m.DashboardPage })),
+    import(/* webpackChunkName: "page-dashboard" */ '@pages/Dashboard').then(
+      (m) => ({ default: m.DashboardPage })
+    ),
   {
     chunkName: 'dashboard',
     delay: 0,
@@ -106,115 +100,113 @@ const DashboardPage = loadableWithRetry(
 
 const SettingsPage = loadableWithRetry(
   () =>
-    import(
-      /* @ts-expect-error - dynamic import type */ /* webpackChunkName: "page-settings" */ '@pages/Settings'
-    ).then((m) => ({ default: m.SettingsPage })),
+    import(/* webpackChunkName: "page-settings" */ '@pages/Settings').then(
+      (m) => ({ default: m.SettingsPage })
+    ),
   { chunkName: 'settings', delay: 100 },
   { retries: 2 }
 );
 
 const OrgSettingsPage = loadable(
   () =>
-    import(
-      /* @ts-expect-error - dynamic import type */ /* webpackChunkName: "page-settings" */ '@pages/Settings'
-    ).then((m) => ({ default: m.OrgSettingsPage })),
+    import(/* webpackChunkName: "page-settings" */ '@pages/Settings').then(
+      (m) => ({ default: m.OrgSettingsPage })
+    ),
   { chunkName: 'org-settings', delay: 100 }
 );
 
 const NewOrgPage = loadable(
   () =>
-    import(
-      /* @ts-expect-error - dynamic import type */ /* webpackChunkName: "page-settings" */ '@pages/Settings'
-    ).then((m) => ({ default: m.NewOrgPage })),
+    import(/* webpackChunkName: "page-settings" */ '@pages/Settings').then(
+      (m) => ({ default: m.NewOrgPage })
+    ),
   { chunkName: 'new-org', delay: 100 }
 );
 
 const ChangeMembershipPage = loadable(
   () =>
-    import(
-      /* @ts-expect-error - dynamic import type */ /* webpackChunkName: "page-settings" */ '@pages/Settings'
-    ).then((m) => ({ default: m.ChangeMembershipPage })),
+    import(/* webpackChunkName: "page-settings" */ '@pages/Settings').then(
+      (m) => ({ default: m.ChangeMembershipPage })
+    ),
   { chunkName: 'change-membership', delay: 100 }
 );
 
 const ConfirmMembershipPage = loadable(
   () =>
-    import(
-      /* @ts-expect-error - dynamic import type */ /* webpackChunkName: "page-settings" */ '@pages/Settings'
-    ).then((m) => ({ default: m.ConfirmMembershipPage })),
+    import(/* webpackChunkName: "page-settings" */ '@pages/Settings').then(
+      (m) => ({ default: m.ConfirmMembershipPage })
+    ),
   { chunkName: 'confirm-membership', delay: 100 }
 );
 
 const PricingPage = loadable(
   () =>
-    import(
-      /* @ts-expect-error - dynamic import type */ /* webpackChunkName: "page-pricing" */ '@pages/Pricing'
-    ).then((m) => ({ default: m.PricingPage })),
+    import(/* webpackChunkName: "page-pricing" */ '@pages/Pricing').then(
+      (m) => ({ default: m.PricingPage })
+    ),
   { chunkName: 'pricing', delay: 100 }
 );
 
 const FeaturesPage = loadable(
   () =>
-    import(
-      /* @ts-expect-error - dynamic import type */ /* webpackChunkName: "page-features" */ '@pages/Features'
-    ).then((m) => ({ default: m.FeaturesPage })),
+    import(/* webpackChunkName: "page-features" */ '@pages/Features').then(
+      (m) => ({ default: m.FeaturesPage })
+    ),
   { chunkName: 'features', delay: 100 }
 );
 
 const AboutPage = loadable(
   () =>
-    import(
-      /* @ts-expect-error - dynamic import type */ /* webpackChunkName: "page-about" */ '@pages/About'
-    ).then((m) => ({ default: m.AboutPage })),
+    import(/* webpackChunkName: "page-about" */ '@pages/About').then((m) => ({
+      default: m.AboutPage,
+    })),
   { chunkName: 'about', delay: 100 }
 );
 
 const ContactPage = loadable(
   () =>
-    import(
-      /* @ts-expect-error - dynamic import type */ /* webpackChunkName: "page-contact" */ '@pages/Contact'
-    ).then((m) => ({ default: m.ContactPage })),
+    import(/* webpackChunkName: "page-contact" */ '@pages/Contact').then(
+      (m) => ({ default: m.ContactPage })
+    ),
   { chunkName: 'contact', delay: 100 }
 );
 
 const PrivacyPolicyPage = loadable(
   () =>
-    import(
-      /* @ts-expect-error - dynamic import type */ /* webpackChunkName: "page-legal" */ '@pages/Legal'
-    ).then((m) => ({ default: m.PrivacyPolicyPage })),
+    import(/* webpackChunkName: "page-legal" */ '@pages/Legal').then((m) => ({
+      default: m.PrivacyPolicyPage,
+    })),
   { chunkName: 'privacy-policy', delay: 100 }
 );
 
 const TermsOfServicePage = loadable(
   () =>
-    import(
-      /* @ts-expect-error - dynamic import type */ /* webpackChunkName: "page-legal" */ '@pages/Legal'
-    ).then((m) => ({ default: m.TermsOfServicePage })),
+    import(/* webpackChunkName: "page-legal" */ '@pages/Legal').then((m) => ({
+      default: m.TermsOfServicePage,
+    })),
   { chunkName: 'terms-of-service', delay: 100 }
 );
 
 // Module pages
 const CustomersPage = loadable(
   () =>
-    import(
-      /* @ts-expect-error - dynamic import type */ /* webpackChunkName: "page-customers" */ '@pages/Customers'
-    ).then((m) => ({ default: m.CustomersPage })),
+    import(/* webpackChunkName: "page-customers" */ '@pages/Customers').then(
+      (m) => ({ default: m.CustomersPage })
+    ),
   { chunkName: 'customers', delay: 100 }
 );
 
 const CustomerDetailPage = loadable(
   () =>
-    import(
-      /* @ts-expect-error - dynamic import type */ /* webpackChunkName: "page-customers" */ '@pages/Customers'
-    ).then((m) => ({ default: m.CustomerDetailPage })),
+    import(/* webpackChunkName: "page-customers" */ '@pages/Customers').then(
+      (m) => ({ default: m.CustomerDetailPage })
+    ),
   { chunkName: 'customer-detail', delay: 100 }
 );
 
 const JobsPage = loadable(
   () =>
-    import(
-      /* @ts-expect-error - dynamic import type */ /* webpackChunkName: "page-jobs" */ '@pages/Jobs'
-    ).then((m) => ({
+    import(/* webpackChunkName: "page-jobs" */ '@pages/Jobs').then((m) => ({
       default: m.JobsPage,
     })),
   { chunkName: 'jobs', delay: 100 }
@@ -222,9 +214,7 @@ const JobsPage = loadable(
 
 const QuotesPage = loadable(
   () =>
-    import(
-      /* @ts-expect-error - dynamic import type */ /* webpackChunkName: "page-quotes" */ '@pages/Quotes'
-    ).then((m) => ({
+    import(/* webpackChunkName: "page-quotes" */ '@pages/Quotes').then((m) => ({
       default: m.QuotesPage,
     })),
   { chunkName: 'quotes', delay: 100 }
@@ -232,17 +222,15 @@ const QuotesPage = loadable(
 
 const InvoicesPage = loadable(
   () =>
-    import(
-      /* @ts-expect-error - dynamic import type */ /* webpackChunkName: "page-invoices" */ '@pages/Invoices'
-    ).then((m) => ({ default: m.InvoicesPage })),
+    import(/* webpackChunkName: "page-invoices" */ '@pages/Invoices').then(
+      (m) => ({ default: m.InvoicesPage })
+    ),
   { chunkName: 'invoices', delay: 100 }
 );
 
 const JobDetailPage = loadable(
   () =>
-    import(
-      /* @ts-expect-error - dynamic import type */ /* webpackChunkName: "page-jobs" */ '@pages/Jobs'
-    ).then((m) => ({
+    import(/* webpackChunkName: "page-jobs" */ '@pages/Jobs').then((m) => ({
       default: m.JobDetailPage,
     })),
   { chunkName: 'job-detail', delay: 100 }
@@ -250,9 +238,7 @@ const JobDetailPage = loadable(
 
 const JobStatusHistoryPage = loadable(
   () =>
-    import(
-      /* @ts-expect-error - dynamic import type */ /* webpackChunkName: "page-jobs" */ '@pages/Jobs'
-    ).then((m) => ({
+    import(/* webpackChunkName: "page-jobs" */ '@pages/Jobs').then((m) => ({
       default: m.JobStatusHistoryPage,
     })),
   { chunkName: 'job-status-history', delay: 100 }
@@ -260,9 +246,7 @@ const JobStatusHistoryPage = loadable(
 
 const QuoteDetailPage = loadable(
   () =>
-    import(
-      /* @ts-expect-error - dynamic import type */ /* webpackChunkName: "page-quotes" */ '@pages/Quotes'
-    ).then((m) => ({
+    import(/* webpackChunkName: "page-quotes" */ '@pages/Quotes').then((m) => ({
       default: m.QuoteDetailPage,
     })),
   { chunkName: 'quote-detail', delay: 100 }
@@ -270,34 +254,32 @@ const QuoteDetailPage = loadable(
 
 const InvoiceDetailPage = loadable(
   () =>
-    import(
-      /* @ts-expect-error - dynamic import type */ /* webpackChunkName: "page-invoices" */ '@pages/Invoices'
-    ).then((m) => ({ default: m.InvoiceDetailPage })),
+    import(/* webpackChunkName: "page-invoices" */ '@pages/Invoices').then(
+      (m) => ({ default: m.InvoiceDetailPage })
+    ),
   { chunkName: 'invoice-detail', delay: 100 }
 );
 
 const PaymentSuccessPage = loadable(
   () =>
-    import(
-      /* @ts-expect-error - dynamic import type */ /* webpackChunkName: "page-invoices" */ '@pages/Invoices'
-    ).then((m) => ({ default: m.PaymentSuccessPage })),
+    import(/* webpackChunkName: "page-invoices" */ '@pages/Invoices').then(
+      (m) => ({ default: m.PaymentSuccessPage })
+    ),
   { chunkName: 'payment-success', delay: 100 }
 );
 
 const PaymentCancelledPage = loadable(
   () =>
-    import(
-      /* @ts-expect-error - dynamic import type */ /* webpackChunkName: "page-invoices" */ '@pages/Invoices'
-    ).then((m) => ({ default: m.PaymentCancelledPage })),
+    import(/* webpackChunkName: "page-invoices" */ '@pages/Invoices').then(
+      (m) => ({ default: m.PaymentCancelledPage })
+    ),
   { chunkName: 'payment-cancelled', delay: 100 }
 );
 
 // Team pages
 const TeamMembersPage = loadable(
   () =>
-    import(
-      /* @ts-expect-error - dynamic import type */ /* webpackChunkName: "page-team" */ '@pages/Team'
-    ).then((m) => ({
+    import(/* webpackChunkName: "page-team" */ '@pages/Team').then((m) => ({
       default: m.TeamMembersPage,
     })),
   { chunkName: 'team-members', delay: 100 }
@@ -305,9 +287,7 @@ const TeamMembersPage = loadable(
 
 const TeamRolesPage = loadable(
   () =>
-    import(
-      /* @ts-expect-error - dynamic import type */ /* webpackChunkName: "page-team" */ '@pages/Team'
-    ).then((m) => ({
+    import(/* webpackChunkName: "page-team" */ '@pages/Team').then((m) => ({
       default: m.TeamRolesPage,
     })),
   { chunkName: 'team-roles', delay: 100 }
@@ -316,34 +296,34 @@ const TeamRolesPage = loadable(
 // Report pages
 const RevenueReportPage = loadable(
   () =>
-    import(
-      /* @ts-expect-error - dynamic import type */ /* webpackChunkName: "page-reports" */ '@pages/Reports'
-    ).then((m) => ({ default: m.RevenueReportPage })),
+    import(/* webpackChunkName: "page-reports" */ '@pages/Reports').then(
+      (m) => ({ default: m.RevenueReportPage })
+    ),
   { chunkName: 'revenue-report', delay: 100 }
 );
 
 const CustomerReportPage = loadable(
   () =>
-    import(
-      /* @ts-expect-error - dynamic import type */ /* webpackChunkName: "page-reports" */ '@pages/Reports'
-    ).then((m) => ({ default: m.CustomerReportPage })),
+    import(/* webpackChunkName: "page-reports" */ '@pages/Reports').then(
+      (m) => ({ default: m.CustomerReportPage })
+    ),
   { chunkName: 'customer-report', delay: 100 }
 );
 
 // Error pages
 const NotFoundPage = loadable(
   () =>
-    import(
-      /* @ts-expect-error - dynamic import type */ /* webpackChunkName: "page-error" */ '@pages/NotFound'
-    ).then((m) => ({ default: m.NotFoundPage })),
+    import(/* webpackChunkName: "page-error" */ '@pages/NotFound').then(
+      (m) => ({ default: m.NotFoundPage })
+    ),
   { chunkName: 'not-found', delay: 0 }
 );
 
 const UnauthorizedPage = loadable(
   () =>
-    import(
-      /* @ts-expect-error - dynamic import type */ /* webpackChunkName: "page-error" */ '@pages/Unauthorized'
-    ).then((m) => ({ default: m.UnauthorizedPage })),
+    import(/* webpackChunkName: "page-error" */ '@pages/Unauthorized').then(
+      (m) => ({ default: m.UnauthorizedPage })
+    ),
   { chunkName: 'unauthorized', delay: 0 }
 );
 

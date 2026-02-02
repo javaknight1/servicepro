@@ -1,11 +1,55 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment */
-// @ts-nocheck - Uses browser APIs not fully typed in TypeScript DOM lib
 /**
  * =============================================================================
  * Performance Utilities
  * =============================================================================
  * Core Web Vitals measurement and performance monitoring
  */
+
+// =============================================================================
+// Browser API Type Extensions
+// =============================================================================
+
+/**
+ * PerformanceEventTiming extends PerformanceEntry with event-specific properties.
+ * Used for measuring First Input Delay (FID) and Interaction to Next Paint (INP).
+ */
+interface PerformanceEventTiming extends PerformanceEntry {
+  processingStart: number;
+  processingEnd: number;
+  duration: number;
+  cancelable: boolean;
+  target?: Node;
+  interactionId?: number;
+}
+
+/**
+ * Layout shift entries have additional properties for CLS measurement.
+ */
+interface LayoutShiftEntry extends PerformanceEntry {
+  hadRecentInput: boolean;
+  value: number;
+  sources?: LayoutShiftAttribution[];
+}
+
+interface LayoutShiftAttribution {
+  node?: Node;
+  previousRect: DOMRectReadOnly;
+  currentRect: DOMRectReadOnly;
+}
+
+/**
+ * Extended PerformanceObserverInit with durationThreshold for event timing.
+ */
+interface ExtendedPerformanceObserverInit extends PerformanceObserverInit {
+  durationThreshold?: number;
+}
+
+/**
+ * Document with prerendering property (Page Visibility API Level 2).
+ */
+interface DocumentWithPrerendering extends Document {
+  prerendering?: boolean;
+}
 
 // =============================================================================
 // Types
@@ -160,10 +204,7 @@ export function observeCLS(callback: MetricCallback): () => void {
   let sessionEntries: PerformanceEntry[] = [];
 
   const observer = new PerformanceObserver((list) => {
-    for (const entry of list.getEntries() as (PerformanceEntry & {
-      hadRecentInput?: boolean;
-      value?: number;
-    })[]) {
+    for (const entry of list.getEntries() as LayoutShiftEntry[]) {
       if (!entry.hadRecentInput) {
         const firstSessionEntry = sessionEntries[0];
         const lastSessionEntry = sessionEntries[sessionEntries.length - 1];
@@ -233,7 +274,7 @@ export function observeINP(callback: MetricCallback): () => void {
     type: 'event',
     buffered: true,
     durationThreshold: 16,
-  } as PerformanceObserverInit);
+  } as ExtendedPerformanceObserverInit);
 
   const report = () => {
     if (interactions.length === 0) return;
@@ -399,7 +440,7 @@ function getNavigationType(): WebVitalsMetric['navigationType'] {
 
   if (navEntry.type === 'reload') return 'reload';
   if (navEntry.type === 'back_forward') return 'back-forward';
-  if (document.prerendering) return 'prerender';
+  if ((document as DocumentWithPrerendering).prerendering) return 'prerender';
 
   return 'navigate';
 }

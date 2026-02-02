@@ -19,7 +19,7 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 | ~~T005~~ | ~~P0~~   | ~~Backend~~  | ~~Expose /metrics endpoint for Prometheus~~ ✓      |
 | ~~T006~~ | ~~P1~~   | ~~Backend~~  | ~~Structured JSON logging (replace fmt.Printf)~~ ✓ |
 | ~~T007~~ | ~~P1~~   | ~~Frontend~~ | ~~Fix `any` types (50 instances)~~ ✓               |
-| T008     | P1       | Frontend     | Remove @ts-nocheck directives                      |
+| ~~T008~~ | ~~P1~~   | ~~Frontend~~ | ~~Remove @ts-nocheck directives~~ ✓                |
 | T009     | P1       | Frontend     | Enable noUnusedLocals/noUnusedParameters           |
 | T010     | P1       | Backend      | Apply error tracking middleware                    |
 | T011     | P1       | Infra        | Staging environment configuration                  |
@@ -61,7 +61,7 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 - [x] **T005** - Expose /metrics endpoint for Prometheus ✓
 - [x] **T006** - Structured logging (replace fmt.Printf) ✓
 - [x] **T007** - Fix 50 `any` types in frontend ✓
-- [ ] **T008** - Remove @ts-nocheck directives
+- [x] **T008** - Remove @ts-nocheck directives ✓
 - [ ] **T009** - Enable noUnusedLocals/noUnusedParameters
 
 ### Sprint 3 - Testing & Documentation
@@ -103,6 +103,7 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 - [x] T005: Prometheus /metrics endpoint - Enabled via PROMETHEUS_ENABLED=true, uses existing prometheus client
 - [x] T006: Structured JSON logging - Migrated all fmt.Printf/log.Printf to structured logging client with global logger pattern
 - [x] T007: Fix `any` types - Replaced 50+ `any` types with proper TypeScript types, created error utility, fixed all test mocks
+- [x] T008: Remove @ts-nocheck - Removed directives from routes/index.tsx and performance.ts, added browser API type declarations
 
 ---
 
@@ -159,15 +160,13 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
   - Fixed stores: tenantStore.ts with proper error handling
   - Fixed all test mocks with proper TypeScript interfaces (MockCardElementProps, etc.)
 
-- [ ] **T008: Remove @ts-nocheck Directives**
-  - **What**: Fix underlying type issues instead of suppressing
-  - **Files**:
-    - [ ] `frontend/src/routes/index.tsx:2` - Fix dynamic import type inference
-    - [ ] `frontend/src/utils/performance.ts:2` - Add browser API types
-  - **Acceptance Criteria**:
-    - Remove @ts-nocheck comments
-    - Fix all resulting type errors
-    - No regression in functionality
+- [x] **T008: Remove @ts-nocheck Directives** ✓ COMPLETE
+  - Removed `@ts-nocheck` from both files:
+    - [x] `frontend/src/routes/index.tsx` - Removed 35+ `@ts-expect-error` comments from dynamic imports
+    - [x] `frontend/src/utils/performance.ts` - Added proper browser API type declarations
+  - Fixed `loadable()` function type signature to handle dynamic import union types
+  - Added browser API interfaces: `PerformanceEventTiming`, `LayoutShiftEntry`, `ExtendedPerformanceObserverInit`, `DocumentWithPrerendering`
+  - All type errors resolved, type-check passes
 
 - [ ] **T009: Enable Strict TypeScript Checks**
   - **File**: `frontend/tsconfig.json:20-21`
