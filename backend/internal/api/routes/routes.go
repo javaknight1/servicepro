@@ -14,12 +14,13 @@ import (
 	"github.com/javaknight1/servicepro/backend/internal/health"
 	emailclient "github.com/javaknight1/servicepro/backend/pkg/clients/email"
 	"github.com/javaknight1/servicepro/backend/pkg/clients/errortracking"
+	metricsclient "github.com/javaknight1/servicepro/backend/pkg/clients/metrics"
 	smsclient "github.com/javaknight1/servicepro/backend/pkg/clients/sms"
 	storageclient "github.com/javaknight1/servicepro/backend/pkg/clients/storage"
 )
 
 // Setup configures all API routes
-func Setup(router *gin.Engine, db *gorm.DB, redisClient *redis.Client, email emailclient.Client, storage storageclient.Client, sms smsclient.Client, errorTracker errortracking.Client, cfg *config.Config) {
+func Setup(router *gin.Engine, db *gorm.DB, redisClient *redis.Client, email emailclient.Client, storage storageclient.Client, sms smsclient.Client, errorTracker errortracking.Client, metrics metricsclient.Client, cfg *config.Config) {
 	// Apply recovery middleware first to catch panics and send to error tracking
 	router.Use(middleware.RecoveryMiddleware(errorTracker))
 
@@ -39,6 +40,9 @@ func Setup(router *gin.Engine, db *gorm.DB, redisClient *redis.Client, email ema
 
 	// Setup health check system
 	setupHealthEndpoints(router, db, redisClient, cfg)
+
+	// Setup metrics endpoint for Prometheus scraping
+	setupMetricsEndpoint(router, metrics, cfg)
 }
 
 // setupHealthEndpoints configures health check endpoints with deep dependency checks
@@ -75,6 +79,29 @@ func setupHealthEndpoints(router *gin.Engine, db *gorm.DB, redisClient *redis.Cl
 	router.GET("/health/ready", healthHandler.Ready)
 
 	log.Println("[Health] Health check endpoints registered: /health, /health/live, /health/ready")
+}
+
+// setupMetricsEndpoint configures the Prometheus metrics endpoint
+func setupMetricsEndpoint(router *gin.Engine, metrics metricsclient.Client, cfg *config.Config) {
+	if !cfg.Prometheus.Enabled {
+		log.Println("[Metrics] Prometheus metrics disabled (set PROMETHEUS_ENABLED=true to enable)")
+		return
+	}
+
+	if metrics == nil {
+		log.Println("[Metrics] Warning: Metrics client is nil, skipping /metrics endpoint")
+		return
+	}
+
+	metricsPath := cfg.Prometheus.MetricsPath
+	if metricsPath == "" {
+		metricsPath = "/metrics"
+	}
+
+	// Wrap the Prometheus HTTP handler for Gin
+	router.GET(metricsPath, gin.WrapH(metrics.Handler()))
+
+	log.Printf("[Metrics] Prometheus metrics endpoint registered: %s", metricsPath)
 }
 
 // NewRouteConfig creates a new RouteConfig with all dependencies initialized

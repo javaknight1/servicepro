@@ -34,6 +34,11 @@ import (
 	_ "github.com/javaknight1/servicepro/backend/pkg/clients/sms/mock"
 	_ "github.com/javaknight1/servicepro/backend/pkg/clients/sms/sns"
 	_ "github.com/javaknight1/servicepro/backend/pkg/clients/sms/textbelt"
+
+	// Metrics providers - blank imports to register providers
+	metricsclient "github.com/javaknight1/servicepro/backend/pkg/clients/metrics"
+	_ "github.com/javaknight1/servicepro/backend/pkg/clients/metrics/mock"
+	_ "github.com/javaknight1/servicepro/backend/pkg/clients/metrics/prometheus"
 )
 
 func main() {
@@ -94,6 +99,15 @@ func main() {
 		log.Printf("SMS client initialized: %s", smsClient.GetProviderInfo().DisplayName)
 	}
 
+	// Initialize metrics client (for Prometheus /metrics endpoint)
+	metricsClient, err := metricsclient.NewClient(context.Background(), cfg)
+	if err != nil {
+		log.Printf("Metrics client not initialized: %v", err)
+	} else {
+		defer metricsClient.Close()
+		log.Println("Metrics client initialized")
+	}
+
 	// Initialize Gin router
 	// Use gin.New() instead of gin.Default() so we can use our custom RecoveryMiddleware
 	// that integrates with error tracking (Sentry)
@@ -109,7 +123,7 @@ func main() {
 	}
 
 	// Setup routes
-	routes.Setup(router, db, redisClient, emailClient, storageClient, smsClient, errorTrackingClient, cfg)
+	routes.Setup(router, db, redisClient, emailClient, storageClient, smsClient, errorTrackingClient, metricsClient, cfg)
 
 	// Create HTTP server with timeouts
 	addr := fmt.Sprintf(":%s", cfg.Server.Port)
