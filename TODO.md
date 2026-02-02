@@ -2,7 +2,7 @@
 
 This document tracks technical improvements that should be implemented but are deferred for future development cycles.
 
-**Last Updated: 2026-02-01**
+**Last Updated: 2026-02-02**
 
 ---
 
@@ -12,7 +12,7 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 
 | ID       | Priority | Category     | Task                                         |
 | -------- | -------- | ------------ | -------------------------------------------- |
-| T001     | P0       | Backend      | Recovery middleware Sentry integration       |
+| ~~T001~~ | ~~P0~~   | ~~Backend~~  | ~~Recovery middleware Sentry integration~~ ✓ |
 | ~~T002~~ | ~~P0~~   | ~~Frontend~~ | ~~Centralize direct fetch() calls~~ ✓        |
 | ~~T003~~ | ~~P0~~   | ~~Frontend~~ | ~~Add CSP/HSTS headers to nginx.conf~~ ✓     |
 | T004     | P0       | Infra        | Create GitHub Actions CI/CD workflows        |
@@ -44,7 +44,7 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 - [x] Apply MaxMultipartMemory to router ✓
 - [x] Apply TrustedProxies to router ✓
 - [x] Deep health checks (DB + Redis) ✓
-- [ ] **T001** - Recovery middleware Sentry integration
+- [x] **T001** - Recovery middleware Sentry integration ✓
 
 **Frontend Critical:**
 
@@ -96,6 +96,7 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 - [x] TrustedProxies - Configurable via SERVER_TRUSTED_PROXIES env var, applied to router
 - [x] Deep health checks - /health, /health/live, /health/ready with DB + Redis connectivity checks
 - [x] localStorage token fix - ConflictChecker.tsx now uses api service with httpOnly cookies
+- [x] T001: Recovery middleware Sentry integration - Panics captured with stack trace, request context, user ID
 - [x] T002: Centralized fetch() calls - pdfGenerator.tsx, useQuoteCalculations.ts now use api service
 - [x] T003: nginx security headers - CSP, HSTS, Permissions-Policy added to nginx.conf
 
@@ -105,15 +106,11 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 
 ### Backend Server Configuration
 
-- [ ] **T001: Recovery Middleware Sentry Integration**
-  - **File**: `backend/internal/api/middleware/error_handler.go:107`
-  - **What**: Send panics to error tracking client instead of fmt.Printf
-  - **Why**: Panics logged to stdout but not visible in monitoring
-  - **Expected Result**: All panics captured in Sentry
-  - **Acceptance Criteria**:
-    - Use error tracking client to capture panics
-    - Include stack trace and request context
-    - Remove fmt.Printf panic logging
+- [x] **T001: Recovery Middleware Sentry Integration** ✓ COMPLETE
+  - Updated `RecoveryMiddleware` to accept `errortracking.Client`
+  - Panics are now captured with full context: stack trace, request method/path, user ID
+  - Changed `gin.Default()` to `gin.New()` to use custom recovery instead of Gin's default
+  - Middleware applied first in route setup to catch all panics
 
 ### Frontend Critical
 

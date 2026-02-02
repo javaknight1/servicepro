@@ -95,7 +95,10 @@ func main() {
 	}
 
 	// Initialize Gin router
-	router := gin.Default()
+	// Use gin.New() instead of gin.Default() so we can use our custom RecoveryMiddleware
+	// that integrates with error tracking (Sentry)
+	router := gin.New()
+	router.Use(gin.Logger()) // Add Gin's logger middleware
 
 	// Apply Gin-specific configuration
 	router.MaxMultipartMemory = cfg.Server.MaxMultipartMemory
@@ -106,7 +109,7 @@ func main() {
 	}
 
 	// Setup routes
-	routes.Setup(router, db, redisClient, emailClient, storageClient, smsClient, cfg)
+	routes.Setup(router, db, redisClient, emailClient, storageClient, smsClient, errorTrackingClient, cfg)
 
 	// Create HTTP server with timeouts
 	addr := fmt.Sprintf(":%s", cfg.Server.Port)

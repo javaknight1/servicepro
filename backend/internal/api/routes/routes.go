@@ -13,13 +13,17 @@ import (
 	v1 "github.com/javaknight1/servicepro/backend/internal/api/routes/v1"
 	"github.com/javaknight1/servicepro/backend/internal/health"
 	emailclient "github.com/javaknight1/servicepro/backend/pkg/clients/email"
+	"github.com/javaknight1/servicepro/backend/pkg/clients/errortracking"
 	smsclient "github.com/javaknight1/servicepro/backend/pkg/clients/sms"
 	storageclient "github.com/javaknight1/servicepro/backend/pkg/clients/storage"
 )
 
 // Setup configures all API routes
-func Setup(router *gin.Engine, db *gorm.DB, redisClient *redis.Client, email emailclient.Client, storage storageclient.Client, sms smsclient.Client, cfg *config.Config) {
-	// Apply CORS middleware first (must handle preflight OPTIONS requests before other middleware)
+func Setup(router *gin.Engine, db *gorm.DB, redisClient *redis.Client, email emailclient.Client, storage storageclient.Client, sms smsclient.Client, errorTracker errortracking.Client, cfg *config.Config) {
+	// Apply recovery middleware first to catch panics and send to error tracking
+	router.Use(middleware.RecoveryMiddleware(errorTracker))
+
+	// Apply CORS middleware (must handle preflight OPTIONS requests before other middleware)
 	router.Use(middleware.CORSMiddleware(&cfg.CORS, cfg.Server.Env))
 
 	// Apply security headers to all responses

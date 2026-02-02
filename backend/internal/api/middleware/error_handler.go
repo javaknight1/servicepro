@@ -3,9 +3,12 @@ package middleware
 import (
 	"fmt"
 	"net/http"
+	"runtime/debug"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
+
+	"github.com/javaknight1/servicepro/backend/pkg/clients/errortracking"
 )
 
 // ErrorResponse represents a standardized error response
@@ -98,13 +101,51 @@ func handleGenericError(c *gin.Context, err error) {
 	})
 }
 
-// RecoveryMiddleware recovers from panics and returns 500 error
-func RecoveryMiddleware() gin.HandlerFunc {
+// RecoveryMiddleware recovers from panics and returns 500 error.
+// If an error tracking client is provided, panics are captured and sent to the tracking service.
+func RecoveryMiddleware(errorTracker errortracking.Client) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		defer func() {
-			if err := recover(); err != nil {
-				// Log the panic (you would use your logger here)
-				fmt.Printf("Panic recovered: %v\n", err)
+			if rec := recover(); rec != nil {
+				// Convert panic value to error
+				var err error
+				switch v := rec.(type) {
+				case error:
+					err = v
+				case string:
+					err = fmt.Errorf("%s", v)
+				default:
+					err = fmt.Errorf("%v", v)
+				}
+
+				// Get stack trace
+				stack := string(debug.Stack())
+
+				// Send to error tracking if client is available
+				if errorTracker != nil {
+					// Configure scope with request context
+					errorTracker.ConfigureScope(c.Request.Context(), func(scope errortracking.Scope) {
+						scope.SetTag("panic", "true")
+						scope.SetExtra("stack_trace", stack)
+						scope.SetExtra("request_method", c.Request.Method)
+						scope.SetExtra("request_path", c.Request.URL.Path)
+						scope.SetExtra("request_query", c.Request.URL.RawQuery)
+						scope.SetExtra("client_ip", c.ClientIP())
+
+						// Add user context if available
+						if userID, exists := c.Get("user_id"); exists {
+							scope.SetUser(&errortracking.User{
+								ID: fmt.Sprintf("%v", userID),
+							})
+						}
+					})
+
+					// Capture the exception
+					errorTracker.CaptureException(c.Request.Context(), err)
+				}
+
+				// Always log to stdout as fallback
+				fmt.Printf("[PANIC] %v\nStack trace:\n%s\n", err, stack)
 
 				c.JSON(http.StatusInternalServerError, ErrorResponse{
 					Error:   "Internal server error",
