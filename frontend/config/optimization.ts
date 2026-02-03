@@ -155,14 +155,8 @@ export const buildOptions: BuildOptions = {
 
     // Tree shaking
     treeshake: {
-      // More aggressive tree shaking
-      moduleSideEffects: (id, external) => {
-        // Keep side effects for CSS
-        if (id.endsWith('.css')) return true;
-
-        // Check package.json sideEffects
-        return false;
-      },
+      // Respect package.json sideEffects field
+      moduleSideEffects: 'no-external',
       // Remove unused exports
       propertyReadSideEffects: false,
       // Remove unused assignments

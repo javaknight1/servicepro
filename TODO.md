@@ -2,7 +2,7 @@
 
 This document tracks technical improvements that should be implemented but are deferred for future development cycles.
 
-**Last Updated: 2026-02-02**
+**Last Updated: 2026-02-02** (Frontend audit completed)
 
 ---
 
@@ -10,26 +10,33 @@ This document tracks technical improvements that should be implemented but are d
 
 Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to reference a task.
 
-| ID       | Priority | Category     | Task                                               |
-| -------- | -------- | ------------ | -------------------------------------------------- |
-| ~~T001~~ | ~~P0~~   | ~~Backend~~  | ~~Recovery middleware Sentry integration~~ ✓       |
-| ~~T002~~ | ~~P0~~   | ~~Frontend~~ | ~~Centralize direct fetch() calls~~ ✓              |
-| ~~T003~~ | ~~P0~~   | ~~Frontend~~ | ~~Add CSP/HSTS headers to nginx.conf~~ ✓           |
-| ~~T004~~ | ~~P0~~   | ~~Infra~~    | ~~Create GitHub Actions CI/CD workflows~~ ✓        |
-| ~~T005~~ | ~~P0~~   | ~~Backend~~  | ~~Expose /metrics endpoint for Prometheus~~ ✓      |
-| ~~T006~~ | ~~P1~~   | ~~Backend~~  | ~~Structured JSON logging (replace fmt.Printf)~~ ✓ |
-| ~~T007~~ | ~~P1~~   | ~~Frontend~~ | ~~Fix `any` types (50 instances)~~ ✓               |
-| ~~T008~~ | ~~P1~~   | ~~Frontend~~ | ~~Remove @ts-nocheck directives~~ ✓                |
-| ~~T009~~ | ~~P1~~   | ~~Frontend~~ | ~~Enable noUnusedLocals/noUnusedParameters~~ ✓     |
-| T010     | P1       | Backend      | Apply error tracking middleware                    |
-| T011     | P1       | Infra        | Staging environment configuration                  |
-| T012     | P1       | Infra        | Bundle size monitoring in CI                       |
-| T013     | P2       | Testing      | Increase frontend test coverage to 70%+            |
-| T014     | P2       | Testing      | Integration tests for critical workflows           |
-| T015     | P2       | Docs         | Generate OpenAPI/Swagger documentation             |
-| T016     | P2       | Perf         | Frontend bundle analysis + optimization            |
-| T017     | P2       | Perf         | Query performance monitoring                       |
-| T018     | P2       | Cleanup      | Dead code elimination                              |
+| ID       | Priority | Category      | Task                                               |
+| -------- | -------- | ------------- | -------------------------------------------------- |
+| ~~T001~~ | ~~P0~~   | ~~Backend~~   | ~~Recovery middleware Sentry integration~~ ✓       |
+| ~~T002~~ | ~~P0~~   | ~~Frontend~~  | ~~Centralize direct fetch() calls~~ ✓              |
+| ~~T003~~ | ~~P0~~   | ~~Frontend~~  | ~~Add CSP/HSTS headers to nginx.conf~~ ✓           |
+| ~~T004~~ | ~~P0~~   | ~~Infra~~     | ~~Create GitHub Actions CI/CD workflows~~ ✓        |
+| ~~T005~~ | ~~P0~~   | ~~Backend~~   | ~~Expose /metrics endpoint for Prometheus~~ ✓      |
+| ~~T006~~ | ~~P1~~   | ~~Backend~~   | ~~Structured JSON logging (replace fmt.Printf)~~ ✓ |
+| ~~T007~~ | ~~P1~~   | ~~Frontend~~  | ~~Fix `any` types (50 instances)~~ ✓               |
+| ~~T008~~ | ~~P1~~   | ~~Frontend~~  | ~~Remove @ts-nocheck directives~~ ✓                |
+| ~~T009~~ | ~~P1~~   | ~~Frontend~~  | ~~Enable noUnusedLocals/noUnusedParameters~~ ✓     |
+| ~~T010~~ | ~~P1~~   | ~~Backend~~   | ~~Apply error tracking middleware~~ ✓              |
+| T012     | P1       | Infra         | Bundle size monitoring in CI                       |
+| T013     | P2       | Testing       | Increase frontend test coverage to 70%+            |
+| T014     | P2       | Testing       | Integration tests for critical workflows           |
+| T015     | P2       | Docs          | Generate OpenAPI/Swagger documentation             |
+| T016     | P2       | Perf          | Frontend bundle analysis + optimization            |
+| T017     | P2       | Perf          | Query performance monitoring                       |
+| T018     | P2       | Cleanup       | Dead code elimination                              |
+| T019     | P1       | Feature       | Integrate calendar view for job scheduling         |
+| T020     | P1       | Backend       | Build conflict detection API endpoint              |
+| T021     | P2       | Refactor      | Extract duplicate file download utility            |
+| T022     | P2       | Refactor      | Extract duplicate URLSearchParams builder          |
+| T023     | P2       | Refactor      | Consolidate cache hooks (useLocalCache/useSession) |
+| T024     | P1       | Observability | Full Sentry integration (frontend + backend)       |
+| T025     | P2       | Analytics     | Integrate product analytics (PostHog recommended)  |
+| T026     | P2       | Analytics     | Set up business KPI dashboard (Metabase)           |
 
 ---
 
@@ -70,11 +77,19 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 - [ ] **T014** - Integration tests for critical workflows
 - [ ] **T015** - Generate OpenAPI/Swagger documentation
 
-### Sprint 4 - Performance & Cleanup
+### Sprint 4 - Features & Cleanup
+
+- [ ] **T019** - Integrate calendar view for job scheduling
+- [ ] **T020** - Build conflict detection API endpoint
+- [ ] **T018** - Dead code elimination (partially complete - see audit)
+
+### Sprint 5 - Performance & Refactoring
 
 - [ ] **T016** - Bundle analysis + optimization
 - [ ] **T017** - Query performance monitoring
-- [ ] **T018** - Dead code elimination
+- [ ] **T021** - Extract duplicate file download utility
+- [ ] **T022** - Extract duplicate URLSearchParams builder
+- [ ] **T023** - Consolidate cache hooks
 
 ---
 
@@ -105,6 +120,7 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 - [x] T007: Fix `any` types - Replaced 50+ `any` types with proper TypeScript types, created error utility, fixed all test mocks
 - [x] T008: Remove @ts-nocheck - Removed directives from routes/index.tsx and performance.ts, added browser API type declarations
 - [x] T009: Enable noUnusedLocals/noUnusedParameters - Enabled strict checks, removed 17 instances of dead code
+- [x] T010: Error tracking middleware - Already implemented via RecoveryMiddleware in error_handler.go
 
 ---
 
@@ -188,26 +204,16 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
   - Standard fields: timestamp, level, message, request_id, user_id, tenant_id
   - Only exceptions: config/config.go (circular import), logging package files (can't import itself)
 
-- [ ] **T010: Apply Error Tracking Middleware**
-  - **What**: Wire error tracking HTTPMiddleware into Gin router
-  - **Why**: Client created at `cmd/main.go:43` but middleware not applied
-  - **Expected Result**: Request context enriched, errors auto-captured
-  - **Acceptance Criteria**:
-    - Add Gin-compatible middleware wrapper
-    - Panics captured with full context
-    - User/tenant info attached to errors
+- [x] **T010: Apply Error Tracking Middleware** ✓ ALREADY COMPLETE
+  - **Analysis**: `RecoveryMiddleware` in `error_handler.go` already handles this
+  - **What it does**:
+    - Captures panics and sends to error tracking (Sentry)
+    - Adds full request context: method, path, query, client IP
+    - Attaches user context when available
+    - Applied first in middleware chain in `routes.go`
+  - **Why HTTPMiddleware not needed**: No application code calls `CaptureException` directly outside of panic recovery. The existing implementation covers the critical use case.
 
 ### Infrastructure
-
-- [ ] **T011: Staging Environment Configuration**
-  - **What**: Create separate configuration for staging environment
-  - **Why**: Need environment parity for testing before production
-  - **Expected Result**: Isolated staging environment with production-like setup
-  - **Acceptance Criteria**:
-    - Separate Fly.io app for staging
-    - Staging database (isolated from production)
-    - Staging-specific environment variables
-    - Accessible at staging.servicepro.com (or similar)
 
 - [x] **Dependency Vulnerability Scanning**
   - **What**: Add Dependabot or Snyk to scan for vulnerable dependencies
@@ -228,6 +234,103 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
     - Warning at 500KB gzipped
     - Failure at 750KB gzipped
     - Chunk breakdown visible
+
+### Frontend Features
+
+- [ ] **T019: Integrate Calendar View for Job Scheduling**
+  - **What**: Wire up the existing Calendar components to display and manage jobs
+  - **Why**: Calendar components are 100% complete but not integrated - critical for service business scheduling
+  - **Status**: Frontend complete at `src/components/calendar/` - just needs integration
+  - **Components Available**:
+    - `Calendar.tsx` - Full react-big-calendar with drag-drop, resize, views (month/week/day/agenda)
+    - `CalendarEvent.tsx` - Custom event renderer with job details, priority badges
+    - `CalendarToolbar.tsx` - Navigation controls
+  - **Acceptance Criteria**:
+    - Add calendar route (e.g., `/schedule` or `/jobs/calendar`)
+    - Fetch jobs and convert to calendar events
+    - Support creating new jobs by clicking time slots
+    - Support editing jobs by clicking events
+    - Drag-and-drop to reschedule jobs
+
+- [ ] **T024: Full Sentry Integration (Frontend + Backend)**
+  - **What**: Complete error tracking setup with Sentry across the entire stack
+  - **Why**: Currently backend catches panics but frontend errors are invisible; need unified error visibility
+  - **Current State**:
+    - Backend: `RecoveryMiddleware` sends panics to Sentry ✓
+    - Backend: `@sentry/react` package installed but not initialized
+    - Frontend: No error boundaries or user context
+  - **Frontend Tasks**:
+    - [ ] Initialize Sentry in `main.tsx` with proper config
+    - [ ] Add `Sentry.ErrorBoundary` around App component
+    - [ ] Create `useErrorTracking` hook for manual error capture
+    - [ ] Attach user context on login (`Sentry.setUser`)
+    - [ ] Configure source maps upload in build process
+    - [ ] Add performance monitoring (optional)
+  - **Backend Tasks**:
+    - [ ] Add `Sentry.CaptureException` for non-panic errors in services
+    - [ ] Add request context to all captured errors
+    - [ ] Configure release tracking
+  - **Local Development Setup**:
+    ```yaml
+    # docker-compose.yml addition for self-hosted Sentry (optional)
+    # Alternative: Use Sentry.io free tier (10k errors/month)
+    sentry:
+      image: sentry:latest
+      # ... complex setup, see getsentry/self-hosted
+    ```
+
+    - Simpler option: Use Sentry.io with development DSN
+    - Set `SENTRY_DSN` env var, use `SENTRY_ENVIRONMENT=development`
+  - **Testing**:
+    - Add test error button in dev mode
+    - Verify errors appear in Sentry dashboard
+    - Verify stack traces are readable (source maps working)
+  - **Acceptance Criteria**:
+    - All unhandled frontend errors captured
+    - All backend panics and explicit errors captured
+    - User ID attached to errors
+    - Readable stack traces with source maps
+    - Environment separation (dev/staging/prod)
+
+- [ ] **T020: Build Conflict Detection API Endpoint**
+  - **What**: Implement `POST /v1/conflicts/check` endpoint for scheduling conflict detection
+  - **Why**: Frontend conflict detection UI exists but backend endpoint is missing
+  - **Frontend Status**: `src/components/scheduling/ConflictChecker.tsx` and `ConflictAlert.tsx` ready
+  - **Backend Requirements**:
+    - Create `internal/services/conflict_service.go`
+    - Create `internal/api/handlers/conflict_handler.go`
+    - Wire endpoint in `routes.go`
+  - **Request Format**:
+    ```json
+    {
+      "job_id": "uuid",
+      "start_time": "2025-02-01T09:00:00Z",
+      "end_time": "2025-02-01T11:00:00Z",
+      "assigned_tech_ids": ["uuid1", "uuid2"],
+      "location": { "address": "...", "lat": 0, "lng": 0 }
+    }
+    ```
+  - **Response Format**:
+    ```json
+    {
+      "has_conflicts": true,
+      "conflicts": [
+        { "type": "technician_overlap", "severity": "critical", "message": "...", "overlapping_job": {...} }
+      ],
+      "suggestions": [
+        { "type": "reschedule", "suggested_time": "...", "message": "..." }
+      ]
+    }
+    ```
+  - **Conflict Types to Detect**:
+    - Technician already booked (overlap)
+    - Location conflict (travel time)
+    - Outside business hours
+    - Workload exceeds daily limit
+  - **Acceptance Criteria**:
+    - Endpoint returns conflicts in <100ms
+    - All conflict types detected
+    - Suggestions provided for each conflict
 
 ### Email Infrastructure
 
@@ -462,6 +565,178 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
     - Remove unused exports
     - Add lint rule for unused exports
     - Document export patterns
+
+### Frontend Refactoring (Code Deduplication)
+
+- [ ] **T021: Extract Duplicate File Download Utility**
+  - **What**: Create `src/utils/fileDownload.ts` utility
+  - **Why**: Same download pattern copy-pasted in 7+ locations
+  - **Files with Duplicate Code**:
+    - `services/exportService.ts`
+    - `services/revenueService.ts`
+    - `services/customerReportService.ts`
+    - `services/invoiceService.ts`
+    - `services/templateService.ts`
+    - `components/quotes/utils/pdfGenerator.tsx`
+    - `hooks/useRoles.ts`
+  - **Implementation**:
+
+    ```typescript
+    // src/utils/fileDownload.ts
+    export function downloadFile(blob: Blob, filename: string): void {
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    }
+
+    export function downloadFromResponse(
+      response: Response,
+      filename: string
+    ): Promise<void>;
+    export function downloadCSV(data: string, filename: string): void;
+    export function downloadJSON(data: object, filename: string): void;
+    ```
+
+  - **Estimated Savings**: ~100 lines of duplicate code
+
+- [ ] **T022: Extract Duplicate URLSearchParams Builder**
+  - **What**: Create `src/utils/queryParams.ts` utility
+  - **Why**: Same pattern for building query params in 4+ services
+  - **Files with Duplicate Code**:
+    - `services/customerReportService.ts` (6 instances)
+    - `services/revenueService.ts` (4 instances)
+    - `services/invoiceService.ts`
+    - `services/customerService.ts`
+  - **Implementation**:
+    ```typescript
+    // src/utils/queryParams.ts
+    export function buildQueryParams(
+      obj: Record<string, unknown>
+    ): URLSearchParams {
+      const params = new URLSearchParams();
+      Object.entries(obj).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+          params.append(key, String(value));
+        }
+      });
+      return params;
+    }
+    ```
+  - **Estimated Savings**: ~80 lines of duplicate code
+
+- [ ] **T023: Consolidate Cache Hooks**
+  - **What**: Combine `useLocalCache` and `useSessionCache` into generic hook
+  - **Why**: Nearly identical implementations, only differ in storage backend
+  - **File**: `src/hooks/useCache.ts`
+  - **Implementation**:
+
+    ```typescript
+    function useStorageCache<T>(
+      storage: Storage,
+      key: string,
+      defaultValue: T
+    ): [T, (value: T) => void, () => void];
+
+    export const useLocalCache = <T>(key: string, defaultValue: T) =>
+      useStorageCache(localStorage, key, defaultValue);
+
+    export const useSessionCache = <T>(key: string, defaultValue: T) =>
+      useStorageCache(sessionStorage, key, defaultValue);
+    ```
+
+  - **Estimated Savings**: ~50 lines of duplicate code
+
+### Analytics & Observability
+
+- [ ] **T025: Integrate Product Analytics (PostHog Recommended)**
+  - **What**: Add product analytics to understand user behavior
+  - **Why**: Know which features users use, where they drop off, what to improve
+  - **Who Uses This**: Product managers, founders, growth team (NOT DevOps, NOT customers)
+  - **Recommended Service**: PostHog (open source, can self-host, generous free tier)
+  - **Alternatives**: Mixpanel, Amplitude, Plausible
+  - **Implementation**:
+
+    ```typescript
+    // Install: npm install posthog-js
+    // In main.tsx:
+    import posthog from 'posthog-js';
+    posthog.init('your-api-key', { api_host: 'https://app.posthog.com' });
+
+    // Track events:
+    posthog.capture('job_created', { job_type: 'hvac', customer_id: '...' });
+    ```
+
+  - **What to Track**:
+    - Feature usage (which pages, which actions)
+    - Funnel completion (onboarding, job creation, invoicing)
+    - Search queries
+    - Time spent on pages
+  - **Acceptance Criteria**:
+    - PostHog (or alternative) integrated
+    - Key events tracked (job created, invoice sent, quote accepted)
+    - Dashboard showing feature usage
+    - Funnel visualization for critical flows
+
+- [ ] **T026: Set Up Business KPI Dashboard (Metabase)**
+  - **What**: Visual dashboard for business metrics without building custom endpoints
+  - **Why**: Track revenue, job counts, customer growth without backend development
+  - **Who Uses This**: Business owners, managers (customer-facing or internal)
+  - **Recommended Service**: Metabase (open source, connects directly to PostgreSQL)
+  - **Alternatives**: Redash, Apache Superset, Cube.js (for embedding)
+  - **Setup**:
+    ```yaml
+    # docker-compose.yml
+    metabase:
+      image: metabase/metabase:latest
+      ports:
+        - '3001:3000'
+      environment:
+        MB_DB_TYPE: postgres
+        MB_DB_HOST: db
+        MB_DB_PORT: 5432
+        MB_DB_DBNAME: servicepro
+        MB_DB_USER: ${DB_USER}
+        MB_DB_PASS: ${DB_PASSWORD}
+      depends_on:
+        - db
+    ```
+  - **Example KPIs to Create** (in Metabase SQL):
+    - Revenue this month vs last month
+    - Jobs completed per week
+    - Average job value
+    - Customer acquisition trend
+    - Outstanding invoice total
+  - **Embedding** (optional): Metabase charts can be embedded in your app
+  - **Acceptance Criteria**:
+    - Metabase running and connected to database
+    - 5+ KPI dashboards created
+    - Accessible to business stakeholders
+    - (Optional) Key charts embedded in app dashboard
+
+- [ ] **T018: Dead Code Elimination** (Partially Complete)
+  - **What**: Remove unused components, hooks, and utilities identified in audit
+  - **Why**: ~2,700 lines of dead code identified
+  - **Already Deleted (2026-02-02)**:
+    - [x] `src/components/recurring/` - Unused recurring job components
+    - [x] `src/components/subscriptions/` - Unused billing/subscription components
+    - [x] `src/components/health/` - DevOps tool, no backend, use Prometheus/Grafana instead
+    - [x] `src/utils/performance.ts` - Use Sentry Performance or Vercel Analytics instead
+    - [x] `src/hooks/useErrorTracking.ts` - Will rebuild with proper Sentry integration (T024)
+    - [x] `src/hooks/useAnalytics.ts` - Use PostHog instead (T025)
+    - [x] `src/hooks/useKPI.ts` - Use Metabase instead (T026)
+  - **Remaining to Delete**: None - all dead code cleaned up!
+  - **Components to Keep** (valuable, need integration):
+    - `src/components/calendar/` - See T019
+    - `src/components/scheduling/` - See T020
+  - **Acceptance Criteria**:
+    - All dead code removed
+    - No TypeScript errors after removal
+    - Bundle size reduced
 
 - [ ] **Add Dead Code Detection**
   - **What**: Add dead code detection to pre-commit hooks
@@ -1280,4 +1555,4 @@ When adding new items, include:
 
 ---
 
-_Last updated: 2025-01-30_
+_Last updated: 2026-02-02_
