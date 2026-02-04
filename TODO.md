@@ -2,7 +2,7 @@
 
 This document tracks technical improvements that should be implemented but are deferred for future development cycles.
 
-**Last Updated: 2026-02-02** (Frontend audit completed)
+**Last Updated: 2026-02-03** (MVP tasks added from proposal document)
 
 ---
 
@@ -10,34 +10,105 @@ This document tracks technical improvements that should be implemented but are d
 
 Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to reference a task.
 
-| ID       | Priority | Category      | Task                                               |
-| -------- | -------- | ------------- | -------------------------------------------------- |
-| ~~T001~~ | ~~P0~~   | ~~Backend~~   | ~~Recovery middleware Sentry integration~~ ✓       |
-| ~~T002~~ | ~~P0~~   | ~~Frontend~~  | ~~Centralize direct fetch() calls~~ ✓              |
-| ~~T003~~ | ~~P0~~   | ~~Frontend~~  | ~~Add CSP/HSTS headers to nginx.conf~~ ✓           |
-| ~~T004~~ | ~~P0~~   | ~~Infra~~     | ~~Create GitHub Actions CI/CD workflows~~ ✓        |
-| ~~T005~~ | ~~P0~~   | ~~Backend~~   | ~~Expose /metrics endpoint for Prometheus~~ ✓      |
-| ~~T006~~ | ~~P1~~   | ~~Backend~~   | ~~Structured JSON logging (replace fmt.Printf)~~ ✓ |
-| ~~T007~~ | ~~P1~~   | ~~Frontend~~  | ~~Fix `any` types (50 instances)~~ ✓               |
-| ~~T008~~ | ~~P1~~   | ~~Frontend~~  | ~~Remove @ts-nocheck directives~~ ✓                |
-| ~~T009~~ | ~~P1~~   | ~~Frontend~~  | ~~Enable noUnusedLocals/noUnusedParameters~~ ✓     |
-| ~~T010~~ | ~~P1~~   | ~~Backend~~   | ~~Apply error tracking middleware~~ ✓              |
-| T012     | P1       | Infra         | Bundle size monitoring in CI                       |
-| T013     | P2       | Testing       | Increase frontend test coverage to 70%+            |
-| T014     | P2       | Testing       | Integration tests for critical workflows           |
-| T015     | P2       | Docs          | Generate OpenAPI/Swagger documentation             |
-| T016     | P2       | Perf          | Frontend bundle analysis + optimization            |
-| T017     | P2       | Perf          | Query performance monitoring                       |
-| T018     | P2       | Cleanup       | Dead code elimination                              |
-| ~~T019~~ | ~~P1~~   | ~~Feature~~   | ~~Integrate calendar view for job scheduling~~ ✓   |
-| T020     | P1       | Backend       | Build conflict detection API endpoint              |
-| T021     | P2       | Refactor      | Extract duplicate file download utility            |
-| T022     | P2       | Refactor      | Extract duplicate URLSearchParams builder          |
-| T023     | P2       | Refactor      | Consolidate cache hooks (useLocalCache/useSession) |
-| T024     | P1       | Observability | Full Sentry integration (frontend + backend)       |
-| T025     | P2       | Analytics     | Integrate product analytics (PostHog recommended)  |
-| T026     | P2       | Analytics     | Set up business KPI dashboard (Metabase)           |
-| T027     | P2       | Feature       | Add drag-and-drop rescheduling to job calendar     |
+| ID       | Priority | Category       | Confidence | MVP    | Task                                               |
+| -------- | -------- | -------------- | ---------- | ------ | -------------------------------------------------- |
+| ~~T001~~ | ~~P0~~   | ~~Backend~~    | ~~High~~   | ~~--~~ | ~~Recovery middleware Sentry integration~~ ✓       |
+| ~~T002~~ | ~~P0~~   | ~~Frontend~~   | ~~High~~   | ~~--~~ | ~~Centralize direct fetch() calls~~ ✓              |
+| ~~T003~~ | ~~P0~~   | ~~Frontend~~   | ~~High~~   | ~~--~~ | ~~Add CSP/HSTS headers to nginx.conf~~ ✓           |
+| ~~T004~~ | ~~P0~~   | ~~Infra~~      | ~~High~~   | ~~--~~ | ~~Create GitHub Actions CI/CD workflows~~ ✓        |
+| ~~T005~~ | ~~P0~~   | ~~Backend~~    | ~~High~~   | ~~--~~ | ~~Expose /metrics endpoint for Prometheus~~ ✓      |
+| ~~T006~~ | ~~P1~~   | ~~Backend~~    | ~~High~~   | ~~--~~ | ~~Structured JSON logging (replace fmt.Printf)~~ ✓ |
+| ~~T007~~ | ~~P1~~   | ~~Frontend~~   | ~~High~~   | ~~--~~ | ~~Fix `any` types (50 instances)~~ ✓               |
+| ~~T008~~ | ~~P1~~   | ~~Frontend~~   | ~~High~~   | ~~--~~ | ~~Remove @ts-nocheck directives~~ ✓                |
+| ~~T009~~ | ~~P1~~   | ~~Frontend~~   | ~~High~~   | ~~--~~ | ~~Enable noUnusedLocals/noUnusedParameters~~ ✓     |
+| ~~T010~~ | ~~P1~~   | ~~Backend~~    | ~~High~~   | ~~--~~ | ~~Apply error tracking middleware~~ ✓              |
+| T012     | P1       | Infra          | High       | --     | Bundle size monitoring in CI                       |
+| T013     | P2       | Testing        | High       | --     | Increase frontend test coverage to 70%+            |
+| T014     | P2       | Testing        | High       | --     | Integration tests for critical workflows           |
+| T015     | P2       | Docs           | High       | After  | Generate OpenAPI/Swagger documentation             |
+| T016     | P2       | Perf           | High       | --     | Frontend bundle analysis + optimization            |
+| T017     | P2       | Perf           | High       | --     | Query performance monitoring                       |
+| T018     | P2       | Cleanup        | High       | --     | Dead code elimination                              |
+| ~~T019~~ | ~~P0~~   | ~~Scheduling~~ | ~~High~~   | ~~--~~ | ~~Integrate calendar view for job scheduling~~ ✓   |
+| T020     | P0       | Scheduling     | High       | Before | Build conflict detection API endpoint              |
+| T021     | P2       | Refactor       | High       | --     | Extract duplicate file download utility            |
+| T022     | P2       | Refactor       | High       | --     | Extract duplicate URLSearchParams builder          |
+| T023     | P2       | Refactor       | High       | --     | Consolidate cache hooks (useLocalCache/useSession) |
+| T024     | P1       | Observability  | High       | --     | Full Sentry integration (frontend + backend)       |
+| T025     | P2       | Analytics      | High       | After  | Integrate product analytics (PostHog recommended)  |
+| T026     | P2       | Analytics      | High       | After  | Set up business KPI dashboard (Metabase)           |
+| T027     | P2       | Scheduling     | High       | Before | Add drag-and-drop rescheduling to job calendar     |
+| T028     | P0       | Quoting        | High       | Before | Add "Convert Quote to Job" button                  |
+| T029     | P0       | Invoicing      | High       | Before | Add "Generate Invoice from Job" button             |
+| T030     | P0       | Invoicing      | High       | Before | Auto-populate invoice from job data                |
+| T031     | P0       | Invoicing      | High       | Before | Build A/R aging buckets report                     |
+| T032     | P0       | Invoicing      | High       | Before | Build "Who Owes What" report                       |
+| T033     | P0       | Dashboard      | High       | Before | Add "Jobs Needing Invoice" dashboard widget        |
+| T034     | P0       | Comms          | High       | Before | Wire payment reminder automation                   |
+| T035     | P0       | Roles          | High       | Before | Create Technician role                             |
+| T036     | P1       | CRM            | High       | Before | Add manual Call Log entry                          |
+| T037     | P1       | CRM            | High       | Before | Auto-log system messages to customer activity      |
+| T038     | P1       | Scheduling     | Medium     | Before | Add technician availability management UI          |
+| T039     | P1       | Scheduling     | Medium     | Before | Create emergency job insertion workflow            |
+| T040     | P1       | Scheduling     | High       | Before | Add auto-notify on emergency insertion             |
+| T041     | P1       | Quoting        | Medium     | Before | Implement quote auto follow-ups                    |
+| T042     | P1       | Quoting        | High       | Before | Build follow-up queue UI                           |
+| T043     | P1       | Invoicing      | High       | Before | Wire payment reminder notifications                |
+| T044     | P1       | Invoicing      | Medium     | Before | Build collections dashboard                        |
+| T045     | P1       | Dashboard      | High       | Before | Add aging quotes dashboard widget                  |
+| T046     | P1       | Dashboard      | High       | Before | Add follow-up queue dashboard widget               |
+| T047     | P1       | Reporting      | Medium     | Before | Build "stuck work" report                          |
+| T048     | P1       | Comms          | High       | Before | Add appointment confirmation emails                |
+| T049     | P1       | Comms          | High       | Before | Add appointment reminder emails/SMS                |
+| T050     | P1       | Comms          | High       | Before | Add "Tech on the way" manual trigger               |
+| T051     | P1       | Comms          | Medium     | Before | Implement quote follow-up email sequence           |
+| T052     | P1       | Roles          | High       | Before | Create Dispatcher role                             |
+| T053     | P2       | CRM            | High       | Before | Add "Repeat Job" button on customer detail         |
+| T054     | P2       | CRM            | Medium     | Before | Create Communication Log component                 |
+| T055     | P2       | CRM            | Medium     | Before | Unified Customer Timeline view                     |
+| T056     | P2       | Scheduling     | Medium     | Before | Add workload capacity warnings                     |
+| T057     | P2       | Scheduling     | High       | Before | Add double-booking override with reason            |
+| T058     | P2       | Scheduling     | Medium     | Before | Add required fields validation by job stage        |
+| T059     | P2       | Scheduling     | High       | Before | Add technician skill tags                          |
+| T060     | P2       | Quoting        | Medium     | Before | Create quote template system (good/better/best)    |
+| T061     | P2       | Quoting        | Medium     | Before | Add required deposit to accept quote               |
+| T062     | P2       | Quoting        | High       | Before | Add quote aging tracking                           |
+| T063     | P2       | Invoicing      | Medium     | Before | Add deposit tracking and application               |
+| T064     | P2       | Invoicing      | High       | Before | Add last contact date tracking on invoices         |
+| T065     | P2       | Invoicing      | High       | Before | Add promise-to-pay notes                           |
+| T066     | P2       | Dashboard      | Medium     | Before | Add technician utilization widget                  |
+| T067     | P2       | Dashboard      | High       | Before | Add quote conversion rate metric                   |
+| T068     | P2       | Reporting      | High       | Before | Build job-completion-to-invoice time report        |
+| T069     | P2       | Reporting      | High       | Before | Build invoice-to-paid time report (DSO)            |
+| T070     | P2       | Reporting      | High       | Before | Build revenue by service type report               |
+| T071     | P2       | Reporting      | High       | Before | Build collections rate report                      |
+| T072     | P2       | Comms          | High       | Before | Create message template management UI              |
+| T073     | P2       | Comms          | High       | Before | Add rich variable system for templates             |
+| T074     | P2       | Roles          | High       | Before | Create Accountant role                             |
+| T075     | P2       | Roles          | Medium     | Before | Add field-level permission controls                |
+| T076     | P3       | CRM            | High       | After  | Add "Recreate Last Quote" button                   |
+| T077     | P3       | Scheduling     | Medium     | After  | Add time-off request UI                            |
+| T078     | P3       | Scheduling     | Medium     | After  | Add skill-based job matching suggestions           |
+| T079     | P3       | Scheduling     | High       | After  | Add travel time notes field                        |
+| T080     | P3       | Quoting        | High       | After  | Create terms & conditions templates                |
+| T081     | P3       | Quoting        | Medium     | After  | Add e-signature for quote acceptance               |
+| T082     | P3       | Quoting        | Medium     | After  | Add "Create Quote from Job" button                 |
+| T083     | P3       | Invoicing      | Medium     | After  | Implement late fee calculation                     |
+| T084     | P3       | Reporting      | High       | After  | Build quote-to-job conversion report               |
+| T085     | P3       | Reporting      | Medium     | After  | Build lead-to-quote time report                    |
+| T086     | P3       | Reporting      | High       | After  | Build quote-to-acceptance time report              |
+| T087     | P3       | Reporting      | Medium     | After  | Build revenue by technician report                 |
+| T088     | P3       | Reporting      | Medium     | After  | Add comparative analysis (vs prior period)         |
+| T089     | P3       | Comms          | Medium     | After  | Add email/SMS delivery tracking                    |
+| T090     | P3       | Comms          | Medium     | After  | Add communication failure alerts                   |
+| T091     | P3       | Comms          | Medium     | After  | Add notification preferences per customer          |
+| T092     | P3       | Roles          | High       | After  | Implement 2FA (TOTP)                               |
+| T093     | P3       | Roles          | Medium     | After  | Implement comprehensive audit logging              |
+| T094     | P3       | Roles          | High       | After  | Add Google OAuth sign-in                           |
+| T095     | P3       | Integration    | Medium     | After  | Build outgoing webhooks system                     |
+| T096     | P3       | Integration    | High       | After  | Build event log table                              |
+| T097     | P3       | Integration    | High       | After  | Add webhook retry logic                            |
+| T098     | P3       | Integration    | High       | After  | Document public API (OpenAPI/Swagger)              |
 
 ---
 
@@ -81,7 +152,6 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 ### Sprint 4 - Features & Cleanup
 
 - [x] **T019** - Integrate calendar view for job scheduling ✓
-- [ ] **T020** - Build conflict detection API endpoint
 - [ ] **T018** - Dead code elimination (partially complete - see audit)
 
 ### Sprint 5 - Performance & Refactoring
@@ -91,7 +161,109 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 - [ ] **T021** - Extract duplicate file download utility
 - [ ] **T022** - Extract duplicate URLSearchParams builder
 - [ ] **T023** - Consolidate cache hooks
+
+### Sprint 6 - Scheduling & Conflict Detection
+
+- [ ] **T020** - Build conflict detection API endpoint
 - [ ] **T027** - Add drag-and-drop rescheduling to job calendar (depends on T020)
+- [ ] **T038** - Add technician availability management UI
+- [ ] **T056** - Add workload capacity warnings
+- [ ] **T057** - Add double-booking override with reason
+- [ ] **T059** - Add technician skill tags
+
+### Sprint 7 - Core Workflow (Quote → Job → Invoice)
+
+- [ ] **T028** - Add "Convert Quote to Job" button
+- [ ] **T029** - Add "Generate Invoice from Job" button
+- [ ] **T030** - Auto-populate invoice from job data
+- [ ] **T033** - Add "Jobs Needing Invoice" dashboard widget
+- [ ] **T053** - Add "Repeat Job" button on customer detail
+
+### Sprint 8 - Collections & A/R
+
+- [ ] **T031** - Build A/R aging buckets report
+- [ ] **T032** - Build "Who Owes What" report
+- [ ] **T034** - Wire payment reminder automation
+- [ ] **T043** - Wire payment reminder notifications
+- [ ] **T044** - Build collections dashboard
+- [ ] **T064** - Add last contact date tracking on invoices
+- [ ] **T065** - Add promise-to-pay notes
+- [ ] **T071** - Build collections rate report
+
+### Sprint 9 - Quoting Enhancements
+
+- [ ] **T041** - Implement quote auto follow-ups
+- [ ] **T042** - Build follow-up queue UI
+- [ ] **T045** - Add aging quotes dashboard widget
+- [ ] **T046** - Add follow-up queue dashboard widget
+- [ ] **T051** - Implement quote follow-up email sequence
+- [ ] **T060** - Create quote template system (good/better/best)
+- [ ] **T061** - Add required deposit to accept quote
+- [ ] **T062** - Add quote aging tracking
+
+### Sprint 10 - Communications & Notifications
+
+- [ ] **T048** - Add appointment confirmation emails
+- [ ] **T049** - Add appointment reminder emails/SMS
+- [ ] **T050** - Add "Tech on the way" manual trigger
+- [ ] **T072** - Create message template management UI
+- [ ] **T073** - Add rich variable system for templates
+
+### Sprint 11 - Roles & Permissions
+
+- [ ] **T035** - Create Technician role
+- [ ] **T052** - Create Dispatcher role
+- [ ] **T074** - Create Accountant role
+- [ ] **T075** - Add field-level permission controls
+
+### Sprint 12 - CRM & Customer Timeline
+
+- [ ] **T036** - Add manual Call Log entry
+- [ ] **T037** - Auto-log system messages to customer activity
+- [ ] **T054** - Create Communication Log component
+- [ ] **T055** - Unified Customer Timeline view
+
+### Sprint 13 - Dashboard & Reporting
+
+- [ ] **T047** - Build "stuck work" report
+- [ ] **T066** - Add technician utilization widget
+- [ ] **T067** - Add quote conversion rate metric
+- [ ] **T068** - Build job-completion-to-invoice time report
+- [ ] **T069** - Build invoice-to-paid time report (DSO)
+- [ ] **T070** - Build revenue by service type report
+
+### Sprint 14 - Job Workflow Enhancements
+
+- [ ] **T039** - Create emergency job insertion workflow
+- [ ] **T040** - Add auto-notify on emergency insertion
+- [ ] **T058** - Add required fields validation by job stage
+- [ ] **T063** - Add deposit tracking and application
+
+### Sprint 15+ - Post-MVP Enhancements
+
+- [ ] **T076** - Add "Recreate Last Quote" button
+- [ ] **T077** - Add time-off request UI
+- [ ] **T078** - Add skill-based job matching suggestions
+- [ ] **T079** - Add travel time notes field
+- [ ] **T080** - Create terms & conditions templates
+- [ ] **T081** - Add e-signature for quote acceptance
+- [ ] **T082** - Add "Create Quote from Job" button
+- [ ] **T083** - Implement late fee calculation
+- [ ] **T084** - Build quote-to-job conversion report
+- [ ] **T085** - Build lead-to-quote time report
+- [ ] **T086** - Build quote-to-acceptance time report
+- [ ] **T087** - Build revenue by technician report
+- [ ] **T088** - Add comparative analysis (vs prior period)
+- [ ] **T089** - Add email/SMS delivery tracking
+- [ ] **T090** - Add communication failure alerts
+- [ ] **T091** - Add notification preferences per customer
+- [ ] **T092** - Implement 2FA (TOTP)
+- [ ] **T093** - Implement comprehensive audit logging
+- [ ] **T094** - Add Google OAuth sign-in
+- [ ] **T095** - Build outgoing webhooks system
+- [ ] **T096** - Build event log table
+- [ ] **T097** - Add webhook retry logic
+- [ ] **T098** - Document public API (OpenAPI/Swagger)
 
 ---
 
@@ -164,6 +336,155 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
   - Added `/metrics` endpoint in `routes.go` (enabled via `PROMETHEUS_ENABLED=true`)
   - Uses existing Prometheus client at `pkg/clients/metrics/prometheus/`
   - Ready for Prometheus/Grafana scraping when monitoring is set up
+
+### Scheduling - Critical
+
+- [ ] **T020: Build Conflict Detection API Endpoint**
+  - **What**: Implement `POST /v1/conflicts/check` endpoint for scheduling conflict detection
+  - **Why**: Calendar view is useless without conflict warnings - prevents double-booking disasters
+  - **Confidence**: High - clear requirements, frontend components already exist
+  - **Context**: When dispatcher schedules a job, system should warn if tech is already booked, too far away, or overloaded
+  - **Backend Requirements**:
+    - Create `internal/services/conflict_service.go`
+    - Create `internal/api/handlers/conflict_handler.go`
+    - Wire endpoint in `routes.go`
+  - **Conflict Types to Detect**:
+    - Technician already booked (time overlap)
+    - Outside business hours
+    - Workload exceeds daily limit
+  - **Acceptance Criteria**:
+    - Endpoint returns conflicts in <100ms
+    - All conflict types detected
+    - Suggestions provided for resolution
+
+### Quoting - Critical
+
+- [ ] **T028: Add "Convert Quote to Job" Button**
+  - **What**: One-click conversion from accepted quote to scheduled job
+  - **Why**: Core workflow - customer accepts quote, office manager needs to immediately schedule the work
+  - **Confidence**: High - straightforward data mapping between quote and job
+  - **Context**: Field service businesses live and die by this flow: quote accepted → job scheduled → work done → invoice sent
+  - **Implementation**:
+    - Add button on QuoteDetailPage when status is "accepted"
+    - Create job with customer, service type, line items from quote
+    - Navigate to job detail or scheduling view
+  - **Acceptance Criteria**:
+    - Button visible only on accepted quotes
+    - Job created with all relevant quote data
+    - User can immediately schedule the new job
+
+### Invoicing - Critical
+
+- [ ] **T029: Add "Generate Invoice from Job" Button**
+  - **What**: One-click invoice generation from completed job
+  - **Why**: Core workflow - prevents "completed but not billed" revenue leakage
+  - **Confidence**: High - clear data flow from job to invoice
+  - **Context**: Techs complete work, office forgets to bill. This button makes billing instant.
+  - **Implementation**:
+    - Add button on JobDetailPage when status is "completed"
+    - Pre-populate invoice with job data (see T030)
+  - **Acceptance Criteria**:
+    - Button visible only on completed jobs without invoices
+    - Invoice created and linked to job
+    - User navigated to invoice for review/send
+
+- [ ] **T030: Auto-populate Invoice from Job Data**
+  - **What**: Pull labor hours, materials, notes, photos into invoice automatically
+  - **Why**: Eliminates manual data entry, ensures nothing is missed
+  - **Confidence**: High - models already have the fields
+  - **Context**: Tech logged "2 hours labor, replaced capacitor $45, customer approved additional work" → invoice has all that
+  - **Implementation**:
+    - Map job.materials → invoice line items
+    - Calculate labor from job time tracking
+    - Include job notes in invoice description
+  - **Acceptance Criteria**:
+    - All job materials appear as line items
+    - Labor calculated from actual time
+    - Job notes/photos accessible from invoice
+
+- [ ] **T031: Build A/R Aging Buckets Report**
+  - **What**: Report showing receivables by age: 0-30, 31-60, 61-90, 90+ days
+  - **Why**: Essential for cash flow management - "how much money is stuck and for how long?"
+  - **Confidence**: High - standard accounting report, clear requirements
+  - **Context**: Owner opens report, sees "$5,000 current, $2,000 over 30 days, $500 over 60 days" - knows where to focus collection efforts
+  - **Implementation**:
+    - Query invoices grouped by days since due date
+    - Display totals per bucket
+    - Drill-down to see individual invoices
+  - **Acceptance Criteria**:
+    - Buckets: Current, 1-30, 31-60, 61-90, 90+ days
+    - Click bucket to see invoices in that range
+    - Export to CSV
+
+- [ ] **T032: Build "Who Owes What" Report**
+  - **What**: Customer-centric view of outstanding balances
+  - **Why**: Collection prioritization - focus on customers with largest balances
+  - **Confidence**: High - simple aggregation query
+  - **Context**: "ABC Company owes $3,000 across 3 invoices, last payment 45 days ago" - actionable collection info
+  - **Implementation**:
+    - Group unpaid invoices by customer
+    - Show total owed, invoice count, oldest invoice, last payment date
+    - Sort by amount descending
+  - **Acceptance Criteria**:
+    - Shows all customers with outstanding balances
+    - Click customer to see their invoices
+    - Filter by amount threshold
+
+### Dashboard - Critical
+
+- [ ] **T033: Add "Jobs Needing Invoice" Dashboard Widget**
+  - **What**: Count and list of completed jobs that haven't been invoiced
+  - **Why**: Prevents revenue leakage - "You have 7 jobs to bill!"
+  - **Confidence**: High - simple query: jobs where status=completed AND no linked invoice
+  - **Context**: Money left on the table is the #1 cash flow killer for small service businesses
+  - **Implementation**:
+    - Dashboard widget showing count
+    - Click to see list of unbilled jobs
+    - Quick action to generate invoice
+  - **Acceptance Criteria**:
+    - Accurate count of completed-but-unbilled jobs
+    - One-click navigation to job list
+    - Prominent placement on dashboard
+
+### Communications - Critical
+
+- [ ] **T034: Wire Payment Reminder Automation**
+  - **What**: Background job that sends automatic reminders for overdue invoices
+  - **Why**: Getting paid is the business - automated reminders improve collection rate 30-40%
+  - **Confidence**: High - payment notification models exist, just need scheduler
+  - **Context**: Invoice 7 days overdue → auto-email "Your payment is past due." 14 days → another. 30 days → escalation.
+  - **Implementation**:
+    - Create background worker/cron job
+    - Query overdue invoices daily
+    - Send reminders at 7, 14, 30 days (configurable)
+    - Track which reminders were sent
+  - **Acceptance Criteria**:
+    - Reminders sent automatically
+    - Configurable timing (days overdue)
+    - No duplicate reminders
+    - Reminder history tracked
+
+### Roles - Critical
+
+- [ ] **T035: Create Technician Role**
+  - **What**: Role for field workers with limited access
+  - **Why**: Techs need to see their jobs, add notes/photos, update status - but NOT see customer financials or other techs' schedules
+  - **Confidence**: High - RBAC system exists, just need role definition
+  - **Context**: Tech opens app, sees "Your jobs today: 3", can mark complete, add photos, log time. Cannot see "Customer owes $5,000"
+  - **Permissions to include**:
+    - View assigned jobs only
+    - Update job status
+    - Add job notes and photos
+    - Log time/materials
+  - **Permissions to exclude**:
+    - View other technicians' jobs
+    - View customer financial data
+    - Create/edit customers
+    - Access reports
+  - **Acceptance Criteria**:
+    - Role created with correct permissions
+    - Field-level hiding of financial data
+    - Tech can only see their assignments
 
 ---
 
@@ -298,46 +619,6 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
     - Readable stack traces with source maps
     - Environment separation (dev/staging/prod)
 
-- [ ] **T020: Build Conflict Detection API Endpoint**
-  - **What**: Implement `POST /v1/conflicts/check` endpoint for scheduling conflict detection
-  - **Why**: Frontend conflict detection UI exists but backend endpoint is missing
-  - **Frontend Status**: `src/components/scheduling/ConflictChecker.tsx` and `ConflictAlert.tsx` ready
-  - **Backend Requirements**:
-    - Create `internal/services/conflict_service.go`
-    - Create `internal/api/handlers/conflict_handler.go`
-    - Wire endpoint in `routes.go`
-  - **Request Format**:
-    ```json
-    {
-      "job_id": "uuid",
-      "start_time": "2025-02-01T09:00:00Z",
-      "end_time": "2025-02-01T11:00:00Z",
-      "assigned_tech_ids": ["uuid1", "uuid2"],
-      "location": { "address": "...", "lat": 0, "lng": 0 }
-    }
-    ```
-  - **Response Format**:
-    ```json
-    {
-      "has_conflicts": true,
-      "conflicts": [
-        { "type": "technician_overlap", "severity": "critical", "message": "...", "overlapping_job": {...} }
-      ],
-      "suggestions": [
-        { "type": "reschedule", "suggested_time": "...", "message": "..." }
-      ]
-    }
-    ```
-  - **Conflict Types to Detect**:
-    - Technician already booked (overlap)
-    - Location conflict (travel time)
-    - Outside business hours
-    - Workload exceeds daily limit
-  - **Acceptance Criteria**:
-    - Endpoint returns conflicts in <100ms
-    - All conflict types detected
-    - Suggestions provided for each conflict
-
 ### Email Infrastructure
 
 - [ ] **Email Rate Limiting for SES**
@@ -446,6 +727,268 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 
 - [ ] **Fix @ts-nocheck in Routes** (MOVED TO P1 - Type Safety)
   - See P1 section for details
+
+### CRM - High Priority
+
+- [ ] **T036: Add Manual Call Log Entry**
+  - **What**: Form to log phone calls with customers (date, duration, notes, outcome)
+  - **Why**: Team coordination - prevents two people calling same customer, tracks communication history
+  - **Confidence**: High - simple CRUD with form
+  - **Context**: "Called Mrs. Smith about her quote, left voicemail, will call back tomorrow" - everyone on team can see this
+  - **Implementation**:
+    - Add CallLog model (customer_id, user_id, timestamp, duration, notes, outcome)
+    - Add form on customer detail page
+    - Display in customer activity timeline
+  - **Acceptance Criteria**:
+    - Can log calls from customer detail page
+    - Call appears in customer timeline
+    - Shows who made the call and when
+
+- [ ] **T037: Auto-log System Messages to Customer Activity**
+  - **What**: Automatically create activity log entries when system sends communications
+  - **Why**: No more "did the quote go out?" questions - everything is logged
+  - **Confidence**: High - hook into existing email/SMS send functions
+  - **Context**: Quote sent → activity log shows "Quote #123 sent via email". Invoice paid → "Payment received $500"
+  - **Implementation**:
+    - Hook email service to log sends
+    - Hook SMS service to log sends
+    - Log payment events
+    - Log quote/invoice status changes
+  - **Acceptance Criteria**:
+    - All outbound communications logged
+    - All payment events logged
+    - All status changes logged
+    - Shows in customer timeline
+
+### Scheduling - High Priority
+
+- [ ] **T038: Add Technician Availability Management UI**
+  - **What**: UI for techs to set working hours and for managers to view availability
+  - **Why**: Dispatchers need to know who's available when scheduling
+  - **Confidence**: Medium - unclear if this is simple working hours or complex shift patterns
+  - **Context**: "Mike works M-F 8-5, Sarah works T-Sat 7-4" - dispatcher sees this when assigning
+  - **Implementation**:
+    - Add availability settings per technician
+    - Display availability on scheduling calendar
+    - Warn when scheduling outside available hours
+  - **Acceptance Criteria**:
+    - Techs can set their working hours
+    - Dispatchers can view tech availability
+    - Warning when scheduling outside hours
+
+- [ ] **T039: Create Emergency Job Insertion Workflow**
+  - **What**: Special flow for high-priority emergency jobs that may bump existing appointments
+  - **Why**: Pipe burst, AC died in summer - customer needs someone TODAY
+  - **Confidence**: Medium - exact workflow unclear (simple priority flag vs complex rescheduling)
+  - **Context**: Emergency call comes in → mark as emergency → system helps find slot, may bump existing job
+  - **Implementation**:
+    - Add "emergency" priority level
+    - Show available slots accounting for travel time
+    - Option to bump existing non-emergency jobs
+    - Notify affected customers if bumped
+  - **Acceptance Criteria**:
+    - Can mark job as emergency
+    - System suggests available slots
+    - Can reschedule existing jobs with notification
+
+- [ ] **T040: Add Auto-notify on Emergency Insertion**
+  - **What**: Automatically notify customer and tech when emergency job is inserted
+  - **Why**: Keep everyone informed when schedules change
+  - **Confidence**: High - straightforward notification trigger
+  - **Context**: Emergency bumps existing job → affected customer gets "We need to reschedule" message
+  - **Implementation**:
+    - Trigger notification when job bumped
+    - Send to affected customer
+    - Send to affected technician
+  - **Acceptance Criteria**:
+    - Affected parties notified automatically
+    - Clear message about rescheduling
+    - Option to call instead of auto-message
+
+### Quoting - High Priority
+
+- [ ] **T041: Implement Quote Auto Follow-ups**
+  - **What**: Automated email sequence for quotes that haven't been responded to
+  - **Why**: Consistent follow-up improves close rate by 20-30%
+  - **Confidence**: Medium - cadence and messaging unclear
+  - **Context**: Quote sent Monday, no response → Day 3: "Following up" → Day 7: "Any questions?" → Day 14: "Quote expiring soon"
+  - **Implementation**:
+    - Background job to check quote ages
+    - Send follow-up at configurable intervals
+    - Track follow-ups sent
+    - Stop when quote accepted/declined
+  - **Acceptance Criteria**:
+    - Follow-ups sent automatically
+    - Configurable timing
+    - No follow-ups after response
+    - Track follow-up history
+
+- [ ] **T042: Build Follow-up Queue UI**
+  - **What**: List view of quotes needing manual follow-up
+  - **Why**: Organized view for sales efforts - "Call these 5 customers today"
+  - **Confidence**: High - straightforward list with filters
+  - **Context**: Manager opens queue, sees quotes sorted by age/value, assigns follow-up tasks
+  - **Implementation**:
+    - List quotes pending response
+    - Sort by age, value, customer
+    - Show last contact date
+    - Quick actions (call logged, email sent)
+  - **Acceptance Criteria**:
+    - Shows all pending quotes
+    - Sortable/filterable
+    - Log follow-up actions
+
+### Invoicing - High Priority
+
+- [ ] **T043: Wire Payment Reminder Notifications**
+  - **What**: Connect payment notification models to actual email/SMS sending
+  - **Why**: Models exist but aren't wired - reminders don't actually go out
+  - **Confidence**: High - infrastructure exists, just needs wiring
+  - **Implementation**:
+    - Connect notification service to email client
+    - Connect to SMS client
+    - Use existing notification templates
+  - **Acceptance Criteria**:
+    - Payment reminders actually sent
+    - Both email and SMS working
+    - Delivery tracked
+
+- [ ] **T044: Build Collections Dashboard**
+  - **What**: Unified view for managing overdue accounts
+  - **Why**: Central place for collection efforts
+  - **Confidence**: Medium - could be simple list or complex workflow tool
+  - **Context**: Collections person opens dashboard, sees all overdue accounts, prioritizes calls
+  - **Implementation**:
+    - List overdue invoices
+    - Show customer contact info
+    - Track collection activities
+    - Log promises-to-pay
+  - **Acceptance Criteria**:
+    - All overdue accounts visible
+    - Contact info accessible
+    - Can log collection activities
+
+### Dashboard - High Priority
+
+- [ ] **T045: Add Aging Quotes Dashboard Widget**
+  - **What**: Widget showing count of quotes older than X days
+  - **Why**: Quick visibility into stale pipeline
+  - **Confidence**: High - simple count query
+  - **Context**: "12 quotes over 7 days old" - prompts follow-up action
+  - **Implementation**:
+    - Query quotes by age
+    - Display count in widget
+    - Click to see list
+  - **Acceptance Criteria**:
+    - Shows count of aging quotes
+    - Configurable threshold (7, 14, 30 days)
+    - Links to quote list
+
+- [ ] **T046: Add Follow-up Queue Dashboard Widget**
+  - **What**: Widget showing items needing follow-up today
+  - **Why**: Daily action list at a glance
+  - **Confidence**: High - simple count with link
+  - **Context**: "8 items need follow-up today" - click to see list
+  - **Implementation**:
+    - Count quotes + invoices needing follow-up
+    - Display on dashboard
+    - Link to follow-up queue
+  - **Acceptance Criteria**:
+    - Accurate count
+    - Links to queue
+
+- [ ] **T047: Build "Stuck Work" Report**
+  - **What**: Report showing work stuck at various stages
+  - **Why**: Catches things falling through cracks
+  - **Confidence**: Medium - "stuck" definition needs clarification
+  - **Context**: Three lists: completed-not-invoiced, quotes-not-followed-up, overdue-not-contacted
+  - **Implementation**:
+    - Query for each "stuck" category
+    - Display counts and lists
+    - Quick actions to unstick
+  - **Acceptance Criteria**:
+    - Shows completed jobs without invoices
+    - Shows quotes without follow-up
+    - Shows overdue invoices without recent contact
+
+### Communications - High Priority
+
+- [ ] **T048: Add Appointment Confirmation Emails**
+  - **What**: Send confirmation email when job is scheduled
+  - **Why**: Sets customer expectations, reduces no-shows
+  - **Confidence**: High - standard notification
+  - **Context**: Job scheduled → "Your appointment is confirmed for Feb 5 at 2pm"
+  - **Implementation**:
+    - Trigger on job scheduled
+    - Template with job details
+    - Include reschedule/cancel link
+  - **Acceptance Criteria**:
+    - Email sent when job scheduled
+    - Contains date, time, service type
+    - Professional template
+
+- [ ] **T049: Add Appointment Reminder Emails/SMS**
+  - **What**: Send reminders before scheduled appointments
+  - **Why**: Reduces no-shows by 25-30%
+  - **Confidence**: High - standard pattern
+  - **Context**: Day before: "Reminder: technician arriving tomorrow 2pm". Morning of: "Tech arriving in 2 hours"
+  - **Implementation**:
+    - Background job to check upcoming jobs
+    - Send at configurable intervals (24hr, 2hr)
+    - Support both email and SMS
+  - **Acceptance Criteria**:
+    - Reminders sent automatically
+    - Configurable timing
+    - Customer can opt out
+
+- [ ] **T050: Add "Tech on the Way" Manual Trigger**
+  - **What**: Button for tech to notify customer they're en route
+  - **Why**: Customer knows to be ready, improves experience
+  - **Confidence**: High - simple button + notification
+  - **Context**: Tech clicks button → customer gets "Your technician is on the way!"
+  - **Implementation**:
+    - Button on tech's job view
+    - Send SMS to customer
+    - Log in job activity
+  - **Acceptance Criteria**:
+    - One-click send
+    - SMS delivered to customer
+    - Logged in job history
+
+- [ ] **T051: Implement Quote Follow-up Email Sequence**
+  - **What**: Multi-email sequence for quote follow-up
+  - **Why**: Automated nurturing of pending quotes
+  - **Confidence**: Medium - sequence rules need definition
+  - **Context**: Day 3: check-in, Day 7: address concerns, Day 14: expiration warning
+  - **Implementation**:
+    - Define email templates for each touch
+    - Schedule sends based on quote age
+    - Stop on response
+  - **Acceptance Criteria**:
+    - Sequence runs automatically
+    - Templates customizable
+    - Stops when quote resolved
+
+### Roles - High Priority
+
+- [ ] **T052: Create Dispatcher Role**
+  - **What**: Role for office staff who manage scheduling
+  - **Why**: Dispatchers need schedule access but not financial visibility
+  - **Confidence**: High - clear permission boundaries
+  - **Context**: Dispatcher can see all jobs, assign techs, reschedule - but can't see invoice amounts or customer payment history
+  - **Permissions to include**:
+    - View all jobs
+    - Create/edit job schedules
+    - Assign technicians
+    - View customer contact info
+  - **Permissions to exclude**:
+    - View invoice amounts
+    - View payment history
+    - Access financial reports
+    - Modify pricing
+  - **Acceptance Criteria**:
+    - Role created with correct permissions
+    - Financial data hidden from dispatchers
 
 ---
 
@@ -851,6 +1394,244 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
     - Zero-downtime rotation procedure
     - Tested in staging
 
+### CRM - Medium Priority
+
+- [ ] **T053: Add "Repeat Job" Button on Customer Detail**
+  - **What**: Button to create new job from last job for a customer
+  - **Why**: Service businesses do recurring work (annual maintenance, quarterly pest control)
+  - **Confidence**: High - straightforward clone operation
+  - **Context**: Customer calls, wants same service as last time → one click → job created with same details
+  - **Acceptance Criteria**:
+    - Button on customer detail page
+    - Creates job with same service type, notes, duration
+    - Opens job for scheduling
+
+- [ ] **T054: Create Communication Log Component**
+  - **What**: Unified view of all communications with a customer
+  - **Why**: "Did anyone call Mrs. Smith?" - shows all emails, SMS, calls in one place
+  - **Confidence**: Medium - unclear if needs threaded view or simple list
+  - **Acceptance Criteria**:
+    - Shows emails, SMS, calls
+    - Chronological order
+    - Links to related records
+
+- [ ] **T055: Unified Customer Timeline View**
+  - **What**: Single scrollable timeline: jobs, quotes, invoices, payments, communications
+  - **Why**: "At a glance" customer history for context in conversations
+  - **Confidence**: Medium - complexity depends on richness of interaction
+  - **Acceptance Criteria**:
+    - All customer activity in one timeline
+    - Clickable items link to detail pages
+    - Filterable by type
+
+### Scheduling - Medium Priority
+
+- [ ] **T056: Add Workload Capacity Warnings**
+  - **What**: Warning when technician exceeds daily capacity
+  - **Why**: Prevents overloading techs
+  - **Confidence**: Medium - threshold logic unclear (8 hours? configurable?)
+  - **Context**: "John already has 8 hours scheduled today" when adding more
+  - **Acceptance Criteria**:
+    - Warning shown when over threshold
+    - Configurable threshold
+    - Can override with acknowledgment
+
+- [ ] **T057: Add Double-booking Override with Reason**
+  - **What**: Allow scheduling conflicts with mandatory reason
+  - **Why**: Sometimes you NEED two techs on same job, or emergency overrides
+  - **Confidence**: High - simple modal with text field
+  - **Acceptance Criteria**:
+    - Override option when conflict detected
+    - Reason field required
+    - Override logged for audit
+
+- [ ] **T058: Add Required Fields Validation by Job Stage**
+  - **What**: Enforce required data at each job status transition
+  - **Why**: Techs can't mark "complete" without notes/photos
+  - **Confidence**: Medium - exact requirements per stage unclear
+  - **Context**: Completion requires notes, photos, time logged. Prevents rushing without documentation.
+  - **Acceptance Criteria**:
+    - Configurable required fields per status
+    - Validation on status change
+    - Clear error messages
+
+- [ ] **T059: Add Technician Skill Tags**
+  - **What**: Tag techs with skills (HVAC, plumbing, electrical)
+  - **Why**: Used for smart assignment suggestions
+  - **Confidence**: High - simple tagging system
+  - **Acceptance Criteria**:
+    - Can add/remove skill tags
+    - Skills visible on tech profile
+    - Filter techs by skill
+
+### Quoting - Medium Priority
+
+- [ ] **T060: Create Quote Template System (Good/Better/Best)**
+  - **What**: Pre-built quote templates with tiered options
+  - **Why**: Upsell pattern - "Basic AC Tune-up $149, Premium $249, Complete $399"
+  - **Confidence**: Medium - complexity in template builder UI
+  - **Acceptance Criteria**:
+    - Create/edit templates
+    - Templates have line items
+    - One-click apply template to quote
+
+- [ ] **T061: Add Required Deposit to Accept Quote**
+  - **What**: Option to require payment before quote acceptance
+  - **Why**: Common for big jobs - "Pay $200 deposit to confirm"
+  - **Confidence**: Medium - integrates with Stripe checkout
+  - **Acceptance Criteria**:
+    - Configurable deposit amount/percentage
+    - Quote acceptance triggers payment
+    - Deposit tracked separately
+
+- [ ] **T062: Add Quote Aging Tracking**
+  - **What**: Track how long quotes have been pending
+  - **Why**: Helps prioritize follow-ups
+  - **Confidence**: High - simple date math
+  - **Acceptance Criteria**:
+    - Age displayed on quote list
+    - Sortable by age
+    - Filter by age range
+
+### Invoicing - Medium Priority
+
+- [ ] **T063: Add Deposit Tracking and Application**
+  - **What**: Track deposits separately, apply to final invoice
+  - **Why**: Proper accounting for deposits
+  - **Confidence**: Medium - accounting complexity
+  - **Context**: Customer paid $500 deposit → Final invoice shows $2000 total, $500 deposit, $1500 due
+  - **Acceptance Criteria**:
+    - Deposits tracked separately
+    - Applied to invoice automatically
+    - Clear in invoice display
+
+- [ ] **T064: Add Last Contact Date Tracking on Invoices**
+  - **What**: Track when customer was last contacted about invoice
+  - **Why**: Prevents pestering, ensures follow-up
+  - **Confidence**: High - simple date field
+  - **Acceptance Criteria**:
+    - Date updated on contact
+    - Visible in collections view
+    - Filter by last contact
+
+- [ ] **T065: Add Promise-to-Pay Notes**
+  - **What**: Field to track customer payment commitments
+  - **Why**: Customer says "I'll pay Friday" - log it
+  - **Confidence**: High - simple notes field with date
+  - **Acceptance Criteria**:
+    - Promise date and amount
+    - Visible in collections
+    - Alert when promise date passes
+
+### Dashboard - Medium Priority
+
+- [ ] **T066: Add Technician Utilization Widget**
+  - **What**: Show scheduled hours per tech today
+  - **Why**: Helps with capacity planning
+  - **Confidence**: Medium - unclear if needs historical trend
+  - **Context**: "John: 6/8 hours (75%), Sarah: 8/8 hours (100%)"
+  - **Acceptance Criteria**:
+    - Shows utilization per tech
+    - Today's view
+    - Highlights underutilized/overutilized
+
+- [ ] **T067: Add Quote Conversion Rate Metric**
+  - **What**: Display quote-to-job conversion rate on dashboard
+  - **Why**: Business health indicator
+  - **Confidence**: High - simple math: accepted / total
+  - **Acceptance Criteria**:
+    - Shows percentage
+    - Configurable time period
+    - Trend indicator
+
+### Reporting - Medium Priority
+
+- [ ] **T068: Build Job-completion-to-invoice Time Report**
+  - **What**: Average days from job done to invoice sent
+  - **Why**: Measures billing efficiency
+  - **Confidence**: High - timestamps exist
+  - **Acceptance Criteria**:
+    - Average days displayed
+    - Trend over time
+    - Filter by period
+
+- [ ] **T069: Build Invoice-to-paid Time Report (DSO)**
+  - **What**: Days Sales Outstanding - average days to collect payment
+  - **Why**: Key financial metric
+  - **Confidence**: High - standard calculation
+  - **Acceptance Criteria**:
+    - DSO calculated
+    - Trend over time
+    - Industry comparison
+
+- [ ] **T070: Build Revenue by Service Type Report**
+  - **What**: Revenue breakdown by job type
+  - **Why**: Shows where money comes from
+  - **Confidence**: High - straightforward aggregation
+  - **Acceptance Criteria**:
+    - Revenue per service type
+    - Chart visualization
+    - Filter by period
+
+- [ ] **T071: Build Collections Rate Report**
+  - **What**: Percentage of billed revenue collected
+  - **Why**: Tracks bad debt
+  - **Confidence**: High - simple ratio
+  - **Acceptance Criteria**:
+    - Collection rate percentage
+    - Trend over time
+    - Breakdown by age
+
+### Communications - Medium Priority
+
+- [ ] **T072: Create Message Template Management UI**
+  - **What**: CRUD for email/SMS templates per company
+  - **Why**: Customizable communications
+  - **Confidence**: High - standard template management
+  - **Acceptance Criteria**:
+    - Create/edit/delete templates
+    - Template categories
+    - Preview before save
+
+- [ ] **T073: Add Rich Variable System for Templates**
+  - **What**: Variable substitution in templates
+  - **Why**: Personalized messages
+  - **Confidence**: High - standard pattern
+  - **Context**: `{{customer_first_name}}`, `{{job_date}}`, `{{tech_name}}`
+  - **Acceptance Criteria**:
+    - Documented variables
+    - Preview with sample data
+    - Error if variable missing
+
+### Roles - Medium Priority
+
+- [ ] **T074: Create Accountant Role**
+  - **What**: View-only access to all financial data
+  - **Why**: For bookkeeper/CPA access
+  - **Confidence**: High - clear permission boundaries
+  - **Permissions to include**:
+    - View all invoices
+    - View all payments
+    - View financial reports
+    - Export data
+  - **Permissions to exclude**:
+    - Create/edit customers
+    - Modify jobs
+    - Change settings
+  - **Acceptance Criteria**:
+    - Role created
+    - All financial data visible
+    - No modification allowed
+
+- [ ] **T075: Add Field-level Permission Controls**
+  - **What**: Hide specific fields based on role
+  - **Why**: Tech can't see "customer owes $5,000 overdue"
+  - **Confidence**: Medium - more complex than page-level permissions
+  - **Acceptance Criteria**:
+    - Financial fields hidden from non-financial roles
+    - Configurable field visibility
+    - No data leakage
+
 ---
 
 ## P3 - Low Priority (Nice to Have)
@@ -931,6 +1712,137 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
     - WebP format generated
     - CDN integration
     - Lazy loading implemented
+
+### CRM - Low Priority
+
+- [ ] **T076: Add "Recreate Last Quote" Button**
+  - **What**: One-click to clone customer's most recent quote
+  - **Why**: Customer calls back months later wanting same work
+  - **Confidence**: High - simple clone operation
+
+### Scheduling - Low Priority
+
+- [ ] **T077: Add Time-off Request UI**
+  - **What**: Techs request time off, managers approve
+  - **Why**: Vacation/sick day management
+  - **Confidence**: Medium - could be simple block or complex approval workflow
+
+- [ ] **T078: Add Skill-based Job Matching Suggestions**
+  - **What**: Suggest techs based on job type vs tech skills
+  - **Why**: Smart assignment recommendations
+  - **Confidence**: Medium - filtering logic complexity
+
+- [ ] **T079: Add Travel Time Notes Field**
+  - **What**: Field to note expected travel time between jobs
+  - **Why**: Helps with scheduling accuracy
+  - **Confidence**: High - simple text/number field
+
+### Quoting - Low Priority
+
+- [ ] **T080: Create Terms & Conditions Templates**
+  - **What**: Reusable legal text blocks for quotes
+  - **Why**: Consistent terms across quotes
+  - **Confidence**: High - simple template CRUD
+
+- [ ] **T081: Add E-signature for Quote Acceptance**
+  - **What**: Customer signs digitally to accept quote
+  - **Why**: Legal acceptance record
+  - **Confidence**: Medium - could be typed name or signature pad
+
+- [ ] **T082: Add "Create Quote from Job" Button**
+  - **What**: Generate quote from completed job
+  - **Why**: Customer asks "how much to replace the whole unit?"
+  - **Confidence**: Medium - less common workflow
+
+### Invoicing - Low Priority
+
+- [ ] **T083: Implement Late Fee Calculation**
+  - **What**: Auto-calculate late fees based on rules
+  - **Why**: Enforce payment terms
+  - **Confidence**: Medium - rules vary by business/jurisdiction
+
+### Reporting - Low Priority
+
+- [ ] **T084: Build Quote-to-job Conversion Report**
+  - **What**: Detailed conversion analysis over time
+  - **Why**: Track sales effectiveness
+  - **Confidence**: High - extends dashboard metric
+
+- [ ] **T085: Build Lead-to-quote Time Report**
+  - **What**: Average time from new customer to first quote
+  - **Why**: Measures sales speed
+  - **Confidence**: Medium - requires tracking customer creation date
+
+- [ ] **T086: Build Quote-to-acceptance Time Report**
+  - **What**: Average time for quotes to be accepted
+  - **Why**: Measures quote effectiveness
+  - **Confidence**: High - timestamps exist
+
+- [ ] **T087: Build Revenue by Technician Report**
+  - **What**: Revenue attributed to each tech
+  - **Why**: Performance tracking
+  - **Confidence**: Medium - privacy considerations
+
+- [ ] **T088: Add Comparative Analysis (vs Prior Period)**
+  - **What**: "Revenue this month vs last month: +12%"
+  - **Why**: Trend visibility
+  - **Confidence**: Medium - period comparison logic
+
+### Communications - Low Priority
+
+- [ ] **T089: Add Email/SMS Delivery Tracking**
+  - **What**: Track sent/delivered/failed status
+  - **Why**: Know if messages reached customers
+  - **Confidence**: Medium - provider webhook integration
+
+- [ ] **T090: Add Communication Failure Alerts**
+  - **What**: Alert admin when communications fail
+  - **Why**: Prevent silent failures
+  - **Confidence**: Medium - alerting infrastructure needed
+
+- [ ] **T091: Add Notification Preferences per Customer**
+  - **What**: Customer opts out of certain notifications
+  - **Why**: Respect preferences, compliance
+  - **Confidence**: Medium - preference storage and checking
+
+### Roles & Security - Low Priority
+
+- [ ] **T092: Implement 2FA (TOTP)**
+  - **What**: Google Authenticator compatible 2FA
+  - **Why**: Security enhancement
+  - **Confidence**: High - standard implementation
+
+- [ ] **T093: Implement Comprehensive Audit Logging**
+  - **What**: Track all data changes with who/what/when
+  - **Why**: Compliance and debugging
+  - **Confidence**: Medium - complex to implement well
+
+- [ ] **T094: Add Google OAuth Sign-in**
+  - **What**: "Sign in with Google" option
+  - **Why**: Convenience
+  - **Confidence**: High - standard OAuth flow
+
+### Integration - Low Priority
+
+- [ ] **T095: Build Outgoing Webhooks System**
+  - **What**: Send events to customer-configured URLs
+  - **Why**: Integration with external systems
+  - **Confidence**: Medium - webhook infrastructure
+
+- [ ] **T096: Build Event Log Table**
+  - **What**: Store all significant events
+  - **Why**: Debugging and integration foundation
+  - **Confidence**: High - straightforward logging
+
+- [ ] **T097: Add Webhook Retry Logic**
+  - **What**: Retry failed webhook deliveries
+  - **Why**: Reliable event delivery
+  - **Confidence**: High - standard retry pattern
+
+- [ ] **T098: Document Public API (OpenAPI/Swagger)**
+  - **What**: API documentation for integrations
+  - **Why**: Enable third-party integrations
+  - **Confidence**: High - documentation generation
 
 ---
 
