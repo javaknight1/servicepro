@@ -8,6 +8,7 @@
 export { Calendar, default } from './Calendar';
 export { CalendarEvent } from './CalendarEvent';
 export { CalendarToolbar } from './CalendarToolbar';
+export { CalendarEventPopover } from './CalendarEventPopover';
 
 // Types
 export type {
@@ -18,6 +19,7 @@ export type {
   CalendarToolbarProps,
   DragDropEvent,
   ResizeEvent,
+  EventClickData,
   CalendarErrorBoundaryState,
 } from './types';
 

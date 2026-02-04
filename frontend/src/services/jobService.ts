@@ -302,6 +302,22 @@ class JobService {
     );
     return response.data;
   }
+
+  /**
+   * Get jobs scheduled within a date range (for calendar view)
+   * @param start - Start date of the range
+   * @param end - End date of the range
+   * @returns Array of jobs within the date range
+   */
+  async getScheduledJobs(start: Date, end: Date): Promise<Job[]> {
+    const response = await api.get<Job[]>(`${this.basePath}/scheduled`, {
+      params: {
+        start: start.toISOString(),
+        end: end.toISOString(),
+      },
+    });
+    return response.data;
+  }
 }
 
 export const jobService = new JobService();

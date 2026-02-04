@@ -34,7 +34,14 @@ const baseNavItems: NavItem[] = [
 // Items that require an organization to be selected (includes Settings -> Org Settings)
 const orgNavItems: NavItem[] = [
   { label: 'Customers', path: '/customers', icon: Users },
-  { label: 'Jobs', path: '/jobs', icon: Briefcase },
+  {
+    label: 'Jobs',
+    icon: Briefcase,
+    children: [
+      { label: 'List', path: '/jobs' },
+      { label: 'Calendar', path: '/jobs/calendar' },
+    ],
+  },
   { label: 'Quotes', path: '/quotes', icon: FileText },
   { label: 'Invoices', path: '/invoices', icon: Receipt },
   {
@@ -114,6 +121,7 @@ function NavItemLink({
               <NavLink
                 key={child.path}
                 to={child.path}
+                end
                 className={({ isActive }) =>
                   cn(
                     'block px-3 py-2 rounded-lg text-sm text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 transition-colors',

@@ -11,7 +11,7 @@ import {
 import type { Column } from '@components/shared';
 import { jobService, Job, JobFilters } from '@services/jobService';
 import { JobActionsMenu, JobFlowModal } from '@components/jobs';
-import { Briefcase, Plus, Search, Info } from 'lucide-react';
+import { Briefcase, Plus, Search, Info, CalendarDays } from 'lucide-react';
 import { getJobStatusLabel, getJobPriorityLabel } from '@app-types';
 
 export function JobsPage() {
@@ -147,14 +147,24 @@ export function JobsPage() {
               <Info className="h-5 w-5 text-neutral-400" />
             </button>
           </div>
-          <Button
-            variant="primary"
-            onClick={() => navigate('/jobs/new')}
-            className="flex items-center gap-2"
-          >
-            <Plus className="h-4 w-4" />
-            Create Job
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => navigate('/jobs/calendar')}
+              className="flex items-center gap-2"
+            >
+              <CalendarDays className="h-4 w-4" />
+              Calendar
+            </Button>
+            <Button
+              variant="primary"
+              onClick={() => navigate('/jobs/new')}
+              className="flex items-center gap-2"
+            >
+              <Plus className="h-4 w-4" />
+              Create Job
+            </Button>
+          </div>
         </div>
         <p className="text-neutral-600 mb-6">Track and manage service jobs</p>
 

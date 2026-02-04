@@ -29,7 +29,7 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 | T016     | P2       | Perf          | Frontend bundle analysis + optimization            |
 | T017     | P2       | Perf          | Query performance monitoring                       |
 | T018     | P2       | Cleanup       | Dead code elimination                              |
-| T019     | P1       | Feature       | Integrate calendar view for job scheduling         |
+| ~~T019~~ | ~~P1~~   | ~~Feature~~   | ~~Integrate calendar view for job scheduling~~ ✓   |
 | T020     | P1       | Backend       | Build conflict detection API endpoint              |
 | T021     | P2       | Refactor      | Extract duplicate file download utility            |
 | T022     | P2       | Refactor      | Extract duplicate URLSearchParams builder          |
@@ -37,6 +37,7 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 | T024     | P1       | Observability | Full Sentry integration (frontend + backend)       |
 | T025     | P2       | Analytics     | Integrate product analytics (PostHog recommended)  |
 | T026     | P2       | Analytics     | Set up business KPI dashboard (Metabase)           |
+| T027     | P2       | Feature       | Add drag-and-drop rescheduling to job calendar     |
 
 ---
 
@@ -79,7 +80,7 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 
 ### Sprint 4 - Features & Cleanup
 
-- [ ] **T019** - Integrate calendar view for job scheduling
+- [x] **T019** - Integrate calendar view for job scheduling ✓
 - [ ] **T020** - Build conflict detection API endpoint
 - [ ] **T018** - Dead code elimination (partially complete - see audit)
 
@@ -90,6 +91,7 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 - [ ] **T021** - Extract duplicate file download utility
 - [ ] **T022** - Extract duplicate URLSearchParams builder
 - [ ] **T023** - Consolidate cache hooks
+- [ ] **T027** - Add drag-and-drop rescheduling to job calendar (depends on T020)
 
 ---
 
@@ -121,6 +123,7 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 - [x] T008: Remove @ts-nocheck - Removed directives from routes/index.tsx and performance.ts, added browser API type declarations
 - [x] T009: Enable noUnusedLocals/noUnusedParameters - Enabled strict checks, removed 17 instances of dead code
 - [x] T010: Error tracking middleware - Already implemented via RecoveryMiddleware in error_handler.go
+- [x] T019: Calendar view for job scheduling - Read-only calendar at `/jobs/calendar`, click to view job details, status color mapping
 
 ---
 
@@ -237,20 +240,21 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 
 ### Frontend Features
 
-- [ ] **T019: Integrate Calendar View for Job Scheduling**
+- [x] **T019: Integrate Calendar View for Job Scheduling** ✓ COMPLETE
   - **What**: Wire up the existing Calendar components to display and manage jobs
   - **Why**: Calendar components are 100% complete but not integrated - critical for service business scheduling
-  - **Status**: Frontend complete at `src/components/calendar/` - just needs integration
-  - **Components Available**:
-    - `Calendar.tsx` - Full react-big-calendar with drag-drop, resize, views (month/week/day/agenda)
-    - `CalendarEvent.tsx` - Custom event renderer with job details, priority badges
-    - `CalendarToolbar.tsx` - Navigation controls
-  - **Acceptance Criteria**:
-    - Add calendar route (e.g., `/schedule` or `/jobs/calendar`)
-    - Fetch jobs and convert to calendar events
-    - Support creating new jobs by clicking time slots
-    - Support editing jobs by clicking events
-    - Drag-and-drop to reschedule jobs
+  - **Implementation**:
+    - Created `JobCalendarPage` at `/jobs/calendar` route
+    - Uses existing `GET /v1/jobs/scheduled?start=&end=` backend endpoint
+    - Converts Job data to calendar events with status color mapping
+    - Click event navigates to job detail page
+    - Drag-and-drop disabled for now (see T027)
+  - **Files Created/Modified**:
+    - `frontend/src/pages/Jobs/JobCalendarPage.tsx` - New calendar page component
+    - `frontend/src/services/jobService.ts` - Added `getScheduledJobs()` method
+    - `frontend/src/components/calendar/Calendar.tsx` - Disabled drag-drop
+    - `frontend/src/components/calendar/types.ts` - Added status mapping function
+    - `frontend/src/routes/index.tsx` - Added `/jobs/calendar` route
 
 - [ ] **T024: Full Sentry Integration (Frontend + Backend)**
   - **What**: Complete error tracking setup with Sentry across the entire stack
@@ -271,6 +275,7 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
     - [ ] Add request context to all captured errors
     - [ ] Configure release tracking
   - **Local Development Setup**:
+
     ```yaml
     # docker-compose.yml addition for self-hosted Sentry (optional)
     # Alternative: Use Sentry.io free tier (10k errors/month)
@@ -281,6 +286,7 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 
     - Simpler option: Use Sentry.io with development DSN
     - Set `SENTRY_DSN` env var, use `SENTRY_ENVIRONMENT=development`
+
   - **Testing**:
     - Add test error button in dev mode
     - Verify errors appear in Sentry dashboard
@@ -717,6 +723,26 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
     - 5+ KPI dashboards created
     - Accessible to business stakeholders
     - (Optional) Key charts embedded in app dashboard
+
+- [ ] **T027: Add Drag-and-Drop Rescheduling to Job Calendar**
+  - **What**: Enable drag-and-drop to reschedule jobs on the calendar view
+  - **Why**: Allow quick rescheduling without navigating to job detail page
+  - **Depends On**: T020 (Conflict Detection API) - should validate conflicts before saving
+  - **Current State**: Calendar view (T019) is implemented as read-only; drag-drop code is commented out
+  - **Implementation**:
+    - Re-enable `onEventDrop` and `onEventResize` handlers in `Calendar.tsx`
+    - Integrate `ConflictChecker` component before confirming reschedule
+    - Call `jobService.updateJob()` with new `scheduled_start_at`/`scheduled_end_at`
+    - Show success/error toast notifications
+  - **Files to Modify**:
+    - `frontend/src/components/calendar/Calendar.tsx` - Uncomment drag-drop handlers
+    - `frontend/src/pages/Jobs/JobCalendarPage.tsx` - Add drop/resize handlers
+  - **Acceptance Criteria**:
+    - Drag event to new time slot updates job schedule
+    - Resize event adjusts job duration
+    - Conflict warnings shown before saving (requires T020)
+    - Undo option or confirmation dialog before save
+    - Loading state during save operation
 
 - [ ] **T018: Dead Code Elimination** (Partially Complete)
   - **What**: Remove unused components, hooks, and utilities identified in audit

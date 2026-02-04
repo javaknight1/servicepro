@@ -50,3 +50,8 @@
     text-wrap: balance;
   }
 }
+
+/* React Big Calendar - off-range days (previous/next month) */
+.rbc-off-range-bg {
+  background-color: #e5e7eb !important; /* neutral-200 - darker grey for off-range */
+}

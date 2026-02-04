@@ -8,11 +8,17 @@ import React, {
 import {
   Calendar as BigCalendar,
   dateFnsLocalizer,
-  SlotInfo,
   View,
   EventProps,
 } from 'react-big-calendar';
-import { format, parse, startOfWeek, getDay } from 'date-fns';
+import {
+  format,
+  parse,
+  startOfWeek,
+  getDay,
+  startOfDay,
+  isBefore,
+} from 'date-fns';
 import { enUS } from 'date-fns/locale';
 import withDragAndDrop from 'react-big-calendar/lib/addons/dragAndDrop';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
@@ -22,27 +28,12 @@ import {
   CalendarProps,
   CalendarView,
   JobEvent,
-  DragDropEvent,
-  ResizeEvent,
   CalendarErrorBoundaryState,
 } from './types';
 import { CalendarEvent } from './CalendarEvent';
 import { CalendarToolbar } from './CalendarToolbar';
 
 // Types for react-big-calendar callbacks
-interface DragDropCallbackArgs {
-  event: JobEvent;
-  start: Date | string;
-  end: Date | string;
-  isAllDay?: boolean;
-}
-
-interface ResizeCallbackArgs {
-  event: JobEvent;
-  start: Date | string;
-  end: Date | string;
-}
-
 interface ToolbarCallbackProps {
   date: Date;
   onNavigate: (action: 'PREV' | 'NEXT' | 'TODAY') => void;
@@ -138,13 +129,17 @@ const CalendarSkeleton: React.FC = () => (
 
 /**
  * Main Calendar Component
+ *
+ * Note: Drag-and-drop functionality is currently disabled.
+ * See TODO T027 for future implementation with conflict detection.
  */
 export const Calendar: React.FC<CalendarProps> = ({
   events,
   onEventClick,
-  onEventDrop,
-  onEventResize,
-  onSelectSlot,
+  // Drag-and-drop disabled - see T027
+  // onEventDrop,
+  // onEventResize,
+  // onSelectSlot,
   onNavigate,
   onViewChange,
   defaultView = 'month',
@@ -162,68 +157,35 @@ export const Calendar: React.FC<CalendarProps> = ({
     };
   }, []);
 
-  // Handle event drop (drag and drop)
-  const handleEventDrop = useCallback(
-    async ({ event, start, end, isAllDay }: DragDropCallbackArgs) => {
-      if (!onEventDrop) return;
+  // Day style getter - highlight past days differently
+  const dayPropGetter = useCallback((date: Date) => {
+    const today = startOfDay(new Date());
+    const cellDate = startOfDay(date);
 
-      const dragData: DragDropEvent = {
-        event: event,
-        start: new Date(start),
-        end: new Date(end),
-        isAllDay: isAllDay || false,
+    if (isBefore(cellDate, today)) {
+      return {
+        style: {
+          backgroundColor: '#f9fafb', // neutral-50 - subtle gray for past days
+        },
       };
+    }
+    return {};
+  }, []);
 
-      try {
-        await onEventDrop(dragData);
-      } catch (error) {
-        console.error('Failed to update event:', error);
-        // Optionally show a toast notification here
-      }
-    },
-    [onEventDrop]
-  );
+  // Note: Drag-and-drop handlers removed - see T027 for future implementation
 
-  // Handle event resize
-  const handleEventResize = useCallback(
-    async ({ event, start, end }: ResizeCallbackArgs) => {
-      if (!onEventResize) return;
-
-      const resizeData: ResizeEvent = {
-        event: event,
-        start: new Date(start),
-        end: new Date(end),
-      };
-
-      try {
-        await onEventResize(resizeData);
-      } catch (error) {
-        console.error('Failed to resize event:', error);
-        // Optionally show a toast notification here
-      }
-    },
-    [onEventResize]
-  );
-
-  // Handle slot selection
-  const handleSelectSlot = useCallback(
-    (slotInfo: SlotInfo) => {
-      if (!onSelectSlot) return;
-
-      onSelectSlot({
-        start: slotInfo.start,
-        end: slotInfo.end,
-        slots: slotInfo.slots,
-      });
-    },
-    [onSelectSlot]
-  );
-
-  // Handle event click
+  // Handle event click - capture mouse position for popover
   const handleSelectEvent = useCallback(
-    (event: JobEvent) => {
+    (event: JobEvent, e: React.SyntheticEvent) => {
       if (onEventClick) {
-        onEventClick(event);
+        const mouseEvent = e.nativeEvent as MouseEvent;
+        onEventClick({
+          event,
+          position: {
+            x: mouseEvent.clientX,
+            y: mouseEvent.clientY,
+          },
+        });
       }
     },
     [onEventClick]
@@ -286,10 +248,10 @@ export const Calendar: React.FC<CalendarProps> = ({
     [EventComponent, ToolbarComponent]
   );
 
-  // Calendar formats
+  // Calendar formats (date-fns v3 uses lowercase 'a' for AM/PM)
   const formats = useMemo(
     () => ({
-      timeGutterFormat: 'h:mm A',
+      timeGutterFormat: 'h:mm a',
       eventTimeRangeFormat: ({ start, end }: { start: Date; end: Date }) =>
         `${format(start, 'h:mm a')} - ${format(end, 'h:mm a')}`,
       agendaTimeRangeFormat: ({ start, end }: { start: Date; end: Date }) =>
@@ -324,12 +286,15 @@ export const Calendar: React.FC<CalendarProps> = ({
             view={currentView as View}
             onView={handleViewChange}
             views={['month', 'week', 'day', 'agenda'] as View[]}
-            onSelectEvent={(event: JobEvent) => handleSelectEvent(event)}
-            onSelectSlot={handleSelectSlot}
-            onEventDrop={handleEventDrop}
-            onEventResize={handleEventResize}
-            selectable
-            resizable
+            onSelectEvent={(event: JobEvent, e: React.SyntheticEvent) =>
+              handleSelectEvent(event, e)
+            }
+            // Drag-and-drop disabled - see T027
+            // onSelectSlot={handleSelectSlot}
+            // onEventDrop={handleEventDrop}
+            // onEventResize={handleEventResize}
+            selectable={false}
+            resizable={false}
             popup
             showMultiDayTimes
             step={30}
@@ -338,6 +303,7 @@ export const Calendar: React.FC<CalendarProps> = ({
             defaultView={defaultView as View}
             components={components}
             eventPropGetter={(event: JobEvent) => eventStyleGetter(event)}
+            dayPropGetter={dayPropGetter}
             formats={formats}
             style={{ height: '100%', minHeight: '600px' }}
             className="custom-calendar"

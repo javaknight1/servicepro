@@ -244,6 +244,14 @@ const JobStatusHistoryPage = loadable(
   { chunkName: 'job-status-history', delay: 100 }
 );
 
+const JobCalendarPage = loadable(
+  () =>
+    import(/* webpackChunkName: "page-jobs" */ '@pages/Jobs').then((m) => ({
+      default: m.JobCalendarPage,
+    })),
+  { chunkName: 'job-calendar', delay: 100 }
+);
+
 const QuoteDetailPage = loadable(
   () =>
     import(/* webpackChunkName: "page-quotes" */ '@pages/Quotes').then((m) => ({
@@ -417,6 +425,7 @@ export function AppRoutes() {
         <Route path="/customers/new" element={<CustomerDetailPage />} />
         <Route path="/customers/:id" element={<CustomerDetailPage />} />
         <Route path="/jobs" element={<JobsPage />} />
+        <Route path="/jobs/calendar" element={<JobCalendarPage />} />
         <Route path="/jobs/new" element={<JobDetailPage />} />
         <Route path="/jobs/:id" element={<JobDetailPage />} />
         <Route path="/jobs/:id/history" element={<JobStatusHistoryPage />} />
@@ -478,6 +487,7 @@ export const routePaths = {
   customerNew: '/customers/new',
   customerDetail: (id: string) => `/customers/${id}`,
   jobs: '/jobs',
+  jobCalendar: '/jobs/calendar',
   quotes: '/quotes',
   invoices: '/invoices',
   settings: '/settings',
