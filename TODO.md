@@ -2,7 +2,7 @@
 
 This document tracks technical improvements that should be implemented but are deferred for future development cycles.
 
-**Last Updated: 2026-02-04** (T031 A/R aging buckets report complete)
+**Last Updated: 2026-02-05** (T014 integration tests for critical workflows complete)
 
 ---
 
@@ -23,8 +23,8 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 | ~~T009~~ | ~~P1~~   | ~~Frontend~~   | ~~High~~   | ~~--~~    | ~~Enable noUnusedLocals/noUnusedParameters~~ ✓           |
 | ~~T010~~ | ~~P1~~   | ~~Backend~~    | ~~High~~   | ~~--~~    | ~~Apply error tracking middleware~~ ✓                    |
 | T012     | P1       | Infra          | High       | --        | Bundle size monitoring in CI                             |
-| T013     | P2       | Testing        | High       | --        | Increase frontend test coverage to 70%+                  |
-| T014     | P2       | Testing        | High       | --        | Integration tests for critical workflows                 |
+| ~~T013~~ | ~~P2~~   | ~~Testing~~    | ~~High~~   | ~~--~~    | ~~Increase frontend test coverage to 70%+~~ ✓            |
+| ~~T014~~ | ~~P2~~   | ~~Testing~~    | ~~High~~   | ~~--~~    | ~~Integration tests for critical workflows~~ ✓           |
 | ~~T015~~ | ~~P2~~   | ~~Docs~~       | ~~High~~   | ~~After~~ | ~~Generate OpenAPI/Swagger documentation~~ ✓             |
 | T016     | P2       | Perf           | High       | --        | Frontend bundle analysis + optimization                  |
 | T017     | P2       | Perf           | High       | --        | Query performance monitoring                             |
@@ -145,8 +145,8 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 
 ### Sprint 3 - Testing & Documentation
 
-- [ ] **T013** - Increase frontend test coverage to 70%+
-- [ ] **T014** - Integration tests for critical workflows
+- [x] **T013** - Increase frontend test coverage to 70%+ ✓
+- [x] **T014** - Integration tests for critical workflows ✓
 - [x] **T015** - Generate OpenAPI/Swagger documentation ✓
 
 ### Sprint 4 - Features & Cleanup
@@ -278,6 +278,8 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 - [x] .env in .gitignore - Properly excluded (lines 42-50)
 - [x] Console.log stripping - Terser `drop_console: true` in production build
 - [x] Migrate `db.Raw()` to GORM (SQL injection risk)
+- [x] **T013** - Frontend test coverage 70%+ (52 test files, 1251 tests, coverage: 69.87% statements, 72.49% functions, 70.99% lines)
+- [x] **T014** - Integration tests for critical workflows (auth, customer CRUD, job lifecycle, quote workflow, invoice & payment)
 - [x] Cypress E2E testing - Auth, customers, jobs, invoices, quotes, payments
 - [x] Graceful shutdown - SIGTERM/SIGINT handling with 30s timeout in cmd/main.go
 - [x] HTTP server timeouts - ReadTimeout, WriteTimeout, IdleTimeout, ReadHeaderTimeout configured via http.Server

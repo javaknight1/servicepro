@@ -172,3 +172,49 @@ The generated files are:
 
 - `backend/docs/swagger.json` - OpenAPI specification
 - `frontend/src/types/api.generated.ts` - TypeScript types for API responses
+
+---
+
+## Testing
+
+### Integration Tests
+
+**IMPORTANT: Update integration tests when modifying critical workflows.**
+
+Integration tests are located in `/frontend/tests/integration/` and cover critical user workflows:
+
+- `auth.integration.test.tsx` - Authentication flows (login, register, password reset)
+- `customer.integration.test.tsx` - Customer CRUD operations
+- `job.integration.test.tsx` - Job lifecycle (creation, status transitions, completion)
+- `quote.integration.test.tsx` - Quote workflow (creation, sending, acceptance)
+- `invoice.integration.test.tsx` - Invoice & payment flows
+
+When making changes that affect these workflows, update the corresponding integration tests:
+
+1. **Adding a new page/component in a workflow**: Add test cases covering the new functionality
+2. **Changing API service methods**: Update mocks in the relevant test file
+3. **Modifying form validation**: Update validation test cases
+4. **Changing navigation/routing**: Update navigation assertions
+5. **Adding new status transitions**: Add test cases for the new transitions
+
+### Running Tests
+
+```bash
+# Run all tests
+npm test
+
+# Run integration tests only
+npm test -- tests/integration
+
+# Run with coverage
+npm run test:coverage
+```
+
+### Test Utilities
+
+Shared test utilities are in `/frontend/tests/integration/setup.ts`:
+
+- `renderWithProviders()` - Render with QueryClient and Router
+- `createMockAuthStore()` / `createMockTenantStore()` - Create mock store states
+- `createMockApiResponse()` / `createMockApiError()` - Create mock API responses
+- Mock data factories for common entities (users, tenants, customers, jobs, quotes, invoices)
