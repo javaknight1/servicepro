@@ -4,6 +4,7 @@ import type {
   CustomerStatus,
   PreferredContactMethod,
 } from '../types/customer';
+import { buildQueryParams } from '../utils/queryParams';
 
 export interface Customer {
   id: string;
@@ -72,17 +73,15 @@ class CustomerService {
   async getCustomers(
     filters: CustomerFilters = {}
   ): Promise<CustomerListResponse> {
-    const params = new URLSearchParams();
-
-    if (filters.search) params.append('search', filters.search);
-    if (filters.status) params.append('status', filters.status);
-    if (filters.customer_type)
-      params.append('customer_type', filters.customer_type);
-    if (filters.page) params.append('page', filters.page.toString());
-    if (filters.page_size)
-      params.append('page_size', filters.page_size.toString());
-    if (filters.sort_by) params.append('sort_by', filters.sort_by);
-    if (filters.sort_order) params.append('sort_order', filters.sort_order);
+    const params = buildQueryParams({
+      search: filters.search,
+      status: filters.status,
+      customer_type: filters.customer_type,
+      page: filters.page,
+      page_size: filters.page_size,
+      sort_by: filters.sort_by,
+      sort_order: filters.sort_order,
+    });
 
     const response = await api.get<CustomerListResponse>(this.basePath, {
       params,

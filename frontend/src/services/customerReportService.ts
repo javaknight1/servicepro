@@ -12,6 +12,7 @@ import {
 } from '../types/customer';
 import { ReportExportResponse } from '../types/revenue';
 import { downloadCSV } from '../utils/fileDownload';
+import { buildQueryString } from '../utils/queryParams';
 
 const REPORTS_BASE_URL = '/v1/reports/customers';
 
@@ -21,19 +22,19 @@ const REPORTS_BASE_URL = '/v1/reports/customers';
 export const getCustomerReport = async (
   query: CustomerReportQuery
 ): Promise<CustomerReportResponse> => {
-  const params = new URLSearchParams();
-
-  if (query.start_date) params.append('start_date', query.start_date);
-  if (query.end_date) params.append('end_date', query.end_date);
-  if (query.segment) params.append('segment', query.segment);
-  if (query.customer_type) params.append('customer_type', query.customer_type);
-  if (query.status) params.append('status', query.status);
-  if (query.state) params.append('state', query.state);
-  if (query.sort_by) params.append('sort_by', query.sort_by);
-  if (query.sort_order) params.append('sort_order', query.sort_order);
+  const queryString = buildQueryString({
+    start_date: query.start_date,
+    end_date: query.end_date,
+    segment: query.segment,
+    customer_type: query.customer_type,
+    status: query.status,
+    state: query.state,
+    sort_by: query.sort_by,
+    sort_order: query.sort_order,
+  });
 
   const response = await api.get<CustomerReportResponse>(
-    `${REPORTS_BASE_URL}?${params.toString()}`
+    `${REPORTS_BASE_URL}${queryString}`
   );
   return response.data;
 };
@@ -44,13 +45,13 @@ export const getCustomerReport = async (
 export const getSegmentBreakdown = async (
   query: CustomerReportQuery = {}
 ): Promise<SegmentBreakdownData[]> => {
-  const params = new URLSearchParams();
-
-  if (query.customer_type) params.append('customer_type', query.customer_type);
-  if (query.status) params.append('status', query.status);
+  const queryString = buildQueryString({
+    customer_type: query.customer_type,
+    status: query.status,
+  });
 
   const response = await api.get<{ data: SegmentBreakdownData[] }>(
-    `${REPORTS_BASE_URL}/segments?${params.toString()}`
+    `${REPORTS_BASE_URL}/segments${queryString}`
   );
   return response.data.data;
 };
@@ -61,12 +62,12 @@ export const getSegmentBreakdown = async (
 export const getTypeBreakdown = async (
   query: CustomerReportQuery = {}
 ): Promise<TypeBreakdownData[]> => {
-  const params = new URLSearchParams();
-
-  if (query.state) params.append('state', query.state);
+  const queryString = buildQueryString({
+    state: query.state,
+  });
 
   const response = await api.get<{ data: TypeBreakdownData[] }>(
-    `${REPORTS_BASE_URL}/types?${params.toString()}`
+    `${REPORTS_BASE_URL}/types${queryString}`
   );
   return response.data.data;
 };
@@ -77,12 +78,12 @@ export const getTypeBreakdown = async (
 export const getGeographyBreakdown = async (
   query: CustomerReportQuery = {}
 ): Promise<GeographyBreakdownData[]> => {
-  const params = new URLSearchParams();
-
-  if (query.customer_type) params.append('customer_type', query.customer_type);
+  const queryString = buildQueryString({
+    customer_type: query.customer_type,
+  });
 
   const response = await api.get<{ data: GeographyBreakdownData[] }>(
-    `${REPORTS_BASE_URL}/geography?${params.toString()}`
+    `${REPORTS_BASE_URL}/geography${queryString}`
   );
   return response.data.data;
 };
@@ -93,13 +94,13 @@ export const getGeographyBreakdown = async (
 export const getAcquisitionTrend = async (
   query: CustomerReportQuery = {}
 ): Promise<AcquisitionTrendData[]> => {
-  const params = new URLSearchParams();
-
-  if (query.start_date) params.append('start_date', query.start_date);
-  if (query.end_date) params.append('end_date', query.end_date);
+  const queryString = buildQueryString({
+    start_date: query.start_date,
+    end_date: query.end_date,
+  });
 
   const response = await api.get<{ data: AcquisitionTrendData[] }>(
-    `${REPORTS_BASE_URL}/acquisition?${params.toString()}`
+    `${REPORTS_BASE_URL}/acquisition${queryString}`
   );
   return response.data.data;
 };
@@ -111,14 +112,14 @@ export const getTopCustomers = async (
   query: CustomerReportQuery = {},
   limit: number = 10
 ): Promise<CustomerMetricsData[]> => {
-  const params = new URLSearchParams();
-
-  params.append('limit', limit.toString());
-  if (query.segment) params.append('segment', query.segment);
-  if (query.customer_type) params.append('customer_type', query.customer_type);
+  const queryString = buildQueryString({
+    limit,
+    segment: query.segment,
+    customer_type: query.customer_type,
+  });
 
   const response = await api.get<{ data: CustomerMetricsData[] }>(
-    `${REPORTS_BASE_URL}/top?${params.toString()}`
+    `${REPORTS_BASE_URL}/top${queryString}`
   );
   return response.data.data;
 };
@@ -154,14 +155,14 @@ export const getChartData = async (
   chartType: 'segments' | 'types' | 'geography' | 'acquisition' = 'segments',
   query: CustomerReportQuery = {}
 ): Promise<CustomerChartData> => {
-  const params = new URLSearchParams();
-  params.append('chart_type', chartType);
-
-  if (query.start_date) params.append('start_date', query.start_date);
-  if (query.end_date) params.append('end_date', query.end_date);
+  const queryString = buildQueryString({
+    chart_type: chartType,
+    start_date: query.start_date,
+    end_date: query.end_date,
+  });
 
   const response = await api.get<CustomerChartData>(
-    `${REPORTS_BASE_URL}/chart-data?${params.toString()}`
+    `${REPORTS_BASE_URL}/chart-data${queryString}`
   );
   return response.data;
 };

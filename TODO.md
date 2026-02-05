@@ -2,7 +2,7 @@
 
 This document tracks technical improvements that should be implemented but are deferred for future development cycles.
 
-**Last Updated: 2026-02-04** (T021 file download utility completed)
+**Last Updated: 2026-02-04** (T022 URLSearchParams builder completed)
 
 ---
 
@@ -32,7 +32,7 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 | ~~T019~~ | ~~P0~~   | ~~Scheduling~~ | ~~High~~   | ~~--~~    | ~~Integrate calendar view for job scheduling~~ ✓   |
 | T020     | P0       | Scheduling     | High       | Before    | Build conflict detection API endpoint              |
 | ~~T021~~ | ~~P2~~   | ~~Refactor~~   | ~~High~~   | ~~--~~    | ~~Extract duplicate file download utility~~ ✓      |
-| T022     | P2       | Refactor       | High       | --        | Extract duplicate URLSearchParams builder          |
+| ~~T022~~ | ~~P2~~   | ~~Refactor~~   | ~~High~~   | ~~--~~    | ~~Extract duplicate URLSearchParams builder~~ ✓    |
 | T023     | P2       | Refactor       | High       | --        | Consolidate cache hooks (useLocalCache/useSession) |
 | T024     | P1       | Observability  | High       | --        | Full Sentry integration (frontend + backend)       |
 | T025     | P2       | Analytics      | High       | After     | Integrate product analytics (PostHog recommended)  |
@@ -159,7 +159,7 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 - [ ] **T016** - Bundle analysis + optimization
 - [ ] **T017** - Query performance monitoring
 - [x] **T021** - Extract duplicate file download utility ✓
-- [ ] **T022** - Extract duplicate URLSearchParams builder
+- [x] **T022** - Extract duplicate URLSearchParams builder ✓
 - [ ] **T023** - Consolidate cache hooks
 
 ### Sprint 6 - Scheduling & Conflict Detection
@@ -1155,29 +1155,15 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 
   - **Estimated Savings**: ~100 lines of duplicate code
 
-- [ ] **T022: Extract Duplicate URLSearchParams Builder**
-  - **What**: Create `src/utils/queryParams.ts` utility
-  - **Why**: Same pattern for building query params in 4+ services
-  - **Files with Duplicate Code**:
-    - `services/customerReportService.ts` (6 instances)
-    - `services/revenueService.ts` (4 instances)
-    - `services/invoiceService.ts`
-    - `services/customerService.ts`
+- [x] **T022: Extract Duplicate URLSearchParams Builder** ✓
+  - **What**: Created `src/utils/queryParams.ts` utility
+  - **Status**: COMPLETE
   - **Implementation**:
-    ```typescript
-    // src/utils/queryParams.ts
-    export function buildQueryParams(
-      obj: Record<string, unknown>
-    ): URLSearchParams {
-      const params = new URLSearchParams();
-      Object.entries(obj).forEach(([key, value]) => {
-        if (value !== undefined && value !== null && value !== '') {
-          params.append(key, String(value));
-        }
-      });
-      return params;
-    }
-    ```
+    - Created `src/utils/queryParams.ts` with `buildQueryParams()`, `buildQueryString()`, and `appendQueryParams()` functions
+    - Refactored `customerReportService.ts` (7 instances)
+    - Refactored `revenueService.ts` (6 instances)
+    - Refactored `invoiceService.ts` (1 instance)
+    - Refactored `customerService.ts` (1 instance)
   - **Estimated Savings**: ~80 lines of duplicate code
 
 - [ ] **T023: Consolidate Cache Hooks**

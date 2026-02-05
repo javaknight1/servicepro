@@ -10,6 +10,7 @@ import {
   RevenueChartData,
 } from '../types/revenue';
 import { downloadCSV, downloadJSON } from '../utils/fileDownload';
+import { buildQueryString } from '../utils/queryParams';
 
 const REPORTS_BASE_URL = '/v1/reports/revenue';
 
@@ -19,17 +20,17 @@ const REPORTS_BASE_URL = '/v1/reports/revenue';
 export const getRevenueReport = async (
   query: RevenueReportQuery
 ): Promise<RevenueReportResponse> => {
-  const params = new URLSearchParams();
-
-  if (query.start_date) params.append('start_date', query.start_date);
-  if (query.end_date) params.append('end_date', query.end_date);
-  if (query.period_type) params.append('period_type', query.period_type);
-  if (query.currency) params.append('currency', query.currency);
-  if (query.category) params.append('category', query.category);
-  if (query.user_id) params.append('user_id', query.user_id);
+  const queryString = buildQueryString({
+    start_date: query.start_date,
+    end_date: query.end_date,
+    period_type: query.period_type,
+    currency: query.currency,
+    category: query.category,
+    user_id: query.user_id,
+  });
 
   const response = await api.get<RevenueReportResponse>(
-    `${REPORTS_BASE_URL}?${params.toString()}`
+    `${REPORTS_BASE_URL}${queryString}`
   );
   return response.data;
 };
@@ -40,15 +41,15 @@ export const getRevenueReport = async (
 export const getRevenueTimeSeries = async (
   query: RevenueReportQuery
 ): Promise<RevenueDataPoint[]> => {
-  const params = new URLSearchParams();
-
-  if (query.start_date) params.append('start_date', query.start_date);
-  if (query.end_date) params.append('end_date', query.end_date);
-  if (query.period_type) params.append('period_type', query.period_type);
-  if (query.currency) params.append('currency', query.currency);
+  const queryString = buildQueryString({
+    start_date: query.start_date,
+    end_date: query.end_date,
+    period_type: query.period_type,
+    currency: query.currency,
+  });
 
   const response = await api.get<{ data: RevenueDataPoint[] }>(
-    `${REPORTS_BASE_URL}/time-series?${params.toString()}`
+    `${REPORTS_BASE_URL}/time-series${queryString}`
   );
   return response.data.data;
 };
@@ -59,14 +60,14 @@ export const getRevenueTimeSeries = async (
 export const getRevenueCategoryBreakdown = async (
   query: RevenueReportQuery
 ): Promise<RevenueByCategoryData[]> => {
-  const params = new URLSearchParams();
-
-  if (query.start_date) params.append('start_date', query.start_date);
-  if (query.end_date) params.append('end_date', query.end_date);
-  if (query.currency) params.append('currency', query.currency);
+  const queryString = buildQueryString({
+    start_date: query.start_date,
+    end_date: query.end_date,
+    currency: query.currency,
+  });
 
   const response = await api.get<{ data: RevenueByCategoryData[] }>(
-    `${REPORTS_BASE_URL}/categories?${params.toString()}`
+    `${REPORTS_BASE_URL}/categories${queryString}`
   );
   return response.data.data;
 };
@@ -78,14 +79,14 @@ export const getTopCustomers = async (
   query: RevenueReportQuery,
   limit: number = 10
 ): Promise<CustomerRevenueData[]> => {
-  const params = new URLSearchParams();
-
-  if (query.start_date) params.append('start_date', query.start_date);
-  if (query.end_date) params.append('end_date', query.end_date);
-  params.append('limit', limit.toString());
+  const queryString = buildQueryString({
+    start_date: query.start_date,
+    end_date: query.end_date,
+    limit,
+  });
 
   const response = await api.get<{ data: CustomerRevenueData[] }>(
-    `${REPORTS_BASE_URL}/customers?${params.toString()}`
+    `${REPORTS_BASE_URL}/customers${queryString}`
   );
   return response.data.data;
 };
@@ -97,15 +98,15 @@ export const getRevenueChartData = async (
   query: RevenueReportQuery,
   chartType: 'line' | 'bar' | 'pie' = 'line'
 ): Promise<RevenueChartData> => {
-  const params = new URLSearchParams();
-
-  if (query.start_date) params.append('start_date', query.start_date);
-  if (query.end_date) params.append('end_date', query.end_date);
-  if (query.period_type) params.append('period_type', query.period_type);
-  params.append('chart_type', chartType);
+  const queryString = buildQueryString({
+    start_date: query.start_date,
+    end_date: query.end_date,
+    period_type: query.period_type,
+    chart_type: chartType,
+  });
 
   const response = await api.get<RevenueChartData>(
-    `${REPORTS_BASE_URL}/chart-data?${params.toString()}`
+    `${REPORTS_BASE_URL}/chart-data${queryString}`
   );
   return response.data;
 };
@@ -166,14 +167,14 @@ export const refreshRevenueCache = async (
   periodStart: string,
   periodEnd: string
 ): Promise<{ message: string }> => {
-  const params = new URLSearchParams({
+  const queryString = buildQueryString({
     period_type: periodType,
     period_start: periodStart,
     period_end: periodEnd,
   });
 
   const response = await api.post<{ message: string }>(
-    `${REPORTS_BASE_URL}/cache/refresh?${params.toString()}`
+    `${REPORTS_BASE_URL}/cache/refresh${queryString}`
   );
   return response.data;
 };

@@ -1,5 +1,6 @@
 import api from './api';
 import { downloadPDF } from '../utils/fileDownload';
+import { buildQueryParams } from '../utils/queryParams';
 
 export enum InvoiceStatus {
   DRAFT = 'draft',
@@ -98,18 +99,17 @@ class InvoiceService {
   async getInvoices(
     filters: InvoiceFilters = {}
   ): Promise<InvoiceListResponse> {
-    const params = new URLSearchParams();
-
-    if (filters.customer_id) params.append('customer_id', filters.customer_id);
-    if (filters.job_id) params.append('job_id', filters.job_id);
-    if (filters.status) params.append('status', filters.status);
-    if (filters.search) params.append('search', filters.search);
-    if (filters.overdue_only) params.append('overdue_only', 'true');
-    if (filters.page) params.append('page', filters.page.toString());
-    if (filters.page_size)
-      params.append('page_size', filters.page_size.toString());
-    if (filters.sort_by) params.append('sort_by', filters.sort_by);
-    if (filters.sort_order) params.append('sort_order', filters.sort_order);
+    const params = buildQueryParams({
+      customer_id: filters.customer_id,
+      job_id: filters.job_id,
+      status: filters.status,
+      search: filters.search,
+      overdue_only: filters.overdue_only,
+      page: filters.page,
+      page_size: filters.page_size,
+      sort_by: filters.sort_by,
+      sort_order: filters.sort_order,
+    });
 
     const response = await api.get<InvoiceListResponse>(this.basePath, {
       params,
