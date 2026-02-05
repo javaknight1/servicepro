@@ -4,6 +4,7 @@
 .PHONY: docker-dev docker-down docker-clean docker-logs docker-ps
 .PHONY: db-fresh db-fresh-seed db-reset hash-password
 .PHONY: swagger generate-api docs
+.PHONY: dead-code dead-code-update
 
 # =============================================================================
 # Centralized Tool Versions (used by CI and pre-commit)
@@ -31,12 +32,14 @@ help:
 	@echo "  install-deps - Install all dependencies"
 	@echo ""
 	@echo "Quality:"
-	@echo "  lint         - Run all linters"
-	@echo "  lint-check   - Run all linters in check-only mode (for CI)"
-	@echo "  lint-fix     - Run linters with auto-fix"
-	@echo "  format       - Format all code"
-	@echo "  format-check - Check formatting without modifying (for CI)"
-	@echo "  test         - Run all tests"
+	@echo "  lint            - Run all linters"
+	@echo "  lint-check      - Run all linters in check-only mode (for CI)"
+	@echo "  lint-fix        - Run linters with auto-fix"
+	@echo "  format          - Format all code"
+	@echo "  format-check    - Check formatting without modifying (for CI)"
+	@echo "  dead-code       - Check for unused exports (dead code)"
+	@echo "  dead-code-update - Update dead code baseline"
+	@echo "  test            - Run all tests"
 	@echo ""
 	@echo "Testing:"
 	@echo "  test-unit        - Run unit tests only"
@@ -130,6 +133,19 @@ frontend-test:
 frontend-build:
 	@echo "Building frontend..."
 	@cd frontend && npm run build
+
+frontend-dead-code:
+	@echo "Checking for dead code in frontend..."
+	@cd frontend && npm run dead-code
+
+frontend-dead-code-update:
+	@echo "Updating dead code baseline..."
+	@cd frontend && npm run dead-code:update
+
+# Dead code detection (alias)
+dead-code: frontend-dead-code
+
+dead-code-update: frontend-dead-code-update
 
 # Backend targets
 backend-lint:

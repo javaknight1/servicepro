@@ -108,6 +108,10 @@ jobs:
         working-directory: frontend
         run: npm test -- --run --passWithNoTests
 
+      - name: Check for dead code
+        working-directory: frontend
+        run: npm run dead-code
+
       - name: Verify build
         working-directory: frontend
         run: npm run build

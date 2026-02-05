@@ -16,7 +16,10 @@
     "analyze:bundle": "node scripts/analyze-bundle.js",
     "optimize:images": "node scripts/optimize-images.js",
     "audit:deps": "node scripts/audit-deps.js",
-    "generate:api": "swagger2openapi ../backend/docs/swagger.json -o src/types/openapi.json && openapi-typescript src/types/openapi.json -o src/types/api.generated.ts"
+    "generate:api": "swagger2openapi ../backend/docs/swagger.json -o src/types/openapi.json && openapi-typescript src/types/openapi.json -o src/types/api.generated.ts",
+    "dead-code": "node scripts/check-dead-code.js",
+    "dead-code:update": "node scripts/check-dead-code.js --update",
+    "dead-code:list": "node scripts/check-dead-code.js --list"
   },
   "dependencies": {
     "@headlessui/react": "^1.7.19",
@@ -77,6 +80,7 @@
     "swagger2openapi": "^7.0.8",
     "tailwindcss": "^3.4.19",
     "terser": "^5.27.0",
+    "ts-prune": "^0.10.3",
     "typescript": "^5.3.3",
     "vite": "^5.4.21",
     "vite-plugin-compression": "^0.5.1",
