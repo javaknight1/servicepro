@@ -9,6 +9,8 @@ import {
   useComponentTracking,
   useInteractionTracking,
   useBusinessTracking,
+  useApiTracking,
+  useSearchTracking,
 } from './AnalyticsContext';
 import { analytics } from '../services/analytics';
 
@@ -512,5 +514,133 @@ describe('AnalyticsProvider edge cases', () => {
     );
 
     expect(analytics.setConsent).toHaveBeenCalledWith(true);
+  });
+});
+
+describe('useApiTracking', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('tracks successful API calls', async () => {
+    function ApiTrackingComponent() {
+      const { trackApiCall } = useApiTracking();
+      const [result, setResult] = React.useState<string | null>(null);
+
+      const handleClick = async () => {
+        const data = await trackApiCall('getUsers', '/api/users', async () => {
+          return { users: [] };
+        });
+        setResult(JSON.stringify(data));
+      };
+
+      return (
+        <div>
+          <button onClick={handleClick}>Make API Call</button>
+          {result && <span data-testid="result">{result}</span>}
+        </div>
+      );
+    }
+
+    renderWithProvider(<ApiTrackingComponent />);
+
+    await fireEvent.click(screen.getByText('Make API Call'));
+
+    // Wait for the result
+    await vi.waitFor(() => {
+      expect(screen.getByTestId('result')).toBeInTheDocument();
+    });
+
+    expect(analytics.trackTiming).toHaveBeenCalledWith(
+      'api',
+      'getUsers',
+      expect.any(Number),
+      '/api/users'
+    );
+  });
+
+  it('tracks failed API calls', async () => {
+    function ApiTrackingErrorComponent() {
+      const { trackApiCall } = useApiTracking();
+      const [error, setError] = React.useState<string | null>(null);
+
+      const handleClick = async () => {
+        try {
+          await trackApiCall('failedCall', '/api/fail', async () => {
+            throw new Error('API Error');
+          });
+        } catch (e) {
+          setError((e as Error).message);
+        }
+      };
+
+      return (
+        <div>
+          <button onClick={handleClick}>Make Failed API Call</button>
+          {error && <span data-testid="error">{error}</span>}
+        </div>
+      );
+    }
+
+    renderWithProvider(<ApiTrackingErrorComponent />);
+
+    await fireEvent.click(screen.getByText('Make Failed API Call'));
+
+    await vi.waitFor(() => {
+      expect(screen.getByTestId('error')).toBeInTheDocument();
+    });
+
+    expect(analytics.trackTiming).toHaveBeenCalled();
+    expect(analytics.trackError).toHaveBeenCalledWith(
+      'api_error',
+      'API Error',
+      expect.objectContaining({
+        api_name: 'failedCall',
+        endpoint: '/api/fail',
+      })
+    );
+  });
+});
+
+describe('useSearchTracking', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('tracks search with result count', () => {
+    function SearchTrackingComponent() {
+      const { trackSearch } = useSearchTracking();
+
+      return (
+        <button onClick={() => trackSearch('test query', 5, 'users')}>
+          Search
+        </button>
+      );
+    }
+
+    renderWithProvider(<SearchTrackingComponent />);
+
+    fireEvent.click(screen.getByText('Search'));
+
+    expect(analytics.trackSearch).toHaveBeenCalledWith('test query', 5);
+  });
+
+  it('tracks search without result count', () => {
+    function SearchTrackingNoResultComponent() {
+      const { trackSearch } = useSearchTracking();
+
+      return (
+        <button onClick={() => trackSearch('another query')}>Search</button>
+      );
+    }
+
+    renderWithProvider(<SearchTrackingNoResultComponent />);
+
+    fireEvent.click(screen.getByText('Search'));
+
+    expect(analytics.trackSearch).toHaveBeenCalledWith(
+      'another query',
+      undefined
+    );
   });
 });

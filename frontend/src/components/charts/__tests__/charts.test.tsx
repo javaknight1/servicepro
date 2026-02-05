@@ -486,14 +486,22 @@ describe('Export Utilities', () => {
   let createObjectURLMock: ReturnType<typeof vi.fn>;
   let revokeObjectURLMock: ReturnType<typeof vi.fn>;
   let clickMock: ReturnType<typeof vi.fn>;
+  let appendChildMock: ReturnType<typeof vi.fn>;
+  let removeChildMock: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     createObjectURLMock = vi.fn(() => 'blob:test');
     revokeObjectURLMock = vi.fn();
     clickMock = vi.fn();
+    appendChildMock = vi.fn();
+    removeChildMock = vi.fn();
 
     global.URL.createObjectURL = createObjectURLMock;
     global.URL.revokeObjectURL = revokeObjectURLMock;
+
+    // Mock document.body methods to handle DOM operations
+    vi.spyOn(document.body, 'appendChild').mockImplementation(appendChildMock);
+    vi.spyOn(document.body, 'removeChild').mockImplementation(removeChildMock);
 
     vi.spyOn(document, 'createElement').mockImplementation((tag) => {
       if (tag === 'a') {
