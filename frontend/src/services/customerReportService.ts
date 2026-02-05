@@ -11,6 +11,7 @@ import {
   CustomerChartData,
 } from '../types/customer';
 import { ReportExportResponse } from '../types/revenue';
+import { downloadCSV } from '../utils/fileDownload';
 
 const REPORTS_BASE_URL = '/v1/reports/customers';
 
@@ -206,15 +207,7 @@ export const downloadCSVExport = async (
     }
   );
 
-  const blob = new Blob([response.data], { type: 'text/csv' });
-  const url = window.URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.setAttribute('download', filename);
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  window.URL.revokeObjectURL(url);
+  downloadCSV(response.data, filename);
 };
 
 /**

@@ -12,6 +12,10 @@ import {
   formatPercentage,
   formatCompact,
 } from '../../types/chart';
+import {
+  downloadCSV as downloadCSVFile,
+  downloadJSON as downloadJSONFile,
+} from '../../utils/fileDownload';
 
 // ============================================
 // Mock Data Generators
@@ -385,13 +389,7 @@ export const downloadCSV = (
   const csv = [headers, ...rows].map((row) => row.join(',')).join('\n');
 
   // Download
-  const blob = new Blob([csv], { type: 'text/csv' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  link.click();
-  URL.revokeObjectURL(url);
+  downloadCSVFile(csv, filename);
 };
 
 /**
@@ -410,12 +408,5 @@ export const downloadJSON = (
     })),
   };
 
-  const json = JSON.stringify(data, null, 2);
-  const blob = new Blob([json], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  link.click();
-  URL.revokeObjectURL(url);
+  downloadJSONFile(data, filename);
 };

@@ -17,6 +17,7 @@ import {
 } from 'chart.js';
 import { Chart } from 'react-chartjs-2';
 import { cn } from '../../utils/cn';
+import { downloadFromDataURL } from '../../utils/fileDownload';
 import {
   BaseChartProps,
   ChartRef,
@@ -337,25 +338,22 @@ const BaseChart = forwardRef<ChartRef, InternalBaseChartProps>(
           if (format === 'svg') {
             // For SVG, we need to convert canvas to SVG
             const svgData = canvas.toDataURL('image/svg+xml');
-            const link = document.createElement('a');
-            link.download = `${filename || defaultFilename}.svg`;
-            link.href = svgData;
-            link.click();
+            downloadFromDataURL(svgData, `${filename || defaultFilename}.svg`);
           } else if (format === 'pdf') {
             // For PDF, we'd typically use a library like jsPDF
             // For now, export as PNG
             const imageData = canvas.toDataURL('image/png', 1.0);
-            const link = document.createElement('a');
-            link.download = `${filename || defaultFilename}.png`;
-            link.href = imageData;
-            link.click();
+            downloadFromDataURL(
+              imageData,
+              `${filename || defaultFilename}.png`
+            );
           } else {
             const mimeType = format === 'jpeg' ? 'image/jpeg' : 'image/png';
             const imageData = canvas.toDataURL(mimeType, 1.0);
-            const link = document.createElement('a');
-            link.download = `${filename || defaultFilename}.${format}`;
-            link.href = imageData;
-            link.click();
+            downloadFromDataURL(
+              imageData,
+              `${filename || defaultFilename}.${format}`
+            );
           }
         } catch (err) {
           console.error('Failed to export chart:', err);

@@ -9,6 +9,7 @@ import type {
   TemplateStats,
   TemplateImportExport,
 } from '../types/template';
+import { downloadJSON } from '../utils/fileDownload';
 
 /**
  * Template Service
@@ -151,16 +152,8 @@ class TemplateService {
    */
   async downloadTemplatesJSON(templateIds?: string[]): Promise<void> {
     const exportData = await this.exportTemplates(templateIds);
-    const json = JSON.stringify(exportData, null, 2);
-    const blob = new Blob([json], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `quote-templates-${
-      new Date().toISOString().split('T')[0]
-    }.json`;
-    link.click();
-    URL.revokeObjectURL(url);
+    const filename = `quote-templates-${new Date().toISOString().split('T')[0]}.json`;
+    downloadJSON(exportData, filename);
   }
 
   /**

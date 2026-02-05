@@ -2,7 +2,7 @@
 
 This document tracks technical improvements that should be implemented but are deferred for future development cycles.
 
-**Last Updated: 2026-02-04** (T015 OpenAPI/Swagger pipeline completed)
+**Last Updated: 2026-02-04** (T021 file download utility completed)
 
 ---
 
@@ -31,7 +31,7 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 | T018     | P2       | Cleanup        | High       | --        | Dead code elimination                              |
 | ~~T019~~ | ~~P0~~   | ~~Scheduling~~ | ~~High~~   | ~~--~~    | ~~Integrate calendar view for job scheduling~~ ✓   |
 | T020     | P0       | Scheduling     | High       | Before    | Build conflict detection API endpoint              |
-| T021     | P2       | Refactor       | High       | --        | Extract duplicate file download utility            |
+| ~~T021~~ | ~~P2~~   | ~~Refactor~~   | ~~High~~   | ~~--~~    | ~~Extract duplicate file download utility~~ ✓      |
 | T022     | P2       | Refactor       | High       | --        | Extract duplicate URLSearchParams builder          |
 | T023     | P2       | Refactor       | High       | --        | Consolidate cache hooks (useLocalCache/useSession) |
 | T024     | P1       | Observability  | High       | --        | Full Sentry integration (frontend + backend)       |
@@ -158,7 +158,7 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 
 - [ ] **T016** - Bundle analysis + optimization
 - [ ] **T017** - Query performance monitoring
-- [ ] **T021** - Extract duplicate file download utility
+- [x] **T021** - Extract duplicate file download utility ✓
 - [ ] **T022** - Extract duplicate URLSearchParams builder
 - [ ] **T023** - Consolidate cache hooks
 
@@ -297,6 +297,7 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 - [x] T010: Error tracking middleware - Already implemented via RecoveryMiddleware in error_handler.go
 - [x] T019: Calendar view for job scheduling - Read-only calendar at `/jobs/calendar`, click to view job details, status color mapping
 - [x] T015: OpenAPI/Swagger documentation - Backend generates swagger.json via swag, Swagger UI at `/api/docs`, frontend generates TypeScript types via `npm run generate:api`
+- [x] T021: Extract duplicate file download utility - Created `src/utils/fileDownload.ts` with `downloadFile()`, `downloadCSV()`, `downloadJSON()`, `downloadPDF()`, `openBlobInNewTab()`, and `downloadFromDataURL()`. Refactored 10 files to use the utility.
 
 ---
 
@@ -1118,7 +1119,7 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 
 ### Frontend Refactoring (Code Deduplication)
 
-- [ ] **T021: Extract Duplicate File Download Utility**
+- [x] **T021: Extract Duplicate File Download Utility** ✓ COMPLETE
   - **What**: Create `src/utils/fileDownload.ts` utility
   - **Why**: Same download pattern copy-pasted in 7+ locations
   - **Files with Duplicate Code**:

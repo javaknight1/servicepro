@@ -1,5 +1,6 @@
 import api from './api';
 import { Quote, QuoteListResponse, QuoteStats } from '../types/quote';
+import { downloadPDF } from '../utils/fileDownload';
 
 export interface PDFDownloadResponse {
   download_url: string;
@@ -155,16 +156,7 @@ class QuoteService {
       }
     }
 
-    // Create blob URL and trigger download
-    const blob = new Blob([response.data], { type: 'application/pdf' });
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = downloadFilename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
+    downloadPDF(response.data, downloadFilename);
   }
 }
 

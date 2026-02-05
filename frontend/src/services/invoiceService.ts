@@ -1,4 +1,5 @@
 import api from './api';
+import { downloadPDF } from '../utils/fileDownload';
 
 export enum InvoiceStatus {
   DRAFT = 'draft',
@@ -209,15 +210,7 @@ class InvoiceService {
       }
     }
 
-    const blob = new Blob([response.data], { type: 'application/pdf' });
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = downloadFilename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
+    downloadPDF(response.data, downloadFilename);
   }
 
   /**
@@ -237,15 +230,7 @@ class InvoiceService {
       }
     }
 
-    const blob = new Blob([response.data], { type: 'application/pdf' });
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = downloadFilename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
+    downloadPDF(response.data, downloadFilename);
   }
 }
 

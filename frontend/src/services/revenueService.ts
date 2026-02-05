@@ -9,6 +9,7 @@ import {
   ReportExportResponse,
   RevenueChartData,
 } from '../types/revenue';
+import { downloadCSV, downloadJSON } from '../utils/fileDownload';
 
 const REPORTS_BASE_URL = '/v1/reports/revenue';
 
@@ -143,16 +144,7 @@ export const downloadCSVExport = async (
     responseType: 'blob',
   });
 
-  // Create download link
-  const blob = new Blob([response.data], { type: 'text/csv' });
-  const url = window.URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.setAttribute('download', filename);
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  window.URL.revokeObjectURL(url);
+  downloadCSV(response.data, filename);
 };
 
 /**
@@ -163,18 +155,7 @@ export const downloadJSONExport = async (
   filename: string = 'revenue_report.json'
 ): Promise<void> => {
   const report = await getRevenueReport(query);
-
-  const blob = new Blob([JSON.stringify(report, null, 2)], {
-    type: 'application/json',
-  });
-  const url = window.URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.setAttribute('download', filename);
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  window.URL.revokeObjectURL(url);
+  downloadJSON(report, filename);
 };
 
 /**

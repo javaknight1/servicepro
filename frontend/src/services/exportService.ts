@@ -5,6 +5,7 @@ import {
   ExportProgress,
   SupportedFormats,
 } from '../types/export';
+import { downloadFile } from '../utils/fileDownload';
 
 const EXPORTS_BASE_URL = '/v1/exports';
 
@@ -85,16 +86,8 @@ export const downloadExport = async (
     responseType: 'blob',
   });
 
-  // Create download link
   const blob = new Blob([response.data]);
-  const url = window.URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.setAttribute('download', filename || 'export');
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  window.URL.revokeObjectURL(url);
+  downloadFile(blob, filename || 'export');
 };
 
 /**
@@ -134,17 +127,10 @@ export const quickExportAndDownload = async (
   filename?: string
 ): Promise<void> => {
   const blob = await quickExport(config);
-  const url = window.URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.setAttribute(
-    'download',
+  downloadFile(
+    blob,
     filename || `${config.export_type}_export.${config.format}`
   );
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  window.URL.revokeObjectURL(url);
 };
 
 /**

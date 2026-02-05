@@ -11,6 +11,7 @@ import {
 } from '@react-pdf/renderer';
 import { Quote, LineItem } from '../../../types/quote';
 import api from '../../../services/api';
+import { downloadFile, openBlobInNewTab } from '../../../utils/fileDownload';
 
 /**
  * PDF Styles
@@ -318,12 +319,7 @@ export const downloadQuotePDF = async (
   }
 ): Promise<void> => {
   const blob = await generateQuotePDF(quote, companyInfo);
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `quote-${quote.quote_number}.pdf`;
-  link.click();
-  URL.revokeObjectURL(url);
+  downloadFile(blob, `quote-${quote.quote_number}.pdf`);
 };
 
 /**
@@ -383,9 +379,7 @@ export const previewQuotePDF = async (
   }
 ): Promise<void> => {
   const blob = await generateQuotePDF(quote, companyInfo);
-  const url = URL.createObjectURL(blob);
-  window.open(url, '_blank');
-  // Note: URL will be revoked when the window is closed
+  openBlobInNewTab(blob);
 };
 
 /**

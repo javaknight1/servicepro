@@ -8,6 +8,7 @@ import type {
   RoleFilters,
   AuditFilters,
 } from '@app-types/role';
+import { downloadFile } from '../utils/fileDownload';
 
 // Query keys
 export const roleKeys = {
@@ -163,17 +164,8 @@ export function useExportAuditLogs() {
   return useMutation({
     mutationFn: (filters?: AuditFilters) =>
       roleApi.exportAuditLogs(filters).then((res) => {
-        // Create blob and download
-        const url = window.URL.createObjectURL(new Blob([res.data]));
-        const link = document.createElement('a');
-        link.href = url;
-        link.setAttribute(
-          'download',
-          `audit-logs-${new Date().toISOString()}.csv`
-        );
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
+        const blob = new Blob([res.data]);
+        downloadFile(blob, `audit-logs-${new Date().toISOString()}.csv`);
       }),
   });
 }
