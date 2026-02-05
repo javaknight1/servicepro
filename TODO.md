@@ -2,7 +2,7 @@
 
 This document tracks technical improvements that should be implemented but are deferred for future development cycles.
 
-**Last Updated: 2026-02-04** (T023 cache hooks consolidated)
+**Last Updated: 2026-02-04** (T031 A/R aging buckets report complete)
 
 ---
 
@@ -41,7 +41,7 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 | T028     | P0       | Quoting        | High       | Before    | Add "Convert Quote to Job" button                        |
 | T029     | P0       | Invoicing      | High       | Before    | Add "Generate Invoice from Job" button                   |
 | T030     | P0       | Invoicing      | High       | Before    | Auto-populate invoice from job data                      |
-| T031     | P0       | Invoicing      | High       | Before    | Build A/R aging buckets report                           |
+| ~~T031~~ | ~~P0~~   | ~~Invoicing~~  | ~~High~~   | ~~--~~    | ~~Build A/R aging buckets report~~ ✓                     |
 | T032     | P0       | Invoicing      | High       | Before    | Build "Who Owes What" report                             |
 | T033     | P0       | Dashboard      | High       | Before    | Add "Jobs Needing Invoice" dashboard widget              |
 | T034     | P0       | Comms          | High       | Before    | Wire payment reminder automation                         |
@@ -181,7 +181,7 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 
 ### Sprint 8 - Collections & A/R
 
-- [ ] **T031** - Build A/R aging buckets report
+- [x] **T031** - Build A/R aging buckets report ✓
 - [ ] **T032** - Build "Who Owes What" report
 - [ ] **T034** - Wire payment reminder automation
 - [ ] **T043** - Wire payment reminder notifications
@@ -298,6 +298,7 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 - [x] T019: Calendar view for job scheduling - Read-only calendar at `/jobs/calendar`, click to view job details, status color mapping
 - [x] T015: OpenAPI/Swagger documentation - Backend generates swagger.json via swag, Swagger UI at `/api/docs`, frontend generates TypeScript types via `npm run generate:api`
 - [x] T021: Extract duplicate file download utility - Created `src/utils/fileDownload.ts` with `downloadFile()`, `downloadCSV()`, `downloadJSON()`, `downloadPDF()`, `openBlobInNewTab()`, and `downloadFromDataURL()`. Refactored 10 files to use the utility.
+- [x] T031: Build A/R aging buckets report - Backend: `/backend/internal/models/ar_aging_report.go`, `/backend/internal/services/ar_aging_service.go`, `/backend/internal/api/handlers/ar_aging_handler.go`. Frontend: `/frontend/src/types/arAging.ts`, `/frontend/src/services/arAgingService.ts`, `/frontend/src/pages/Reports/ARAgingReportPage.tsx`. Displays receivables by age (Current, 1-30, 31-60, 61-90, 90+), drill-down to invoices, CSV export.
 
 ---
 
@@ -404,7 +405,7 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
     - Labor calculated from actual time
     - Job notes/photos accessible from invoice
 
-- [ ] **T031: Build A/R Aging Buckets Report**
+- [x] **T031: Build A/R Aging Buckets Report** ✓
   - **What**: Report showing receivables by age: 0-30, 31-60, 61-90, 90+ days
   - **Why**: Essential for cash flow management - "how much money is stuck and for how long?"
   - **Confidence**: High - standard accounting report, clear requirements

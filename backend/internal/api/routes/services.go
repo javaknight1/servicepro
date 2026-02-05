@@ -87,6 +87,9 @@ func SetupServices(
 	// Customer report service
 	svc.Customer = services.NewCustomerReportService(db)
 
+	// A/R Aging report service
+	svc.ARAging = services.NewARAgingService(db)
+
 	// PDF service
 	svc.PDF = services.NewPDFService("", "", "./exports/pdf")
 

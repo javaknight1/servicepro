@@ -17,6 +17,9 @@ func SetupReportRoutes(router *gin.RouterGroup, cfg *routeconfigs.RouteConfig) {
 
 		// Customer report routes
 		setupCustomerReportRoutes(reports, cfg)
+
+		// A/R Aging report routes
+		setupARAgingReportRoutes(reports, cfg)
 	}
 }
 
@@ -112,4 +115,36 @@ func setupCustomerReportRoutes(reports *gin.RouterGroup, cfg *routeconfigs.Route
 	reports.POST("/customers/cache/refresh",
 		cfg.Middleware.PermMiddleware.RequirePermission(permissions.ReportsAdmin),
 		cfg.Handlers.CustomerReport.RefreshMetricsCache)
+}
+
+func setupARAgingReportRoutes(reports *gin.RouterGroup, cfg *routeconfigs.RouteConfig) {
+	// A/R aging routes require tenant context for multi-tenancy
+	arAging := reports.Group("/ar-aging")
+	arAging.Use(cfg.Middleware.TenantMW.RequireTenant())
+	{
+		// Main A/R aging report - requires "reports.view" permission
+		arAging.GET("",
+			cfg.Middleware.PermMiddleware.RequirePermission(permissions.ReportsView),
+			cfg.Handlers.ARAging.GetARAgingReport)
+
+		// Bucket summary - requires "reports.view" permission
+		arAging.GET("/buckets",
+			cfg.Middleware.PermMiddleware.RequirePermission(permissions.ReportsView),
+			cfg.Handlers.ARAging.GetBucketSummary)
+
+		// Invoices by bucket (drill-down) - requires "reports.view" permission
+		arAging.GET("/buckets/:bucket/invoices",
+			cfg.Middleware.PermMiddleware.RequirePermission(permissions.ReportsView),
+			cfg.Handlers.ARAging.GetInvoicesByBucket)
+
+		// Customer summary - requires "reports.view" permission
+		arAging.GET("/customers",
+			cfg.Middleware.PermMiddleware.RequirePermission(permissions.ReportsView),
+			cfg.Handlers.ARAging.GetCustomerSummary)
+
+		// Export A/R aging report - requires "reports.export" permission
+		arAging.POST("/export",
+			cfg.Middleware.PermMiddleware.RequirePermission(permissions.ReportsExport),
+			cfg.Handlers.ARAging.ExportARAgingReport)
+	}
 }

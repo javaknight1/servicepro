@@ -65,6 +65,7 @@ type Services struct {
 	Stripe            *services.StripeService
 	ProfilePicture    *services.ProfilePictureService
 	Revenue           services.RevenueReportService
+	ARAging           services.ARAgingService
 	Export            services.UnifiedExportService
 	PDF               *services.PDFService
 	Import            *services.ImportService
@@ -102,6 +103,7 @@ type Handlers struct {
 	Invitation        *handlers.InvitationHandler
 	Role              *handlers.RoleHandler
 	Revenue           *handlers.RevenueHandler
+	ARAging           *handlers.ARAgingHandler
 	Stripe            *handlers.StripeHandler
 	Billing           *handlers.BillingHandler
 	Webhook           *handlers.WebhookHandler

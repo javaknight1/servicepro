@@ -58,6 +58,7 @@ const orgNavItems: NavItem[] = [
     children: [
       { label: 'Revenue', path: '/reports/revenue' },
       { label: 'Customers', path: '/reports/customers' },
+      { label: 'A/R Aging', path: '/reports/ar-aging' },
     ],
   },
   // Settings goes to Organization Settings (Account Settings is in profile dropdown)

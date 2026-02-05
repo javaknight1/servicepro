@@ -61,6 +61,9 @@ func SetupHandlers(
 	// Revenue handler
 	h.Revenue = handlers.NewRevenueHandler(svc.Revenue)
 
+	// A/R Aging handler
+	h.ARAging = handlers.NewARAgingHandler(svc.ARAging)
+
 	// Import/Export handler
 	h.ImportExport = handlers.NewImportExportHandler(svc.Import)
 

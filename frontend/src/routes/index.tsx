@@ -318,6 +318,14 @@ const CustomerReportPage = loadable(
   { chunkName: 'customer-report', delay: 100 }
 );
 
+const ARAgingReportPage = loadable(
+  () =>
+    import(/* webpackChunkName: "page-reports" */ '@pages/Reports').then(
+      (m) => ({ default: m.ARAgingReportPage })
+    ),
+  { chunkName: 'ar-aging-report', delay: 100 }
+);
+
 // Error pages
 const NotFoundPage = loadable(
   () =>
@@ -458,6 +466,7 @@ export function AppRoutes() {
         <Route path="/team/roles" element={<TeamRolesPage />} />
         <Route path="/reports/revenue" element={<RevenueReportPage />} />
         <Route path="/reports/customers" element={<CustomerReportPage />} />
+        <Route path="/reports/ar-aging" element={<ARAgingReportPage />} />
       </Route>
 
       {/* 404 */}
@@ -508,6 +517,7 @@ export const routePaths = {
   reports: {
     revenue: '/reports/revenue',
     customers: '/reports/customers',
+    arAging: '/reports/ar-aging',
   },
   unauthorized: '/unauthorized',
   notFound: '/404',
