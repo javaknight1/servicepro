@@ -206,26 +206,48 @@ export function useCachedMutation<TData, TVariables>(
 }
 
 // =============================================================================
-// useLocalCache
+// Cache Adapter Interface
 // =============================================================================
 
 /**
- * Hook for local storage cache with reactive updates
+ * Interface for cache adapters that can be used with useStorageCache
  */
-export function useLocalCache<T>(key: string, defaultValue: T) {
+interface CacheAdapter<T> {
+  get: (key: string) => T | null;
+  set: (key: string, data: T, expiry?: number) => boolean;
+  delete: (key: string) => boolean | void;
+  subscribe?: (key: string, callback: (data: T | null) => void) => () => void;
+}
+
+// =============================================================================
+// useStorageCache (Generic)
+// =============================================================================
+
+/**
+ * Generic hook for storage cache operations
+ * Works with any adapter conforming to CacheAdapter interface
+ */
+function useStorageCache<T>(
+  adapter: CacheAdapter<T>,
+  key: string,
+  defaultValue: T,
+  options: { expiry?: number } = {}
+) {
   const [value, setValue] = useState<T>(() => {
-    const cached = cache.get<T>(key);
+    const cached = adapter.get(key);
     return cached ?? defaultValue;
   });
 
-  // Subscribe to cache changes
+  // Subscribe to cache changes if adapter supports it
   useEffect(() => {
-    const unsubscribe = cache.subscribe<T>(key, (newValue) => {
-      setValue(newValue ?? defaultValue);
-    });
-
-    return unsubscribe;
-  }, [key, defaultValue]);
+    if (adapter.subscribe) {
+      const unsubscribe = adapter.subscribe(key, (newValue) => {
+        setValue(newValue ?? defaultValue);
+      });
+      return unsubscribe;
+    }
+    return undefined;
+  }, [adapter, key, defaultValue]);
 
   // Set value function
   const set = useCallback(
@@ -235,19 +257,46 @@ export function useLocalCache<T>(key: string, defaultValue: T) {
           ? (newValue as (prev: T) => T)(value)
           : newValue;
 
-      cache.set(key, valueToSet, expiry);
+      adapter.set(key, valueToSet, expiry ?? options.expiry);
       setValue(valueToSet);
     },
-    [key, value]
+    [adapter, key, value, options.expiry]
   );
 
   // Remove value function
   const remove = useCallback(() => {
-    cache.delete(key);
+    adapter.delete(key);
     setValue(defaultValue);
-  }, [key, defaultValue]);
+  }, [adapter, key, defaultValue]);
 
   return [value, set, remove] as const;
+}
+
+// =============================================================================
+// useLocalCache
+// =============================================================================
+
+/**
+ * Hook for local storage cache with reactive updates and expiry support
+ */
+export function useLocalCache<T>(
+  key: string,
+  defaultValue: T,
+  options: { expiry?: number } = {}
+) {
+  // Type-safe adapter wrapper for the cache module
+  const adapter: CacheAdapter<T> = useMemo(
+    () => ({
+      get: (k: string) => cache.get<T>(k),
+      set: (k: string, data: T, expiry?: number) => cache.set(k, data, expiry),
+      delete: (k: string) => cache.delete(k),
+      subscribe: (k: string, callback: (data: T | null) => void) =>
+        cache.subscribe<T>(k, callback),
+    }),
+    []
+  );
+
+  return useStorageCache(adapter, key, defaultValue, options);
 }
 
 // =============================================================================
@@ -258,30 +307,18 @@ export function useLocalCache<T>(key: string, defaultValue: T) {
  * Hook for session storage (cleared on tab close)
  */
 export function useSessionCache<T>(key: string, defaultValue: T) {
-  const [value, setValue] = useState<T>(() => {
-    const cached = sessionCache.get<T>(key);
-    return cached ?? defaultValue;
-  });
-
-  const set = useCallback(
-    (newValue: T | ((prev: T) => T)) => {
-      const valueToSet =
-        typeof newValue === 'function'
-          ? (newValue as (prev: T) => T)(value)
-          : newValue;
-
-      sessionCache.set(key, valueToSet);
-      setValue(valueToSet);
-    },
-    [key, value]
+  // Type-safe adapter wrapper for sessionCache
+  const adapter: CacheAdapter<T> = useMemo(
+    () => ({
+      get: (k: string) => sessionCache.get<T>(k),
+      set: (k: string, data: T) => sessionCache.set(k, data),
+      delete: (k: string) => sessionCache.delete(k),
+      // sessionCache doesn't support subscriptions
+    }),
+    []
   );
 
-  const remove = useCallback(() => {
-    sessionCache.delete(key);
-    setValue(defaultValue);
-  }, [key, defaultValue]);
-
-  return [value, set, remove] as const;
+  return useStorageCache(adapter, key, defaultValue);
 }
 
 // =============================================================================
