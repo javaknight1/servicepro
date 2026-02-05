@@ -28,9 +28,20 @@ func NewPublicInvoiceHandler(
 }
 
 // PayInvoice handles the payment initiation for an invoice
-// GET /public/invoices/pay/:token
-// This endpoint validates the token, creates a Stripe Checkout session,
-// and redirects the user to Stripe's hosted checkout page
+// @Summary		Pay invoice
+// @Description	Validates the payment token, creates a Stripe Checkout session, and redirects to Stripe's hosted checkout page
+// @Tags			Public
+// @Accept			json
+// @Produce		json
+// @Param			token	path	string	true	"Payment token"
+// @Success		303
+// @Failure		400	{object}	map[string]string
+// @Failure		404	{object}	map[string]string
+// @Failure		409	{object}	map[string]string
+// @Failure		410	{object}	map[string]string
+// @Failure		500	{object}	map[string]string
+// @Failure		503	{object}	map[string]string
+// @Router			/public/invoices/pay/{token} [get]
 func (h *PublicInvoiceHandler) PayInvoice(c *gin.Context) {
 	token := c.Param("token")
 	if token == "" {
@@ -73,8 +84,17 @@ func (h *PublicInvoiceHandler) PayInvoice(c *gin.Context) {
 }
 
 // GetInvoiceByToken retrieves invoice details for a payment token
-// GET /public/invoices/details/:token
-// This endpoint returns invoice details for display on a payment page
+// @Summary		Get invoice by token
+// @Description	Retrieves invoice details for display on a payment page
+// @Tags			Public
+// @Accept			json
+// @Produce		json
+// @Param			token	path		string	true	"Payment token"
+// @Success		200		{object}	PublicInvoiceResponse
+// @Failure		400		{object}	map[string]string
+// @Failure		404		{object}	map[string]string
+// @Failure		500		{object}	map[string]string
+// @Router			/public/invoices/details/{token} [get]
 func (h *PublicInvoiceHandler) GetInvoiceByToken(c *gin.Context) {
 	token := c.Param("token")
 	if token == "" {
@@ -106,8 +126,15 @@ func (h *PublicInvoiceHandler) GetInvoiceByToken(c *gin.Context) {
 }
 
 // ValidatePaymentToken validates a payment token without initiating payment
-// GET /public/invoices/validate/:token
-// Returns the validation status and basic invoice info
+// @Summary		Validate payment token
+// @Description	Validates a payment token without initiating payment, returns validation status and basic invoice info
+// @Tags			Public
+// @Accept			json
+// @Produce		json
+// @Param			token	path		string	true	"Payment token"
+// @Success		200		{object}	map[string]interface{}
+// @Failure		400		{object}	map[string]string
+// @Router			/public/invoices/validate/{token} [get]
 func (h *PublicInvoiceHandler) ValidatePaymentToken(c *gin.Context) {
 	token := c.Param("token")
 	if token == "" {

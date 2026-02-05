@@ -26,7 +26,20 @@ func NewBillingHandler(stripeService *services.StripeService) *BillingHandler {
 }
 
 // CreateSetupIntent creates a setup intent for adding a payment method
-// POST /api/v1/tenants/:id/billing/setup-intent
+// @Summary		Create setup intent
+// @Description	Creates a Stripe setup intent for adding a new payment method
+// @Tags			Billing
+// @Accept			json
+// @Produce		json
+// @Security		BearerAuth
+// @Param			id	path		string	true	"Tenant ID"
+// @Success		200	{object}	models.CreateSetupIntentResponse
+// @Failure		400	{object}	models.ErrorResponse
+// @Failure		401	{object}	models.ErrorResponse
+// @Failure		403	{object}	models.ErrorResponse
+// @Failure		500	{object}	models.ErrorResponse
+// @Failure		503	{object}	models.ErrorResponse
+// @Router			/tenants/{id}/billing/setup-intent [post]
 func (h *BillingHandler) CreateSetupIntent(c *gin.Context) {
 	tenantID, err := h.getTenantID(c)
 	if err != nil {
@@ -53,7 +66,21 @@ func (h *BillingHandler) CreateSetupIntent(c *gin.Context) {
 }
 
 // AddPaymentMethod adds a new payment method after setup intent confirmation
-// POST /api/v1/tenants/:id/billing/payment-methods
+// @Summary		Add payment method
+// @Description	Adds a new payment method after Stripe setup intent confirmation
+// @Tags			Billing
+// @Accept			json
+// @Produce		json
+// @Security		BearerAuth
+// @Param			id		path		string								true	"Tenant ID"
+// @Param			request	body		models.AddSavedPaymentMethodRequest	true	"Payment method request"
+// @Success		201		{object}	models.SavedPaymentMethodResponse
+// @Failure		400		{object}	models.ErrorResponse
+// @Failure		401		{object}	models.ErrorResponse
+// @Failure		403		{object}	models.ErrorResponse
+// @Failure		500		{object}	models.ErrorResponse
+// @Failure		503		{object}	models.ErrorResponse
+// @Router			/tenants/{id}/billing/payment-methods [post]
 func (h *BillingHandler) AddPaymentMethod(c *gin.Context) {
 	tenantID, err := h.getTenantID(c)
 	if err != nil {
@@ -89,7 +116,19 @@ func (h *BillingHandler) AddPaymentMethod(c *gin.Context) {
 }
 
 // GetPaymentMethods retrieves all payment methods for a tenant
-// GET /api/v1/tenants/:id/billing/payment-methods
+// @Summary		Get payment methods
+// @Description	Retrieves all saved payment methods for a tenant
+// @Tags			Billing
+// @Accept			json
+// @Produce		json
+// @Security		BearerAuth
+// @Param			id	path		string	true	"Tenant ID"
+// @Success		200	{object}	models.ListSavedPaymentMethodsResponse
+// @Failure		400	{object}	models.ErrorResponse
+// @Failure		401	{object}	models.ErrorResponse
+// @Failure		403	{object}	models.ErrorResponse
+// @Failure		500	{object}	models.ErrorResponse
+// @Router			/tenants/{id}/billing/payment-methods [get]
 func (h *BillingHandler) GetPaymentMethods(c *gin.Context) {
 	tenantID, err := h.getTenantID(c)
 	if err != nil {
@@ -109,7 +148,21 @@ func (h *BillingHandler) GetPaymentMethods(c *gin.Context) {
 }
 
 // SetDefaultPaymentMethod sets a payment method as default
-// PUT /api/v1/tenants/:id/billing/payment-methods/:pmId/default
+// @Summary		Set default payment method
+// @Description	Sets a payment method as the default for the tenant
+// @Tags			Billing
+// @Accept			json
+// @Produce		json
+// @Security		BearerAuth
+// @Param			id		path		string	true	"Tenant ID"
+// @Param			pmId	path		string	true	"Payment Method ID"
+// @Success		200		{object}	map[string]string
+// @Failure		400		{object}	models.ErrorResponse
+// @Failure		401		{object}	models.ErrorResponse
+// @Failure		403		{object}	models.ErrorResponse
+// @Failure		404		{object}	models.ErrorResponse
+// @Failure		500		{object}	models.ErrorResponse
+// @Router			/tenants/{id}/billing/payment-methods/{pmId}/default [put]
 func (h *BillingHandler) SetDefaultPaymentMethod(c *gin.Context) {
 	tenantID, err := h.getTenantID(c)
 	if err != nil {
@@ -146,7 +199,21 @@ func (h *BillingHandler) SetDefaultPaymentMethod(c *gin.Context) {
 }
 
 // DeletePaymentMethod removes a payment method
-// DELETE /api/v1/tenants/:id/billing/payment-methods/:pmId
+// @Summary		Delete payment method
+// @Description	Removes a saved payment method from the tenant
+// @Tags			Billing
+// @Accept			json
+// @Produce		json
+// @Security		BearerAuth
+// @Param			id		path		string	true	"Tenant ID"
+// @Param			pmId	path		string	true	"Payment Method ID"
+// @Success		200		{object}	map[string]string
+// @Failure		400		{object}	models.ErrorResponse
+// @Failure		401		{object}	models.ErrorResponse
+// @Failure		403		{object}	models.ErrorResponse
+// @Failure		404		{object}	models.ErrorResponse
+// @Failure		500		{object}	models.ErrorResponse
+// @Router			/tenants/{id}/billing/payment-methods/{pmId} [delete]
 func (h *BillingHandler) DeletePaymentMethod(c *gin.Context) {
 	tenantID, err := h.getTenantID(c)
 	if err != nil {
@@ -183,7 +250,21 @@ func (h *BillingHandler) DeletePaymentMethod(c *gin.Context) {
 }
 
 // GetBillingHistory retrieves billing history for a tenant
-// GET /api/v1/tenants/:id/billing/history
+// @Summary		Get billing history
+// @Description	Retrieves billing history and past transactions for a tenant
+// @Tags			Billing
+// @Accept			json
+// @Produce		json
+// @Security		BearerAuth
+// @Param			id			path		string	true	"Tenant ID"
+// @Param			page		query		int		false	"Page number"	default(1)
+// @Param			page_size	query		int		false	"Page size"		default(20)
+// @Success		200			{object}	models.ListBillingEventsResponse
+// @Failure		400			{object}	models.ErrorResponse
+// @Failure		401			{object}	models.ErrorResponse
+// @Failure		403			{object}	models.ErrorResponse
+// @Failure		500			{object}	models.ErrorResponse
+// @Router			/tenants/{id}/billing/history [get]
 func (h *BillingHandler) GetBillingHistory(c *gin.Context) {
 	tenantID, err := h.getTenantID(c)
 	if err != nil {
@@ -214,7 +295,14 @@ func (h *BillingHandler) GetBillingHistory(c *gin.Context) {
 }
 
 // GetStripePublishableKey returns the Stripe publishable key for frontend
-// GET /api/v1/billing/config
+// @Summary		Get billing config
+// @Description	Returns Stripe configuration including whether Stripe is enabled
+// @Tags			Billing
+// @Accept			json
+// @Produce		json
+// @Security		BearerAuth
+// @Success		200	{object}	map[string]interface{}
+// @Router			/billing/config [get]
 func (h *BillingHandler) GetStripePublishableKey(c *gin.Context) {
 	if !h.stripeService.IsConfigured() {
 		c.JSON(http.StatusOK, gin.H{

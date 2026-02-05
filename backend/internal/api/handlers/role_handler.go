@@ -22,7 +22,15 @@ func NewRoleHandler(permissionRepo *repository.PermissionRepository) *RoleHandle
 }
 
 // GetRoles returns all system roles
-// GET /api/v1/roles
+// @Summary		Get all roles
+// @Description	Retrieves all system roles
+// @Tags			Roles
+// @Accept			json
+// @Produce		json
+// @Security		BearerAuth
+// @Success		200	{array}		models.Role
+// @Failure		500	{object}	models.ErrorResponse
+// @Router			/roles [get]
 func (h *RoleHandler) GetRoles(c *gin.Context) {
 	roles, err := h.permissionRepo.GetAllRoles()
 	if err != nil {
@@ -37,7 +45,15 @@ func (h *RoleHandler) GetRoles(c *gin.Context) {
 }
 
 // GetPermissions returns all system permissions
-// GET /api/v1/permissions
+// @Summary		Get all permissions
+// @Description	Retrieves all system permissions
+// @Tags			Roles
+// @Accept			json
+// @Produce		json
+// @Security		BearerAuth
+// @Success		200	{array}		models.Permission
+// @Failure		500	{object}	models.ErrorResponse
+// @Router			/permissions [get]
 func (h *RoleHandler) GetPermissions(c *gin.Context) {
 	permissions, err := h.permissionRepo.GetAllPermissions()
 	if err != nil {
@@ -52,7 +68,16 @@ func (h *RoleHandler) GetPermissions(c *gin.Context) {
 }
 
 // GetRolePermissions returns permissions for a specific role
-// GET /api/v1/roles/:id/permissions
+// @Summary		Get role permissions
+// @Description	Retrieves all permissions assigned to a specific role
+// @Tags			Roles
+// @Accept			json
+// @Produce		json
+// @Security		BearerAuth
+// @Param			id	path		string	true	"Role ID"
+// @Success		200	{array}		models.Permission
+// @Failure		500	{object}	models.ErrorResponse
+// @Router			/roles/{id}/permissions [get]
 func (h *RoleHandler) GetRolePermissions(c *gin.Context) {
 	roleID := c.Param("id")
 

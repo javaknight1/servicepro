@@ -29,7 +29,21 @@ func NewImportExportHandler(
 }
 
 // ImportCustomers handles customer import
-// POST /api/v1/customers/import
+// @Summary		Import customers
+// @Description	Imports customers from a CSV file (max 10,000 rows)
+// @Tags			Import/Export
+// @Accept			multipart/form-data
+// @Produce		json
+// @Security		BearerAuth
+// @Param			file				formData	file	true	"CSV file to import"
+// @Param			format				formData	string	true	"File format (csv)"
+// @Param			duplicate_handling	formData	string	false	"How to handle duplicates (error, skip, update)"
+// @Param			dry_run				formData	bool	false	"Preview import without saving"
+// @Success		202					{object}	models.ImportResponse
+// @Failure		400					{object}	models.ErrorResponse
+// @Failure		401					{object}	models.ErrorResponse
+// @Failure		500					{object}	models.ErrorResponse
+// @Router			/customers/import [post]
 func (h *ImportExportHandler) ImportCustomers(c *gin.Context) {
 	// Parse form data
 	var req models.ImportRequest
@@ -191,7 +205,18 @@ func (h *ImportExportHandler) ImportCustomers(c *gin.Context) {
 }
 
 // GetImportStatus returns the status of an import job
-// GET /api/v1/customers/import/:job_id
+// @Summary		Get import status
+// @Description	Returns the status and progress of an import job
+// @Tags			Import/Export
+// @Accept			json
+// @Produce		json
+// @Security		BearerAuth
+// @Param			job_id	path		string	true	"Import Job ID"
+// @Success		200		{object}	models.ImportStatusResponse
+// @Failure		400		{object}	models.ErrorResponse
+// @Failure		404		{object}	models.ErrorResponse
+// @Failure		500		{object}	models.ErrorResponse
+// @Router			/customers/import/{job_id} [get]
 func (h *ImportExportHandler) GetImportStatus(c *gin.Context) {
 	jobIDStr := c.Param("job_id")
 	jobID, err := uuid.Parse(jobIDStr)
@@ -258,8 +283,15 @@ func (h *ImportExportHandler) GetImportStatus(c *gin.Context) {
 }
 
 // ExportCustomers handles customer export
-// GET /api/v1/customers/export
-// Deprecated: Use POST /api/v1/exports with export_type="customers" for async exports
+// @Summary		Export customers (deprecated)
+// @Description	Deprecated: Use POST /api/v1/exports with export_type="customers" for async exports
+// @Tags			Import/Export
+// @Accept			json
+// @Produce		json
+// @Security		BearerAuth
+// @Deprecated
+// @Failure		410	{object}	models.ErrorResponse
+// @Router			/customers/export [get]
 func (h *ImportExportHandler) ExportCustomers(c *gin.Context) {
 	c.JSON(http.StatusGone, models.ErrorResponse{
 		Error:   "deprecated",
@@ -268,7 +300,14 @@ func (h *ImportExportHandler) ExportCustomers(c *gin.Context) {
 }
 
 // GetImportTemplate returns a CSV template for import
-// GET /api/v1/customers/import/template
+// @Summary		Get import template
+// @Description	Downloads a CSV template for customer import
+// @Tags			Import/Export
+// @Accept			json
+// @Produce		text/csv
+// @Security		BearerAuth
+// @Success		200	{file}	file
+// @Router			/customers/import/template [get]
 func (h *ImportExportHandler) GetImportTemplate(c *gin.Context) {
 	template := csvpkg.GetCSVTemplate()
 

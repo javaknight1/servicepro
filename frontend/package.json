@@ -15,7 +15,8 @@
     "test:coverage": "vitest run --coverage",
     "analyze:bundle": "node scripts/analyze-bundle.js",
     "optimize:images": "node scripts/optimize-images.js",
-    "audit:deps": "node scripts/audit-deps.js"
+    "audit:deps": "node scripts/audit-deps.js",
+    "generate:api": "swagger2openapi ../backend/docs/swagger.json -o src/types/openapi.json && openapi-typescript src/types/openapi.json -o src/types/api.generated.ts"
   },
   "dependencies": {
     "@headlessui/react": "^1.7.19",
@@ -67,11 +68,13 @@
     "eslint-plugin-react-hooks": "^4.6.2",
     "eslint-plugin-react-refresh": "^0.4.24",
     "jsdom": "^27.4.0",
+    "openapi-typescript": "^7.10.1",
     "postcss": "^8.4.35",
     "prettier": "^3.8.1",
     "react-big-calendar": "^1.19.4",
     "rollup-plugin-visualizer": "^6.0.5",
     "sharp": "^0.34.5",
+    "swagger2openapi": "^7.0.8",
     "tailwindcss": "^3.4.19",
     "terser": "^5.27.0",
     "typescript": "^5.3.3",

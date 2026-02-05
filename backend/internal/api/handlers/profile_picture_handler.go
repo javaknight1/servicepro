@@ -22,6 +22,18 @@ func NewProfilePictureHandler(service *services.ProfilePictureService) *ProfileP
 }
 
 // UploadProfilePicture handles POST /api/v1/users/me/profile-picture
+// @Summary		Upload profile picture
+// @Description	Uploads a new profile picture for the current user (max 2MB, JPEG or PNG)
+// @Tags			Users
+// @Accept			multipart/form-data
+// @Produce		json
+// @Security		BearerAuth
+// @Param			file	formData	file	true	"Profile picture file"
+// @Success		200		{object}	models.ProfilePictureUploadResponse
+// @Failure		400		{object}	models.ErrorResponse
+// @Failure		401		{object}	models.ErrorResponse
+// @Failure		500		{object}	models.ErrorResponse
+// @Router			/users/me/profile-picture [post]
 func (h *ProfilePictureHandler) UploadProfilePicture(c *gin.Context) {
 	// Get user ID from context (set by auth middleware)
 	userIDStr, exists := c.Get("user_id")
@@ -102,6 +114,16 @@ func (h *ProfilePictureHandler) UploadProfilePicture(c *gin.Context) {
 }
 
 // DeleteProfilePicture handles DELETE /api/v1/users/me/profile-picture
+// @Summary		Delete profile picture
+// @Description	Deletes the current user's profile picture
+// @Tags			Users
+// @Accept			json
+// @Produce		json
+// @Security		BearerAuth
+// @Success		200	{object}	map[string]string
+// @Failure		401	{object}	models.ErrorResponse
+// @Failure		500	{object}	models.ErrorResponse
+// @Router			/users/me/profile-picture [delete]
 func (h *ProfilePictureHandler) DeleteProfilePicture(c *gin.Context) {
 	// Get user ID from context (set by auth middleware)
 	userIDStr, exists := c.Get("user_id")

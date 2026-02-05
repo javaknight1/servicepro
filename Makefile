@@ -3,6 +3,7 @@
 .PHONY: coverage ci ci-local ci-lint ci-backend ci-frontend
 .PHONY: docker-dev docker-down docker-clean docker-logs docker-ps
 .PHONY: db-fresh db-fresh-seed db-reset hash-password
+.PHONY: swagger generate-api docs
 
 # =============================================================================
 # Centralized Tool Versions (used by CI and pre-commit)
@@ -58,6 +59,11 @@ help:
 	@echo "  docker-clean - Remove all Docker data and images"
 	@echo "  docker-logs  - Follow logs from all containers"
 	@echo "  docker-ps    - Show running containers"
+	@echo ""
+	@echo "API Documentation:"
+	@echo "  swagger      - Generate Swagger docs from Go annotations"
+	@echo "  generate-api - Generate TypeScript types from Swagger"
+	@echo "  docs         - Run full API documentation pipeline"
 	@echo ""
 	@echo "Specific:"
 	@echo "  frontend-*   - Frontend-specific targets"
@@ -452,3 +458,26 @@ clean:
 	@echo "Clean complete"
 
 clean-docker: docker-clean
+
+# =============================================================================
+# API Documentation
+# =============================================================================
+
+# Generate Swagger documentation from Go annotations
+swagger:
+	@echo "Generating Swagger documentation..."
+	@cd backend && swag init -g cmd/main.go -o docs --parseDependency --parseInternal
+	@echo "✓ Swagger docs generated in backend/docs/"
+
+# Generate TypeScript API types from Swagger (requires swagger docs to exist)
+generate-api:
+	@echo "Generating TypeScript API types..."
+	@cd frontend && npm run generate:api
+	@echo "✓ TypeScript API types generated in frontend/src/types/api.generated.ts"
+
+# Generate all API documentation and types
+docs: swagger generate-api
+	@echo ""
+	@echo "✓ API documentation pipeline complete!"
+	@echo "  - Swagger UI: http://localhost:8080/api/docs (when backend running)"
+	@echo "  - TypeScript types: frontend/src/types/api.generated.ts"

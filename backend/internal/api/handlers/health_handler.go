@@ -21,8 +21,13 @@ func NewHealthHandler(checker *health.Checker) *HealthHandler {
 }
 
 // Live handles the liveness probe endpoint
-// Returns 200 if the server is running (does not check dependencies)
-// Kubernetes uses this to determine if the pod should be restarted
+// @Summary		Liveness probe
+// @Description	Returns 200 if the server is running (does not check dependencies). Kubernetes uses this to determine if the pod should be restarted.
+// @Tags			Health
+// @Accept			json
+// @Produce		json
+// @Success		200	{object}	map[string]string
+// @Router			/health/live [get]
 func (h *HealthHandler) Live(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"status": "alive",
@@ -30,8 +35,14 @@ func (h *HealthHandler) Live(c *gin.Context) {
 }
 
 // Ready handles the readiness probe endpoint
-// Returns 200 if all critical dependencies are healthy
-// Kubernetes uses this to determine if traffic should be sent to the pod
+// @Summary		Readiness probe
+// @Description	Returns 200 if all critical dependencies are healthy. Kubernetes uses this to determine if traffic should be sent to the pod.
+// @Tags			Health
+// @Accept			json
+// @Produce		json
+// @Success		200	{object}	health.HealthReport
+// @Failure		503	{object}	health.HealthReport
+// @Router			/health/ready [get]
 func (h *HealthHandler) Ready(c *gin.Context) {
 	report := h.checker.GetReport(c.Request.Context())
 
@@ -44,7 +55,14 @@ func (h *HealthHandler) Ready(c *gin.Context) {
 }
 
 // Health handles the general health endpoint
-// Returns detailed health information including all check results
+// @Summary		Health check
+// @Description	Returns detailed health information including all dependency check results
+// @Tags			Health
+// @Accept			json
+// @Produce		json
+// @Success		200	{object}	health.HealthReport
+// @Failure		503	{object}	health.HealthReport
+// @Router			/health [get]
 func (h *HealthHandler) Health(c *gin.Context) {
 	report := h.checker.GetReport(c.Request.Context())
 

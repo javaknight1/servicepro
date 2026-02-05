@@ -200,6 +200,22 @@ func (h *DownloadHandler) RegisterRoutes(r *gin.RouterGroup) {
 // =============================================================================
 
 // Download handles single document downloads
+// @Summary		Download document
+// @Description	Downloads a document by ID. Small files are streamed directly, large files redirect to presigned URL.
+// @Tags			Documents
+// @Accept			json
+// @Produce		octet-stream
+// @Security		BearerAuth
+// @Param			id		path	string	true	"Document ID"
+// @Param			inline	query	bool	false	"Display inline instead of download"
+// @Success		200		{file}	file
+// @Success		307
+// @Failure		400	{object}	map[string]string
+// @Failure		403	{object}	map[string]string
+// @Failure		404	{object}	map[string]string
+// @Failure		429	{object}	map[string]string
+// @Failure		500	{object}	map[string]string
+// @Router			/documents/download/{id} [get]
 func (h *DownloadHandler) Download(c *gin.Context) {
 	ctx := c.Request.Context()
 	documentID := c.Param("id")
@@ -299,6 +315,21 @@ func (h *DownloadHandler) redirectToPresignedURL(c *gin.Context, ctx context.Con
 // =============================================================================
 
 // GetDownloadURL returns a presigned download URL
+// @Summary		Get download URL
+// @Description	Returns a presigned URL for downloading a document
+// @Tags			Documents
+// @Accept			json
+// @Produce		json
+// @Security		BearerAuth
+// @Param			id			path		string	true	"Document ID"
+// @Param			expires_in	query		string	false	"URL expiration (e.g., 1h, 30m)"
+// @Success		200			{object}	DownloadURLResponse
+// @Failure		400			{object}	map[string]string
+// @Failure		403			{object}	map[string]string
+// @Failure		404			{object}	map[string]string
+// @Failure		429			{object}	map[string]string
+// @Failure		500			{object}	map[string]string
+// @Router			/documents/download-url/{id} [get]
 func (h *DownloadHandler) GetDownloadURL(c *gin.Context) {
 	ctx := c.Request.Context()
 	documentID := c.Param("id")
@@ -384,6 +415,18 @@ type BulkDownloadRequest struct {
 }
 
 // BulkDownload handles bulk document downloads as a zip file
+// @Summary		Bulk download
+// @Description	Downloads multiple documents as a ZIP file
+// @Tags			Documents
+// @Accept			json
+// @Produce		application/zip
+// @Security		BearerAuth
+// @Param			request	body	BulkDownloadRequest	true	"Bulk download request"
+// @Success		200		{file}	file
+// @Failure		400		{object}	map[string]string
+// @Failure		404		{object}	map[string]string
+// @Failure		429		{object}	map[string]string
+// @Router			/documents/bulk-download [post]
 func (h *DownloadHandler) BulkDownload(c *gin.Context) {
 	ctx := c.Request.Context()
 
@@ -539,6 +582,19 @@ func (h *DownloadHandler) getUniqueFileName(name string, used map[string]int) st
 // =============================================================================
 
 // GetHistory returns download history for the current user
+// @Summary		Get download history
+// @Description	Returns the current user's download history
+// @Tags			Documents
+// @Accept			json
+// @Produce		json
+// @Security		BearerAuth
+// @Param			limit		query		int		false	"Maximum items to return"	default(50)
+// @Param			offset		query		int		false	"Items to skip"				default(0)
+// @Param			start_date	query		string	false	"Filter start date (YYYY-MM-DD)"
+// @Param			end_date	query		string	false	"Filter end date (YYYY-MM-DD)"
+// @Success		200			{object}	HistoryResponse
+// @Failure		501			{object}	map[string]string
+// @Router			/documents/history [get]
 func (h *DownloadHandler) GetHistory(c *gin.Context) {
 	if h.tracker == nil {
 		c.JSON(http.StatusNotImplemented, gin.H{"error": "Not Implemented", "message": "download tracking is disabled"})
@@ -597,6 +653,19 @@ type HistoryResponse struct {
 }
 
 // GetDocumentHistory returns download history for a specific document
+// @Summary		Get document download history
+// @Description	Returns the download history for a specific document
+// @Tags			Documents
+// @Accept			json
+// @Produce		json
+// @Security		BearerAuth
+// @Param			id		path		string	true	"Document ID"
+// @Param			limit	query		int		false	"Maximum items to return"	default(50)
+// @Param			offset	query		int		false	"Items to skip"				default(0)
+// @Success		200		{object}	HistoryResponse
+// @Failure		400		{object}	map[string]string
+// @Failure		501		{object}	map[string]string
+// @Router			/documents/history/{id} [get]
 func (h *DownloadHandler) GetDocumentHistory(c *gin.Context) {
 	if h.tracker == nil {
 		c.JSON(http.StatusNotImplemented, gin.H{"error": "Not Implemented", "message": "download tracking is disabled"})
@@ -639,6 +708,16 @@ func (h *DownloadHandler) GetDocumentHistory(c *gin.Context) {
 // =============================================================================
 
 // GetStats returns download statistics
+// @Summary		Get download stats
+// @Description	Returns download statistics for the current user
+// @Tags			Documents
+// @Accept			json
+// @Produce		json
+// @Security		BearerAuth
+// @Param			period	query		string	false	"Time period (24h, 7d, 30d, 90d)"	default(30d)
+// @Success		200		{object}	map[string]interface{}
+// @Failure		501		{object}	map[string]string
+// @Router			/documents/stats [get]
 func (h *DownloadHandler) GetStats(c *gin.Context) {
 	if h.tracker == nil {
 		c.JSON(http.StatusNotImplemented, gin.H{"error": "Not Implemented", "message": "download tracking is disabled"})

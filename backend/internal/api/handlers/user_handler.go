@@ -21,6 +21,16 @@ func NewUserHandler(userRepo repository.UserRepositoryGormInterface) *UserHandle
 }
 
 // GetCurrentUser handles GET /api/v1/users/me
+// @Summary		Get current user
+// @Description	Retrieves the currently authenticated user's profile
+// @Tags			Users
+// @Accept			json
+// @Produce		json
+// @Security		BearerAuth
+// @Success		200	{object}	models.User
+// @Failure		401	{object}	models.ErrorResponse
+// @Failure		404	{object}	models.ErrorResponse
+// @Router			/users/me [get]
 func (h *UserHandler) GetCurrentUser(c *gin.Context) {
 	// Get user ID from context (set by auth middleware)
 	userIDStr, exists := c.Get("user_id")
@@ -69,6 +79,18 @@ func (h *UserHandler) GetCurrentUser(c *gin.Context) {
 }
 
 // UpdateProfile handles PATCH /api/v1/users/me/profile
+// @Summary		Update user profile
+// @Description	Updates the currently authenticated user's profile
+// @Tags			Users
+// @Accept			json
+// @Produce		json
+// @Security		BearerAuth
+// @Param			request	body		models.UpdateProfileRequest	true	"Profile update request"
+// @Success		200		{object}	models.User
+// @Failure		400		{object}	models.ErrorResponse
+// @Failure		401		{object}	models.ErrorResponse
+// @Failure		500		{object}	models.ErrorResponse
+// @Router			/users/me/profile [patch]
 func (h *UserHandler) UpdateProfile(c *gin.Context) {
 	// Get user ID from context (set by auth middleware)
 	userIDStr, exists := c.Get("user_id")

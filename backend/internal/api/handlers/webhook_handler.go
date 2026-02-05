@@ -38,7 +38,15 @@ func NewWebhookHandler(
 }
 
 // HandleStripeWebhook processes incoming Stripe webhook events
-// POST /api/v1/webhooks/stripe
+// @Summary		Handle Stripe webhook
+// @Description	Processes incoming Stripe webhook events for subscription and payment updates
+// @Tags			Webhooks
+// @Accept			json
+// @Produce		json
+// @Param			Stripe-Signature	header		string	true	"Stripe webhook signature"
+// @Success		200					{object}	map[string]bool
+// @Failure		400					{object}	map[string]string
+// @Router			/webhooks/stripe [post]
 func (h *WebhookHandler) HandleStripeWebhook(c *gin.Context) {
 	const MaxBodyBytes = int64(65536)
 	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, MaxBodyBytes)

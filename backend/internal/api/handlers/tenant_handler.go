@@ -28,7 +28,18 @@ func NewTenantHandler(tenantService *services.TenantService) *TenantHandler {
 }
 
 // CreateTenant creates a new tenant
-// POST /api/v1/tenants
+// @Summary		Create tenant
+// @Description	Creates a new organization/tenant
+// @Tags			Tenants
+// @Accept			json
+// @Produce		json
+// @Security		BearerAuth
+// @Param			request	body		models.CreateTenantRequest	true	"Create tenant request"
+// @Success		201		{object}	models.TenantResponse
+// @Failure		400		{object}	models.ErrorResponse
+// @Failure		401		{object}	models.ErrorResponse
+// @Failure		500		{object}	models.ErrorResponse
+// @Router			/tenants [post]
 func (h *TenantHandler) CreateTenant(c *gin.Context) {
 	var req models.CreateTenantRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -74,7 +85,18 @@ func (h *TenantHandler) CreateTenant(c *gin.Context) {
 }
 
 // GetTenant retrieves a tenant by ID
-// GET /api/v1/tenants/:id
+// @Summary		Get tenant
+// @Description	Retrieves a tenant by ID
+// @Tags			Tenants
+// @Accept			json
+// @Produce		json
+// @Security		BearerAuth
+// @Param			id	path		string	true	"Tenant ID"
+// @Success		200	{object}	models.TenantResponse
+// @Failure		400	{object}	models.ErrorResponse
+// @Failure		404	{object}	models.ErrorResponse
+// @Failure		500	{object}	models.ErrorResponse
+// @Router			/tenants/{id} [get]
 func (h *TenantHandler) GetTenant(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := uuid.Parse(idStr)
@@ -106,7 +128,19 @@ func (h *TenantHandler) GetTenant(c *gin.Context) {
 }
 
 // UpdateTenant updates a tenant
-// PUT /api/v1/tenants/:id
+// @Summary		Update tenant
+// @Description	Updates an existing tenant
+// @Tags			Tenants
+// @Accept			json
+// @Produce		json
+// @Security		BearerAuth
+// @Param			id		path		string						true	"Tenant ID"
+// @Param			request	body		models.UpdateTenantRequest	true	"Update tenant request"
+// @Success		200		{object}	models.TenantResponse
+// @Failure		400		{object}	models.ErrorResponse
+// @Failure		404		{object}	models.ErrorResponse
+// @Failure		500		{object}	models.ErrorResponse
+// @Router			/tenants/{id} [put]
 func (h *TenantHandler) UpdateTenant(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := uuid.Parse(idStr)
@@ -158,7 +192,18 @@ func (h *TenantHandler) UpdateTenant(c *gin.Context) {
 }
 
 // DeleteTenant deletes a tenant
-// DELETE /api/v1/tenants/:id
+// @Summary		Delete tenant
+// @Description	Deletes a tenant and all associated data
+// @Tags			Tenants
+// @Accept			json
+// @Produce		json
+// @Security		BearerAuth
+// @Param			id	path	string	true	"Tenant ID"
+// @Success		204
+// @Failure		400	{object}	models.ErrorResponse
+// @Failure		404	{object}	models.ErrorResponse
+// @Failure		500	{object}	models.ErrorResponse
+// @Router			/tenants/{id} [delete]
 func (h *TenantHandler) DeleteTenant(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := uuid.Parse(idStr)
@@ -189,7 +234,16 @@ func (h *TenantHandler) DeleteTenant(c *gin.Context) {
 }
 
 // ListUserTenants lists all tenants the current user belongs to
-// GET /api/v1/tenants
+// @Summary		List user tenants
+// @Description	Lists all organizations the current user belongs to
+// @Tags			Tenants
+// @Accept			json
+// @Produce		json
+// @Security		BearerAuth
+// @Success		200	{object}	map[string][]models.TenantResponse
+// @Failure		401	{object}	models.ErrorResponse
+// @Failure		500	{object}	models.ErrorResponse
+// @Router			/tenants [get]
 func (h *TenantHandler) ListUserTenants(c *gin.Context) {
 	userID, err := middleware.GetUserID(c)
 	if err != nil {
@@ -215,7 +269,20 @@ func (h *TenantHandler) ListUserTenants(c *gin.Context) {
 }
 
 // AddMember adds a member to a tenant
-// POST /api/v1/tenants/:id/members
+// @Summary		Add member
+// @Description	Adds a new member to the organization
+// @Tags			Tenants
+// @Accept			json
+// @Produce		json
+// @Security		BearerAuth
+// @Param			id		path		string					true	"Tenant ID"
+// @Param			request	body		models.AddMemberRequest	true	"Add member request"
+// @Success		201		{object}	models.TenantMemberResponse
+// @Failure		400		{object}	models.ErrorResponse
+// @Failure		401		{object}	models.ErrorResponse
+// @Failure		409		{object}	models.ErrorResponse
+// @Failure		500		{object}	models.ErrorResponse
+// @Router			/tenants/{id}/members [post]
 func (h *TenantHandler) AddMember(c *gin.Context) {
 	idStr := c.Param("id")
 	tenantID, err := uuid.Parse(idStr)
@@ -265,7 +332,20 @@ func (h *TenantHandler) AddMember(c *gin.Context) {
 }
 
 // RemoveMember removes a member from a tenant
-// DELETE /api/v1/tenants/:id/members/:userId
+// @Summary		Remove member
+// @Description	Removes a member from the organization
+// @Tags			Tenants
+// @Accept			json
+// @Produce		json
+// @Security		BearerAuth
+// @Param			id		path	string	true	"Tenant ID"
+// @Param			userId	path	string	true	"User ID to remove"
+// @Success		204
+// @Failure		400		{object}	models.ErrorResponse
+// @Failure		403		{object}	models.ErrorResponse
+// @Failure		404		{object}	models.ErrorResponse
+// @Failure		500		{object}	models.ErrorResponse
+// @Router			/tenants/{id}/members/{userId} [delete]
 func (h *TenantHandler) RemoveMember(c *gin.Context) {
 	idStr := c.Param("id")
 	tenantID, err := uuid.Parse(idStr)
@@ -312,7 +392,21 @@ func (h *TenantHandler) RemoveMember(c *gin.Context) {
 }
 
 // UpdateMemberRole updates a member's role
-// PUT /api/v1/tenants/:id/members/:userId/role
+// @Summary		Update member role
+// @Description	Updates the role assigned to a member in the organization
+// @Tags			Tenants
+// @Accept			json
+// @Produce		json
+// @Security		BearerAuth
+// @Param			id		path		string							true	"Tenant ID"
+// @Param			userId	path		string							true	"User ID"
+// @Param			request	body		models.UpdateMemberRoleRequest	true	"Update role request"
+// @Success		200		{object}	map[string]string
+// @Failure		400		{object}	models.ErrorResponse
+// @Failure		403		{object}	models.ErrorResponse
+// @Failure		404		{object}	models.ErrorResponse
+// @Failure		500		{object}	models.ErrorResponse
+// @Router			/tenants/{id}/members/{userId}/role [put]
 func (h *TenantHandler) UpdateMemberRole(c *gin.Context) {
 	idStr := c.Param("id")
 	tenantID, err := uuid.Parse(idStr)
@@ -368,7 +462,19 @@ func (h *TenantHandler) UpdateMemberRole(c *gin.Context) {
 }
 
 // GetTenantMembers gets all members of a tenant
-// GET /api/v1/tenants/:id/members
+// @Summary		Get tenant members
+// @Description	Retrieves all members of an organization
+// @Tags			Tenants
+// @Accept			json
+// @Produce		json
+// @Security		BearerAuth
+// @Param			id	path		string	true	"Tenant ID"
+// @Success		200	{object}	map[string][]models.TenantMemberResponse
+// @Failure		400	{object}	models.ErrorResponse
+// @Failure		401	{object}	models.ErrorResponse
+// @Failure		403	{object}	models.ErrorResponse
+// @Failure		500	{object}	models.ErrorResponse
+// @Router			/tenants/{id}/members [get]
 func (h *TenantHandler) GetTenantMembers(c *gin.Context) {
 	idStr := c.Param("id")
 	tenantID, err := uuid.Parse(idStr)

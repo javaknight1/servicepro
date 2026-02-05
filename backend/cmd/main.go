@@ -1,3 +1,21 @@
+//	@title						ServicePro API
+//	@version					1.0
+//	@description				ServicePro is a field service management platform for service businesses.
+//	@description				This API provides endpoints for managing customers, jobs, quotes, invoices, and more.
+//
+//	@contact.name				ServicePro Support
+//	@contact.email				support@servicepro.com
+//
+//	@license.name				Proprietary
+//
+//	@host						localhost:8080
+//	@BasePath					/api
+//
+//	@securityDefinitions.apikey	BearerAuth
+//	@in							header
+//	@name						Authorization
+//	@description				Enter your bearer token in the format: Bearer {token}
+
 package main
 
 import (

@@ -5,9 +5,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 	"gorm.io/gorm"
 
 	"github.com/javaknight1/servicepro/backend/config"
+	_ "github.com/javaknight1/servicepro/backend/docs" // Import generated swagger docs
 	"github.com/javaknight1/servicepro/backend/internal/api/handlers"
 	"github.com/javaknight1/servicepro/backend/internal/api/middleware"
 	v1 "github.com/javaknight1/servicepro/backend/internal/api/routes/v1"
@@ -44,6 +47,9 @@ func Setup(router *gin.Engine, db *gorm.DB, redisClient *redis.Client, email ema
 
 	// Setup metrics endpoint for Prometheus scraping
 	setupMetricsEndpoint(router, metrics, cfg)
+
+	// Setup Swagger documentation endpoint
+	setupSwaggerEndpoint(router, cfg)
 }
 
 // setupHealthEndpoints configures health check endpoints with deep dependency checks
@@ -82,6 +88,24 @@ func setupHealthEndpoints(router *gin.Engine, db *gorm.DB, redisClient *redis.Cl
 	router.GET("/health/ready", healthHandler.Ready)
 
 	logging.Info(ctx, "Health check endpoints registered", map[string]any{"endpoints": "/health, /health/live, /health/ready", "source": "health"})
+}
+
+// setupSwaggerEndpoint configures the Swagger documentation endpoint
+func setupSwaggerEndpoint(router *gin.Engine, cfg *config.Config) {
+	ctx := context.Background()
+
+	// Only enable Swagger in non-production environments by default
+	// Can be overridden with SWAGGER_ENABLED=true
+	if cfg.Server.Env == "production" {
+		logging.Info(ctx, "Swagger documentation disabled in production", map[string]any{"source": "swagger"})
+		return
+	}
+
+	// Serve Swagger UI at /api/docs
+	router.GET("/api/docs/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
+	// Also serve the raw swagger.json
+	logging.Info(ctx, "Swagger documentation endpoint registered", map[string]any{"path": "/api/docs/index.html", "source": "swagger"})
 }
 
 // setupMetricsEndpoint configures the Prometheus metrics endpoint

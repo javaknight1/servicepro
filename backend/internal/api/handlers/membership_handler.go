@@ -25,7 +25,15 @@ func NewMembershipHandler(membershipService *services.MembershipService) *Member
 }
 
 // GetAllTiers retrieves all available membership tiers
-// GET /api/v1/membership-tiers
+// @Summary		Get membership tiers
+// @Description	Retrieves all available membership tiers and their features
+// @Tags			Membership
+// @Accept			json
+// @Produce		json
+// @Security		BearerAuth
+// @Success		200	{array}		models.MembershipTier
+// @Failure		500	{object}	models.ErrorResponse
+// @Router			/membership-tiers [get]
 func (h *MembershipHandler) GetAllTiers(c *gin.Context) {
 	tiers, err := h.membershipService.GetAllTiers(c.Request.Context())
 	if err != nil {
@@ -40,7 +48,18 @@ func (h *MembershipHandler) GetAllTiers(c *gin.Context) {
 }
 
 // GetTenantMembership retrieves the current membership for a tenant
-// GET /api/v1/tenants/:id/membership
+// @Summary		Get tenant membership
+// @Description	Retrieves the current membership subscription for a tenant
+// @Tags			Membership
+// @Accept			json
+// @Produce		json
+// @Security		BearerAuth
+// @Param			id	path		string	true	"Tenant ID"
+// @Success		200	{object}	models.TenantSubscriptionResponse
+// @Failure		400	{object}	models.ErrorResponse
+// @Failure		404	{object}	models.ErrorResponse
+// @Failure		500	{object}	models.ErrorResponse
+// @Router			/tenants/{id}/membership [get]
 func (h *MembershipHandler) GetTenantMembership(c *gin.Context) {
 	idStr := c.Param("id")
 	tenantID, err := uuid.Parse(idStr)
@@ -72,7 +91,21 @@ func (h *MembershipHandler) GetTenantMembership(c *gin.Context) {
 }
 
 // UpdateTenantMembership updates a tenant's membership tier
-// PUT /api/v1/tenants/:id/membership
+// @Summary		Update tenant membership
+// @Description	Updates the membership tier for a tenant (upgrade/downgrade)
+// @Tags			Membership
+// @Accept			json
+// @Produce		json
+// @Security		BearerAuth
+// @Param			id		path		string							true	"Tenant ID"
+// @Param			request	body		models.UpdateMembershipRequest	true	"Membership update request"
+// @Success		200		{object}	models.TenantSubscriptionResponse
+// @Failure		400		{object}	models.ErrorResponse
+// @Failure		401		{object}	models.ErrorResponse
+// @Failure		402		{object}	models.ErrorResponse
+// @Failure		404		{object}	models.ErrorResponse
+// @Failure		500		{object}	models.ErrorResponse
+// @Router			/tenants/{id}/membership [put]
 func (h *MembershipHandler) UpdateTenantMembership(c *gin.Context) {
 	idStr := c.Param("id")
 	tenantID, err := uuid.Parse(idStr)
@@ -133,7 +166,19 @@ func (h *MembershipHandler) UpdateTenantMembership(c *gin.Context) {
 }
 
 // PreviewSubscriptionChange previews what will happen when changing subscriptions
-// POST /api/v1/tenants/:id/membership/preview
+// @Summary		Preview subscription change
+// @Description	Previews the prorated charges/credits for a subscription change
+// @Tags			Membership
+// @Accept			json
+// @Produce		json
+// @Security		BearerAuth
+// @Param			id		path		string									true	"Tenant ID"
+// @Param			request	body		models.PreviewSubscriptionChangeRequest	true	"Preview request"
+// @Success		200		{object}	models.PreviewSubscriptionChangeResponse
+// @Failure		400		{object}	models.ErrorResponse
+// @Failure		404		{object}	models.ErrorResponse
+// @Failure		500		{object}	models.ErrorResponse
+// @Router			/tenants/{id}/membership/preview [post]
 func (h *MembershipHandler) PreviewSubscriptionChange(c *gin.Context) {
 	idStr := c.Param("id")
 	tenantID, err := uuid.Parse(idStr)
@@ -175,7 +220,17 @@ func (h *MembershipHandler) PreviewSubscriptionChange(c *gin.Context) {
 }
 
 // GetSubscriptionHistory retrieves the subscription history for a tenant
-// GET /api/v1/tenants/:id/membership/history
+// @Summary		Get subscription history
+// @Description	Retrieves the subscription change history for a tenant
+// @Tags			Membership
+// @Accept			json
+// @Produce		json
+// @Security		BearerAuth
+// @Param			id	path		string	true	"Tenant ID"
+// @Success		200	{object}	map[string]interface{}
+// @Failure		400	{object}	models.ErrorResponse
+// @Failure		500	{object}	models.ErrorResponse
+// @Router			/tenants/{id}/membership/history [get]
 func (h *MembershipHandler) GetSubscriptionHistory(c *gin.Context) {
 	idStr := c.Param("id")
 	tenantID, err := uuid.Parse(idStr)

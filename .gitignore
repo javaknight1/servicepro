@@ -199,6 +199,10 @@ storybook-static/
 /backend/docs/swagger.yaml
 /backend/docs/docs.go
 
+# Frontend generated API types
+/frontend/src/types/openapi.json
+/frontend/src/types/api.generated.ts
+
 # -----------------------------------------------------------------------------
 # Exports & Generated Files
 # -----------------------------------------------------------------------------

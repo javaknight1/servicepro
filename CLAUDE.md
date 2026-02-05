@@ -112,3 +112,63 @@ When adding new environment variables to the backend:
    - Add the `getEnv()` call in `Load()` with a sensible default
 
 This ensures developers can quickly set up their environment by copying `.env.example` to `.env`.
+
+---
+
+## Makefile
+
+**IMPORTANT: Use the single root Makefile for all build tasks.**
+
+All make targets should be defined in the root `/Makefile`. Do NOT create separate Makefiles in subdirectories (e.g., `/backend/Makefile` or `/frontend/Makefile`).
+
+Key targets:
+
+- `make swagger` - Generate Swagger documentation from Go annotations
+- `make generate-api` - Generate TypeScript API types from Swagger
+- `make docs` - Run the full API documentation pipeline (swagger + generate-api)
+- `make help` - List all available targets
+
+When adding new backend or frontend build tasks, add them to the root Makefile following the existing patterns for `backend-*` and `frontend-*` targets.
+
+---
+
+## API Documentation (OpenAPI/Swagger)
+
+**IMPORTANT: Keep API documentation in sync with code changes.**
+
+When modifying backend API endpoints (handlers), always update the Swagger annotations:
+
+1. **Adding a new endpoint**: Add full swagger annotations above the handler function:
+
+   ```go
+   // @Summary      Short description
+   // @Description  Longer description
+   // @Tags         ResourceName
+   // @Accept       json
+   // @Produce      json
+   // @Security     BearerAuth
+   // @Param        id   path      string  true  "Resource ID"
+   // @Param        body body      models.RequestType  true  "Request body"
+   // @Success      200  {object}  models.ResponseType
+   // @Failure      400  {object}  models.ErrorResponse
+   // @Router       /resource/{id} [get]
+   ```
+
+2. **Modifying an endpoint**: Update the annotations to reflect changes to:
+   - Request/response types
+   - Path or query parameters
+   - Status codes
+   - Security requirements
+
+3. **Removing an endpoint**: Remove the handler and its annotations
+
+4. **After making changes**: Regenerate the documentation:
+   ```bash
+   make docs
+   ```
+   This regenerates both the Swagger JSON and the frontend TypeScript types.
+
+The generated files are:
+
+- `backend/docs/swagger.json` - OpenAPI specification
+- `frontend/src/types/api.generated.ts` - TypeScript types for API responses
