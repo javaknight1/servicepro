@@ -2,6 +2,44 @@
 
 All notable changes to ServicePro will be documented in this file.
 
+## [0.7.0] - 2026-02-07
+
+### Release Features
+
+| Type         | Description                                       | Commit                                                                                                 |
+| ------------ | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| ✨ Features  | Added graceful shutdown on backend startup        | [`3bf6431`](https://github.com/javaknight1/servicepro/commit/3bf6431851f8b5d794feff6ad3cd265d3df9a9aa) |
+| ✨ Features  | Emit metrics on /metrics endpoint                 | [`ed6589a`](https://github.com/javaknight1/servicepro/commit/ed6589a56e16ae496efa06ad32a0a0210c854eec) |
+| ✨ Features  | Upgraded logging logic                            | [`33520a9`](https://github.com/javaknight1/servicepro/commit/33520a94cb915b0ac932c3d3a04622142d40c20f) |
+| ✨ Features  | Added calendar view for jobs                      | [`d93bf27`](https://github.com/javaknight1/servicepro/commit/d93bf27acbdac5a6c73ac5e86f268d07e4459852) |
+| ✨ Features  | Created a/r aging report                          | [`97e380c`](https://github.com/javaknight1/servicepro/commit/97e380c0814e368b82e5bf405e2892005f2e7b1e) |
+| 🐛 Bug Fixes | Added deep health checks for some of our services | [`c432ab4`](https://github.com/javaknight1/servicepro/commit/c432ab4b5697c3db49f70911d6b00b31ca0fe90a) |
+| 🐛 Bug Fixes | Fixed token access on frontend                    | [`8cda579`](https://github.com/javaknight1/servicepro/commit/8cda57937662dd680271a712b4c18aabc91ec11e) |
+| 🐛 Bug Fixes | Centralize any calls to fetch()                   | [`440abdb`](https://github.com/javaknight1/servicepro/commit/440abdb727fe4cda381becfcb24554f95f47a49a) |
+| 🐛 Bug Fixes | Added csp/hsts headers for frontend               | [`f262625`](https://github.com/javaknight1/servicepro/commit/f262625de4f3823e4becf8e84a1b753d8e489046) |
+| 🐛 Bug Fixes | Fixed error handling for Sentry                   | [`e0d9a4f`](https://github.com/javaknight1/servicepro/commit/e0d9a4f759ca95e46000eba56f1aee08a918ff4f) |
+| 🐛 Bug Fixes | Remove any usage of any type in frontend          | [`d9749b2`](https://github.com/javaknight1/servicepro/commit/d9749b238418b91b55d94e5184babded93e127a5) |
+| 🐛 Bug Fixes | Remoed ts-nocheck                                 | [`dddd57a`](https://github.com/javaknight1/servicepro/commit/dddd57a69749a0466190eebdd20a3ab2030f59d4) |
+| 🐛 Bug Fixes | Enabled noUnusedLocals and noUnusedParameters     | [`1f414c8`](https://github.com/javaknight1/servicepro/commit/1f414c86cdf647590569cba08044e8794eb05692) |
+
+### Dev Features
+
+| Type             | Description                                              | Commit                                                                                                 |
+| ---------------- | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| ♻️ Refactoring   | Cleaned up the frontend and removed unused code          | [`b6fc6d4`](https://github.com/javaknight1/servicepro/commit/b6fc6d4ba5b4ece00714c1e07eb915c4c85885c0) |
+| ♻️ Refactoring   | Created file download library to be used across frontend | [`9de879d`](https://github.com/javaknight1/servicepro/commit/9de879d0397d1e6bf5392b69578778565911d66b) |
+| ♻️ Refactoring   | Centralize url search params lib                         | [`a98c98e`](https://github.com/javaknight1/servicepro/commit/a98c98e97211cd42bd22c80d7e52de0cd8016e8d) |
+| ♻️ Refactoring   | Consolidate cache hooks                                  | [`86f3ae4`](https://github.com/javaknight1/servicepro/commit/86f3ae4454be1d1b136455fa01552831e93cf4a4) |
+| ✅ Tests         | Removed unit tests not being used anymore                | [`8d27820`](https://github.com/javaknight1/servicepro/commit/8d278200a13e0d56854f2a11f488ec7ba8dcc129) |
+| ✅ Tests         | Updated frontend with over 70% code coverage             | [`7e75693`](https://github.com/javaknight1/servicepro/commit/7e756930eda30530af5ba248b3f39d4fabb38834) |
+| ✅ Tests         | Updated integration tests for frontend                   | [`f7e0b09`](https://github.com/javaknight1/servicepro/commit/f7e0b099e9224f3a029976e2c38c54b3406a9951) |
+| ✅ Tests         | Integrated sql query performance metrics                 | [`f059c9f`](https://github.com/javaknight1/servicepro/commit/f059c9ff033e7c47ee824d0eba95b8be2ace796d) |
+| 📚 Documentation | Updated TODO from items from MVP doc                     | [`1dfa803`](https://github.com/javaknight1/servicepro/commit/1dfa803b19fb84641c1be77010c870d8fcb55b46) |
+| 📚 Documentation | Completed openapi swagger docs for API                   | [`81ec841`](https://github.com/javaknight1/servicepro/commit/81ec841b438e4e364786cb3c6823460c549c39f1) |
+| 🚀 CI/CD         | Added jobs to check for dead code                        | [`416b86b`](https://github.com/javaknight1/servicepro/commit/416b86b3d57b9b3006e685312d8dae6be65344f1) |
+| 🚀 CI/CD         | Frontend analysis and ptimization                        | [`948583d`](https://github.com/javaknight1/servicepro/commit/948583d830c54ed8afe8461e5044b84357f6f507) |
+| 🚀 CI/CD         | Bundle costs for pushes, commits, and release            | [`5531cbb`](https://github.com/javaknight1/servicepro/commit/5531cbbca7be96fb74229249e71a2cbcef3692e0) |
+
 ## [0.6.0] - 2026-02-01
 
 ### Release Features
