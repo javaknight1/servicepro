@@ -23,7 +23,7 @@ func setupTestDB(t *testing.T) *gorm.DB {
 		ConnMaxLifetime: time.Hour,
 	}
 
-	db, err := database.NewGormDB(cfg)
+	db, _, err := database.NewGormDB(cfg)
 	if err != nil {
 		t.Skipf("Skipping test - database not available: %v", err)
 	}

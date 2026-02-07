@@ -27,6 +27,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -96,7 +97,7 @@ func main() {
 	}
 
 	// Connect to PostgreSQL using GORM
-	db, err := database.NewGormDB(&cfg.Database)
+	db, queryLogger, err := database.NewGormDB(&cfg.Database)
 	if err != nil {
 		logging.Fatal(ctx, "Failed to connect to database", map[string]any{"error": err.Error()})
 		os.Exit(1)
@@ -150,6 +151,13 @@ func main() {
 	} else {
 		defer metricsClient.Close()
 		logging.Info(ctx, "Metrics client initialized", nil)
+
+		// Wire metrics into the database query logger
+		queryLogger.SetMetricsClient(metricsClient)
+
+		// Start connection pool metrics collector
+		poolCollector := database.NewPoolMetricsCollector(sqlDB, metricsClient, 15*time.Second)
+		poolCollector.Start(ctx)
 	}
 
 	// Initialize Gin router

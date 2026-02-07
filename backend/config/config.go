@@ -177,10 +177,13 @@ type ServerConfig struct {
 
 // DatabaseConfig holds database configuration
 type DatabaseConfig struct {
-	URL             string
-	MaxOpenConns    int
-	MaxIdleConns    int
-	ConnMaxLifetime time.Duration
+	URL                 string
+	MaxOpenConns        int
+	MaxIdleConns        int
+	ConnMaxLifetime     time.Duration
+	SlowQueryThreshold  time.Duration
+	QueryAlertThreshold time.Duration
+	LogAllQueries       bool
 }
 
 // RedisConfig holds Redis configuration
@@ -384,10 +387,13 @@ func Load() *Config {
 			TrustedProxies:     getEnvAsStringSlice("SERVER_TRUSTED_PROXIES", []string{}),
 		},
 		Database: DatabaseConfig{
-			URL:             getEnv("DATABASE_URL", "postgresql://postgres:password@localhost:5432/servicepro?sslmode=disable"),
-			MaxOpenConns:    getEnvAsInt("DB_MAX_OPEN_CONNS", 25),
-			MaxIdleConns:    getEnvAsInt("DB_MAX_IDLE_CONNS", 5),
-			ConnMaxLifetime: getEnvAsDuration("DB_CONN_MAX_LIFETIME", "5m"),
+			URL:                 getEnv("DATABASE_URL", "postgresql://postgres:password@localhost:5432/servicepro?sslmode=disable"),
+			MaxOpenConns:        getEnvAsInt("DB_MAX_OPEN_CONNS", 25),
+			MaxIdleConns:        getEnvAsInt("DB_MAX_IDLE_CONNS", 5),
+			ConnMaxLifetime:     getEnvAsDuration("DB_CONN_MAX_LIFETIME", "5m"),
+			SlowQueryThreshold:  getEnvAsDuration("DB_SLOW_QUERY_THRESHOLD", "100ms"),
+			QueryAlertThreshold: getEnvAsDuration("DB_QUERY_ALERT_THRESHOLD", "1s"),
+			LogAllQueries:       getEnvAsBool("DB_LOG_ALL_QUERIES", false),
 		},
 		Redis: RedisConfig{
 			URL:      getEnv("REDIS_URL", "redis://localhost:6379"),

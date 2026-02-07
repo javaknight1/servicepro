@@ -2,7 +2,7 @@
 
 This document tracks technical improvements that should be implemented but are deferred for future development cycles.
 
-**Last Updated: 2026-02-05** (T018 dead code elimination with automated detection complete)
+**Last Updated: 2026-02-06** (T017 query performance monitoring complete)
 
 ---
 
@@ -27,7 +27,7 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 | ~~T014~~ | ~~P2~~   | ~~Testing~~    | ~~High~~   | ~~--~~    | ~~Integration tests for critical workflows~~ ✓           |
 | ~~T015~~ | ~~P2~~   | ~~Docs~~       | ~~High~~   | ~~After~~ | ~~Generate OpenAPI/Swagger documentation~~ ✓             |
 | T016     | P2       | Perf           | High       | --        | Frontend bundle analysis + optimization                  |
-| T017     | P2       | Perf           | High       | --        | Query performance monitoring                             |
+| ~~T017~~ | ~~P2~~   | ~~Perf~~       | ~~High~~   | ~~--~~    | ~~Query performance monitoring~~ ✓                       |
 | ~~T018~~ | ~~P2~~   | ~~Cleanup~~    | ~~High~~   | ~~--~~    | ~~Dead code elimination~~ ✓                              |
 | ~~T019~~ | ~~P0~~   | ~~Scheduling~~ | ~~High~~   | ~~--~~    | ~~Integrate calendar view for job scheduling~~ ✓         |
 | T020     | P0       | Scheduling     | High       | Before    | Build conflict detection API endpoint                    |
@@ -157,7 +157,7 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 ### Sprint 5 - Performance & Refactoring
 
 - [ ] **T016** - Bundle analysis + optimization
-- [ ] **T017** - Query performance monitoring
+- [x] **T017** - Query performance monitoring ✓
 - [x] **T021** - Extract duplicate file download utility ✓
 - [x] **T022** - Extract duplicate URLSearchParams builder ✓
 - [x] **T023** - Consolidate cache hooks ✓
@@ -302,6 +302,7 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 - [x] T021: Extract duplicate file download utility - Created `src/utils/fileDownload.ts` with `downloadFile()`, `downloadCSV()`, `downloadJSON()`, `downloadPDF()`, `openBlobInNewTab()`, and `downloadFromDataURL()`. Refactored 10 files to use the utility.
 - [x] T031: Build A/R aging buckets report - Backend: `/backend/internal/models/ar_aging_report.go`, `/backend/internal/services/ar_aging_service.go`, `/backend/internal/api/handlers/ar_aging_handler.go`. Frontend: `/frontend/src/types/arAging.ts`, `/frontend/src/services/arAgingService.ts`, `/frontend/src/pages/Reports/ARAgingReportPage.tsx`. Displays receivables by age (Current, 1-30, 31-60, 61-90, 90+), drill-down to invoices, CSV export.
 - [x] T018: Dead code elimination - Removed ~2,700 lines of dead code. Added ts-prune for automated detection with baseline of 116 known unused exports. Pre-commit hook and CI job prevent new dead code. Run `npm run dead-code` to check, `npm run dead-code:update` to update baseline.
+- [x] T017: Query performance monitoring - Custom GORM logger with slow query detection (>=100ms WARN, >=1s ERROR). Prometheus metrics: `db_query_duration_seconds`, `db_queries_total`, `db_query_errors_total` with operation/table labels. Connection pool gauges (open/idle/in-use/max/wait). Configurable via `DB_SLOW_QUERY_THRESHOLD`, `DB_QUERY_ALERT_THRESHOLD`, `DB_LOG_ALL_QUERIES`.
 
 ---
 
@@ -1038,15 +1039,13 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 
 ### Logging & Observability
 
-- [ ] **Query Execution Time Logging**
-  - **What**: Log database query execution times
-  - **Why**: Identify slow queries in development and production
-  - **Expected Result**: Slow queries logged with context
-  - **Acceptance Criteria**:
-    - Log queries exceeding threshold (default: 100ms)
-    - Include query, parameters, duration
-    - Prometheus histogram for query times
-    - Alert on queries >1 second
+- [x] **T017: Query Performance Monitoring** ✓ COMPLETE
+  - Custom GORM logger (`pkg/database/logger.go`) implements `logger.Interface`
+  - Every query timed: slow queries (>=100ms) logged at WARN, critical (>=1s) at ERROR
+  - Prometheus metrics: `db_query_duration_seconds` histogram, `db_queries_total` counter, `db_query_errors_total` counter (all with operation/table labels)
+  - Connection pool metrics collector (`pkg/database/pool_metrics.go`): 6 gauges for open/idle/in-use/max connections, wait count, wait duration
+  - Configurable via env vars: `DB_SLOW_QUERY_THRESHOLD`, `DB_QUERY_ALERT_THRESHOLD`, `DB_LOG_ALL_QUERIES`
+  - Thread-safe deferred metrics wiring via `SetMetricsClient()` (handles init order: DB before metrics)
 
 - [ ] **Business Metrics Dashboard**
   - **What**: Track business metrics (customers, jobs, revenue)
