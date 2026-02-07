@@ -22,7 +22,7 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 | ~~T008~~ | ~~P1~~   | ~~Frontend~~   | ~~High~~   | ~~--~~    | ~~Remove @ts-nocheck directives~~ ✓                      |
 | ~~T009~~ | ~~P1~~   | ~~Frontend~~   | ~~High~~   | ~~--~~    | ~~Enable noUnusedLocals/noUnusedParameters~~ ✓           |
 | ~~T010~~ | ~~P1~~   | ~~Backend~~    | ~~High~~   | ~~--~~    | ~~Apply error tracking middleware~~ ✓                    |
-| T012     | P1       | Infra          | High       | --        | Bundle size monitoring in CI                             |
+| ~~T012~~ | ~~P1~~   | ~~Infra~~      | ~~High~~   | ~~--~~    | ~~Bundle size monitoring in CI~~ ✓                       |
 | ~~T013~~ | ~~P2~~   | ~~Testing~~    | ~~High~~   | ~~--~~    | ~~Increase frontend test coverage to 70%+~~ ✓            |
 | ~~T014~~ | ~~P2~~   | ~~Testing~~    | ~~High~~   | ~~--~~    | ~~Integration tests for critical workflows~~ ✓           |
 | ~~T015~~ | ~~P2~~   | ~~Docs~~       | ~~High~~   | ~~After~~ | ~~Generate OpenAPI/Swagger documentation~~ ✓             |
@@ -161,6 +161,7 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 - [x] **T021** - Extract duplicate file download utility ✓
 - [x] **T022** - Extract duplicate URLSearchParams builder ✓
 - [x] **T023** - Consolidate cache hooks ✓
+- [x] **T012** - Bundle size monitoring in CI ✓
 
 ### Sprint 6 - Scheduling & Conflict Detection
 
@@ -304,6 +305,7 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 - [x] T018: Dead code elimination - Removed ~2,700 lines of dead code. Added ts-prune for automated detection with baseline of 116 known unused exports. Pre-commit hook and CI job prevent new dead code. Run `npm run dead-code` to check, `npm run dead-code:update` to update baseline.
 - [x] T016: Frontend bundle optimization - Reduced gzipped bundle from 720KB → 322KB (-55%). Lazy-loaded @react-pdf/renderer via dynamic import, fixed chunk splitting (exact boundary matching in manualChunks), created dedicated vendor-calendar/vendor-pdf/vendor-table chunks, fixed analyze-bundle.cjs ESM issue.
 - [x] T017: Query performance monitoring - Custom GORM logger with slow query detection (>=100ms WARN, >=1s ERROR). Prometheus metrics: `db_query_duration_seconds`, `db_queries_total`, `db_query_errors_total` with operation/table labels. Connection pool gauges (open/idle/in-use/max/wait). Configurable via `DB_SLOW_QUERY_THRESHOLD`, `DB_QUERY_ALERT_THRESHOLD`, `DB_LOG_ALL_QUERIES`.
+- [x] T012: Bundle size monitoring in CI - Markdown reports in CI step summaries, pre-push hook validation, release script gate. Thresholds: 500KB warn, 750KB fail (total JS gzipped). Per-chunk budgets for vendor splits. Chunk breakdown visible in all reports.
 
 ---
 
@@ -557,15 +559,16 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
     - Critical vulnerabilities create blocking issues
     - Auto-merge for patch-level security updates ✓
 
-- [ ] **Bundle Size Monitoring in CI**
-  - **What**: Add bundle analysis to CI pipeline with size limits
+- [x] **T012: Bundle Size Monitoring in CI** ✓ COMPLETE
+  - **What**: Bundle analysis in CI pipeline, pre-push hooks, and release script with size limits
   - **Why**: Prevent frontend bundle bloat over time
-  - **Expected Result**: CI warns/fails if bundle exceeds threshold
-  - **Acceptance Criteria**:
-    - Bundle size reported in PR comments
-    - Warning at 500KB gzipped
-    - Failure at 750KB gzipped
-    - Chunk breakdown visible
+  - **Implementation**:
+    - `analyze-bundle.cjs` generates markdown report with chunk breakdown in CI mode
+    - `checks.yml` runs bundle check on push to master, adds report to GitHub Step Summary
+    - `deploy-release.yml` runs bundle check before deploy, adds report to Step Summary
+    - `scripts/release.sh` validates bundle size before creating release
+    - Pre-push hook validates bundle size locally before push
+  - **Thresholds**: Warning at 500KB gzipped, failure at 750KB gzipped, per-chunk budgets
 
 ### Frontend Features
 

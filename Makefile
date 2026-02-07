@@ -4,7 +4,7 @@
 .PHONY: docker-dev docker-down docker-clean docker-logs docker-ps
 .PHONY: db-fresh db-fresh-seed db-reset hash-password
 .PHONY: swagger generate-api docs
-.PHONY: dead-code dead-code-update
+.PHONY: dead-code dead-code-update frontend-bundle-check
 
 # =============================================================================
 # Centralized Tool Versions (used by CI and pre-commit)
@@ -133,6 +133,10 @@ frontend-test:
 frontend-build:
 	@echo "Building frontend..."
 	@cd frontend && npm run build
+
+frontend-bundle-check:
+	@echo "Checking bundle size..."
+	@cd frontend && npm run analyze:bundle -- --ci
 
 frontend-dead-code:
 	@echo "Checking for dead code in frontend..."
@@ -445,6 +449,8 @@ ci-frontend:
 	@cd frontend && npm test -- --run --passWithNoTests
 	@echo "Verifying frontend build..."
 	@cd frontend && npm run build
+	@echo "Checking bundle size..."
+	@cd frontend && npm run analyze:bundle -- --ci
 	@echo "✓ Frontend checks passed"
 
 # Full CI pipeline (legacy - uses scripts)

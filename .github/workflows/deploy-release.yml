@@ -63,6 +63,14 @@ jobs:
         env:
           VITE_API_URL: https://servicepro-api.fly.dev
 
+      - name: Check bundle size
+        working-directory: frontend
+        run: npm run analyze:bundle -- --ci
+
+      - name: Add bundle report to step summary
+        if: always() && hashFiles('frontend/dist/bundle-size-report.md') != ''
+        run: cat frontend/dist/bundle-size-report.md >> $GITHUB_STEP_SUMMARY
+
   # Deploy backend to Fly.io
   deploy-backend:
     name: Deploy Backend

@@ -64,7 +64,7 @@ while [[ $# -gt 0 ]]; do
             echo "Options:"
             echo "  --dry-run     Preview release without making changes"
             echo "  --force       Force release even without release-worthy commits"
-            echo "  --skip-tests  Skip running tests"
+            echo "  --skip-tests  Skip running tests and bundle size check"
             echo "  --yes, -y     Skip confirmation prompts"
             echo "  --help, -h    Show this help"
             echo ""
@@ -417,6 +417,11 @@ if [[ "$DRY_RUN" == true ]]; then
     echo ""
     echo -e "Would create release ${GREEN}v$NEW_VERSION${NC} with:"
     echo ""
+    echo "  🧪 Validations:"
+    echo "      • Backend tests"
+    echo "      • Frontend tests"
+    echo "      • Bundle size check (warn >500KB, fail >750KB gzipped)"
+    echo ""
     echo "  📋 Updated files:"
     echo "      • VERSION"
     echo "      • CHANGELOG.md"
@@ -471,6 +476,28 @@ if [[ "$SKIP_TESTS" != true ]]; then
     fi
 else
     info "Skipping tests (--skip-tests)"
+fi
+
+# =============================================================================
+# Bundle Size Check
+# =============================================================================
+
+if [[ "$SKIP_TESTS" != true && -f "frontend/package.json" ]]; then
+    header "📦 Bundle Size Check"
+
+    info "Building frontend..."
+    if (cd frontend && npm run build > /dev/null 2>&1); then
+        success "Frontend build complete"
+
+        info "Analyzing bundle size..."
+        if (cd frontend && npm run analyze:bundle -- --ci); then
+            success "Bundle size within limits"
+        else
+            error "Bundle size exceeds limits. Fix bundle size before releasing."
+        fi
+    else
+        error "Frontend build failed. Fix build errors before releasing."
+    fi
 fi
 
 # =============================================================================

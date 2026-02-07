@@ -21,7 +21,7 @@ const config = {
   statsFile: path.resolve(__dirname, '../dist/bundle-stats.json'),
   reportFile: path.resolve(__dirname, '../dist/bundle-report.json'),
 
-  // Size thresholds (in KB)
+  // Generic per-chunk thresholds (in KB, gzipped) for chunks without explicit budgets
   thresholds: {
     warning: 250,
     error: 500,
@@ -29,10 +29,29 @@ const config = {
 
   // Performance budgets
   budgets: {
-    totalSize: 1500, // 1.5MB
+    totalSize: 500, // Total JS gzipped warning threshold (KB)
+    totalHardFail: 750, // Total JS gzipped hard failure threshold (KB)
     initialJS: 400,
     initialCSS: 100,
     largestChunk: 500,
+  },
+
+  // Per-chunk budgets (KB, gzipped) — mirrors performanceBudgets.maxBundleSizes
+  // in frontend/config/optimization.ts (source of truth)
+  chunkBudgets: {
+    'vendor-react': 60,
+    'vendor-ui': 25,
+    'vendor-forms': 30,
+    'vendor-data': 25,
+    'vendor-charts': 70,
+    'vendor-date': 10,
+    'vendor-stripe': 10,
+    'vendor-calendar': 50,
+    'vendor-table': 10,
+    vendor: 60,
+    'page-dashboard': 10,
+    'page-settings': 20,
+    'page-auth': 20,
   },
 };
 
@@ -113,6 +132,28 @@ function categorizeFile(filePath) {
   return 'other';
 }
 
+/**
+ * Extract chunk name from build filename by stripping the hash suffix.
+ * e.g. "vendor-react-B6rzUpVc.js" → "vendor-react"
+ *      "index-Da3xK9pQ.js" → "index"
+ */
+function extractChunkName(filename) {
+  const base = path.basename(filename, path.extname(filename));
+  const match = base.match(/^(.+)-[A-Za-z0-9]+$/);
+  return match ? match[1] : base;
+}
+
+/**
+ * Look up the per-chunk budget (KB) for a given chunk name.
+ * Returns null if no explicit budget is defined.
+ */
+function getChunkBudget(chunkName) {
+  if (config.chunkBudgets.hasOwnProperty(chunkName)) {
+    return config.chunkBudgets[chunkName];
+  }
+  return null;
+}
+
 // =============================================================================
 // Analysis Functions
 // =============================================================================
@@ -181,31 +222,50 @@ function analyzeFiles() {
 
     // Track JS chunks
     if (category === 'javascript') {
+      const fileName = path.basename(relativePath);
+      const chunkName = extractChunkName(fileName);
+      const budget = getChunkBudget(chunkName);
+
       analysis.chunks.push({
-        name: path.basename(relativePath),
+        name: fileName,
+        chunkName,
         path: relativePath,
         sizes,
+        budget,
       });
 
-      // Check thresholds
       const sizeKB = sizes.gzip / 1024;
 
-      if (sizeKB > config.thresholds.error) {
-        analysis.errors.push({
-          type: 'chunk_size',
-          file: relativePath,
-          message: `Chunk exceeds error threshold (${formatBytes(
-            sizes.gzip
-          )} > ${config.thresholds.error}KB)`,
-        });
-      } else if (sizeKB > config.thresholds.warning) {
-        analysis.warnings.push({
-          type: 'chunk_size',
-          file: relativePath,
-          message: `Chunk exceeds warning threshold (${formatBytes(
-            sizes.gzip
-          )} > ${config.thresholds.warning}KB)`,
-        });
+      // Per-chunk budget check (explicit budget from chunkBudgets map)
+      if (budget !== null) {
+        if (sizeKB > budget) {
+          analysis.errors.push({
+            type: 'chunk_budget',
+            file: relativePath,
+            message: `Chunk "${chunkName}" exceeds budget (${formatBytes(
+              sizes.gzip
+            )} > ${budget} KB)`,
+          });
+        }
+      } else {
+        // Generic threshold for chunks without explicit budgets
+        if (sizeKB > config.thresholds.error) {
+          analysis.errors.push({
+            type: 'chunk_size',
+            file: relativePath,
+            message: `Chunk "${chunkName}" exceeds error threshold (${formatBytes(
+              sizes.gzip
+            )} > ${config.thresholds.error} KB)`,
+          });
+        } else if (sizeKB > config.thresholds.warning) {
+          analysis.warnings.push({
+            type: 'chunk_size',
+            file: relativePath,
+            message: `Chunk "${chunkName}" exceeds warning threshold (${formatBytes(
+              sizes.gzip
+            )} > ${config.thresholds.warning} KB)`,
+          });
+        }
       }
     }
   }
@@ -227,14 +287,34 @@ function checkBudgets(analysis) {
   const js = analysis.summary.byCategory.javascript || { gzip: 0 };
   const css = analysis.summary.byCategory.css || { gzip: 0 };
 
-  // Total size budget
-  const totalKB = analysis.summary.total.gzip / 1024;
-  if (totalKB > budgets.totalSize) {
+  // Total JS size budgets (warning at totalSize, hard fail at totalHardFail)
+  const jsTotal = analysis.summary.byCategory.javascript || { gzip: 0 };
+  const jsTotalKB = jsTotal.gzip / 1024;
+
+  if (jsTotalKB > budgets.totalHardFail) {
     analysis.errors.push({
       type: 'budget',
-      message: `Total bundle size exceeds budget (${formatBytes(
+      message: `Total JS gzipped exceeds hard limit (${formatBytes(
+        jsTotal.gzip
+      )} > ${budgets.totalHardFail} KB)`,
+    });
+  } else if (jsTotalKB > budgets.totalSize) {
+    analysis.warnings.push({
+      type: 'budget',
+      message: `Total JS gzipped exceeds warning threshold (${formatBytes(
+        jsTotal.gzip
+      )} > ${budgets.totalSize} KB)`,
+    });
+  }
+
+  // Total bundle size (all assets)
+  const totalKB = analysis.summary.total.gzip / 1024;
+  if (totalKB > budgets.totalHardFail * 2) {
+    analysis.errors.push({
+      type: 'budget',
+      message: `Total bundle size is very large (${formatBytes(
         analysis.summary.total.gzip
-      )} > ${budgets.totalSize}KB)`,
+      )})`,
     });
   }
 
@@ -342,6 +422,69 @@ function analyzeTreeShaking() {
 // =============================================================================
 
 /**
+ * Print concise CI report (used with --ci flag)
+ */
+function printCIReport(analysis) {
+  const jsChunks = analysis.chunks;
+  const jsCategory = analysis.summary.byCategory.javascript || { gzip: 0 };
+  const jsTotalKB = jsCategory.gzip / 1024;
+
+  console.log('');
+  console.log('Bundle Size Report');
+  console.log('═══════════════════════════════════════════════════');
+  console.log('Chunk                    Gzip       Budget    Status');
+  console.log('───────────────────────────────────────────────────');
+
+  for (const chunk of jsChunks) {
+    const sizeKB = chunk.sizes.gzip / 1024;
+    const budgetStr =
+      chunk.budget !== null
+        ? `${chunk.budget} KB`
+        : `${config.thresholds.error} KB`;
+    const over =
+      chunk.budget !== null
+        ? sizeKB > chunk.budget
+        : sizeKB > config.thresholds.error;
+    const status = over ? 'OVER' : 'OK';
+    const name = chunk.chunkName.padEnd(24);
+    const size = `${sizeKB.toFixed(1)} KB`.padStart(10);
+    const budget = budgetStr.padStart(9);
+    console.log(`${name} ${size}  ${budget}    ${status}`);
+  }
+
+  console.log('───────────────────────────────────────────────────');
+  const totalSize = `${jsTotalKB.toFixed(0)} KB`.padStart(10);
+  const totalBudget =
+    `${config.budgets.totalSize}/${config.budgets.totalHardFail}`.padStart(9);
+  const totalOver = jsTotalKB > config.budgets.totalHardFail;
+  const totalWarn = jsTotalKB > config.budgets.totalSize && !totalOver;
+  const totalStatus = totalOver ? 'OVER' : totalWarn ? 'WARN' : 'OK';
+  console.log(
+    `${'Total JS (gzipped)'.padEnd(24)} ${totalSize}  ${totalBudget}    ${totalStatus}`
+  );
+  console.log('');
+
+  const hasErrors = analysis.errors.length > 0;
+  console.log(`Result: ${hasErrors ? 'FAIL' : 'PASS'}`);
+
+  if (hasErrors) {
+    console.log('');
+    for (const error of analysis.errors) {
+      console.log(`  ERROR: ${error.message}`);
+    }
+  }
+
+  if (analysis.warnings.length > 0) {
+    console.log('');
+    for (const warning of analysis.warnings) {
+      console.log(`  WARN: ${warning.message}`);
+    }
+  }
+
+  console.log('');
+}
+
+/**
  * Print analysis report to console
  */
 function printReport(analysis) {
@@ -440,6 +583,73 @@ function printReport(analysis) {
 }
 
 /**
+ * Generate markdown report for PR comments
+ */
+function generateMarkdownReport(analysis) {
+  const jsCategory = analysis.summary.byCategory.javascript || { gzip: 0 };
+  const jsTotalKB = jsCategory.gzip / 1024;
+  const cssCategory = analysis.summary.byCategory.css || { gzip: 0 };
+  const hasErrors = analysis.errors.length > 0;
+  const hasWarnings = analysis.warnings.length > 0;
+
+  const statusIcon = hasErrors ? '🔴' : hasWarnings ? '🟡' : '🟢';
+  const statusText = hasErrors ? 'FAIL' : hasWarnings ? 'WARN' : 'PASS';
+
+  let md = `## ${statusIcon} Bundle Size Report — ${statusText}\n\n`;
+
+  // Summary table
+  md += `| Metric | Size | Budget | Status |\n`;
+  md += `| ------ | ---- | ------ | ------ |\n`;
+
+  const totalOver = jsTotalKB > config.budgets.totalHardFail;
+  const totalWarn = jsTotalKB > config.budgets.totalSize && !totalOver;
+  const totalIcon = totalOver ? '🔴' : totalWarn ? '🟡' : '🟢';
+  md += `| **Total JS (gzipped)** | **${jsTotalKB.toFixed(1)} KB** | ${config.budgets.totalSize} / ${config.budgets.totalHardFail} KB | ${totalIcon} |\n`;
+  md += `| Total CSS (gzipped) | ${(cssCategory.gzip / 1024).toFixed(1)} KB | ${config.budgets.initialCSS} KB | ${cssCategory.gzip / 1024 > config.budgets.initialCSS ? '🟡' : '🟢'} |\n`;
+  md += `| Total assets | ${formatBytes(analysis.summary.total.gzip)} | — | — |\n`;
+  md += `\n`;
+
+  // Chunk breakdown
+  md += `<details>\n<summary>Chunk Breakdown (${analysis.chunks.length} chunks)</summary>\n\n`;
+  md += `| Chunk | Gzip | Budget | Status |\n`;
+  md += `| ----- | ---- | ------ | ------ |\n`;
+
+  for (const chunk of analysis.chunks) {
+    const sizeKB = chunk.sizes.gzip / 1024;
+    const budgetStr =
+      chunk.budget !== null
+        ? `${chunk.budget} KB`
+        : `${config.thresholds.error} KB`;
+    const over =
+      chunk.budget !== null
+        ? sizeKB > chunk.budget
+        : sizeKB > config.thresholds.error;
+    const warn = chunk.budget === null && sizeKB > config.thresholds.warning;
+    const icon = over ? '🔴' : warn ? '🟡' : '🟢';
+    md += `| \`${chunk.chunkName}\` | ${sizeKB.toFixed(1)} KB | ${budgetStr} | ${icon} |\n`;
+  }
+
+  md += `\n</details>\n`;
+
+  // Errors and warnings
+  if (hasErrors) {
+    md += `\n### Errors\n\n`;
+    for (const error of analysis.errors) {
+      md += `- ${error.message}\n`;
+    }
+  }
+
+  if (hasWarnings) {
+    md += `\n### Warnings\n\n`;
+    for (const warning of analysis.warnings) {
+      md += `- ${warning.message}\n`;
+    }
+  }
+
+  return md;
+}
+
+/**
  * Save JSON report
  */
 function saveReport(analysis) {
@@ -508,11 +718,20 @@ async function main() {
   const args = process.argv.slice(2);
   const showJson = args.includes('--json');
   const saveOnly = args.includes('--save');
+  const ciMode = args.includes('--ci');
 
   try {
     const analysis = analyzeFiles();
 
-    if (showJson) {
+    if (ciMode) {
+      printCIReport(analysis);
+
+      // Write markdown report for PR comments / step summary
+      const markdownReport = generateMarkdownReport(analysis);
+      const mdPath = path.resolve(config.distDir, 'bundle-size-report.md');
+      fs.writeFileSync(mdPath, markdownReport);
+      console.log(`Markdown report saved to: ${mdPath}`);
+    } else if (showJson) {
       console.log(JSON.stringify(analysis, null, 2));
     } else if (!saveOnly) {
       printReport(analysis);
@@ -547,15 +766,18 @@ async function main() {
       }
     }
 
-    saveReport(analysis);
+    // Only save report/archive in non-CI mode
+    if (!ciMode) {
+      saveReport(analysis);
 
-    // Archive current as previous for next comparison
-    if (fs.existsSync(config.reportFile)) {
-      const previousPath = path.resolve(
-        __dirname,
-        '../dist/bundle-report.previous.json'
-      );
-      fs.copyFileSync(config.reportFile, previousPath);
+      // Archive current as previous for next comparison
+      if (fs.existsSync(config.reportFile)) {
+        const previousPath = path.resolve(
+          __dirname,
+          '../dist/bundle-report.previous.json'
+        );
+        fs.copyFileSync(config.reportFile, previousPath);
+      }
     }
 
     // Exit with error code if there are errors

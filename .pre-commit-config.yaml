@@ -78,6 +78,17 @@ repos:
         pass_filenames: false
         files: ^frontend/.*\.(ts|tsx)$
 
+  # Frontend - Bundle size check (pre-push only — requires full build)
+  - repo: local
+    hooks:
+      - id: bundle-size
+        name: Bundle Size Check
+        entry: bash -c 'cd frontend && npm run build > /dev/null 2>&1 && npm run analyze:bundle -- --ci'
+        language: system
+        pass_filenames: false
+        files: ^frontend/.*\.(ts|tsx|js|jsx|css|scss)$
+        stages: [pre-push]
+
   # Backend - Go linting (uses centralized Makefile target)
   - repo: local
     hooks:

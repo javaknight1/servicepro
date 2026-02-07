@@ -115,3 +115,11 @@ jobs:
       - name: Verify build
         working-directory: frontend
         run: npm run build
+
+      - name: Check bundle size
+        working-directory: frontend
+        run: npm run analyze:bundle -- --ci
+
+      - name: Add bundle report to step summary
+        if: always() && hashFiles('frontend/dist/bundle-size-report.md') != ''
+        run: cat frontend/dist/bundle-size-report.md >> $GITHUB_STEP_SUMMARY
