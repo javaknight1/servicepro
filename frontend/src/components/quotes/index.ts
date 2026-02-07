@@ -29,15 +29,8 @@ export {
   type AutoSaveStatus,
 } from './hooks';
 
-// Utilities
-export {
-  QuotePDFDocument,
-  generateQuotePDF,
-  downloadQuotePDF,
-  PDFDownloadButton,
-  previewQuotePDF,
-  emailQuotePDF,
-} from './utils';
+// PDF utilities are NOT re-exported from this barrel to avoid pulling @react-pdf/renderer
+// into the initial bundle. Import directly from './utils/pdfGenerator' with dynamic import().
 
 // Validation
 export {

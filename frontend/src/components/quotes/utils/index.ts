@@ -1,13 +1,8 @@
 /**
  * Quote Utilities
- * Export all utility functions for quotes
+ *
+ * PDF utilities (pdfGenerator.tsx) are NOT re-exported here to avoid pulling
+ * @react-pdf/renderer into the initial bundle. Use dynamic import() instead:
+ *
+ *   const { downloadQuotePDF } = await import('./utils/pdfGenerator');
  */
-
-export {
-  QuotePDFDocument,
-  generateQuotePDF,
-  downloadQuotePDF,
-  PDFDownloadButton,
-  previewQuotePDF,
-  emailQuotePDF,
-} from './pdfGenerator';

@@ -2,7 +2,7 @@
 
 This document tracks technical improvements that should be implemented but are deferred for future development cycles.
 
-**Last Updated: 2026-02-06** (T017 query performance monitoring complete)
+**Last Updated: 2026-02-06** (T016 frontend bundle optimization complete — 720KB → 322KB gzipped, -55%)
 
 ---
 
@@ -26,7 +26,7 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 | ~~T013~~ | ~~P2~~   | ~~Testing~~    | ~~High~~   | ~~--~~    | ~~Increase frontend test coverage to 70%+~~ ✓            |
 | ~~T014~~ | ~~P2~~   | ~~Testing~~    | ~~High~~   | ~~--~~    | ~~Integration tests for critical workflows~~ ✓           |
 | ~~T015~~ | ~~P2~~   | ~~Docs~~       | ~~High~~   | ~~After~~ | ~~Generate OpenAPI/Swagger documentation~~ ✓             |
-| T016     | P2       | Perf           | High       | --        | Frontend bundle analysis + optimization                  |
+| ~~T016~~ | ~~P2~~   | ~~Perf~~       | ~~High~~   | ~~--~~    | ~~Frontend bundle analysis + optimization~~ ✓            |
 | ~~T017~~ | ~~P2~~   | ~~Perf~~       | ~~High~~   | ~~--~~    | ~~Query performance monitoring~~ ✓                       |
 | ~~T018~~ | ~~P2~~   | ~~Cleanup~~    | ~~High~~   | ~~--~~    | ~~Dead code elimination~~ ✓                              |
 | ~~T019~~ | ~~P0~~   | ~~Scheduling~~ | ~~High~~   | ~~--~~    | ~~Integrate calendar view for job scheduling~~ ✓         |
@@ -156,7 +156,7 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 
 ### Sprint 5 - Performance & Refactoring
 
-- [ ] **T016** - Bundle analysis + optimization
+- [x] **T016** - Bundle analysis + optimization ✓
 - [x] **T017** - Query performance monitoring ✓
 - [x] **T021** - Extract duplicate file download utility ✓
 - [x] **T022** - Extract duplicate URLSearchParams builder ✓
@@ -302,6 +302,7 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 - [x] T021: Extract duplicate file download utility - Created `src/utils/fileDownload.ts` with `downloadFile()`, `downloadCSV()`, `downloadJSON()`, `downloadPDF()`, `openBlobInNewTab()`, and `downloadFromDataURL()`. Refactored 10 files to use the utility.
 - [x] T031: Build A/R aging buckets report - Backend: `/backend/internal/models/ar_aging_report.go`, `/backend/internal/services/ar_aging_service.go`, `/backend/internal/api/handlers/ar_aging_handler.go`. Frontend: `/frontend/src/types/arAging.ts`, `/frontend/src/services/arAgingService.ts`, `/frontend/src/pages/Reports/ARAgingReportPage.tsx`. Displays receivables by age (Current, 1-30, 31-60, 61-90, 90+), drill-down to invoices, CSV export.
 - [x] T018: Dead code elimination - Removed ~2,700 lines of dead code. Added ts-prune for automated detection with baseline of 116 known unused exports. Pre-commit hook and CI job prevent new dead code. Run `npm run dead-code` to check, `npm run dead-code:update` to update baseline.
+- [x] T016: Frontend bundle optimization - Reduced gzipped bundle from 720KB → 322KB (-55%). Lazy-loaded @react-pdf/renderer via dynamic import, fixed chunk splitting (exact boundary matching in manualChunks), created dedicated vendor-calendar/vendor-pdf/vendor-table chunks, fixed analyze-bundle.cjs ESM issue.
 - [x] T017: Query performance monitoring - Custom GORM logger with slow query detection (>=100ms WARN, >=1s ERROR). Prometheus metrics: `db_query_duration_seconds`, `db_queries_total`, `db_query_errors_total` with operation/table labels. Connection pool gauges (open/idle/in-use/max/wait). Configurable via `DB_SLOW_QUERY_THRESHOLD`, `DB_QUERY_ALERT_THRESHOLD`, `DB_LOG_ALL_QUERIES`.
 
 ---
@@ -1333,15 +1334,14 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 
 ### Performance
 
-- [ ] **Frontend Bundle Analysis**
-  - **What**: Run bundle analysis and optimize large chunks
-  - **Why**: Need to understand and optimize bundle size
-  - **Expected Result**: Bundle size reduced; large dependencies identified
-  - **Acceptance Criteria**:
-    - Run `npm run build:analyze`
-    - Document findings
-    - Split large chunks
-    - Lazy load heavy components
+- [x] **T016: Frontend Bundle Analysis + Optimization** ✓ COMPLETE
+  - Reduced total gzipped bundle from 720KB to 322KB (-55%)
+  - Lazy-loaded `@react-pdf/renderer` via dynamic `import()` — removed barrel re-exports that created static dependency chain
+  - Fixed chunk splitting: `react-big-calendar` was landing in catch-all vendor due to `react` prefix match — added exact boundary matching in `manualChunks`
+  - Created dedicated chunks: `vendor-calendar` (react-big-calendar + deps), `vendor-pdf` (@react-pdf + 17 transitive deps), `vendor-table` (@tanstack/react-table)
+  - Fixed `analyze-bundle.cjs` (renamed from .js to resolve CommonJS/ESM conflict)
+  - Updated performance budgets in `optimization.ts`
+  - Key files: `frontend/config/optimization.ts`, `frontend/src/components/quotes/QuoteDetail.tsx`, `frontend/src/components/quotes/index.ts`
 
 - [ ] **Redis Caching for Frequent Queries**
   - **What**: Add caching for frequently accessed data

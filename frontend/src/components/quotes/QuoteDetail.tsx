@@ -11,7 +11,6 @@ import { useQuoteCalculations } from './hooks/useQuoteCalculations';
 import { useAutoSave, formatLastSaved } from './hooks/useAutoSave';
 import { LineItemList } from './LineItemList';
 import { TotalCalculator } from './TotalCalculator';
-import { downloadQuotePDF, previewQuotePDF } from './utils/pdfGenerator';
 import { quoteService } from '../../services/quoteService';
 import { Quote, QuoteStatus } from '../../types/quote';
 
@@ -117,10 +116,10 @@ export const QuoteDetail: React.FC<QuoteDetailProps> = ({
   // Line items management
   const items = watch('items') || [];
 
-  // PDF handlers
-  const handleDownloadPDF = async () => {
+  // PDF handlers — dynamically import to avoid bundling @react-pdf in the initial load
+  const buildQuoteData = (): Quote => {
     const formData = watch();
-    const quoteData = {
+    return {
       ...formData,
       id: quoteId || 'draft',
       quote_number: existingQuote?.quote_number || 'DRAFT',
@@ -129,23 +128,16 @@ export const QuoteDetail: React.FC<QuoteDetailProps> = ({
       is_expired: false,
       created_by: '',
     } as unknown as Quote;
+  };
 
-    await downloadQuotePDF(quoteData);
+  const handleDownloadPDF = async () => {
+    const { downloadQuotePDF } = await import('./utils/pdfGenerator');
+    await downloadQuotePDF(buildQuoteData());
   };
 
   const handlePreviewPDF = async () => {
-    const formData = watch();
-    const quoteData = {
-      ...formData,
-      id: quoteId || 'draft',
-      quote_number: existingQuote?.quote_number || 'DRAFT',
-      created_at: existingQuote?.created_at || new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      is_expired: false,
-      created_by: '',
-    } as unknown as Quote;
-
-    await previewQuotePDF(quoteData);
+    const { previewQuotePDF } = await import('./utils/pdfGenerator');
+    await previewQuotePDF(buildQuoteData());
   };
 
   // Send quote to customer

@@ -13,7 +13,7 @@
     "test": "vitest",
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "analyze:bundle": "node scripts/analyze-bundle.js",
+    "analyze:bundle": "node scripts/analyze-bundle.cjs",
     "optimize:images": "node scripts/optimize-images.js",
     "audit:deps": "node scripts/audit-deps.js",
     "generate:api": "swagger2openapi ../backend/docs/swagger.json -o src/types/openapi.json && openapi-typescript src/types/openapi.json -o src/types/api.generated.ts",

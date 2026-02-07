@@ -38,6 +38,44 @@ export const manualChunks = {
 
   // Stripe (lazy loaded)
   'vendor-stripe': ['@stripe/react-stripe-js', '@stripe/stripe-js'],
+
+  // Calendar — separate chunk to avoid circular dependency with vendor-react
+  'vendor-calendar': [
+    'react-big-calendar',
+    'react-overlays',
+    'dom-helpers',
+    'date-arithmetic',
+  ],
+
+  // PDF generation — lazy-loaded via dynamic import, so this chunk only loads on demand
+  'vendor-pdf': [
+    '@react-pdf/renderer',
+    '@react-pdf/pdfkit',
+    '@react-pdf/layout',
+    '@react-pdf/font',
+    '@react-pdf/fns',
+    '@react-pdf/image',
+    '@react-pdf/primitives',
+    '@react-pdf/png-js',
+    '@react-pdf/reconciler',
+    '@react-pdf/render',
+    '@react-pdf/stylesheet',
+    '@react-pdf/textkit',
+    'fontkit',
+    'restructure',
+    'yoga-layout',
+    'brotli',
+    'pako',
+    'crypto-js',
+    'unicode-trie',
+    'unicode-properties',
+    'linebreak',
+    'hyphen',
+    'dfa',
+  ],
+
+  // Data table — only used on specific pages
+  'vendor-table': ['@tanstack/react-table', '@tanstack/table-core'],
 };
 
 // =============================================================================
@@ -94,8 +132,17 @@ export const buildOptions: BuildOptions = {
         // Node modules chunking
         if (id.includes('node_modules')) {
           // Check against our defined chunks
+          // Use exact boundary matching to avoid 'react' matching 'react-big-calendar'
           for (const [chunkName, packages] of Object.entries(manualChunks)) {
-            if (packages.some((pkg) => id.includes(`node_modules/${pkg}`))) {
+            if (
+              packages.some((pkg) => {
+                const idx = id.indexOf(`node_modules/${pkg}`);
+                if (idx === -1) return false;
+                // Ensure exact match: next char must be '/' or end of string
+                const afterPkg = idx + `node_modules/${pkg}`.length;
+                return afterPkg >= id.length || id[afterPkg] === '/';
+              })
+            ) {
               return chunkName;
             }
           }
@@ -306,26 +353,28 @@ export const analyzerConfig = {
 // =============================================================================
 
 export const performanceBudgets = {
-  // Maximum bundle sizes (in KB)
+  // Maximum bundle sizes (in KB, gzipped)
   maxBundleSizes: {
-    'vendor-react': 150,
-    'vendor-ui': 100,
-    'vendor-forms': 80,
-    'vendor-data': 120,
-    'vendor-charts': 200,
-    'vendor-date': 80,
-    'vendor-stripe': 100,
-    vendor: 200,
-    'page-dashboard': 100,
-    'page-settings': 50,
-    'page-auth': 30,
+    'vendor-react': 60,
+    'vendor-ui': 25,
+    'vendor-forms': 30,
+    'vendor-data': 25,
+    'vendor-charts': 70,
+    'vendor-date': 10,
+    'vendor-stripe': 10,
+    'vendor-calendar': 50,
+    'vendor-table': 10,
+    vendor: 60,
+    'page-dashboard': 10,
+    'page-settings': 20,
+    'page-auth': 20,
   },
 
-  // Maximum total bundle size
-  maxTotalSize: 1500, // 1.5MB
+  // Maximum total bundle size (gzipped)
+  maxTotalSize: 500,
 
-  // Maximum initial load size
-  maxInitialSize: 400, // 400KB
+  // Maximum initial load size (gzipped)
+  maxInitialSize: 300,
 
   // Maximum asset sizes
   maxAssetSizes: {
