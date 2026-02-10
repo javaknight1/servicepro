@@ -10,6 +10,7 @@ import (
 
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/repository"
+	"github.com/javaknight1/servicepro/backend/internal/utils/epoch"
 )
 
 // ScheduleGenerator generates schedule instances from recurring patterns
@@ -37,8 +38,8 @@ func NewScheduleGenerator(
 // GenerationRequest represents a request to generate schedules from a recurring pattern
 type GenerationRequest struct {
 	RecurringScheduleID uuid.UUID
-	StartDate           time.Time
-	EndDate             time.Time
+	StartDate           int64
+	EndDate             int64
 	SkipHolidays        bool
 	SkipWeekends        bool
 	MaxOccurrences      int
@@ -54,14 +55,16 @@ type GenerationResult struct {
 
 // SkippedDate represents a date that was skipped during generation
 type SkippedDate struct {
-	Date   time.Time `json:"date"`
-	Reason string    `json:"reason"`
+	Date   int64  `json:"date"`
+	Reason string `json:"reason"`
 }
 
 // GenerateSchedules generates schedule instances from a recurring pattern
 func (g *ScheduleGenerator) GenerateSchedules(ctx context.Context, req *GenerationRequest) (*GenerationResult, error) {
 	g.logger.Printf("Generating schedules for recurring pattern %s from %s to %s",
-		req.RecurringScheduleID, req.StartDate.Format("2006-01-02"), req.EndDate.Format("2006-01-02"))
+		req.RecurringScheduleID,
+		epoch.EpochToTime(req.StartDate).Format("2006-01-02"),
+		epoch.EpochToTime(req.EndDate).Format("2006-01-02"))
 
 	// Get recurring schedule
 	recurring, err := g.scheduleRepo.GetRecurringByID(req.RecurringScheduleID)
@@ -118,7 +121,8 @@ func (g *ScheduleGenerator) GenerateSchedules(ctx context.Context, req *Generati
 
 		// Save to database
 		if err := g.scheduleRepo.Create(&schedule); err != nil {
-			g.logger.Printf("Failed to create schedule for %s: %v", occurrence.Format("2006-01-02"), err)
+			g.logger.Printf("Failed to create schedule for %s: %v",
+				epoch.EpochToTime(occurrence).Format("2006-01-02"), err)
 			continue
 		}
 
@@ -133,20 +137,20 @@ func (g *ScheduleGenerator) GenerateSchedules(ctx context.Context, req *Generati
 // generateOccurrences generates occurrence dates based on the recurring pattern
 func (g *ScheduleGenerator) generateOccurrences(
 	recurring *models.RecurringSchedule,
-	startDate, endDate time.Time,
+	startDate, endDate int64,
 	maxOccurrences int,
-) []time.Time {
-	occurrences := []time.Time{}
+) []int64 {
+	occurrences := []int64{}
 
 	// Start from the recurring schedule's start date or requested start date, whichever is later
 	current := recurring.StartDate
-	if startDate.After(current) {
+	if startDate > current {
 		current = startDate
 	}
 
 	// End at the recurring schedule's end date or requested end date, whichever is earlier
 	end := endDate
-	if recurring.EndDate != nil && recurring.EndDate.Before(end) {
+	if recurring.EndDate != nil && *recurring.EndDate < end {
 		end = *recurring.EndDate
 	}
 
@@ -181,15 +185,16 @@ func (g *ScheduleGenerator) generateOccurrences(
 }
 
 // generateDailyOccurrences generates daily occurrences
-func (g *ScheduleGenerator) generateDailyOccurrences(start, end time.Time, interval, maxCount int) []time.Time {
-	occurrences := []time.Time{}
-	current := start
+func (g *ScheduleGenerator) generateDailyOccurrences(start, end int64, interval, maxCount int) []int64 {
+	occurrences := []int64{}
+	current := epoch.EpochToTime(start)
+	endTime := epoch.EpochToTime(end)
 
-	for current.Before(end) || current.Equal(end) {
+	for !current.After(endTime) {
 		if len(occurrences) >= maxCount {
 			break
 		}
-		occurrences = append(occurrences, current)
+		occurrences = append(occurrences, current.Unix())
 		current = current.AddDate(0, 0, interval)
 	}
 
@@ -197,18 +202,18 @@ func (g *ScheduleGenerator) generateDailyOccurrences(start, end time.Time, inter
 }
 
 // generateWeeklyOccurrences generates weekly occurrences on specific days
-func (g *ScheduleGenerator) generateWeeklyOccurrences(start, end time.Time, interval int, daysOfWeek []int, maxCount int) []time.Time {
-	occurrences := []time.Time{}
+func (g *ScheduleGenerator) generateWeeklyOccurrences(start, end int64, interval int, daysOfWeek []int, maxCount int) []int64 {
+	occurrences := []int64{}
 
 	if len(daysOfWeek) == 0 {
 		return occurrences
 	}
 
-	// Start from the beginning of the week
-	current := start
-	weekCount := 0
+	startTime := epoch.EpochToTime(start)
+	endTime := epoch.EpochToTime(end)
+	current := startTime
 
-	for current.Before(end) || current.Equal(end) {
+	for !current.After(endTime) {
 		if len(occurrences) >= maxCount {
 			break
 		}
@@ -217,10 +222,10 @@ func (g *ScheduleGenerator) generateWeeklyOccurrences(start, end time.Time, inte
 		for day := 0; day < 7; day++ {
 			checkDate := current.AddDate(0, 0, day)
 
-			if checkDate.Before(start) {
+			if checkDate.Before(startTime) {
 				continue
 			}
-			if checkDate.After(end) {
+			if checkDate.After(endTime) {
 				break
 			}
 
@@ -228,7 +233,7 @@ func (g *ScheduleGenerator) generateWeeklyOccurrences(start, end time.Time, inte
 			weekday := int(checkDate.Weekday())
 			for _, targetDay := range daysOfWeek {
 				if weekday == targetDay {
-					occurrences = append(occurrences, checkDate)
+					occurrences = append(occurrences, checkDate.Unix())
 					if len(occurrences) >= maxCount {
 						return occurrences
 					}
@@ -237,7 +242,6 @@ func (g *ScheduleGenerator) generateWeeklyOccurrences(start, end time.Time, inte
 		}
 
 		// Move to next week interval
-		weekCount++
 		current = current.AddDate(0, 0, interval*7)
 	}
 
@@ -245,22 +249,23 @@ func (g *ScheduleGenerator) generateWeeklyOccurrences(start, end time.Time, inte
 }
 
 // generateMonthlyOccurrences generates monthly occurrences on a specific day
-func (g *ScheduleGenerator) generateMonthlyOccurrences(start, end time.Time, interval int, dayOfMonth *int, maxCount int) []time.Time {
-	occurrences := []time.Time{}
+func (g *ScheduleGenerator) generateMonthlyOccurrences(start, end int64, interval int, dayOfMonth *int, maxCount int) []int64 {
+	occurrences := []int64{}
+
+	startTime := epoch.EpochToTime(start)
+	endTime := epoch.EpochToTime(end)
 
 	if dayOfMonth == nil {
-		// Use the day from start date
-		day := start.Day()
+		day := startTime.Day()
 		dayOfMonth = &day
 	}
 
-	current := start
-	for current.Before(end) || current.Equal(end) {
+	current := startTime
+	for !current.After(endTime) {
 		if len(occurrences) >= maxCount {
 			break
 		}
 
-		// Create date with specified day of month
 		year := current.Year()
 		month := current.Month()
 
@@ -271,11 +276,10 @@ func (g *ScheduleGenerator) generateMonthlyOccurrences(start, end time.Time, int
 			day = daysInMonth
 		}
 
-		occurrence := time.Date(year, month, day, 0, 0, 0, 0, current.Location())
+		occurrence := time.Date(year, month, day, 0, 0, 0, 0, time.UTC)
 
-		if (occurrence.After(start) || occurrence.Equal(start)) &&
-			(occurrence.Before(end) || occurrence.Equal(end)) {
-			occurrences = append(occurrences, occurrence)
+		if !occurrence.Before(startTime) && !occurrence.After(endTime) {
+			occurrences = append(occurrences, occurrence.Unix())
 		}
 
 		// Move to next month interval
@@ -286,11 +290,14 @@ func (g *ScheduleGenerator) generateMonthlyOccurrences(start, end time.Time, int
 }
 
 // generateYearlyOccurrences generates yearly occurrences on a specific date
-func (g *ScheduleGenerator) generateYearlyOccurrences(start, end time.Time, interval int, monthOfYear, dayOfMonth *int, maxCount int) []time.Time {
-	occurrences := []time.Time{}
+func (g *ScheduleGenerator) generateYearlyOccurrences(start, end int64, interval int, monthOfYear, dayOfMonth *int, maxCount int) []int64 {
+	occurrences := []int64{}
 
-	month := start.Month()
-	day := start.Day()
+	startTime := epoch.EpochToTime(start)
+	endTime := epoch.EpochToTime(end)
+
+	month := startTime.Month()
+	day := startTime.Day()
 
 	if monthOfYear != nil {
 		month = time.Month(*monthOfYear)
@@ -299,19 +306,18 @@ func (g *ScheduleGenerator) generateYearlyOccurrences(start, end time.Time, inte
 		day = *dayOfMonth
 	}
 
-	currentYear := start.Year()
-	endYear := end.Year()
+	currentYear := startTime.Year()
+	endYear := endTime.Year()
 
 	for year := currentYear; year <= endYear; year += interval {
 		if len(occurrences) >= maxCount {
 			break
 		}
 
-		occurrence := time.Date(year, month, day, 0, 0, 0, 0, start.Location())
+		occurrence := time.Date(year, month, day, 0, 0, 0, 0, time.UTC)
 
-		if (occurrence.After(start) || occurrence.Equal(start)) &&
-			(occurrence.Before(end) || occurrence.Equal(end)) {
-			occurrences = append(occurrences, occurrence)
+		if !occurrence.Before(startTime) && !occurrence.After(endTime) {
+			occurrences = append(occurrences, occurrence.Unix())
 		}
 	}
 
@@ -320,11 +326,13 @@ func (g *ScheduleGenerator) generateYearlyOccurrences(start, end time.Time, inte
 
 // shouldSkipDate checks if a date should be skipped
 func (g *ScheduleGenerator) shouldSkipDate(
-	date time.Time,
+	dateEpoch int64,
 	exceptions []ScheduleException,
 	holidays []Holiday,
 	skipWeekends bool,
 ) (bool, string) {
+	date := epoch.EpochToTime(dateEpoch)
+
 	// Check exceptions
 	for _, exception := range exceptions {
 		if g.isSameDay(date, exception.ExceptionDate) {
@@ -355,20 +363,21 @@ func (g *ScheduleGenerator) isSameDay(date1, date2 time.Time) bool {
 }
 
 // createScheduleFromPattern creates a schedule instance from a recurring pattern
-func (g *ScheduleGenerator) createScheduleFromPattern(recurring *models.RecurringSchedule, date time.Time) models.Schedule {
-	// Parse time from pattern
-	startTime := g.parseTimeString(recurring.TimeStart)
-	endTime := g.parseTimeString(recurring.TimeEnd)
+func (g *ScheduleGenerator) createScheduleFromPattern(recurring *models.RecurringSchedule, dateEpoch int64) models.Schedule {
+	date := epoch.EpochToTime(dateEpoch)
 
-	// Combine date with time
+	// Use seconds-from-midnight fields to compute start/end epoch
+	startHour, startMin := epoch.SecondsFromMidnightToTime(recurring.TimeStart)
+	endHour, endMin := epoch.SecondsFromMidnightToTime(recurring.TimeEnd)
+
 	start := time.Date(date.Year(), date.Month(), date.Day(),
-		startTime.Hour(), startTime.Minute(), 0, 0, date.Location())
+		startHour, startMin, 0, 0, time.UTC).Unix()
 	end := time.Date(date.Year(), date.Month(), date.Day(),
-		endTime.Hour(), endTime.Minute(), 0, 0, date.Location())
+		endHour, endMin, 0, 0, time.UTC).Unix()
 
 	schedule := models.Schedule{
 		ID:                  uuid.New(),
-		JobID:               *recurring.JobTemplateID, // Assuming job template ID
+		JobID:               *recurring.JobTemplateID,
 		Title:               recurring.Title,
 		Description:         recurring.Description,
 		StartTime:           start,
@@ -380,21 +389,9 @@ func (g *ScheduleGenerator) createScheduleFromPattern(recurring *models.Recurrin
 		IsConfirmed:         false,
 		IsCancelled:         false,
 		CreatedBy:           recurring.CreatedBy,
-		CreatedAt:           time.Now(),
-		UpdatedAt:           time.Now(),
 	}
 
 	return schedule
-}
-
-// parseTimeString parses a time string in HH:MM format
-func (g *ScheduleGenerator) parseTimeString(timeStr string) time.Time {
-	t, err := time.Parse("15:04", timeStr)
-	if err != nil {
-		g.logger.Printf("Failed to parse time string %s: %v", timeStr, err)
-		return time.Now()
-	}
-	return t
 }
 
 // PreviewSchedules generates a preview without saving to database

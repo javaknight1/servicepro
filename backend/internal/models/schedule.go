@@ -51,8 +51,8 @@ type Schedule struct {
 	Job                 *Job               `json:"job,omitempty" gorm:"foreignKey:JobID;constraint:OnDelete:CASCADE"`
 	Title               string             `json:"title" gorm:"type:varchar(200);not null"`
 	Description         string             `json:"description" gorm:"type:text"`
-	StartTime           time.Time          `json:"start_time" gorm:"not null;index"`
-	EndTime             time.Time          `json:"end_time" gorm:"not null;index"`
+	StartTime           int64              `json:"start_time" gorm:"type:bigint;not null;index"`
+	EndTime             int64              `json:"end_time" gorm:"type:bigint;not null;index"`
 	AllDay              bool               `json:"all_day" gorm:"default:false"`
 	RecurrenceType      RecurrenceType     `json:"recurrence_type" gorm:"type:varchar(50);default:'none'"`
 	RecurringScheduleID *uuid.UUID         `json:"recurring_schedule_id,omitempty" gorm:"type:uuid;index"`
@@ -61,14 +61,14 @@ type Schedule struct {
 	Location            string             `json:"location" gorm:"type:varchar(200)"`
 	Notes               *string            `json:"notes,omitempty" gorm:"type:text"`
 	IsConfirmed         bool               `json:"is_confirmed" gorm:"default:false"`
-	ConfirmedAt         *time.Time         `json:"confirmed_at"`
+	ConfirmedAt         *int64             `json:"confirmed_at" gorm:"type:bigint"`
 	ConfirmedBy         *uuid.UUID         `json:"confirmed_by" gorm:"type:uuid"`
 	IsCancelled         bool               `json:"is_cancelled" gorm:"default:false;index"`
-	CancelledAt         *time.Time         `json:"cancelled_at"`
+	CancelledAt         *int64             `json:"cancelled_at" gorm:"type:bigint"`
 	CancelledBy         *uuid.UUID         `json:"cancelled_by" gorm:"type:uuid"`
 	CancellationReason  *string            `json:"cancellation_reason" gorm:"type:text"`
 	RemindersEnabled    bool               `json:"reminders_enabled" gorm:"default:true"`
-	ReminderTime        *time.Time         `json:"reminder_time"`
+	ReminderTime        *int64             `json:"reminder_time" gorm:"type:bigint"`
 	Color               *string            `json:"color" gorm:"type:varchar(7)"` // Hex color code
 	CreatedBy           uuid.UUID          `json:"created_by" gorm:"type:uuid;not null"`
 	UpdatedBy           *uuid.UUID         `json:"updated_by" gorm:"type:uuid"`
@@ -88,11 +88,11 @@ func (s *Schedule) Validate() error {
 		return errors.New("title is required")
 	}
 
-	if s.EndTime.Before(s.StartTime) {
+	if s.EndTime <= s.StartTime {
 		return errors.New("end time must be after start time")
 	}
 
-	if s.StartTime.IsZero() || s.EndTime.IsZero() {
+	if s.StartTime == 0 || s.EndTime == 0 {
 		return errors.New("start time and end time are required")
 	}
 
@@ -101,16 +101,12 @@ func (s *Schedule) Validate() error {
 
 // Duration returns the duration of the schedule in minutes
 func (s *Schedule) Duration() int {
-	return int(s.EndTime.Sub(s.StartTime).Minutes())
+	return int(s.EndTime-s.StartTime) / 60
 }
 
 // IsOverlapping checks if this schedule overlaps with another
 func (s *Schedule) IsOverlapping(other *Schedule) bool {
-	// Check if schedules don't overlap
-	if s.EndTime.Before(other.StartTime) || s.StartTime.After(other.EndTime) {
-		return false
-	}
-	return true
+	return s.StartTime < other.EndTime && s.EndTime > other.StartTime
 }
 
 // RecurringSchedule represents a recurring schedule pattern
@@ -120,16 +116,16 @@ type RecurringSchedule struct {
 	Description     string         `json:"description" gorm:"type:text"`
 	RecurrenceType  RecurrenceType `json:"recurrence_type" gorm:"type:varchar(50);not null"`
 	RecurrenceRule  string         `json:"recurrence_rule" gorm:"type:text"` // RFC 5545 RRULE format
-	StartDate       time.Time      `json:"start_date" gorm:"not null"`
-	EndDate         *time.Time     `json:"end_date"`
-	Interval        int            `json:"interval" gorm:"default:1"`            // e.g., every 2 weeks
-	DaysOfWeek      []int          `json:"days_of_week" gorm:"type:int[]"`       // For weekly recurrence
-	DayOfMonth      *int           `json:"day_of_month"`                         // For monthly recurrence
-	MonthOfYear     *int           `json:"month_of_year"`                        // For yearly recurrence
-	Occurrences     *int           `json:"occurrences"`                          // Max number of occurrences
-	TimeStart       string         `json:"time_start" gorm:"type:time;not null"` // HH:MM format
-	TimeEnd         string         `json:"time_end" gorm:"type:time;not null"`
-	Duration        int            `json:"duration"` // in minutes
+	StartDate       int64          `json:"start_date" gorm:"type:bigint;not null"`
+	EndDate         *int64         `json:"end_date" gorm:"type:bigint"`
+	Interval        int            `json:"interval" gorm:"default:1"`               // e.g., every 2 weeks
+	DaysOfWeek      []int          `json:"days_of_week" gorm:"type:int[]"`          // For weekly recurrence
+	DayOfMonth      *int           `json:"day_of_month"`                            // For monthly recurrence
+	MonthOfYear     *int           `json:"month_of_year"`                           // For yearly recurrence
+	Occurrences     *int           `json:"occurrences"`                             // Max number of occurrences
+	TimeStart       int            `json:"time_start" gorm:"type:integer;not null"` // Seconds from midnight
+	TimeEnd         int            `json:"time_end" gorm:"type:integer;not null"`   // Seconds from midnight
+	Duration        int            `json:"duration"`                                // in minutes
 	AssignedTechIDs []uuid.UUID    `json:"assigned_tech_ids" gorm:"type:uuid[]"`
 	Location        string         `json:"location" gorm:"type:varchar(200)"`
 	JobTemplateID   *uuid.UUID     `json:"job_template_id" gorm:"type:uuid"`
@@ -179,10 +175,10 @@ type ScheduleConflict struct {
 	Severity            ConflictSeverity `json:"severity" gorm:"type:varchar(50);not null"`
 	Description         string           `json:"description" gorm:"type:text"`
 	IsResolved          bool             `json:"is_resolved" gorm:"default:false;index"`
-	ResolvedAt          *time.Time       `json:"resolved_at"`
+	ResolvedAt          *int64           `json:"resolved_at" gorm:"type:bigint"`
 	ResolvedBy          *uuid.UUID       `json:"resolved_by" gorm:"type:uuid"`
 	ResolutionNotes     *string          `json:"resolution_notes" gorm:"type:text"`
-	DetectedAt          time.Time        `json:"detected_at" gorm:"not null"`
+	DetectedAt          int64            `json:"detected_at" gorm:"type:bigint;not null"`
 	CreatedAt           time.Time        `json:"created_at"`
 	UpdatedAt           time.Time        `json:"updated_at"`
 }
@@ -219,8 +215,8 @@ type ScheduleRequest struct {
 	JobID               uuid.UUID      `json:"job_id" binding:"required"`
 	Title               string         `json:"title" binding:"required,min=1,max=200"`
 	Description         string         `json:"description"`
-	StartTime           time.Time      `json:"start_time" binding:"required"`
-	EndTime             time.Time      `json:"end_time" binding:"required"`
+	StartTime           int64          `json:"start_time" binding:"required"`
+	EndTime             int64          `json:"end_time" binding:"required"`
 	AllDay              bool           `json:"all_day"`
 	RecurrenceType      RecurrenceType `json:"recurrence_type"`
 	RecurringScheduleID *uuid.UUID     `json:"recurring_schedule_id"`
@@ -229,7 +225,7 @@ type ScheduleRequest struct {
 	Notes               *string        `json:"notes"`
 	Color               *string        `json:"color" binding:"omitempty,len=7"` // Hex color
 	RemindersEnabled    bool           `json:"reminders_enabled"`
-	ReminderTime        *time.Time     `json:"reminder_time"`
+	ReminderTime        *int64         `json:"reminder_time"`
 }
 
 // ScheduleResponse represents the response for schedule operations
@@ -239,8 +235,8 @@ type ScheduleResponse struct {
 	JobNumber           string         `json:"job_number"`
 	Title               string         `json:"title"`
 	Description         string         `json:"description"`
-	StartTime           time.Time      `json:"start_time"`
-	EndTime             time.Time      `json:"end_time"`
+	StartTime           int64          `json:"start_time"`
+	EndTime             int64          `json:"end_time"`
 	AllDay              bool           `json:"all_day"`
 	Duration            int            `json:"duration"` // in minutes
 	RecurrenceType      RecurrenceType `json:"recurrence_type"`
@@ -295,8 +291,8 @@ type ScheduleListResponse struct {
 
 // ScheduleQueryParams represents query parameters for listing schedules
 type ScheduleQueryParams struct {
-	StartDate *time.Time `form:"start_date"`
-	EndDate   *time.Time `form:"end_date"`
+	StartDate *int64     `form:"start_date"`
+	EndDate   *int64     `form:"end_date"`
 	TechID    *uuid.UUID `form:"tech_id"`
 	Status    *string    `form:"status"`
 	Confirmed *bool      `form:"confirmed"`

@@ -6,6 +6,7 @@ import {
   ConflictType,
   ResolutionSuggestion,
 } from './types';
+import { formatEpochTimeUTC } from '@/utils/epoch';
 
 /**
  * Get severity color classes
@@ -98,15 +99,10 @@ const getConflictTypeIcon = (type: ConflictType): JSX.Element => {
 };
 
 /**
- * Format time for display
+ * Format time for display (epoch seconds → "9:00 AM")
  */
-const formatTime = (dateString: string): string => {
-  const date = new Date(dateString);
-  return date.toLocaleTimeString('en-US', {
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true,
-  });
+const formatTime = (epoch: number): string => {
+  return formatEpochTimeUTC(epoch);
 };
 
 /**
@@ -123,7 +119,7 @@ const ConflictDetailCard: React.FC<{ conflict: ConflictDetail }> = ({
     >
       <div className="flex items-start gap-3">
         <div className="mt-0.5">
-          {getConflictTypeIcon(conflict.conflictType)}
+          {getConflictTypeIcon(conflict.conflict_type)}
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
@@ -135,13 +131,13 @@ const ConflictDetailCard: React.FC<{ conflict: ConflictDetail }> = ({
               {conflict.severity.toUpperCase()}
             </span>
             <span className="text-xs text-gray-500">
-              {conflict.conflictType.replace(/_/g, ' ').toUpperCase()}
+              {conflict.conflict_type.replace(/_/g, ' ').toUpperCase()}
             </span>
           </div>
           <p className="text-sm font-medium">{conflict.description}</p>
 
           {/* Conflicting Schedule Details */}
-          {conflict.conflictingWith && (
+          {conflict.conflicting_with && (
             <div className="mt-2">
               <button
                 onClick={() => setIsExpanded(!isExpanded)}
@@ -167,29 +163,29 @@ const ConflictDetailCard: React.FC<{ conflict: ConflictDetail }> = ({
                 <div className="mt-2 p-2 bg-white bg-opacity-50 rounded text-xs space-y-1">
                   <div>
                     <span className="font-medium">Schedule:</span>{' '}
-                    {conflict.conflictingWith.title}
+                    {conflict.conflicting_with.title}
                   </div>
-                  {conflict.conflictingWith.jobNumber && (
+                  {conflict.conflicting_with.job_number && (
                     <div>
                       <span className="font-medium">Job:</span>{' '}
-                      {conflict.conflictingWith.jobNumber}
+                      {conflict.conflicting_with.job_number}
                     </div>
                   )}
                   <div>
                     <span className="font-medium">Time:</span>{' '}
-                    {formatTime(conflict.conflictingWith.startTime)} -{' '}
-                    {formatTime(conflict.conflictingWith.endTime)}
+                    {formatTime(conflict.conflicting_with.start_time)} -{' '}
+                    {formatTime(conflict.conflicting_with.end_time)}
                   </div>
-                  {conflict.conflictingWith.location && (
+                  {conflict.conflicting_with.location && (
                     <div>
                       <span className="font-medium">Location:</span>{' '}
-                      {conflict.conflictingWith.location}
+                      {conflict.conflicting_with.location}
                     </div>
                   )}
-                  {conflict.timeOverlap && (
+                  {conflict.time_overlap && (
                     <div>
                       <span className="font-medium">Overlap:</span>{' '}
-                      {conflict.timeOverlap.overlapMinutes} minutes
+                      {conflict.time_overlap.overlap_minutes} minutes
                     </div>
                   )}
                 </div>

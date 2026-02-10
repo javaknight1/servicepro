@@ -9,6 +9,7 @@ import (
 	"github.com/javaknight1/servicepro/backend/internal/api/middleware"
 	"github.com/javaknight1/servicepro/backend/internal/repository"
 	"github.com/javaknight1/servicepro/backend/internal/services"
+	"github.com/javaknight1/servicepro/backend/internal/services/conflict"
 	permissionsSvc "github.com/javaknight1/servicepro/backend/internal/services/permissions"
 	stripeService "github.com/javaknight1/servicepro/backend/internal/services/stripe"
 	"github.com/javaknight1/servicepro/backend/pkg/auth"
@@ -46,6 +47,7 @@ type Repositories struct {
 	Permission *repository.PermissionRepository
 	Membership *repository.MembershipRepository
 	Payment    *repository.PaymentRepository
+	Schedule   repository.ScheduleRepositoryInterface
 }
 
 // Services holds all service instances
@@ -73,6 +75,7 @@ type Services struct {
 	StripeClient      *stripeService.Client
 	StripeEvents      *stripeService.EventProcessor
 	StripeWebhook     *stripeService.WebhookHandler
+	Conflict          *conflict.ConflictDetector
 }
 
 // Middleware holds all middleware instances
@@ -112,4 +115,5 @@ type Handlers struct {
 	ImportExport      *handlers.ImportExportHandler
 	ProfilePicture    *handlers.ProfilePictureHandler
 	PaymentTerms      *handlers.PaymentTermsHandler
+	Conflict          *handlers.ConflictHandler
 }

@@ -28,4 +28,5 @@ func Setup(router *gin.RouterGroup, cfg *routeconfigs.RouteConfig) {
 	SetupBillingRoutes(router, cfg)
 	SetupExportRoutes(router, cfg)
 	SetupPaymentTermsRoutes(router, cfg)
+	SetupConflictRoutes(router, cfg)
 }

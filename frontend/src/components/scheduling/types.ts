@@ -28,9 +28,9 @@ export enum ConflictSeverity {
 export interface ConflictingSchedule {
   id: string;
   title: string;
-  jobNumber?: string;
-  startTime: string;
-  endTime: string;
+  job_number?: string;
+  start_time: number;
+  end_time: number;
   location?: string;
 }
 
@@ -38,21 +38,21 @@ export interface ConflictingSchedule {
  * Time Overlap Information
  */
 export interface TimeOverlapInfo {
-  overlapStart: string;
-  overlapEnd: string;
-  overlapMinutes: number;
+  overlap_start: number;
+  overlap_end: number;
+  overlap_minutes: number;
 }
 
 /**
  * Conflict Detail
  */
 export interface ConflictDetail {
-  conflictType: ConflictType;
+  conflict_type: ConflictType;
   severity: ConflictSeverity;
   description: string;
-  conflictingWith?: ConflictingSchedule;
-  technicianId?: string;
-  timeOverlap?: TimeOverlapInfo;
+  conflicting_with?: ConflictingSchedule;
+  technician_id?: string;
+  time_overlap?: TimeOverlapInfo;
 }
 
 /**
@@ -69,7 +69,7 @@ export interface ResolutionSuggestion {
  * Conflict Check Response
  */
 export interface ConflictCheckResponse {
-  hasConflicts: boolean;
+  has_conflicts: boolean;
   conflicts: ConflictDetail[];
   suggestions?: ResolutionSuggestion[];
 }
@@ -78,11 +78,11 @@ export interface ConflictCheckResponse {
  * Conflict Check Request
  */
 export interface ConflictCheckRequest {
-  scheduleId?: string;
-  jobId: string;
-  startTime: string;
-  endTime: string;
-  assignedTechIds: string[];
+  schedule_id?: string;
+  job_id: string;
+  start_time: number;
+  end_time: number;
+  assigned_tech_ids: string[];
   location?: string;
 }
 
@@ -90,8 +90,8 @@ export interface ConflictCheckRequest {
  * Time Slot Suggestion
  */
 export interface TimeSlotSuggestion {
-  startTime: string;
-  endTime: string;
+  startTime: number;
+  endTime: number;
   availableSlots: number;
   reason: string;
 }
@@ -112,8 +112,8 @@ export interface TechnicianSuggestion {
  * Schedule Segment for Split Suggestions
  */
 export interface ScheduleSegment {
-  startTime: string;
-  endTime: string;
+  startTime: number;
+  endTime: number;
   assignedTechIds: string[];
   notes?: string;
 }
@@ -171,8 +171,8 @@ export interface ValidationResult {
 export interface ConflictCheckerProps {
   scheduleId?: string;
   jobId: string;
-  startTime: Date;
-  endTime: Date;
+  startTime: number;
+  endTime: number;
   assignedTechIds: string[];
   location?: string;
   onConflictDetected?: (response: ConflictCheckResponse) => void;

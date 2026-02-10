@@ -63,7 +63,7 @@ type HolidayRequest struct {
 type ExceptionRepositoryInterface interface {
 	CreateException(exception *ScheduleException) error
 	GetExceptionByID(id uuid.UUID) (*ScheduleException, error)
-	GetExceptionsByPattern(patternID uuid.UUID, startDate, endDate time.Time) ([]ScheduleException, error)
+	GetExceptionsByPattern(patternID uuid.UUID, startDate, endDate int64) ([]ScheduleException, error)
 	UpdateException(exception *ScheduleException) error
 	DeleteException(id uuid.UUID) error
 	ListExceptions(patternID uuid.UUID) ([]ScheduleException, error)
@@ -73,7 +73,7 @@ type ExceptionRepositoryInterface interface {
 type HolidayRepositoryInterface interface {
 	CreateHoliday(holiday *Holiday) error
 	GetHolidayByID(id uuid.UUID) (*Holiday, error)
-	GetHolidaysByDateRange(startDate, endDate time.Time) ([]Holiday, error)
+	GetHolidaysByDateRange(startDate, endDate int64) ([]Holiday, error)
 	GetHolidaysByCountry(country string) ([]Holiday, error)
 	UpdateHoliday(holiday *Holiday) error
 	DeleteHoliday(id uuid.UUID) error
@@ -187,7 +187,7 @@ func (h *ExceptionHandler) ListExceptions(ctx context.Context, patternID uuid.UU
 }
 
 // GetExceptionsByDateRange retrieves exceptions within a date range
-func (h *ExceptionHandler) GetExceptionsByDateRange(ctx context.Context, patternID uuid.UUID, startDate, endDate time.Time) ([]ScheduleException, error) {
+func (h *ExceptionHandler) GetExceptionsByDateRange(ctx context.Context, patternID uuid.UUID, startDate, endDate int64) ([]ScheduleException, error) {
 	return h.exceptionRepo.GetExceptionsByPattern(patternID, startDate, endDate)
 }
 
@@ -291,7 +291,7 @@ func (h *HolidayHandler) GetHolidaysByCountry(ctx context.Context, country strin
 }
 
 // GetHolidaysByDateRange retrieves holidays within a date range
-func (h *HolidayHandler) GetHolidaysByDateRange(ctx context.Context, startDate, endDate time.Time) ([]Holiday, error) {
+func (h *HolidayHandler) GetHolidaysByDateRange(ctx context.Context, startDate, endDate int64) ([]Holiday, error) {
 	return h.holidayRepo.GetHolidaysByDateRange(startDate, endDate)
 }
 

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Button } from '@components/shared';
 import { JobAssignment, jobService } from '@services/jobService';
+import { getErrorMessage } from '@/utils/error';
 import { UserPlus, X, Loader2, Users } from 'lucide-react';
 import { AddAssignmentModal } from './AddAssignmentModal';
 
@@ -8,6 +9,8 @@ interface JobAssignmentsSectionProps {
   jobId: string;
   assignments: JobAssignment[];
   onAssignmentChange: () => void;
+  startTime?: number | null;
+  endTime?: number | null;
 }
 
 const roleLabels: Record<string, string> = {
@@ -21,17 +24,22 @@ export function JobAssignmentsSection({
   jobId,
   assignments,
   onAssignmentChange,
+  startTime,
+  endTime,
 }: JobAssignmentsSectionProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const handleRemove = async (userId: string) => {
     setRemovingId(userId);
+    setError(null);
     try {
       await jobService.unassignMember(jobId, userId);
       onAssignmentChange();
     } catch (err) {
       console.error('Failed to remove assignment:', err);
+      setError(getErrorMessage(err, 'Failed to remove assignment'));
     } finally {
       setRemovingId(null);
     }
@@ -49,6 +57,7 @@ export function JobAssignmentsSection({
           Assigned Members
         </h2>
         <Button
+          type="button"
           variant="secondary"
           size="sm"
           onClick={() => setIsModalOpen(true)}
@@ -58,6 +67,12 @@ export function JobAssignmentsSection({
           Add Member
         </Button>
       </div>
+
+      {error && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+          {error}
+        </div>
+      )}
 
       {assignments.length === 0 ? (
         <div className="text-center py-8 text-neutral-500">
@@ -83,6 +98,7 @@ export function JobAssignmentsSection({
                 </p>
               </div>
               <button
+                type="button"
                 onClick={() => handleRemove(assignment.user_id)}
                 disabled={removingId === assignment.user_id}
                 className="p-2 text-neutral-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
@@ -105,6 +121,8 @@ export function JobAssignmentsSection({
         jobId={jobId}
         existingAssignments={assignments}
         onAssignmentAdded={handleAssignmentAdded}
+        startTime={startTime}
+        endTime={endTime}
       />
     </div>
   );

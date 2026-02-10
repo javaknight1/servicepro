@@ -4,9 +4,13 @@
 -- This file creates test data for local development.
 -- Run with: make seed
 --
--- Test User Credentials:
---   Email: dev@servicepro.local
---   Password: password123
+-- Test User Credentials (all use password: password123):
+--   dev@servicepro.local       - Admin
+--   sarah.chen@servicepro.local    - Manager
+--   marcus.jones@servicepro.local  - Technician
+--   lisa.patel@servicepro.local    - Technician
+--   james.wilson@servicepro.local  - Technician
+--   ana.martinez@servicepro.local  - Guest
 --
 -- DO NOT run this in production!
 -- ============================================================================
@@ -41,6 +45,39 @@ INSERT INTO users (
     CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
 ) ON CONFLICT (email) DO UPDATE SET
+    password_hash = EXCLUDED.password_hash,
+    first_name = EXCLUDED.first_name,
+    last_name = EXCLUDED.last_name,
+    email_verified = EXCLUDED.email_verified,
+    updated_at = CURRENT_TIMESTAMP;
+
+-- ============================================================================
+-- 1b. ADDITIONAL TEAM MEMBERS
+-- ============================================================================
+-- All users share the same password: password123
+
+INSERT INTO users (id, email, password_hash, role, first_name, last_name, email_verified, created_at, updated_at) VALUES
+    ('11111111-1111-1111-1111-111111111102',
+     'sarah.chen@servicepro.local',
+     '$2a$12$UOb3QkOkcLLHtFrsY0vTS.QzwTQxrgzSCJiUfHI/hrc1aHsH9Jit.',
+     'user', 'Sarah', 'Chen', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('11111111-1111-1111-1111-111111111103',
+     'marcus.jones@servicepro.local',
+     '$2a$12$UOb3QkOkcLLHtFrsY0vTS.QzwTQxrgzSCJiUfHI/hrc1aHsH9Jit.',
+     'user', 'Marcus', 'Jones', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('11111111-1111-1111-1111-111111111104',
+     'lisa.patel@servicepro.local',
+     '$2a$12$UOb3QkOkcLLHtFrsY0vTS.QzwTQxrgzSCJiUfHI/hrc1aHsH9Jit.',
+     'user', 'Lisa', 'Patel', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('11111111-1111-1111-1111-111111111105',
+     'james.wilson@servicepro.local',
+     '$2a$12$UOb3QkOkcLLHtFrsY0vTS.QzwTQxrgzSCJiUfHI/hrc1aHsH9Jit.',
+     'user', 'James', 'Wilson', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('11111111-1111-1111-1111-111111111106',
+     'ana.martinez@servicepro.local',
+     '$2a$12$UOb3QkOkcLLHtFrsY0vTS.QzwTQxrgzSCJiUfHI/hrc1aHsH9Jit.',
+     'user', 'Ana', 'Martinez', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+ON CONFLICT (email) DO UPDATE SET
     password_hash = EXCLUDED.password_hash,
     first_name = EXCLUDED.first_name,
     last_name = EXCLUDED.last_name,
@@ -134,6 +171,66 @@ INSERT INTO tenant_users (
     role_id = EXCLUDED.role_id,
     is_active = EXCLUDED.is_active,
     updated_at = CURRENT_TIMESTAMP;
+
+-- Sarah Chen as manager of Tenant 1
+INSERT INTO tenant_users (
+    id, tenant_id, user_id, role_id, is_active, accepted_at, created_at, updated_at
+) VALUES (
+    '44444444-4444-4444-4444-444444444443',
+    '22222222-2222-2222-2222-222222222222',
+    '11111111-1111-1111-1111-111111111102',
+    '00000000-0000-0000-0000-000000000003', -- manager role
+    TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+) ON CONFLICT ON CONSTRAINT unique_tenant_user DO UPDATE SET
+    role_id = EXCLUDED.role_id, is_active = EXCLUDED.is_active, updated_at = CURRENT_TIMESTAMP;
+
+-- Marcus Jones as user (technician) of Tenant 1
+INSERT INTO tenant_users (
+    id, tenant_id, user_id, role_id, is_active, accepted_at, created_at, updated_at
+) VALUES (
+    '44444444-4444-4444-4444-444444444444',
+    '22222222-2222-2222-2222-222222222222',
+    '11111111-1111-1111-1111-111111111103',
+    '00000000-0000-0000-0000-000000000004', -- user role
+    TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+) ON CONFLICT ON CONSTRAINT unique_tenant_user DO UPDATE SET
+    role_id = EXCLUDED.role_id, is_active = EXCLUDED.is_active, updated_at = CURRENT_TIMESTAMP;
+
+-- Lisa Patel as user (technician) of Tenant 1
+INSERT INTO tenant_users (
+    id, tenant_id, user_id, role_id, is_active, accepted_at, created_at, updated_at
+) VALUES (
+    '44444444-4444-4444-4444-444444444445',
+    '22222222-2222-2222-2222-222222222222',
+    '11111111-1111-1111-1111-111111111104',
+    '00000000-0000-0000-0000-000000000004', -- user role
+    TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+) ON CONFLICT ON CONSTRAINT unique_tenant_user DO UPDATE SET
+    role_id = EXCLUDED.role_id, is_active = EXCLUDED.is_active, updated_at = CURRENT_TIMESTAMP;
+
+-- James Wilson as user (technician) of Tenant 1
+INSERT INTO tenant_users (
+    id, tenant_id, user_id, role_id, is_active, accepted_at, created_at, updated_at
+) VALUES (
+    '44444444-4444-4444-4444-444444444446',
+    '22222222-2222-2222-2222-222222222222',
+    '11111111-1111-1111-1111-111111111105',
+    '00000000-0000-0000-0000-000000000004', -- user role
+    TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+) ON CONFLICT ON CONSTRAINT unique_tenant_user DO UPDATE SET
+    role_id = EXCLUDED.role_id, is_active = EXCLUDED.is_active, updated_at = CURRENT_TIMESTAMP;
+
+-- Ana Martinez as guest of Tenant 1 (e.g., external inspector)
+INSERT INTO tenant_users (
+    id, tenant_id, user_id, role_id, is_active, accepted_at, created_at, updated_at
+) VALUES (
+    '44444444-4444-4444-4444-444444444447',
+    '22222222-2222-2222-2222-222222222222',
+    '11111111-1111-1111-1111-111111111106',
+    '00000000-0000-0000-0000-000000000005', -- guest role
+    TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+) ON CONFLICT ON CONSTRAINT unique_tenant_user DO UPDATE SET
+    role_id = EXCLUDED.role_id, is_active = EXCLUDED.is_active, updated_at = CURRENT_TIMESTAMP;
 
 -- User as admin of Tenant 2
 INSERT INTO tenant_users (
@@ -364,7 +461,7 @@ INSERT INTO jobs (
         'maintenance',
         'scheduled',
         'normal',
-        CURRENT_TIMESTAMP + INTERVAL '2 days',
+        EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP + INTERVAL '2 days'))::BIGINT,
         120,
         250.00,
         '123 Main Street',
@@ -385,7 +482,7 @@ INSERT INTO jobs (
         'repair',
         'in_progress',
         'high',
-        CURRENT_TIMESTAMP - INTERVAL '1 day',
+        EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - INTERVAL '1 day'))::BIGINT,
         90,
         175.00,
         '456 Oak Avenue',
@@ -427,7 +524,7 @@ INSERT INTO jobs (
         'installation',
         'completed',
         'normal',
-        CURRENT_TIMESTAMP - INTERVAL '7 days',
+        EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - INTERVAL '7 days'))::BIGINT,
         240,
         850.00,
         '123 Main Street',
@@ -448,7 +545,7 @@ INSERT INTO jobs (
         'repair',
         'scheduled',
         'urgent',
-        CURRENT_TIMESTAMP + INTERVAL '4 hours',
+        EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP + INTERVAL '4 hours'))::BIGINT,
         60,
         350.00,
         '654 Market Street',
@@ -599,9 +696,22 @@ COMMIT;
 -- ============================================================================
 --
 -- Created:
---   - 1 test user (dev@servicepro.local / password123)
+--   - 6 test users (all use password: password123)
+--       - dev@servicepro.local (Dev User)
+--       - sarah.chen@servicepro.local (Sarah Chen)
+--       - marcus.jones@servicepro.local (Marcus Jones)
+--       - lisa.patel@servicepro.local (Lisa Patel)
+--       - james.wilson@servicepro.local (James Wilson)
+--       - ana.martinez@servicepro.local (Ana Martinez)
 --   - 2 tenants (Acme Services, Beta Contractors)
---   - User linked to both tenants as admin
+--   - Acme Services members:
+--       - Dev User (admin)
+--       - Sarah Chen (manager)
+--       - Marcus Jones (user/technician)
+--       - Lisa Patel (user/technician)
+--       - James Wilson (user/technician)
+--       - Ana Martinez (guest)
+--   - Dev User also linked to Beta Contractors as admin
 --   - 5 customers in Acme Services
 --   - 5 jobs in Acme Services (various statuses)
 --   - 4 quotes in Acme Services (various statuses)

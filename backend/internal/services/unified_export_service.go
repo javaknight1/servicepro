@@ -19,6 +19,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/javaknight1/servicepro/backend/internal/models"
+	"github.com/javaknight1/servicepro/backend/internal/utils/epoch"
 )
 
 // UnifiedExportService handles all export operations with progress tracking
@@ -495,7 +496,7 @@ func (s *unifiedExportService) writeJobsCSV(writer *csv.Writer, jobs []models.Jo
 			job.Title,
 			job.Description,
 			string(job.Status),
-			formatTimePtr(job.ScheduledStartAt),
+			formatEpochPtr(job.ScheduledStartAt),
 			job.CreatedAt.Format(time.RFC3339),
 		}
 		if err := writer.Write(row); err != nil {
@@ -689,7 +690,7 @@ func (s *unifiedExportService) writeJobsExcel(f *excelize.File, sheet string, jo
 		f.SetCellValue(sheet, fmt.Sprintf("B%d", row), job.CustomerID.String())
 		f.SetCellValue(sheet, fmt.Sprintf("C%d", row), job.Title)
 		f.SetCellValue(sheet, fmt.Sprintf("D%d", row), string(job.Status))
-		f.SetCellValue(sheet, fmt.Sprintf("E%d", row), formatTimePtr(job.ScheduledStartAt))
+		f.SetCellValue(sheet, fmt.Sprintf("E%d", row), formatEpochPtr(job.ScheduledStartAt))
 		f.SetCellValue(sheet, fmt.Sprintf("F%d", row), job.CreatedAt.Format("2006-01-02"))
 	}
 
@@ -860,7 +861,7 @@ func (s *unifiedExportService) buildJobsPDFTable(jobs []models.Job) string {
 
 	for _, j := range jobs {
 		html.WriteString(fmt.Sprintf("<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>",
-			j.Title, j.Status, formatTimePtr(j.ScheduledStartAt), j.CreatedAt.Format("2006-01-02")))
+			j.Title, j.Status, formatEpochPtr(j.ScheduledStartAt), j.CreatedAt.Format("2006-01-02")))
 	}
 
 	html.WriteString("</tbody></table>")
@@ -1061,9 +1062,9 @@ func ptrToStr(s *string) string {
 	return *s
 }
 
-func formatTimePtr(t *time.Time) string {
+func formatEpochPtr(t *int64) string {
 	if t == nil {
 		return ""
 	}
-	return t.Format("2006-01-02")
+	return epoch.EpochToTime(*t).Format("2006-01-02")
 }

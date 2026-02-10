@@ -69,7 +69,7 @@ func (m *MockJobRepository) GetByAssignedUser(userID uuid.UUID) ([]models.Job, e
 	return args.Get(0).([]models.Job), args.Error(1)
 }
 
-func (m *MockJobRepository) GetScheduledJobs(start, end time.Time) ([]models.Job, error) {
+func (m *MockJobRepository) GetScheduledJobs(start, end int64) ([]models.Job, error) {
 	args := m.Called(start, end)
 	return args.Get(0).([]models.Job), args.Error(1)
 }
@@ -147,6 +147,11 @@ func (m *MockJobRepository) CreateStatusTransition(transition *models.JobStatusT
 func (m *MockJobRepository) GetStatusHistory(jobID uuid.UUID, limit, offset int, sortOrder string) ([]models.JobStatusTransition, int64, error) {
 	args := m.Called(jobID, limit, offset, sortOrder)
 	return args.Get(0).([]models.JobStatusTransition), args.Get(1).(int64), args.Error(2)
+}
+
+func (m *MockJobRepository) GetJobsByTechnicianAndDateRange(techID uuid.UUID, start, end int64) ([]models.Job, error) {
+	args := m.Called(techID, start, end)
+	return args.Get(0).([]models.Job), args.Error(1)
 }
 
 // MockCustomerRepository is a mock implementation of CustomerRepositoryInterface
@@ -238,8 +243,8 @@ type MockDB struct {
 // Helper functions to create test data
 func createTestJob() *models.Job {
 	now := time.Now()
-	scheduledStart := now.Add(24 * time.Hour)
-	scheduledEnd := scheduledStart.Add(2 * time.Hour)
+	scheduledStart := now.Add(24 * time.Hour).Unix()
+	scheduledEnd := now.Add(26 * time.Hour).Unix()
 	createdBy := uuid.New()
 
 	return &models.Job{
@@ -293,8 +298,8 @@ func TestJobService_CreateJob_Success(t *testing.T) {
 	createdBy := uuid.New()
 
 	now := time.Now()
-	scheduledStart := now.Add(24 * time.Hour)
-	scheduledEnd := scheduledStart.Add(2 * time.Hour)
+	scheduledStart := now.Add(24 * time.Hour).Unix()
+	scheduledEnd := now.Add(26 * time.Hour).Unix()
 
 	req := &models.CreateJobRequest{
 		CustomerID:       customerID,
@@ -509,8 +514,8 @@ func TestJobService_CompleteJob_Success(t *testing.T) {
 
 	job := createTestJob()
 	job.Status = models.JobStatusInProgress
-	now := time.Now()
-	job.ActualStartAt = &now // Set actual start time for completion
+	actualStart := time.Now().Unix()
+	job.ActualStartAt = &actualStart // Set actual start time for completion
 
 	mockJobRepo.On("GetByID", job.ID).Return(job, nil)
 	mockJobRepo.On("Update", mock.AnythingOfType("*models.Job")).Return(nil)

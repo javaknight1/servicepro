@@ -9,6 +9,7 @@ import (
 
 	"github.com/javaknight1/servicepro/backend/config"
 	"github.com/javaknight1/servicepro/backend/internal/services"
+	"github.com/javaknight1/servicepro/backend/internal/services/conflict"
 	"github.com/javaknight1/servicepro/backend/internal/services/pdf"
 	permissionsSvc "github.com/javaknight1/servicepro/backend/internal/services/permissions"
 	stripeService "github.com/javaknight1/servicepro/backend/internal/services/stripe"
@@ -98,6 +99,9 @@ func SetupServices(
 
 	// Payment terms service
 	svc.PaymentTerms = services.NewPaymentTermsService(db)
+
+	// Conflict detection service
+	svc.Conflict = conflict.NewConflictDetector(repos.Schedule, repos.Job)
 
 	// Profile picture service (optional - depends on storage client)
 	if storageClient != nil {

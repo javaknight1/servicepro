@@ -61,27 +61,25 @@ export const ConflictChecker: React.FC<ConflictCheckerProps> = ({
     setError(null);
 
     try {
-      const request: ConflictCheckRequest = {
-        scheduleId,
-        jobId,
-        startTime: startTime.toISOString(),
-        endTime: endTime.toISOString(),
-        assignedTechIds,
-        location,
-      };
-
       const response = await api.post<ConflictCheckResponse>(
         '/v1/conflicts/check',
-        request
+        {
+          schedule_id: scheduleId,
+          job_id: jobId,
+          start_time: startTime,
+          end_time: endTime,
+          assigned_tech_ids: assignedTechIds,
+          location,
+        } satisfies ConflictCheckRequest
       );
 
       const data = response.data;
       setConflictResponse(data);
 
       // Notify parent component
-      if (data.hasConflicts && onConflictDetected) {
+      if (data.has_conflicts && onConflictDetected) {
         onConflictDetected(data);
-      } else if (!data.hasConflicts && onConflictResolved) {
+      } else if (!data.has_conflicts && onConflictResolved) {
         onConflictResolved();
       }
     } catch (err) {
@@ -90,6 +88,10 @@ export const ConflictChecker: React.FC<ConflictCheckerProps> = ({
       setError(errorMessage);
       // eslint-disable-next-line no-console
       console.error('Conflict check error:', err);
+      // On error, don't block saving — notify parent that checking is done
+      if (onConflictResolved) {
+        onConflictResolved();
+      }
     } finally {
       setIsChecking(false);
     }
@@ -171,32 +173,56 @@ export const ConflictChecker: React.FC<ConflictCheckerProps> = ({
       {/* Conflict Results */}
       {conflictResponse && !isChecking && (
         <div className="space-y-2">
-          {conflictResponse.hasConflicts ? (
-            <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <div className="flex items-start gap-2">
-                <svg
-                  className="w-5 h-5 text-yellow-600 mt-0.5"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-                <div className="flex-1">
-                  <h4 className="text-sm font-semibold text-yellow-800">
-                    {conflictResponse.conflicts.length} Conflict
-                    {conflictResponse.conflicts.length !== 1 ? 's' : ''}{' '}
-                    Detected
-                  </h4>
-                  <p className="text-sm text-yellow-700 mt-1">
-                    This schedule conflicts with existing schedules. Review the
-                    conflicts below.
-                  </p>
+          {conflictResponse.has_conflicts ? (
+            <div className="space-y-2">
+              <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <div className="flex items-start gap-2">
+                  <svg
+                    className="w-5 h-5 text-yellow-600 mt-0.5 shrink-0"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  <div className="flex-1">
+                    <h4 className="text-sm font-semibold text-yellow-800">
+                      {conflictResponse.conflicts.length} Conflict
+                      {conflictResponse.conflicts.length !== 1 ? 's' : ''}{' '}
+                      Detected
+                    </h4>
+                    <ul className="mt-2 space-y-1">
+                      {conflictResponse.conflicts.map((c, i) => (
+                        <li key={i} className="text-sm text-yellow-800">
+                          {c.description}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 </div>
               </div>
+              {conflictResponse.suggestions &&
+                conflictResponse.suggestions.length > 0 && (
+                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <h4 className="text-sm font-semibold text-blue-800 mb-1">
+                      Suggestions
+                    </h4>
+                    <ul className="space-y-1">
+                      {conflictResponse.suggestions.map((s, i) => (
+                        <li
+                          key={i}
+                          className="text-sm text-blue-700 flex items-start gap-1.5"
+                        >
+                          <span className="mt-1 shrink-0 w-1 h-1 rounded-full bg-blue-500" />
+                          {s.description}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
             </div>
           ) : (
             <div className="p-3 bg-green-50 border border-green-200 rounded-lg">

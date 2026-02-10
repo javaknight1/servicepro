@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/javaknight1/servicepro/backend/internal/models"
+	"github.com/javaknight1/servicepro/backend/internal/utils/epoch"
 	"github.com/javaknight1/servicepro/backend/pkg/clients/email"
 	"github.com/javaknight1/servicepro/backend/pkg/clients/sms"
 )
@@ -558,11 +559,11 @@ func (s *NotificationService) prepareAssignmentData(assignment *models.JobAssign
 		job.ServiceAddress.Zip)
 
 	if job.ScheduledStartAt != nil {
-		data["ScheduledStartAt"] = job.ScheduledStartAt.Format("Monday, January 2, 2006 at 3:04 PM")
+		data["ScheduledStartAt"] = epoch.EpochToTime(*job.ScheduledStartAt).Format("Monday, January 2, 2006 at 3:04 PM")
 	}
 
 	if job.ScheduledEndAt != nil {
-		data["ScheduledEndAt"] = job.ScheduledEndAt.Format("3:04 PM")
+		data["ScheduledEndAt"] = epoch.EpochToTime(*job.ScheduledEndAt).Format("3:04 PM")
 	}
 
 	if job.EstimatedDuration > 0 {

@@ -13,6 +13,7 @@ import (
 
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/repository"
+	"github.com/javaknight1/servicepro/backend/internal/utils/epoch"
 )
 
 var (
@@ -64,7 +65,7 @@ type AssignmentRequest struct {
 	TechnicianID       uuid.UUID         `json:"technician_id" binding:"required"`
 	Role               string            `json:"role" binding:"required"`
 	RequiredSkills     []TechnicianSkill `json:"required_skills,omitempty"`
-	PreferredStartTime *time.Time        `json:"preferred_start_time,omitempty"`
+	PreferredStartTime *int64            `json:"preferred_start_time,omitempty"`
 	EstimatedDuration  int               `json:"estimated_duration,omitempty"` // in minutes
 }
 
@@ -76,8 +77,8 @@ type BulkAssignmentRequest struct {
 
 // AvailabilityCheckRequest represents a request to check availability
 type AvailabilityCheckRequest struct {
-	StartTime          time.Time         `json:"start_time" binding:"required"`
-	EndTime            time.Time         `json:"end_time" binding:"required"`
+	StartTime          int64             `json:"start_time" binding:"required"`
+	EndTime            int64             `json:"end_time" binding:"required"`
 	RequiredSkills     []TechnicianSkill `json:"required_skills,omitempty"`
 	ExcludeTechnicians []uuid.UUID       `json:"exclude_technicians,omitempty"`
 }
@@ -91,17 +92,17 @@ type AssignmentServiceInterface interface {
 	UpdateAssignment(ctx context.Context, assignmentID uuid.UUID, role string, updatedBy uuid.UUID) error
 
 	// Availability operations
-	CheckTechnicianAvailability(ctx context.Context, technicianID uuid.UUID, startTime, endTime time.Time) (*TechnicianAvailability, error)
+	CheckTechnicianAvailability(ctx context.Context, technicianID uuid.UUID, startTime, endTime int64) (*TechnicianAvailability, error)
 	GetAvailableTechnicians(ctx context.Context, req *AvailabilityCheckRequest) ([]*TechnicianAvailability, error)
-	DetectConflicts(ctx context.Context, technicianID uuid.UUID, startTime, endTime time.Time, excludeJobID *uuid.UUID) ([]models.Job, error)
+	DetectConflicts(ctx context.Context, technicianID uuid.UUID, startTime, endTime int64, excludeJobID *uuid.UUID) ([]models.Job, error)
 
 	// Skills operations
 	CheckSkillMatch(ctx context.Context, technicianID uuid.UUID, requiredSkills []TechnicianSkill) (float64, error)
 	GetTechniciansBySkill(ctx context.Context, skill TechnicianSkill) ([]uuid.UUID, error)
 
 	// Workload operations
-	GetTechnicianWorkload(ctx context.Context, technicianID uuid.UUID, startDate, endDate time.Time) (int, error)
-	OptimizeAssignments(ctx context.Context, jobID uuid.UUID, requiredSkills []TechnicianSkill, startTime, endTime time.Time) ([]*TechnicianAvailability, error)
+	GetTechnicianWorkload(ctx context.Context, technicianID uuid.UUID, startDate, endDate int64) (int, error)
+	OptimizeAssignments(ctx context.Context, jobID uuid.UUID, requiredSkills []TechnicianSkill, startTime, endTime int64) ([]*TechnicianAvailability, error)
 }
 
 // AssignmentService handles assignment business logic
@@ -187,12 +188,11 @@ func (s *AssignmentService) CreateAssignment(ctx context.Context, req *Assignmen
 	}
 
 	// Create assignment
-	now := time.Now()
 	assignment := &models.JobAssignment{
 		JobID:      req.JobID,
 		UserID:     req.TechnicianID,
 		Role:       req.Role,
-		AssignedAt: now,
+		AssignedAt: epoch.NowEpoch(),
 	}
 
 	if err := s.jobRepo.AddAssignment(assignment); err != nil {
@@ -284,10 +284,10 @@ func (s *AssignmentService) UpdateAssignment(ctx context.Context, assignmentID u
 }
 
 // CheckTechnicianAvailability checks if a technician is available for a time slot
-func (s *AssignmentService) CheckTechnicianAvailability(ctx context.Context, technicianID uuid.UUID, startTime, endTime time.Time) (*TechnicianAvailability, error) {
-	s.logger.Printf("Checking availability for technician %s from %s to %s", technicianID, startTime, endTime)
+func (s *AssignmentService) CheckTechnicianAvailability(ctx context.Context, technicianID uuid.UUID, startTime, endTime int64) (*TechnicianAvailability, error) {
+	s.logger.Printf("Checking availability for technician %s from %d to %d", technicianID, startTime, endTime)
 
-	if endTime.Before(startTime) {
+	if endTime < startTime {
 		return nil, ErrInvalidTimeSlot
 	}
 
@@ -316,11 +316,17 @@ func (s *AssignmentService) CheckTechnicianAvailability(ctx context.Context, tec
 	}
 
 	for _, conflict := range conflicts {
+		startStr := "N/A"
+		endStr := "N/A"
+		if conflict.ScheduledStartAt != nil {
+			startStr = epoch.EpochToTime(*conflict.ScheduledStartAt).Format(time.RFC3339)
+		}
+		if conflict.ScheduledEndAt != nil {
+			endStr = epoch.EpochToTime(*conflict.ScheduledEndAt).Format(time.RFC3339)
+		}
 		availability.Conflicts = append(availability.Conflicts,
 			fmt.Sprintf("Job %s (%s) from %s to %s",
-				conflict.JobNumber, conflict.Title,
-				conflict.ScheduledStartAt.Format(time.RFC3339),
-				conflict.ScheduledEndAt.Format(time.RFC3339)))
+				conflict.JobNumber, conflict.Title, startStr, endStr))
 	}
 
 	return availability, nil
@@ -328,7 +334,7 @@ func (s *AssignmentService) CheckTechnicianAvailability(ctx context.Context, tec
 
 // GetAvailableTechnicians gets all available technicians for a time slot concurrently
 func (s *AssignmentService) GetAvailableTechnicians(ctx context.Context, req *AvailabilityCheckRequest) ([]*TechnicianAvailability, error) {
-	s.logger.Printf("Finding available technicians from %s to %s", req.StartTime, req.EndTime)
+	s.logger.Printf("Finding available technicians from %d to %d", req.StartTime, req.EndTime)
 
 	// Get all technicians (in real implementation, would query from users table)
 	technicians := s.getAllTechnicians(ctx)
@@ -388,7 +394,7 @@ func (s *AssignmentService) GetAvailableTechnicians(ctx context.Context, req *Av
 }
 
 // DetectConflicts detects scheduling conflicts for a technician
-func (s *AssignmentService) DetectConflicts(ctx context.Context, technicianID uuid.UUID, startTime, endTime time.Time, excludeJobID *uuid.UUID) ([]models.Job, error) {
+func (s *AssignmentService) DetectConflicts(ctx context.Context, technicianID uuid.UUID, startTime, endTime int64, excludeJobID *uuid.UUID) ([]models.Job, error) {
 	// Get all jobs assigned to this technician
 	jobs, err := s.jobRepo.GetByAssignedUser(technicianID)
 	if err != nil {
@@ -461,7 +467,7 @@ func (s *AssignmentService) GetTechniciansBySkill(ctx context.Context, skill Tec
 }
 
 // GetTechnicianWorkload gets the number of active assignments for a technician
-func (s *AssignmentService) GetTechnicianWorkload(ctx context.Context, technicianID uuid.UUID, startDate, endDate time.Time) (int, error) {
+func (s *AssignmentService) GetTechnicianWorkload(ctx context.Context, technicianID uuid.UUID, startDate, endDate int64) (int, error) {
 	jobs, err := s.jobRepo.GetByAssignedUser(technicianID)
 	if err != nil {
 		return 0, err
@@ -473,7 +479,7 @@ func (s *AssignmentService) GetTechnicianWorkload(ctx context.Context, technicia
 		if job.Status == models.JobStatusScheduled || job.Status == models.JobStatusInProgress {
 			// Check if job falls within date range
 			if job.ScheduledStartAt != nil {
-				if job.ScheduledStartAt.After(startDate) && job.ScheduledStartAt.Before(endDate) {
+				if *job.ScheduledStartAt > startDate && *job.ScheduledStartAt < endDate {
 					count++
 				}
 			}
@@ -484,7 +490,7 @@ func (s *AssignmentService) GetTechnicianWorkload(ctx context.Context, technicia
 }
 
 // OptimizeAssignments finds the best technicians for a job based on availability and skills
-func (s *AssignmentService) OptimizeAssignments(ctx context.Context, jobID uuid.UUID, requiredSkills []TechnicianSkill, startTime, endTime time.Time) ([]*TechnicianAvailability, error) {
+func (s *AssignmentService) OptimizeAssignments(ctx context.Context, jobID uuid.UUID, requiredSkills []TechnicianSkill, startTime, endTime int64) ([]*TechnicianAvailability, error) {
 	s.logger.Printf("Optimizing assignments for job %s", jobID)
 
 	req := &AvailabilityCheckRequest{
@@ -514,8 +520,8 @@ func (s *AssignmentService) OptimizeAssignments(ctx context.Context, jobID uuid.
 
 // Helper functions
 
-func timeOverlaps(start1, end1, start2, end2 time.Time) bool {
-	return start1.Before(end2) && end1.After(start2)
+func timeOverlaps(start1, end1, start2, end2 int64) bool {
+	return start1 < end2 && end1 > start2
 }
 
 func sortTechniciansByOptimization(technicians []*TechnicianAvailability) {

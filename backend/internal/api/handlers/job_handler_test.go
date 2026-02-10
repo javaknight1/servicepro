@@ -70,7 +70,7 @@ func (m *MockJobService) GetMyJobs(userID uuid.UUID) ([]models.JobResponse, erro
 	return args.Get(0).([]models.JobResponse), args.Error(1)
 }
 
-func (m *MockJobService) GetScheduledJobs(start, end time.Time) ([]models.JobResponse, error) {
+func (m *MockJobService) GetScheduledJobs(start, end int64) ([]models.JobResponse, error) {
 	args := m.Called(start, end)
 	return args.Get(0).([]models.JobResponse), args.Error(1)
 }
@@ -187,10 +187,12 @@ func setupJobTestRouter() *gin.Engine {
 	return gin.New()
 }
 
+func int64Ptr(v int64) *int64 { return &v }
+
 func createTestJobResponse() *models.JobResponse {
 	now := time.Now()
-	scheduledStart := now.Add(24 * time.Hour)
-	scheduledEnd := scheduledStart.Add(2 * time.Hour)
+	scheduledStart := now.Add(24 * time.Hour).Unix()
+	scheduledEnd := now.Add(26 * time.Hour).Unix()
 
 	return &models.JobResponse{
 		ID:               uuid.New(),
@@ -231,8 +233,8 @@ func TestJobHandler_CreateJob_Success(t *testing.T) {
 
 	customerID := uuid.New()
 	now := time.Now()
-	scheduledStart := now.Add(24 * time.Hour)
-	scheduledEnd := scheduledStart.Add(2 * time.Hour)
+	scheduledStart := now.Add(24 * time.Hour).Unix()
+	scheduledEnd := now.Add(26 * time.Hour).Unix()
 
 	reqBody := &models.CreateJobRequest{
 		CustomerID:       customerID,

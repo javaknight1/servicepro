@@ -34,7 +34,7 @@ type MockExceptionRepo struct {
 	mock.Mock
 }
 
-func (m *MockExceptionRepo) GetExceptionsByPattern(patternID uuid.UUID, startDate, endDate time.Time) ([]ScheduleException, error) {
+func (m *MockExceptionRepo) GetExceptionsByPattern(patternID uuid.UUID, startDate, endDate int64) ([]ScheduleException, error) {
 	args := m.Called(patternID, startDate, endDate)
 	return args.Get(0).([]ScheduleException), args.Error(1)
 }
@@ -43,7 +43,7 @@ type MockHolidayRepo struct {
 	mock.Mock
 }
 
-func (m *MockHolidayRepo) GetHolidaysByDateRange(startDate, endDate time.Time) ([]Holiday, error) {
+func (m *MockHolidayRepo) GetHolidaysByDateRange(startDate, endDate int64) ([]Holiday, error) {
 	args := m.Called(startDate, endDate)
 	return args.Get(0).([]Holiday), args.Error(1)
 }
@@ -55,10 +55,10 @@ func (m *MockScheduleRepo) Delete(id uuid.UUID) error                      { ret
 func (m *MockScheduleRepo) List(params *models.ScheduleQueryParams) ([]models.Schedule, int64, error) {
 	return nil, 0, nil
 }
-func (m *MockScheduleRepo) GetByDateRange(startDate, endDate time.Time) ([]models.Schedule, error) {
+func (m *MockScheduleRepo) GetByDateRange(tenantID uuid.UUID, startDate, endDate int64) ([]models.Schedule, error) {
 	return nil, nil
 }
-func (m *MockScheduleRepo) GetByTechnicianAndDateRange(techID uuid.UUID, startDate, endDate time.Time) ([]models.Schedule, error) {
+func (m *MockScheduleRepo) GetByTechnicianAndDateRange(tenantID uuid.UUID, techID uuid.UUID, startDate, endDate int64) ([]models.Schedule, error) {
 	return nil, nil
 }
 func (m *MockScheduleRepo) GetByJobID(jobID uuid.UUID) ([]models.Schedule, error) { return nil, nil }
@@ -111,10 +111,10 @@ func TestGenerateSchedules_Daily(t *testing.T) {
 		ID:              patternID,
 		Title:           "Daily Maintenance",
 		RecurrenceType:  models.RecurrenceDaily,
-		StartDate:       startDate,
+		StartDate:       startDate.Unix(),
 		Interval:        1,
-		TimeStart:       "09:00",
-		TimeEnd:         "10:00",
+		TimeStart:       32400, // 9*3600 = 09:00
+		TimeEnd:         36000, // 10*3600 = 10:00
 		JobTemplateID:   &jobID,
 		IsActive:        true,
 		CreatedBy:       uuid.New(),
@@ -127,8 +127,8 @@ func TestGenerateSchedules_Daily(t *testing.T) {
 
 	req := &GenerationRequest{
 		RecurringScheduleID: patternID,
-		StartDate:           startDate,
-		EndDate:             startDate.AddDate(0, 0, 7), // 7 days
+		StartDate:           startDate.Unix(),
+		EndDate:             startDate.AddDate(0, 0, 7).Unix(), // 7 days
 		SkipHolidays:        false,
 		SkipWeekends:        false,
 		MaxOccurrences:      10,
@@ -161,11 +161,11 @@ func TestGenerateSchedules_Weekly(t *testing.T) {
 		ID:              patternID,
 		Title:           "Weekly Team Meeting",
 		RecurrenceType:  models.RecurrenceWeekly,
-		StartDate:       startDate,
+		StartDate:       startDate.Unix(),
 		Interval:        1,
 		DaysOfWeek:      []int{1, 3, 5}, // Mon, Wed, Fri
-		TimeStart:       "14:00",
-		TimeEnd:         "15:00",
+		TimeStart:       50400,          // 14*3600 = 14:00
+		TimeEnd:         54000,          // 15*3600 = 15:00
 		JobTemplateID:   &jobID,
 		IsActive:        true,
 		CreatedBy:       uuid.New(),
@@ -178,8 +178,8 @@ func TestGenerateSchedules_Weekly(t *testing.T) {
 
 	req := &GenerationRequest{
 		RecurringScheduleID: patternID,
-		StartDate:           startDate,
-		EndDate:             startDate.AddDate(0, 0, 14), // 2 weeks
+		StartDate:           startDate.Unix(),
+		EndDate:             startDate.AddDate(0, 0, 14).Unix(), // 2 weeks
 		SkipHolidays:        false,
 		SkipWeekends:        false,
 		MaxOccurrences:      10,
@@ -213,11 +213,11 @@ func TestGenerateSchedules_Monthly(t *testing.T) {
 		ID:              patternID,
 		Title:           "Monthly Review",
 		RecurrenceType:  models.RecurrenceMonthly,
-		StartDate:       startDate,
+		StartDate:       startDate.Unix(),
 		Interval:        1,
 		DayOfMonth:      &dayOfMonth,
-		TimeStart:       "10:00",
-		TimeEnd:         "11:00",
+		TimeStart:       36000, // 10*3600 = 10:00
+		TimeEnd:         39600, // 11*3600 = 11:00
 		JobTemplateID:   &jobID,
 		IsActive:        true,
 		CreatedBy:       uuid.New(),
@@ -230,8 +230,8 @@ func TestGenerateSchedules_Monthly(t *testing.T) {
 
 	req := &GenerationRequest{
 		RecurringScheduleID: patternID,
-		StartDate:           startDate,
-		EndDate:             startDate.AddDate(0, 3, 0), // 3 months
+		StartDate:           startDate.Unix(),
+		EndDate:             startDate.AddDate(0, 3, 0).Unix(), // 3 months
 		SkipHolidays:        false,
 		SkipWeekends:        false,
 		MaxOccurrences:      10,
@@ -264,10 +264,10 @@ func TestGenerateSchedules_SkipWeekends(t *testing.T) {
 		ID:              patternID,
 		Title:           "Daily Task",
 		RecurrenceType:  models.RecurrenceDaily,
-		StartDate:       startDate,
+		StartDate:       startDate.Unix(),
 		Interval:        1,
-		TimeStart:       "09:00",
-		TimeEnd:         "10:00",
+		TimeStart:       32400, // 9*3600 = 09:00
+		TimeEnd:         36000, // 10*3600 = 10:00
 		JobTemplateID:   &jobID,
 		IsActive:        true,
 		CreatedBy:       uuid.New(),
@@ -280,8 +280,8 @@ func TestGenerateSchedules_SkipWeekends(t *testing.T) {
 
 	req := &GenerationRequest{
 		RecurringScheduleID: patternID,
-		StartDate:           startDate,
-		EndDate:             startDate.AddDate(0, 0, 7), // 1 week
+		StartDate:           startDate.Unix(),
+		EndDate:             startDate.AddDate(0, 0, 7).Unix(), // 1 week
 		SkipHolidays:        false,
 		SkipWeekends:        true,
 		MaxOccurrences:      10,
@@ -315,10 +315,10 @@ func TestGenerateSchedules_SkipHolidays(t *testing.T) {
 		ID:              patternID,
 		Title:           "Daily Task",
 		RecurrenceType:  models.RecurrenceDaily,
-		StartDate:       startDate,
+		StartDate:       startDate.Unix(),
 		Interval:        1,
-		TimeStart:       "09:00",
-		TimeEnd:         "10:00",
+		TimeStart:       32400, // 9*3600 = 09:00
+		TimeEnd:         36000, // 10*3600 = 10:00
 		JobTemplateID:   &jobID,
 		IsActive:        true,
 		CreatedBy:       uuid.New(),
@@ -343,8 +343,8 @@ func TestGenerateSchedules_SkipHolidays(t *testing.T) {
 
 	req := &GenerationRequest{
 		RecurringScheduleID: patternID,
-		StartDate:           startDate,
-		EndDate:             startDate.AddDate(0, 0, 3), // 3 days
+		StartDate:           startDate.Unix(),
+		EndDate:             startDate.AddDate(0, 0, 3).Unix(), // 3 days
 		SkipHolidays:        true,
 		SkipWeekends:        false,
 		MaxOccurrences:      10,
@@ -379,10 +379,10 @@ func TestGenerateSchedules_WithExceptions(t *testing.T) {
 		ID:              patternID,
 		Title:           "Daily Task",
 		RecurrenceType:  models.RecurrenceDaily,
-		StartDate:       startDate,
+		StartDate:       startDate.Unix(),
 		Interval:        1,
-		TimeStart:       "09:00",
-		TimeEnd:         "10:00",
+		TimeStart:       32400, // 9*3600 = 09:00
+		TimeEnd:         36000, // 10*3600 = 10:00
 		JobTemplateID:   &jobID,
 		IsActive:        true,
 		CreatedBy:       uuid.New(),
@@ -406,8 +406,8 @@ func TestGenerateSchedules_WithExceptions(t *testing.T) {
 
 	req := &GenerationRequest{
 		RecurringScheduleID: patternID,
-		StartDate:           startDate,
-		EndDate:             startDate.AddDate(0, 0, 4), // 4 days
+		StartDate:           startDate.Unix(),
+		EndDate:             startDate.AddDate(0, 0, 4).Unix(), // 4 days
 		SkipHolidays:        false,
 		SkipWeekends:        false,
 		MaxOccurrences:      10,
@@ -442,10 +442,10 @@ func TestGenerateSchedules_MaxOccurrences(t *testing.T) {
 		ID:              patternID,
 		Title:           "Daily Task",
 		RecurrenceType:  models.RecurrenceDaily,
-		StartDate:       startDate,
+		StartDate:       startDate.Unix(),
 		Interval:        1,
-		TimeStart:       "09:00",
-		TimeEnd:         "10:00",
+		TimeStart:       32400, // 9*3600 = 09:00
+		TimeEnd:         36000, // 10*3600 = 10:00
 		JobTemplateID:   &jobID,
 		IsActive:        true,
 		CreatedBy:       uuid.New(),
@@ -458,8 +458,8 @@ func TestGenerateSchedules_MaxOccurrences(t *testing.T) {
 
 	req := &GenerationRequest{
 		RecurringScheduleID: patternID,
-		StartDate:           startDate,
-		EndDate:             startDate.AddDate(0, 1, 0), // 1 month
+		StartDate:           startDate.Unix(),
+		EndDate:             startDate.AddDate(0, 1, 0).Unix(), // 1 month
 		SkipHolidays:        false,
 		SkipWeekends:        false,
 		MaxOccurrences:      5, // Limit to 5

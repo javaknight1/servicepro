@@ -21,12 +21,16 @@ const (
 	TenantHeader = "X-Tenant-ID"
 )
 
+// TenantRoleKey is the context key for the user's role within the current tenant
+const TenantRoleKey = "tenant_role"
+
 // TenantRepository interface for tenant data access
 type TenantRepository interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*models.Tenant, error)
 	GetBySlug(ctx context.Context, slug string) (*models.Tenant, error)
 	UserBelongsToTenant(ctx context.Context, userID, tenantID uuid.UUID) (bool, error)
 	GetUserTenants(ctx context.Context, userID uuid.UUID) ([]models.Tenant, error)
+	GetUserTenantMembership(ctx context.Context, userID, tenantID uuid.UUID) (*models.TenantUser, error)
 }
 
 // TenantMiddleware handles tenant context for multi-tenancy
@@ -129,24 +133,23 @@ func (tm *TenantMiddleware) RequireTenant() gin.HandlerFunc {
 			tenantID = tenants[0].ID
 		}
 
-		// Verify user has access to this tenant
-		belongsTo, err := tm.tenantRepo.UserBelongsToTenant(c.Request.Context(), userUUID, tenantID)
+		// Verify user has access to this tenant and get their role
+		membership, err := tm.tenantRepo.GetUserTenantMembership(c.Request.Context(), userUUID, tenantID)
 		if err != nil {
+			if membership == nil {
+				log.Printf("[SECURITY] User %s attempted to access tenant %s without membership",
+					userUUID, tenantID)
+				c.JSON(http.StatusForbidden, models.ErrorResponse{
+					Error:   "tenant_access_denied",
+					Message: "You do not have access to this organization",
+				})
+				c.Abort()
+				return
+			}
 			log.Printf("[ERROR] Failed to verify tenant membership: %v", err)
 			c.JSON(http.StatusInternalServerError, models.ErrorResponse{
 				Error:   "tenant_verification_failed",
 				Message: "Failed to verify tenant access",
-			})
-			c.Abort()
-			return
-		}
-
-		if !belongsTo {
-			log.Printf("[SECURITY] User %s attempted to access tenant %s without membership",
-				userUUID, tenantID)
-			c.JSON(http.StatusForbidden, models.ErrorResponse{
-				Error:   "tenant_access_denied",
-				Message: "You do not have access to this organization",
 			})
 			c.Abort()
 			return
@@ -176,6 +179,16 @@ func (tm *TenantMiddleware) RequireTenant() gin.HandlerFunc {
 		// Set tenant context
 		c.Set(TenantIDKey, tenantID)
 		c.Set(TenantKey, tenant)
+
+		// Set user's tenant role in context
+		if membership.Role.Name != "" {
+			log.Printf("[DEBUG] RequireTenant: setting tenant_role=%s for user=%s in tenant=%s",
+				membership.Role.Name, userUUID, tenantID)
+			c.Set(TenantRoleKey, membership.Role.Name)
+		} else {
+			log.Printf("[DEBUG] RequireTenant: membership.Role.Name is empty for user=%s in tenant=%s (role_id=%s)",
+				userUUID, tenantID, membership.RoleID)
+		}
 
 		c.Next()
 	}

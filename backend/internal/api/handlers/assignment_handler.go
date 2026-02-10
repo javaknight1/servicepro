@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -354,8 +355,8 @@ func (h *AssignmentHandler) CheckAvailability(c *gin.Context) {
 
 	var req struct {
 		TechnicianID uuid.UUID `json:"technician_id" binding:"required"`
-		StartTime    time.Time `json:"start_time" binding:"required"`
-		EndTime      time.Time `json:"end_time" binding:"required"`
+		StartTime    int64     `json:"start_time" binding:"required"`
+		EndTime      int64     `json:"end_time" binding:"required"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -452,8 +453,8 @@ func (h *AssignmentHandler) OptimizeAssignments(c *gin.Context) {
 	var req struct {
 		JobID          uuid.UUID                  `json:"job_id" binding:"required"`
 		RequiredSkills []services.TechnicianSkill `json:"required_skills"`
-		StartTime      time.Time                  `json:"start_time" binding:"required"`
-		EndTime        time.Time                  `json:"end_time" binding:"required"`
+		StartTime      int64                      `json:"start_time" binding:"required"`
+		EndTime        int64                      `json:"end_time" binding:"required"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -514,18 +515,18 @@ func (h *AssignmentHandler) GetTechnicianWorkload(c *gin.Context) {
 		return
 	}
 
-	// Parse date range (default to current month)
-	startDate := time.Now().AddDate(0, 0, -7) // Last 7 days
-	endDate := time.Now().AddDate(0, 0, 7)    // Next 7 days
+	// Parse date range (default to +/- 7 days)
+	startDate := time.Now().AddDate(0, 0, -7).Unix() // Last 7 days
+	endDate := time.Now().AddDate(0, 0, 7).Unix()    // Next 7 days
 
 	if startDateStr := c.Query("start_date"); startDateStr != "" {
-		if parsed, err := time.Parse(time.RFC3339, startDateStr); err == nil {
+		if parsed, err := strconv.ParseInt(startDateStr, 10, 64); err == nil {
 			startDate = parsed
 		}
 	}
 
 	if endDateStr := c.Query("end_date"); endDateStr != "" {
-		if parsed, err := time.Parse(time.RFC3339, endDateStr); err == nil {
+		if parsed, err := strconv.ParseInt(endDateStr, 10, 64); err == nil {
 			endDate = parsed
 		}
 	}

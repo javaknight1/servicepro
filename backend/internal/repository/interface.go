@@ -79,9 +79,10 @@ type JobRepositoryInterface interface {
 	GetByAssignedUser(userID uuid.UUID) ([]models.Job, error)
 
 	// Job-specific queries
-	GetScheduledJobs(start, end time.Time) ([]models.Job, error)
+	GetScheduledJobs(start, end int64) ([]models.Job, error)
 	GetOverdueJobs() ([]models.Job, error)
 	GetJobsRequiringFollowUp() ([]models.Job, error)
+	GetJobsByTechnicianAndDateRange(techID uuid.UUID, start, end int64) ([]models.Job, error)
 
 	// Assignment operations
 	AddAssignment(assignment *models.JobAssignment) error
@@ -156,8 +157,8 @@ type ScheduleRepositoryInterface interface {
 
 	// List and filter operations
 	List(params *models.ScheduleQueryParams) ([]models.Schedule, int64, error)
-	GetByDateRange(startDate, endDate time.Time) ([]models.Schedule, error)
-	GetByTechnicianAndDateRange(techID uuid.UUID, startDate, endDate time.Time) ([]models.Schedule, error)
+	GetByDateRange(tenantID uuid.UUID, startDate, endDate int64) ([]models.Schedule, error)
+	GetByTechnicianAndDateRange(tenantID uuid.UUID, techID uuid.UUID, startDate, endDate int64) ([]models.Schedule, error)
 	GetByJobID(jobID uuid.UUID) ([]models.Schedule, error)
 
 	// Conflict detection

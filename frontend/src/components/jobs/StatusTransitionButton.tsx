@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Button } from '@components/shared';
 import { jobService, JobStatus, Job } from '@services/jobService';
 import { getJobStatusLabel } from '@app-types';
+import { getErrorMessage } from '@/utils/error';
 import {
   Loader2,
   ArrowRight,
@@ -199,7 +200,7 @@ export function StatusTransitionButton({
         onStatusChange(updatedJob);
       } catch (err) {
         console.error('Failed to transition status:', err);
-        setError('Failed to cancel job');
+        setError(getErrorMessage(err, 'Failed to cancel job'));
       } finally {
         setIsTransitioning(null);
       }
@@ -225,7 +226,7 @@ export function StatusTransitionButton({
         onStatusChange(updatedJob);
       } catch (err) {
         console.error('Failed to transition status:', err);
-        setError('Failed to put job on hold');
+        setError(getErrorMessage(err, 'Failed to put job on hold'));
       } finally {
         setIsTransitioning(null);
       }
@@ -240,7 +241,7 @@ export function StatusTransitionButton({
       onStatusChange(updatedJob);
     } catch (err) {
       console.error('Failed to transition status:', err);
-      setError('Failed to update status');
+      setError(getErrorMessage(err, 'Failed to update status'));
     } finally {
       setIsTransitioning(null);
     }

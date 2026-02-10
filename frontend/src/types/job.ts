@@ -38,8 +38,8 @@ export interface JobAssignment {
   user_id: string;
   user_name: string;
   role: string;
-  assigned_at: string;
-  unassigned_at?: string;
+  assigned_at: number;
+  unassigned_at?: number;
   hours_worked: number;
   notes?: string;
 }
@@ -84,10 +84,10 @@ export interface Job {
   job_type: JobType;
   status: JobStatus;
   priority: JobPriority;
-  scheduled_start_at?: string;
-  scheduled_end_at?: string;
-  actual_start_at?: string;
-  actual_end_at?: string;
+  scheduled_start_at?: number;
+  scheduled_end_at?: number;
+  actual_start_at?: number;
+  actual_end_at?: number;
   estimated_duration?: number;
   actual_duration?: number;
   service_address?: ServiceAddress;
@@ -105,7 +105,7 @@ export interface Job {
   required_materials?: string;
   next_status?: JobStatus;
   requires_follow_up?: boolean;
-  follow_up_date?: string;
+  follow_up_date?: number;
   warnings?: string[];
   created_at: string;
   updated_at: string;
@@ -149,7 +149,7 @@ export interface JobStatusTransition {
   notes?: string;
   changed_by: string;
   changed_by_name: string;
-  transitioned_at: string;
+  transitioned_at: number;
 }
 
 export interface StatusHistoryResponse {

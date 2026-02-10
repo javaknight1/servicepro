@@ -1,7 +1,7 @@
 package repository
 
 import (
-	"time"
+	"github.com/javaknight1/servicepro/backend/internal/utils/epoch"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -32,6 +32,7 @@ func (r *JobRepository) GetByID(id uuid.UUID) (*models.Job, error) {
 	err := r.db.
 		Preload("Customer").
 		Preload("Assignments").
+		Preload("Assignments.User").
 		Preload("Materials").
 		Preload("Notes").
 		Where("id = ?", id).
@@ -49,6 +50,7 @@ func (r *JobRepository) GetByJobNumber(jobNumber string) (*models.Job, error) {
 	err := r.db.
 		Preload("Customer").
 		Preload("Assignments").
+		Preload("Assignments.User").
 		Preload("Materials").
 		Preload("Notes").
 		Where("job_number = ?", jobNumber).
@@ -141,6 +143,7 @@ func (r *JobRepository) List(filter *models.JobListFilter) ([]models.Job, int64,
 	err := query.
 		Preload("Customer").
 		Preload("Assignments").
+		Preload("Assignments.User").
 		Preload("Materials").
 		Find(&jobs).Error
 
@@ -163,6 +166,7 @@ func (r *JobRepository) GetByCustomer(customerID uuid.UUID, limit, offset int) (
 		Offset(offset).
 		Order("created_at DESC").
 		Preload("Assignments").
+		Preload("Assignments.User").
 		Preload("Materials").
 		Find(&jobs).Error
 
@@ -176,6 +180,7 @@ func (r *JobRepository) GetByStatus(status models.JobStatus) ([]models.Job, erro
 		Where("status = ?", status).
 		Preload("Customer").
 		Preload("Assignments").
+		Preload("Assignments.User").
 		Order("scheduled_start_at ASC").
 		Find(&jobs).Error
 
@@ -191,6 +196,7 @@ func (r *JobRepository) GetByAssignedUser(userID uuid.UUID) ([]models.Job, error
 		Where("job_assignments.deleted_at IS NULL").
 		Preload("Customer").
 		Preload("Assignments").
+		Preload("Assignments.User").
 		Preload("Materials").
 		Order("scheduled_start_at ASC").
 		Find(&jobs).Error
@@ -199,7 +205,7 @@ func (r *JobRepository) GetByAssignedUser(userID uuid.UUID) ([]models.Job, error
 }
 
 // GetScheduledJobs retrieves jobs scheduled within a date range
-func (r *JobRepository) GetScheduledJobs(start, end time.Time) ([]models.Job, error) {
+func (r *JobRepository) GetScheduledJobs(start, end int64) ([]models.Job, error) {
 	var jobs []models.Job
 	err := r.db.
 		Where("scheduled_start_at BETWEEN ? AND ?", start, end).
@@ -209,16 +215,33 @@ func (r *JobRepository) GetScheduledJobs(start, end time.Time) ([]models.Job, er
 		}).
 		Preload("Customer").
 		Preload("Assignments").
+		Preload("Assignments.User").
 		Order("scheduled_start_at ASC").
 		Find(&jobs).Error
 
 	return jobs, err
 }
 
+// GetJobsByTechnicianAndDateRange finds jobs assigned to a technician that overlap a time range
+func (r *JobRepository) GetJobsByTechnicianAndDateRange(techID uuid.UUID, start, end int64) ([]models.Job, error) {
+	var jobs []models.Job
+	err := r.db.
+		Joins("JOIN job_assignments ON job_assignments.job_id = jobs.id AND job_assignments.unassigned_at IS NULL").
+		Where("job_assignments.user_id = ?", techID).
+		Where("jobs.scheduled_start_at < ? AND jobs.scheduled_end_at > ?", end, start).
+		Where("jobs.status NOT IN ?", []models.JobStatus{
+			models.JobStatusCompleted,
+			models.JobStatusCancelled,
+		}).
+		Preload("Assignments").
+		Find(&jobs).Error
+	return jobs, err
+}
+
 // GetOverdueJobs retrieves jobs that are overdue
 func (r *JobRepository) GetOverdueJobs() ([]models.Job, error) {
 	var jobs []models.Job
-	now := time.Now()
+	now := epoch.NowEpoch()
 
 	err := r.db.
 		Where("scheduled_end_at < ?", now).
@@ -229,6 +252,7 @@ func (r *JobRepository) GetOverdueJobs() ([]models.Job, error) {
 		}).
 		Preload("Customer").
 		Preload("Assignments").
+		Preload("Assignments.User").
 		Order("scheduled_end_at ASC").
 		Find(&jobs).Error
 

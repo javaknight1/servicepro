@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { DashboardLayout } from '@components/layout';
 import { Button } from '@components/shared';
@@ -7,6 +7,7 @@ import {
   PendingAssignmentsSection,
   StatusTransitionButton,
 } from '@components/jobs';
+import { ConflictChecker } from '@components/scheduling/ConflictChecker';
 import {
   jobService,
   JobStatus,
@@ -18,6 +19,7 @@ import {
 } from '@services/jobService';
 import { customerService, Customer } from '@services/customerService';
 import { getErrorMessage } from '@/utils/error';
+import { datetimeLocalToEpoch, epochToDatetimeLocal } from '@/utils/epoch';
 import { ArrowLeft, Save, Trash2, Loader2 } from 'lucide-react';
 
 interface PendingAssignment extends CreateJobAssignment {
@@ -71,6 +73,66 @@ export function JobDetailPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hasConflicts, setHasConflicts] = useState(false);
+  const [isCheckingConflicts, setIsCheckingConflicts] = useState(false);
+
+  // Min/max for scheduling: no past dates, no more than 1 year ahead
+  const scheduleMinDatetime = useMemo(() => {
+    const now = new Date();
+    now.setSeconds(0, 0);
+    return now.toISOString().slice(0, 16);
+  }, []);
+
+  const scheduleMaxDatetime = useMemo(() => {
+    const oneYear = new Date();
+    oneYear.setFullYear(oneYear.getFullYear() + 1);
+    oneYear.setSeconds(0, 0);
+    return oneYear.toISOString().slice(0, 16);
+  }, []);
+
+  const startTime = useMemo(
+    () => datetimeLocalToEpoch(formData.scheduled_start_at),
+    [formData.scheduled_start_at]
+  );
+
+  const endTime = useMemo(() => {
+    if (!startTime || !formData.estimated_duration) return null;
+    const minutes = parseInt(formData.estimated_duration);
+    if (isNaN(minutes) || minutes <= 0) return null;
+    return startTime + minutes * 60;
+  }, [startTime, formData.estimated_duration]);
+
+  const assignedTechIds = useMemo(() => {
+    if (isNew) {
+      return pendingAssignments.map((a) => a.user_id);
+    }
+    return assignments.map((a) => a.user_id);
+  }, [isNew, pendingAssignments, assignments]);
+
+  const conflictJobId = id || 'new';
+
+  const canCheckConflicts =
+    startTime !== null && endTime !== null && assignedTechIds.length > 0;
+
+  const handleConflictDetected = useCallback(() => {
+    setHasConflicts(true);
+    setIsCheckingConflicts(false);
+  }, []);
+
+  const handleConflictResolved = useCallback(() => {
+    setHasConflicts(false);
+    setIsCheckingConflicts(false);
+  }, []);
+
+  // Track when conflict-relevant inputs change to set checking state
+  useEffect(() => {
+    if (canCheckConflicts) {
+      setIsCheckingConflicts(true);
+    } else {
+      setHasConflicts(false);
+      setIsCheckingConflicts(false);
+    }
+  }, [startTime, endTime, assignedTechIds, canCheckConflicts]);
 
   useEffect(() => {
     loadCustomers();
@@ -105,7 +167,7 @@ export function JobDetailPage() {
         status: job.status || JobStatus.NEW,
         priority: job.priority || JobPriority.NORMAL,
         scheduled_start_at: job.scheduled_start_at
-          ? job.scheduled_start_at.slice(0, 16)
+          ? epochToDatetimeLocal(job.scheduled_start_at)
           : '',
         estimated_duration: job.estimated_duration?.toString() || '',
         internal_notes: job.internal_notes || '',
@@ -122,9 +184,14 @@ export function JobDetailPage() {
     }
   };
 
-  const handleAssignmentChange = () => {
+  const handleAssignmentChange = async () => {
     if (id) {
-      loadJob(id);
+      try {
+        const job = await jobService.getJob(id);
+        setAssignments(job.assignments || []);
+      } catch (err) {
+        console.error('Failed to reload assignments:', err);
+      }
     }
   };
 
@@ -142,6 +209,31 @@ export function JobDetailPage() {
     setIsSaving(true);
     setError(null);
 
+    // Validate scheduling date range
+    if (formData.scheduled_start_at) {
+      const scheduledEpoch = datetimeLocalToEpoch(formData.scheduled_start_at);
+      if (scheduledEpoch !== null) {
+        const nowEpoch = Math.floor(Date.now() / 1000);
+        if (scheduledEpoch < nowEpoch) {
+          setError('Scheduled start date cannot be in the past.');
+          setIsSaving(false);
+          return;
+        }
+        const oneYearEpoch = Math.floor(
+          new Date(
+            new Date().setFullYear(new Date().getFullYear() + 1)
+          ).getTime() / 1000
+        );
+        if (scheduledEpoch > oneYearEpoch) {
+          setError(
+            'Scheduled start date cannot be more than 1 year in the future.'
+          );
+          setIsSaving(false);
+          return;
+        }
+      }
+    }
+
     try {
       if (isNew) {
         // Create new job with assignments
@@ -151,9 +243,8 @@ export function JobDetailPage() {
           description: formData.description || undefined,
           job_type: formData.job_type,
           priority: formData.priority,
-          scheduled_start_at: formData.scheduled_start_at
-            ? new Date(formData.scheduled_start_at).toISOString()
-            : undefined,
+          scheduled_start_at:
+            datetimeLocalToEpoch(formData.scheduled_start_at) ?? undefined,
           estimated_duration: formData.estimated_duration
             ? parseInt(formData.estimated_duration)
             : undefined,
@@ -177,9 +268,8 @@ export function JobDetailPage() {
           job_type: formData.job_type,
           status: formData.status,
           priority: formData.priority,
-          scheduled_start_at: formData.scheduled_start_at
-            ? new Date(formData.scheduled_start_at).toISOString()
-            : undefined,
+          scheduled_start_at:
+            datetimeLocalToEpoch(formData.scheduled_start_at) ?? undefined,
           estimated_duration: formData.estimated_duration
             ? parseInt(formData.estimated_duration)
             : undefined,
@@ -408,47 +498,88 @@ export function JobDetailPage() {
             </div>
           </div>
 
-          <div className="bg-white rounded-lg border border-neutral-200 p-6">
-            <h2 className="text-lg font-semibold text-neutral-900 mb-4">
-              Scheduling
-            </h2>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="bg-white rounded-lg border border-neutral-200 p-6">
+              <h2 className="text-lg font-semibold text-neutral-900 mb-4">
+                Scheduling
+              </h2>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label
-                  htmlFor="scheduled_start_at"
-                  className="block text-sm font-medium text-neutral-700 mb-1"
-                >
-                  Scheduled Start
-                </label>
-                <input
-                  type="datetime-local"
-                  id="scheduled_start_at"
-                  name="scheduled_start_at"
-                  value={formData.scheduled_start_at}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                />
+              <div className="space-y-4">
+                <div>
+                  <label
+                    htmlFor="scheduled_start_at"
+                    className="block text-sm font-medium text-neutral-700 mb-1"
+                  >
+                    Scheduled Start
+                  </label>
+                  <input
+                    type="datetime-local"
+                    id="scheduled_start_at"
+                    name="scheduled_start_at"
+                    value={formData.scheduled_start_at}
+                    onChange={handleChange}
+                    min={scheduleMinDatetime}
+                    max={scheduleMaxDatetime}
+                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="estimated_duration"
+                    className="block text-sm font-medium text-neutral-700 mb-1"
+                  >
+                    Est. Duration (minutes)
+                  </label>
+                  <input
+                    type="number"
+                    id="estimated_duration"
+                    name="estimated_duration"
+                    value={formData.estimated_duration}
+                    onChange={handleChange}
+                    min="0"
+                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  />
+                </div>
               </div>
 
-              <div>
-                <label
-                  htmlFor="estimated_duration"
-                  className="block text-sm font-medium text-neutral-700 mb-1"
-                >
-                  Est. Duration (minutes)
-                </label>
-                <input
-                  type="number"
-                  id="estimated_duration"
-                  name="estimated_duration"
-                  value={formData.estimated_duration}
-                  onChange={handleChange}
-                  min="0"
-                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                />
-              </div>
+              {canCheckConflicts && startTime && endTime ? (
+                <div className="mt-4">
+                  <ConflictChecker
+                    jobId={conflictJobId}
+                    startTime={startTime}
+                    endTime={endTime}
+                    assignedTechIds={assignedTechIds}
+                    onConflictDetected={handleConflictDetected}
+                    onConflictResolved={handleConflictResolved}
+                  />
+                </div>
+              ) : startTime && endTime && assignedTechIds.length === 0 ? (
+                <p className="mt-4 text-sm text-neutral-500">
+                  Assign members to check for scheduling conflicts.
+                </p>
+              ) : null}
             </div>
+
+            {isNew ? (
+              <PendingAssignmentsSection
+                assignments={pendingAssignments}
+                onAssignmentsChange={setPendingAssignments}
+                startTime={startTime}
+                endTime={endTime}
+                jobId={conflictJobId}
+              />
+            ) : (
+              id && (
+                <JobAssignmentsSection
+                  jobId={id}
+                  assignments={assignments}
+                  onAssignmentChange={handleAssignmentChange}
+                  startTime={startTime}
+                  endTime={endTime}
+                />
+              )
+            )}
           </div>
 
           <div className="bg-white rounded-lg border border-neutral-200 p-6">
@@ -525,21 +656,6 @@ export function JobDetailPage() {
             />
           </div>
 
-          {isNew ? (
-            <PendingAssignmentsSection
-              assignments={pendingAssignments}
-              onAssignmentsChange={setPendingAssignments}
-            />
-          ) : (
-            id && (
-              <JobAssignmentsSection
-                jobId={id}
-                assignments={assignments}
-                onAssignmentChange={handleAssignmentChange}
-              />
-            )
-          )}
-
           <div className="flex items-center justify-between pt-4">
             <div>
               {!isNew && (
@@ -570,7 +686,14 @@ export function JobDetailPage() {
               <Button
                 type="submit"
                 variant="primary"
-                disabled={isSaving}
+                disabled={isSaving || hasConflicts || isCheckingConflicts}
+                title={
+                  hasConflicts
+                    ? 'Resolve scheduling conflicts before saving'
+                    : isCheckingConflicts
+                      ? 'Checking for scheduling conflicts...'
+                      : undefined
+                }
                 className="flex items-center gap-2"
               >
                 {isSaving ? (

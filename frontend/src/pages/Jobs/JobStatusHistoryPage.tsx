@@ -9,6 +9,7 @@ import {
   StatusHistoryResponse,
 } from '@services/jobService';
 import { getJobStatusLabel } from '@app-types';
+import { formatEpochDateTimeUTC } from '@/utils/epoch';
 import {
   ArrowLeft,
   ArrowRight,
@@ -57,15 +58,8 @@ export function JobStatusHistoryPage() {
     setSortOrder((prev) => (prev === 'desc' ? 'asc' : 'desc'));
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+  const formatDate = (epoch: number) => {
+    return formatEpochDateTimeUTC(epoch);
   };
 
   if (isLoading) {

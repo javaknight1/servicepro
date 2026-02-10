@@ -44,7 +44,7 @@ type JobStatusTransition struct {
 	Notes          *string                `json:"notes,omitempty" gorm:"type:text"`
 	ChangedBy      uuid.UUID              `json:"changed_by" gorm:"type:uuid;not null"`
 	ChangedByUser  *User                  `json:"changed_by_user,omitempty" gorm:"foreignKey:ChangedBy;constraint:OnDelete:RESTRICT"`
-	TransitionedAt time.Time              `json:"transitioned_at" gorm:"not null;index"`
+	TransitionedAt int64                  `json:"transitioned_at" gorm:"type:bigint;not null;index"`
 	CreatedAt      time.Time              `json:"created_at"`
 }
 
@@ -380,7 +380,7 @@ type StatusChangeResponse struct {
 	Reason         StatusTransitionReason `json:"reason,omitempty"`
 	Notes          *string                `json:"notes,omitempty"`
 	ChangedBy      uuid.UUID              `json:"changed_by"`
-	ChangedAt      time.Time              `json:"changed_at"`
+	ChangedAt      int64                  `json:"changed_at"`
 }
 
 // StatusHistoryResponse represents status history for a job
@@ -400,7 +400,7 @@ type StatusTransitionResponse struct {
 	Notes          *string                `json:"notes,omitempty"`
 	ChangedBy      uuid.UUID              `json:"changed_by"`
 	ChangedByName  string                 `json:"changed_by_name"`
-	TransitionedAt time.Time              `json:"transitioned_at"`
+	TransitionedAt int64                  `json:"transitioned_at"`
 }
 
 // AllowedTransitionsResponse represents allowed transitions for a job

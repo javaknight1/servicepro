@@ -3,7 +3,10 @@ import { Button, Modal } from '@components/shared';
 import { CreateJobAssignment } from '@services/jobService';
 import { useTenantStore } from '@store/tenantStore';
 import { TenantMember } from '@/types/tenant';
-import { UserPlus, X, Loader2, Users } from 'lucide-react';
+import { getErrorMessage } from '@/utils/error';
+import api from '@services/api';
+import { ConflictCheckResponse } from '@components/scheduling/types';
+import { UserPlus, X, Loader2, Users, AlertTriangle } from 'lucide-react';
 
 interface PendingAssignment extends CreateJobAssignment {
   user_name: string;
@@ -12,6 +15,9 @@ interface PendingAssignment extends CreateJobAssignment {
 interface PendingAssignmentsSectionProps {
   assignments: PendingAssignment[];
   onAssignmentsChange: (assignments: PendingAssignment[]) => void;
+  startTime?: number | null;
+  endTime?: number | null;
+  jobId?: string;
 }
 
 const roleLabels: Record<string, string> = {
@@ -31,6 +37,9 @@ const ROLES = [
 export function PendingAssignmentsSection({
   assignments,
   onAssignmentsChange,
+  startTime,
+  endTime,
+  jobId,
 }: PendingAssignmentsSectionProps) {
   const { currentTenant, getMembers } = useTenantStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -40,6 +49,8 @@ export function PendingAssignmentsSection({
   const [selectedRole, setSelectedRole] = useState('technician');
   const [searchQuery, setSearchQuery] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [isCheckingConflicts, setIsCheckingConflicts] = useState(false);
+  const [conflictWarning, setConflictWarning] = useState<string | null>(null);
 
   const loadMembers = useCallback(async () => {
     if (!currentTenant) return;
@@ -50,7 +61,7 @@ export function PendingAssignmentsSection({
       setMembers(fetchedMembers);
     } catch (err) {
       console.error('Failed to load members:', err);
-      setError('Failed to load team members');
+      setError(getErrorMessage(err, 'Failed to load team members'));
     } finally {
       setIsLoadingMembers(false);
     }
@@ -68,8 +79,50 @@ export function PendingAssignmentsSection({
       setSelectedRole('technician');
       setSearchQuery('');
       setError(null);
+      setConflictWarning(null);
     }
   }, [isModalOpen]);
+
+  // Check conflicts when a member is selected
+  useEffect(() => {
+    if (!selectedMemberId || !startTime || !endTime) {
+      setConflictWarning(null);
+      return;
+    }
+
+    let cancelled = false;
+    const checkConflicts = async () => {
+      setIsCheckingConflicts(true);
+      setConflictWarning(null);
+      try {
+        const response = await api.post<ConflictCheckResponse>(
+          '/v1/conflicts/check',
+          {
+            job_id: jobId || 'new',
+            start_time: startTime,
+            end_time: endTime,
+            assigned_tech_ids: [selectedMemberId],
+          }
+        );
+        if (!cancelled && response.data.has_conflicts) {
+          const descriptions = response.data.conflicts
+            .map((c) => c.description)
+            .join('; ');
+          setConflictWarning(descriptions);
+        }
+      } catch {
+        // Don't block assignment if conflict check fails
+      } finally {
+        if (!cancelled) setIsCheckingConflicts(false);
+      }
+    };
+
+    const timer = setTimeout(checkConflicts, 300);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [selectedMemberId, startTime, endTime, jobId]);
 
   const handleRemove = (userId: string) => {
     onAssignmentsChange(assignments.filter((a) => a.user_id !== userId));
@@ -249,6 +302,29 @@ export function PendingAssignmentsSection({
             </select>
           </div>
 
+          {isCheckingConflicts && (
+            <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+              <span className="text-sm text-blue-700">
+                Checking availability...
+              </span>
+            </div>
+          )}
+
+          {conflictWarning && !isCheckingConflicts && (
+            <div className="flex items-start gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <AlertTriangle className="h-4 w-4 text-yellow-600 mt-0.5 shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-yellow-800">
+                  Scheduling conflict detected
+                </p>
+                <p className="text-sm text-yellow-700 mt-1">
+                  {conflictWarning}
+                </p>
+              </div>
+            </div>
+          )}
+
           <div className="flex justify-end gap-3 pt-4">
             <Button
               type="button"
@@ -261,10 +337,10 @@ export function PendingAssignmentsSection({
               type="button"
               variant="primary"
               onClick={handleAddMember}
-              disabled={!selectedMemberId}
+              disabled={!selectedMemberId || isCheckingConflicts}
               className="flex items-center gap-2"
             >
-              Add Member
+              {conflictWarning ? 'Add Anyway' : 'Add Member'}
             </Button>
           </div>
         </div>

@@ -2,7 +2,7 @@ package repository
 
 import (
 	"errors"
-	"time"
+	"github.com/javaknight1/servicepro/backend/internal/utils/epoch"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -105,10 +105,10 @@ func (r *ScheduleRepository) List(params *models.ScheduleQueryParams) ([]models.
 	return schedules, total, err
 }
 
-// GetByDateRange retrieves schedules within a date range
-func (r *ScheduleRepository) GetByDateRange(startDate, endDate time.Time) ([]models.Schedule, error) {
+// GetByDateRange retrieves schedules within a date range for a tenant
+func (r *ScheduleRepository) GetByDateRange(tenantID uuid.UUID, startDate, endDate int64) ([]models.Schedule, error) {
 	var schedules []models.Schedule
-	err := r.db.Where("start_time >= ? AND end_time <= ?", startDate, endDate).
+	err := r.db.Where("tenant_id = ? AND start_time >= ? AND end_time <= ?", tenantID, startDate, endDate).
 		Preload("Job").
 		Order("start_time ASC").
 		Find(&schedules).Error
@@ -116,11 +116,11 @@ func (r *ScheduleRepository) GetByDateRange(startDate, endDate time.Time) ([]mod
 	return schedules, err
 }
 
-// GetByTechnicianAndDateRange retrieves schedules for a technician within a date range
-func (r *ScheduleRepository) GetByTechnicianAndDateRange(techID uuid.UUID, startDate, endDate time.Time) ([]models.Schedule, error) {
+// GetByTechnicianAndDateRange retrieves schedules for a technician within a date range for a tenant
+func (r *ScheduleRepository) GetByTechnicianAndDateRange(tenantID uuid.UUID, techID uuid.UUID, startDate, endDate int64) ([]models.Schedule, error) {
 	var schedules []models.Schedule
-	err := r.db.Where("? = ANY(assigned_tech_ids) AND start_time >= ? AND end_time <= ?",
-		techID, startDate, endDate).
+	err := r.db.Where("tenant_id = ? AND ? = ANY(assigned_tech_ids) AND start_time < ? AND end_time > ?",
+		tenantID, techID, endDate, startDate).
 		Preload("Job").
 		Order("start_time ASC").
 		Find(&schedules).Error
@@ -147,7 +147,7 @@ func (r *ScheduleRepository) DetectConflicts(schedule *models.Schedule) ([]model
 		var overlapping []models.Schedule
 		err := r.db.Where("id != ? AND is_cancelled = ? AND deleted_at IS NULL", schedule.ID, false).
 			Where("assigned_tech_ids && ?", schedule.AssignedTechIDs).
-			Where("(start_time, end_time) OVERLAPS (?, ?)", schedule.StartTime, schedule.EndTime).
+			Where("start_time < ? AND end_time > ?", schedule.EndTime, schedule.StartTime).
 			Find(&overlapping).Error
 
 		if err != nil {
@@ -162,7 +162,7 @@ func (r *ScheduleRepository) DetectConflicts(schedule *models.Schedule) ([]model
 				ConflictType: models.ConflictTypeTechnicianOverlap,
 				Severity:     models.ConflictSeverityHigh,
 				Description:  "Technician assigned to overlapping schedules",
-				DetectedAt:   time.Now(),
+				DetectedAt:   epoch.NowEpoch(),
 			}
 			conflicts = append(conflicts, conflict)
 		}
@@ -185,12 +185,12 @@ func (r *ScheduleRepository) GetConflicts(scheduleID uuid.UUID) ([]models.Schedu
 
 // ResolveConflict marks a conflict as resolved
 func (r *ScheduleRepository) ResolveConflict(conflictID uuid.UUID, resolvedBy uuid.UUID, notes *string) error {
-	now := time.Now()
+	nowEpoch := epoch.NowEpoch()
 	return r.db.Model(&models.ScheduleConflict{}).
 		Where("id = ?", conflictID).
 		Updates(map[string]interface{}{
 			"is_resolved":      true,
-			"resolved_at":      &now,
+			"resolved_at":      &nowEpoch,
 			"resolved_by":      &resolvedBy,
 			"resolution_notes": notes,
 		}).Error

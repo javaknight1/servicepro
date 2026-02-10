@@ -5,12 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"time"
 
 	"github.com/google/uuid"
 
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/repository"
+	"github.com/javaknight1/servicepro/backend/internal/utils/epoch"
 )
 
 var (
@@ -38,15 +38,15 @@ type PatternRequest struct {
 	Title           string                `json:"title" binding:"required"`
 	Description     string                `json:"description"`
 	RecurrenceType  models.RecurrenceType `json:"recurrence_type" binding:"required"`
-	StartDate       time.Time             `json:"start_date" binding:"required"`
-	EndDate         *time.Time            `json:"end_date"`
+	StartDate       int64                 `json:"start_date" binding:"required"`
+	EndDate         *int64                `json:"end_date"`
 	Interval        int                   `json:"interval" binding:"min=1"`
 	DaysOfWeek      []int                 `json:"days_of_week"`
 	DayOfMonth      *int                  `json:"day_of_month"`
 	MonthOfYear     *int                  `json:"month_of_year"`
 	Occurrences     *int                  `json:"occurrences"`
-	TimeStart       string                `json:"time_start" binding:"required"`
-	TimeEnd         string                `json:"time_end" binding:"required"`
+	TimeStart       int                   `json:"time_start" binding:"required"` // seconds from midnight
+	TimeEnd         int                   `json:"time_end" binding:"required"`   // seconds from midnight
 	AssignedTechIDs []uuid.UUID           `json:"assigned_tech_ids"`
 	Location        string                `json:"location"`
 	JobTemplateID   *uuid.UUID            `json:"job_template_id"`
@@ -59,22 +59,20 @@ type PatternResponse struct {
 	Description     string                `json:"description"`
 	RecurrenceType  models.RecurrenceType `json:"recurrence_type"`
 	RecurrenceRule  string                `json:"recurrence_rule"`
-	StartDate       time.Time             `json:"start_date"`
-	EndDate         *time.Time            `json:"end_date"`
+	StartDate       int64                 `json:"start_date"`
+	EndDate         *int64                `json:"end_date"`
 	Interval        int                   `json:"interval"`
 	DaysOfWeek      []int                 `json:"days_of_week"`
 	DayOfMonth      *int                  `json:"day_of_month"`
 	MonthOfYear     *int                  `json:"month_of_year"`
 	Occurrences     *int                  `json:"occurrences"`
-	TimeStart       string                `json:"time_start"`
-	TimeEnd         string                `json:"time_end"`
+	TimeStart       int                   `json:"time_start"` // seconds from midnight
+	TimeEnd         int                   `json:"time_end"`   // seconds from midnight
 	Duration        int                   `json:"duration"`
 	AssignedTechIDs []uuid.UUID           `json:"assigned_tech_ids"`
 	Location        string                `json:"location"`
 	JobTemplateID   *uuid.UUID            `json:"job_template_id"`
 	IsActive        bool                  `json:"is_active"`
-	CreatedAt       time.Time             `json:"created_at"`
-	UpdatedAt       time.Time             `json:"updated_at"`
 }
 
 // CreatePattern creates a new recurring pattern
@@ -86,8 +84,8 @@ func (h *PatternHandler) CreatePattern(ctx context.Context, req *PatternRequest,
 		return nil, err
 	}
 
-	// Calculate duration
-	duration := h.calculateDuration(req.TimeStart, req.TimeEnd)
+	// Calculate duration in minutes from seconds-from-midnight
+	duration := (req.TimeEnd - req.TimeStart) / 60
 
 	// Generate RRULE
 	rrule := h.generateRRule(req)
@@ -150,8 +148,8 @@ func (h *PatternHandler) UpdatePattern(ctx context.Context, id uuid.UUID, req *P
 		return nil, err
 	}
 
-	// Calculate duration
-	duration := h.calculateDuration(req.TimeStart, req.TimeEnd)
+	// Calculate duration in minutes from seconds-from-midnight
+	duration := (req.TimeEnd - req.TimeStart) / 60
 
 	// Generate RRULE
 	rrule := h.generateRRule(req)
@@ -291,27 +289,28 @@ func (h *PatternHandler) validatePattern(req *PatternRequest) error {
 		}
 	}
 
-	// Validate time format
-	if _, err := time.Parse("15:04", req.TimeStart); err != nil {
-		return fmt.Errorf("invalid time start format (expected HH:MM): %w", err)
+	// Validate time values (seconds from midnight: 0 to 86399)
+	if req.TimeStart < 0 || req.TimeStart >= 86400 {
+		return fmt.Errorf("invalid time start (must be 0-86399 seconds from midnight)")
 	}
-	if _, err := time.Parse("15:04", req.TimeEnd); err != nil {
-		return fmt.Errorf("invalid time end format (expected HH:MM): %w", err)
+	if req.TimeEnd < 0 || req.TimeEnd >= 86400 {
+		return fmt.Errorf("invalid time end (must be 0-86399 seconds from midnight)")
+	}
+	if req.TimeEnd <= req.TimeStart {
+		return fmt.Errorf("time end must be after time start")
 	}
 
 	// Validate end date is after start date
-	if req.EndDate != nil && req.EndDate.Before(req.StartDate) {
+	if req.EndDate != nil && *req.EndDate < req.StartDate {
 		return fmt.Errorf("end date must be after start date")
 	}
 
 	return nil
 }
 
-// calculateDuration calculates duration in minutes
-func (h *PatternHandler) calculateDuration(timeStart, timeEnd string) int {
-	start, _ := time.Parse("15:04", timeStart)
-	end, _ := time.Parse("15:04", timeEnd)
-	return int(end.Sub(start).Minutes())
+// calculateDuration calculates duration in minutes from seconds-from-midnight
+func (h *PatternHandler) calculateDuration(timeStart, timeEnd int) int {
+	return (timeEnd - timeStart) / 60
 }
 
 // generateRRule generates an RFC 5545 RRULE string
@@ -344,7 +343,7 @@ func (h *PatternHandler) generateRRule(req *PatternRequest) string {
 	}
 
 	if req.EndDate != nil {
-		rrule += fmt.Sprintf(";UNTIL=%s", req.EndDate.Format("20060102T150405Z"))
+		rrule += fmt.Sprintf(";UNTIL=%s", epoch.EpochToTime(*req.EndDate).Format("20060102T150405Z"))
 	} else if req.Occurrences != nil {
 		rrule += fmt.Sprintf(";COUNT=%d", *req.Occurrences)
 	}
@@ -407,7 +406,5 @@ func (h *PatternHandler) toResponse(recurring *models.RecurringSchedule) *Patter
 		Location:        recurring.Location,
 		JobTemplateID:   recurring.JobTemplateID,
 		IsActive:        recurring.IsActive,
-		CreatedAt:       recurring.CreatedAt,
-		UpdatedAt:       recurring.UpdatedAt,
 	}
 }

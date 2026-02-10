@@ -78,6 +78,9 @@ func SetupHandlers(
 	// Payment terms handler
 	h.PaymentTerms = handlers.NewPaymentTermsHandler(svc.PaymentTerms)
 
+	// Conflict handler
+	h.Conflict = handlers.NewConflictHandler(svc.Conflict)
+
 	// Stripe handlers (optional - depends on Stripe configuration)
 	if svc.StripeClient != nil && svc.StripeWebhook != nil {
 		h.Stripe = handlers.NewStripeHandler(svc.StripeClient, svc.StripeWebhook)

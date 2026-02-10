@@ -5,7 +5,6 @@ import (
 	"log"
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -48,10 +47,16 @@ func (h *JobHandler) getUserContext(c *gin.Context) (uuid.UUID, models.UserRole,
 		return uuid.Nil, "", errors.New("invalid user ID")
 	}
 
-	// Note: The permission middleware doesn't set a role in context
-	// For role-based checks within handlers, we default to RoleUser
-	// More granular access control should be done via permission middleware
+	// Get user's tenant role from context (set by RequireTenant middleware)
 	userRole := models.RoleUser
+	if tenantRole, exists := c.Get("tenant_role"); exists {
+		if roleStr, ok := tenantRole.(string); ok {
+			userRole = models.UserRole(roleStr)
+		}
+		log.Printf("[DEBUG] getUserContext: tenant_role from context = %v, resolved userRole = %s", tenantRole, userRole)
+	} else {
+		log.Printf("[DEBUG] getUserContext: tenant_role NOT found in context, defaulting to %s", userRole)
+	}
 
 	return userID, userRole, nil
 }
@@ -487,20 +492,20 @@ func (h *JobHandler) GetScheduledJobs(c *gin.Context) {
 		return
 	}
 
-	start, err := time.Parse(time.RFC3339, startStr)
+	start, err := strconv.ParseInt(startStr, 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
-			Message: "Invalid start date format. Use RFC3339 format (e.g., 2024-01-22T10:00:00Z)",
+			Message: "Invalid start date format. Use epoch seconds",
 		})
 		return
 	}
 
-	end, err := time.Parse(time.RFC3339, endStr)
+	end, err := strconv.ParseInt(endStr, 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
-			Message: "Invalid end date format. Use RFC3339 format (e.g., 2024-01-22T18:00:00Z)",
+			Message: "Invalid end date format. Use epoch seconds",
 		})
 		return
 	}

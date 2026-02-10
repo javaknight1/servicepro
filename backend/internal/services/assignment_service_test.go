@@ -14,6 +14,8 @@ import (
 	"github.com/javaknight1/servicepro/backend/internal/models"
 )
 
+func int64Ptr(v int64) *int64 { return &v }
+
 // TestCreateAssignment_Success tests successful assignment creation
 func TestCreateAssignment_Success(t *testing.T) {
 	mockJobRepo := new(MockJobRepository)
@@ -26,16 +28,16 @@ func TestCreateAssignment_Success(t *testing.T) {
 	assignedBy := uuid.New()
 
 	now := time.Now()
-	startTime := now.Add(24 * time.Hour)
-	endTime := startTime.Add(2 * time.Hour)
+	startTime := now.Add(24 * time.Hour).Unix()
+	endTime := now.Add(26 * time.Hour).Unix()
 
 	job := &models.Job{
 		ID:               jobID,
 		JobNumber:        "JOB-001",
 		Title:            "Test Job",
 		Status:           models.JobStatusScheduled,
-		ScheduledStartAt: &startTime,
-		ScheduledEndAt:   &endTime,
+		ScheduledStartAt: int64Ptr(startTime),
+		ScheduledEndAt:   int64Ptr(endTime),
 	}
 
 	technician := &models.User{
@@ -171,14 +173,14 @@ func TestCreateAssignment_TechnicianNotAvailable(t *testing.T) {
 	technicianID := uuid.New()
 
 	now := time.Now()
-	startTime := now.Add(24 * time.Hour)
-	endTime := startTime.Add(2 * time.Hour)
+	startTime := now.Add(24 * time.Hour).Unix()
+	endTime := now.Add(26 * time.Hour).Unix()
 
 	job := &models.Job{
 		ID:               uuid.New(),
 		JobNumber:        "JOB-001",
-		ScheduledStartAt: &startTime,
-		ScheduledEndAt:   &endTime,
+		ScheduledStartAt: int64Ptr(startTime),
+		ScheduledEndAt:   int64Ptr(endTime),
 	}
 
 	technician := &models.User{
@@ -192,8 +194,8 @@ func TestCreateAssignment_TechnicianNotAvailable(t *testing.T) {
 		ID:               uuid.New(),
 		JobNumber:        "JOB-CONFLICT",
 		Status:           models.JobStatusScheduled,
-		ScheduledStartAt: &startTime,
-		ScheduledEndAt:   &endTime,
+		ScheduledStartAt: int64Ptr(startTime),
+		ScheduledEndAt:   int64Ptr(endTime),
 	}
 
 	req := &AssignmentRequest{
@@ -274,8 +276,8 @@ func TestCheckTechnicianAvailability_Available(t *testing.T) {
 
 	ctx := context.Background()
 	technicianID := uuid.New()
-	startTime := time.Now().Add(24 * time.Hour)
-	endTime := startTime.Add(2 * time.Hour)
+	startTime := time.Now().Add(24 * time.Hour).Unix()
+	endTime := time.Now().Add(26 * time.Hour).Unix()
 
 	mockJobRepo.On("GetByAssignedUser", technicianID).Return([]models.Job{}, nil)
 
@@ -297,16 +299,16 @@ func TestCheckTechnicianAvailability_NotAvailable(t *testing.T) {
 
 	ctx := context.Background()
 	technicianID := uuid.New()
-	startTime := time.Now().Add(24 * time.Hour)
-	endTime := startTime.Add(2 * time.Hour)
+	startTime := time.Now().Add(24 * time.Hour).Unix()
+	endTime := time.Now().Add(26 * time.Hour).Unix()
 
 	conflictJob := models.Job{
 		ID:               uuid.New(),
 		JobNumber:        "JOB-CONFLICT",
 		Title:            "Conflicting Job",
 		Status:           models.JobStatusScheduled,
-		ScheduledStartAt: &startTime,
-		ScheduledEndAt:   &endTime,
+		ScheduledStartAt: int64Ptr(startTime),
+		ScheduledEndAt:   int64Ptr(endTime),
 	}
 
 	mockJobRepo.On("GetByAssignedUser", technicianID).Return([]models.Job{conflictJob}, nil)
@@ -328,8 +330,8 @@ func TestCheckTechnicianAvailability_InvalidTimeSlot(t *testing.T) {
 
 	ctx := context.Background()
 	technicianID := uuid.New()
-	startTime := time.Now().Add(24 * time.Hour)
-	endTime := startTime.Add(-2 * time.Hour) // End before start!
+	startTime := time.Now().Add(24 * time.Hour).Unix()
+	endTime := time.Now().Add(22 * time.Hour).Unix() // End before start!
 
 	availability, err := service.CheckTechnicianAvailability(ctx, technicianID, startTime, endTime)
 
@@ -348,34 +350,28 @@ func TestDetectConflicts(t *testing.T) {
 	technicianID := uuid.New()
 
 	now := time.Now()
-	startTime := now.Add(24 * time.Hour)
-	endTime := startTime.Add(2 * time.Hour)
+	startTime := now.Add(24 * time.Hour).Unix()
+	endTime := now.Add(26 * time.Hour).Unix()
 
 	conflictJob1 := models.Job{
 		ID:               uuid.New(),
 		Status:           models.JobStatusScheduled,
-		ScheduledStartAt: &startTime,
-		ScheduledEndAt:   &endTime,
+		ScheduledStartAt: int64Ptr(startTime),
+		ScheduledEndAt:   int64Ptr(endTime),
 	}
 
 	completedJob := models.Job{
 		ID:               uuid.New(),
 		Status:           models.JobStatusCompleted, // Should not be a conflict
-		ScheduledStartAt: &startTime,
-		ScheduledEndAt:   &endTime,
+		ScheduledStartAt: int64Ptr(startTime),
+		ScheduledEndAt:   int64Ptr(endTime),
 	}
 
 	futureJob := models.Job{
-		ID:     uuid.New(),
-		Status: models.JobStatusScheduled,
-		ScheduledStartAt: func() *time.Time {
-			t := startTime.Add(10 * time.Hour)
-			return &t
-		}(),
-		ScheduledEndAt: func() *time.Time {
-			t := startTime.Add(12 * time.Hour)
-			return &t
-		}(),
+		ID:               uuid.New(),
+		Status:           models.JobStatusScheduled,
+		ScheduledStartAt: int64Ptr(now.Add(34 * time.Hour).Unix()),
+		ScheduledEndAt:   int64Ptr(now.Add(36 * time.Hour).Unix()),
 	}
 
 	mockJobRepo.On("GetByAssignedUser", technicianID).Return([]models.Job{
@@ -445,33 +441,25 @@ func TestGetTechnicianWorkload(t *testing.T) {
 
 	ctx := context.Background()
 	technicianID := uuid.New()
-	startDate := time.Now()
-	endDate := startDate.Add(7 * 24 * time.Hour)
+	now := time.Now()
+	startDate := now.Unix()
+	endDate := now.Add(7 * 24 * time.Hour).Unix()
 
 	jobs := []models.Job{
 		{
-			ID:     uuid.New(),
-			Status: models.JobStatusScheduled,
-			ScheduledStartAt: func() *time.Time {
-				t := startDate.Add(24 * time.Hour)
-				return &t
-			}(),
+			ID:               uuid.New(),
+			Status:           models.JobStatusScheduled,
+			ScheduledStartAt: int64Ptr(now.Add(24 * time.Hour).Unix()),
 		},
 		{
-			ID:     uuid.New(),
-			Status: models.JobStatusInProgress,
-			ScheduledStartAt: func() *time.Time {
-				t := startDate.Add(48 * time.Hour)
-				return &t
-			}(),
+			ID:               uuid.New(),
+			Status:           models.JobStatusInProgress,
+			ScheduledStartAt: int64Ptr(now.Add(48 * time.Hour).Unix()),
 		},
 		{
-			ID:     uuid.New(),
-			Status: models.JobStatusCompleted, // Should not count
-			ScheduledStartAt: func() *time.Time {
-				t := startDate.Add(72 * time.Hour)
-				return &t
-			}(),
+			ID:               uuid.New(),
+			Status:           models.JobStatusCompleted, // Should not count
+			ScheduledStartAt: int64Ptr(now.Add(72 * time.Hour).Unix()),
 		},
 	}
 

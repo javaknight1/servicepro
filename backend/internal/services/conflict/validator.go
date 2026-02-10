@@ -9,6 +9,7 @@ import (
 
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/repository"
+	"github.com/javaknight1/servicepro/backend/internal/utils/epoch"
 )
 
 // ConflictValidator validates scheduling rules and constraints
@@ -175,8 +176,8 @@ func (v *ConflictValidator) ValidateConflictResolution(ctx context.Context, conf
 }
 
 // validateTimeRange validates that end time is after start time
-func (v *ConflictValidator) validateTimeRange(startTime, endTime time.Time) *ValidationError {
-	if endTime.Before(startTime) || endTime.Equal(startTime) {
+func (v *ConflictValidator) validateTimeRange(startTime, endTime int64) *ValidationError {
+	if endTime <= startTime {
 		return &ValidationError{
 			Field:    "end_time",
 			Code:     "invalid_time_range",
@@ -188,12 +189,12 @@ func (v *ConflictValidator) validateTimeRange(startTime, endTime time.Time) *Val
 }
 
 // validateNotTooOld validates that schedule is not too far in the past
-func (v *ConflictValidator) validateNotTooOld(startTime time.Time) *ValidationError {
+func (v *ConflictValidator) validateNotTooOld(startTime int64) *ValidationError {
 	// Allow scheduling up to 7 days in the past
 	maxPastDays := 7
-	cutoff := time.Now().AddDate(0, 0, -maxPastDays)
+	cutoff := time.Now().AddDate(0, 0, -maxPastDays).Unix()
 
-	if startTime.Before(cutoff) {
+	if startTime < cutoff {
 		return &ValidationError{
 			Field:    "start_time",
 			Code:     "schedule_too_old",
@@ -205,12 +206,12 @@ func (v *ConflictValidator) validateNotTooOld(startTime time.Time) *ValidationEr
 }
 
 // validateNotTooFarFuture validates that schedule is not too far in the future
-func (v *ConflictValidator) validateNotTooFarFuture(startTime time.Time) *ValidationError {
+func (v *ConflictValidator) validateNotTooFarFuture(startTime int64) *ValidationError {
 	// Warn if scheduling more than 6 months in advance
 	maxFutureMonths := 6
-	cutoff := time.Now().AddDate(0, maxFutureMonths, 0)
+	cutoff := time.Now().AddDate(0, maxFutureMonths, 0).Unix()
 
-	if startTime.After(cutoff) {
+	if startTime > cutoff {
 		return &ValidationError{
 			Field:    "start_time",
 			Code:     "schedule_too_far_future",
@@ -222,27 +223,25 @@ func (v *ConflictValidator) validateNotTooFarFuture(startTime time.Time) *Valida
 }
 
 // validateDuration validates schedule duration constraints
-func (v *ConflictValidator) validateDuration(startTime, endTime time.Time) *ValidationError {
-	duration := endTime.Sub(startTime)
+func (v *ConflictValidator) validateDuration(startTime, endTime int64) *ValidationError {
+	durationSecs := endTime - startTime
 
-	// Minimum duration: 15 minutes
-	minDuration := 15 * time.Minute
-	if duration < minDuration {
+	// Minimum duration: 15 minutes (900 seconds)
+	if durationSecs < 900 {
 		return &ValidationError{
 			Field:    "duration",
 			Code:     "duration_too_short",
-			Message:  fmt.Sprintf("Schedule duration must be at least %d minutes", int(minDuration.Minutes())),
+			Message:  "Schedule duration must be at least 15 minutes",
 			Severity: "error",
 		}
 	}
 
-	// Maximum duration: 12 hours
-	maxDuration := 12 * time.Hour
-	if duration > maxDuration {
+	// Maximum duration: 12 hours (43200 seconds)
+	if durationSecs > 43200 {
 		return &ValidationError{
 			Field:    "duration",
 			Code:     "duration_too_long",
-			Message:  fmt.Sprintf("Schedule duration cannot exceed %d hours", int(maxDuration.Hours())),
+			Message:  "Schedule duration cannot exceed 12 hours",
 			Severity: "error",
 		}
 	}
@@ -298,12 +297,17 @@ func (v *ConflictValidator) validateNoDuplicateTechnicians(techIDs []uuid.UUID) 
 // validateConfirmedScheduleChange validates changes to confirmed schedules
 func (v *ConflictValidator) validateConfirmedScheduleChange(existing *models.Schedule, req *ConflictCheckRequest) *ValidationError {
 	// Check if time is being changed significantly
-	startTimeDiff := req.StartTime.Sub(existing.StartTime).Abs()
-	endTimeDiff := req.EndTime.Sub(existing.EndTime).Abs()
+	startTimeDiff := req.StartTime - existing.StartTime
+	if startTimeDiff < 0 {
+		startTimeDiff = -startTimeDiff
+	}
+	endTimeDiff := req.EndTime - existing.EndTime
+	if endTimeDiff < 0 {
+		endTimeDiff = -endTimeDiff
+	}
 
-	// Warn if moving by more than 24 hours
-	maxChange := 24 * time.Hour
-	if startTimeDiff > maxChange || endTimeDiff > maxChange {
+	// Warn if moving by more than 24 hours (86400 seconds)
+	if startTimeDiff > 86400 || endTimeDiff > 86400 {
 		return &ValidationError{
 			Code:     "confirmed_schedule_major_change",
 			Message:  "Moving a confirmed schedule by more than 24 hours may require customer notification",
@@ -315,9 +319,9 @@ func (v *ConflictValidator) validateConfirmedScheduleChange(existing *models.Sch
 }
 
 // ValidateTechnicianAvailability validates technician availability based on their schedule
-func (v *ConflictValidator) ValidateTechnicianAvailability(ctx context.Context, techID uuid.UUID, startTime, endTime time.Time) (bool, string) {
+func (v *ConflictValidator) ValidateTechnicianAvailability(ctx context.Context, tenantID uuid.UUID, techID uuid.UUID, startTime, endTime int64) (bool, string) {
 	// Get technician's schedules for the time range
-	schedules, err := v.scheduleRepo.GetByTechnicianAndDateRange(techID, startTime, endTime)
+	schedules, err := v.scheduleRepo.GetByTechnicianAndDateRange(tenantID, techID, startTime, endTime)
 	if err != nil {
 		return false, fmt.Sprintf("Failed to check availability: %v", err)
 	}
@@ -328,11 +332,11 @@ func (v *ConflictValidator) ValidateTechnicianAvailability(ctx context.Context, 
 			continue
 		}
 
-		if startTime.Before(schedule.EndTime) && endTime.After(schedule.StartTime) {
+		if startTime < schedule.EndTime && endTime > schedule.StartTime {
 			return false, fmt.Sprintf("Technician has a conflicting schedule: %s (%s to %s)",
 				schedule.Title,
-				schedule.StartTime.Format("3:04 PM"),
-				schedule.EndTime.Format("3:04 PM"))
+				epoch.EpochToTime(schedule.StartTime).Format("3:04 PM"),
+				epoch.EpochToTime(schedule.EndTime).Format("3:04 PM"))
 		}
 	}
 
@@ -341,7 +345,7 @@ func (v *ConflictValidator) ValidateTechnicianAvailability(ctx context.Context, 
 
 // ValidateResourceAvailability validates that required resources are available
 // This is a placeholder for future resource management
-func (v *ConflictValidator) ValidateResourceAvailability(ctx context.Context, resourceIDs []uuid.UUID, startTime, endTime time.Time) (bool, string) {
+func (v *ConflictValidator) ValidateResourceAvailability(ctx context.Context, resourceIDs []uuid.UUID, startTime, endTime int64) (bool, string) {
 	// Placeholder implementation
 	// In a real system, this would check equipment, vehicles, tools, etc.
 	return true, ""
@@ -364,12 +368,13 @@ func (v *ConflictValidator) ValidateBusinessRules(ctx context.Context, req *Conf
 		})
 	}
 
-	// Rule: Maximum 2 jobs per technician per day (example business rule)
+	// Rule: Maximum 5 jobs per technician per day
 	for _, techID := range req.AssignedTechIDs {
-		dayStart := time.Date(req.StartTime.Year(), req.StartTime.Month(), req.StartTime.Day(), 0, 0, 0, 0, req.StartTime.Location())
-		dayEnd := dayStart.Add(24 * time.Hour)
+		t := epoch.EpochToTime(req.StartTime)
+		dayStart := time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC).Unix()
+		dayEnd := dayStart + 86400
 
-		schedules, err := v.scheduleRepo.GetByTechnicianAndDateRange(techID, dayStart, dayEnd)
+		schedules, err := v.scheduleRepo.GetByTechnicianAndDateRange(req.TenantID, techID, dayStart, dayEnd)
 		if err == nil && len(schedules) >= 5 {
 			result.Warnings = append(result.Warnings, ValidationError{
 				Code:     "high_job_count",
@@ -384,8 +389,8 @@ func (v *ConflictValidator) ValidateBusinessRules(ctx context.Context, req *Conf
 
 // isHoliday checks if a date is a holiday
 // This is a simplified implementation - in production, this would check against a holiday calendar
-func (v *ConflictValidator) isHoliday(date time.Time) bool {
-	// Simplified: Just check for New Year's Day and Christmas
+func (v *ConflictValidator) isHoliday(dateEpoch int64) bool {
+	date := epoch.EpochToTime(dateEpoch)
 	month := date.Month()
 	day := date.Day()
 

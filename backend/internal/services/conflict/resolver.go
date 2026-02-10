@@ -9,6 +9,7 @@ import (
 
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/repository"
+	"github.com/javaknight1/servicepro/backend/internal/utils/epoch"
 )
 
 // ConflictResolver provides intelligent conflict resolution suggestions
@@ -43,10 +44,10 @@ type ResolutionStrategy struct {
 
 // TimeSlotSuggestion represents an alternative time slot
 type TimeSlotSuggestion struct {
-	StartTime      time.Time `json:"start_time"`
-	EndTime        time.Time `json:"end_time"`
-	AvailableSlots int       `json:"available_slots"`
-	Reason         string    `json:"reason"`
+	StartTime      int64  `json:"start_time"`
+	EndTime        int64  `json:"end_time"`
+	AvailableSlots int    `json:"available_slots"`
+	Reason         string `json:"reason"`
 }
 
 // TechnicianSuggestion represents an alternative technician
@@ -68,8 +69,8 @@ type SplitScheduleSuggestion struct {
 
 // ScheduleSegment represents a segment of a split schedule
 type ScheduleSegment struct {
-	StartTime       time.Time   `json:"start_time"`
-	EndTime         time.Time   `json:"end_time"`
+	StartTime       int64       `json:"start_time"`
+	EndTime         int64       `json:"end_time"`
 	AssignedTechIDs []uuid.UUID `json:"assigned_tech_ids"`
 	Notes           string      `json:"notes,omitempty"`
 }
@@ -178,26 +179,26 @@ func (r *ConflictResolver) ResolveConflicts(ctx context.Context, req *ConflictCh
 // findAlternativeTimeSlots finds available time slots for the schedule
 func (r *ConflictResolver) findAlternativeTimeSlots(ctx context.Context, req *ConflictCheckRequest) ([]TimeSlotSuggestion, error) {
 	suggestions := []TimeSlotSuggestion{}
-	duration := req.EndTime.Sub(req.StartTime)
+	durationSecs := req.EndTime - req.StartTime
 
 	// Search for slots in the next 7 days
-	searchEnd := req.StartTime.AddDate(0, 0, 7)
+	searchEnd := epoch.EpochToTime(req.StartTime).AddDate(0, 0, 7).Unix()
 
 	// Try to find slots on the same day first
-	sameDaySlots := r.findSlotsOnDay(ctx, req, req.StartTime, duration)
+	sameDaySlots := r.findSlotsOnDay(ctx, req, req.StartTime, durationSecs)
 	suggestions = append(suggestions, sameDaySlots...)
 
 	// Then try next business day
 	nextDay := r.nextBusinessDay(req.StartTime)
-	if nextDay.Before(searchEnd) {
-		nextDaySlots := r.findSlotsOnDay(ctx, req, nextDay, duration)
+	if nextDay < searchEnd {
+		nextDaySlots := r.findSlotsOnDay(ctx, req, nextDay, durationSecs)
 		suggestions = append(suggestions, nextDaySlots...)
 	}
 
 	// Try the following business day
 	dayAfterNext := r.nextBusinessDay(nextDay)
-	if dayAfterNext.Before(searchEnd) {
-		dayAfterNextSlots := r.findSlotsOnDay(ctx, req, dayAfterNext, duration)
+	if dayAfterNext < searchEnd {
+		dayAfterNextSlots := r.findSlotsOnDay(ctx, req, dayAfterNext, durationSecs)
 		suggestions = append(suggestions, dayAfterNextSlots...)
 	}
 
@@ -205,21 +206,22 @@ func (r *ConflictResolver) findAlternativeTimeSlots(ctx context.Context, req *Co
 }
 
 // findSlotsOnDay finds available slots on a specific day
-func (r *ConflictResolver) findSlotsOnDay(ctx context.Context, req *ConflictCheckRequest, day time.Time, duration time.Duration) []TimeSlotSuggestion {
+func (r *ConflictResolver) findSlotsOnDay(ctx context.Context, req *ConflictCheckRequest, dayEpoch int64, durationSecs int64) []TimeSlotSuggestion {
 	slots := []TimeSlotSuggestion{}
 
 	// Define business hours (8 AM - 6 PM)
-	dayStart := time.Date(day.Year(), day.Month(), day.Day(), 8, 0, 0, 0, day.Location())
-	dayEnd := time.Date(day.Year(), day.Month(), day.Day(), 18, 0, 0, 0, day.Location())
+	t := epoch.EpochToTime(dayEpoch)
+	dayStart := time.Date(t.Year(), t.Month(), t.Day(), 8, 0, 0, 0, time.UTC).Unix()
+	dayEnd := time.Date(t.Year(), t.Month(), t.Day(), 18, 0, 0, 0, time.UTC).Unix()
 
 	// Try slots every hour
-	for slotStart := dayStart; slotStart.Add(duration).Before(dayEnd) || slotStart.Add(duration).Equal(dayEnd); slotStart = slotStart.Add(1 * time.Hour) {
-		slotEnd := slotStart.Add(duration)
+	for slotStart := dayStart; slotStart+durationSecs <= dayEnd; slotStart += 3600 {
+		slotEnd := slotStart + durationSecs
 
 		// Check if all technicians are available
 		allAvailable := true
 		for _, techID := range req.AssignedTechIDs {
-			schedules, _ := r.scheduleRepo.GetByTechnicianAndDateRange(techID, slotStart, slotEnd)
+			schedules, _ := r.scheduleRepo.GetByTechnicianAndDateRange(req.TenantID, techID, slotStart, slotEnd)
 			for _, schedule := range schedules {
 				if !schedule.IsCancelled && r.hasOverlap(slotStart, slotEnd, schedule.StartTime, schedule.EndTime) {
 					allAvailable = false
@@ -233,8 +235,8 @@ func (r *ConflictResolver) findSlotsOnDay(ctx context.Context, req *ConflictChec
 
 		if allAvailable {
 			reason := "All technicians available"
-			if !day.Equal(req.StartTime) {
-				daysDiff := int(day.Sub(req.StartTime).Hours() / 24)
+			if dayEpoch != req.StartTime {
+				daysDiff := int(dayEpoch-req.StartTime) / 86400
 				reason = fmt.Sprintf("Available %d day(s) later", daysDiff)
 			}
 
@@ -254,14 +256,10 @@ func (r *ConflictResolver) findSlotsOnDay(ctx context.Context, req *ConflictChec
 func (r *ConflictResolver) findAlternativeTechnicians(ctx context.Context, req *ConflictCheckRequest) ([]TechnicianSuggestion, error) {
 	suggestions := []TechnicianSuggestion{}
 
-	// Get all users with technician role
-	// This is simplified - in production, you'd query for users with specific role
-	// For now, we'll just check all users and see who's available
-
 	// Get conflicting technicians
 	conflictingTechs := make(map[uuid.UUID]bool)
 	for _, techID := range req.AssignedTechIDs {
-		schedules, _ := r.scheduleRepo.GetByTechnicianAndDateRange(techID, req.StartTime, req.EndTime)
+		schedules, _ := r.scheduleRepo.GetByTechnicianAndDateRange(req.TenantID, techID, req.StartTime, req.EndTime)
 		for _, schedule := range schedules {
 			if !schedule.IsCancelled && r.hasOverlap(req.StartTime, req.EndTime, schedule.StartTime, schedule.EndTime) {
 				conflictingTechs[techID] = true
@@ -269,12 +267,10 @@ func (r *ConflictResolver) findAlternativeTechnicians(ctx context.Context, req *
 		}
 	}
 
-	// For each conflicting tech, try to find alternatives
-	// This is a placeholder - in production, you'd query users with appropriate roles/skills
-	// For now, we'll return a placeholder suggestion
+	// Placeholder suggestion for alternative technicians
 	if len(conflictingTechs) > 0 {
 		suggestions = append(suggestions, TechnicianSuggestion{
-			TechnicianID:    uuid.New(), // Placeholder
+			TechnicianID:    uuid.New(),
 			Name:            "Available Technician",
 			Email:           "tech@example.com",
 			Availability:    "Available during requested time",
@@ -287,15 +283,15 @@ func (r *ConflictResolver) findAlternativeTechnicians(ctx context.Context, req *
 
 // suggestScheduleSplit suggests splitting a schedule into multiple segments
 func (r *ConflictResolver) suggestScheduleSplit(ctx context.Context, req *ConflictCheckRequest) (*SplitScheduleSuggestion, error) {
-	duration := req.EndTime.Sub(req.StartTime)
+	durationSecs := req.EndTime - req.StartTime
 
-	// Only suggest split if duration is at least 2 hours
-	if duration < 2*time.Hour {
+	// Only suggest split if duration is at least 2 hours (7200 seconds)
+	if durationSecs < 7200 {
 		return nil, nil
 	}
 
 	// Suggest splitting into 2 segments
-	splitPoint := req.StartTime.Add(duration / 2)
+	splitPoint := req.StartTime + durationSecs/2
 
 	segments := []ScheduleSegment{
 		{
@@ -352,17 +348,16 @@ func (r *ConflictResolver) suggestDelayConflicts(ctx context.Context, req *Confl
 
 // Helper functions
 
-func (r *ConflictResolver) hasOverlap(start1, end1, start2, end2 time.Time) bool {
-	return start1.Before(end2) && end1.After(start2)
+func (r *ConflictResolver) hasOverlap(start1, end1, start2, end2 int64) bool {
+	return start1 < end2 && end1 > start2
 }
 
-func (r *ConflictResolver) isLongDuration(start, end time.Time) bool {
-	duration := end.Sub(start)
-	return duration >= 3*time.Hour
+func (r *ConflictResolver) isLongDuration(start, end int64) bool {
+	return (end - start) >= 10800 // 3 hours in seconds
 }
 
-func (r *ConflictResolver) nextBusinessDay(date time.Time) time.Time {
-	next := date.AddDate(0, 0, 1)
+func (r *ConflictResolver) nextBusinessDay(dateEpoch int64) int64 {
+	next := epoch.EpochToTime(dateEpoch).AddDate(0, 0, 1)
 
 	// Skip weekends
 	for next.Weekday() == time.Saturday || next.Weekday() == time.Sunday {
@@ -370,7 +365,7 @@ func (r *ConflictResolver) nextBusinessDay(date time.Time) time.Time {
 	}
 
 	// Set to start of business day (8 AM)
-	return time.Date(next.Year(), next.Month(), next.Day(), 8, 0, 0, 0, next.Location())
+	return time.Date(next.Year(), next.Month(), next.Day(), 8, 0, 0, 0, time.UTC).Unix()
 }
 
 // ApplyResolutionStrategy applies an automatic resolution strategy

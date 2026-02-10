@@ -2,7 +2,7 @@
 
 This document tracks technical improvements that should be implemented but are deferred for future development cycles.
 
-**Last Updated: 2026-02-06** (T016 frontend bundle optimization complete — 720KB → 322KB gzipped, -55%)
+**Last Updated: 2026-02-07** (T100 added — business hours & timezone in org settings; T099 updated to depend on T100)
 
 ---
 
@@ -30,7 +30,7 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 | ~~T017~~ | ~~P2~~   | ~~Perf~~       | ~~High~~   | ~~--~~    | ~~Query performance monitoring~~ ✓                       |
 | ~~T018~~ | ~~P2~~   | ~~Cleanup~~    | ~~High~~   | ~~--~~    | ~~Dead code elimination~~ ✓                              |
 | ~~T019~~ | ~~P0~~   | ~~Scheduling~~ | ~~High~~   | ~~--~~    | ~~Integrate calendar view for job scheduling~~ ✓         |
-| T020     | P0       | Scheduling     | High       | Before    | Build conflict detection API endpoint                    |
+| ~~T020~~ | ~~P0~~   | ~~Scheduling~~ | ~~High~~   | ~~--~~    | ~~Build conflict detection API endpoint~~ ✓              |
 | ~~T021~~ | ~~P2~~   | ~~Refactor~~   | ~~High~~   | ~~--~~    | ~~Extract duplicate file download utility~~ ✓            |
 | ~~T022~~ | ~~P2~~   | ~~Refactor~~   | ~~High~~   | ~~--~~    | ~~Extract duplicate URLSearchParams builder~~ ✓          |
 | ~~T023~~ | ~~P2~~   | ~~Refactor~~   | ~~High~~   | ~~--~~    | ~~Consolidate cache hooks (useLocalCache/useSession)~~ ✓ |
@@ -109,6 +109,8 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 | T096     | P3       | Integration    | High       | After     | Build event log table                                    |
 | T097     | P3       | Integration    | High       | After     | Add webhook retry logic                                  |
 | T098     | P3       | Integration    | High       | After     | Document public API (OpenAPI/Swagger)                    |
+| T099     | P1       | Scheduling     | High       | Before    | Add tenant timezone support for conflict detection       |
+| T100     | P1       | Settings       | High       | Before    | Add business hours & timezone to org settings            |
 
 ---
 
@@ -165,10 +167,12 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 
 ### Sprint 6 - Scheduling & Conflict Detection
 
-- [ ] **T020** - Build conflict detection API endpoint
+- [x] **T020** - Build conflict detection API endpoint ✓
 - [ ] **T027** - Add drag-and-drop rescheduling to job calendar (depends on T020)
 - [ ] **T038** - Add technician availability management UI
 - [ ] **T056** - Add workload capacity warnings
+- [ ] **T099** - Add tenant timezone support for conflict detection
+- [ ] **T100** - Add business hours & timezone to org settings (T099 depends on this)
 - [ ] **T057** - Add double-booking override with reason
 - [ ] **T059** - Add technician skill tags
 
@@ -306,6 +310,7 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 - [x] T016: Frontend bundle optimization - Reduced gzipped bundle from 720KB → 322KB (-55%). Lazy-loaded @react-pdf/renderer via dynamic import, fixed chunk splitting (exact boundary matching in manualChunks), created dedicated vendor-calendar/vendor-pdf/vendor-table chunks, fixed analyze-bundle.cjs ESM issue.
 - [x] T017: Query performance monitoring - Custom GORM logger with slow query detection (>=100ms WARN, >=1s ERROR). Prometheus metrics: `db_query_duration_seconds`, `db_queries_total`, `db_query_errors_total` with operation/table labels. Connection pool gauges (open/idle/in-use/max/wait). Configurable via `DB_SLOW_QUERY_THRESHOLD`, `DB_QUERY_ALERT_THRESHOLD`, `DB_LOG_ALL_QUERIES`.
 - [x] T012: Bundle size monitoring in CI - Markdown reports in CI step summaries, pre-push hook validation, release script gate. Thresholds: 500KB warn, 750KB fail (total JS gzipped). Per-chunk budgets for vendor splits. Chunk breakdown visible in all reports.
+- [x] T020: Build conflict detection API endpoint - `POST /v1/conflicts/check` wires existing `ConflictDetector` service to API. Handler extracts tenant from auth context, passes to detector. Fixed tenant scoping gap in `GetByTechnicianAndDateRange()` and `GetByDateRange()`. Detects technician overlap, business hours violations, workload excess. Returns resolution suggestions.
 
 ---
 
@@ -349,23 +354,16 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 
 ### Scheduling - Critical
 
-- [ ] **T020: Build Conflict Detection API Endpoint**
-  - **What**: Implement `POST /v1/conflicts/check` endpoint for scheduling conflict detection
-  - **Why**: Calendar view is useless without conflict warnings - prevents double-booking disasters
-  - **Confidence**: High - clear requirements, frontend components already exist
-  - **Context**: When dispatcher schedules a job, system should warn if tech is already booked, too far away, or overloaded
-  - **Backend Requirements**:
-    - Create `internal/services/conflict_service.go`
-    - Create `internal/api/handlers/conflict_handler.go`
-    - Wire endpoint in `routes.go`
-  - **Conflict Types to Detect**:
-    - Technician already booked (time overlap)
-    - Outside business hours
-    - Workload exceeds daily limit
-  - **Acceptance Criteria**:
-    - Endpoint returns conflicts in <100ms
-    - All conflict types detected
-    - Suggestions provided for resolution
+- [x] **T020: Build Conflict Detection API Endpoint** ✓ COMPLETE
+  - Created `POST /v1/conflicts/check` endpoint wiring existing conflict detector service to the API
+  - Created `conflict_handler.go` with Swagger annotations, `conflicts_routes.go` with auth + tenant + permission middleware
+  - Wired handler, service, and schedule repository into routeconfigs, repositories, services, handlers, and setup
+  - Fixed multi-tenant safety: `GetByTechnicianAndDateRange()` and `GetByDateRange()` now filter by `tenant_id`
+  - Added `TenantID` field to `ConflictCheckRequest` (set from auth context, not from JSON body)
+  - Updated all callers (detector, resolver, validator) and test mocks for new tenant-scoped signatures
+  - All conflict types detected: technician overlap, business hours, workload excess
+  - Resolution suggestions generated for each conflict type
+  - Regenerated Swagger docs and frontend TypeScript types
 
 ### Quoting - Critical
 
@@ -815,6 +813,41 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
     - Affected parties notified automatically
     - Clear message about rescheduling
     - Option to call instead of auto-message
+
+- [ ] **T099: Add Tenant Timezone Support for Conflict Detection**
+  - **What**: Use tenant timezone and business hours from org settings in conflict detection
+  - **Why**: Business-hours validation currently compares UTC times against hardcoded 8AM–6PM, producing false conflicts (e.g. 1:24 PM local flagged as outside hours)
+  - **Confidence**: High - well-understood problem, standard timezone handling
+  - **Context**: `detector.go` business-hours check is currently disabled with a TODO. Frontend sends `datetime-local` values which are in the user's local time. Backend needs tenant timezone to convert correctly before comparing. Depends on T100 for the stored settings.
+  - **Implementation**:
+    - Read tenant timezone and business hours from DB (set via T100)
+    - Pass tenant timezone through conflict check flow
+    - Convert schedule times to tenant-local time before business-hours comparison
+    - Use configurable business hours instead of hardcoded 8–18
+    - Re-enable `checkBusinessHours` in `detector.go`
+  - **Acceptance Criteria**:
+    - Business-hours conflicts use tenant timezone, not UTC
+    - Business-hours window uses tenant-configured hours, not hardcoded
+    - No false positives for schedules within local business hours
+    - Default to UTC / 8AM–6PM if no settings configured
+
+- [ ] **T100: Add Business Hours & Timezone to Org Settings**
+  - **What**: Let org admins configure their timezone and business hours from the org settings page
+  - **Why**: Business hours are hardcoded (8AM–6PM Mon–Fri) and timezone is not stored, so conflict detection can't accurately flag after-hours or weekend scheduling
+  - **Confidence**: High - standard settings CRUD with well-known IANA timezone list
+  - **Context**: Org settings page already exists. Need to add timezone picker (IANA, e.g. `America/New_York`) and business-hours editor (start/end hour per day, plus which days are work days). T099 depends on this to re-enable business-hours conflict checks.
+  - **Implementation**:
+    - Add `timezone`, `business_hours_start`, `business_hours_end`, `business_days` columns to `tenants` table
+    - Add backend API endpoints to get/update org settings (or extend existing)
+    - Add timezone dropdown to org settings UI (searchable IANA timezone list)
+    - Add business hours editor (start time, end time, work days checkboxes)
+    - Default: UTC, 8:00 AM – 6:00 PM, Monday–Friday
+  - **Acceptance Criteria**:
+    - Admin can set timezone from a searchable dropdown
+    - Admin can set business start/end hours
+    - Admin can toggle which days are business days
+    - Settings persist and are readable by conflict detection (T099)
+    - Sensible defaults when no settings configured
 
 ### Quoting - High Priority
 

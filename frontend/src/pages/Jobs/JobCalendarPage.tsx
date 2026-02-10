@@ -18,6 +18,7 @@ import {
   mapToCalendarStatus,
 } from '@components/calendar/types';
 import { jobService, Job } from '@services/jobService';
+import { epochToDate } from '@/utils/epoch';
 import { CalendarDays, List, AlertCircle } from 'lucide-react';
 import { Button } from '@components/shared';
 
@@ -30,10 +31,10 @@ function jobToCalendarEvent(job: Job): JobEvent | null {
     return null;
   }
 
-  const start = new Date(job.scheduled_start_at);
+  const start = epochToDate(job.scheduled_start_at);
   // Default to 1 hour if no end time
   const end = job.scheduled_end_at
-    ? new Date(job.scheduled_end_at)
+    ? epochToDate(job.scheduled_end_at)
     : new Date(start.getTime() + 60 * 60 * 1000);
 
   return {

@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/javaknight1/servicepro/backend/internal/models"
+	"github.com/javaknight1/servicepro/backend/internal/utils/epoch"
 )
 
 var (
@@ -49,6 +50,9 @@ var (
 
 	// ErrInvalidServiceAddress indicates invalid service address
 	ErrInvalidServiceAddress = errors.New("invalid service address")
+
+	// ErrScheduleTooFarInFuture indicates scheduling too far in the future
+	ErrScheduleTooFarInFuture = errors.New("scheduled start date cannot be more than 1 year in the future")
 )
 
 // JobValidator handles validation logic for jobs
@@ -119,7 +123,7 @@ func (v *JobValidator) ValidateUpdateRequest(req *models.UpdateJobRequest, curre
 	}
 
 	// Validate schedule if both dates are provided
-	var schedStart, schedEnd *time.Time
+	var schedStart, schedEnd *int64
 	if req.ScheduledStartAt != nil {
 		schedStart = req.ScheduledStartAt
 	} else if currentJob.ScheduledStartAt != nil {
@@ -211,22 +215,30 @@ func (v *JobValidator) ValidateStatus(status models.JobStatus) error {
 	return nil
 }
 
-// ValidateSchedule validates scheduling dates
-func (v *JobValidator) ValidateSchedule(startAt, endAt *time.Time) error {
+// ValidateSchedule validates scheduling dates (epoch seconds)
+func (v *JobValidator) ValidateSchedule(startAt, endAt *int64) error {
 	if startAt == nil && endAt == nil {
 		return nil // Both nil is valid
 	}
 
-	if startAt != nil && endAt != nil {
-		if endAt.Before(*startAt) {
-			return ErrInvalidSchedule
+	now := time.Now().Unix()
+
+	if startAt != nil {
+		if *startAt < now {
+			return ErrScheduleInPast
+		}
+
+		oneYearFromNow := time.Now().AddDate(1, 0, 0).Unix()
+		if *startAt > oneYearFromNow {
+			return ErrScheduleTooFarInFuture
 		}
 	}
 
-	// Don't enforce past date check - allow editing historical jobs
-	// if startAt != nil && startAt.Before(time.Now()) {
-	// 	return ErrScheduleInPast
-	// }
+	if startAt != nil && endAt != nil {
+		if *endAt <= *startAt {
+			return ErrInvalidSchedule
+		}
+	}
 
 	return nil
 }
@@ -435,7 +447,7 @@ func (v *JobValidator) ValidateBusinessRules(job *models.Job) []string {
 
 	// Warn if scheduled dates are far in the future
 	if job.ScheduledStartAt != nil {
-		daysUntil := time.Until(*job.ScheduledStartAt).Hours() / 24
+		daysUntil := time.Until(epoch.EpochToTime(*job.ScheduledStartAt)).Hours() / 24
 		if daysUntil > 90 {
 			warnings = append(warnings, fmt.Sprintf("Job scheduled %.0f days in the future", daysUntil))
 		}

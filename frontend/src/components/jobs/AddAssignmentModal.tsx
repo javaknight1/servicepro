@@ -3,7 +3,10 @@ import { Modal, Button } from '@components/shared';
 import { JobAssignment, jobService } from '@services/jobService';
 import { useTenantStore } from '@store/tenantStore';
 import { TenantMember } from '@/types/tenant';
-import { Loader2 } from 'lucide-react';
+import { getErrorMessage } from '@/utils/error';
+import api from '@services/api';
+import { ConflictCheckResponse } from '@components/scheduling/types';
+import { Loader2, AlertTriangle } from 'lucide-react';
 
 interface AddAssignmentModalProps {
   isOpen: boolean;
@@ -11,6 +14,8 @@ interface AddAssignmentModalProps {
   jobId: string;
   existingAssignments: JobAssignment[];
   onAssignmentAdded: () => void;
+  startTime?: number | null;
+  endTime?: number | null;
 }
 
 const ROLES = [
@@ -26,6 +31,8 @@ export function AddAssignmentModal({
   jobId,
   existingAssignments,
   onAssignmentAdded,
+  startTime,
+  endTime,
 }: AddAssignmentModalProps) {
   const { currentTenant, getMembers } = useTenantStore();
   const [members, setMembers] = useState<TenantMember[]>([]);
@@ -35,6 +42,8 @@ export function AddAssignmentModal({
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isCheckingConflicts, setIsCheckingConflicts] = useState(false);
+  const [conflictWarning, setConflictWarning] = useState<string | null>(null);
 
   const loadMembers = useCallback(async () => {
     if (!currentTenant) return;
@@ -45,7 +54,7 @@ export function AddAssignmentModal({
       setMembers(fetchedMembers);
     } catch (err) {
       console.error('Failed to load members:', err);
-      setError('Failed to load team members');
+      setError(getErrorMessage(err, 'Failed to load team members'));
     } finally {
       setIsLoadingMembers(false);
     }
@@ -63,8 +72,50 @@ export function AddAssignmentModal({
       setSelectedRole('technician');
       setSearchQuery('');
       setError(null);
+      setConflictWarning(null);
     }
   }, [isOpen]);
+
+  // Check conflicts when a member is selected
+  useEffect(() => {
+    if (!selectedMemberId || !startTime || !endTime) {
+      setConflictWarning(null);
+      return;
+    }
+
+    let cancelled = false;
+    const checkConflicts = async () => {
+      setIsCheckingConflicts(true);
+      setConflictWarning(null);
+      try {
+        const response = await api.post<ConflictCheckResponse>(
+          '/v1/conflicts/check',
+          {
+            job_id: jobId,
+            start_time: startTime,
+            end_time: endTime,
+            assigned_tech_ids: [selectedMemberId],
+          }
+        );
+        if (!cancelled && response.data.has_conflicts) {
+          const descriptions = response.data.conflicts
+            .map((c) => c.description)
+            .join('; ');
+          setConflictWarning(descriptions);
+        }
+      } catch {
+        // Don't block assignment if conflict check fails
+      } finally {
+        if (!cancelled) setIsCheckingConflicts(false);
+      }
+    };
+
+    const timer = setTimeout(checkConflicts, 300);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [selectedMemberId, startTime, endTime, jobId]);
 
   const assignedUserIds = new Set(existingAssignments.map((a) => a.user_id));
 
@@ -93,7 +144,7 @@ export function AddAssignmentModal({
       onAssignmentAdded();
     } catch (err) {
       console.error('Failed to assign member:', err);
-      setError('Failed to assign member to job');
+      setError(getErrorMessage(err, 'Failed to assign member to job'));
     } finally {
       setIsSaving(false);
     }
@@ -181,18 +232,40 @@ export function AddAssignmentModal({
           </select>
         </div>
 
+        {isCheckingConflicts && (
+          <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+            <span className="text-sm text-blue-700">
+              Checking availability...
+            </span>
+          </div>
+        )}
+
+        {conflictWarning && !isCheckingConflicts && (
+          <div className="flex items-start gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <AlertTriangle className="h-4 w-4 text-yellow-600 mt-0.5 shrink-0" />
+            <div>
+              <p className="text-sm font-medium text-yellow-800">
+                Scheduling conflict detected
+              </p>
+              <p className="text-sm text-yellow-700 mt-1">{conflictWarning}</p>
+            </div>
+          </div>
+        )}
+
         <div className="flex justify-end gap-3 pt-4">
-          <Button variant="secondary" onClick={onClose}>
+          <Button type="button" variant="secondary" onClick={onClose}>
             Cancel
           </Button>
           <Button
+            type="button"
             variant="primary"
             onClick={handleSave}
-            disabled={isSaving || !selectedMemberId}
+            disabled={isSaving || !selectedMemberId || isCheckingConflicts}
             className="flex items-center gap-2"
           >
             {isSaving && <Loader2 className="h-4 w-4 animate-spin" />}
-            Add Member
+            {conflictWarning ? 'Add Anyway' : 'Add Member'}
           </Button>
         </div>
       </div>

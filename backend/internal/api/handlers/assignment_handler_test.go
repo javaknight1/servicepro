@@ -49,7 +49,7 @@ func (m *MockAssignmentService) UpdateAssignment(ctx context.Context, assignment
 	return args.Error(0)
 }
 
-func (m *MockAssignmentService) CheckTechnicianAvailability(ctx context.Context, technicianID uuid.UUID, startTime, endTime time.Time) (*services.TechnicianAvailability, error) {
+func (m *MockAssignmentService) CheckTechnicianAvailability(ctx context.Context, technicianID uuid.UUID, startTime, endTime int64) (*services.TechnicianAvailability, error) {
 	args := m.Called(ctx, technicianID, startTime, endTime)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -65,7 +65,7 @@ func (m *MockAssignmentService) GetAvailableTechnicians(ctx context.Context, req
 	return args.Get(0).([]*services.TechnicianAvailability), args.Error(1)
 }
 
-func (m *MockAssignmentService) DetectConflicts(ctx context.Context, technicianID uuid.UUID, startTime, endTime time.Time, excludeJobID *uuid.UUID) ([]models.Job, error) {
+func (m *MockAssignmentService) DetectConflicts(ctx context.Context, technicianID uuid.UUID, startTime, endTime int64, excludeJobID *uuid.UUID) ([]models.Job, error) {
 	args := m.Called(ctx, technicianID, startTime, endTime, excludeJobID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -78,7 +78,7 @@ func (m *MockAssignmentService) CheckSkillMatch(ctx context.Context, technicianI
 	return args.Get(0).(float64), args.Error(1)
 }
 
-func (m *MockAssignmentService) OptimizeAssignments(ctx context.Context, jobID uuid.UUID, requiredSkills []services.TechnicianSkill, startTime, endTime time.Time) ([]*services.TechnicianAvailability, error) {
+func (m *MockAssignmentService) OptimizeAssignments(ctx context.Context, jobID uuid.UUID, requiredSkills []services.TechnicianSkill, startTime, endTime int64) ([]*services.TechnicianAvailability, error) {
 	args := m.Called(ctx, jobID, requiredSkills, startTime, endTime)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -86,7 +86,7 @@ func (m *MockAssignmentService) OptimizeAssignments(ctx context.Context, jobID u
 	return args.Get(0).([]*services.TechnicianAvailability), args.Error(1)
 }
 
-func (m *MockAssignmentService) GetTechnicianWorkload(ctx context.Context, technicianID uuid.UUID, startDate, endDate time.Time) (int, error) {
+func (m *MockAssignmentService) GetTechnicianWorkload(ctx context.Context, technicianID uuid.UUID, startDate, endDate int64) (int, error) {
 	args := m.Called(ctx, technicianID, startDate, endDate)
 	return args.Get(0).(int), args.Error(1)
 }
@@ -172,7 +172,7 @@ func TestCreateAssignment_Success(t *testing.T) {
 		JobID:      jobID,
 		UserID:     technicianID,
 		Role:       "Lead Technician",
-		AssignedAt: time.Now(),
+		AssignedAt: time.Now().Unix(),
 	}
 
 	mockAssignmentService.On("CreateAssignment", mock.Anything, &req, userID).Return(expectedAssignment, nil)
@@ -721,13 +721,13 @@ func TestCheckAvailability_Success(t *testing.T) {
 	handler := NewAssignmentHandler(mockAssignmentService, mockNotificationService, mockJobService)
 
 	technicianID := uuid.New()
-	startTime := time.Now().Add(24 * time.Hour)
-	endTime := startTime.Add(2 * time.Hour)
+	startTime := time.Now().Add(24 * time.Hour).Unix()
+	endTime := time.Now().Add(26 * time.Hour).Unix()
 
 	req := map[string]interface{}{
 		"technician_id": technicianID.String(),
-		"start_time":    startTime.Format(time.RFC3339),
-		"end_time":      endTime.Format(time.RFC3339),
+		"start_time":    startTime,
+		"end_time":      endTime,
 	}
 
 	availability := &services.TechnicianAvailability{
@@ -737,7 +737,7 @@ func TestCheckAvailability_Success(t *testing.T) {
 		Workload:     2,
 	}
 
-	mockAssignmentService.On("CheckTechnicianAvailability", mock.Anything, technicianID, mock.AnythingOfType("time.Time"), mock.AnythingOfType("time.Time")).Return(availability, nil)
+	mockAssignmentService.On("CheckTechnicianAvailability", mock.Anything, technicianID, mock.AnythingOfType("int64"), mock.AnythingOfType("int64")).Return(availability, nil)
 
 	router := setupTestRouter()
 	router = setupAuthContext(router, uuid.New(), models.UserRoleAdmin)
@@ -767,8 +767,8 @@ func TestGetAvailableTechnicians_Success(t *testing.T) {
 	mockJobService := new(MockJobService)
 	handler := NewAssignmentHandler(mockAssignmentService, mockNotificationService, mockJobService)
 
-	startTime := time.Now().Add(24 * time.Hour)
-	endTime := startTime.Add(2 * time.Hour)
+	startTime := time.Now().Add(24 * time.Hour).Unix()
+	endTime := time.Now().Add(26 * time.Hour).Unix()
 
 	req := services.AvailabilityCheckRequest{
 		StartTime:      startTime,
@@ -822,14 +822,14 @@ func TestOptimizeAssignments_Success(t *testing.T) {
 	handler := NewAssignmentHandler(mockAssignmentService, mockNotificationService, mockJobService)
 
 	jobID := uuid.New()
-	startTime := time.Now().Add(24 * time.Hour)
-	endTime := startTime.Add(2 * time.Hour)
+	startTime := time.Now().Add(24 * time.Hour).Unix()
+	endTime := time.Now().Add(26 * time.Hour).Unix()
 
 	req := map[string]interface{}{
 		"job_id":          jobID.String(),
 		"required_skills": []string{"hvac_installation"},
-		"start_time":      startTime.Format(time.RFC3339),
-		"end_time":        endTime.Format(time.RFC3339),
+		"start_time":      startTime,
+		"end_time":        endTime,
 	}
 
 	technicians := []*services.TechnicianAvailability{
@@ -841,7 +841,7 @@ func TestOptimizeAssignments_Success(t *testing.T) {
 		},
 	}
 
-	mockAssignmentService.On("OptimizeAssignments", mock.Anything, jobID, mock.AnythingOfType("[]services.TechnicianSkill"), mock.AnythingOfType("time.Time"), mock.AnythingOfType("time.Time")).Return(technicians, nil)
+	mockAssignmentService.On("OptimizeAssignments", mock.Anything, jobID, mock.AnythingOfType("[]services.TechnicianSkill"), mock.AnythingOfType("int64"), mock.AnythingOfType("int64")).Return(technicians, nil)
 
 	router := setupTestRouter()
 	router = setupAuthContext(router, uuid.New(), models.UserRoleAdmin)
@@ -873,7 +873,7 @@ func TestGetTechnicianWorkload_Success(t *testing.T) {
 
 	technicianID := uuid.New()
 
-	mockAssignmentService.On("GetTechnicianWorkload", mock.Anything, technicianID, mock.AnythingOfType("time.Time"), mock.AnythingOfType("time.Time")).Return(5, nil)
+	mockAssignmentService.On("GetTechnicianWorkload", mock.Anything, technicianID, mock.AnythingOfType("int64"), mock.AnythingOfType("int64")).Return(5, nil)
 
 	router := setupTestRouter()
 	router = setupAuthContext(router, uuid.New(), models.UserRoleManager)

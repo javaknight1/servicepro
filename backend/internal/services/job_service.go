@@ -2,13 +2,13 @@ package services
 
 import (
 	"errors"
-	"time"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/repository"
+	"github.com/javaknight1/servicepro/backend/internal/utils/epoch"
 	"github.com/javaknight1/servicepro/backend/pkg/validators"
 )
 
@@ -39,7 +39,7 @@ type JobServiceInterface interface {
 	ListJobs(filter *models.JobListFilter, userID uuid.UUID, userRole models.UserRole) ([]models.JobResponse, int64, error)
 	GetCustomerJobs(customerID uuid.UUID, limit, offset int) ([]models.JobResponse, int64, error)
 	GetMyJobs(userID uuid.UUID) ([]models.JobResponse, error)
-	GetScheduledJobs(start, end time.Time) ([]models.JobResponse, error)
+	GetScheduledJobs(start, end int64) ([]models.JobResponse, error)
 	GetOverdueJobs() ([]models.JobResponse, error)
 
 	// Status transitions
@@ -137,6 +137,12 @@ func (s *JobService) CreateJob(req *models.CreateJobRequest, createdBy uuid.UUID
 		SpecialInstructions: req.SpecialInstructions,
 		RequiredMaterials:   req.RequiredMaterials,
 		CreatedBy:           createdBy,
+	}
+
+	// Compute ScheduledEndAt from start + duration if not explicitly set
+	if job.ScheduledEndAt == nil && job.ScheduledStartAt != nil && job.EstimatedDuration > 0 {
+		endAt := *job.ScheduledStartAt + int64(job.EstimatedDuration)*60
+		job.ScheduledEndAt = &endAt
 	}
 
 	// Set default priority if not provided
@@ -271,6 +277,11 @@ func (s *JobService) UpdateJob(id uuid.UUID, req *models.UpdateJobRequest, userI
 	if req.EstimatedDuration != nil {
 		job.EstimatedDuration = *req.EstimatedDuration
 	}
+	// Recompute ScheduledEndAt from start + duration when either changes
+	if (req.ScheduledStartAt != nil || req.EstimatedDuration != nil) && job.ScheduledStartAt != nil && job.EstimatedDuration > 0 {
+		endAt := *job.ScheduledStartAt + int64(job.EstimatedDuration)*60
+		job.ScheduledEndAt = &endAt
+	}
 	if req.EstimatedCost != nil {
 		job.EstimatedCost = *req.EstimatedCost
 	}
@@ -404,7 +415,7 @@ func (s *JobService) GetMyJobs(userID uuid.UUID) ([]models.JobResponse, error) {
 }
 
 // GetScheduledJobs retrieves jobs scheduled within a date range
-func (s *JobService) GetScheduledJobs(start, end time.Time) ([]models.JobResponse, error) {
+func (s *JobService) GetScheduledJobs(start, end int64) ([]models.JobResponse, error) {
 	jobs, err := s.jobRepo.GetScheduledJobs(start, end)
 	if err != nil {
 		return nil, err
@@ -456,9 +467,9 @@ func (s *JobService) StartJob(id uuid.UUID, userID uuid.UUID, userRole models.Us
 	previousStatus := job.Status
 
 	// Update status and set actual start time
-	now := time.Now()
+	nowEpoch := epoch.NowEpoch()
 	job.Status = models.JobStatusInProgress
-	job.ActualStartAt = &now
+	job.ActualStartAt = &nowEpoch
 	job.UpdatedBy = &userID
 
 	if err := s.jobRepo.Update(job); err != nil {
@@ -500,9 +511,9 @@ func (s *JobService) CompleteJob(id uuid.UUID, completionNotes string, userID uu
 	previousStatus := job.Status
 
 	// Update status and set actual end time
-	now := time.Now()
+	nowEpoch := epoch.NowEpoch()
 	job.Status = models.JobStatusCompleted
-	job.ActualEndAt = &now
+	job.ActualEndAt = &nowEpoch
 	job.CompletionNotes = &completionNotes
 	job.UpdatedBy = &userID
 
@@ -730,8 +741,8 @@ func (s *JobService) UnassignTechnician(jobID, technicianID uuid.UUID, userID uu
 	// Find the assignment
 	for _, assignment := range job.Assignments {
 		if assignment.UserID == technicianID && assignment.UnassignedAt == nil {
-			now := time.Now()
-			assignment.UnassignedAt = &now
+			nowEpoch := epoch.NowEpoch()
+			assignment.UnassignedAt = &nowEpoch
 			return s.jobRepo.RemoveAssignment(assignment.ID)
 		}
 	}
@@ -877,7 +888,7 @@ func (s *JobService) recordStatusTransition(jobID uuid.UUID, fromStatus, toStatu
 		Reason:         models.StatusTransitionReason(reason),
 		Notes:          notes,
 		ChangedBy:      changedBy,
-		TransitionedAt: time.Now(),
+		TransitionedAt: epoch.NowEpoch(),
 	}
 	return s.jobRepo.CreateStatusTransition(transition)
 }
@@ -915,14 +926,14 @@ func (s *JobService) TransitionStatus(jobID uuid.UUID, toStatus models.JobStatus
 	job.UpdatedBy = &userID
 
 	// Update timestamps based on status
-	now := time.Now()
+	nowEpoch := epoch.NowEpoch()
 	switch toStatus {
 	case models.JobStatusInProgress:
 		if job.ActualStartAt == nil {
-			job.ActualStartAt = &now
+			job.ActualStartAt = &nowEpoch
 		}
 	case models.JobStatusCompleted:
-		job.ActualEndAt = &now
+		job.ActualEndAt = &nowEpoch
 	}
 
 	if err := s.jobRepo.Update(job); err != nil {

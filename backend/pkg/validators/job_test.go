@@ -279,8 +279,8 @@ func TestValidateStatus(t *testing.T) {
 func TestValidateSchedule(t *testing.T) {
 	validator := NewJobValidator()
 	now := time.Now()
-	future := now.Add(24 * time.Hour)
-	past := now.Add(-24 * time.Hour)
+	future := now.Add(24 * time.Hour).Unix()
+	past := now.Add(-24 * time.Hour).Unix()
 
 	t.Run("Both nil is valid", func(t *testing.T) {
 		err := validator.ValidateSchedule(nil, nil)
@@ -289,23 +289,30 @@ func TestValidateSchedule(t *testing.T) {
 
 	t.Run("Valid schedule - future dates", func(t *testing.T) {
 		start := future
-		end := future.Add(2 * time.Hour)
+		end := future + 7200 // +2 hours
 		err := validator.ValidateSchedule(&start, &end)
 		assert.NoError(t, err)
 	})
 
-	t.Run("Valid schedule - past dates (allowed for historical jobs)", func(t *testing.T) {
+	t.Run("Invalid schedule - past dates rejected", func(t *testing.T) {
 		start := past
-		end := past.Add(2 * time.Hour)
+		end := past + 7200 // +2 hours
 		err := validator.ValidateSchedule(&start, &end)
-		assert.NoError(t, err)
+		assert.ErrorIs(t, err, ErrScheduleInPast)
 	})
 
 	t.Run("Invalid schedule - end before start", func(t *testing.T) {
 		start := future
-		end := future.Add(-1 * time.Hour)
+		end := future - 3600 // -1 hour
 		err := validator.ValidateSchedule(&start, &end)
 		assert.ErrorIs(t, err, ErrInvalidSchedule)
+	})
+
+	t.Run("Invalid schedule - more than 1 year in future", func(t *testing.T) {
+		twoYears := now.AddDate(2, 0, 0).Unix()
+		end := twoYears + 7200
+		err := validator.ValidateSchedule(&twoYears, &end)
+		assert.ErrorIs(t, err, ErrScheduleTooFarInFuture)
 	})
 
 	t.Run("Only start date is valid", func(t *testing.T) {
@@ -717,12 +724,12 @@ func TestValidateBusinessRules(t *testing.T) {
 	})
 
 	t.Run("Job scheduled far in future", func(t *testing.T) {
-		futureDate := time.Now().Add(100 * 24 * time.Hour)
+		futureEpoch := time.Now().Add(100 * 24 * time.Hour).Unix()
 		job := &models.Job{
 			JobType:          models.JobTypeInstallation,
 			Priority:         models.JobPriorityNormal,
 			Status:           models.JobStatusScheduled,
-			ScheduledStartAt: &futureDate,
+			ScheduledStartAt: &futureEpoch,
 		}
 		warnings := validator.ValidateBusinessRules(job)
 		assert.Len(t, warnings, 1)
@@ -792,12 +799,12 @@ func TestValidateBusinessRules(t *testing.T) {
 	})
 
 	t.Run("Job with multiple warnings", func(t *testing.T) {
-		futureDate := time.Now().Add(100 * 24 * time.Hour)
+		futureEpoch := time.Now().Add(100 * 24 * time.Hour).Unix()
 		job := &models.Job{
 			JobType:           models.JobTypeEmergency,
 			Priority:          models.JobPriorityNormal, // Should be urgent
 			Status:            models.JobStatusInProgress,
-			ScheduledStartAt:  &futureDate,              // Too far in future
+			ScheduledStartAt:  &futureEpoch,             // Too far in future
 			EstimatedDuration: 500,                      // Too long
 			Assignments:       []models.JobAssignment{}, // No assignments
 		}
@@ -855,12 +862,12 @@ func TestValidateJobStart(t *testing.T) {
 
 func TestValidateJobCompletion(t *testing.T) {
 	validator := NewJobValidator()
-	now := time.Now()
+	nowEpoch := time.Now().Unix()
 
 	t.Run("Can complete in-progress job with start time", func(t *testing.T) {
 		job := &models.Job{
 			Status:        models.JobStatusInProgress,
-			ActualStartAt: &now,
+			ActualStartAt: &nowEpoch,
 		}
 		err := validator.ValidateJobCompletion(job)
 		assert.NoError(t, err)
@@ -869,7 +876,7 @@ func TestValidateJobCompletion(t *testing.T) {
 	t.Run("Cannot complete scheduled job", func(t *testing.T) {
 		job := &models.Job{
 			Status:        models.JobStatusScheduled,
-			ActualStartAt: &now,
+			ActualStartAt: &nowEpoch,
 		}
 		err := validator.ValidateJobCompletion(job)
 		assert.ErrorIs(t, err, ErrJobNotInProgress)

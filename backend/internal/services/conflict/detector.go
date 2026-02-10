@@ -9,26 +9,30 @@ import (
 
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/repository"
+	"github.com/javaknight1/servicepro/backend/internal/utils/epoch"
 )
 
 // ConflictDetector provides real-time conflict detection for schedules
 type ConflictDetector struct {
 	scheduleRepo repository.ScheduleRepositoryInterface
+	jobRepo      repository.JobRepositoryInterface
 }
 
 // NewConflictDetector creates a new conflict detector
-func NewConflictDetector(scheduleRepo repository.ScheduleRepositoryInterface) *ConflictDetector {
+func NewConflictDetector(scheduleRepo repository.ScheduleRepositoryInterface, jobRepo repository.JobRepositoryInterface) *ConflictDetector {
 	return &ConflictDetector{
 		scheduleRepo: scheduleRepo,
+		jobRepo:      jobRepo,
 	}
 }
 
 // ConflictCheckRequest represents a request to check for conflicts
 type ConflictCheckRequest struct {
+	TenantID        uuid.UUID   `json:"-"` // Set from auth context, not from JSON body
 	ScheduleID      *uuid.UUID  // nil for new schedules
 	JobID           uuid.UUID   `json:"job_id"`
-	StartTime       time.Time   `json:"start_time"`
-	EndTime         time.Time   `json:"end_time"`
+	StartTime       int64       `json:"start_time"`
+	EndTime         int64       `json:"end_time"`
 	AssignedTechIDs []uuid.UUID `json:"assigned_tech_ids"`
 	Location        string      `json:"location,omitempty"`
 }
@@ -55,16 +59,16 @@ type ConflictingSchedule struct {
 	ID        uuid.UUID `json:"id"`
 	Title     string    `json:"title"`
 	JobNumber string    `json:"job_number,omitempty"`
-	StartTime time.Time `json:"start_time"`
-	EndTime   time.Time `json:"end_time"`
+	StartTime int64     `json:"start_time"`
+	EndTime   int64     `json:"end_time"`
 	Location  string    `json:"location,omitempty"`
 }
 
 // TimeOverlapInfo provides details about time overlap
 type TimeOverlapInfo struct {
-	OverlapStart   time.Time `json:"overlap_start"`
-	OverlapEnd     time.Time `json:"overlap_end"`
-	OverlapMinutes int       `json:"overlap_minutes"`
+	OverlapStart   int64 `json:"overlap_start"`
+	OverlapEnd     int64 `json:"overlap_end"`
+	OverlapMinutes int   `json:"overlap_minutes"`
 }
 
 // ResolutionSuggestion provides suggestions for resolving conflicts
@@ -102,9 +106,8 @@ func (d *ConflictDetector) CheckConflicts(ctx context.Context, req *ConflictChec
 	// }
 	// response.Conflicts = append(response.Conflicts, locationConflicts...)
 
-	// Check for business hour violations
-	businessHourConflicts := d.checkBusinessHours(req)
-	response.Conflicts = append(response.Conflicts, businessHourConflicts...)
+	// Business hour checks disabled - not timezone-aware (compares against UTC, not local time)
+	// TODO: Re-enable with proper tenant timezone support
 
 	// Check for excessive workload
 	workloadConflicts, err := d.checkTechnicianWorkload(ctx, req)
@@ -136,6 +139,7 @@ func (d *ConflictDetector) checkTechnicianConflicts(ctx context.Context, req *Co
 	for _, techID := range req.AssignedTechIDs {
 		// Get technician's schedules in the requested time range
 		schedules, err := d.scheduleRepo.GetByTechnicianAndDateRange(
+			req.TenantID,
 			techID,
 			req.StartTime,
 			req.EndTime,
@@ -144,9 +148,13 @@ func (d *ConflictDetector) checkTechnicianConflicts(ctx context.Context, req *Co
 			return nil, err
 		}
 
-		// Filter out the current schedule if updating
+		// Filter out the current schedule/job if updating
 		for _, schedule := range schedules {
 			if req.ScheduleID != nil && schedule.ID == *req.ScheduleID {
+				continue
+			}
+			// Exclude schedules belonging to the same job (self-conflict)
+			if req.JobID != uuid.Nil && schedule.JobID == req.JobID {
 				continue
 			}
 
@@ -160,16 +168,29 @@ func (d *ConflictDetector) checkTechnicianConflicts(ctx context.Context, req *Co
 				overlapInfo := d.calculateOverlap(req.StartTime, req.EndTime, schedule.StartTime, schedule.EndTime)
 
 				jobNumber := ""
+				jobTitle := schedule.Title
 				if schedule.Job != nil {
 					jobNumber = schedule.Job.JobNumber
+					if schedule.Job.Title != "" {
+						jobTitle = schedule.Job.Title
+					}
 				}
+
+				description := fmt.Sprintf("Technician is already scheduled for \"%s\"", jobTitle)
+				if jobNumber != "" {
+					description += fmt.Sprintf(" (%s)", jobNumber)
+				}
+				description += fmt.Sprintf(" from %s to %s",
+					epoch.EpochToTime(schedule.StartTime).Format("Jan 2 3:04 PM"),
+					epoch.EpochToTime(schedule.EndTime).Format("3:04 PM"))
+
 				conflicts = append(conflicts, ConflictDetail{
 					ConflictType: models.ConflictTypeTechnicianOverlap,
 					Severity:     d.calculateSeverity(overlapInfo, &schedule),
-					Description:  fmt.Sprintf("Technician is already scheduled during this time"),
+					Description:  description,
 					ConflictingWith: &ConflictingSchedule{
 						ID:        schedule.ID,
-						Title:     schedule.Title,
+						Title:     jobTitle,
 						JobNumber: jobNumber,
 						StartTime: schedule.StartTime,
 						EndTime:   schedule.EndTime,
@@ -178,6 +199,50 @@ func (d *ConflictDetector) checkTechnicianConflicts(ctx context.Context, req *Co
 					TechnicianID: &techID,
 					TimeOverlap:  overlapInfo,
 				})
+			}
+		}
+
+		// Also check jobs table for overlapping job assignments
+		if d.jobRepo != nil {
+			jobs, err := d.jobRepo.GetJobsByTechnicianAndDateRange(techID, req.StartTime, req.EndTime)
+			if err != nil {
+				return nil, err
+			}
+
+			for _, job := range jobs {
+				// Skip the same job (self-conflict when updating)
+				if req.JobID != uuid.Nil && job.ID == req.JobID {
+					continue
+				}
+
+				if job.ScheduledStartAt != nil && job.ScheduledEndAt != nil {
+					if d.hasTimeOverlap(req.StartTime, req.EndTime, *job.ScheduledStartAt, *job.ScheduledEndAt) {
+						overlapInfo := d.calculateOverlap(req.StartTime, req.EndTime, *job.ScheduledStartAt, *job.ScheduledEndAt)
+
+						description := fmt.Sprintf("Technician is already assigned to \"%s\"", job.Title)
+						if job.JobNumber != "" {
+							description += fmt.Sprintf(" (%s)", job.JobNumber)
+						}
+						description += fmt.Sprintf(" from %s to %s",
+							epoch.EpochToTime(*job.ScheduledStartAt).Format("Jan 2 3:04 PM"),
+							epoch.EpochToTime(*job.ScheduledEndAt).Format("3:04 PM"))
+
+						conflicts = append(conflicts, ConflictDetail{
+							ConflictType: models.ConflictTypeTechnicianOverlap,
+							Severity:     models.ConflictSeverityHigh,
+							Description:  description,
+							ConflictingWith: &ConflictingSchedule{
+								ID:        job.ID,
+								Title:     job.Title,
+								JobNumber: job.JobNumber,
+								StartTime: *job.ScheduledStartAt,
+								EndTime:   *job.ScheduledEndAt,
+							},
+							TechnicianID: &techID,
+							TimeOverlap:  overlapInfo,
+						})
+					}
+				}
 			}
 		}
 	}
@@ -193,9 +258,9 @@ func (d *ConflictDetector) checkBusinessHours(req *ConflictCheckRequest) []Confl
 	businessHourStart := 8
 	businessHourEnd := 18
 
-	startHour := req.StartTime.Hour()
-	endHour := req.EndTime.Hour()
-	weekday := req.StartTime.Weekday()
+	startHour := epoch.EpochHour(req.StartTime)
+	endHour := epoch.EpochHour(req.EndTime)
+	weekday := epoch.EpochWeekday(req.StartTime)
 
 	// Check weekend
 	if weekday == time.Saturday || weekday == time.Sunday {
@@ -223,12 +288,13 @@ func (d *ConflictDetector) checkTechnicianWorkload(ctx context.Context, req *Con
 	conflicts := []ConflictDetail{}
 
 	// Get the full day for workload calculation
-	dayStart := time.Date(req.StartTime.Year(), req.StartTime.Month(), req.StartTime.Day(), 0, 0, 0, 0, req.StartTime.Location())
-	dayEnd := dayStart.Add(24 * time.Hour)
+	t := epoch.EpochToTime(req.StartTime)
+	dayStart := time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC).Unix()
+	dayEnd := dayStart + 86400 // 24 hours in seconds
 
 	for _, techID := range req.AssignedTechIDs {
 		// Get all schedules for the day
-		schedules, err := d.scheduleRepo.GetByTechnicianAndDateRange(techID, dayStart, dayEnd)
+		schedules, err := d.scheduleRepo.GetByTechnicianAndDateRange(req.TenantID, techID, dayStart, dayEnd)
 		if err != nil {
 			return nil, err
 		}
@@ -242,13 +308,30 @@ func (d *ConflictDetector) checkTechnicianWorkload(ctx context.Context, req *Con
 			if req.ScheduleID != nil && schedule.ID == *req.ScheduleID {
 				continue
 			}
-			duration := schedule.EndTime.Sub(schedule.StartTime)
-			totalMinutes += int(duration.Minutes())
+			if req.JobID != uuid.Nil && schedule.JobID == req.JobID {
+				continue
+			}
+			totalMinutes += int(schedule.EndTime-schedule.StartTime) / 60
+		}
+
+		// Also count hours from jobs table
+		if d.jobRepo != nil {
+			jobs, err := d.jobRepo.GetJobsByTechnicianAndDateRange(techID, dayStart, dayEnd)
+			if err != nil {
+				return nil, err
+			}
+			for _, job := range jobs {
+				if req.JobID != uuid.Nil && job.ID == req.JobID {
+					continue
+				}
+				if job.ScheduledStartAt != nil && job.ScheduledEndAt != nil {
+					totalMinutes += int(*job.ScheduledEndAt-*job.ScheduledStartAt) / 60
+				}
+			}
 		}
 
 		// Add the requested schedule duration
-		requestDuration := req.EndTime.Sub(req.StartTime)
-		totalMinutes += int(requestDuration.Minutes())
+		totalMinutes += int(req.EndTime-req.StartTime) / 60
 
 		// Check if exceeds 10 hours (600 minutes)
 		maxDailyMinutes := 600
@@ -273,28 +356,26 @@ func (d *ConflictDetector) checkTechnicianWorkload(ctx context.Context, req *Con
 }
 
 // hasTimeOverlap checks if two time ranges overlap
-func (d *ConflictDetector) hasTimeOverlap(start1, end1, start2, end2 time.Time) bool {
-	return start1.Before(end2) && end1.After(start2)
+func (d *ConflictDetector) hasTimeOverlap(start1, end1, start2, end2 int64) bool {
+	return start1 < end2 && end1 > start2
 }
 
 // calculateOverlap calculates the overlap between two time ranges
-func (d *ConflictDetector) calculateOverlap(start1, end1, start2, end2 time.Time) *TimeOverlapInfo {
+func (d *ConflictDetector) calculateOverlap(start1, end1, start2, end2 int64) *TimeOverlapInfo {
 	overlapStart := start1
-	if start2.After(start1) {
+	if start2 > start1 {
 		overlapStart = start2
 	}
 
 	overlapEnd := end1
-	if end2.Before(end1) {
+	if end2 < end1 {
 		overlapEnd = end2
 	}
-
-	duration := overlapEnd.Sub(overlapStart)
 
 	return &TimeOverlapInfo{
 		OverlapStart:   overlapStart,
 		OverlapEnd:     overlapEnd,
-		OverlapMinutes: int(duration.Minutes()),
+		OverlapMinutes: int(overlapEnd-overlapStart) / 60,
 	}
 }
 
@@ -383,13 +464,13 @@ func (d *ConflictDetector) generateSuggestions(ctx context.Context, req *Conflic
 
 // validateRequest validates the conflict check request
 func (d *ConflictDetector) validateRequest(req *ConflictCheckRequest) error {
-	if req.StartTime.IsZero() {
+	if req.StartTime == 0 {
 		return fmt.Errorf("start_time is required")
 	}
-	if req.EndTime.IsZero() {
+	if req.EndTime == 0 {
 		return fmt.Errorf("end_time is required")
 	}
-	if req.EndTime.Before(req.StartTime) || req.EndTime.Equal(req.StartTime) {
+	if req.EndTime <= req.StartTime {
 		return fmt.Errorf("end_time must be after start_time")
 	}
 	return nil

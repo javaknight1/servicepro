@@ -471,7 +471,7 @@ func TestSendAssignmentCreatedNotification(t *testing.T) {
 		JobID:      uuid.New(),
 		UserID:     uuid.New(),
 		Role:       "Lead Technician",
-		AssignedAt: time.Now(),
+		AssignedAt: time.Now().Unix(),
 	}
 
 	job := &models.Job{
@@ -511,7 +511,7 @@ func TestSendAssignmentUpdatedNotification(t *testing.T) {
 		JobID:      uuid.New(),
 		UserID:     uuid.New(),
 		Role:       "Senior Technician",
-		AssignedAt: time.Now(),
+		AssignedAt: time.Now().Unix(),
 	}
 
 	job := &models.Job{

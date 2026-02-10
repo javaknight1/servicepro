@@ -11,6 +11,7 @@ import (
 func SetupJobRoutes(router *gin.RouterGroup, cfg *routeconfigs.RouteConfig) {
 	jobs := router.Group("/jobs")
 	jobs.Use(cfg.Middleware.PermMiddleware.RequireAuth())
+	jobs.Use(cfg.Middleware.TenantMW.RequireTenant())
 	{
 		// Create job - requires "jobs.create" permission
 		jobs.POST("",

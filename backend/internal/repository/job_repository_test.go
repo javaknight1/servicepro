@@ -60,8 +60,8 @@ func createTestJob(t *testing.T, db *gorm.DB, customerID uuid.UUID) *models.Job 
 	repo := NewJobRepository(db)
 
 	now := time.Now()
-	scheduledStart := now.Add(24 * time.Hour)
-	scheduledEnd := scheduledStart.Add(2 * time.Hour)
+	scheduledStart := now.Add(24 * time.Hour).Unix()
+	scheduledEnd := now.Add(26 * time.Hour).Unix()
 
 	createdBy := uuid.New()
 	job := &models.Job{
@@ -95,8 +95,8 @@ func TestJobRepository_Create(t *testing.T) {
 	defer db.Exec("DELETE FROM customers WHERE id = ?", customer.ID)
 
 	now := time.Now()
-	scheduledStart := now.Add(24 * time.Hour)
-	scheduledEnd := scheduledStart.Add(2 * time.Hour)
+	scheduledStart := now.Add(24 * time.Hour).Unix()
+	scheduledEnd := now.Add(26 * time.Hour).Unix()
 	createdBy := uuid.New()
 
 	job := &models.Job{
@@ -344,16 +344,16 @@ func TestJobRepository_GetScheduledJobs(t *testing.T) {
 
 	// Create scheduled job
 	now := time.Now()
-	tomorrow := now.Add(24 * time.Hour)
+	tomorrowEpoch := now.Add(24 * time.Hour).Unix()
 	job := createTestJob(t, db, customer.ID)
 	job.Status = models.JobStatusScheduled
-	job.ScheduledStartAt = &tomorrow
+	job.ScheduledStartAt = &tomorrowEpoch
 	repo.Update(job)
 	defer db.Exec("DELETE FROM jobs WHERE id = ?", job.ID)
 
 	// Get scheduled jobs for next week
-	start := now
-	end := now.Add(7 * 24 * time.Hour)
+	start := now.Unix()
+	end := now.Add(7 * 24 * time.Hour).Unix()
 	jobs, err := repo.GetScheduledJobs(start, end)
 	require.NoError(t, err)
 
@@ -375,10 +375,10 @@ func TestJobRepository_GetOverdueJobs(t *testing.T) {
 
 	// Create overdue job
 	now := time.Now()
-	yesterday := now.Add(-24 * time.Hour)
+	yesterdayEpoch := now.Add(-24 * time.Hour).Unix()
 	job := createTestJob(t, db, customer.ID)
 	job.Status = models.JobStatusInProgress
-	job.ScheduledEndAt = &yesterday
+	job.ScheduledEndAt = &yesterdayEpoch
 	repo.Update(job)
 	defer db.Exec("DELETE FROM jobs WHERE id = ?", job.ID)
 

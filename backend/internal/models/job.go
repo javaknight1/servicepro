@@ -1,6 +1,7 @@
 package models
 
 import (
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -54,10 +55,10 @@ type Job struct {
 	JobType             JobType         `json:"job_type" gorm:"type:varchar(50);not null;index"`
 	Status              JobStatus       `json:"status" gorm:"type:varchar(50);not null;default:'scheduled';index"`
 	Priority            JobPriority     `json:"priority" gorm:"type:varchar(50);not null;default:'normal';index"`
-	ScheduledStartAt    *time.Time      `json:"scheduled_start_at" gorm:"index"`
-	ScheduledEndAt      *time.Time      `json:"scheduled_end_at"`
-	ActualStartAt       *time.Time      `json:"actual_start_at"`
-	ActualEndAt         *time.Time      `json:"actual_end_at"`
+	ScheduledStartAt    *int64          `json:"scheduled_start_at" gorm:"type:bigint;index"`
+	ScheduledEndAt      *int64          `json:"scheduled_end_at" gorm:"type:bigint"`
+	ActualStartAt       *int64          `json:"actual_start_at" gorm:"type:bigint"`
+	ActualEndAt         *int64          `json:"actual_end_at" gorm:"type:bigint"`
 	EstimatedDuration   int             `json:"estimated_duration"` // in minutes
 	ActualDuration      int             `json:"actual_duration"`    // in minutes
 	ServiceAddress      ServiceAddress  `json:"service_address" gorm:"embedded;embeddedPrefix:service_"`
@@ -74,7 +75,7 @@ type Job struct {
 	SpecialInstructions *string         `json:"special_instructions,omitempty" gorm:"type:text"`
 	RequiredMaterials   *string         `json:"required_materials,omitempty" gorm:"type:text"`
 	RequiresFollowUp    bool            `json:"requires_follow_up" gorm:"default:false"`
-	FollowUpDate        *time.Time      `json:"follow_up_date"`
+	FollowUpDate        *int64          `json:"follow_up_date" gorm:"type:bigint"`
 	CreatedBy           uuid.UUID       `json:"created_by" gorm:"type:uuid;not null"`
 	UpdatedBy           *uuid.UUID      `json:"updated_by" gorm:"type:uuid"`
 	CreatedAt           time.Time       `json:"created_at"`
@@ -118,8 +119,8 @@ type JobAssignment struct {
 	UserID       uuid.UUID      `json:"user_id" gorm:"type:uuid;not null;index"`
 	User         *User          `json:"user,omitempty" gorm:"foreignKey:UserID;constraint:OnDelete:RESTRICT"`
 	Role         string         `json:"role" gorm:"type:varchar(50)"` // e.g., "lead_technician", "assistant"
-	AssignedAt   time.Time      `json:"assigned_at" gorm:"not null"`
-	UnassignedAt *time.Time     `json:"unassigned_at"`
+	AssignedAt   int64          `json:"assigned_at" gorm:"type:bigint;not null"`
+	UnassignedAt *int64         `json:"unassigned_at" gorm:"type:bigint"`
 	HoursWorked  float64        `json:"hours_worked" gorm:"type:decimal(5,2);default:0"`
 	Notes        *string        `json:"notes,omitempty" gorm:"type:text"`
 	CreatedAt    time.Time      `json:"created_at"`
@@ -193,8 +194,8 @@ type CreateJobRequest struct {
 	Description         string                       `json:"description" binding:"omitempty,max=5000"`
 	JobType             JobType                      `json:"job_type" binding:"required,oneof=installation maintenance repair inspection emergency"`
 	Priority            JobPriority                  `json:"priority" binding:"omitempty,oneof=low normal high urgent"`
-	ScheduledStartAt    *time.Time                   `json:"scheduled_start_at"`
-	ScheduledEndAt      *time.Time                   `json:"scheduled_end_at"`
+	ScheduledStartAt    *int64                       `json:"scheduled_start_at"`
+	ScheduledEndAt      *int64                       `json:"scheduled_end_at"`
 	EstimatedDuration   int                          `json:"estimated_duration" binding:"omitempty,min=0"` // in minutes
 	ServiceAddress      ServiceAddress               `json:"service_address"`
 	EstimatedCost       float64                      `json:"estimated_cost" binding:"omitempty,min=0"`
@@ -212,10 +213,10 @@ type UpdateJobRequest struct {
 	JobType             *JobType        `json:"job_type" binding:"omitempty,oneof=installation maintenance repair inspection emergency"`
 	Status              *JobStatus      `json:"status" binding:"omitempty,oneof=new scheduled en_route in_progress on_hold completed invoiced paid cancelled"`
 	Priority            *JobPriority    `json:"priority" binding:"omitempty,oneof=low normal high urgent"`
-	ScheduledStartAt    *time.Time      `json:"scheduled_start_at"`
-	ScheduledEndAt      *time.Time      `json:"scheduled_end_at"`
-	ActualStartAt       *time.Time      `json:"actual_start_at"`
-	ActualEndAt         *time.Time      `json:"actual_end_at"`
+	ScheduledStartAt    *int64          `json:"scheduled_start_at"`
+	ScheduledEndAt      *int64          `json:"scheduled_end_at"`
+	ActualStartAt       *int64          `json:"actual_start_at"`
+	ActualEndAt         *int64          `json:"actual_end_at"`
 	EstimatedDuration   *int            `json:"estimated_duration" binding:"omitempty,min=0"`
 	ServiceAddress      *ServiceAddress `json:"service_address"`
 	EstimatedCost       *float64        `json:"estimated_cost" binding:"omitempty,min=0"`
@@ -227,7 +228,7 @@ type UpdateJobRequest struct {
 	SpecialInstructions *string         `json:"special_instructions"`
 	RequiredMaterials   *string         `json:"required_materials"`
 	RequiresFollowUp    *bool           `json:"requires_follow_up"`
-	FollowUpDate        *time.Time      `json:"follow_up_date"`
+	FollowUpDate        *int64          `json:"follow_up_date"`
 }
 
 // JobResponse represents the response payload for a job
@@ -241,10 +242,10 @@ type JobResponse struct {
 	JobType             JobType                 `json:"job_type"`
 	Status              JobStatus               `json:"status"`
 	Priority            JobPriority             `json:"priority"`
-	ScheduledStartAt    *time.Time              `json:"scheduled_start_at,omitempty"`
-	ScheduledEndAt      *time.Time              `json:"scheduled_end_at,omitempty"`
-	ActualStartAt       *time.Time              `json:"actual_start_at,omitempty"`
-	ActualEndAt         *time.Time              `json:"actual_end_at,omitempty"`
+	ScheduledStartAt    *int64                  `json:"scheduled_start_at,omitempty"`
+	ScheduledEndAt      *int64                  `json:"scheduled_end_at,omitempty"`
+	ActualStartAt       *int64                  `json:"actual_start_at,omitempty"`
+	ActualEndAt         *int64                  `json:"actual_end_at,omitempty"`
 	EstimatedDuration   int                     `json:"estimated_duration"`
 	ActualDuration      int                     `json:"actual_duration"`
 	ServiceAddress      ServiceAddress          `json:"service_address"`
@@ -261,7 +262,7 @@ type JobResponse struct {
 	SpecialInstructions *string                 `json:"special_instructions,omitempty"`
 	RequiredMaterials   *string                 `json:"required_materials,omitempty"`
 	RequiresFollowUp    bool                    `json:"requires_follow_up"`
-	FollowUpDate        *time.Time              `json:"follow_up_date,omitempty"`
+	FollowUpDate        *int64                  `json:"follow_up_date,omitempty"`
 	NextStatus          *JobStatus              `json:"next_status,omitempty"`
 	Warnings            []string                `json:"warnings,omitempty"`
 	CreatedAt           time.Time               `json:"created_at"`
@@ -270,15 +271,15 @@ type JobResponse struct {
 
 // JobAssignmentResponse represents the response for a job assignment
 type JobAssignmentResponse struct {
-	ID           uuid.UUID  `json:"id"`
-	JobID        uuid.UUID  `json:"job_id"`
-	UserID       uuid.UUID  `json:"user_id"`
-	UserName     string     `json:"user_name"`
-	Role         string     `json:"role"`
-	AssignedAt   time.Time  `json:"assigned_at"`
-	UnassignedAt *time.Time `json:"unassigned_at,omitempty"`
-	HoursWorked  float64    `json:"hours_worked"`
-	Notes        *string    `json:"notes,omitempty"`
+	ID           uuid.UUID `json:"id"`
+	JobID        uuid.UUID `json:"job_id"`
+	UserID       uuid.UUID `json:"user_id"`
+	UserName     string    `json:"user_name"`
+	Role         string    `json:"role"`
+	AssignedAt   int64     `json:"assigned_at"`
+	UnassignedAt *int64    `json:"unassigned_at,omitempty"`
+	HoursWorked  float64   `json:"hours_worked"`
+	Notes        *string   `json:"notes,omitempty"`
 }
 
 // JobMaterialResponse represents the response for a job material
@@ -313,8 +314,8 @@ type JobListFilter struct {
 	Priority           *JobPriority `form:"priority" json:"priority,omitempty"`
 	JobType            *JobType     `form:"job_type" json:"job_type,omitempty"`
 	AssignedUserID     *uuid.UUID   `form:"assigned_user_id" json:"assigned_user_id,omitempty"`
-	ScheduledStartFrom *time.Time   `form:"scheduled_start_from" json:"scheduled_start_from,omitempty"`
-	ScheduledStartTo   *time.Time   `form:"scheduled_start_to" json:"scheduled_start_to,omitempty"`
+	ScheduledStartFrom *int64       `form:"scheduled_start_from" json:"scheduled_start_from,omitempty"`
+	ScheduledStartTo   *int64       `form:"scheduled_start_to" json:"scheduled_start_to,omitempty"`
 	RequiresFollowUp   *bool        `form:"requires_follow_up" json:"requires_follow_up,omitempty"`
 	SortBy             *string      `form:"sort_by" json:"sort_by,omitempty"`
 	SortOrder          *string      `form:"sort_order" json:"sort_order,omitempty"`
@@ -391,7 +392,18 @@ func (j *Job) ToResponse() JobResponse {
 				Notes:        assignment.Notes,
 			}
 			if assignment.User != nil {
-				response.Assignments[i].UserName = assignment.User.Email
+				var parts []string
+				if assignment.User.FirstName != nil && *assignment.User.FirstName != "" {
+					parts = append(parts, *assignment.User.FirstName)
+				}
+				if assignment.User.LastName != nil && *assignment.User.LastName != "" {
+					parts = append(parts, *assignment.User.LastName)
+				}
+				name := strings.Join(parts, " ")
+				if name == "" {
+					name = assignment.User.Email
+				}
+				response.Assignments[i].UserName = name
 			}
 		}
 	}
@@ -428,7 +440,18 @@ func (j *Job) ToResponse() JobResponse {
 				CreatedAt:  note.CreatedAt,
 			}
 			if note.User != nil {
-				response.Notes[i].UserName = note.User.Email
+				var parts []string
+				if note.User.FirstName != nil && *note.User.FirstName != "" {
+					parts = append(parts, *note.User.FirstName)
+				}
+				if note.User.LastName != nil && *note.User.LastName != "" {
+					parts = append(parts, *note.User.LastName)
+				}
+				name := strings.Join(parts, " ")
+				if name == "" {
+					name = note.User.Email
+				}
+				response.Notes[i].UserName = name
 			}
 		}
 	}
