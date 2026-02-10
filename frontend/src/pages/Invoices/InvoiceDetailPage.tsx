@@ -7,6 +7,10 @@ import {
   Invoice,
   InvoiceStatus,
 } from '@services/invoiceService';
+import {
+  paymentReminderService,
+  type PaymentReminderResponse,
+} from '@services/paymentReminderService';
 import { getErrorMessage } from '@/utils/error';
 import { customerService, Customer } from '@services/customerService';
 import {
@@ -20,6 +24,7 @@ import {
   Mail,
   Download,
   FileText,
+  Bell,
 } from 'lucide-react';
 
 interface InvoiceFormData {
@@ -76,6 +81,12 @@ export function InvoiceDetailPage() {
   const [invoiceNumber, setInvoiceNumber] = useState<string>('');
   const [showSendConfirmation, setShowSendConfirmation] = useState(false);
   const [customerEmail, setCustomerEmail] = useState<string>('');
+  const [reminders, setReminders] = useState<PaymentReminderResponse[]>([]);
+  const [remindersLoading, setRemindersLoading] = useState(false);
+  const [isSendingReminder, setIsSendingReminder] = useState(false);
+  const [showReminderConfirmation, setShowReminderConfirmation] =
+    useState(false);
+  const [customerName, setCustomerName] = useState<string>('');
 
   useEffect(() => {
     loadCustomers();
@@ -135,15 +146,54 @@ export function InvoiceDetailPage() {
       // Set invoice status and number
       setInvoiceStatus(invoice.status || InvoiceStatus.DRAFT);
       setInvoiceNumber(invoice.invoice_number || '');
-      // Set customer email if available
+      // Set customer email and name if available
       if (invoice.customer?.email) {
         setCustomerEmail(invoice.customer.email);
+      }
+      if (invoice.customer) {
+        const name = invoice.customer.company_name
+          ? `${invoice.customer.company_name} (${invoice.customer.first_name} ${invoice.customer.last_name})`
+          : `${invoice.customer.first_name} ${invoice.customer.last_name}`;
+        setCustomerName(name);
+      }
+
+      // Load reminders for non-draft invoices
+      if (invoice.status && invoice.status !== InvoiceStatus.DRAFT) {
+        loadReminders(invoiceId);
       }
     } catch (err) {
       console.error('Failed to load invoice:', err);
       setError('Failed to load invoice details');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const loadReminders = async (invoiceId: string) => {
+    setRemindersLoading(true);
+    try {
+      const data = await paymentReminderService.getReminderHistory(invoiceId);
+      setReminders(data);
+    } catch (err) {
+      console.error('Failed to load reminders:', err);
+    } finally {
+      setRemindersLoading(false);
+    }
+  };
+
+  const handleSendReminder = async () => {
+    if (!id || isNew) return;
+    setIsSendingReminder(true);
+    setError(null);
+    try {
+      await paymentReminderService.sendManualReminder(id);
+      setShowReminderConfirmation(false);
+      loadReminders(id);
+    } catch (err) {
+      console.error('Failed to send reminder:', err);
+      setError(getErrorMessage(err, 'Failed to send reminder'));
+    } finally {
+      setIsSendingReminder(false);
     }
   };
 
@@ -704,6 +754,121 @@ export function InvoiceDetailPage() {
             </div>
           </div>
 
+          {/* Payment Reminders Section - only for non-draft invoices */}
+          {!isNew && invoiceStatus !== InvoiceStatus.DRAFT && (
+            <div className="bg-white rounded-lg border border-neutral-200 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-neutral-900 flex items-center gap-2">
+                  <Bell className="h-5 w-5" />
+                  Payment Reminders
+                </h2>
+                {invoiceStatus !== InvoiceStatus.PAID &&
+                  invoiceStatus !== InvoiceStatus.CANCELLED && (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => setShowReminderConfirmation(true)}
+                      disabled={isSendingReminder}
+                      className="flex items-center gap-2"
+                    >
+                      {isSendingReminder ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Send className="h-4 w-4" />
+                      )}
+                      Send Reminder
+                    </Button>
+                  )}
+              </div>
+
+              {remindersLoading ? (
+                <div className="py-4 text-center text-neutral-500">
+                  Loading reminders...
+                </div>
+              ) : reminders.length === 0 ? (
+                <div className="py-4 text-center text-neutral-500">
+                  No reminders sent yet
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-neutral-200">
+                        <th className="text-left py-2 px-3 font-medium text-neutral-600">
+                          #
+                        </th>
+                        <th className="text-left py-2 px-3 font-medium text-neutral-600">
+                          Channel
+                        </th>
+                        <th className="text-left py-2 px-3 font-medium text-neutral-600">
+                          Status
+                        </th>
+                        <th className="text-left py-2 px-3 font-medium text-neutral-600">
+                          Tone
+                        </th>
+                        <th className="text-left py-2 px-3 font-medium text-neutral-600">
+                          Sent At
+                        </th>
+                        <th className="text-left py-2 px-3 font-medium text-neutral-600">
+                          Recipient
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {reminders.map((reminder) => (
+                        <tr
+                          key={reminder.id}
+                          className="border-b border-neutral-100"
+                        >
+                          <td className="py-2 px-3">
+                            {reminder.reminder_number}
+                          </td>
+                          <td className="py-2 px-3">
+                            <Badge
+                              variant={
+                                reminder.channel === 'email'
+                                  ? 'info'
+                                  : 'neutral'
+                              }
+                            >
+                              {reminder.channel}
+                            </Badge>
+                          </td>
+                          <td className="py-2 px-3">
+                            <Badge
+                              variant={
+                                reminder.status === 'sent'
+                                  ? 'success'
+                                  : reminder.status === 'failed'
+                                    ? 'error'
+                                    : 'warning'
+                              }
+                            >
+                              {reminder.status}
+                            </Badge>
+                          </td>
+                          <td className="py-2 px-3 capitalize">
+                            {reminder.tone}
+                          </td>
+                          <td className="py-2 px-3">
+                            {reminder.sent_at
+                              ? new Date(
+                                  reminder.sent_at * 1000
+                                ).toLocaleString()
+                              : '-'}
+                          </td>
+                          <td className="py-2 px-3 text-neutral-600">
+                            {reminder.recipient}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="flex items-center justify-between pt-4">
             <div>
               {!isNew && (
@@ -747,6 +912,58 @@ export function InvoiceDetailPage() {
             </div>
           </div>
         </form>
+
+        {/* Send Reminder Confirmation Modal */}
+        {showReminderConfirmation && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 bg-amber-100 rounded-full">
+                  <Bell className="h-6 w-6 text-amber-600" />
+                </div>
+                <h2 className="text-xl font-semibold text-neutral-900">
+                  Send Payment Reminder
+                </h2>
+              </div>
+
+              <p className="text-neutral-600 mb-4">
+                Send a payment reminder to:
+              </p>
+
+              <div className="p-3 bg-neutral-100 rounded-lg mb-6">
+                <p className="font-medium text-neutral-900">
+                  {customerName || 'Customer'}
+                </p>
+                <p className="text-sm text-neutral-600">{customerEmail}</p>
+              </div>
+
+              <div className="flex justify-end gap-3">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setShowReminderConfirmation(false)}
+                  disabled={isSendingReminder}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  variant="primary"
+                  onClick={handleSendReminder}
+                  disabled={isSendingReminder}
+                  className="flex items-center gap-2"
+                >
+                  {isSendingReminder ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
+                  {isSendingReminder ? 'Sending...' : 'Send Reminder'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Send Confirmation Modal */}
         {showSendConfirmation && (

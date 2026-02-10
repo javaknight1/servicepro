@@ -2,6 +2,7 @@ package routes
 
 import (
 	"context"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
@@ -15,6 +16,7 @@ import (
 	"github.com/javaknight1/servicepro/backend/internal/api/middleware"
 	v1 "github.com/javaknight1/servicepro/backend/internal/api/routes/v1"
 	"github.com/javaknight1/servicepro/backend/internal/health"
+	"github.com/javaknight1/servicepro/backend/internal/services"
 	emailclient "github.com/javaknight1/servicepro/backend/pkg/clients/email"
 	"github.com/javaknight1/servicepro/backend/pkg/clients/errortracking"
 	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"
@@ -139,6 +141,12 @@ func NewRouteConfig(db *gorm.DB, redis *redis.Client, email emailclient.Client, 
 	mw := SetupMiddleware(repos, cfg, redis)
 	svc := SetupServices(db, redis, repos, cfg, email, storage, mw.JWTManager, mw.PermChecker)
 	handlers := SetupHandlers(cfg, repos, svc, mw)
+
+	// Start payment reminder background worker
+	if svc.PaymentReminder != nil {
+		reminderWorker := services.NewPaymentReminderWorker(svc.PaymentReminder, 1*time.Hour)
+		reminderWorker.Start(context.Background())
+	}
 
 	return &RouteConfig{
 		Config:     cfg,

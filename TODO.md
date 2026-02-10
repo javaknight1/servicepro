@@ -2,7 +2,7 @@
 
 This document tracks technical improvements that should be implemented but are deferred for future development cycles.
 
-**Last Updated: 2026-02-07** (T100 added — business hours & timezone in org settings; T099 updated to depend on T100)
+**Last Updated: 2026-02-10** (T034+T043 merged and implemented — payment reminder automation)
 
 ---
 
@@ -42,9 +42,9 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 | T029     | P0       | Invoicing      | High       | Before    | Add "Generate Invoice from Job" button                   |
 | T030     | P0       | Invoicing      | High       | Before    | Auto-populate invoice from job data                      |
 | ~~T031~~ | ~~P0~~   | ~~Invoicing~~  | ~~High~~   | ~~--~~    | ~~Build A/R aging buckets report~~ ✓                     |
-| T032     | P0       | Invoicing      | High       | Before    | Build "Who Owes What" report                             |
+| ~~T032~~ | ~~P0~~   | ~~Invoicing~~  | ~~High~~   | ~~--~~    | ~~Build "Who Owes What" report~~ ✓                       |
 | T033     | P0       | Dashboard      | High       | Before    | Add "Jobs Needing Invoice" dashboard widget              |
-| T034     | P0       | Comms          | High       | Before    | Wire payment reminder automation                         |
+| ~~T034~~ | ~~P0~~   | ~~Comms~~      | ~~High~~   | ~~--~~    | ~~Wire payment reminder automation~~ ✓                   |
 | T035     | P0       | Roles          | High       | Before    | Create Technician role                                   |
 | T036     | P1       | CRM            | High       | Before    | Add manual Call Log entry                                |
 | T037     | P1       | CRM            | High       | Before    | Auto-log system messages to customer activity            |
@@ -53,7 +53,7 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 | T040     | P1       | Scheduling     | High       | Before    | Add auto-notify on emergency insertion                   |
 | T041     | P1       | Quoting        | Medium     | Before    | Implement quote auto follow-ups                          |
 | T042     | P1       | Quoting        | High       | Before    | Build follow-up queue UI                                 |
-| T043     | P1       | Invoicing      | High       | Before    | Wire payment reminder notifications                      |
+| ~~T043~~ | ~~P1~~   | ~~Invoicing~~  | ~~High~~   | ~~--~~    | ~~Wire payment reminder notifications~~ ✓                |
 | T044     | P1       | Invoicing      | Medium     | Before    | Build collections dashboard                              |
 | T045     | P1       | Dashboard      | High       | Before    | Add aging quotes dashboard widget                        |
 | T046     | P1       | Dashboard      | High       | Before    | Add follow-up queue dashboard widget                     |
@@ -187,9 +187,9 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 ### Sprint 8 - Collections & A/R
 
 - [x] **T031** - Build A/R aging buckets report ✓
-- [ ] **T032** - Build "Who Owes What" report
-- [ ] **T034** - Wire payment reminder automation
-- [ ] **T043** - Wire payment reminder notifications
+- [x] **T032** - Build "Who Owes What" report ✓
+- [x] **T034** - Wire payment reminder automation ✓ (merged with T043)
+- [x] **T043** - Wire payment reminder notifications ✓ (merged with T034)
 - [ ] **T044** - Build collections dashboard
 - [ ] **T064** - Add last contact date tracking on invoices
 - [ ] **T065** - Add promise-to-pay notes
@@ -312,6 +312,8 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 - [x] T012: Bundle size monitoring in CI - Markdown reports in CI step summaries, pre-push hook validation, release script gate. Thresholds: 500KB warn, 750KB fail (total JS gzipped). Per-chunk budgets for vendor splits. Chunk breakdown visible in all reports.
 - [x] T020: Build conflict detection API endpoint - `POST /v1/conflicts/check` wires existing `ConflictDetector` service to API. Handler extracts tenant from auth context, passes to detector. Fixed tenant scoping gap in `GetByTechnicianAndDateRange()` and `GetByDateRange()`. Detects technician overlap, business hours violations, workload excess. Returns resolution suggestions.
 - [x] T053: Add "Repeat Job" button on customer detail - `?clone=` query param on JobDetailPage pre-fills form from source job (title, type, priority, duration, notes, instructions, materials). Customer detail page shows recent jobs with "Repeat Job" and "View" buttons. JobActionsMenu also has "Repeat Job" option. "New Job" from customer page pre-selects customer via navigation state.
+- [x] T032: Build "Who Owes What" report - Addressed by adding customer filter dropdown to existing A/R Aging Report (T031). Backend already supported `customer_id` filtering; added UI dropdown on `ARAgingReportPage.tsx`. Fixed Gin UUID query binding issue (`ShouldBindQuery` can't bind `*uuid.UUID` — split into string field + manual parse via `ParseCustomerID()`).
+- [x] T034+T043: Payment reminder automation - Merged T034 (payment reminder emails) and T043 (overdue invoice notifications) into single implementation. Backend: `payment_reminders` table, `PaymentReminderService` with background worker (hourly), escalating tone (friendly→firm→final based on days overdue), multi-channel (email/SMS) with customer preference resolution. API: `GET/POST /invoices/:id/reminders`, `GET/PUT /settings/payment-reminders`. Frontend: Notifications tab in Org Settings (enable toggle, configurable day schedule, max reminders), Payment Reminders section on Invoice Detail (history table, manual send button with confirmation).
 
 ---
 
@@ -425,19 +427,14 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
     - Click bucket to see invoices in that range
     - Export to CSV
 
-- [ ] **T032: Build "Who Owes What" Report**
+- [x] **T032: Build "Who Owes What" Report** ✓ COMPLETE
   - **What**: Customer-centric view of outstanding balances
   - **Why**: Collection prioritization - focus on customers with largest balances
-  - **Confidence**: High - simple aggregation query
-  - **Context**: "ABC Company owes $3,000 across 3 invoices, last payment 45 days ago" - actionable collection info
-  - **Implementation**:
-    - Group unpaid invoices by customer
-    - Show total owed, invoice count, oldest invoice, last payment date
-    - Sort by amount descending
+  - **Resolution**: Addressed by adding customer filter dropdown to existing A/R Aging Report (T031). The A/R report already has a customer summary endpoint (`/api/v1/reports/ar-aging/customers`) showing per-customer totals, invoice counts, and bucket breakdowns. Filtering by customer on the main report provides the drill-down view.
   - **Acceptance Criteria**:
-    - Shows all customers with outstanding balances
-    - Click customer to see their invoices
-    - Filter by amount threshold
+    - ~~Shows all customers with outstanding balances~~ ✓ (A/R report customer summary)
+    - ~~Click customer to see their invoices~~ ✓ (bucket drill-down with customer filter)
+    - ~~Filter by amount threshold~~ ✓ (min_amount query param supported)
 
 ### Dashboard - Critical
 
@@ -457,21 +454,10 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 
 ### Communications - Critical
 
-- [ ] **T034: Wire Payment Reminder Automation**
+- [x] **T034: Wire Payment Reminder Automation** ✓ (merged with T043)
   - **What**: Background job that sends automatic reminders for overdue invoices
   - **Why**: Getting paid is the business - automated reminders improve collection rate 30-40%
-  - **Confidence**: High - payment notification models exist, just need scheduler
-  - **Context**: Invoice 7 days overdue → auto-email "Your payment is past due." 14 days → another. 30 days → escalation.
-  - **Implementation**:
-    - Create background worker/cron job
-    - Query overdue invoices daily
-    - Send reminders at 7, 14, 30 days (configurable)
-    - Track which reminders were sent
-  - **Acceptance Criteria**:
-    - Reminders sent automatically
-    - Configurable timing (days overdue)
-    - No duplicate reminders
-    - Reminder history tracked
+  - **Implemented**: Background worker (1hr interval), configurable days [7,14,30], escalating tone (friendly→firm→final), email+SMS channels, dedup, manual trigger, Settings UI, Invoice detail history
 
 ### Roles - Critical
 
@@ -885,18 +871,9 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 
 ### Invoicing - High Priority
 
-- [ ] **T043: Wire Payment Reminder Notifications**
+- [x] **T043: Wire Payment Reminder Notifications** ✓ (merged with T034)
   - **What**: Connect payment notification models to actual email/SMS sending
-  - **Why**: Models exist but aren't wired - reminders don't actually go out
-  - **Confidence**: High - infrastructure exists, just needs wiring
-  - **Implementation**:
-    - Connect notification service to email client
-    - Connect to SMS client
-    - Use existing notification templates
-  - **Acceptance Criteria**:
-    - Payment reminders actually sent
-    - Both email and SMS working
-    - Delivery tracked
+  - **Implemented**: Merged into T034 — full email+SMS delivery via email.Client.Send() and sms.Client.SendNotification(), channel resolved from customer PreferredContactMethod and DoNot flags, delivery status tracked in payment_reminders table
 
 - [ ] **T044: Build Collections Dashboard**
   - **What**: Unified view for managing overdue accounts

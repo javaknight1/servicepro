@@ -76,6 +76,7 @@ type Services struct {
 	StripeEvents      *stripeService.EventProcessor
 	StripeWebhook     *stripeService.WebhookHandler
 	Conflict          *conflict.ConflictDetector
+	PaymentReminder   *services.PaymentReminderService
 }
 
 // Middleware holds all middleware instances
@@ -116,4 +117,5 @@ type Handlers struct {
 	ProfilePicture    *handlers.ProfilePictureHandler
 	PaymentTerms      *handlers.PaymentTermsHandler
 	Conflict          *handlers.ConflictHandler
+	PaymentReminder   *handlers.PaymentReminderHandler
 }

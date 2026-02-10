@@ -95,5 +95,8 @@ func SetupHandlers(
 	// Membership handler
 	h.Membership = handlers.NewMembershipHandler(svc.Membership)
 
+	// Payment reminder handler
+	h.PaymentReminder = handlers.NewPaymentReminderHandler(svc.PaymentReminder)
+
 	return h
 }

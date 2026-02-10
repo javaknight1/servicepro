@@ -1802,6 +1802,36 @@ END;
 $$ LANGUAGE plpgsql STABLE;
 
 -- ============================================================================
+-- PAYMENT REMINDERS
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS payment_reminders (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    invoice_id UUID NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,
+    customer_id UUID NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+    reminder_number INTEGER NOT NULL DEFAULT 1,
+    channel notification_channel NOT NULL DEFAULT 'email',
+    status notification_status NOT NULL DEFAULT 'pending',
+    tone VARCHAR(20) NOT NULL DEFAULT 'friendly',
+    recipient VARCHAR(255) NOT NULL,
+    subject VARCHAR(500),
+    error_message TEXT,
+    sent_at BIGINT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP,
+    CONSTRAINT unique_reminder_per_invoice UNIQUE (invoice_id, reminder_number)
+);
+
+CREATE INDEX IF NOT EXISTS idx_payment_reminders_tenant ON payment_reminders(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_payment_reminders_invoice ON payment_reminders(invoice_id);
+CREATE INDEX IF NOT EXISTS idx_payment_reminders_status ON payment_reminders(status);
+
+CREATE TRIGGER trigger_payment_reminders_updated_at BEFORE UPDATE ON payment_reminders
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- ============================================================================
 -- SCHEMA COMPLETE
 -- ============================================================================
 

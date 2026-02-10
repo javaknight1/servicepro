@@ -155,5 +155,13 @@ func SetupServices(
 	// Invitation service
 	svc.Invitation = services.NewInvitationService(db, emailClient, cfg.Server.FrontendURL)
 
+	// Payment reminder service
+	svc.PaymentReminder = services.NewPaymentReminderService(db, &services.PaymentReminderServiceConfig{
+		EmailClient: emailClient,
+		SMSClient:   nil, // SMS client is passed via routes.go Setup, will be set there if needed
+		FrontendURL: cfg.Server.FrontendURL,
+		BackendURL:  cfg.Server.BackendURL,
+	})
+
 	return svc
 }

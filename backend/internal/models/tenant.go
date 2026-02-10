@@ -49,6 +49,11 @@ type TenantSettings struct {
 	JobPrefix            string     `json:"jobPrefix,omitempty"`
 	DefaultPaymentTermID *uuid.UUID `json:"defaultPaymentTermId,omitempty"`
 	DefaultTaxRateID     *uuid.UUID `json:"defaultTaxRateId,omitempty"`
+
+	// Payment reminder settings
+	PaymentRemindersEnabled bool  `json:"paymentRemindersEnabled,omitempty"`
+	ReminderDaysAfterDue    []int `json:"reminderDaysAfterDue,omitempty"`
+	MaxRemindersPerInvoice  int   `json:"maxRemindersPerInvoice,omitempty"`
 }
 
 // Value implements driver.Valuer for database serialization

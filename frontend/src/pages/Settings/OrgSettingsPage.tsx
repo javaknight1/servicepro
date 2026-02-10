@@ -16,6 +16,10 @@ import {
 import { useTenantStore } from '@store';
 import { tenantApi } from '@services/tenantService';
 import { roleApi } from '@services/roleApi';
+import {
+  paymentReminderService,
+  type PaymentReminderSettings,
+} from '@services/paymentReminderService';
 import { getErrorMessage } from '@/utils/error';
 import {
   Building2,
@@ -28,6 +32,8 @@ import {
   RefreshCw,
   X,
   Clock,
+  Bell,
+  Plus,
 } from 'lucide-react';
 import { MembershipTab } from '@components/membership';
 import type {
@@ -37,7 +43,7 @@ import type {
 } from '@/types/tenant';
 import type { Role } from '@/types/role';
 
-type TabId = 'general' | 'members' | 'membership';
+type TabId = 'general' | 'members' | 'membership' | 'notifications';
 
 export function OrgSettingsPage() {
   const navigate = useNavigate();
@@ -77,10 +83,25 @@ export function OrgSettingsPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
 
+  // Notification settings state
+  const [reminderSettings, setReminderSettings] =
+    useState<PaymentReminderSettings>({
+      paymentRemindersEnabled: false,
+      reminderDaysAfterDue: [7, 14, 30],
+      maxRemindersPerInvoice: 3,
+    });
+  const [reminderSettingsLoading, setReminderSettingsLoading] = useState(false);
+  const [reminderSettingsSaving, setReminderSettingsSaving] = useState(false);
+  const [reminderSettingsError, setReminderSettingsError] = useState<
+    string | null
+  >(null);
+  const [reminderSettingsSuccess, setReminderSettingsSuccess] = useState(false);
+
   const tabs = [
     { id: 'general' as const, label: 'General', icon: Settings },
     { id: 'members' as const, label: 'Members', icon: Users },
     { id: 'membership' as const, label: 'Membership', icon: CreditCard },
+    { id: 'notifications' as const, label: 'Notifications', icon: Bell },
   ];
 
   // Load current tenant data into form
@@ -130,6 +151,70 @@ export function OrgSettingsPage() {
     } finally {
       setMembersLoading(false);
     }
+  };
+
+  // Load notification settings when tab is active
+  useEffect(() => {
+    if (activeTab === 'notifications' && currentTenant) {
+      loadReminderSettings();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, currentTenant]);
+
+  const loadReminderSettings = async () => {
+    setReminderSettingsLoading(true);
+    setReminderSettingsError(null);
+    try {
+      const settings = await paymentReminderService.getReminderSettings();
+      setReminderSettings(settings);
+    } catch (err) {
+      console.error('Failed to load reminder settings:', err);
+      setReminderSettingsError(
+        getErrorMessage(err, 'Failed to load reminder settings')
+      );
+    } finally {
+      setReminderSettingsLoading(false);
+    }
+  };
+
+  const handleSaveReminderSettings = async () => {
+    setReminderSettingsSaving(true);
+    setReminderSettingsError(null);
+    setReminderSettingsSuccess(false);
+    try {
+      const updated =
+        await paymentReminderService.updateReminderSettings(reminderSettings);
+      setReminderSettings(updated);
+      setReminderSettingsSuccess(true);
+      setTimeout(() => setReminderSettingsSuccess(false), 3000);
+    } catch (err) {
+      console.error('Failed to save reminder settings:', err);
+      setReminderSettingsError(
+        getErrorMessage(err, 'Failed to save reminder settings')
+      );
+    } finally {
+      setReminderSettingsSaving(false);
+    }
+  };
+
+  const handleAddReminderDay = () => {
+    const days = [...reminderSettings.reminderDaysAfterDue];
+    const lastDay = days.length > 0 ? days[days.length - 1] : 0;
+    days.push(lastDay + 7);
+    setReminderSettings({ ...reminderSettings, reminderDaysAfterDue: days });
+  };
+
+  const handleRemoveReminderDay = (index: number) => {
+    const days = reminderSettings.reminderDaysAfterDue.filter(
+      (_, i) => i !== index
+    );
+    setReminderSettings({ ...reminderSettings, reminderDaysAfterDue: days });
+  };
+
+  const handleReminderDayChange = (index: number, value: number) => {
+    const days = [...reminderSettings.reminderDaysAfterDue];
+    days[index] = value;
+    setReminderSettings({ ...reminderSettings, reminderDaysAfterDue: days });
   };
 
   const handleSaveGeneral = async (e: React.FormEvent) => {
@@ -552,6 +637,170 @@ export function OrgSettingsPage() {
             )}
 
             {activeTab === 'membership' && <MembershipTab />}
+
+            {activeTab === 'notifications' && (
+              <Card variant="elevated" padding="lg">
+                <CardHeader>
+                  <CardTitle>Payment Reminders</CardTitle>
+                  <CardDescription>
+                    Configure automatic payment reminders for overdue invoices
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {reminderSettingsLoading ? (
+                    <div className="py-8 text-center text-neutral-500">
+                      Loading settings...
+                    </div>
+                  ) : (
+                    <div className="space-y-6 mt-4">
+                      {reminderSettingsError && (
+                        <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                          {reminderSettingsError}
+                        </div>
+                      )}
+
+                      {reminderSettingsSuccess && (
+                        <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
+                          Settings saved successfully
+                        </div>
+                      )}
+
+                      {/* Enable toggle */}
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-neutral-900">
+                            Enable automatic payment reminders
+                          </p>
+                          <p className="text-sm text-neutral-500">
+                            Automatically send reminders when invoices become
+                            overdue
+                          </p>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={reminderSettings.paymentRemindersEnabled}
+                            onChange={(e) =>
+                              setReminderSettings({
+                                ...reminderSettings,
+                                paymentRemindersEnabled: e.target.checked,
+                              })
+                            }
+                            className="sr-only peer"
+                          />
+                          <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
+                        </label>
+                      </div>
+
+                      {/* Reminder schedule */}
+                      <div>
+                        <div className="flex items-center justify-between mb-3">
+                          <div>
+                            <p className="text-sm font-medium text-neutral-900">
+                              Reminder schedule
+                            </p>
+                            <p className="text-sm text-neutral-500">
+                              Days after due date to send each reminder
+                            </p>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            size="sm"
+                            onClick={handleAddReminderDay}
+                          >
+                            <Plus className="h-4 w-4 mr-1" />
+                            Add
+                          </Button>
+                        </div>
+                        <div className="space-y-2">
+                          {reminderSettings.reminderDaysAfterDue.map(
+                            (day, index) => (
+                              <div
+                                key={index}
+                                className="flex items-center gap-3"
+                              >
+                                <span className="text-sm text-neutral-500 w-24">
+                                  Reminder {index + 1}:
+                                </span>
+                                <input
+                                  type="number"
+                                  value={day}
+                                  onChange={(e) =>
+                                    handleReminderDayChange(
+                                      index,
+                                      parseInt(e.target.value) || 0
+                                    )
+                                  }
+                                  min="1"
+                                  max="365"
+                                  className="w-20 px-3 py-1.5 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
+                                />
+                                <span className="text-sm text-neutral-500">
+                                  days after due date
+                                </span>
+                                {reminderSettings.reminderDaysAfterDue.length >
+                                  1 && (
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() =>
+                                      handleRemoveReminderDay(index)
+                                    }
+                                    className="text-red-500 hover:text-red-700"
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                )}
+                              </div>
+                            )
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Max reminders */}
+                      <div>
+                        <p className="text-sm font-medium text-neutral-900 mb-1">
+                          Maximum reminders per invoice
+                        </p>
+                        <p className="text-sm text-neutral-500 mb-2">
+                          Stop sending reminders after this many have been sent
+                        </p>
+                        <input
+                          type="number"
+                          value={reminderSettings.maxRemindersPerInvoice}
+                          onChange={(e) =>
+                            setReminderSettings({
+                              ...reminderSettings,
+                              maxRemindersPerInvoice:
+                                parseInt(e.target.value) || 1,
+                            })
+                          }
+                          min="1"
+                          max="10"
+                          className="w-20 px-3 py-1.5 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
+                        />
+                      </div>
+
+                      {/* Save button */}
+                      <div className="flex justify-end pt-4 border-t border-neutral-200">
+                        <Button
+                          type="button"
+                          variant="primary"
+                          onClick={handleSaveReminderSettings}
+                          disabled={reminderSettingsSaving}
+                        >
+                          {reminderSettingsSaving
+                            ? 'Saving...'
+                            : 'Save Settings'}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
       </div>
