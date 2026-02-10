@@ -63,7 +63,7 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 | T050     | P1       | Comms          | High       | Before    | Add "Tech on the way" manual trigger                     |
 | T051     | P1       | Comms          | Medium     | Before    | Implement quote follow-up email sequence                 |
 | T052     | P1       | Roles          | High       | Before    | Create Dispatcher role                                   |
-| T053     | P2       | CRM            | High       | Before    | Add "Repeat Job" button on customer detail               |
+| ~~T053~~ | ~~P2~~   | ~~CRM~~        | ~~High~~   | ~~--~~    | ~~Add "Repeat Job" button on customer detail~~ ✓         |
 | T054     | P2       | CRM            | Medium     | Before    | Create Communication Log component                       |
 | T055     | P2       | CRM            | Medium     | Before    | Unified Customer Timeline view                           |
 | T056     | P2       | Scheduling     | Medium     | Before    | Add workload capacity warnings                           |
@@ -182,7 +182,7 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 - [ ] **T029** - Add "Generate Invoice from Job" button
 - [ ] **T030** - Auto-populate invoice from job data
 - [ ] **T033** - Add "Jobs Needing Invoice" dashboard widget
-- [ ] **T053** - Add "Repeat Job" button on customer detail
+- [x] **T053** - Add "Repeat Job" button on customer detail ✓
 
 ### Sprint 8 - Collections & A/R
 
@@ -311,6 +311,7 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 - [x] T017: Query performance monitoring - Custom GORM logger with slow query detection (>=100ms WARN, >=1s ERROR). Prometheus metrics: `db_query_duration_seconds`, `db_queries_total`, `db_query_errors_total` with operation/table labels. Connection pool gauges (open/idle/in-use/max/wait). Configurable via `DB_SLOW_QUERY_THRESHOLD`, `DB_QUERY_ALERT_THRESHOLD`, `DB_LOG_ALL_QUERIES`.
 - [x] T012: Bundle size monitoring in CI - Markdown reports in CI step summaries, pre-push hook validation, release script gate. Thresholds: 500KB warn, 750KB fail (total JS gzipped). Per-chunk budgets for vendor splits. Chunk breakdown visible in all reports.
 - [x] T020: Build conflict detection API endpoint - `POST /v1/conflicts/check` wires existing `ConflictDetector` service to API. Handler extracts tenant from auth context, passes to detector. Fixed tenant scoping gap in `GetByTechnicianAndDateRange()` and `GetByDateRange()`. Detects technician overlap, business hours violations, workload excess. Returns resolution suggestions.
+- [x] T053: Add "Repeat Job" button on customer detail - `?clone=` query param on JobDetailPage pre-fills form from source job (title, type, priority, duration, notes, instructions, materials). Customer detail page shows recent jobs with "Repeat Job" and "View" buttons. JobActionsMenu also has "Repeat Job" option. "New Job" from customer page pre-selects customer via navigation state.
 
 ---
 
@@ -1411,15 +1412,15 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 
 ### CRM - Medium Priority
 
-- [ ] **T053: Add "Repeat Job" Button on Customer Detail**
+- [x] **T053: Add "Repeat Job" Button on Customer Detail** ✓ COMPLETE
   - **What**: Button to create new job from last job for a customer
   - **Why**: Service businesses do recurring work (annual maintenance, quarterly pest control)
   - **Confidence**: High - straightforward clone operation
   - **Context**: Customer calls, wants same service as last time → one click → job created with same details
   - **Acceptance Criteria**:
-    - Button on customer detail page
-    - Creates job with same service type, notes, duration
-    - Opens job for scheduling
+    - ~~Button on customer detail page~~ ✓
+    - ~~Creates job with same service type, notes, duration~~ ✓
+    - ~~Opens job for scheduling~~ ✓
 
 - [ ] **T054: Create Communication Log Component**
   - **What**: Unified view of all communications with a customer

@@ -1,15 +1,26 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { DashboardLayout } from '@components/layout';
-import { Button } from '@components/shared';
+import { Button, Badge, getStatusBadgeVariant } from '@components/shared';
 import { customerService } from '@services/customerService';
+import { jobService, Job } from '@services/jobService';
 import { getErrorMessage } from '@/utils/error';
+import { getJobStatusLabel, getJobTypeLabel } from '@app-types';
+import { formatEpochDateTimeUTC } from '@/utils/epoch';
 import type {
   CustomerType,
   CustomerStatus,
   PreferredContactMethod,
 } from '@app-types/customer';
-import { ArrowLeft, Save, Trash2, Loader2 } from 'lucide-react';
+import {
+  ArrowLeft,
+  Save,
+  Trash2,
+  Loader2,
+  Briefcase,
+  Copy,
+  ExternalLink,
+} from 'lucide-react';
 
 interface CustomerFormData {
   email: string;
@@ -78,10 +89,13 @@ export function CustomerDetailPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [recentJobs, setRecentJobs] = useState<Job[]>([]);
+  const [isLoadingJobs, setIsLoadingJobs] = useState(false);
 
   useEffect(() => {
     if (!isNew && id) {
       loadCustomer(id);
+      loadRecentJobs(id);
     }
   }, [id, isNew]);
 
@@ -123,6 +137,18 @@ export function CustomerDetailPage() {
       setError('Failed to load customer details');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const loadRecentJobs = async (customerId: string) => {
+    setIsLoadingJobs(true);
+    try {
+      const jobs = await jobService.getCustomerJobs(customerId);
+      setRecentJobs(jobs.slice(0, 5));
+    } catch (err) {
+      console.error('Failed to load customer jobs:', err);
+    } finally {
+      setIsLoadingJobs(false);
     }
   };
 
@@ -778,6 +804,96 @@ export function CustomerDetailPage() {
             </div>
           </div>
         </form>
+
+        {/* Recent Jobs Section */}
+        {!isNew && (
+          <div className="mt-8 bg-white rounded-lg border border-neutral-200 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Briefcase className="h-5 w-5 text-neutral-500" />
+                <h2 className="text-lg font-semibold text-neutral-900">
+                  Recent Jobs
+                </h2>
+              </div>
+              <Button
+                variant="primary"
+                onClick={() =>
+                  navigate(`/jobs/new`, {
+                    state: { prefillCustomerId: id },
+                  })
+                }
+                className="flex items-center gap-2 text-sm"
+              >
+                <Briefcase className="h-4 w-4" />
+                New Job
+              </Button>
+            </div>
+
+            {isLoadingJobs ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-neutral-400" />
+              </div>
+            ) : recentJobs.length === 0 ? (
+              <p className="text-sm text-neutral-500 py-4 text-center">
+                No jobs yet for this customer.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {recentJobs.map((job) => (
+                  <div
+                    key={job.id}
+                    className="flex items-center justify-between p-3 border border-neutral-200 rounded-lg hover:border-neutral-300 transition-colors"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-sm text-primary-600">
+                          {job.job_number}
+                        </span>
+                        <span className="font-medium text-neutral-900 truncate">
+                          {job.title}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Badge
+                          variant={getStatusBadgeVariant(job.status)}
+                          size="sm"
+                        >
+                          {getJobStatusLabel(job.status)}
+                        </Badge>
+                        <span className="text-xs text-neutral-500">
+                          {getJobTypeLabel(job.job_type)}
+                        </span>
+                        {job.scheduled_start_at && (
+                          <span className="text-xs text-neutral-500">
+                            {formatEpochDateTimeUTC(job.scheduled_start_at)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1 ml-3 shrink-0">
+                      <Button
+                        variant="ghost"
+                        onClick={() => navigate(`/jobs/${job.id}`)}
+                        className="flex items-center gap-1 text-xs px-2 py-1"
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" />
+                        View
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => navigate(`/jobs/new?clone=${job.id}`)}
+                        className="flex items-center gap-1 text-xs px-2 py-1"
+                      >
+                        <Copy className="h-3.5 w-3.5" />
+                        Repeat Job
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </DashboardLayout>
   );

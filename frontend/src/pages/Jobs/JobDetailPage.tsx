@@ -1,5 +1,10 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import {
+  useNavigate,
+  useParams,
+  useSearchParams,
+  useLocation,
+} from 'react-router-dom';
 import { DashboardLayout } from '@components/layout';
 import { Button } from '@components/shared';
 import {
@@ -59,7 +64,12 @@ const initialFormData: JobFormData = {
 export function JobDetailPage() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
+  const location = useLocation();
   const isNew = !id || id === 'new';
+  const cloneFromId = searchParams.get('clone');
+  const prefillCustomerId = (location.state as { prefillCustomerId?: string })
+    ?.prefillCustomerId;
 
   const [formData, setFormData] = useState<JobFormData>(initialFormData);
   const [currentJob, setCurrentJob] = useState<Job | null>(null);
@@ -138,8 +148,12 @@ export function JobDetailPage() {
     loadCustomers();
     if (!isNew && id) {
       loadJob(id);
+    } else if (isNew && cloneFromId) {
+      loadJobForCloning(cloneFromId);
+    } else if (isNew && prefillCustomerId) {
+      setFormData((prev) => ({ ...prev, customer_id: prefillCustomerId }));
     }
-  }, [id, isNew]);
+  }, [id, isNew, cloneFromId, prefillCustomerId]);
 
   const loadCustomers = async () => {
     setIsLoadingCustomers(true);
@@ -179,6 +193,33 @@ export function JobDetailPage() {
     } catch (err) {
       console.error('Failed to load job:', err);
       setError('Failed to load job details');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loadJobForCloning = async (sourceJobId: string) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const job = await jobService.getJob(sourceJobId);
+      setFormData({
+        customer_id: job.customer_id || '',
+        title: job.title || '',
+        description: job.description || '',
+        job_type: job.job_type || JobType.MAINTENANCE,
+        status: JobStatus.NEW,
+        priority: job.priority || JobPriority.NORMAL,
+        scheduled_start_at: '',
+        estimated_duration: job.estimated_duration?.toString() || '',
+        internal_notes: job.internal_notes || '',
+        customer_notes: job.customer_notes || '',
+        special_instructions: job.special_instructions || '',
+        required_materials: job.required_materials || '',
+      });
+    } catch (err) {
+      console.error('Failed to load job for cloning:', err);
+      setError('Failed to load source job for cloning');
     } finally {
       setIsLoading(false);
     }
@@ -328,7 +369,7 @@ export function JobDetailPage() {
             Back
           </Button>
           <h1 className="text-2xl font-bold text-neutral-900">
-            {isNew ? 'Create Job' : 'Edit Job'}
+            {isNew ? (cloneFromId ? 'Repeat Job' : 'Create Job') : 'Edit Job'}
           </h1>
         </div>
 
