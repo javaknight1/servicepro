@@ -13,6 +13,7 @@ import { jobService, Job, JobFilters } from '@services/jobService';
 import { JobActionsMenu, JobFlowModal } from '@components/jobs';
 import { Briefcase, Plus, Search, Info, CalendarDays } from 'lucide-react';
 import { getJobStatusLabel, getJobPriorityLabel } from '@app-types';
+import { formatEpochDateTimeUTC } from '@/utils/epoch';
 
 export function JobsPage() {
   const navigate = useNavigate();
@@ -117,12 +118,12 @@ export function JobsPage() {
       ),
     },
     {
-      key: 'scheduled_date',
+      key: 'scheduled_start_at',
       header: 'Scheduled',
       sortable: true,
       render: (value) => (
         <span className="text-neutral-600">
-          {value ? new Date(value as string).toLocaleDateString() : '-'}
+          {value ? formatEpochDateTimeUTC(value as number) : '-'}
         </span>
       ),
     },
