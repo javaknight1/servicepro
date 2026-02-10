@@ -57,6 +57,13 @@ func (h *ARAgingHandler) GetARAgingReport(c *gin.Context) {
 		})
 		return
 	}
+	if err := query.ParseCustomerID(); err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Error:   "invalid_request",
+			Message: "Invalid customer_id: " + err.Error(),
+		})
+		return
+	}
 
 	// Set cache control headers
 	c.Header("Cache-Control", "private, max-age=300")
@@ -100,6 +107,13 @@ func (h *ARAgingHandler) GetBucketSummary(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
 			Message: "Invalid query parameters: " + err.Error(),
+		})
+		return
+	}
+	if err := query.ParseCustomerID(); err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Error:   "invalid_request",
+			Message: "Invalid customer_id: " + err.Error(),
 		})
 		return
 	}
@@ -171,6 +185,13 @@ func (h *ARAgingHandler) GetInvoicesByBucket(c *gin.Context) {
 		})
 		return
 	}
+	if err := query.ParseCustomerID(); err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Error:   "invalid_request",
+			Message: "Invalid customer_id: " + err.Error(),
+		})
+		return
+	}
 
 	c.Header("Cache-Control", "private, max-age=300")
 
@@ -217,6 +238,13 @@ func (h *ARAgingHandler) GetCustomerSummary(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
 			Message: "Invalid query parameters: " + err.Error(),
+		})
+		return
+	}
+	if err := query.ParseCustomerID(); err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Error:   "invalid_request",
+			Message: "Invalid customer_id: " + err.Error(),
 		})
 		return
 	}

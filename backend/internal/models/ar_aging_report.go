@@ -20,11 +20,24 @@ const (
 
 // ARAgingQuery represents query parameters for A/R aging report
 type ARAgingQuery struct {
-	AsOfDate     *time.Time `json:"as_of_date" form:"as_of_date"`
-	CustomerID   *uuid.UUID `json:"customer_id" form:"customer_id"`
-	MinAmount    *float64   `json:"min_amount" form:"min_amount"`
-	IncludePaid  bool       `json:"include_paid" form:"include_paid"`
-	IncludeDraft bool       `json:"include_draft" form:"include_draft"`
+	AsOfDate      *time.Time `json:"as_of_date" form:"as_of_date"`
+	CustomerIDStr string     `json:"-" form:"customer_id"`
+	CustomerID    *uuid.UUID `json:"customer_id" form:"-"`
+	MinAmount     *float64   `json:"min_amount" form:"min_amount"`
+	IncludePaid   bool       `json:"include_paid" form:"include_paid"`
+	IncludeDraft  bool       `json:"include_draft" form:"include_draft"`
+}
+
+// ParseCustomerID parses CustomerIDStr into CustomerID
+func (q *ARAgingQuery) ParseCustomerID() error {
+	if q.CustomerIDStr != "" {
+		id, err := uuid.Parse(q.CustomerIDStr)
+		if err != nil {
+			return err
+		}
+		q.CustomerID = &id
+	}
+	return nil
 }
 
 // ARAgingBucketSummary represents the summary for a single aging bucket

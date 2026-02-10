@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { DashboardLayout } from '@components/layout';
 import { arAgingService } from '../../services/arAgingService';
+import { customerService, Customer } from '../../services/customerService';
 import {
   ARAgingQuery,
   ARAgingBucketSummary,
@@ -46,11 +47,30 @@ const formatDate = (dateString: string): string => {
 };
 
 export function ARAgingReportPage() {
-  const [query] = useState<ARAgingQuery>({});
+  const [query, setQuery] = useState<ARAgingQuery>({});
   const [selectedBucket, setSelectedBucket] = useState<AgingBucket | null>(
     null
   );
   const [isExporting, setIsExporting] = useState(false);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+
+  // Fetch customers for filter dropdown
+  useEffect(() => {
+    customerService
+      .getCustomers({ page_size: 500, sort_by: 'last_name', sort_order: 'asc' })
+      .then((res) => setCustomers(res.customers || []))
+      .catch(() => {});
+  }, []);
+
+  const handleCustomerChange = (customerId: string) => {
+    setQuery((prev) => ({
+      ...prev,
+      customer_id: customerId || undefined,
+    }));
+    setSelectedBucket(null);
+  };
+
+  const selectedCustomer = customers.find((c) => c.id === query.customer_id);
 
   // Fetch the main report
   const {
@@ -141,16 +161,42 @@ export function ARAgingReportPage() {
               {report?.metadata.as_of_date
                 ? formatDate(report.metadata.as_of_date)
                 : 'today'}
+              {selectedCustomer && (
+                <span>
+                  {' '}
+                  for{' '}
+                  <span className="font-medium text-gray-700">
+                    {selectedCustomer.company_name ||
+                      `${selectedCustomer.first_name} ${selectedCustomer.last_name}`}
+                  </span>
+                </span>
+              )}
             </p>
           </div>
-          <button
-            onClick={handleExport}
-            disabled={isExporting}
-            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
-          >
-            <Download className="h-4 w-4" />
-            {isExporting ? 'Exporting...' : 'Export CSV'}
-          </button>
+          <div className="flex items-center gap-3">
+            <select
+              value={query.customer_id || ''}
+              onChange={(e) => handleCustomerChange(e.target.value)}
+              className="px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            >
+              <option value="">All Customers</option>
+              {customers.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.company_name
+                    ? `${c.company_name} (${c.first_name} ${c.last_name})`
+                    : `${c.first_name} ${c.last_name}`}
+                </option>
+              ))}
+            </select>
+            <button
+              onClick={handleExport}
+              disabled={isExporting}
+              className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+            >
+              <Download className="h-4 w-4" />
+              {isExporting ? 'Exporting...' : 'Export CSV'}
+            </button>
+          </div>
         </div>
 
         {/* Summary Cards */}
