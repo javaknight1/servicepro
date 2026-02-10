@@ -128,6 +128,28 @@ export function JobsPage() {
       ),
     },
     {
+      key: 'assignments',
+      header: 'Assigned To',
+      render: (_, row) => {
+        const active = row.assignments?.filter((a) => !a.unassigned_at) ?? [];
+        if (active.length === 0) {
+          return <span className="text-neutral-400">-</span>;
+        }
+        return (
+          <div className="flex flex-wrap gap-1">
+            {active.map((a) => (
+              <span
+                key={a.id}
+                className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary-50 text-primary-700"
+              >
+                {a.user_name}
+              </span>
+            ))}
+          </div>
+        );
+      },
+    },
+    {
       key: 'actions',
       header: '',
       render: (_, row) => <JobActionsMenu jobId={row.id} />,
