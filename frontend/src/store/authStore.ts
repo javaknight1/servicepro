@@ -2,6 +2,10 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { authApi, userApi } from '@services/api';
 import { setUser as setErrorTrackingUser } from '@services/errorTracking';
+import {
+  identifyUser as identifyAnalyticsUser,
+  resetUser as resetAnalyticsUser,
+} from '@services/analytics';
 import type { AuthState, User } from '@app-types';
 
 export const useAuthStore = create<AuthState>()(
@@ -28,6 +32,10 @@ export const useAuthStore = create<AuthState>()(
             const userResponse = await userApi.getCurrentUser();
             set({ user: userResponse.data });
             setErrorTrackingUser({
+              id: userResponse.data.id,
+              email: userResponse.data.email,
+            });
+            identifyAnalyticsUser({
               id: userResponse.data.id,
               email: userResponse.data.email,
             });
@@ -75,6 +83,7 @@ export const useAuthStore = create<AuthState>()(
           isAuthenticated: false,
         });
         setErrorTrackingUser(null);
+        resetAnalyticsUser();
       },
 
       refreshAccessToken: async () => {
@@ -126,10 +135,15 @@ export const useAuthStore = create<AuthState>()(
             id: response.data.id,
             email: response.data.email,
           });
+          identifyAnalyticsUser({
+            id: response.data.id,
+            email: response.data.email,
+          });
           return true;
         } catch {
           set({ user: null, isAuthenticated: false });
           setErrorTrackingUser(null);
+          resetAnalyticsUser();
           return false;
         }
       },

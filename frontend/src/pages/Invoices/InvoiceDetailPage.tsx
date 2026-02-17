@@ -12,6 +12,7 @@ import {
   type PaymentReminderResponse,
 } from '@services/paymentReminderService';
 import { getErrorMessage } from '@/utils/error';
+import { trackEvent, AnalyticsEvents } from '@services/analytics';
 import { customerService, Customer } from '@services/customerService';
 import {
   ArrowLeft,
@@ -188,6 +189,9 @@ export function InvoiceDetailPage() {
     try {
       await paymentReminderService.sendManualReminder(id);
       setShowReminderConfirmation(false);
+      trackEvent(AnalyticsEvents.REMINDER_SENT, {
+        invoice_number: invoiceNumber,
+      });
       loadReminders(id);
     } catch (err) {
       console.error('Failed to send reminder:', err);
@@ -292,6 +296,10 @@ export function InvoiceDetailPage() {
         await invoiceService.createInvoice(
           submitData as unknown as Partial<Invoice>
         );
+        trackEvent(AnalyticsEvents.INVOICE_CREATED, {
+          total: calculateTotal(),
+          line_items: lineItems.length,
+        });
       } else if (id) {
         await invoiceService.updateInvoice(
           id,
@@ -334,6 +342,7 @@ export function InvoiceDetailPage() {
       const updatedInvoice = await invoiceService.sendInvoice(id);
       setInvoiceStatus(updatedInvoice.status || InvoiceStatus.SENT);
       setShowSendConfirmation(false);
+      trackEvent(AnalyticsEvents.INVOICE_SENT, { total: calculateTotal() });
       // Show success message or navigate
       alert('Invoice sent successfully!');
     } catch (err) {
@@ -350,6 +359,10 @@ export function InvoiceDetailPage() {
     setIsDownloadingInvoice(true);
     try {
       await invoiceService.downloadInvoicePDF(id);
+      trackEvent(AnalyticsEvents.EXPORT_DOWNLOADED, {
+        format: 'pdf',
+        type: 'invoice',
+      });
     } catch (err) {
       console.error('Failed to download invoice PDF:', err);
     } finally {

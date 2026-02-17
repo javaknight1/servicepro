@@ -2,7 +2,7 @@
 
 This document tracks technical improvements that should be implemented but are deferred for future development cycles.
 
-**Last Updated: 2026-02-14** (T024 implemented — GlitchTip/Sentry error tracking integration)
+**Last Updated: 2026-02-16** (T025 implemented — PostHog product analytics integration)
 
 ---
 
@@ -35,7 +35,7 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 | ~~T022~~ | ~~P2~~   | ~~Refactor~~      | ~~High~~   | ~~--~~    | ~~Extract duplicate URLSearchParams builder~~ ✓          |
 | ~~T023~~ | ~~P2~~   | ~~Refactor~~      | ~~High~~   | ~~--~~    | ~~Consolidate cache hooks (useLocalCache/useSession)~~ ✓ |
 | ~~T024~~ | ~~P1~~   | ~~Observability~~ | ~~High~~   | ~~--~~    | ~~Full Sentry integration (frontend + backend)~~ ✓       |
-| T025     | P2       | Analytics         | High       | After     | Integrate product analytics (PostHog recommended)        |
+| ~~T025~~ | ~~P2~~   | ~~Analytics~~     | ~~High~~   | ~~--~~    | ~~Integrate product analytics (PostHog recommended)~~ ✓  |
 | T026     | P2       | Analytics         | High       | After     | Set up business KPI dashboard (Metabase)                 |
 | T027     | P2       | Scheduling        | High       | Before    | Add drag-and-drop rescheduling to job calendar           |
 | T028     | P0       | Quoting           | High       | Before    | Add "Convert Quote to Job" button                        |
@@ -146,6 +146,7 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 - [x] **T008** - Remove @ts-nocheck directives ✓
 - [x] **T009** - Enable noUnusedLocals/noUnusedParameters ✓
 - [x] **T024** - Full Sentry integration (frontend + backend) ✓
+- [x] **T025** - Integrate product analytics (PostHog) ✓
 
 ### Sprint 3 - Testing & Documentation
 
@@ -318,6 +319,7 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 - [x] T032: Build "Who Owes What" report - Addressed by adding customer filter dropdown to existing A/R Aging Report (T031). Backend already supported `customer_id` filtering; added UI dropdown on `ARAgingReportPage.tsx`. Fixed Gin UUID query binding issue (`ShouldBindQuery` can't bind `*uuid.UUID` — split into string field + manual parse via `ParseCustomerID()`).
 - [x] T034+T043: Payment reminder automation - Merged T034 (payment reminder emails) and T043 (overdue invoice notifications) into single implementation. Backend: `payment_reminders` table, `PaymentReminderService` with background worker (hourly), escalating tone (friendly→firm→final based on days overdue), multi-channel (email/SMS) with customer preference resolution. API: `GET/POST /invoices/:id/reminders`, `GET/PUT /settings/payment-reminders`. Frontend: Notifications tab in Org Settings (enable toggle, configurable day schedule, max reminders), Payment Reminders section on Invoice Detail (history table, manual send button with confirmation).
 - [x] T024: Full Sentry integration - Added GlitchTip (Sentry-compatible, lightweight) to docker-compose with separate Postgres + Celery worker. Frontend: initialized Sentry SDK in `main.tsx`, wrapped App in `ErrorBoundary`, set user context on login/logout/checkAuth in `authStore.ts`. Backend already wired via factory pattern. Optional — no DSN = mock/no-op. Source maps deferred to T101.
+- [x] T025: PostHog product analytics - Frontend: `posthog-js` SDK with analytics service (`initAnalytics`, `trackEvent`, `identifyUser`, `resetUser`), type-safe event constants, `PageViewTracker` component, `useAnalytics` hook. Workflow events: quote_created/sent/accepted/rejected, job_created/completed/status_changed, invoice_created/sent, export_downloaded. Backend: `posthog-go` SDK with pluggable client (factory pattern mirroring errortracking), PostHog + mock providers. Server-side Stripe webhook → payment_received. No API key = mock/no-op.
 
 ---
 
@@ -1168,34 +1170,18 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 
 ### Analytics & Observability
 
-- [ ] **T025: Integrate Product Analytics (PostHog Recommended)**
-  - **What**: Add product analytics to understand user behavior
-  - **Why**: Know which features users use, where they drop off, what to improve
-  - **Who Uses This**: Product managers, founders, growth team (NOT DevOps, NOT customers)
-  - **Recommended Service**: PostHog (open source, can self-host, generous free tier)
-  - **Alternatives**: Mixpanel, Amplitude, Plausible
-  - **Implementation**:
-
-    ```typescript
-    // Install: npm install posthog-js
-    // In main.tsx:
-    import posthog from 'posthog-js';
-    posthog.init('your-api-key', { api_host: 'https://app.posthog.com' });
-
-    // Track events:
-    posthog.capture('job_created', { job_type: 'hvac', customer_id: '...' });
-    ```
-
-  - **What to Track**:
-    - Feature usage (which pages, which actions)
-    - Funnel completion (onboarding, job creation, invoicing)
-    - Search queries
-    - Time spent on pages
-  - **Acceptance Criteria**:
-    - PostHog (or alternative) integrated
-    - Key events tracked (job created, invoice sent, quote accepted)
-    - Dashboard showing feature usage
-    - Funnel visualization for critical flows
+- [x] **T025: Integrate Product Analytics (PostHog Recommended)** ✓ COMPLETE
+  - PostHog integrated for both frontend (posthog-js) and backend (posthog-go)
+  - Frontend: analytics service with initAnalytics, trackEvent, identifyUser, resetUser
+  - Type-safe event constants (AnalyticsEvents) for all tracked events
+  - Page view tracking via PageViewTracker component in App.tsx
+  - User identity set on login/checkAuth, cleared on logout
+  - Key workflow events: quote_created/sent/accepted/rejected, job_created/completed/status_changed, invoice_created/sent, export_downloaded
+  - Backend: pluggable analytics client (factory pattern, mirrors errortracking package)
+  - PostHog and mock providers; no API key = mock/no-op
+  - Server-side: Stripe checkout webhook → payment_received event
+  - useAnalytics hook for React components
+  - Env vars: POSTHOG_API_KEY, POSTHOG_HOST (backend), VITE_POSTHOG_API_KEY, VITE_POSTHOG_HOST (frontend)
 
 - [ ] **T026: Set Up Business KPI Dashboard (Metabase)**
   - **What**: Visual dashboard for business metrics without building custom endpoints

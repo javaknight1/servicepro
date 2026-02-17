@@ -33,6 +33,7 @@ import (
 
 	"github.com/javaknight1/servicepro/backend/config"
 	"github.com/javaknight1/servicepro/backend/internal/api/routes"
+	analyticsclient "github.com/javaknight1/servicepro/backend/pkg/clients/analytics"
 	emailclient "github.com/javaknight1/servicepro/backend/pkg/clients/email"
 	errortracking "github.com/javaknight1/servicepro/backend/pkg/clients/errortracking"
 	storageclient "github.com/javaknight1/servicepro/backend/pkg/clients/storage"
@@ -53,6 +54,10 @@ import (
 	_ "github.com/javaknight1/servicepro/backend/pkg/clients/sms/mock"
 	_ "github.com/javaknight1/servicepro/backend/pkg/clients/sms/sns"
 	_ "github.com/javaknight1/servicepro/backend/pkg/clients/sms/textbelt"
+
+	// Analytics providers - blank imports to register providers
+	_ "github.com/javaknight1/servicepro/backend/pkg/clients/analytics/mock"
+	_ "github.com/javaknight1/servicepro/backend/pkg/clients/analytics/posthog"
 
 	// Metrics providers - blank imports to register providers
 	metricsclient "github.com/javaknight1/servicepro/backend/pkg/clients/metrics"
@@ -89,6 +94,15 @@ func main() {
 	} else {
 		defer errorTrackingClient.Close()
 		logging.Info(ctx, "Error tracking initialized", nil)
+	}
+
+	// Initialize analytics client
+	analyticsClient, err := analyticsclient.NewClient(ctx, cfg)
+	if err != nil {
+		logging.Warn(ctx, "Failed to initialize analytics client", map[string]any{"error": err.Error()})
+	} else {
+		defer analyticsClient.Close()
+		logging.Info(ctx, "Analytics client initialized", nil)
 	}
 
 	// Set Gin mode based on environment
@@ -175,7 +189,7 @@ func main() {
 	}
 
 	// Setup routes
-	routes.Setup(router, db, redisClient, emailClient, storageClient, smsClient, errorTrackingClient, metricsClient, cfg)
+	routes.Setup(router, db, redisClient, emailClient, storageClient, smsClient, errorTrackingClient, metricsClient, analyticsClient, cfg)
 
 	// Create HTTP server with timeouts
 	addr := fmt.Sprintf(":%s", cfg.Server.Port)

@@ -13,6 +13,7 @@ import (
 	permissionsSvc "github.com/javaknight1/servicepro/backend/internal/services/permissions"
 	stripeService "github.com/javaknight1/servicepro/backend/internal/services/stripe"
 	"github.com/javaknight1/servicepro/backend/pkg/auth"
+	analyticsclient "github.com/javaknight1/servicepro/backend/pkg/clients/analytics"
 	emailclient "github.com/javaknight1/servicepro/backend/pkg/clients/email"
 	smsclient "github.com/javaknight1/servicepro/backend/pkg/clients/sms"
 	storageclient "github.com/javaknight1/servicepro/backend/pkg/clients/storage"
@@ -30,11 +31,12 @@ type RouteConfig struct {
 
 // Clients holds all external client instances
 type Clients struct {
-	DB      *gorm.DB
-	Redis   *redis.Client
-	Email   emailclient.Client
-	Storage storageclient.Client
-	SMS     smsclient.Client
+	DB        *gorm.DB
+	Redis     *redis.Client
+	Email     emailclient.Client
+	Storage   storageclient.Client
+	SMS       smsclient.Client
+	Analytics analyticsclient.Client
 }
 
 // Repositories holds all repository instances

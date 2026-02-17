@@ -24,6 +24,7 @@ import {
 } from '@services/jobService';
 import { customerService, Customer } from '@services/customerService';
 import { getErrorMessage } from '@/utils/error';
+import { trackEvent, AnalyticsEvents } from '@services/analytics';
 import { datetimeLocalToEpoch, epochToDatetimeLocal } from '@/utils/epoch';
 import { ArrowLeft, Save, Trash2, Loader2 } from 'lucide-react';
 
@@ -278,6 +279,7 @@ export function JobDetailPage() {
     try {
       if (isNew) {
         // Create new job with assignments
+        const source = cloneFromId ? 'repeat' : 'manual';
         await jobService.createJob({
           customer_id: formData.customer_id,
           title: formData.title,
@@ -300,6 +302,10 @@ export function JobDetailPage() {
                   role: a.role,
                 }))
               : undefined,
+        });
+        trackEvent(AnalyticsEvents.JOB_CREATED, {
+          source,
+          job_type: formData.job_type,
         });
       } else if (id) {
         // Update existing job

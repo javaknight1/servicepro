@@ -4,6 +4,7 @@ import { DashboardLayout } from '@components/layout';
 import { Button } from '@components/shared';
 import { quoteService } from '@services/quoteService';
 import { getErrorMessage } from '@/utils/error';
+import { trackEvent, AnalyticsEvents } from '@services/analytics';
 import { customerService, Customer } from '@services/customerService';
 import type { Quote, LineItemFormData } from '@app-types/quote';
 import {
@@ -257,6 +258,10 @@ export function QuoteDetailPage() {
     try {
       if (isNew) {
         await quoteService.createQuote(submitData as unknown as Partial<Quote>);
+        trackEvent(AnalyticsEvents.QUOTE_CREATED, {
+          total: calculateTotal(),
+          line_items: lineItems.length,
+        });
       } else if (id) {
         await quoteService.updateQuote(
           id,
@@ -297,6 +302,7 @@ export function QuoteDetailPage() {
     try {
       await quoteService.sendQuote(id);
       setQuoteStatus('sent');
+      trackEvent(AnalyticsEvents.QUOTE_SENT, { total: calculateTotal() });
     } catch (err: unknown) {
       console.error('Failed to send quote:', err);
       const error = err as { response?: { data?: { message?: string } } };
@@ -312,6 +318,10 @@ export function QuoteDetailPage() {
     setIsDownloadingPDF(true);
     try {
       await quoteService.downloadQuotePDF(id);
+      trackEvent(AnalyticsEvents.EXPORT_DOWNLOADED, {
+        format: 'pdf',
+        type: 'quote',
+      });
     } catch (err) {
       console.error('Failed to download PDF:', err);
     } finally {
@@ -327,6 +337,7 @@ export function QuoteDetailPage() {
     try {
       await quoteService.acceptQuote(id);
       setQuoteStatus('accepted');
+      trackEvent(AnalyticsEvents.QUOTE_ACCEPTED, { total: calculateTotal() });
     } catch (err: unknown) {
       console.error('Failed to accept quote:', err);
       const error = err as { response?: { data?: { message?: string } } };
@@ -344,6 +355,7 @@ export function QuoteDetailPage() {
     try {
       await quoteService.rejectQuote(id);
       setQuoteStatus('declined');
+      trackEvent(AnalyticsEvents.QUOTE_REJECTED);
     } catch (err: unknown) {
       console.error('Failed to decline quote:', err);
       const error = err as { response?: { data?: { message?: string } } };

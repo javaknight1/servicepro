@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
+	"github.com/stripe/stripe-go/v76"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 	"gorm.io/gorm"
@@ -17,6 +18,8 @@ import (
 	v1 "github.com/javaknight1/servicepro/backend/internal/api/routes/v1"
 	"github.com/javaknight1/servicepro/backend/internal/health"
 	"github.com/javaknight1/servicepro/backend/internal/services"
+	stripeService "github.com/javaknight1/servicepro/backend/internal/services/stripe"
+	analyticsclient "github.com/javaknight1/servicepro/backend/pkg/clients/analytics"
 	emailclient "github.com/javaknight1/servicepro/backend/pkg/clients/email"
 	"github.com/javaknight1/servicepro/backend/pkg/clients/errortracking"
 	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"
@@ -26,7 +29,7 @@ import (
 )
 
 // Setup configures all API routes
-func Setup(router *gin.Engine, db *gorm.DB, redisClient *redis.Client, email emailclient.Client, storage storageclient.Client, sms smsclient.Client, errorTracker errortracking.Client, metrics metricsclient.Client, cfg *config.Config) {
+func Setup(router *gin.Engine, db *gorm.DB, redisClient *redis.Client, email emailclient.Client, storage storageclient.Client, sms smsclient.Client, errorTracker errortracking.Client, metrics metricsclient.Client, analytics analyticsclient.Client, cfg *config.Config) {
 	// Apply recovery middleware first to catch panics and send to error tracking
 	router.Use(middleware.RecoveryMiddleware(errorTracker))
 
@@ -38,7 +41,7 @@ func Setup(router *gin.Engine, db *gorm.DB, redisClient *redis.Client, email ema
 	router.Use(middleware.SecurityHeaders(securityConfig))
 
 	// Build RouteConfig
-	routeCfg := NewRouteConfig(db, redisClient, email, storage, sms, cfg)
+	routeCfg := NewRouteConfig(db, redisClient, email, storage, sms, analytics, cfg)
 
 	// Setup v1 routes
 	v1Group := router.Group("/api/v1")
@@ -136,7 +139,7 @@ func setupMetricsEndpoint(router *gin.Engine, metrics metricsclient.Client, cfg 
 }
 
 // NewRouteConfig creates a new RouteConfig with all dependencies initialized
-func NewRouteConfig(db *gorm.DB, redis *redis.Client, email emailclient.Client, storage storageclient.Client, sms smsclient.Client, cfg *config.Config) *RouteConfig {
+func NewRouteConfig(db *gorm.DB, redis *redis.Client, email emailclient.Client, storage storageclient.Client, sms smsclient.Client, analytics analyticsclient.Client, cfg *config.Config) *RouteConfig {
 	repos := SetupRepositories(db)
 	mw := SetupMiddleware(repos, cfg, redis)
 	svc := SetupServices(db, redis, repos, cfg, email, storage, mw.JWTManager, mw.PermChecker)
@@ -148,9 +151,21 @@ func NewRouteConfig(db *gorm.DB, redis *redis.Client, email emailclient.Client, 
 		reminderWorker.Start(context.Background())
 	}
 
+	// Register analytics event handler for Stripe checkout payments
+	if svc.StripeEvents != nil && analytics != nil {
+		svc.StripeEvents.RegisterHandler(stripeService.EventCheckoutSessionCompleted, func(ctx context.Context, event *stripe.Event) error {
+			analytics.CaptureEvent(ctx, &analyticsclient.Event{
+				Name:       "payment_received",
+				DistinctID: "system",
+				Properties: map[string]any{"source": "stripe_checkout", "event_type": event.Type},
+			})
+			return nil
+		})
+	}
+
 	return &RouteConfig{
 		Config:     cfg,
-		Clients:    &Clients{DB: db, Redis: redis, Email: email, Storage: storage, SMS: sms},
+		Clients:    &Clients{DB: db, Redis: redis, Email: email, Storage: storage, SMS: sms, Analytics: analytics},
 		Repos:      repos,
 		Middleware: mw,
 		Services:   svc,

@@ -25,3 +25,6 @@ export { useRoles } from './useRoles';
 
 // WebSocket hook
 export { useWebSocket } from './useWebSocket';
+
+// Analytics hook
+export { useAnalytics } from './useAnalytics';

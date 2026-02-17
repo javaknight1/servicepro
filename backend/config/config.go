@@ -288,8 +288,10 @@ type HealthConfig struct {
 
 // AnalyticsConfig holds analytics tracking configuration
 type AnalyticsConfig struct {
-	Enabled bool // Enable analytics tracking
-	Debug   bool // Enable debug logging for analytics
+	Enabled       bool   // Enable analytics tracking
+	Debug         bool   // Enable debug logging for analytics
+	PostHogAPIKey string // PostHog API key
+	PostHogHost   string // PostHog API host
 }
 
 // LokiConfig holds Grafana Loki logging configuration
@@ -517,8 +519,10 @@ func Load() *Config {
 			CheckExternal: getEnvAsBool("HEALTH_CHECK_EXTERNAL", false),
 		},
 		Analytics: AnalyticsConfig{
-			Enabled: getEnvAsBool("ANALYTICS_ENABLED", true),
-			Debug:   getEnvAsBool("ANALYTICS_DEBUG", false),
+			Enabled:       getEnvAsBool("ANALYTICS_ENABLED", true),
+			Debug:         getEnvAsBool("ANALYTICS_DEBUG", false),
+			PostHogAPIKey: getEnv("POSTHOG_API_KEY", ""),
+			PostHogHost:   getEnv("POSTHOG_HOST", "https://us.i.posthog.com"),
 		},
 		Loki: LokiConfig{
 			Enabled:  getEnvAsBool("LOKI_ENABLED", false),

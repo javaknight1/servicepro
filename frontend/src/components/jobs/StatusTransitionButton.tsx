@@ -3,6 +3,7 @@ import { Button } from '@components/shared';
 import { jobService, JobStatus, Job } from '@services/jobService';
 import { getJobStatusLabel } from '@app-types';
 import { getErrorMessage } from '@/utils/error';
+import { trackEvent, AnalyticsEvents } from '@services/analytics';
 import {
   Loader2,
   ArrowRight,
@@ -239,6 +240,14 @@ export function StatusTransitionButton({
     try {
       const updatedJob = await jobService.transitionStatus(job.id, toStatus);
       onStatusChange(updatedJob);
+      if (toStatus === JobStatus.COMPLETED) {
+        trackEvent(AnalyticsEvents.JOB_COMPLETED);
+      } else {
+        trackEvent(AnalyticsEvents.JOB_STATUS_CHANGED, {
+          from_status: job.status,
+          to_status: toStatus,
+        });
+      }
     } catch (err) {
       console.error('Failed to transition status:', err);
       setError(getErrorMessage(err, 'Failed to update status'));
