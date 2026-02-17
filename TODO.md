@@ -2,7 +2,7 @@
 
 This document tracks technical improvements that should be implemented but are deferred for future development cycles.
 
-**Last Updated: 2026-02-10** (T034+T043 merged and implemented — payment reminder automation)
+**Last Updated: 2026-02-14** (T024 implemented — GlitchTip/Sentry error tracking integration)
 
 ---
 
@@ -10,107 +10,108 @@ This document tracks technical improvements that should be implemented but are d
 
 Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to reference a task.
 
-| ID       | Priority | Category       | Confidence | MVP       | Task                                                     |
-| -------- | -------- | -------------- | ---------- | --------- | -------------------------------------------------------- |
-| ~~T001~~ | ~~P0~~   | ~~Backend~~    | ~~High~~   | ~~--~~    | ~~Recovery middleware Sentry integration~~ ✓             |
-| ~~T002~~ | ~~P0~~   | ~~Frontend~~   | ~~High~~   | ~~--~~    | ~~Centralize direct fetch() calls~~ ✓                    |
-| ~~T003~~ | ~~P0~~   | ~~Frontend~~   | ~~High~~   | ~~--~~    | ~~Add CSP/HSTS headers to nginx.conf~~ ✓                 |
-| ~~T004~~ | ~~P0~~   | ~~Infra~~      | ~~High~~   | ~~--~~    | ~~Create GitHub Actions CI/CD workflows~~ ✓              |
-| ~~T005~~ | ~~P0~~   | ~~Backend~~    | ~~High~~   | ~~--~~    | ~~Expose /metrics endpoint for Prometheus~~ ✓            |
-| ~~T006~~ | ~~P1~~   | ~~Backend~~    | ~~High~~   | ~~--~~    | ~~Structured JSON logging (replace fmt.Printf)~~ ✓       |
-| ~~T007~~ | ~~P1~~   | ~~Frontend~~   | ~~High~~   | ~~--~~    | ~~Fix `any` types (50 instances)~~ ✓                     |
-| ~~T008~~ | ~~P1~~   | ~~Frontend~~   | ~~High~~   | ~~--~~    | ~~Remove @ts-nocheck directives~~ ✓                      |
-| ~~T009~~ | ~~P1~~   | ~~Frontend~~   | ~~High~~   | ~~--~~    | ~~Enable noUnusedLocals/noUnusedParameters~~ ✓           |
-| ~~T010~~ | ~~P1~~   | ~~Backend~~    | ~~High~~   | ~~--~~    | ~~Apply error tracking middleware~~ ✓                    |
-| ~~T012~~ | ~~P1~~   | ~~Infra~~      | ~~High~~   | ~~--~~    | ~~Bundle size monitoring in CI~~ ✓                       |
-| ~~T013~~ | ~~P2~~   | ~~Testing~~    | ~~High~~   | ~~--~~    | ~~Increase frontend test coverage to 70%+~~ ✓            |
-| ~~T014~~ | ~~P2~~   | ~~Testing~~    | ~~High~~   | ~~--~~    | ~~Integration tests for critical workflows~~ ✓           |
-| ~~T015~~ | ~~P2~~   | ~~Docs~~       | ~~High~~   | ~~After~~ | ~~Generate OpenAPI/Swagger documentation~~ ✓             |
-| ~~T016~~ | ~~P2~~   | ~~Perf~~       | ~~High~~   | ~~--~~    | ~~Frontend bundle analysis + optimization~~ ✓            |
-| ~~T017~~ | ~~P2~~   | ~~Perf~~       | ~~High~~   | ~~--~~    | ~~Query performance monitoring~~ ✓                       |
-| ~~T018~~ | ~~P2~~   | ~~Cleanup~~    | ~~High~~   | ~~--~~    | ~~Dead code elimination~~ ✓                              |
-| ~~T019~~ | ~~P0~~   | ~~Scheduling~~ | ~~High~~   | ~~--~~    | ~~Integrate calendar view for job scheduling~~ ✓         |
-| ~~T020~~ | ~~P0~~   | ~~Scheduling~~ | ~~High~~   | ~~--~~    | ~~Build conflict detection API endpoint~~ ✓              |
-| ~~T021~~ | ~~P2~~   | ~~Refactor~~   | ~~High~~   | ~~--~~    | ~~Extract duplicate file download utility~~ ✓            |
-| ~~T022~~ | ~~P2~~   | ~~Refactor~~   | ~~High~~   | ~~--~~    | ~~Extract duplicate URLSearchParams builder~~ ✓          |
-| ~~T023~~ | ~~P2~~   | ~~Refactor~~   | ~~High~~   | ~~--~~    | ~~Consolidate cache hooks (useLocalCache/useSession)~~ ✓ |
-| T024     | P1       | Observability  | High       | --        | Full Sentry integration (frontend + backend)             |
-| T025     | P2       | Analytics      | High       | After     | Integrate product analytics (PostHog recommended)        |
-| T026     | P2       | Analytics      | High       | After     | Set up business KPI dashboard (Metabase)                 |
-| T027     | P2       | Scheduling     | High       | Before    | Add drag-and-drop rescheduling to job calendar           |
-| T028     | P0       | Quoting        | High       | Before    | Add "Convert Quote to Job" button                        |
-| T029     | P0       | Invoicing      | High       | Before    | Add "Generate Invoice from Job" button                   |
-| T030     | P0       | Invoicing      | High       | Before    | Auto-populate invoice from job data                      |
-| ~~T031~~ | ~~P0~~   | ~~Invoicing~~  | ~~High~~   | ~~--~~    | ~~Build A/R aging buckets report~~ ✓                     |
-| ~~T032~~ | ~~P0~~   | ~~Invoicing~~  | ~~High~~   | ~~--~~    | ~~Build "Who Owes What" report~~ ✓                       |
-| T033     | P0       | Dashboard      | High       | Before    | Add "Jobs Needing Invoice" dashboard widget              |
-| ~~T034~~ | ~~P0~~   | ~~Comms~~      | ~~High~~   | ~~--~~    | ~~Wire payment reminder automation~~ ✓                   |
-| T035     | P0       | Roles          | High       | Before    | Create Technician role                                   |
-| T036     | P1       | CRM            | High       | Before    | Add manual Call Log entry                                |
-| T037     | P1       | CRM            | High       | Before    | Auto-log system messages to customer activity            |
-| T038     | P1       | Scheduling     | Medium     | Before    | Add technician availability management UI                |
-| T039     | P1       | Scheduling     | Medium     | Before    | Create emergency job insertion workflow                  |
-| T040     | P1       | Scheduling     | High       | Before    | Add auto-notify on emergency insertion                   |
-| T041     | P1       | Quoting        | Medium     | Before    | Implement quote auto follow-ups                          |
-| T042     | P1       | Quoting        | High       | Before    | Build follow-up queue UI                                 |
-| ~~T043~~ | ~~P1~~   | ~~Invoicing~~  | ~~High~~   | ~~--~~    | ~~Wire payment reminder notifications~~ ✓                |
-| T044     | P1       | Invoicing      | Medium     | Before    | Build collections dashboard                              |
-| T045     | P1       | Dashboard      | High       | Before    | Add aging quotes dashboard widget                        |
-| T046     | P1       | Dashboard      | High       | Before    | Add follow-up queue dashboard widget                     |
-| T047     | P1       | Reporting      | Medium     | Before    | Build "stuck work" report                                |
-| T048     | P1       | Comms          | High       | Before    | Add appointment confirmation emails                      |
-| T049     | P1       | Comms          | High       | Before    | Add appointment reminder emails/SMS                      |
-| T050     | P1       | Comms          | High       | Before    | Add "Tech on the way" manual trigger                     |
-| T051     | P1       | Comms          | Medium     | Before    | Implement quote follow-up email sequence                 |
-| T052     | P1       | Roles          | High       | Before    | Create Dispatcher role                                   |
-| ~~T053~~ | ~~P2~~   | ~~CRM~~        | ~~High~~   | ~~--~~    | ~~Add "Repeat Job" button on customer detail~~ ✓         |
-| T054     | P2       | CRM            | Medium     | Before    | Create Communication Log component                       |
-| T055     | P2       | CRM            | Medium     | Before    | Unified Customer Timeline view                           |
-| T056     | P2       | Scheduling     | Medium     | Before    | Add workload capacity warnings                           |
-| T057     | P2       | Scheduling     | High       | Before    | Add double-booking override with reason                  |
-| T058     | P2       | Scheduling     | Medium     | Before    | Add required fields validation by job stage              |
-| T059     | P2       | Scheduling     | High       | Before    | Add technician skill tags                                |
-| T060     | P2       | Quoting        | Medium     | Before    | Create quote template system (good/better/best)          |
-| T061     | P2       | Quoting        | Medium     | Before    | Add required deposit to accept quote                     |
-| T062     | P2       | Quoting        | High       | Before    | Add quote aging tracking                                 |
-| T063     | P2       | Invoicing      | Medium     | Before    | Add deposit tracking and application                     |
-| T064     | P2       | Invoicing      | High       | Before    | Add last contact date tracking on invoices               |
-| T065     | P2       | Invoicing      | High       | Before    | Add promise-to-pay notes                                 |
-| T066     | P2       | Dashboard      | Medium     | Before    | Add technician utilization widget                        |
-| T067     | P2       | Dashboard      | High       | Before    | Add quote conversion rate metric                         |
-| T068     | P2       | Reporting      | High       | Before    | Build job-completion-to-invoice time report              |
-| T069     | P2       | Reporting      | High       | Before    | Build invoice-to-paid time report (DSO)                  |
-| T070     | P2       | Reporting      | High       | Before    | Build revenue by service type report                     |
-| T071     | P2       | Reporting      | High       | Before    | Build collections rate report                            |
-| T072     | P2       | Comms          | High       | Before    | Create message template management UI                    |
-| T073     | P2       | Comms          | High       | Before    | Add rich variable system for templates                   |
-| T074     | P2       | Roles          | High       | Before    | Create Accountant role                                   |
-| T075     | P2       | Roles          | Medium     | Before    | Add field-level permission controls                      |
-| T076     | P3       | CRM            | High       | After     | Add "Recreate Last Quote" button                         |
-| T077     | P3       | Scheduling     | Medium     | After     | Add time-off request UI                                  |
-| T078     | P3       | Scheduling     | Medium     | After     | Add skill-based job matching suggestions                 |
-| T079     | P3       | Scheduling     | High       | After     | Add travel time notes field                              |
-| T080     | P3       | Quoting        | High       | After     | Create terms & conditions templates                      |
-| T081     | P3       | Quoting        | Medium     | After     | Add e-signature for quote acceptance                     |
-| T082     | P3       | Quoting        | Medium     | After     | Add "Create Quote from Job" button                       |
-| T083     | P3       | Invoicing      | Medium     | After     | Implement late fee calculation                           |
-| T084     | P3       | Reporting      | High       | After     | Build quote-to-job conversion report                     |
-| T085     | P3       | Reporting      | Medium     | After     | Build lead-to-quote time report                          |
-| T086     | P3       | Reporting      | High       | After     | Build quote-to-acceptance time report                    |
-| T087     | P3       | Reporting      | Medium     | After     | Build revenue by technician report                       |
-| T088     | P3       | Reporting      | Medium     | After     | Add comparative analysis (vs prior period)               |
-| T089     | P3       | Comms          | Medium     | After     | Add email/SMS delivery tracking                          |
-| T090     | P3       | Comms          | Medium     | After     | Add communication failure alerts                         |
-| T091     | P3       | Comms          | Medium     | After     | Add notification preferences per customer                |
-| T092     | P3       | Roles          | High       | After     | Implement 2FA (TOTP)                                     |
-| T093     | P3       | Roles          | Medium     | After     | Implement comprehensive audit logging                    |
-| T094     | P3       | Roles          | High       | After     | Add Google OAuth sign-in                                 |
-| T095     | P3       | Integration    | Medium     | After     | Build outgoing webhooks system                           |
-| T096     | P3       | Integration    | High       | After     | Build event log table                                    |
-| T097     | P3       | Integration    | High       | After     | Add webhook retry logic                                  |
-| T098     | P3       | Integration    | High       | After     | Document public API (OpenAPI/Swagger)                    |
-| T099     | P1       | Scheduling     | High       | Before    | Add tenant timezone support for conflict detection       |
-| T100     | P1       | Settings       | High       | Before    | Add business hours & timezone to org settings            |
+| ID       | Priority | Category          | Confidence | MVP       | Task                                                     |
+| -------- | -------- | ----------------- | ---------- | --------- | -------------------------------------------------------- |
+| ~~T001~~ | ~~P0~~   | ~~Backend~~       | ~~High~~   | ~~--~~    | ~~Recovery middleware Sentry integration~~ ✓             |
+| ~~T002~~ | ~~P0~~   | ~~Frontend~~      | ~~High~~   | ~~--~~    | ~~Centralize direct fetch() calls~~ ✓                    |
+| ~~T003~~ | ~~P0~~   | ~~Frontend~~      | ~~High~~   | ~~--~~    | ~~Add CSP/HSTS headers to nginx.conf~~ ✓                 |
+| ~~T004~~ | ~~P0~~   | ~~Infra~~         | ~~High~~   | ~~--~~    | ~~Create GitHub Actions CI/CD workflows~~ ✓              |
+| ~~T005~~ | ~~P0~~   | ~~Backend~~       | ~~High~~   | ~~--~~    | ~~Expose /metrics endpoint for Prometheus~~ ✓            |
+| ~~T006~~ | ~~P1~~   | ~~Backend~~       | ~~High~~   | ~~--~~    | ~~Structured JSON logging (replace fmt.Printf)~~ ✓       |
+| ~~T007~~ | ~~P1~~   | ~~Frontend~~      | ~~High~~   | ~~--~~    | ~~Fix `any` types (50 instances)~~ ✓                     |
+| ~~T008~~ | ~~P1~~   | ~~Frontend~~      | ~~High~~   | ~~--~~    | ~~Remove @ts-nocheck directives~~ ✓                      |
+| ~~T009~~ | ~~P1~~   | ~~Frontend~~      | ~~High~~   | ~~--~~    | ~~Enable noUnusedLocals/noUnusedParameters~~ ✓           |
+| ~~T010~~ | ~~P1~~   | ~~Backend~~       | ~~High~~   | ~~--~~    | ~~Apply error tracking middleware~~ ✓                    |
+| ~~T012~~ | ~~P1~~   | ~~Infra~~         | ~~High~~   | ~~--~~    | ~~Bundle size monitoring in CI~~ ✓                       |
+| ~~T013~~ | ~~P2~~   | ~~Testing~~       | ~~High~~   | ~~--~~    | ~~Increase frontend test coverage to 70%+~~ ✓            |
+| ~~T014~~ | ~~P2~~   | ~~Testing~~       | ~~High~~   | ~~--~~    | ~~Integration tests for critical workflows~~ ✓           |
+| ~~T015~~ | ~~P2~~   | ~~Docs~~          | ~~High~~   | ~~After~~ | ~~Generate OpenAPI/Swagger documentation~~ ✓             |
+| ~~T016~~ | ~~P2~~   | ~~Perf~~          | ~~High~~   | ~~--~~    | ~~Frontend bundle analysis + optimization~~ ✓            |
+| ~~T017~~ | ~~P2~~   | ~~Perf~~          | ~~High~~   | ~~--~~    | ~~Query performance monitoring~~ ✓                       |
+| ~~T018~~ | ~~P2~~   | ~~Cleanup~~       | ~~High~~   | ~~--~~    | ~~Dead code elimination~~ ✓                              |
+| ~~T019~~ | ~~P0~~   | ~~Scheduling~~    | ~~High~~   | ~~--~~    | ~~Integrate calendar view for job scheduling~~ ✓         |
+| ~~T020~~ | ~~P0~~   | ~~Scheduling~~    | ~~High~~   | ~~--~~    | ~~Build conflict detection API endpoint~~ ✓              |
+| ~~T021~~ | ~~P2~~   | ~~Refactor~~      | ~~High~~   | ~~--~~    | ~~Extract duplicate file download utility~~ ✓            |
+| ~~T022~~ | ~~P2~~   | ~~Refactor~~      | ~~High~~   | ~~--~~    | ~~Extract duplicate URLSearchParams builder~~ ✓          |
+| ~~T023~~ | ~~P2~~   | ~~Refactor~~      | ~~High~~   | ~~--~~    | ~~Consolidate cache hooks (useLocalCache/useSession)~~ ✓ |
+| ~~T024~~ | ~~P1~~   | ~~Observability~~ | ~~High~~   | ~~--~~    | ~~Full Sentry integration (frontend + backend)~~ ✓       |
+| T025     | P2       | Analytics         | High       | After     | Integrate product analytics (PostHog recommended)        |
+| T026     | P2       | Analytics         | High       | After     | Set up business KPI dashboard (Metabase)                 |
+| T027     | P2       | Scheduling        | High       | Before    | Add drag-and-drop rescheduling to job calendar           |
+| T028     | P0       | Quoting           | High       | Before    | Add "Convert Quote to Job" button                        |
+| T029     | P0       | Invoicing         | High       | Before    | Add "Generate Invoice from Job" button                   |
+| T030     | P0       | Invoicing         | High       | Before    | Auto-populate invoice from job data                      |
+| ~~T031~~ | ~~P0~~   | ~~Invoicing~~     | ~~High~~   | ~~--~~    | ~~Build A/R aging buckets report~~ ✓                     |
+| ~~T032~~ | ~~P0~~   | ~~Invoicing~~     | ~~High~~   | ~~--~~    | ~~Build "Who Owes What" report~~ ✓                       |
+| T033     | P0       | Dashboard         | High       | Before    | Add "Jobs Needing Invoice" dashboard widget              |
+| ~~T034~~ | ~~P0~~   | ~~Comms~~         | ~~High~~   | ~~--~~    | ~~Wire payment reminder automation~~ ✓                   |
+| T035     | P0       | Roles             | High       | Before    | Create Technician role                                   |
+| T036     | P1       | CRM               | High       | Before    | Add manual Call Log entry                                |
+| T037     | P1       | CRM               | High       | Before    | Auto-log system messages to customer activity            |
+| T038     | P1       | Scheduling        | Medium     | Before    | Add technician availability management UI                |
+| T039     | P1       | Scheduling        | Medium     | Before    | Create emergency job insertion workflow                  |
+| T040     | P1       | Scheduling        | High       | Before    | Add auto-notify on emergency insertion                   |
+| T041     | P1       | Quoting           | Medium     | Before    | Implement quote auto follow-ups                          |
+| T042     | P1       | Quoting           | High       | Before    | Build follow-up queue UI                                 |
+| ~~T043~~ | ~~P1~~   | ~~Invoicing~~     | ~~High~~   | ~~--~~    | ~~Wire payment reminder notifications~~ ✓                |
+| T044     | P1       | Invoicing         | Medium     | Before    | Build collections dashboard                              |
+| T045     | P1       | Dashboard         | High       | Before    | Add aging quotes dashboard widget                        |
+| T046     | P1       | Dashboard         | High       | Before    | Add follow-up queue dashboard widget                     |
+| T047     | P1       | Reporting         | Medium     | Before    | Build "stuck work" report                                |
+| T048     | P1       | Comms             | High       | Before    | Add appointment confirmation emails                      |
+| T049     | P1       | Comms             | High       | Before    | Add appointment reminder emails/SMS                      |
+| T050     | P1       | Comms             | High       | Before    | Add "Tech on the way" manual trigger                     |
+| T051     | P1       | Comms             | Medium     | Before    | Implement quote follow-up email sequence                 |
+| T052     | P1       | Roles             | High       | Before    | Create Dispatcher role                                   |
+| ~~T053~~ | ~~P2~~   | ~~CRM~~           | ~~High~~   | ~~--~~    | ~~Add "Repeat Job" button on customer detail~~ ✓         |
+| T054     | P2       | CRM               | Medium     | Before    | Create Communication Log component                       |
+| T055     | P2       | CRM               | Medium     | Before    | Unified Customer Timeline view                           |
+| T056     | P2       | Scheduling        | Medium     | Before    | Add workload capacity warnings                           |
+| T057     | P2       | Scheduling        | High       | Before    | Add double-booking override with reason                  |
+| T058     | P2       | Scheduling        | Medium     | Before    | Add required fields validation by job stage              |
+| T059     | P2       | Scheduling        | High       | Before    | Add technician skill tags                                |
+| T060     | P2       | Quoting           | Medium     | Before    | Create quote template system (good/better/best)          |
+| T061     | P2       | Quoting           | Medium     | Before    | Add required deposit to accept quote                     |
+| T062     | P2       | Quoting           | High       | Before    | Add quote aging tracking                                 |
+| T063     | P2       | Invoicing         | Medium     | Before    | Add deposit tracking and application                     |
+| T064     | P2       | Invoicing         | High       | Before    | Add last contact date tracking on invoices               |
+| T065     | P2       | Invoicing         | High       | Before    | Add promise-to-pay notes                                 |
+| T066     | P2       | Dashboard         | Medium     | Before    | Add technician utilization widget                        |
+| T067     | P2       | Dashboard         | High       | Before    | Add quote conversion rate metric                         |
+| T068     | P2       | Reporting         | High       | Before    | Build job-completion-to-invoice time report              |
+| T069     | P2       | Reporting         | High       | Before    | Build invoice-to-paid time report (DSO)                  |
+| T070     | P2       | Reporting         | High       | Before    | Build revenue by service type report                     |
+| T071     | P2       | Reporting         | High       | Before    | Build collections rate report                            |
+| T072     | P2       | Comms             | High       | Before    | Create message template management UI                    |
+| T073     | P2       | Comms             | High       | Before    | Add rich variable system for templates                   |
+| T074     | P2       | Roles             | High       | Before    | Create Accountant role                                   |
+| T075     | P2       | Roles             | Medium     | Before    | Add field-level permission controls                      |
+| T076     | P3       | CRM               | High       | After     | Add "Recreate Last Quote" button                         |
+| T077     | P3       | Scheduling        | Medium     | After     | Add time-off request UI                                  |
+| T078     | P3       | Scheduling        | Medium     | After     | Add skill-based job matching suggestions                 |
+| T079     | P3       | Scheduling        | High       | After     | Add travel time notes field                              |
+| T080     | P3       | Quoting           | High       | After     | Create terms & conditions templates                      |
+| T081     | P3       | Quoting           | Medium     | After     | Add e-signature for quote acceptance                     |
+| T082     | P3       | Quoting           | Medium     | After     | Add "Create Quote from Job" button                       |
+| T083     | P3       | Invoicing         | Medium     | After     | Implement late fee calculation                           |
+| T084     | P3       | Reporting         | High       | After     | Build quote-to-job conversion report                     |
+| T085     | P3       | Reporting         | Medium     | After     | Build lead-to-quote time report                          |
+| T086     | P3       | Reporting         | High       | After     | Build quote-to-acceptance time report                    |
+| T087     | P3       | Reporting         | Medium     | After     | Build revenue by technician report                       |
+| T088     | P3       | Reporting         | Medium     | After     | Add comparative analysis (vs prior period)               |
+| T089     | P3       | Comms             | Medium     | After     | Add email/SMS delivery tracking                          |
+| T090     | P3       | Comms             | Medium     | After     | Add communication failure alerts                         |
+| T091     | P3       | Comms             | Medium     | After     | Add notification preferences per customer                |
+| T092     | P3       | Roles             | High       | After     | Implement 2FA (TOTP)                                     |
+| T093     | P3       | Roles             | Medium     | After     | Implement comprehensive audit logging                    |
+| T094     | P3       | Roles             | High       | After     | Add Google OAuth sign-in                                 |
+| T095     | P3       | Integration       | Medium     | After     | Build outgoing webhooks system                           |
+| T096     | P3       | Integration       | High       | After     | Build event log table                                    |
+| T097     | P3       | Integration       | High       | After     | Add webhook retry logic                                  |
+| T098     | P3       | Integration       | High       | After     | Document public API (OpenAPI/Swagger)                    |
+| T099     | P1       | Scheduling        | High       | Before    | Add tenant timezone support for conflict detection       |
+| T100     | P1       | Settings          | High       | Before    | Add business hours & timezone to org settings            |
+| T101     | P2       | Observability     | Medium     | After     | Upload source maps to Sentry for production builds       |
 
 ---
 
@@ -144,6 +145,7 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 - [x] **T007** - Fix 50 `any` types in frontend ✓
 - [x] **T008** - Remove @ts-nocheck directives ✓
 - [x] **T009** - Enable noUnusedLocals/noUnusedParameters ✓
+- [x] **T024** - Full Sentry integration (frontend + backend) ✓
 
 ### Sprint 3 - Testing & Documentation
 
@@ -269,6 +271,7 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 - [ ] **T096** - Build event log table
 - [ ] **T097** - Add webhook retry logic
 - [ ] **T098** - Document public API (OpenAPI/Swagger)
+- [ ] **T101** - Upload source maps to Sentry for production builds
 
 ---
 
@@ -314,6 +317,7 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 - [x] T053: Add "Repeat Job" button on customer detail - `?clone=` query param on JobDetailPage pre-fills form from source job (title, type, priority, duration, notes, instructions, materials). Customer detail page shows recent jobs with "Repeat Job" and "View" buttons. JobActionsMenu also has "Repeat Job" option. "New Job" from customer page pre-selects customer via navigation state.
 - [x] T032: Build "Who Owes What" report - Addressed by adding customer filter dropdown to existing A/R Aging Report (T031). Backend already supported `customer_id` filtering; added UI dropdown on `ARAgingReportPage.tsx`. Fixed Gin UUID query binding issue (`ShouldBindQuery` can't bind `*uuid.UUID` — split into string field + manual parse via `ParseCustomerID()`).
 - [x] T034+T043: Payment reminder automation - Merged T034 (payment reminder emails) and T043 (overdue invoice notifications) into single implementation. Backend: `payment_reminders` table, `PaymentReminderService` with background worker (hourly), escalating tone (friendly→firm→final based on days overdue), multi-channel (email/SMS) with customer preference resolution. API: `GET/POST /invoices/:id/reminders`, `GET/PUT /settings/payment-reminders`. Frontend: Notifications tab in Org Settings (enable toggle, configurable day schedule, max reminders), Payment Reminders section on Invoice Detail (history table, manual send button with confirmation).
+- [x] T024: Full Sentry integration - Added GlitchTip (Sentry-compatible, lightweight) to docker-compose with separate Postgres + Celery worker. Frontend: initialized Sentry SDK in `main.tsx`, wrapped App in `ErrorBoundary`, set user context on login/logout/checkAuth in `authStore.ts`. Backend already wired via factory pattern. Optional — no DSN = mock/no-op. Source maps deferred to T101.
 
 ---
 
@@ -573,47 +577,13 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
     - `frontend/src/components/calendar/types.ts` - Added status mapping function
     - `frontend/src/routes/index.tsx` - Added `/jobs/calendar` route
 
-- [ ] **T024: Full Sentry Integration (Frontend + Backend)**
-  - **What**: Complete error tracking setup with Sentry across the entire stack
-  - **Why**: Currently backend catches panics but frontend errors are invisible; need unified error visibility
-  - **Current State**:
-    - Backend: `RecoveryMiddleware` sends panics to Sentry ✓
-    - Backend: `@sentry/react` package installed but not initialized
-    - Frontend: No error boundaries or user context
-  - **Frontend Tasks**:
-    - [ ] Initialize Sentry in `main.tsx` with proper config
-    - [ ] Add `Sentry.ErrorBoundary` around App component
-    - [ ] Create `useErrorTracking` hook for manual error capture
-    - [ ] Attach user context on login (`Sentry.setUser`)
-    - [ ] Configure source maps upload in build process
-    - [ ] Add performance monitoring (optional)
-  - **Backend Tasks**:
-    - [ ] Add `Sentry.CaptureException` for non-panic errors in services
-    - [ ] Add request context to all captured errors
-    - [ ] Configure release tracking
-  - **Local Development Setup**:
-
-    ```yaml
-    # docker-compose.yml addition for self-hosted Sentry (optional)
-    # Alternative: Use Sentry.io free tier (10k errors/month)
-    sentry:
-      image: sentry:latest
-      # ... complex setup, see getsentry/self-hosted
-    ```
-
-    - Simpler option: Use Sentry.io with development DSN
-    - Set `SENTRY_DSN` env var, use `SENTRY_ENVIRONMENT=development`
-
-  - **Testing**:
-    - Add test error button in dev mode
-    - Verify errors appear in Sentry dashboard
-    - Verify stack traces are readable (source maps working)
-  - **Acceptance Criteria**:
-    - All unhandled frontend errors captured
-    - All backend panics and explicit errors captured
-    - User ID attached to errors
-    - Readable stack traces with source maps
-    - Environment separation (dev/staging/prod)
+- [x] **T024: Full Sentry Integration (Frontend + Backend)** ✓ COMPLETE
+  - Added GlitchTip (Sentry-compatible) to docker-compose with separate Postgres, Celery worker
+  - Initialized Sentry SDK in `main.tsx` with `initErrorTracking()`, wrapped App in `ErrorBoundary`
+  - User context set on login/logout/checkAuth via `setUser()` in authStore
+  - Backend already wired via factory pattern (`errortracking.Client`) — just needs DSN
+  - Optional: no DSN = mock/no-op, deployment never blocked
+  - Source map upload deferred to T101
 
 ### Email Infrastructure
 
@@ -1836,6 +1806,16 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
   - **What**: API documentation for integrations
   - **Why**: Enable third-party integrations
   - **Confidence**: High - documentation generation
+
+- [ ] **T101: Upload Source Maps to Sentry for Production Builds**
+  - **What**: Configure frontend build to upload source maps to Sentry/GlitchTip during production deployments
+  - **Why**: Stack traces in error reports currently show minified code; source maps enable readable traces with original file/line references
+  - **Tasks**:
+    - [ ] Add `@sentry/vite-plugin` to Vite build config
+    - [ ] Configure auth token and project settings in CI environment
+    - [ ] Upload source maps during `deploy-release.yml` workflow
+    - [ ] Verify source maps are served correctly in GlitchTip dashboard
+  - **Confidence**: High - standard Sentry plugin integration
 
 ---
 

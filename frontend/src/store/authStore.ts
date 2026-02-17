@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { authApi, userApi } from '@services/api';
+import { setUser as setErrorTrackingUser } from '@services/errorTracking';
 import type { AuthState, User } from '@app-types';
 
 export const useAuthStore = create<AuthState>()(
@@ -26,6 +27,10 @@ export const useAuthStore = create<AuthState>()(
           try {
             const userResponse = await userApi.getCurrentUser();
             set({ user: userResponse.data });
+            setErrorTrackingUser({
+              id: userResponse.data.id,
+              email: userResponse.data.email,
+            });
           } catch (userError) {
             console.error('Failed to fetch user profile:', userError);
           }
@@ -69,6 +74,7 @@ export const useAuthStore = create<AuthState>()(
           user: null,
           isAuthenticated: false,
         });
+        setErrorTrackingUser(null);
       },
 
       refreshAccessToken: async () => {
@@ -116,9 +122,14 @@ export const useAuthStore = create<AuthState>()(
         try {
           const response = await userApi.getCurrentUser();
           set({ user: response.data, isAuthenticated: true });
+          setErrorTrackingUser({
+            id: response.data.id,
+            email: response.data.email,
+          });
           return true;
         } catch {
           set({ user: null, isAuthenticated: false });
+          setErrorTrackingUser(null);
           return false;
         }
       },
