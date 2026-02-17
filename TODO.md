@@ -2,7 +2,7 @@
 
 This document tracks technical improvements that should be implemented but are deferred for future development cycles.
 
-**Last Updated: 2026-02-16** (T025 implemented — PostHog product analytics integration)
+**Last Updated: 2026-02-16** (T026 implemented — Grafana KPI dashboard with PostgreSQL views)
 
 ---
 
@@ -36,7 +36,7 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 | ~~T023~~ | ~~P2~~   | ~~Refactor~~      | ~~High~~   | ~~--~~    | ~~Consolidate cache hooks (useLocalCache/useSession)~~ ✓ |
 | ~~T024~~ | ~~P1~~   | ~~Observability~~ | ~~High~~   | ~~--~~    | ~~Full Sentry integration (frontend + backend)~~ ✓       |
 | ~~T025~~ | ~~P2~~   | ~~Analytics~~     | ~~High~~   | ~~--~~    | ~~Integrate product analytics (PostHog recommended)~~ ✓  |
-| T026     | P2       | Analytics         | High       | After     | Set up business KPI dashboard (Metabase)                 |
+| ~~T026~~ | ~~P2~~   | ~~Analytics~~     | ~~High~~   | ~~--~~    | ~~Set up business KPI dashboard (Grafana)~~ ✓            |
 | T027     | P2       | Scheduling        | High       | Before    | Add drag-and-drop rescheduling to job calendar           |
 | T028     | P0       | Quoting           | High       | Before    | Add "Convert Quote to Job" button                        |
 | T029     | P0       | Invoicing         | High       | Before    | Add "Generate Invoice from Job" button                   |
@@ -147,6 +147,7 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 - [x] **T009** - Enable noUnusedLocals/noUnusedParameters ✓
 - [x] **T024** - Full Sentry integration (frontend + backend) ✓
 - [x] **T025** - Integrate product analytics (PostHog) ✓
+- [x] **T026** - Set up business KPI dashboard (Grafana) ✓
 
 ### Sprint 3 - Testing & Documentation
 
@@ -320,6 +321,7 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
 - [x] T034+T043: Payment reminder automation - Merged T034 (payment reminder emails) and T043 (overdue invoice notifications) into single implementation. Backend: `payment_reminders` table, `PaymentReminderService` with background worker (hourly), escalating tone (friendly→firm→final based on days overdue), multi-channel (email/SMS) with customer preference resolution. API: `GET/POST /invoices/:id/reminders`, `GET/PUT /settings/payment-reminders`. Frontend: Notifications tab in Org Settings (enable toggle, configurable day schedule, max reminders), Payment Reminders section on Invoice Detail (history table, manual send button with confirmation).
 - [x] T024: Full Sentry integration - Added GlitchTip (Sentry-compatible, lightweight) to docker-compose with separate Postgres + Celery worker. Frontend: initialized Sentry SDK in `main.tsx`, wrapped App in `ErrorBoundary`, set user context on login/logout/checkAuth in `authStore.ts`. Backend already wired via factory pattern. Optional — no DSN = mock/no-op. Source maps deferred to T101.
 - [x] T025: PostHog product analytics - Frontend: `posthog-js` SDK with analytics service (`initAnalytics`, `trackEvent`, `identifyUser`, `resetUser`), type-safe event constants, `PageViewTracker` component, `useAnalytics` hook. Workflow events: quote_created/sent/accepted/rejected, job_created/completed/status_changed, invoice_created/sent, export_downloaded. Backend: `posthog-go` SDK with pluggable client (factory pattern mirroring errortracking), PostHog + mock providers. Server-side Stripe webhook → payment_received. No API key = mock/no-op.
+- [x] T026: Grafana KPI dashboard - Replaced Metabase with Grafana OSS in docker-compose.yml (port 3001). Auto-provisioned PostgreSQL data source and pre-built dashboard (no setup wizard needed). Created 8 PostgreSQL views for KPIs: `v_platform_overview`, `v_tenant_growth_daily`, `v_feature_adoption`, `v_job_metrics_daily`, `v_invoice_metrics_daily`, `v_quote_conversion`, `v_revenue_daily`, `v_ar_aging_summary`. Dashboard panels: stat counters, tenant growth time-series, jobs created/completed, invoice volume, revenue trend, feature adoption table, quote conversion bar gauge, A/R aging chart. Grafana Cloud free tier available for production (3 users, 10k metrics).
 
 ---
 
@@ -1183,41 +1185,22 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
   - useAnalytics hook for React components
   - Env vars: POSTHOG_API_KEY, POSTHOG_HOST (backend), VITE_POSTHOG_API_KEY, VITE_POSTHOG_HOST (frontend)
 
-- [ ] **T026: Set Up Business KPI Dashboard (Metabase)**
-  - **What**: Visual dashboard for business metrics without building custom endpoints
-  - **Why**: Track revenue, job counts, customer growth without backend development
-  - **Who Uses This**: Business owners, managers (customer-facing or internal)
-  - **Recommended Service**: Metabase (open source, connects directly to PostgreSQL)
-  - **Alternatives**: Redash, Apache Superset, Cube.js (for embedding)
-  - **Setup**:
-    ```yaml
-    # docker-compose.yml
-    metabase:
-      image: metabase/metabase:latest
-      ports:
-        - '3001:3000'
-      environment:
-        MB_DB_TYPE: postgres
-        MB_DB_HOST: db
-        MB_DB_PORT: 5432
-        MB_DB_DBNAME: servicepro
-        MB_DB_USER: ${DB_USER}
-        MB_DB_PASS: ${DB_PASSWORD}
-      depends_on:
-        - db
-    ```
-  - **Example KPIs to Create** (in Metabase SQL):
-    - Revenue this month vs last month
-    - Jobs completed per week
-    - Average job value
-    - Customer acquisition trend
-    - Outstanding invoice total
-  - **Embedding** (optional): Metabase charts can be embedded in your app
-  - **Acceptance Criteria**:
-    - Metabase running and connected to database
-    - 5+ KPI dashboards created
-    - Accessible to business stakeholders
-    - (Optional) Key charts embedded in app dashboard
+- [x] **T026: Set Up Business KPI Dashboard (Grafana)** ✓ COMPLETE
+  - Replaced Metabase with Grafana OSS in docker-compose.yml (port 3001)
+  - Auto-provisioned PostgreSQL data source via `grafana/provisioning/datasources/postgres.yml`
+  - Pre-built dashboard auto-loaded via `grafana/dashboards/platform-overview.json`
+  - No setup wizard needed — login with admin/admin, dashboard is ready
+  - Created 8 PostgreSQL views in `001_schema.sql` for KPI aggregation:
+    - `v_platform_overview` — snapshot counts (tenants, users, jobs, quotes, invoices)
+    - `v_tenant_growth_daily` — new tenants per day with cumulative total
+    - `v_feature_adoption` — per-tenant usage of jobs, quotes, invoices, payments
+    - `v_job_metrics_daily` — daily job creation/completion by status
+    - `v_invoice_metrics_daily` — daily invoice volume and amounts
+    - `v_quote_conversion` — per-tenant quote conversion rates
+    - `v_revenue_daily` — daily payment totals
+    - `v_ar_aging_summary` — outstanding invoices by age bucket
+  - Dashboard has 12 panels: 5 stat counters, 4 time-series, 1 table, 1 bar gauge, 1 bar chart
+  - Grafana Cloud free tier (3 users, 10k metrics) available for production deployment
 
 - [ ] **T027: Add Drag-and-Drop Rescheduling to Job Calendar**
   - **What**: Enable drag-and-drop to reschedule jobs on the calendar view
@@ -1249,7 +1232,7 @@ Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to re
     - [x] `src/utils/performance.ts` - Use Sentry Performance or Vercel Analytics instead
     - [x] `src/hooks/useErrorTracking.ts` - Will rebuild with proper Sentry integration (T024)
     - [x] `src/hooks/useAnalytics.ts` - Use PostHog instead (T025)
-    - [x] `src/hooks/useKPI.ts` - Use Metabase instead (T026)
+    - [x] `src/hooks/useKPI.ts` - Use Grafana instead (T026)
   - **Remaining to Delete**: None - all dead code cleaned up!
   - **Components to Keep** (valuable, need integration):
     - `src/components/calendar/` - See T019

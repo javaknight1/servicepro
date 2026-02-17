@@ -1832,6 +1832,151 @@ CREATE TRIGGER trigger_payment_reminders_updated_at BEFORE UPDATE ON payment_rem
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- ============================================================================
+-- ANALYTICS VIEWS (for Grafana KPI dashboards)
+-- ============================================================================
+
+-- Platform snapshot: total tenants, active tenants, users, jobs, quotes, invoices
+CREATE OR REPLACE VIEW v_platform_overview AS
+SELECT
+    (SELECT COUNT(*) FROM tenants WHERE deleted_at IS NULL) AS total_tenants,
+    (SELECT COUNT(*) FROM tenants WHERE deleted_at IS NULL AND is_active = true) AS active_tenants,
+    (SELECT COUNT(*) FROM users WHERE deleted_at IS NULL) AS total_users,
+    (SELECT COUNT(*) FROM jobs WHERE deleted_at IS NULL) AS total_jobs,
+    (SELECT COUNT(*) FROM quotes WHERE deleted_at IS NULL) AS total_quotes,
+    (SELECT COUNT(*) FROM invoices WHERE deleted_at IS NULL) AS total_invoices;
+
+-- New tenants per day (time-series)
+CREATE OR REPLACE VIEW v_tenant_growth_daily AS
+SELECT
+    DATE(created_at) AS day,
+    COUNT(*) AS new_tenants,
+    SUM(COUNT(*)) OVER (ORDER BY DATE(created_at)) AS cumulative_tenants
+FROM tenants
+WHERE deleted_at IS NULL
+GROUP BY DATE(created_at)
+ORDER BY day;
+
+-- Per-tenant feature adoption: how many jobs, quotes, invoices, payments each tenant uses
+CREATE OR REPLACE VIEW v_feature_adoption AS
+SELECT
+    t.id AS tenant_id,
+    t.name AS tenant_name,
+    t.created_at AS tenant_created_at,
+    COALESCE(j.job_count, 0) AS job_count,
+    COALESCE(q.quote_count, 0) AS quote_count,
+    COALESCE(i.invoice_count, 0) AS invoice_count,
+    COALESCE(p.payment_count, 0) AS payment_count
+FROM tenants t
+LEFT JOIN (
+    SELECT tenant_id, COUNT(*) AS job_count
+    FROM jobs WHERE deleted_at IS NULL
+    GROUP BY tenant_id
+) j ON j.tenant_id = t.id
+LEFT JOIN (
+    SELECT tenant_id, COUNT(*) AS quote_count
+    FROM quotes WHERE deleted_at IS NULL
+    GROUP BY tenant_id
+) q ON q.tenant_id = t.id
+LEFT JOIN (
+    SELECT tenant_id, COUNT(*) AS invoice_count
+    FROM invoices WHERE deleted_at IS NULL
+    GROUP BY tenant_id
+) i ON i.tenant_id = t.id
+LEFT JOIN (
+    SELECT tenant_id, COUNT(*) AS payment_count
+    FROM payments
+    GROUP BY tenant_id
+) p ON p.tenant_id = t.id
+WHERE t.deleted_at IS NULL
+ORDER BY t.created_at;
+
+-- Daily job metrics: created and completed counts by status
+CREATE OR REPLACE VIEW v_job_metrics_daily AS
+SELECT
+    DATE(created_at) AS day,
+    COUNT(*) AS jobs_created,
+    COUNT(*) FILTER (WHERE status = 'completed') AS jobs_completed,
+    COUNT(*) FILTER (WHERE status = 'cancelled') AS jobs_cancelled,
+    COUNT(*) FILTER (WHERE status = 'in_progress') AS jobs_in_progress
+FROM jobs
+WHERE deleted_at IS NULL
+GROUP BY DATE(created_at)
+ORDER BY day;
+
+-- Daily invoice metrics: created count, total amounts by status
+CREATE OR REPLACE VIEW v_invoice_metrics_daily AS
+SELECT
+    DATE(created_at) AS day,
+    COUNT(*) AS invoices_created,
+    COALESCE(SUM(total_amount), 0) AS total_amount,
+    COUNT(*) FILTER (WHERE status = 'paid') AS invoices_paid,
+    COUNT(*) FILTER (WHERE status = 'overdue') AS invoices_overdue,
+    COALESCE(SUM(total_amount) FILTER (WHERE status = 'paid'), 0) AS paid_amount
+FROM invoices
+WHERE deleted_at IS NULL
+GROUP BY DATE(created_at)
+ORDER BY day;
+
+-- Per-tenant quote conversion rates (accepted / total sent)
+CREATE OR REPLACE VIEW v_quote_conversion AS
+SELECT
+    t.id AS tenant_id,
+    t.name AS tenant_name,
+    COUNT(*) AS total_quotes,
+    COUNT(*) FILTER (WHERE q.status IN ('sent', 'viewed', 'accepted', 'declined', 'expired')) AS quotes_sent,
+    COUNT(*) FILTER (WHERE q.status = 'accepted') AS quotes_accepted,
+    CASE
+        WHEN COUNT(*) FILTER (WHERE q.status IN ('sent', 'viewed', 'accepted', 'declined', 'expired')) > 0
+        THEN ROUND(
+            COUNT(*) FILTER (WHERE q.status = 'accepted')::NUMERIC /
+            COUNT(*) FILTER (WHERE q.status IN ('sent', 'viewed', 'accepted', 'declined', 'expired')) * 100, 1
+        )
+        ELSE 0
+    END AS conversion_rate_pct
+FROM tenants t
+LEFT JOIN quotes q ON q.tenant_id = t.id AND q.deleted_at IS NULL
+WHERE t.deleted_at IS NULL
+GROUP BY t.id, t.name
+ORDER BY conversion_rate_pct DESC;
+
+-- Daily revenue from payments
+CREATE OR REPLACE VIEW v_revenue_daily AS
+SELECT
+    payment_date AS day,
+    COUNT(*) AS payment_count,
+    COALESCE(SUM(amount), 0) AS total_revenue
+FROM payments
+WHERE status = 'completed'
+GROUP BY payment_date
+ORDER BY day;
+
+-- Accounts receivable aging buckets
+CREATE OR REPLACE VIEW v_ar_aging_summary AS
+SELECT
+    CASE
+        WHEN due_date >= CURRENT_DATE THEN 'Current'
+        WHEN due_date >= CURRENT_DATE - INTERVAL '30 days' THEN '1-30 days'
+        WHEN due_date >= CURRENT_DATE - INTERVAL '60 days' THEN '31-60 days'
+        WHEN due_date >= CURRENT_DATE - INTERVAL '90 days' THEN '61-90 days'
+        ELSE '90+ days'
+    END AS age_bucket,
+    COUNT(*) AS invoice_count,
+    COALESCE(SUM(amount_due), 0) AS outstanding_amount
+FROM invoices
+WHERE deleted_at IS NULL
+  AND status NOT IN ('paid', 'cancelled', 'refunded')
+  AND amount_due > 0
+GROUP BY age_bucket
+ORDER BY
+    CASE age_bucket
+        WHEN 'Current' THEN 1
+        WHEN '1-30 days' THEN 2
+        WHEN '31-60 days' THEN 3
+        WHEN '61-90 days' THEN 4
+        WHEN '90+ days' THEN 5
+    END;
+
+-- ============================================================================
 -- SCHEMA COMPLETE
 -- ============================================================================
 

@@ -172,6 +172,10 @@ func main() {
 		// Start connection pool metrics collector
 		poolCollector := database.NewPoolMetricsCollector(sqlDB, metricsClient, 15*time.Second)
 		poolCollector.Start(ctx)
+
+		// Start KPI metrics collector (platform overview, revenue, A/R aging)
+		kpiCollector := database.NewKPIMetricsCollector(sqlDB, metricsClient, 60*time.Second)
+		kpiCollector.Start(ctx)
 	}
 
 	// Initialize Gin router
