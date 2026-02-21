@@ -38,6 +38,13 @@ func (Tenant) TableName() string {
 	return "tenants"
 }
 
+// DaySchedule represents business hours for a single day
+type DaySchedule struct {
+	Enabled bool   `json:"enabled"`
+	Start   string `json:"start"` // "07:00" format
+	End     string `json:"end"`   // "17:00" format
+}
+
 // TenantSettings represents configurable tenant settings
 type TenantSettings struct {
 	IsDefault            bool       `json:"isDefault,omitempty"`
@@ -54,6 +61,9 @@ type TenantSettings struct {
 	PaymentRemindersEnabled bool  `json:"paymentRemindersEnabled,omitempty"`
 	ReminderDaysAfterDue    []int `json:"reminderDaysAfterDue,omitempty"`
 	MaxRemindersPerInvoice  int   `json:"maxRemindersPerInvoice,omitempty"`
+
+	// Business hours settings
+	BusinessHours map[string]DaySchedule `json:"businessHours,omitempty"`
 }
 
 // Value implements driver.Valuer for database serialization

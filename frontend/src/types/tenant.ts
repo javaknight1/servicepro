@@ -15,6 +15,12 @@ export interface Tenant {
   role?: string; // User's role in this tenant (when listing user's tenants)
 }
 
+export interface DaySchedule {
+  enabled: boolean;
+  start: string; // "07:00" format
+  end: string; // "17:00" format
+}
+
 export interface TenantSettings {
   isDefault?: boolean;
   timezone?: string;
@@ -25,6 +31,10 @@ export interface TenantSettings {
   jobPrefix?: string;
   defaultPaymentTermId?: string;
   defaultTaxRateId?: string;
+  paymentRemindersEnabled?: boolean;
+  reminderDaysAfterDue?: number[];
+  maxRemindersPerInvoice?: number;
+  businessHours?: Record<string, DaySchedule>;
 }
 
 export interface TenantMember {
