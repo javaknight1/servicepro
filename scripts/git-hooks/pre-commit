@@ -49,10 +49,14 @@ if [ -n "$GO_CHANGED" ]; then
         echo "> OpenAPI drift..."
         TMP_DOCS=$(mktemp -d)
         trap 'rm -rf "$TMP_DOCS"' EXIT
-        (cd backend && go tool swag init \
+        if ! SWAG_OUT=$(cd backend && go tool swag init \
             -g cmd/main.go --output "$TMP_DOCS" \
-            --parseDependency --parseInternal >/dev/null 2>&1)
-        if ! cmp -s "$TMP_DOCS/swagger.json" backend/docs/swagger.json \
+            --parseDependency --parseInternal 2>&1); then
+            echo "x swag failed to parse the annotations:"
+            grep -iE 'error|cannot' <<<"$SWAG_OUT" | head -5 | sed 's/^/  /'
+            exit 1
+        fi
+        if [ ! -s "$TMP_DOCS/swagger.json" ] || ! cmp -s "$TMP_DOCS/swagger.json" backend/docs/swagger.json \
            || ! cmp -s "$TMP_DOCS/swagger.yaml" backend/docs/swagger.yaml; then
             echo "x OpenAPI spec is out of date."
             echo "  Swag annotations in your staged handler/model changes don't match"
