@@ -185,12 +185,12 @@ The minimum subset that must be done before real (paying) customers: **39 tasks,
 | ~~T225~~ | ~~2~~  | ~~Bug~~        | ~~4~~  | ~~Invoice totals: one server-side recalculation, tax/discount order, no double invoicing~~            |
 | ~~T226~~ | ~~2~~  | ~~Bug~~        | ~~3~~  | ~~Tenant creation and invitation acceptance in transactions; per-tenant uniqueness~~                  |
 | ~~T227~~ | ~~2~~  | ~~Bug~~        | ~~3~~  | ~~Frontend follow-through for the Phase 1 auth changes (invite codes, 429, logout-everywhere)~~       |
+| ~~T228~~ | ~~2~~  | ~~Bug~~        | ~~2~~  | ~~Quotes list: backend search (q) and sort params~~                                                   |
 | ~~T229~~ | ~~2~~  | ~~Bug~~        | ~~2~~  | ~~Invite and invitation API polish: distinct invalid-code error, encoded links, message field~~       |
 | ~~T230~~ | ~~13~~ | ~~Auth~~       | ~~3~~  | ~~Expose the caller's effective permissions per tenant; decide who can delete an organization~~       |
 | T127     | 2      | Backend        | 3      | Backend reads tenant settings: currency, number prefixes, defaults                                    |
 | T129     | 2      | Cleanup        | 4      | Backend dead-code removal and a stricter linter                                                       |
 | T223     | 2      | Backend        | 4      | Request IDs and a standard API error envelope                                                         |
-| T228     | 2      | Bug            | 2      | Quotes list: backend search (q) and sort params                                                       |
 | T232     | 2      | Bug            | 2      | Frontend money calls match the API: record payment URL, cancel reason, refunds, quote revise          |
 | T233     | 2      | Bug            | 1      | JobMaterial.Billable default:true stores false as true                                                |
 | T101     | 3      | Monitoring     | 2      | Upload source maps to Sentry for production builds                                                    |
@@ -399,7 +399,7 @@ Work completed under the old P0–P3/sprint TODO. Details are in Verified Comple
 
 ### Phase 2 — Correctness & Cleanup (T118, T119, T120, T121, T122, T123, T124, T125, T126, T127, T128, T129, T130, T131, T132, T133, T134, T135, T136, T137, T138, T223, T224, T225, T226, T227, T228, T229, T232, T233)
 
-Money flows that are wired but broken (payments don't update invoices, reminders never sent, numbering wedges, a panicking webhook), frontend bugs users would hit in the preview, and dead code. From `docs/audits/2026-10-16/backend-correctness.md` and `docs/audits/2026-10-16/frontend.md`. **6 open tasks, ~16h.** 24 done.
+Money flows that are wired but broken (payments don't update invoices, reminders never sent, numbering wedges, a panicking webhook), frontend bugs users would hit in the preview, and dead code. From `docs/audits/2026-10-16/backend-correctness.md` and `docs/audits/2026-10-16/frontend.md`. **5 open tasks, ~14h.** 25 done.
 
 - [x] T118 — Recording a payment updates the invoice balance and status ✓ (2026-10-16)
 - [x] T119 — Stripe Checkout charges the true balance due ✓ (2026-10-16)
@@ -424,11 +424,11 @@ Money flows that are wired but broken (payments don't update invoices, reminders
 - [x] T225 — Invoice totals: one server-side recalculation, tax/discount order, no double invoicing ✓ (2026-10-16)
 - [x] T226 — Tenant creation and invitation acceptance in transactions; per-tenant uniqueness ✓ (2026-10-16)
 - [x] T227 — Frontend follow-through for the Phase 1 auth changes (invite codes, 429, logout-everywhere) ✓ (2026-10-16)
+- [x] T228 — Quotes list: backend search (q) and sort params ✓ (2026-10-16)
 - [x] T229 — Invite and invitation API polish: distinct invalid-code error, encoded links, message field ✓ (2026-10-16)
 - [ ] T127 — Backend reads tenant settings: currency, number prefixes, defaults
 - [ ] T129 — Backend dead-code removal and a stricter linter
 - [ ] T223 — Request IDs and a standard API error envelope
-- [ ] T228 — Quotes list: backend search (q) and sort params
 - [ ] T232 — Frontend money calls match the API: record payment URL, cancel reason, refunds, quote revise
 - [ ] T233 — JobMaterial.Billable default:true stores false as true
 
@@ -471,20 +471,6 @@ Money flows that are wired but broken (payments don't update invoices, reminders
 **Why we need it** — Without correlation IDs, a user's "it broke" can't be matched to a log line; inconsistent error shapes make client handling and T116's "no raw `err.Error()`" rule hard to keep.
 
 **Notes** — Folds in three old untagged items: "Request Correlation IDs" (P1), "Standardize API Error Responses" (P2) and "Comprehensive Input Validation" (P1). correctness audit 5.1 (`internal/errors` unused), 5.2 (`RequestIDMiddleware` not installed). Pairs with T116 (F-17). Also: `publicError` (T116) reduces domain errors containing ": " (e.g. "invalid status transition: …") to a generic message — the envelope must carry typed domain errors (code + safe message) instead.
-
----
-
-#### T228 — Quotes list: backend search (q) and sort params
-
-**Phase**: 2 · **Category**: Bug · **Hours**: 2 · **Status**: Open · **v1 Gate**: No · **Depends on**: none
-
-**What it is** — The quotes list search box and sort controls actually filter and order results.
-
-**What it does** — Add `q` (quote number, title, customer name; tenant-scoped ILIKE / trigram from T123), `sort_by` (allowlisted columns) and `sort_order` to `models.QuoteQueryParams` and the quote repository; swag annotations + `make docs`; pass `q` from `getQuotes` in `frontend/src/services/quoteService.ts` (one line); tests both sides.
-
-**Why we need it** — The quotes page has a search box that does nothing (frontend sends `search`/`sort_*`, backend ignores them) — reported in T135 and T227.
-
-**Notes** — Follow-up from T227 (2026-10-16). Invoices/customers/jobs lists already support search.
 
 ---
 
@@ -2900,5 +2886,6 @@ Dated history from the original "Completed Items" list:
 - **T225** — Invoice totals: one server-side recalculation, tax/discount order, no double invoicing. Removed GORM `default:true` on 5 models (46b6211); single totals calculation (`services/invoice_totals.go`: line discounts, invoice discount spread before tax) recalculated in create/update/add-line transactions with partial updates and total ≥ amount paid; PDF lines sum to subtotal; no double invoicing (row lock, accepted quote, matching customer) (a7634b5, 1d47ac7). `JobMaterial.Billable` → T233.
 - **T226** — Tenant creation and invitation acceptance in transactions; per-tenant uniqueness. Migration `000012`: tenant slug unique among live tenants, one pending invitation per `(tenant, LOWER(email))`; `TenantRepository.CreateWithOwner` creates tenant + owner membership + default subscription in one transaction (owner role by name; debug query and hard-coded UUID gone); invitation accept runs in one transaction with the invitation row locked, persists expiry, reactivates an existing member with the invited role (458209c, 591a6ed, 1489c79).
 - **T227** — Frontend follow-through for the Phase 1 auth changes (invite codes, 429, logout-everywhere). Registration form has an `invite_code` field (prefilled from `?invite=`/`?code=`/`?invite_code=`, hidden for tenant invitations) and distinct messages for invite-only / invalid code / invalid invitation and 429; login shows a generic 429 message and honours a safe same-origin `returnUrl` (`getSafeReturnUrl`); logout says it signs out every device; Cypress cases for the removed Stripe endpoints deleted; tenant settings/members/membership/billing pages show a permission message on 403 and hide actions built-in roles can't use (`src/utils/tenantPermissions.ts`); accept-invitation offers sign-up. Quotes search needs backend support (T228); invite-code/invitation API gaps → T229; effective permissions + org deletion → T230.
+- **T228** — Quotes list: backend search (q) and sort params. `GET /api/v1/quotes` takes `q` (case-insensitive quote number / customer first, last, company or full name; `%`/`_` escaped; customer subquery tied to `quotes.tenant_id`), allowlisted `sort_by` (created_at, updated_at, quote_number, status, total, valid_until) and `sort_order` (bad values → 400); QuotesPage sends a debounced `q` and only API sort columns; tenant-isolation tests (f24876c, 05fc0e4). Verified on SQLite only — Postgres run pending.
 - **T229** — Invite and invitation API polish: distinct invalid-code error, encoded links, message field. Invite-only registration returns distinct 403 codes `registration_closed` (nothing supplied) / `invalid_invite_code` / `invalid_invitation`, and RegisterPage maps them directly; invitation links built with `url.Values` (`inviteAcceptURL`/`inviteRegisterURL`) so emails with `+`/`&` survive; invitation handler errors are `{error: <code>, message: <text>}` (43ba167, 302f8e4, e9cf6fc).
 - **T230** — Expose the caller's effective permissions per tenant; decide who can delete an organization. `GET /api/v1/tenants/{id}/me` → `{tenant_id, role_id, role, role_level, permissions[]}` from `PermissionChecker.EffectivePermissionNames` (membership-gated, cross-tenant test); frontend `useTenantPermissions` (React Query) gates Team Members, Org Settings and Membership/Billing on specific permissions, delete button only with `tenants.delete` (6e0b27c, e159e51). Owner decision on org deletion split to T231.
