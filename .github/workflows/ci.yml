@@ -1,0 +1,298 @@
+name: CI
+
+# Green-before-tag gate (RELEASING.md): lint, test and build on every PR and
+# every push to master. This workflow deploys NOTHING — master is a staging
+# line of commits, kept releasable. Production ships only from a v* tag, via
+# release-deploy.yml.
+#
+# The `name:` above must stay exactly "CI": dependabot-automerge.yml listens
+# for it by name (workflow_run), and a rename silently disables auto-merge.
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  # Dispatchable so dependabot-automerge.yml can validate master after a
+  # GITHUB_TOKEN merge — which, like a token-pushed tag, triggers nothing.
+  workflow_dispatch:
+
+# Least privilege: nothing here pushes, tags or comments.
+permissions:
+  contents: read
+
+# Cancel superseded PR runs; let master runs finish so every commit that may
+# be tagged has a complete CI result.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  go-lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: backend/go.mod
+          # Resolve the newest matching patch rather than the runner's
+          # preinstalled Go — see the note on the go-vuln job.
+          check-latest: true
+          cache-dependency-path: backend/go.sum
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v9
+        with:
+          working-directory: backend
+          # Keep in sync with GOLANGCI_LINT_VERSION in the root Makefile.
+          version: v2.11.4
+          args: --config .golangci.yml
+
+  go-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: servicepro_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/servicepro_test?sslmode=disable
+      TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/servicepro_test?sslmode=disable
+      REDIS_URL: redis://localhost:6379
+      ENV: test
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: backend/go.mod
+          check-latest: true
+          cache-dependency-path: backend/go.sum
+      - name: Unit tests
+        working-directory: backend
+        # -skip Integration: suites that need the full stack run in
+        # db-integration below (build tag `integration`).
+        run: go test -race -timeout 5m ./... -skip Integration
+      - name: Build
+        working-directory: backend
+        run: go build ./...
+
+  db-integration:
+    # Real-DB integration suite: backend/tests/integration (build tag
+    # `integration`) against Postgres, Redis and Mailpit service containers.
+    #
+    # TODO(integration): NON-BLOCKING until the suite is repaired. Today it
+    # does not compile — SetupTest lives in setup_test.go, which the api/ and
+    # database/ packages cannot import — and once it does it still needs:
+    #   - LocalStack (AWS S3/SES emulation, AWS_ENDPOINT_URL :4566) for the
+    #     AWS mock (backend/tests/localstack/init-aws.sh);
+    #   - a running API on API_BASE_URL for the api/ suite;
+    #   - its migration loader updated for golang-migrate file names
+    #     (it globs migrations/*.sql, which would also run *.down.sql).
+    # When fixed, drop continue-on-error and add a localstack service.
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    continue-on-error: true
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: servicepro_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      mailpit:
+        image: axllent/mailpit:v1.31.6
+        ports:
+          - 1025:1025
+          - 8025:8025
+    env:
+      TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/servicepro_test?sslmode=disable
+      REDIS_URL: redis://localhost:6379
+      SMTP_HOST: localhost
+      SMTP_PORT: '1025'
+      MAILHOG_API: http://localhost:8025
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: backend/go.mod
+          check-latest: true
+          cache-dependency-path: backend/go.sum
+      - name: Vet integration suite
+        working-directory: backend
+        run: go vet -tags=integration ./tests/integration/...
+      - name: Database integration tests
+        working-directory: backend
+        run: go test -tags=integration -count=1 -timeout 10m ./tests/integration/database/...
+
+  go-vuln:
+    # govulncheck against the backend module. Fails on any known CVE in code
+    # actually reachable from the binary (call-graph analysis).
+    #
+    # `check-latest: true` on every setup-go step exists for this job: without
+    # it setup-go accepts the runner's preinstalled Go, and most findings are
+    # standard-library CVEs already fixed in a newer patch release. NOTE:
+    # setup-go treats an exact `go 1.24.0` in go.mod as an exact version, so
+    # backend/go.mod should carry a current patch (a `toolchain` line or a
+    # bumped `go` directive) for this gate to track patch releases.
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: backend/go.mod
+          check-latest: true
+          cache-dependency-path: backend/go.sum
+      - name: Install govulncheck
+        # GOTOOLCHAIN=auto for this step only: govulncheck@latest may need a
+        # newer Go to BUILD. The scanner is a tool, not a dependency.
+        env:
+          GOTOOLCHAIN: auto
+        run: go install golang.org/x/vuln/cmd/govulncheck@latest
+      - name: Run govulncheck
+        working-directory: backend
+        run: govulncheck ./...
+
+  openapi-drift:
+    # Regenerate the OpenAPI spec (swag, pinned to backend/go.mod) and the
+    # frontend TypeScript types, and fail if either differs from what's
+    # committed. Fix locally with `make docs` and commit the result.
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: backend/go.mod
+          check-latest: true
+          cache-dependency-path: backend/go.sum
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: frontend/.nvmrc
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+        working-directory: frontend
+      - name: Regenerate API docs + types
+        run: make docs
+      - name: Fail on drift
+        run: |
+          if ! git diff --exit-code --stat -- backend/docs frontend/src/types/api.generated.ts; then
+            echo "::error::OpenAPI artifacts are stale. Run 'make docs' and commit backend/docs and frontend/src/types/api.generated.ts."
+            exit 1
+          fi
+
+  frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: frontend/.nvmrc
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+        working-directory: frontend
+      - name: Typecheck
+        working-directory: frontend
+        run: npm run type-check
+      - name: Lint
+        working-directory: frontend
+        run: npm run lint
+      - name: Unit tests
+        working-directory: frontend
+        run: npx vitest run --passWithNoTests
+      - name: Dead code
+        working-directory: frontend
+        run: npm run dead-code
+      - name: Build
+        working-directory: frontend
+        env:
+          VITE_API_URL: /api/v1
+          VITE_APP_VERSION: ci
+          VITE_ENV: ci
+        run: npm run build
+      - name: Bundle size
+        working-directory: frontend
+        run: npm run analyze:bundle -- --ci
+      - name: Add bundle report to step summary
+        if: always() && hashFiles('frontend/dist/bundle-size-report.md') != ''
+        run: cat frontend/dist/bundle-size-report.md >> "$GITHUB_STEP_SUMMARY"
+      # Fail on any high-or-critical advisory in what ships (production deps).
+      # Triage: bump the direct parent of the vulnerable transitive, or
+      # `npm audit fix` after reading the diff. Don't raise the threshold.
+      - name: npm audit (high+, production deps)
+        working-directory: frontend
+        run: npm audit --audit-level=high --omit=dev
+
+  docker-build:
+    # Build the production backend/Dockerfile on every PR/push so a broken
+    # image surfaces here, not at release time when scripts/deploy-cloudrun.sh
+    # builds the same file. push: false — no registry credentials needed.
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+      - name: Build backend/Dockerfile
+        uses: docker/build-push-action@v7
+        with:
+          context: backend
+          file: backend/Dockerfile
+          push: false
+          load: true
+          tags: servicepro-api:scan
+          build-args: |
+            GIT_SHA=${{ github.sha }}
+            APP_VERSION=ci
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,mode=max,scope=api
+      - name: Trivy image scan
+        # CVE-2026-33634: trivy-action tags 0.0.1–0.34.2 were compromised in
+        # the March 2026 tag-hijack incident and deleted. 0.35.0 is the first
+        # immutable safe release — never pin below it.
+        uses: aquasecurity/trivy-action@0.35.0
+        with:
+          image-ref: servicepro-api:scan
+          format: table
+          severity: HIGH,CRITICAL
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: os,library

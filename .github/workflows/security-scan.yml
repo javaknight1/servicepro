@@ -1,0 +1,50 @@
+name: Security scan
+
+# Re-runs the security scanners weekly so CVEs disclosed during quiet periods
+# (no commits to master) still surface within ~7 days. ci.yml's go-vuln and
+# npm audit only fire on push/PR. Dependabot covers most module CVEs with a
+# PR; Go standard-library CVEs never get one — this is the backstop.
+
+on:
+  schedule:
+    # Mondays 14:00 UTC, before Dependabot's 09:00 ET batch is triaged.
+    - cron: '0 14 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  go-vuln:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: backend/go.mod
+          check-latest: true
+          cache-dependency-path: backend/go.sum
+      - name: Install govulncheck
+        env:
+          GOTOOLCHAIN: auto
+        run: go install golang.org/x/vuln/cmd/govulncheck@latest
+      - name: Run govulncheck
+        working-directory: backend
+        run: govulncheck ./...
+
+  npm-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: frontend/.nvmrc
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+        working-directory: frontend
+      - name: npm audit (high+, production deps)
+        working-directory: frontend
+        run: npm audit --audit-level=high --omit=dev

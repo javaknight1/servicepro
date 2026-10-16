@@ -1,29 +1,23 @@
+# Dependabot — weekly dependency updates.
+#
+# One update day (Monday) for all ecosystems so the batch lands in a single
+# triage block. Minor + patch updates are grouped per ecosystem;
+# dependabot-automerge.yml merges those once CI is green and cuts a release.
+# Majors arrive as individual PRs and wait for a human.
+#
+# The commit-message prefixes (deps(go) / deps(npm) / deps(actions)) are part
+# of the release contract: scripts/gh-release.sh filters `deps` out of the
+# release notes, and scripts/bump-version.sh treats a deps-only range as a
+# PATCH. Don't change them to fix:/feat:.
+#
+# Triage:
+#   - patch + minor -> auto-merged when CI passes
+#   - major -> read the changelog, run locally, then merge by hand
+#   - transitive CVEs flagged by `npm audit` -> bump the direct parent
+
 version: 2
 updates:
-  # Frontend npm dependencies
-  - package-ecosystem: 'npm'
-    directory: '/frontend'
-    schedule:
-      interval: 'weekly'
-      day: 'monday'
-      time: '09:00'
-      timezone: 'America/New_York'
-    open-pull-requests-limit: 10
-    labels:
-      - 'dependencies'
-      - 'frontend'
-    commit-message:
-      prefix: 'fix'
-    groups:
-      # Group minor and patch updates together to reduce PR noise
-      npm-minor-patch:
-        patterns:
-          - '*'
-        update-types:
-          - 'minor'
-          - 'patch'
-
-  # Backend Go dependencies
+  # Go backend (backend/)
   - package-ecosystem: 'gomod'
     directory: '/backend'
     schedule:
@@ -33,20 +27,37 @@ updates:
       timezone: 'America/New_York'
     open-pull-requests-limit: 10
     labels:
-      - 'dependencies'
-      - 'backend'
+      - 'deps'
+      - 'go'
     commit-message:
-      prefix: 'fix'
+      prefix: 'deps(go)'
     groups:
-      # Group minor and patch updates together
-      go-minor-patch:
-        patterns:
-          - '*'
+      go-minor-and-patch:
         update-types:
           - 'minor'
           - 'patch'
 
-  # GitHub Actions
+  # Frontend + its Cloudflare Worker (frontend/, one package-lock.json)
+  - package-ecosystem: 'npm'
+    directory: '/frontend'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+      time: '09:00'
+      timezone: 'America/New_York'
+    open-pull-requests-limit: 10
+    labels:
+      - 'deps'
+      - 'npm'
+    commit-message:
+      prefix: 'deps(npm)'
+    groups:
+      npm-minor-and-patch:
+        update-types:
+          - 'minor'
+          - 'patch'
+
+  # GitHub Actions (.github/workflows)
   - package-ecosystem: 'github-actions'
     directory: '/'
     schedule:
@@ -54,8 +65,9 @@ updates:
       day: 'monday'
       time: '09:00'
       timezone: 'America/New_York'
+    open-pull-requests-limit: 5
     labels:
-      - 'dependencies'
+      - 'deps'
       - 'ci'
     commit-message:
-      prefix: 'fix'
+      prefix: 'deps(actions)'
