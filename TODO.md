@@ -62,12 +62,12 @@
 
 ## v1 Launch Gate
 
-The minimum subset that must be done before real (paying) customers: **49 tasks, ~349h**. Everything else is post-launch growth or depth. The invite-gated preview (T205) needs only Phase 1 plus T106/T204/T206; the gate below is for opening to paying customers. Phase 4's gating subset is the parts of the stack that touch auth, tenancy, email and storage; the chi and pgx ports are not gating.
+The minimum subset that must be done before real (paying) customers: **48 tasks, ~346h**. Everything else is post-launch growth or depth. The invite-gated preview (T205) needs only Phase 1 plus T106/T204/T206; the gate below is for opening to paying customers. Phase 4's gating subset is the parts of the stack that touch auth, tenancy, email and storage; the chi and pgx ports are not gating.
 
 | Phase                                                | Gating tasks                                                                                                                                                             |
 |------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Phase 1 — Security Remediation                       | **All** — ~~T102~~, ~~T103~~, ~~T104~~, ~~T105~~, ~~T106~~, ~~T107~~, ~~T108~~, ~~T109~~, ~~T110~~, ~~T111~~, ~~T112~~, ~~T113~~, ~~T114~~, ~~T115~~, ~~T116~~, ~~T117~~ |
-| Phase 2 — Correctness & Cleanup                      | T118, T119, T120, T121, T122, T123, T124, T126, ~~T130~~, ~~T131~~, ~~T132~~, ~~T133~~, ~~T136~~, T224, T225, T227                                                       |
+| Phase 2 — Correctness & Cleanup                      | T118, T119, T120, T121, T122, T123, T124, T126, ~~T130~~, ~~T131~~, ~~T132~~, ~~T133~~, ~~T136~~, T224, T225, ~~T227~~                                                   |
 | Phase 3 — Platform & Delivery                        | ~~T139~~, ~~T140~~, ~~T141~~, ~~T142~~, ~~T143~~, ~~T144~~, ~~T145~~, ~~T146~~, ~~T150~~, ~~T151~~                                                                       |
 | Phase 4 — Stack Convergence (LL parity; incremental) | T153, T154, T158, T159, T160                                                                                                                                             |
 | Phase 5 — Core Workflow & Quoting                    | T028, T029, T030, T035, T167                                                                                                                                             |
@@ -171,6 +171,7 @@ The minimum subset that must be done before real (paying) customers: **49 tasks,
 | ~~T150~~ | ~~3~~ | ~~Deploy~~     | ~~6~~  | ~~Cloudflare Workers static assets + /api edge proxy Worker + _headers~~                              |
 | ~~T151~~ | ~~3~~ | ~~Docs~~       | ~~3~~  | ~~Ops docs: Cloud Run setup, deploy/rollback, backups + nightly pg_dump → R2 workflow~~               |
 | ~~T152~~ | ~~3~~ | ~~CI~~         | ~~1~~  | ~~Commit generated OpenAPI and TS types for drift gating~~                                            |
+| ~~T227~~ | ~~2~~ | ~~Bug~~        | ~~3~~  | ~~Frontend follow-through for the Phase 1 auth changes (invite codes, 429, logout-everywhere)~~       |
 | T118     | 2     | Bug            | 3      | Recording a payment updates the invoice balance and status                                            |
 | T119     | 2     | Payments       | 3      | Stripe Checkout charges the true balance due                                                          |
 | T120     | 2     | Bug            | 2      | Invoice and job numbering survives soft-delete and concurrency                                        |
@@ -187,7 +188,8 @@ The minimum subset that must be done before real (paying) customers: **49 tasks,
 | T224     | 2     | Bug            | 4      | Quote correctness: lost customer edits, accept race, expiry, editable sent quotes                     |
 | T225     | 2     | Bug            | 4      | Invoice totals: one server-side recalculation, tax/discount order, no double invoicing                |
 | T226     | 2     | Bug            | 3      | Tenant creation and invitation acceptance in transactions; per-tenant uniqueness                      |
-| T227     | 2     | Bug            | 3      | Frontend follow-through for the Phase 1 auth changes (invite codes, 429, logout-everywhere)           |
+| T228     | 2     | Bug            | 2      | Quotes list: backend search (q) and sort params                                                       |
+| T229     | 2     | Bug            | 2      | Invite and invitation API polish: distinct invalid-code error, encoded links, message field           |
 | T101     | 3     | Monitoring     | 2      | Upload source maps to Sentry for production builds                                                    |
 | T153     | 4     | Backend        | 24     | Repositories take ctx + tenantID; services stop taking *gorm.DB; transaction manager                  |
 | T154     | 4     | Security       | 12     | Postgres RLS backstop keyed on a per-transaction tenant GUC + isolation tests                         |
@@ -306,6 +308,7 @@ The minimum subset that must be done before real (paying) customers: **49 tasks,
 | T199     | 13    | Feature        | 6      | One-click full data export (trust promise)                                                            |
 | T200     | 13    | Legal          | 6      | Account/tenant deletion + data retention policy                                                       |
 | T201     | 13    | Legal          | 3      | Privacy/CCPA handling SOP                                                                             |
+| T230     | 13    | Auth           | 3      | Expose the caller's effective permissions per tenant; decide who can delete an organization           |
 | T202     | 14    | Research       | 1      | Decide production database hosting (OWNER DECISION)                                                   |
 | T203     | 14    | Deploy         | 4      | GCP project + WIF + Artifact Registry + Cloud Run service                                             |
 | T204     | 14    | Deploy         | 2      | Deploy the Worker + DNS for servicepro.sharkfins.xyz                                                  |
@@ -391,9 +394,9 @@ Work completed under the old P0–P3/sprint TODO. Details are in Verified Comple
 - [x] T116 — Low-severity security sweep ✓ (2026-10-16)
 - [x] T117 — Remediate dependency vulnerabilities and bump the Go toolchain ✓ (2026-10-16)
 
-### Phase 2 — Correctness & Cleanup (T118, T119, T120, T121, T122, T123, T124, T125, T126, T127, T128, T129, T130, T131, T132, T133, T134, T135, T136, T137, T138, T223, T224, T225, T226, T227)
+### Phase 2 — Correctness & Cleanup (T118, T119, T120, T121, T122, T123, T124, T125, T126, T127, T128, T129, T130, T131, T132, T133, T134, T135, T136, T137, T138, T223, T224, T225, T226, T227, T228, T229)
 
-Money flows that are wired but broken (payments don't update invoices, reminders never sent, numbering wedges, a panicking webhook), frontend bugs users would hit in the preview, and dead code. From `docs/audits/2026-10-16/backend-correctness.md` and `docs/audits/2026-10-16/frontend.md`. **17 open tasks, ~53h.** 9 done.
+Money flows that are wired but broken (payments don't update invoices, reminders never sent, numbering wedges, a panicking webhook), frontend bugs users would hit in the preview, and dead code. From `docs/audits/2026-10-16/backend-correctness.md` and `docs/audits/2026-10-16/frontend.md`. **18 open tasks, ~54h.** 10 done.
 
 - [x] T130 — Login error swallowed by the refresh interceptor ✓ (2026-10-16)
 - [x] T131 — Public payment result pages for the /pay/:token flow ✓ (2026-10-16)
@@ -404,6 +407,7 @@ Money flows that are wired but broken (payments don't update invoices, reminders
 - [x] T136 — Green frontend test suite and lint ✓ (2026-10-16)
 - [x] T137 — Frontend dead-code removal (~18.5k unreachable lines) ✓ (2026-10-16)
 - [x] T138 — Preview polish: honest contact form, legal pages marked draft, favicon ✓ (2026-10-16)
+- [x] T227 — Frontend follow-through for the Phase 1 auth changes (invite codes, 429, logout-everywhere) ✓ (2026-10-16)
 - [ ] T118 — Recording a payment updates the invoice balance and status
 - [ ] T119 — Stripe Checkout charges the true balance due
 - [ ] T120 — Invoice and job numbering survives soft-delete and concurrency
@@ -420,7 +424,8 @@ Money flows that are wired but broken (payments don't update invoices, reminders
 - [ ] T224 — Quote correctness: lost customer edits, accept race, expiry, editable sent quotes
 - [ ] T225 — Invoice totals: one server-side recalculation, tax/discount order, no double invoicing
 - [ ] T226 — Tenant creation and invitation acceptance in transactions; per-tenant uniqueness
-- [ ] T227 — Frontend follow-through for the Phase 1 auth changes (invite codes, 429, logout-everywhere)
+- [ ] T228 — Quotes list: backend search (q) and sort params
+- [ ] T229 — Invite and invitation API polish: distinct invalid-code error, encoded links, message field
 
 #### T118 — Recording a payment updates the invoice balance and status
 
@@ -646,17 +651,31 @@ Money flows that are wired but broken (payments don't update invoices, reminders
 
 ---
 
-#### T227 — Frontend follow-through for the Phase 1 auth changes (invite codes, 429, logout-everywhere)
+#### T228 — Quotes list: backend search (q) and sort params
 
-**Phase**: 2 · **Category**: Bug · **Hours**: 3 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T106, T110, T111
+**Phase**: 2 · **Category**: Bug · **Hours**: 2 · **Status**: Open · **v1 Gate**: No · **Depends on**: none
 
-**What it is** — The web app works with the hardened auth API: invite-gated registration, throttled logins and per-tenant authorization errors.
+**What it is** — The quotes list search box and sort controls actually filter and order results.
 
-**What it does** — Registration form gets an `invite_code` field (prefilled from `?invite=` and from a tenant invitation token) and shows the 403 `registration_closed` response; login handles 429 with a generic "try again shortly" message (403 `account_locked` is gone); logout copy notes it signs out every device; remove any client code for the deleted `/stripe/payment-intents`, `/stripe/customers`, `/stripe/refunds` endpoints; `/tenants/:id/*` 403s render a permission message instead of a generic error. Update the auth integration tests.
+**What it does** — Add `q` (quote number, title, customer name; tenant-scoped ILIKE / trigram from T123), `sort_by` (allowlisted columns) and `sort_order` to `models.QuoteQueryParams` and the quote repository; swag annotations + `make docs`; pass `q` from `getQuotes` in `frontend/src/services/quoteService.ts` (one line); tests both sides.
 
-**Why we need it** — With `REGISTRATION_MODE=invite_only` (the default outside development) nobody can sign up through the UI, which blocks the invite-only preview.
+**Why we need it** — The quotes page has a search box that does nothing (frontend sends `search`/`sort_*`, backend ignores them) — reported in T135 and T227.
 
-**Notes** — Follow-up from the Phase 1 security merge (2026-10-16): T106, T110, T111, T103, T105. CSRF header (`X-Requested-With`) is already sent by `src/services/api.ts`.
+**Notes** — Follow-up from T227 (2026-10-16). Invoices/customers/jobs lists already support search.
+
+---
+
+#### T229 — Invite and invitation API polish: distinct invalid-code error, encoded links, message field
+
+**Phase**: 2 · **Category**: Bug · **Hours**: 2 · **Status**: Open · **v1 Gate**: No · **Depends on**: T106
+
+**What it is** — Registration and invitation errors are unambiguous and invitation links survive any email address.
+
+**What it does** — (1) Return 403 `invalid_invite_code` for unknown/expired/used-up/revoked invite codes instead of `registration_closed` (keep `registration_closed` for "no code supplied"); (2) build invitation register URLs with `url.Values` so emails containing `+` survive (`invitation_service.go`); (3) invitation handler responses include a human `message` alongside `error`, matching other handlers. Update frontend `RegisterPage`/`AcceptInvitationPage` to drop the guesswork; tests.
+
+**Why we need it** — The UI currently has to guess why an invite code was rejected, and an invitee whose email contains `+` gets a broken link.
+
+**Notes** — Follow-up from T227 (2026-10-16). Partially overlaps the T223 error envelope — do after T223 if it lands first.
 
 ---
 
@@ -2374,9 +2393,9 @@ Dashboard widgets and reports from the old TODO plus job costing. All tenant-sco
 
 ---
 
-### Phase 13 — Roles, Compliance & Trust (T074, T075, T092, T093, T094, T199, T200, T201)
+### Phase 13 — Roles, Compliance & Trust (T074, T075, T092, T093, T094, T199, T200, T201, T230)
 
-Remaining roles, audit logging, MFA, and the export/deletion promises that back the trust brand. **8 open tasks, ~48h.**
+Remaining roles, audit logging, MFA, and the export/deletion promises that back the trust brand. **9 open tasks, ~51h.**
 
 - [ ] T074 — Create Accountant role
 - [ ] T075 — Add field-level permission controls
@@ -2386,6 +2405,7 @@ Remaining roles, audit logging, MFA, and the export/deletion promises that back 
 - [ ] T199 — One-click full data export (trust promise)
 - [ ] T200 — Account/tenant deletion + data retention policy
 - [ ] T201 — Privacy/CCPA handling SOP
+- [ ] T230 — Expose the caller's effective permissions per tenant; decide who can delete an organization
 
 #### T074 — Create Accountant role
 
@@ -2490,6 +2510,20 @@ Remaining roles, audit logging, MFA, and the export/deletion promises that back 
 **Why we need it** — Required for any US users; manual handling is permitted.
 
 **Notes** — LL `docs/ops/ccpa-sop.md` is the template.
+
+---
+
+#### T230 — Expose the caller's effective permissions per tenant; decide who can delete an organization
+
+**Phase**: 13 · **Category**: Auth · **Hours**: 3 · **Status**: Open · **v1 Gate**: No · **Depends on**: T104
+
+**What it is** — The frontend knows exactly what the signed-in user may do in the current tenant, and organization deletion has a deliberate owner rule.
+
+**What it does** — Return the caller's effective permission list for the current tenant (e.g. on `GET /tenants` or `GET /tenants/:id/me`), computed by the per-tenant checker from T104; replace the role-name guessing in `frontend/src/utils/tenantPermissions.ts` with it. Decide whether the tenant creator/owner (role `admin`) may delete their own organization — today only `super_admin` has `tenants.delete`, so the UI hides the button — and grant it via a new migration if yes (ties to T200 deletion/retention).
+
+**Why we need it** — Custom roles get wrong UI affordances (actions shown that 403, or hidden that would work), and an owner can't delete their own organization.
+
+**Notes** — Follow-up from T227 (2026-10-16). Owner decision needed on org deletion.
 
 ---
 
@@ -3014,3 +3048,4 @@ Dated history from the original "Completed Items" list:
 - **T150** — Cloudflare Workers static assets + /api edge proxy Worker + _headers. `frontend/wrangler.jsonc` (worker `servicepro-web`, SPA fallback, `run_worker_first` for `/api/*` + `/version`, custom domain servicepro.sharkfins.xyz, workers.dev/previews off, `EDGE_PROXY_SECRET` required), `frontend/worker/{index,proxy}.ts` (503 when `API_ORIGIN` unset, raw body streamed, `X-SP-Client-IP`/`X-SP-Edge-Secret` set and spoofed copies stripped) with 22 tests, `public/_headers` (CSP/HSTS/cache) + `.assetsignore`; same-origin `/api` default; verified with `wrangler deploy --dry-run` and `wrangler dev`. Not deployed (T204).
 - **T151** — Ops docs: Cloud Run setup, deploy/rollback, backups + nightly pg_dump → R2 workflow. `docs/ops/cloud-run-setup.md`, `docs/ops/deploy.md` (rollback incl. Workers versions), `docs/ops/backups.md`; `.github/workflows/db-backup.yml` nightly pg_dump → R2 `servicepro-backups`, skipped until the `MIGRATION_DATABASE_URL` secret exists (activation + restore drill: T209).
 - **T152** — Commit generated OpenAPI and TS types for drift gating. `backend/docs/{swagger.json,swagger.yaml,docs.go}` and `frontend/src/types/api.generated.ts` committed; swag pinned via go.mod `tool` directive (`go tool swag`); `make openapi-check`, pre-commit hook and CI `openapi-drift` gate on them.
+- **T227** — Frontend follow-through for the Phase 1 auth changes (invite codes, 429, logout-everywhere). Registration form has an `invite_code` field (prefilled from `?invite=`/`?code=`/`?invite_code=`, hidden for tenant invitations) and distinct messages for invite-only / invalid code / invalid invitation and 429; login shows a generic 429 message and honours a safe same-origin `returnUrl` (`getSafeReturnUrl`); logout says it signs out every device; Cypress cases for the removed Stripe endpoints deleted; tenant settings/members/membership/billing pages show a permission message on 403 and hide actions built-in roles can't use (`src/utils/tenantPermissions.ts`); accept-invitation offers sign-up. Quotes search needs backend support (T228); invite-code/invitation API gaps → T229; effective permissions + org deletion → T230.
