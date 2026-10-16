@@ -656,8 +656,17 @@ describe('Customer CRUD Integration', () => {
         expect(customerService.getCustomers).toHaveBeenCalled();
       });
 
-      // Error should be handled gracefully (logged, displayed, etc.)
-      // The exact behavior depends on the component implementation
+      // An API failure must show an error state with retry, not "No customers yet"
+      expect(
+        await screen.findByText(/couldn't load customers/i)
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/no customers yet/i)).not.toBeInTheDocument();
+
+      vi.mocked(customerService.getCustomers).mockClear();
+      await userEvent
+        .setup()
+        .click(screen.getByRole('button', { name: /try again/i }));
+      expect(customerService.getCustomers).toHaveBeenCalledTimes(1);
     });
 
     it('should display error when customer creation fails', async () => {

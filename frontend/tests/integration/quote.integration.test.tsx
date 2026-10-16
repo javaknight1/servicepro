@@ -640,6 +640,18 @@ describe('Quote Workflow Integration', () => {
       await waitFor(() => {
         expect(quoteService.getQuotes).toHaveBeenCalled();
       });
+
+      // An API failure must show an error state with retry, not "No quotes yet"
+      expect(
+        await screen.findByText(/couldn't load quotes/i)
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/no quotes yet/i)).not.toBeInTheDocument();
+
+      vi.mocked(quoteService.getQuotes).mockClear();
+      await userEvent
+        .setup()
+        .click(screen.getByRole('button', { name: /try again/i }));
+      expect(quoteService.getQuotes).toHaveBeenCalledTimes(1);
     });
 
     it('should handle send quote error', async () => {

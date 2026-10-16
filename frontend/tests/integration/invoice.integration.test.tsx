@@ -937,6 +937,18 @@ describe('Invoice & Payment Integration', () => {
       await waitFor(() => {
         expect(invoiceService.getInvoices).toHaveBeenCalled();
       });
+
+      // An API failure must show an error state with retry, not "No invoices yet"
+      expect(
+        await screen.findByText(/couldn't load invoices/i)
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/no invoices yet/i)).not.toBeInTheDocument();
+
+      vi.mocked(invoiceService.getInvoices).mockClear();
+      await userEvent
+        .setup()
+        .click(screen.getByRole('button', { name: /try again/i }));
+      expect(invoiceService.getInvoices).toHaveBeenCalledTimes(1);
     });
 
     it('should handle payment recording error', async () => {

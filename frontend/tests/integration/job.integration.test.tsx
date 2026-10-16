@@ -898,7 +898,17 @@ describe('Job Lifecycle Integration', () => {
         expect(jobService.getJobs).toHaveBeenCalled();
       });
 
-      // Error should be handled (logged, shown to user, etc.)
+      // An API failure must show an error state with retry, not "No jobs yet"
+      expect(
+        await screen.findByText(/couldn't load jobs/i)
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/no jobs yet/i)).not.toBeInTheDocument();
+
+      vi.mocked(jobService.getJobs).mockClear();
+      await userEvent
+        .setup()
+        .click(screen.getByRole('button', { name: /try again/i }));
+      expect(jobService.getJobs).toHaveBeenCalledTimes(1);
     });
 
     it('should handle job creation error', async () => {

@@ -13,6 +13,7 @@ export { StatsCard } from './StatsCard';
 export { Badge, getStatusBadgeVariant } from './Badge';
 export { DataTable } from './DataTable';
 export { EmptyState } from './EmptyState';
+export { ErrorState } from './ErrorState';
 export { Avatar } from './Avatar';
 export { ImageCropModal } from './ImageCropModal';
 export {
@@ -29,5 +30,6 @@ export type { StatsCardProps } from './StatsCard';
 export type { BadgeProps, BadgeVariant } from './Badge';
 export type { DataTableProps, Column } from './DataTable';
 export type { EmptyStateProps } from './EmptyState';
+export type { ErrorStateProps } from './ErrorState';
 export type { AvatarProps, AvatarSize } from './Avatar';
 export type { ImageCropModalProps } from './ImageCropModal';
