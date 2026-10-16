@@ -85,7 +85,7 @@ func (s *InvitationService) InviteMember(ctx context.Context, tenantID uuid.UUID
 		// Check for existing pending invitation
 		var existingInvitation models.OrganizationInvitation
 		if err := s.db.WithContext(ctx).
-			Where("tenant_id = ? AND email = ? AND status = ?", tenantID, email, models.InvitationStatusPending).
+			Where("tenant_id = ? AND LOWER(email) = LOWER(?) AND status = ?", tenantID, email, models.InvitationStatusPending).
 			First(&existingInvitation).Error; err == nil {
 			return nil, ErrPendingInvitationExists
 		}
@@ -139,7 +139,7 @@ func (s *InvitationService) InviteMember(ctx context.Context, tenantID uuid.UUID
 	// Check for existing pending invitation
 	var existingInvitation models.OrganizationInvitation
 	if err := s.db.WithContext(ctx).
-		Where("tenant_id = ? AND email = ? AND status = ?", tenantID, email, models.InvitationStatusPending).
+		Where("tenant_id = ? AND LOWER(email) = LOWER(?) AND status = ?", tenantID, email, models.InvitationStatusPending).
 		First(&existingInvitation).Error; err == nil {
 		// Update existing invitation
 		existingInvitation.RoleID = roleID
