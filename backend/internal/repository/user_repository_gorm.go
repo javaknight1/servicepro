@@ -10,6 +10,9 @@ import (
 	"github.com/javaknight1/servicepro/backend/internal/models"
 )
 
+// ErrUserNotFound is returned when no user matches the lookup.
+var ErrUserNotFound = errors.New("user not found")
+
 // UserRepositoryGorm implements UserRepositoryInterface using GORM
 type UserRepositoryGorm struct {
 	db *gorm.DB
