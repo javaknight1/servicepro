@@ -962,21 +962,6 @@ func (s *InvoiceService) CancelInvoice(ctx context.Context, id uuid.UUID, reason
 	return s.GetInvoice(ctx, id)
 }
 
-// GetInvoiceSummary retrieves invoice summary data
-func (s *InvoiceService) GetInvoiceSummary(ctx context.Context, id uuid.UUID) (*models.InvoiceSummary, error) {
-	var summary models.InvoiceSummary
-
-	err := s.db.WithContext(ctx).
-		Raw("SELECT * FROM invoice_summary WHERE id = ?", id).
-		Scan(&summary).Error
-
-	if err != nil {
-		return nil, fmt.Errorf("failed to get invoice summary: %w", err)
-	}
-
-	return &summary, nil
-}
-
 // Private helper methods
 
 func (s *InvoiceService) calculateDueDate(ctx context.Context, issueDate time.Time, paymentTermID *uuid.UUID) (time.Time, error) {
@@ -1182,15 +1167,6 @@ func (s *InvoiceService) MarkInvoiceAsPaid(ctx context.Context, id uuid.UUID, am
 	return s.GetInvoice(ctx, id)
 }
 
-// VoidPaymentToken voids the current payment token for an invoice
-func (s *InvoiceService) VoidPaymentToken(ctx context.Context, id uuid.UUID) error {
-	now := time.Now()
-	return s.db.WithContext(ctx).
-		Model(&models.Invoice{}).
-		Where("id = ? AND payment_token IS NOT NULL", id).
-		Update("payment_token_voided_at", now).Error
-}
-
 // generatePaymentToken generates a cryptographically secure random token
 func (s *InvoiceService) generatePaymentToken() (string, error) {
 	bytes := make([]byte, PaymentTokenLength)
@@ -1287,37 +1263,6 @@ func (s *InvoiceService) SendReceiptEmail(invoice *models.Invoice) {
 	}
 }
 
-// GetInvoicePDFURL returns a presigned URL for downloading the invoice PDF
-func (s *InvoiceService) GetInvoicePDFURL(ctx context.Context, id uuid.UUID) (string, time.Time, error) {
-	// Verify invoice exists
-	invoice, err := s.GetInvoice(ctx, id)
-	if err != nil {
-		return "", time.Time{}, err
-	}
-
-	if s.pdfService == nil {
-		return "", time.Time{}, errors.New("PDF service not configured")
-	}
-
-	// Check if PDF exists, generate if not
-	url, expiresAt, err := s.pdfService.GetInvoicePDFURL(ctx, id)
-	if err != nil {
-		// PDF doesn't exist, generate it first
-		_, err = s.pdfService.GenerateInvoicePDF(ctx, invoice)
-		if err != nil {
-			return "", time.Time{}, fmt.Errorf("failed to generate invoice PDF: %w", err)
-		}
-
-		// Try to get URL again
-		url, expiresAt, err = s.pdfService.GetInvoicePDFURL(ctx, id)
-		if err != nil {
-			return "", time.Time{}, fmt.Errorf("failed to get invoice PDF URL: %w", err)
-		}
-	}
-
-	return url, expiresAt, nil
-}
-
 // DownloadInvoicePDF returns the invoice PDF content directly
 func (s *InvoiceService) DownloadInvoicePDF(ctx context.Context, id uuid.UUID) ([]byte, string, error) {
 	// Verify invoice exists
@@ -1342,42 +1287,6 @@ func (s *InvoiceService) DownloadInvoicePDF(ctx context.Context, id uuid.UUID) (
 	}
 
 	return content, filename, nil
-}
-
-// GetReceiptPDFURL returns a presigned URL for downloading the receipt PDF
-func (s *InvoiceService) GetReceiptPDFURL(ctx context.Context, id uuid.UUID) (string, time.Time, error) {
-	// Verify invoice exists
-	invoice, err := s.GetInvoice(ctx, id)
-	if err != nil {
-		return "", time.Time{}, err
-	}
-
-	// Only allow receipt download for paid invoices
-	if invoice.Status != models.InvoiceStatusPaid {
-		return "", time.Time{}, errors.New("receipt only available for paid invoices")
-	}
-
-	if s.pdfService == nil {
-		return "", time.Time{}, errors.New("PDF service not configured")
-	}
-
-	// Check if PDF exists, generate if not
-	url, expiresAt, err := s.pdfService.GetReceiptPDFURL(ctx, id)
-	if err != nil {
-		// PDF doesn't exist, generate it first
-		_, err = s.pdfService.GenerateReceiptPDF(ctx, invoice)
-		if err != nil {
-			return "", time.Time{}, fmt.Errorf("failed to generate receipt PDF: %w", err)
-		}
-
-		// Try to get URL again
-		url, expiresAt, err = s.pdfService.GetReceiptPDFURL(ctx, id)
-		if err != nil {
-			return "", time.Time{}, fmt.Errorf("failed to get receipt PDF URL: %w", err)
-		}
-	}
-
-	return url, expiresAt, nil
 }
 
 // DownloadReceiptPDF returns the receipt PDF content directly
