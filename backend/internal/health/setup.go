@@ -8,6 +8,7 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"github.com/javaknight1/servicepro/backend/config"
+	"github.com/javaknight1/servicepro/backend/internal/version"
 	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"
 )
 
@@ -25,9 +26,14 @@ const (
 
 // SetupOptions holds options for setting up health checks
 type SetupOptions struct {
-	Config         *config.Config
-	DB             *sql.DB
-	Redis          *redis.Client
+	Config *config.Config
+	DB     *sql.DB
+	Redis  *redis.Client
+	// RedisMode is one of RedisModeConnected (default when empty),
+	// RedisModeInMemoryFallback or RedisModeNotConfigured.
+	RedisMode string
+	// Schema, when set, registers a critical "schema" check (migration state).
+	Schema         SchemaStateProvider
 	SlackWebhook   string
 	SlackChannel   string
 	PagerDutyKey   string
@@ -41,12 +47,12 @@ func Setup(opts SetupOptions) (*Checker, *Runner, *UptimeTracker, *Notifier) {
 	cfg := opts.Config
 
 	// Create checker
-	version := "unknown"
+	appVersion := version.AppVersion()
 	environment := "development"
 	if cfg != nil {
 		environment = cfg.Server.Env
 	}
-	checker := NewChecker(version, environment)
+	checker := NewChecker(appVersion, environment)
 
 	// Register database check
 	if (cfg == nil || cfg.Health.CheckDatabase) && opts.DB != nil {
@@ -60,8 +66,30 @@ func Setup(opts SetupOptions) (*Checker, *Runner, *UptimeTracker, *Notifier) {
 		logging.Info(ctx, "Registered database check", map[string]any{"source": "health"})
 	}
 
+	// Register schema (migration state) check. Critical: an instance whose
+	// schema is behind or dirty must not receive traffic.
+	if opts.Schema != nil {
+		checker.Register(CheckConfig{
+			Name:     "schema",
+			Timeout:  defaultDatabaseTimeout,
+			Interval: defaultDatabaseInterval,
+			Critical: true,
+			Check:    SchemaCheck(opts.Schema),
+		})
+		logging.Info(ctx, "Registered schema check", map[string]any{"source": "health"})
+	}
+
 	// Register Redis check
-	if (cfg == nil || cfg.Health.CheckRedis) && opts.Redis != nil {
+	if opts.RedisMode == RedisModeNotConfigured || opts.RedisMode == RedisModeInMemoryFallback {
+		checker.Register(CheckConfig{
+			Name:     "redis",
+			Timeout:  defaultRedisTimeout,
+			Interval: defaultRedisInterval,
+			Critical: false,
+			Check:    RedisFallbackCheck(opts.RedisMode),
+		})
+		logging.Info(ctx, "Registered Redis check", map[string]any{"source": "health", "mode": opts.RedisMode})
+	} else if (cfg == nil || cfg.Health.CheckRedis) && opts.Redis != nil {
 		checker.Register(CheckConfig{
 			Name:     "redis",
 			Timeout:  defaultRedisTimeout,

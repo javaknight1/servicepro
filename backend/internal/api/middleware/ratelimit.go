@@ -31,7 +31,7 @@ func NewRateLimiter(redisClient *redis.Client, cfg *config.AuthConfig) *RateLimi
 func (rl *RateLimiter) LoginRateLimit() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Get IP address or email for rate limiting
-		ip := c.ClientIP()
+		ip := ClientIP(c)
 
 		// Try to get email from request body for more accurate rate limiting
 		var loginReq models.LoginRequest
@@ -87,7 +87,7 @@ func (rl *RateLimiter) ClearLoginAttempts(identifier string) error {
 func (rl *RateLimiter) PasswordResetRateLimit() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Get IP address
-		ip := c.ClientIP()
+		ip := ClientIP(c)
 
 		// Try to get email from request body for more accurate rate limiting
 		var resetReq models.PasswordResetRequestRequest

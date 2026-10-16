@@ -196,11 +196,6 @@ const docTemplate = `{
         },
         "/api/v1/assignments": {
             "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
                 "description": "Assigns a technician to a job with availability and skill validation",
                 "consumes": [
                     "application/json"
@@ -260,16 +255,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     }
-                }
-            }
-        },
-        "/api/v1/assignments/availability/check": {
-            "post": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/api/v1/assignments/availability/check": {
+            "post": {
                 "description": "Checks if a technician is available for a specific time slot",
                 "consumes": [
                     "application/json"
@@ -322,16 +317,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     }
-                }
-            }
-        },
-        "/api/v1/assignments/availability/search": {
-            "post": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/api/v1/assignments/availability/search": {
+            "post": {
                 "description": "Gets all available technicians for a time slot with optional skill filtering",
                 "consumes": [
                     "application/json"
@@ -376,16 +371,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     }
-                }
-            }
-        },
-        "/api/v1/assignments/bulk": {
-            "post": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/api/v1/assignments/bulk": {
+            "post": {
                 "description": "Assigns multiple technicians to a job concurrently",
                 "consumes": [
                     "application/json"
@@ -447,16 +442,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     }
-                }
-            }
-        },
-        "/api/v1/assignments/optimize": {
-            "post": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/api/v1/assignments/optimize": {
+            "post": {
                 "description": "Finds the best available technicians for a job based on skills and workload",
                 "consumes": [
                     "application/json"
@@ -518,16 +513,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     }
-                }
-            }
-        },
-        "/api/v1/assignments/workload/{technician_id}": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/api/v1/assignments/workload/{technician_id}": {
+            "get": {
                 "description": "Gets the current workload for a technician",
                 "produces": [
                     "application/json"
@@ -587,16 +582,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     }
-                }
-            }
-        },
-        "/api/v1/assignments/{id}": {
-            "put": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/api/v1/assignments/{id}": {
+            "put": {
                 "description": "Updates the role of a technician assignment",
                 "consumes": [
                     "application/json"
@@ -667,14 +662,14 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     }
-                }
-            },
-            "delete": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            },
+            "delete": {
                 "description": "Removes a technician from a job assignment",
                 "produces": [
                     "application/json"
@@ -720,7 +715,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
             }
         },
         "/api/v1/auth/login": {
@@ -1104,11 +1104,6 @@ const docTemplate = `{
         },
         "/api/v1/conflicts/check": {
             "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
                 "description": "Checks for scheduling conflicts given a proposed schedule",
                 "consumes": [
                     "application/json"
@@ -1156,7 +1151,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
             }
         },
         "/api/v1/customers": {
@@ -1712,11 +1712,6 @@ const docTemplate = `{
         },
         "/api/v1/customers/{id}/jobs": {
             "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
                 "description": "Retrieve all jobs for a specific customer",
                 "produces": [
                     "application/json"
@@ -1771,7 +1766,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
             }
         },
         "/api/v1/customers/{id}/quotes": {
@@ -2234,11 +2234,6 @@ const docTemplate = `{
         },
         "/api/v1/jobs": {
             "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
                 "description": "Retrieve a paginated list of jobs with optional filters",
                 "produces": [
                     "application/json"
@@ -2346,14 +2341,14 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     }
-                }
-            },
-            "post": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            },
+            "post": {
                 "description": "Create a new service job/work order",
                 "consumes": [
                     "application/json"
@@ -2407,16 +2402,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     }
-                }
-            }
-        },
-        "/api/v1/jobs/my": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/api/v1/jobs/my": {
+            "get": {
                 "description": "Retrieve jobs assigned to the current user",
                 "produces": [
                     "application/json"
@@ -2447,16 +2442,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     }
-                }
-            }
-        },
-        "/api/v1/jobs/number/{jobNumber}": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/api/v1/jobs/number/{jobNumber}": {
+            "get": {
                 "description": "Retrieve a job by its job number",
                 "produces": [
                     "application/json"
@@ -2505,16 +2500,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     }
-                }
-            }
-        },
-        "/api/v1/jobs/overdue": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/api/v1/jobs/overdue": {
+            "get": {
                 "description": "Retrieve jobs that are past their scheduled end date",
                 "produces": [
                     "application/json"
@@ -2545,16 +2540,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     }
-                }
-            }
-        },
-        "/api/v1/jobs/scheduled": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/api/v1/jobs/scheduled": {
+            "get": {
                 "description": "Retrieve jobs scheduled within a specific date range",
                 "produces": [
                     "application/json"
@@ -2607,16 +2602,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     }
-                }
-            }
-        },
-        "/api/v1/jobs/stats": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/api/v1/jobs/stats": {
+            "get": {
                 "description": "Get statistics about jobs (counts by status, priority, type, etc.)",
                 "produces": [
                     "application/json"
@@ -2645,16 +2640,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     }
-                }
-            }
-        },
-        "/api/v1/jobs/technicians/{id}/workload": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/api/v1/jobs/technicians/{id}/workload": {
+            "get": {
                 "description": "Get workload statistics for a specific technician",
                 "produces": [
                     "application/json"
@@ -2698,16 +2693,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     }
-                }
-            }
-        },
-        "/api/v1/jobs/{id}": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/api/v1/jobs/{id}": {
+            "get": {
                 "description": "Retrieve a job by its ID",
                 "produces": [
                     "application/json"
@@ -2762,14 +2757,14 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     }
-                }
-            },
-            "put": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            },
+            "put": {
                 "description": "Update an existing job",
                 "consumes": [
                     "application/json"
@@ -2836,14 +2831,14 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     }
-                }
-            },
-            "delete": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            },
+            "delete": {
                 "description": "Soft delete a job (only scheduled or cancelled jobs)",
                 "produces": [
                     "application/json"
@@ -2895,16 +2890,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     }
-                }
-            }
-        },
-        "/api/v1/jobs/{id}/assign": {
-            "post": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/api/v1/jobs/{id}/assign": {
+            "post": {
                 "description": "Assign a user to a job (admin/manager only)",
                 "consumes": [
                     "application/json"
@@ -2984,16 +2979,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     }
-                }
-            }
-        },
-        "/api/v1/jobs/{id}/assign/{technicianId}": {
-            "delete": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/api/v1/jobs/{id}/assign/{technicianId}": {
+            "delete": {
                 "description": "Remove a technician assignment from a job (admin/manager only)",
                 "produces": [
                     "application/json"
@@ -3060,16 +3055,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     }
-                }
-            }
-        },
-        "/api/v1/jobs/{id}/cancel": {
-            "post": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/api/v1/jobs/{id}/cancel": {
+            "post": {
                 "description": "Transition a job to cancelled status (admin/manager only)",
                 "consumes": [
                     "application/json"
@@ -3140,16 +3135,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     }
-                }
-            }
-        },
-        "/api/v1/jobs/{id}/complete": {
-            "post": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/api/v1/jobs/{id}/complete": {
+            "post": {
                 "description": "Transition a job to completed status",
                 "consumes": [
                     "application/json"
@@ -3220,16 +3215,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     }
-                }
-            }
-        },
-        "/api/v1/jobs/{id}/hold": {
-            "post": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/api/v1/jobs/{id}/hold": {
+            "post": {
                 "description": "Transition a job to on_hold status",
                 "consumes": [
                     "application/json"
@@ -3300,16 +3295,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     }
-                }
-            }
-        },
-        "/api/v1/jobs/{id}/materials": {
-            "post": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/api/v1/jobs/{id}/materials": {
+            "post": {
                 "description": "Add a material/part to a job",
                 "consumes": [
                     "application/json"
@@ -3381,16 +3376,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     }
-                }
-            }
-        },
-        "/api/v1/jobs/{id}/notes": {
-            "post": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/api/v1/jobs/{id}/notes": {
+            "post": {
                 "description": "Add a timestamped note to a job",
                 "consumes": [
                     "application/json"
@@ -3464,16 +3459,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     }
-                }
-            }
-        },
-        "/api/v1/jobs/{id}/resume": {
-            "post": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/api/v1/jobs/{id}/resume": {
+            "post": {
                 "description": "Transition a job from on_hold to in_progress",
                 "produces": [
                     "application/json"
@@ -3528,16 +3523,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     }
-                }
-            }
-        },
-        "/api/v1/jobs/{id}/start": {
-            "post": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/api/v1/jobs/{id}/start": {
+            "post": {
                 "description": "Transition a job to in_progress status",
                 "produces": [
                     "application/json"
@@ -3592,16 +3587,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     }
-                }
-            }
-        },
-        "/api/v1/jobs/{id}/status-history": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/api/v1/jobs/{id}/status-history": {
+            "get": {
                 "description": "Retrieve the status transition history for a job",
                 "produces": [
                     "application/json"
@@ -3662,16 +3657,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     }
-                }
-            }
-        },
-        "/api/v1/jobs/{id}/transition": {
-            "post": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/api/v1/jobs/{id}/transition": {
+            "post": {
                 "description": "Transition a job to a new status",
                 "consumes": [
                     "application/json"
@@ -3738,7 +3733,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
             }
         },
         "/api/v1/quotes": {
@@ -5728,11 +5728,6 @@ const docTemplate = `{
         },
         "/billing/config": {
             "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
                 "description": "Returns Stripe configuration including whether Stripe is enabled",
                 "consumes": [
                     "application/json"
@@ -5752,16 +5747,16 @@ const docTemplate = `{
                             "additionalProperties": true
                         }
                     }
-                }
-            }
-        },
-        "/customers/export": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/customers/export": {
+            "get": {
                 "description": "Deprecated: Use POST /api/v1/exports with export_type=\"customers\" for async exports",
                 "consumes": [
                     "application/json"
@@ -5781,16 +5776,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     }
-                }
-            }
-        },
-        "/customers/import": {
-            "post": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/customers/import": {
+            "post": {
                 "description": "Imports customers from a CSV file (max 10,000 rows)",
                 "consumes": [
                     "multipart/form-data"
@@ -5855,16 +5850,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     }
-                }
-            }
-        },
-        "/customers/import/template": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/customers/import/template": {
+            "get": {
                 "description": "Downloads a CSV template for customer import",
                 "consumes": [
                     "application/json"
@@ -5883,16 +5878,16 @@ const docTemplate = `{
                             "type": "file"
                         }
                     }
-                }
-            }
-        },
-        "/customers/import/{job_id}": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/customers/import/{job_id}": {
+            "get": {
                 "description": "Returns the status and progress of an import job",
                 "consumes": [
                     "application/json"
@@ -5938,16 +5933,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     }
-                }
-            }
-        },
-        "/documents/bulk-download": {
-            "post": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/documents/bulk-download": {
+            "post": {
                 "description": "Downloads multiple documents as a ZIP file",
                 "consumes": [
                     "application/json"
@@ -6004,16 +5999,16 @@ const docTemplate = `{
                             }
                         }
                     }
-                }
-            }
-        },
-        "/documents/download-url/{id}": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/documents/download-url/{id}": {
+            "get": {
                 "description": "Returns a presigned URL for downloading a document",
                 "consumes": [
                     "application/json"
@@ -6092,16 +6087,16 @@ const docTemplate = `{
                             }
                         }
                     }
-                }
-            }
-        },
-        "/documents/download/{id}": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/documents/download/{id}": {
+            "get": {
                 "description": "Downloads a document by ID. Small files are streamed directly, large files redirect to presigned URL.",
                 "consumes": [
                     "application/json"
@@ -6183,16 +6178,16 @@ const docTemplate = `{
                             }
                         }
                     }
-                }
-            }
-        },
-        "/documents/history": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/documents/history": {
+            "get": {
                 "description": "Returns the current user's download history",
                 "consumes": [
                     "application/json"
@@ -6248,16 +6243,16 @@ const docTemplate = `{
                             }
                         }
                     }
-                }
-            }
-        },
-        "/documents/history/{id}": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/documents/history/{id}": {
+            "get": {
                 "description": "Returns the download history for a specific document",
                 "consumes": [
                     "application/json"
@@ -6317,16 +6312,16 @@ const docTemplate = `{
                             }
                         }
                     }
-                }
-            }
-        },
-        "/documents/stats": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/documents/stats": {
+            "get": {
                 "description": "Returns download statistics for the current user",
                 "consumes": [
                     "application/json"
@@ -6364,12 +6359,17 @@ const docTemplate = `{
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
             }
         },
         "/health": {
             "get": {
-                "description": "Returns detailed health information including all dependency check results",
+                "description": "Returns detailed health information including all dependency check results, the app version and git SHA",
                 "consumes": [
                     "application/json"
                 ],
@@ -6424,7 +6424,7 @@ const docTemplate = `{
         },
         "/health/ready": {
             "get": {
-                "description": "Returns 200 if all critical dependencies are healthy. Kubernetes uses this to determine if traffic should be sent to the pod.",
+                "description": "Returns 200 if all critical dependencies are healthy (use as the Cloud Run startup probe). The \"schema\" check reports migration state (ok/ahead/behind/dirty); behind or dirty returns 503. Redis reports \"not_configured\" or \"in_memory_fallback\" without failing. Includes version and git_sha.",
                 "consumes": [
                     "application/json"
                 ],
@@ -6446,6 +6446,59 @@ const docTemplate = `{
                         "description": "Service Unavailable",
                         "schema": {
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_health.HealthReport"
+                        }
+                    }
+                }
+            }
+        },
+        "/internal/jobs/payment-reminders": {
+            "post": {
+                "description": "Internal job endpoint (auth: X-Internal-Jobs-Token header = INTERNAL_JOBS_SECRET; 404 when the secret is unset). Sends due automatic payment reminders for every active tenant with reminders enabled. Idempotent: each (invoice, reminder number) is sent at most once, so re-running or overlapping runs send nothing twice. Mounted at the server root (/internal/jobs/payment-reminders), outside /api.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Internal"
+                ],
+                "summary": "Run payment reminders job",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Internal jobs secret",
+                        "name": "X-Internal-Jobs-Token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_api_handlers.PaymentRemindersJobResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/internal_api_handlers.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/internal_api_handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_api_handlers.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/internal_api_handlers.ErrorResponse"
                         }
                     }
                 }
@@ -6509,11 +6562,6 @@ const docTemplate = `{
         },
         "/invitations/{token}/accept": {
             "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
                 "description": "Accept an invitation (for existing users)",
                 "consumes": [
                     "application/json"
@@ -6574,16 +6622,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/internal_api_handlers.ErrorResponse"
                         }
                     }
-                }
-            }
-        },
-        "/invoices": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/invoices": {
+            "get": {
                 "description": "Get a paginated list of invoices with optional filters",
                 "consumes": [
                     "application/json"
@@ -6698,14 +6746,14 @@ const docTemplate = `{
                             "$ref": "#/definitions/internal_api_handlers.ErrorResponse"
                         }
                     }
-                }
-            },
-            "post": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            },
+            "post": {
                 "description": "Create a new invoice",
                 "consumes": [
                     "application/json"
@@ -6753,16 +6801,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/internal_api_handlers.ErrorResponse"
                         }
                     }
-                }
-            }
-        },
-        "/invoices/{id}": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/invoices/{id}": {
+            "get": {
                 "description": "Get a single invoice by ID",
                 "consumes": [
                     "application/json"
@@ -6808,14 +6856,14 @@ const docTemplate = `{
                             "$ref": "#/definitions/internal_api_handlers.ErrorResponse"
                         }
                     }
-                }
-            },
-            "put": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            },
+            "put": {
                 "description": "Update an existing invoice",
                 "consumes": [
                     "application/json"
@@ -6870,14 +6918,14 @@ const docTemplate = `{
                             "$ref": "#/definitions/internal_api_handlers.ErrorResponse"
                         }
                     }
-                }
-            },
-            "delete": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            },
+            "delete": {
                 "description": "Soft delete an invoice",
                 "consumes": [
                     "application/json"
@@ -6920,16 +6968,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/internal_api_handlers.ErrorResponse"
                         }
                     }
-                }
-            }
-        },
-        "/invoices/{id}/cancel": {
-            "post": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/invoices/{id}/cancel": {
+            "post": {
                 "description": "Cancel an invoice with a reason",
                 "consumes": [
                     "application/json"
@@ -6987,16 +7035,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/internal_api_handlers.ErrorResponse"
                         }
                     }
-                }
-            }
-        },
-        "/invoices/{id}/payments": {
-            "post": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/invoices/{id}/payments": {
+            "post": {
                 "description": "Record a payment for an invoice",
                 "consumes": [
                     "application/json"
@@ -7051,16 +7099,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/internal_api_handlers.ErrorResponse"
                         }
                     }
-                }
-            }
-        },
-        "/invoices/{id}/pdf": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/invoices/{id}/pdf": {
+            "get": {
                 "description": "Returns a presigned URL for downloading the invoice PDF",
                 "consumes": [
                     "application/json"
@@ -7106,16 +7154,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/internal_api_handlers.ErrorResponse"
                         }
                     }
-                }
-            }
-        },
-        "/invoices/{id}/receipt/pdf": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/invoices/{id}/receipt/pdf": {
+            "get": {
                 "description": "Downloads the payment receipt PDF directly",
                 "consumes": [
                     "application/json"
@@ -7161,16 +7209,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/internal_api_handlers.ErrorResponse"
                         }
                     }
-                }
-            }
-        },
-        "/invoices/{id}/reminders": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/invoices/{id}/reminders": {
+            "get": {
                 "description": "Get the list of payment reminders sent for a specific invoice",
                 "consumes": [
                     "application/json"
@@ -7213,14 +7261,14 @@ const docTemplate = `{
                             "$ref": "#/definitions/internal_api_handlers.ErrorResponse"
                         }
                     }
-                }
-            },
-            "post": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            },
+            "post": {
                 "description": "Send a payment reminder for a specific invoice",
                 "consumes": [
                     "application/json"
@@ -7266,16 +7314,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/internal_api_handlers.ErrorResponse"
                         }
                     }
-                }
-            }
-        },
-        "/invoices/{id}/send": {
-            "post": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/invoices/{id}/send": {
+            "post": {
                 "description": "Mark invoice as sent and update sent_date",
                 "consumes": [
                     "application/json"
@@ -7321,16 +7369,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/internal_api_handlers.ErrorResponse"
                         }
                     }
-                }
-            }
-        },
-        "/membership-tiers": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/membership-tiers": {
+            "get": {
                 "description": "Retrieves all available membership tiers and their features",
                 "consumes": [
                     "application/json"
@@ -7358,16 +7406,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     }
-                }
-            }
-        },
-        "/payment-terms": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/payment-terms": {
+            "get": {
                 "description": "Get a list of all payment terms",
                 "consumes": [
                     "application/json"
@@ -7403,14 +7451,14 @@ const docTemplate = `{
                             "$ref": "#/definitions/internal_api_handlers.ErrorResponse"
                         }
                     }
-                }
-            },
-            "post": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            },
+            "post": {
                 "description": "Create a new payment term",
                 "consumes": [
                     "application/json"
@@ -7452,16 +7500,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/internal_api_handlers.ErrorResponse"
                         }
                     }
-                }
-            }
-        },
-        "/payment-terms/calculate/details": {
-            "post": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/payment-terms/calculate/details": {
+            "post": {
                 "description": "Calculate comprehensive payment details including discounts and late fees",
                 "consumes": [
                     "application/json"
@@ -7497,16 +7545,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/internal_api_handlers.ErrorResponse"
                         }
                     }
-                }
-            }
-        },
-        "/payment-terms/calculate/discount": {
-            "post": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/payment-terms/calculate/discount": {
+            "post": {
                 "description": "Calculate the early payment discount",
                 "consumes": [
                     "application/json"
@@ -7543,16 +7591,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/internal_api_handlers.ErrorResponse"
                         }
                     }
-                }
-            }
-        },
-        "/payment-terms/calculate/due-date": {
-            "post": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/payment-terms/calculate/due-date": {
+            "post": {
                 "description": "Calculate the due date based on payment terms",
                 "consumes": [
                     "application/json"
@@ -7589,16 +7637,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/internal_api_handlers.ErrorResponse"
                         }
                     }
-                }
-            }
-        },
-        "/payment-terms/calculate/late-fee": {
-            "post": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/payment-terms/calculate/late-fee": {
+            "post": {
                 "description": "Calculate the late fee for overdue payment",
                 "consumes": [
                     "application/json"
@@ -7635,16 +7683,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/internal_api_handlers.ErrorResponse"
                         }
                     }
-                }
-            }
-        },
-        "/payment-terms/calculate/status": {
-            "post": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/payment-terms/calculate/status": {
+            "post": {
                 "description": "Get the current payment status with notifications",
                 "consumes": [
                     "application/json"
@@ -7680,16 +7728,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/internal_api_handlers.ErrorResponse"
                         }
                     }
-                }
-            }
-        },
-        "/payment-terms/default": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/payment-terms/default": {
+            "get": {
                 "description": "Get the default payment term",
                 "consumes": [
                     "application/json"
@@ -7714,16 +7762,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/internal_api_handlers.ErrorResponse"
                         }
                     }
-                }
-            }
-        },
-        "/payment-terms/{id}": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/payment-terms/{id}": {
+            "get": {
                 "description": "Get a payment term by ID",
                 "consumes": [
                     "application/json"
@@ -7763,14 +7811,14 @@ const docTemplate = `{
                             "$ref": "#/definitions/internal_api_handlers.ErrorResponse"
                         }
                     }
-                }
-            },
-            "put": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            },
+            "put": {
                 "description": "Update an existing payment term",
                 "consumes": [
                     "application/json"
@@ -7819,14 +7867,14 @@ const docTemplate = `{
                             "$ref": "#/definitions/internal_api_handlers.ErrorResponse"
                         }
                     }
-                }
-            },
-            "delete": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            },
+            "delete": {
                 "description": "Delete a payment term",
                 "consumes": [
                     "application/json"
@@ -7863,16 +7911,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/internal_api_handlers.ErrorResponse"
                         }
                     }
-                }
-            }
-        },
-        "/permissions": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/permissions": {
+            "get": {
                 "description": "Retrieves all system permissions",
                 "consumes": [
                     "application/json"
@@ -7900,7 +7948,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
             }
         },
         "/public/invoices/details/{token}": {
@@ -8089,11 +8142,6 @@ const docTemplate = `{
         },
         "/roles": {
             "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
                 "description": "Retrieves all system roles",
                 "consumes": [
                     "application/json"
@@ -8121,16 +8169,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     }
-                }
-            }
-        },
-        "/roles/{id}/permissions": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/roles/{id}/permissions": {
+            "get": {
                 "description": "Retrieves all permissions assigned to a specific role",
                 "consumes": [
                     "application/json"
@@ -8167,16 +8215,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     }
-                }
-            }
-        },
-        "/settings/payment-reminders": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/settings/payment-reminders": {
+            "get": {
                 "description": "Get the payment reminder configuration for the current tenant",
                 "consumes": [
                     "application/json"
@@ -8201,14 +8249,14 @@ const docTemplate = `{
                             "$ref": "#/definitions/internal_api_handlers.ErrorResponse"
                         }
                     }
-                }
-            },
-            "put": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            },
+            "put": {
                 "description": "Update the payment reminder configuration for the current tenant",
                 "consumes": [
                     "application/json"
@@ -8250,16 +8298,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/internal_api_handlers.ErrorResponse"
                         }
                     }
-                }
-            }
-        },
-        "/stripe/customers": {
-            "post": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/stripe/customers": {
+            "post": {
                 "description": "Creates a new Stripe customer",
                 "consumes": [
                     "application/json"
@@ -8303,16 +8351,16 @@ const docTemplate = `{
                             "additionalProperties": true
                         }
                     }
-                }
-            }
-        },
-        "/stripe/customers/{id}": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/stripe/customers/{id}": {
+            "get": {
                 "description": "Retrieves a customer by ID",
                 "consumes": [
                     "application/json"
@@ -8361,16 +8409,16 @@ const docTemplate = `{
                             "additionalProperties": true
                         }
                     }
-                }
-            }
-        },
-        "/stripe/payment-intents": {
-            "post": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/stripe/payment-intents": {
+            "post": {
                 "description": "Creates a new Stripe payment intent for processing a payment",
                 "consumes": [
                     "application/json"
@@ -8414,16 +8462,16 @@ const docTemplate = `{
                             "additionalProperties": true
                         }
                     }
-                }
-            }
-        },
-        "/stripe/payment-intents/{id}": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/stripe/payment-intents/{id}": {
+            "get": {
                 "description": "Retrieves a payment intent by ID",
                 "consumes": [
                     "application/json"
@@ -8472,16 +8520,16 @@ const docTemplate = `{
                             "additionalProperties": true
                         }
                     }
-                }
-            }
-        },
-        "/stripe/payment-intents/{id}/cancel": {
-            "post": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/stripe/payment-intents/{id}/cancel": {
+            "post": {
                 "description": "Cancels a payment intent",
                 "consumes": [
                     "application/json"
@@ -8531,16 +8579,16 @@ const docTemplate = `{
                             "additionalProperties": true
                         }
                     }
-                }
-            }
-        },
-        "/stripe/payment-intents/{id}/capture": {
-            "post": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/stripe/payment-intents/{id}/capture": {
+            "post": {
                 "description": "Captures a payment intent (for manual capture)",
                 "consumes": [
                     "application/json"
@@ -8590,16 +8638,16 @@ const docTemplate = `{
                             "additionalProperties": true
                         }
                     }
-                }
-            }
-        },
-        "/stripe/payment-intents/{id}/confirm": {
-            "post": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/stripe/payment-intents/{id}/confirm": {
+            "post": {
                 "description": "Confirms a payment intent",
                 "consumes": [
                     "application/json"
@@ -8649,16 +8697,16 @@ const docTemplate = `{
                             "additionalProperties": true
                         }
                     }
-                }
-            }
-        },
-        "/stripe/refunds": {
-            "post": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/stripe/refunds": {
+            "post": {
                 "description": "Creates a refund for a charge or payment intent",
                 "consumes": [
                     "application/json"
@@ -8702,16 +8750,16 @@ const docTemplate = `{
                             "additionalProperties": true
                         }
                     }
-                }
-            }
-        },
-        "/stripe/webhooks/stats": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/stripe/webhooks/stats": {
+            "get": {
                 "description": "Returns webhook processing statistics",
                 "consumes": [
                     "application/json"
@@ -8731,16 +8779,16 @@ const docTemplate = `{
                             "additionalProperties": true
                         }
                     }
-                }
-            }
-        },
-        "/tenants": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/tenants": {
+            "get": {
                 "description": "Lists all organizations the current user belongs to",
                 "consumes": [
                     "application/json"
@@ -8777,14 +8825,14 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     }
-                }
-            },
-            "post": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            },
+            "post": {
                 "description": "Creates a new organization/tenant",
                 "consumes": [
                     "application/json"
@@ -8832,16 +8880,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     }
-                }
-            }
-        },
-        "/tenants/{id}": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/tenants/{id}": {
+            "get": {
                 "description": "Retrieves a tenant by ID",
                 "consumes": [
                     "application/json"
@@ -8887,14 +8935,14 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     }
-                }
-            },
-            "put": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            },
+            "put": {
                 "description": "Updates an existing tenant",
                 "consumes": [
                     "application/json"
@@ -8949,14 +8997,14 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     }
-                }
-            },
-            "delete": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            },
+            "delete": {
                 "description": "Deletes a tenant and all associated data",
                 "consumes": [
                     "application/json"
@@ -8999,16 +9047,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     }
-                }
-            }
-        },
-        "/tenants/{id}/billing/history": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/tenants/{id}/billing/history": {
+            "get": {
                 "description": "Retrieves billing history and past transactions for a tenant",
                 "consumes": [
                     "application/json"
@@ -9074,16 +9122,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     }
-                }
-            }
-        },
-        "/tenants/{id}/billing/payment-methods": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/tenants/{id}/billing/payment-methods": {
+            "get": {
                 "description": "Retrieves all saved payment methods for a tenant",
                 "consumes": [
                     "application/json"
@@ -9135,14 +9183,14 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     }
-                }
-            },
-            "post": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            },
+            "post": {
                 "description": "Adds a new payment method after Stripe setup intent confirmation",
                 "consumes": [
                     "application/json"
@@ -9209,16 +9257,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     }
-                }
-            }
-        },
-        "/tenants/{id}/billing/payment-methods/{pmId}": {
-            "delete": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/tenants/{id}/billing/payment-methods/{pmId}": {
+            "delete": {
                 "description": "Removes a saved payment method from the tenant",
                 "consumes": [
                     "application/json"
@@ -9286,16 +9334,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     }
-                }
-            }
-        },
-        "/tenants/{id}/billing/payment-methods/{pmId}/default": {
-            "put": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/tenants/{id}/billing/payment-methods/{pmId}/default": {
+            "put": {
                 "description": "Sets a payment method as the default for the tenant",
                 "consumes": [
                     "application/json"
@@ -9363,16 +9411,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     }
-                }
-            }
-        },
-        "/tenants/{id}/billing/setup-intent": {
-            "post": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/tenants/{id}/billing/setup-intent": {
+            "post": {
                 "description": "Creates a Stripe setup intent for adding a new payment method",
                 "consumes": [
                     "application/json"
@@ -9430,16 +9478,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     }
-                }
-            }
-        },
-        "/tenants/{id}/members": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/tenants/{id}/members": {
+            "get": {
                 "description": "Retrieves all members of an organization",
                 "consumes": [
                     "application/json"
@@ -9497,14 +9545,14 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     }
-                }
-            },
-            "post": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            },
+            "post": {
                 "description": "Adds a new member to the organization",
                 "consumes": [
                     "application/json"
@@ -9565,16 +9613,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     }
-                }
-            }
-        },
-        "/tenants/{id}/members/{userId}": {
-            "delete": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/tenants/{id}/members/{userId}": {
+            "delete": {
                 "description": "Removes a member from the organization",
                 "consumes": [
                     "application/json"
@@ -9630,16 +9678,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     }
-                }
-            }
-        },
-        "/tenants/{id}/members/{userId}/role": {
-            "put": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/tenants/{id}/members/{userId}/role": {
+            "put": {
                 "description": "Updates the role assigned to a member in the organization",
                 "consumes": [
                     "application/json"
@@ -9710,16 +9758,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     }
-                }
-            }
-        },
-        "/tenants/{id}/membership": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/tenants/{id}/membership": {
+            "get": {
                 "description": "Retrieves the current membership subscription for a tenant",
                 "consumes": [
                     "application/json"
@@ -9765,14 +9813,14 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     }
-                }
-            },
-            "put": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            },
+            "put": {
                 "description": "Updates the membership tier for a tenant (upgrade/downgrade)",
                 "consumes": [
                     "application/json"
@@ -9839,16 +9887,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     }
-                }
-            }
-        },
-        "/tenants/{id}/membership/history": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/tenants/{id}/membership/history": {
+            "get": {
                 "description": "Retrieves the subscription change history for a tenant",
                 "consumes": [
                     "application/json"
@@ -9889,16 +9937,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     }
-                }
-            }
-        },
-        "/tenants/{id}/membership/preview": {
-            "post": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/tenants/{id}/membership/preview": {
+            "post": {
                 "description": "Previews the prorated charges/credits for a subscription change",
                 "consumes": [
                     "application/json"
@@ -9953,16 +10001,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     }
-                }
-            }
-        },
-        "/tenants/{tenant_id}/invitations": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/tenants/{tenant_id}/invitations": {
+            "get": {
                 "description": "Get all pending invitations for the organization",
                 "consumes": [
                     "application/json"
@@ -10011,14 +10059,14 @@ const docTemplate = `{
                             "$ref": "#/definitions/internal_api_handlers.ErrorResponse"
                         }
                     }
-                }
-            },
-            "post": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            },
+            "post": {
                 "description": "Invite a user to join the organization by email",
                 "consumes": [
                     "application/json"
@@ -10079,16 +10127,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/internal_api_handlers.ErrorResponse"
                         }
                     }
-                }
-            }
-        },
-        "/tenants/{tenant_id}/invitations/{invitation_id}": {
-            "delete": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/tenants/{tenant_id}/invitations/{invitation_id}": {
+            "delete": {
                 "description": "Cancel a pending invitation",
                 "consumes": [
                     "application/json"
@@ -10144,16 +10192,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/internal_api_handlers.ErrorResponse"
                         }
                     }
-                }
-            }
-        },
-        "/tenants/{tenant_id}/invitations/{invitation_id}/resend": {
-            "post": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/tenants/{tenant_id}/invitations/{invitation_id}/resend": {
+            "post": {
                 "description": "Resend an invitation email",
                 "consumes": [
                     "application/json"
@@ -10215,16 +10263,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/internal_api_handlers.ErrorResponse"
                         }
                     }
-                }
-            }
-        },
-        "/users/me": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/users/me": {
+            "get": {
                 "description": "Retrieves the currently authenticated user's profile",
                 "consumes": [
                     "application/json"
@@ -10255,16 +10303,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     }
-                }
-            }
-        },
-        "/users/me/profile": {
-            "patch": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/users/me/profile": {
+            "patch": {
                 "description": "Updates the currently authenticated user's profile",
                 "consumes": [
                     "application/json"
@@ -10312,16 +10360,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     }
-                }
-            }
-        },
-        "/users/me/profile-picture": {
-            "post": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/users/me/profile-picture": {
+            "post": {
                 "description": "Uploads a new profile picture for the current user (max 2MB, JPEG or PNG)",
                 "consumes": [
                     "multipart/form-data"
@@ -10367,14 +10415,14 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     }
-                }
-            },
-            "delete": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            },
+            "delete": {
                 "description": "Deletes the current user's profile picture",
                 "consumes": [
                     "application/json"
@@ -10408,27 +10456,29 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
             }
         },
         "/version": {
             "get": {
-                "description": "Returns the API version, git commit, and build time",
-                "consumes": [
-                    "application/json"
-                ],
+                "description": "Returns the git SHA and app version of the running build (from the GIT_SHA / APP_VERSION env baked into the image). Mounted at the server root, outside /api.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "System"
                 ],
-                "summary": "Get API version",
+                "summary": "Build version",
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_api_handlers.VersionResponse"
+                            "$ref": "#/definitions/VersionInfo"
                         }
                     }
                 }
@@ -10480,6 +10530,19 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "VersionInfo": {
+            "type": "object",
+            "properties": {
+                "app_version": {
+                    "type": "string",
+                    "example": "0.8.0"
+                },
+                "git_sha": {
+                    "type": "string",
+                    "example": "3df4280"
+                }
+            }
+        },
         "github_com_javaknight1_servicepro_backend_internal_health.CheckResult": {
             "type": "object",
             "properties": {
@@ -10527,6 +10590,9 @@ const docTemplate = `{
                     "additionalProperties": true
                 },
                 "environment": {
+                    "type": "string"
+                },
+                "git_sha": {
                     "type": "string"
                 },
                 "status": {
@@ -16404,6 +16470,35 @@ const docTemplate = `{
                 }
             }
         },
+        "internal_api_handlers.PaymentRemindersJobResponse": {
+            "type": "object",
+            "properties": {
+                "duration_ms": {
+                    "type": "integer",
+                    "example": 412
+                },
+                "failed": {
+                    "type": "integer",
+                    "example": 0
+                },
+                "job": {
+                    "type": "string",
+                    "example": "payment-reminders"
+                },
+                "sent": {
+                    "type": "integer",
+                    "example": 5
+                },
+                "skipped": {
+                    "type": "integer",
+                    "example": 2
+                },
+                "tenants_processed": {
+                    "type": "integer",
+                    "example": 3
+                }
+            }
+        },
         "internal_api_handlers.PublicInvoiceLineResponse": {
             "type": "object",
             "properties": {
@@ -16614,20 +16709,6 @@ const docTemplate = `{
                     "type": "number"
                 },
                 "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_api_handlers.VersionResponse": {
-            "type": "object",
-            "properties": {
-                "build_time": {
-                    "type": "string"
-                },
-                "git_commit": {
-                    "type": "string"
-                },
-                "version": {
                     "type": "string"
                 }
             }

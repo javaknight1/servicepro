@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
 	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"
 )
 

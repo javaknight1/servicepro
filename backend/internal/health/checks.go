@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
+
+	"github.com/javaknight1/servicepro/backend/internal/version"
 )
 
 // Status represents the health status of a component
@@ -66,6 +68,7 @@ type HealthReport struct {
 	Status      Status                 `json:"status"`
 	Timestamp   time.Time              `json:"timestamp"`
 	Version     string                 `json:"version,omitempty"`
+	GitSHA      string                 `json:"git_sha,omitempty"`
 	Environment string                 `json:"environment,omitempty"`
 	Uptime      time.Duration          `json:"uptime_seconds"`
 	Checks      map[string]CheckResult `json:"checks"`
@@ -254,6 +257,7 @@ func (c *Checker) GetReport(ctx context.Context) HealthReport {
 		Status:      overallStatus,
 		Timestamp:   time.Now(),
 		Version:     c.version,
+		GitSHA:      version.GitSHA(),
 		Environment: c.environment,
 		Uptime:      time.Since(c.startTime),
 		Checks:      results,

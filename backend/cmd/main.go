@@ -32,6 +32,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/javaknight1/servicepro/backend/config"
+	"github.com/javaknight1/servicepro/backend/internal/api/middleware"
 	"github.com/javaknight1/servicepro/backend/internal/api/routes"
 	analyticsclient "github.com/javaknight1/servicepro/backend/pkg/clients/analytics"
 	emailclient "github.com/javaknight1/servicepro/backend/pkg/clients/email"
@@ -126,14 +127,34 @@ func main() {
 	}
 	defer sqlDB.Close()
 
-	// Connect to Redis
-	redisClient, err := database.NewRedisClient(&cfg.Redis)
+	// Apply pending migrations (development default). Deployed environments
+	// migrate from the release pipeline (`cmd/migrate up`) before deploying.
+	if cfg.Database.RunMigrationsOnStartup {
+		if err := database.RunMigrations(cfg.Database.URL); err != nil {
+			logging.Fatal(ctx, "[MIGRATE] Failed to apply migrations at startup", map[string]any{"error": err.Error()})
+			os.Exit(1)
+		}
+	}
+
+	// Compare the database schema with the migrations embedded in this build;
+	// /health/ready returns 503 while it is behind or dirty.
+	schemaMonitor := database.NewSchemaMonitor(cfg.Database.URL)
+	logging.Info(ctx, "[MIGRATE] Schema state", map[string]any{
+		"status":   schemaMonitor.State().Status,
+		"applied":  schemaMonitor.State().Applied,
+		"expected": schemaMonitor.State().Expected,
+	})
+
+	// Connect to Redis (optional): falls back to an in-process in-memory store
+	// when REDIS_URL is unset or Redis is unreachable at boot.
+	redisConn, err := database.ConnectRedisOrFallback(&cfg.Redis)
 	if err != nil {
-		logging.Fatal(ctx, "Failed to connect to Redis", map[string]any{"error": err.Error()})
+		logging.Fatal(ctx, "Failed to initialize Redis or its in-memory fallback", map[string]any{"error": err.Error()})
 		os.Exit(1)
 	}
-	defer redisClient.Close()
-	logging.Info(ctx, "Redis connected", nil)
+	defer redisConn.Close()
+	redisClient := redisConn.Client
+	logging.Info(ctx, "Redis ready", map[string]any{"mode": redisConn.Mode})
 
 	emailClient, err := emailclient.NewClient(ctx, cfg)
 	if err != nil {
@@ -173,15 +194,25 @@ func main() {
 		poolCollector := database.NewPoolMetricsCollector(sqlDB, metricsClient, 15*time.Second)
 		poolCollector.Start(ctx)
 
-		// Start KPI metrics collector (platform overview, revenue, A/R aging)
-		kpiCollector := database.NewKPIMetricsCollector(sqlDB, metricsClient, 60*time.Second)
-		kpiCollector.Start(ctx)
+		// Start KPI metrics collector (platform overview, revenue, A/R aging).
+		// It polls the database every minute, so it is a background worker:
+		// off by default outside development (keeps Supabase connections idle).
+		if cfg.Server.RunBackgroundWorkers {
+			kpiCollector := database.NewKPIMetricsCollector(sqlDB, metricsClient, 60*time.Second)
+			kpiCollector.Start(ctx)
+		}
+	}
+	if !cfg.Server.RunBackgroundWorkers {
+		logging.Info(ctx, "In-process background workers disabled (RUN_BACKGROUND_WORKERS=false); trigger /internal/jobs/* from a scheduler", nil)
 	}
 
 	// Initialize Gin router
 	// Use gin.New() instead of gin.Default() so we can use our custom RecoveryMiddleware
 	// that integrates with error tracking (Sentry)
 	router := gin.New()
+	// Resolve the real visitor IP from the edge proxy headers before anything
+	// (logger, rate limiters) reads c.ClientIP().
+	router.Use(middleware.EdgeClientIP(cfg.Server.EdgeProxySecret))
 	router.Use(gin.Logger()) // Add Gin's logger middleware
 
 	// Apply Gin-specific configuration
@@ -190,10 +221,20 @@ func main() {
 		if err := router.SetTrustedProxies(cfg.Server.TrustedProxies); err != nil {
 			logging.Warn(ctx, "Failed to set trusted proxies", map[string]any{"error": err.Error()})
 		}
+	} else if cfg.Server.EdgeProxySecret != "" {
+		// Behind the edge proxy the visitor IP comes only from the verified
+		// X-SP-Client-IP header; never trust caller-supplied X-Forwarded-For
+		// (Gin trusts every proxy by default).
+		if err := router.SetTrustedProxies(nil); err != nil {
+			logging.Warn(ctx, "Failed to disable trusted proxies", map[string]any{"error": err.Error()})
+		}
 	}
 
 	// Setup routes
-	routes.Setup(router, db, redisClient, emailClient, storageClient, smsClient, errorTrackingClient, metricsClient, analyticsClient, cfg)
+	routes.Setup(router, db, redisClient, emailClient, storageClient, smsClient, errorTrackingClient, metricsClient, analyticsClient, cfg, routes.PlatformOptions{
+		Schema:    schemaMonitor,
+		RedisMode: redisConn.Mode,
+	})
 
 	// Create HTTP server with timeouts
 	addr := fmt.Sprintf(":%s", cfg.Server.Port)

@@ -29,5 +29,5 @@ func main() {
 	fmt.Printf("Password: %s\n", password)
 	fmt.Printf("Hash:     %s\n", hash)
 	fmt.Println()
-	fmt.Println("To use in 002_seed_dev.sql, update the password_hash value.")
+	fmt.Println("To use in backend/seeds/dev_seed.sql, update the password_hash value.")
 }

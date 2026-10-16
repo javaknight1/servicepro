@@ -1,5 +1,14 @@
 basePath: /api
 definitions:
+  VersionInfo:
+    properties:
+      app_version:
+        example: 0.8.0
+        type: string
+      git_sha:
+        example: 3df4280
+        type: string
+    type: object
   github_com_javaknight1_servicepro_backend_internal_health.CheckResult:
     properties:
       details:
@@ -32,6 +41,8 @@ definitions:
         additionalProperties: true
         type: object
       environment:
+        type: string
+      git_sha:
         type: string
       status:
         $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_health.Status'
@@ -4017,6 +4028,27 @@ definitions:
       viewed_date:
         type: string
     type: object
+  internal_api_handlers.PaymentRemindersJobResponse:
+    properties:
+      duration_ms:
+        example: 412
+        type: integer
+      failed:
+        example: 0
+        type: integer
+      job:
+        example: payment-reminders
+        type: string
+      sent:
+        example: 5
+        type: integer
+      skipped:
+        example: 2
+        type: integer
+      tenants_processed:
+        example: 3
+        type: integer
+    type: object
   internal_api_handlers.PublicInvoiceLineResponse:
     properties:
       description:
@@ -4157,15 +4189,6 @@ definitions:
       late_fee_percentage:
         type: number
       name:
-        type: string
-    type: object
-  internal_api_handlers.VersionResponse:
-    properties:
-      build_time:
-        type: string
-      git_commit:
-        type: string
-      version:
         type: string
     type: object
   stripe.Account:
@@ -24667,7 +24690,7 @@ paths:
       consumes:
       - application/json
       description: Returns detailed health information including all dependency check
-        results
+        results, the app version and git SHA
       produces:
       - application/json
       responses:
@@ -24704,8 +24727,10 @@ paths:
     get:
       consumes:
       - application/json
-      description: Returns 200 if all critical dependencies are healthy. Kubernetes
-        uses this to determine if traffic should be sent to the pod.
+      description: Returns 200 if all critical dependencies are healthy (use as the
+        Cloud Run startup probe). The "schema" check reports migration state (ok/ahead/behind/dirty);
+        behind or dirty returns 503. Redis reports "not_configured" or "in_memory_fallback"
+        without failing. Includes version and git_sha.
       produces:
       - application/json
       responses:
@@ -24720,6 +24745,46 @@ paths:
       summary: Readiness probe
       tags:
       - Health
+  /internal/jobs/payment-reminders:
+    post:
+      description: 'Internal job endpoint (auth: X-Internal-Jobs-Token header = INTERNAL_JOBS_SECRET;
+        404 when the secret is unset). Sends due automatic payment reminders for every
+        active tenant with reminders enabled. Idempotent: each (invoice, reminder
+        number) is sent at most once, so re-running or overlapping runs send nothing
+        twice. Mounted at the server root (/internal/jobs/payment-reminders), outside
+        /api.'
+      parameters:
+      - description: Internal jobs secret
+        in: header
+        name: X-Internal-Jobs-Token
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_api_handlers.PaymentRemindersJobResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+      summary: Run payment reminders job
+      tags:
+      - Internal
   /invitations/{token}:
     get:
       consumes:
@@ -27266,17 +27331,17 @@ paths:
       - Users
   /version:
     get:
-      consumes:
-      - application/json
-      description: Returns the API version, git commit, and build time
+      description: Returns the git SHA and app version of the running build (from
+        the GIT_SHA / APP_VERSION env baked into the image). Mounted at the server
+        root, outside /api.
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api_handlers.VersionResponse'
-      summary: Get API version
+            $ref: '#/definitions/VersionInfo'
+      summary: Build version
       tags:
       - System
   /webhooks/stripe:

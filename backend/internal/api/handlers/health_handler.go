@@ -36,7 +36,7 @@ func (h *HealthHandler) Live(c *gin.Context) {
 
 // Ready handles the readiness probe endpoint
 // @Summary		Readiness probe
-// @Description	Returns 200 if all critical dependencies are healthy. Kubernetes uses this to determine if traffic should be sent to the pod.
+// @Description	Returns 200 if all critical dependencies are healthy (use as the Cloud Run startup probe). The "schema" check reports migration state (ok/ahead/behind/dirty); behind or dirty returns 503. Redis reports "not_configured" or "in_memory_fallback" without failing. Includes version and git_sha.
 // @Tags			Health
 // @Accept			json
 // @Produce		json
@@ -56,7 +56,7 @@ func (h *HealthHandler) Ready(c *gin.Context) {
 
 // Health handles the general health endpoint
 // @Summary		Health check
-// @Description	Returns detailed health information including all dependency check results
+// @Description	Returns detailed health information including all dependency check results, the app version and git SHA
 // @Tags			Health
 // @Accept			json
 // @Produce		json

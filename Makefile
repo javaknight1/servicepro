@@ -286,7 +286,7 @@ ci-frontend: ## Frontend CI gates (typecheck, lint, test, dead-code, build, bund
 # reruns `make docs` and fails on any diff.
 
 swagger: ## Generate backend/docs from swag annotations (pinned swag)
-	@cd backend && go run github.com/swaggo/swag/cmd/swag@$(SWAG_VERSION) init \
+	@cd backend && go tool swag init \
 		-g cmd/main.go -o docs --parseDependency --parseInternal --quiet
 	@echo "Swagger docs generated in backend/docs/"
 

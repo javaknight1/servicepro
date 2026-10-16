@@ -193,7 +193,7 @@ func (rl *APIRateLimiter) getIdentifierAndLimit(c *gin.Context, tier RateLimitTi
 			}
 		}
 		// Fall back to IP if no user ID
-		return fmt.Sprintf("ratelimit:ip:%s", c.ClientIP()), rl.config.AnonymousLimit
+		return fmt.Sprintf("ratelimit:ip:%s", ClientIP(c)), rl.config.AnonymousLimit
 
 	case TierAdmin:
 		// Admin endpoints use lower limits to prevent abuse
@@ -205,10 +205,10 @@ func (rl *APIRateLimiter) getIdentifierAndLimit(c *gin.Context, tier RateLimitTi
 				return fmt.Sprintf("ratelimit:admin:%s", uidStr), rl.config.AdminLimit
 			}
 		}
-		return fmt.Sprintf("ratelimit:admin:ip:%s", c.ClientIP()), rl.config.AdminLimit
+		return fmt.Sprintf("ratelimit:admin:ip:%s", ClientIP(c)), rl.config.AdminLimit
 
 	default: // TierAnonymous
-		return fmt.Sprintf("ratelimit:ip:%s", c.ClientIP()), rl.config.AnonymousLimit
+		return fmt.Sprintf("ratelimit:ip:%s", ClientIP(c)), rl.config.AnonymousLimit
 	}
 }
 

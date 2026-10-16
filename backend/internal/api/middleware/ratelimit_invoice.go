@@ -45,7 +45,7 @@ func NewSimpleRateLimiter(rate int, window time.Duration) *SimpleRateLimiter {
 func (rl *SimpleRateLimiter) RateLimit() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Get client identifier (IP address)
-		clientID := c.ClientIP()
+		clientID := ClientIP(c)
 
 		// Check if request is allowed
 		allowed, remaining, resetTime := rl.allowRequest(clientID)

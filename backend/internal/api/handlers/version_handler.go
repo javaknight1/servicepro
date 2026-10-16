@@ -8,25 +8,14 @@ import (
 	"github.com/javaknight1/servicepro/backend/internal/version"
 )
 
-// VersionResponse represents the version information returned by the API
-type VersionResponse struct {
-	Version   string `json:"version"`
-	GitCommit string `json:"git_commit"`
-	BuildTime string `json:"build_time"`
-}
-
-// GetVersion handles GET /api/v1/version
-// @Summary		Get API version
-// @Description	Returns the API version, git commit, and build time
+// GetVersion handles GET /version (unversioned, at the server root so the
+// edge Worker can proxy it and deploy checks can confirm what is live).
+// @Summary		Build version
+// @Description	Returns the git SHA and app version of the running build (from the GIT_SHA / APP_VERSION env baked into the image). Mounted at the server root, outside /api.
 // @Tags			System
-// @Accept			json
 // @Produce		json
-// @Success		200	{object}	VersionResponse
+// @Success		200	{object}	version.Info
 // @Router			/version [get]
 func GetVersion(c *gin.Context) {
-	c.JSON(http.StatusOK, VersionResponse{
-		Version:   version.Version,
-		GitCommit: version.GitCommit,
-		BuildTime: version.BuildTime,
-	})
+	c.JSON(http.StatusOK, version.Get())
 }

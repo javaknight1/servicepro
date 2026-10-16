@@ -83,7 +83,7 @@ services:
 
   backend:
     # Keep the minor in step with the `go` line in backend/go.mod.
-    image: golang:1.24-alpine
+    image: golang:1.26-alpine
     container_name: servicepro-backend
     working_dir: /app
     ports:

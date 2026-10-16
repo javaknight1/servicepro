@@ -7631,7 +7631,7 @@ export interface paths {
         };
         /**
          * Health check
-         * @description Returns detailed health information including all dependency check results
+         * @description Returns detailed health information including all dependency check results, the app version and git SHA
          */
         get: {
             parameters: {
@@ -7720,7 +7720,7 @@ export interface paths {
         };
         /**
          * Readiness probe
-         * @description Returns 200 if all critical dependencies are healthy. Kubernetes uses this to determine if traffic should be sent to the pod.
+         * @description Returns 200 if all critical dependencies are healthy (use as the Cloud Run startup probe). The "schema" check reports migration state (ok/ahead/behind/dirty); behind or dirty returns 503. Redis reports "not_configured" or "in_memory_fallback" without failing. Includes version and git_sha.
          */
         get: {
             parameters: {
@@ -7753,6 +7753,84 @@ export interface paths {
         };
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/internal/jobs/payment-reminders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run payment reminders job
+         * @description Internal job endpoint (auth: X-Internal-Jobs-Token header = INTERNAL_JOBS_SECRET; 404 when the secret is unset). Sends due automatic payment reminders for every active tenant with reminders enabled. Idempotent: each (invoice, reminder number) is sent at most once, so re-running or overlapping runs send nothing twice. Mounted at the server root (/internal/jobs/payment-reminders), outside /api.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description Internal jobs secret */
+                    "X-Internal-Jobs-Token": string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_api_handlers.PaymentRemindersJobResponse"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_api_handlers.ErrorResponse"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_api_handlers.ErrorResponse"];
+                    };
+                };
+                /** @description Internal Server Error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_api_handlers.ErrorResponse"];
+                    };
+                };
+                /** @description Service Unavailable */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_api_handlers.ErrorResponse"];
+                    };
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;
@@ -12350,8 +12428,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get API version
-         * @description Returns the API version, git commit, and build time
+         * Build version
+         * @description Returns the git SHA and app version of the running build (from the GIT_SHA / APP_VERSION env baked into the image). Mounted at the server root, outside /api.
          */
         get: {
             parameters: {
@@ -12368,7 +12446,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["internal_api_handlers.VersionResponse"];
+                        "application/json": components["schemas"]["VersionInfo"];
                     };
                 };
             };
@@ -12440,6 +12518,12 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        VersionInfo: {
+            /** @example 0.8.0 */
+            app_version?: string;
+            /** @example 3df4280 */
+            git_sha?: string;
+        };
         "github_com_javaknight1_servicepro_backend_internal_health.CheckResult": {
             details?: {
                 [key: string]: unknown;
@@ -12461,6 +12545,7 @@ export interface components {
                 [key: string]: unknown;
             };
             environment?: string;
+            git_sha?: string;
             status?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_health.Status"];
             timestamp?: string;
             uptime_seconds?: components["schemas"]["time.Duration"];
@@ -14255,6 +14340,20 @@ export interface components {
             updated_by?: string;
             viewed_date?: string;
         };
+        "internal_api_handlers.PaymentRemindersJobResponse": {
+            /** @example 412 */
+            duration_ms?: number;
+            /** @example 0 */
+            failed?: number;
+            /** @example payment-reminders */
+            job?: string;
+            /** @example 5 */
+            sent?: number;
+            /** @example 2 */
+            skipped?: number;
+            /** @example 3 */
+            tenants_processed?: number;
+        };
         "internal_api_handlers.PublicInvoiceLineResponse": {
             description?: string;
             quantity?: string;
@@ -14320,11 +14419,6 @@ export interface components {
             late_fee_amount?: number;
             late_fee_percentage?: number;
             name?: string;
-        };
-        "internal_api_handlers.VersionResponse": {
-            build_time?: string;
-            git_commit?: string;
-            version?: string;
         };
         "stripe.Account": {
             /** @description Business information about the account. */

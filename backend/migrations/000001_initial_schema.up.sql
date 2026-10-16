@@ -1951,21 +1951,28 @@ GROUP BY payment_date
 ORDER BY day;
 
 -- Accounts receivable aging buckets
+-- (Bucketing happens in a subquery: Postgres does not allow an output-column
+-- alias inside an ORDER BY expression, which made the original view fail.)
 CREATE OR REPLACE VIEW v_ar_aging_summary AS
 SELECT
-    CASE
-        WHEN due_date >= CURRENT_DATE THEN 'Current'
-        WHEN due_date >= CURRENT_DATE - INTERVAL '30 days' THEN '1-30 days'
-        WHEN due_date >= CURRENT_DATE - INTERVAL '60 days' THEN '31-60 days'
-        WHEN due_date >= CURRENT_DATE - INTERVAL '90 days' THEN '61-90 days'
-        ELSE '90+ days'
-    END AS age_bucket,
+    age_bucket,
     COUNT(*) AS invoice_count,
     COALESCE(SUM(amount_due), 0) AS outstanding_amount
-FROM invoices
-WHERE deleted_at IS NULL
-  AND status NOT IN ('paid', 'cancelled', 'refunded')
-  AND amount_due > 0
+FROM (
+    SELECT
+        CASE
+            WHEN due_date >= CURRENT_DATE THEN 'Current'
+            WHEN due_date >= CURRENT_DATE - INTERVAL '30 days' THEN '1-30 days'
+            WHEN due_date >= CURRENT_DATE - INTERVAL '60 days' THEN '31-60 days'
+            WHEN due_date >= CURRENT_DATE - INTERVAL '90 days' THEN '61-90 days'
+            ELSE '90+ days'
+        END AS age_bucket,
+        amount_due
+    FROM invoices
+    WHERE deleted_at IS NULL
+      AND status NOT IN ('paid', 'cancelled', 'refunded')
+      AND amount_due > 0
+) aged
 GROUP BY age_bucket
 ORDER BY
     CASE age_bucket

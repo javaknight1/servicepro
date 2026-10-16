@@ -12,8 +12,7 @@
 #
 # Schedule (UTC):
 #   hourly at :15   payment-reminders    unpaid-invoice reminder emails
-#   daily  02:15    analytics-aggregate  roll up analytics
-#   daily  02:15    webhook-cleanup      prune processed Stripe webhook events
+# Add a job here only once the API exposes /internal/jobs/<name> for it.
 # GitHub may delay scheduled runs under load; the jobs must tolerate a late or
 # skipped tick (they select by due-time, not "exactly now").
 #
@@ -32,8 +31,6 @@ on:
         options:
           - all
           - payment-reminders
-          - analytics-aggregate
-          - webhook-cleanup
 
 concurrency:
   group: scheduled-jobs
@@ -79,16 +76,13 @@ jobs:
 
           if [ "$EVENT" = "workflow_dispatch" ]; then
             if [ "$INPUT_JOB" = "all" ]; then
-              jobs="payment-reminders analytics-aggregate webhook-cleanup"
+              jobs="payment-reminders"
             else
               jobs="$INPUT_JOB"
             fi
           else
-            # Hourly tick: reminders every hour; the daily jobs on the 02:xx tick.
+            # Hourly tick: reminders every hour.
             jobs="payment-reminders"
-            if [ "$(date -u +%H)" = "02" ]; then
-              jobs="$jobs analytics-aggregate webhook-cleanup"
-            fi
           fi
 
           echo "trigger=${EVENT} schedule=${SCHEDULE:-n/a} jobs=${jobs}"

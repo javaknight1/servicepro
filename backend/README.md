@@ -4,10 +4,10 @@ Go backend service for the ServicePro platform.
 
 ## Tech Stack
 
-- **Language**: Go 1.21+
+- **Language**: Go 1.26+
 - **Framework**: Gin
 - **Database**: PostgreSQL 15+ with GORM
-- **Cache**: Redis
+- **Cache**: Redis (optional; in-memory fallback)
 - **Auth**: JWT with bcrypt
 - **Email**: AWS SES
 
@@ -15,7 +15,8 @@ Go backend service for the ServicePro platform.
 
 ```
 backend/
-├── cmd/              # Application entry point
+├── cmd/                  # API server entry point
+│   └── migrate/          # golang-migrate CLI (up/down/version/force)
 ├── config/               # Configuration management
 ├── internal/
 │   ├── api/
@@ -29,14 +30,15 @@ backend/
 │   ├── auth/             # JWT, password utilities
 │   ├── database/         # DB connections
 │   └── email/            # Email service
-└── migrations/           # SQL migrations
+├── migrations/           # Numbered golang-migrate migrations (embedded)
+└── seeds/                # Dev-only seed data (not a migration)
 ```
 
 ## Quick Start
 
 ### Prerequisites
 
-- Go 1.21+
+- Go 1.26+
 - PostgreSQL 15+
 - Redis 7+
 - Docker (optional)
@@ -61,8 +63,9 @@ export DATABASE_URL=postgresql://postgres:password@localhost:5432/servicepro?ssl
 export REDIS_URL=redis://localhost:6379
 export JWT_SECRET=dev-secret-key-min-32-characters-long
 
-# Run migrations
-make migrate-up
+# Run migrations (also applied automatically at startup in development)
+go run ./cmd/migrate up
+go run ./cmd/migrate version
 
 # Run the application
 go run cmd/main.go
@@ -75,7 +78,7 @@ go run cmd/main.go
 | PORT         | No       | Server port (default: 8080)        |
 | ENV          | No       | development/production             |
 | DATABASE_URL | Yes      | PostgreSQL connection string       |
-| REDIS_URL    | Yes      | Redis connection string            |
+| REDIS_URL    | No       | Redis URL (in-memory fallback)     |
 | JWT_SECRET   | Yes      | Secret for JWT signing (32+ chars) |
 | FRONTEND_URL | No       | Frontend URL for CORS              |
 
@@ -129,3 +132,30 @@ make test-cover   # Run with coverage
 | API Reference   | [/docs/api/](/docs/api/)                         |
 | Getting Started | [/docs/getting-started/](/docs/getting-started/) |
 | Features        | [/docs/features/](/docs/features/)               |
+
+## Migrations
+
+Schema changes are numbered, additive golang-migrate files in `migrations/`
+(`NNNNNN_name.up.sql` + `.down.sql`), embedded into both binaries.
+`000001_initial_schema` is the baseline (the former `001_schema.sql`); a
+database built from that old file is adopted at version 1 automatically.
+
+```bash
+go run ./cmd/migrate up          # apply pending migrations
+go run ./cmd/migrate version     # applied version + dirty flag
+go run ./cmd/migrate force N     # repair a dirty schema after fixing it by hand
+go run ./cmd/migrate down        # drop everything (refused when ENV=production)
+```
+
+`RUN_MIGRATIONS_ON_STARTUP` (default true only in development) applies them
+at server start. In deployed environments the release pipeline runs
+`migrate up` before deploying; `/health/ready` returns 503 while the schema is
+behind or dirty.
+
+## System endpoints
+
+| Method | Path                               | Notes                                                    |
+| ------ | ---------------------------------- | -------------------------------------------------------- |
+| GET    | /version                           | `{"git_sha","app_version"}` from GIT_SHA / APP_VERSION   |
+| GET    | /health, /health/live, /health/ready | readiness includes schema and redis state              |
+| POST   | /internal/jobs/payment-reminders   | header `X-Internal-Jobs-Token: $INTERNAL_JOBS_SECRET`   |

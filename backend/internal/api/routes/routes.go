@@ -28,8 +28,17 @@ import (
 	storageclient "github.com/javaknight1/servicepro/backend/pkg/clients/storage"
 )
 
+// PlatformOptions carries process-level state that routes report on but do
+// not own (computed in cmd/main.go at boot).
+type PlatformOptions struct {
+	// Schema reports migration state for /health/ready (nil skips the check).
+	Schema health.SchemaStateProvider
+	// RedisMode is one of the health.RedisMode* constants.
+	RedisMode string
+}
+
 // Setup configures all API routes
-func Setup(router *gin.Engine, db *gorm.DB, redisClient *redis.Client, email emailclient.Client, storage storageclient.Client, sms smsclient.Client, errorTracker errortracking.Client, metrics metricsclient.Client, analytics analyticsclient.Client, cfg *config.Config) {
+func Setup(router *gin.Engine, db *gorm.DB, redisClient *redis.Client, email emailclient.Client, storage storageclient.Client, sms smsclient.Client, errorTracker errortracking.Client, metrics metricsclient.Client, analytics analyticsclient.Client, cfg *config.Config, platform PlatformOptions) {
 	// Apply recovery middleware first to catch panics and send to error tracking
 	router.Use(middleware.RecoveryMiddleware(errorTracker))
 
@@ -47,8 +56,16 @@ func Setup(router *gin.Engine, db *gorm.DB, redisClient *redis.Client, email ema
 	v1Group := router.Group("/api/v1")
 	v1.Setup(v1Group, routeCfg)
 
+	// Build identity (root, unversioned: proxied by the edge Worker and used
+	// by deploy verification)
+	router.GET("/version", handlers.GetVersion)
+
+	// Internal job endpoints for an external scheduler (replace in-process
+	// tickers on Cloud Run)
+	setupInternalJobRoutes(router, routeCfg, cfg)
+
 	// Setup health check system
-	setupHealthEndpoints(router, db, redisClient, cfg)
+	setupHealthEndpoints(router, db, redisClient, cfg, platform)
 
 	// Setup metrics endpoint for Prometheus scraping
 	setupMetricsEndpoint(router, metrics, cfg)
@@ -57,8 +74,28 @@ func Setup(router *gin.Engine, db *gorm.DB, redisClient *redis.Client, email ema
 	setupSwaggerEndpoint(router, cfg)
 }
 
+// setupInternalJobRoutes registers POST /internal/jobs/* guarded by
+// X-Internal-Jobs-Token == INTERNAL_JOBS_SECRET (404 when the secret is unset).
+// They live at the server root, outside /api, so the edge Worker (which only
+// proxies /api/* and /version) never exposes them; schedulers call the Cloud
+// Run URL directly.
+func setupInternalJobRoutes(router *gin.Engine, routeCfg *RouteConfig, cfg *config.Config) {
+	var reminders handlers.ReminderRunner
+	if routeCfg.Services != nil && routeCfg.Services.PaymentReminder != nil {
+		reminders = routeCfg.Services.PaymentReminder
+	}
+	jobs := handlers.NewInternalJobsHandler(cfg.Server.InternalJobsSecret, reminders)
+
+	group := router.Group("/internal/jobs", jobs.Authorize)
+	group.POST("/payment-reminders", jobs.RunPaymentReminders)
+
+	logging.Info(context.Background(), "Internal job endpoints registered", map[string]any{
+		"enabled": cfg.Server.InternalJobsSecret != "", "endpoints": "/internal/jobs/payment-reminders", "source": "jobs",
+	})
+}
+
 // setupHealthEndpoints configures health check endpoints with deep dependency checks
-func setupHealthEndpoints(router *gin.Engine, db *gorm.DB, redisClient *redis.Client, cfg *config.Config) {
+func setupHealthEndpoints(router *gin.Engine, db *gorm.DB, redisClient *redis.Client, cfg *config.Config, platform PlatformOptions) {
 	ctx := context.Background()
 
 	// Get the underlying sql.DB for health checks
@@ -69,9 +106,11 @@ func setupHealthEndpoints(router *gin.Engine, db *gorm.DB, redisClient *redis.Cl
 
 	// Setup health checker with configured checks
 	checker, runner, _, _ := health.Setup(health.SetupOptions{
-		Config: cfg,
-		DB:     sqlDB,
-		Redis:  redisClient,
+		Config:    cfg,
+		DB:        sqlDB,
+		Redis:     redisClient,
+		RedisMode: platform.RedisMode,
+		Schema:    platform.Schema,
 	})
 
 	// Start the background health check runner
@@ -145,8 +184,10 @@ func NewRouteConfig(db *gorm.DB, redis *redis.Client, email emailclient.Client, 
 	svc := SetupServices(db, redis, repos, cfg, email, storage, mw.JWTManager, mw.PermChecker)
 	handlers := SetupHandlers(cfg, repos, svc, mw)
 
-	// Start payment reminder background worker
-	if svc.PaymentReminder != nil {
+	// Start payment reminder background worker (RUN_BACKGROUND_WORKERS;
+	// development default). Deployed environments call
+	// POST /internal/jobs/payment-reminders from a scheduler instead.
+	if svc.PaymentReminder != nil && cfg.Server.RunBackgroundWorkers {
 		reminderWorker := services.NewPaymentReminderWorker(svc.PaymentReminder, 1*time.Hour)
 		reminderWorker.Start(context.Background())
 	}

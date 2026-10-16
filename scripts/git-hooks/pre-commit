@@ -42,15 +42,14 @@ if [ -n "$GO_CHANGED" ]; then
 
     # OpenAPI drift. swag reads annotations from the handlers, the models and
     # cmd/main.go (general API info), so only those paths can change the spec.
-    # Regenerate into a temp dir with the swag version pinned in go.mod (the
-    # same one `make swagger` and CI use) and compare with what's committed.
+    # Regenerate into a temp dir with the swag pinned by go.mod's tool directive
+    # (the same one `make swagger` and CI use) and compare with what's committed.
     SWAG_CHANGED=$(grep -E '^backend/(internal/api/handlers/|internal/models/|cmd/main\.go)' <<<"$GO_CHANGED" || true)
     if [ -n "$SWAG_CHANGED" ]; then
         echo "> OpenAPI drift..."
-        SWAG_VERSION=$(awk '$1 == "github.com/swaggo/swag" { print $2 }' backend/go.mod)
         TMP_DOCS=$(mktemp -d)
         trap 'rm -rf "$TMP_DOCS"' EXIT
-        (cd backend && go run "github.com/swaggo/swag/cmd/swag@${SWAG_VERSION}" init \
+        (cd backend && go tool swag init \
             -g cmd/main.go --output "$TMP_DOCS" \
             --parseDependency --parseInternal >/dev/null 2>&1)
         if ! cmp -s "$TMP_DOCS/swagger.json" backend/docs/swagger.json \
