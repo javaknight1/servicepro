@@ -142,7 +142,8 @@ func (c *Client) Send(ctx context.Context, msg *email.EmailMessage) (*email.Send
 	}
 
 	// Content type and body
-	if msg.HTMLBody != "" && msg.TextBody != "" {
+	switch {
+	case msg.HTMLBody != "" && msg.TextBody != "":
 		// Multipart message
 		boundary := fmt.Sprintf("boundary_%d", time.Now().UnixNano())
 		fmt.Fprintf(&emailBuilder, "Content-Type: multipart/alternative; boundary=\"%s\"\r\n", boundary)
@@ -164,11 +165,11 @@ func (c *Client) Send(ctx context.Context, msg *email.EmailMessage) (*email.Send
 
 		// End boundary
 		fmt.Fprintf(&emailBuilder, "--%s--\r\n", boundary)
-	} else if msg.HTMLBody != "" {
+	case msg.HTMLBody != "":
 		emailBuilder.WriteString("Content-Type: text/html; charset=\"UTF-8\"\r\n")
 		emailBuilder.WriteString("\r\n")
 		emailBuilder.WriteString(msg.HTMLBody)
-	} else {
+	default:
 		emailBuilder.WriteString("Content-Type: text/plain; charset=\"UTF-8\"\r\n")
 		emailBuilder.WriteString("\r\n")
 		emailBuilder.WriteString(msg.TextBody)

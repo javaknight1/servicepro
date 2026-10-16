@@ -625,11 +625,12 @@ func validateConfig(cfg *Config) {
 	var errors []string
 
 	// Check JWT secret - required in all environments
-	if cfg.JWT.Secret == "" {
+	switch {
+	case cfg.JWT.Secret == "":
 		errors = append(errors, "JWT_SECRET is required but not set")
-	} else if cfg.JWT.Secret == insecureJWTSecretDefault {
+	case cfg.JWT.Secret == insecureJWTSecretDefault:
 		errors = append(errors, "JWT_SECRET is using the insecure default value - please set a unique secret (hint: use 'openssl rand -base64 32' to generate one)")
-	} else if len(cfg.JWT.Secret) < 32 {
+	case len(cfg.JWT.Secret) < 32:
 		errors = append(errors, "JWT_SECRET must be at least 32 characters for security")
 	}
 
