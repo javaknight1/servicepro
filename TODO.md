@@ -315,6 +315,7 @@ The minimum subset that must be done before real (paying) customers: **40 tasks,
 | T087     | 12     | Reporting      | 3      | Build revenue by technician report                                                                    |
 | T088     | 12     | Reporting      | 4      | Add comparative analysis (vs prior period)                                                            |
 | T198     | 12     | Reporting      | 12     | Job costing / profit per job                                                                          |
+| T246     | 12     | Perf           | 3      | Lazy-load / trim Sentry and PostHog (109 KB gzipped on every page)                                    |
 | T074     | 13     | Auth           | 3      | Create Accountant role                                                                                |
 | T075     | 13     | Auth           | 12     | Add field-level permission controls                                                                   |
 | T092     | 13     | Auth           | 6      | Implement 2FA (TOTP)                                                                                  |
@@ -2038,9 +2039,9 @@ QuickBooks (the #1 B2B buying gate), import mappers, and partner integrations in
 
 ---
 
-### Phase 12 — Reporting & Dashboards (T045, T046, T047, T066, T067, T068, T069, T070, T071, T084, T085, T086, T087, T088, T198)
+### Phase 12 — Reporting & Dashboards (T045, T046, T047, T066, T067, T068, T069, T070, T071, T084, T085, T086, T087, T088, T198, T246)
 
-Dashboard widgets and reports from the old TODO plus job costing. All tenant-scoped and in tenant timezone/currency. **15 open tasks, ~53h.**
+Dashboard widgets and reports from the old TODO plus job costing. All tenant-scoped and in tenant timezone/currency. **16 open tasks, ~56h.**
 
 - [ ] T045 — Add aging quotes dashboard widget
 - [ ] T046 — Add follow-up queue dashboard widget
@@ -2057,6 +2058,7 @@ Dashboard widgets and reports from the old TODO plus job costing. All tenant-sco
 - [ ] T087 — Build revenue by technician report
 - [ ] T088 — Add comparative analysis (vs prior period)
 - [ ] T198 — Job costing / profit per job
+- [ ] T246 — Lazy-load / trim Sentry and PostHog (109 KB gzipped on every page)
 
 #### T045 — Add aging quotes dashboard widget
 
@@ -2265,6 +2267,20 @@ Dashboard widgets and reports from the old TODO plus job costing. All tenant-sco
 **Why we need it** — Owners don't know which jobs or contracts lose money; a known Jobber weakness.
 
 **Notes** — `docs/product/competitive-research-2026-10.md` §1.3 (Jobber "weak job costing"), §3.
+
+---
+
+#### T246 — Lazy-load / trim Sentry and PostHog (109 KB gzipped on every page)
+
+**Phase**: 12 · **Category**: Perf · **Hours**: 3 · **Status**: Open · **v1 Gate**: No · **Depends on**: none
+
+**What it is** — Error tracking and analytics stop costing ~109 KB gzipped of JavaScript on first load.
+
+**What it does** — Load PostHog after first paint (dynamic import, queue early events), drop PostHog features we don't use (session recording/surveys bundle), and trim Sentry (no Replay unless enabled; `@sentry/browser` tree-shaking). Lower the `vendor-observability` budget in `frontend/scripts/analyze-bundle.cjs` to the new size; aim for total JS under the 400 KB target.
+
+**Why we need it** — Field techs on phones on cell data pay for this on every page load; total JS is 471 KB against a 400 KB target.
+
+**Notes** — Found while repairing CI (2026-10-16), when the catch-all vendor chunk failed its budget.
 
 ---
 
