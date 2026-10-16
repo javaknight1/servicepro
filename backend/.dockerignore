@@ -1,39 +1,43 @@
-# Binaries
-*.exe
-*.exe~
-*.dll
-*.so
-*.dylib
-main
-bin/
-pkg/
+# Build context for backend/Dockerfile. Everything the binaries need is Go
+# source plus embedded files (migrations/*.sql, templates/**); keep the rest out.
 
-# Test files
+# Local binaries and build output
+main
+server
+migrate
+bin/
+*.exe
 *.test
 *.out
-coverage.*
+coverage*
 *.coverprofile
 
-# Development files
+# Secrets and local env
 .env
-.env.local
-*.tmp
-tmp/
-.air.toml
+.env.*
 
-# IDE
+# Generated swagger docs: regenerated inside the image by `go tool swag`
+docs/
+
+# Not needed in the image
+node_modules/
+exports/
+generated_pdfs/
+internal/services/test_exports/
+tests/
+seeds/
+fly.toml
+README.md
+.air.toml
+tmp/
+*.tmp
+
+# Tooling / VCS / OS
+.git/
+.gitignore
+.golangci.yml
 .idea/
 .vscode/
 *.swp
 *.swo
-
-# Git
-.git/
-.gitignore
-
-# Documentation
-README.md
-docs/
-
-# OS
 .DS_Store
