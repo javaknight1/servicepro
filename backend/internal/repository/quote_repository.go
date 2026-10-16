@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -264,51 +265,53 @@ func (r *QuoteRepository) DeleteItem(id uuid.UUID) error {
 
 // UpdateStatus updates the status of a quote
 func (r *QuoteRepository) UpdateStatus(id uuid.UUID, status models.QuoteStatus) error {
-	return r.db.Model(&models.Quote{}).
+	return r.db.Session(&gorm.Session{SkipHooks: true}).Model(&models.Quote{}).
 		Where("id = ?", id).
 		Update("status", status).Error
 }
 
-// MarkAsSent marks a quote as sent
+// ErrQuoteStatusConflict is returned when a quote is no longer in a status
+// that allows the requested change (e.g. it was accepted or declined by
+// someone else in the meantime, or has expired).
+var ErrQuoteStatusConflict = errors.New("quote cannot be changed in its current status")
+
+// transition changes a quote's status only if it is still in one of from
+// (and, when requireValid, not past valid_until). The check and the write
+// are one conditional UPDATE, so two people accepting/declining at once
+// can't both succeed (audit 7.M6): the loser affects 0 rows.
+func (r *QuoteRepository) transition(id uuid.UUID, from []models.QuoteStatus, to models.QuoteStatus, requireValid bool) error {
+	// SkipHooks: Quote.BeforeUpdate validates the whole (here empty) model and
+	// would reject every status-only update.
+	q := r.db.Session(&gorm.Session{SkipHooks: true}).Model(&models.Quote{}).Where("id = ? AND status IN ?", id, from)
+	if requireValid {
+		q = q.Where("valid_until > ?", time.Now())
+	}
+	res := q.Update("status", to)
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		if _, err := r.GetByID(id); err != nil {
+			return err // not found (or not this tenant's)
+		}
+		return ErrQuoteStatusConflict
+	}
+	return nil
+}
+
+// MarkAsSent marks a draft quote as sent
 func (r *QuoteRepository) MarkAsSent(id uuid.UUID) error {
-	quote, err := r.GetByID(id)
-	if err != nil {
-		return err
-	}
-
-	if !quote.CanSend() {
-		return fmt.Errorf("quote cannot be sent in current status: %s", quote.Status)
-	}
-
-	return r.UpdateStatus(id, models.QuoteStatusSent)
+	return r.transition(id, []models.QuoteStatus{models.QuoteStatusDraft}, models.QuoteStatusSent, true)
 }
 
-// MarkAsAccepted marks a quote as accepted
+// MarkAsAccepted marks a sent (or viewed), unexpired quote as accepted
 func (r *QuoteRepository) MarkAsAccepted(id uuid.UUID) error {
-	quote, err := r.GetByID(id)
-	if err != nil {
-		return err
-	}
-
-	if !quote.CanAccept() {
-		return fmt.Errorf("quote cannot be accepted in current status: %s", quote.Status)
-	}
-
-	return r.UpdateStatus(id, models.QuoteStatusAccepted)
+	return r.transition(id, []models.QuoteStatus{models.QuoteStatusSent, models.QuoteStatusViewed}, models.QuoteStatusAccepted, true)
 }
 
-// MarkAsRejected marks a quote as rejected
+// MarkAsRejected marks a sent (or viewed) quote as declined
 func (r *QuoteRepository) MarkAsRejected(id uuid.UUID) error {
-	quote, err := r.GetByID(id)
-	if err != nil {
-		return err
-	}
-
-	if !quote.CanReject() {
-		return fmt.Errorf("quote cannot be rejected in current status: %s", quote.Status)
-	}
-
-	return r.UpdateStatus(id, models.QuoteStatusDeclined)
+	return r.transition(id, []models.QuoteStatus{models.QuoteStatusSent, models.QuoteStatusViewed}, models.QuoteStatusDeclined, false)
 }
 
 // GetQuoteCount returns the total number of quotes
