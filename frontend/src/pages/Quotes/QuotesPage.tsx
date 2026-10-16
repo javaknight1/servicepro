@@ -13,7 +13,7 @@ import {
 import type { Column } from '@components/shared';
 import { quoteService, QuoteFilters } from '@services/quoteService';
 import { isQuoteSortField, type Quote } from '@app-types/quote';
-import { FileText, Plus, Search } from 'lucide-react';
+import { FileText, Plus, Search, X } from 'lucide-react';
 import { QuoteActionsMenu } from '@components/quotes';
 import { formatDollars } from '@/utils/money';
 
@@ -38,6 +38,8 @@ export function QuotesPage() {
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  // A failed row action (send/accept/decline/PDF), shown above the table
+  const [actionError, setActionError] = useState<string | null>(null);
   // Ignore responses from superseded requests (fast paging/searching)
   const requestIdRef = useRef(0);
   const [filters, setFilters] = useState<QuoteFilters>({
@@ -69,6 +71,11 @@ export function QuotesPage() {
     } finally {
       if (requestId === requestIdRef.current) setIsLoading(false);
     }
+  };
+
+  const handleActionDone = () => {
+    setActionError(null);
+    loadQuotes();
   };
 
   // Apply a search term (back to page 1); a no-op when it hasn't changed so
@@ -161,8 +168,9 @@ export function QuotesPage() {
         <QuoteActionsMenu
           quoteId={row.id}
           status={row.status}
-          onQuoteSent={loadQuotes}
-          onStatusChange={loadQuotes}
+          onQuoteSent={handleActionDone}
+          onStatusChange={handleActionDone}
+          onError={setActionError}
         />
       ),
     },
@@ -200,6 +208,23 @@ export function QuotesPage() {
             />
           </div>
         </form>
+
+        {actionError && (
+          <div
+            role="alert"
+            className="mb-4 flex items-start justify-between gap-3 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700"
+          >
+            <span>{actionError}</span>
+            <button
+              type="button"
+              onClick={() => setActionError(null)}
+              aria-label="Dismiss"
+              className="text-red-500 hover:text-red-700"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        )}
 
         {loadError ? (
           <ErrorState
