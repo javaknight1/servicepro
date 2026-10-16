@@ -62,23 +62,23 @@
 
 ## v1 Launch Gate
 
-The minimum subset that must be done before real (paying) customers: **69 tasks, ~418h**. Everything else is post-launch growth or depth. The invite-gated preview (T205) needs only Phase 1 plus T106/T204/T206; the gate below is for opening to paying customers. Phase 4's gating subset is the parts of the stack that touch auth, tenancy, email and storage; the chi and pgx ports are not gating.
+The minimum subset that must be done before real (paying) customers: **64 tasks, ~409h**. Everything else is post-launch growth or depth. The invite-gated preview (T205) needs only Phase 1 plus T106/T204/T206; the gate below is for opening to paying customers. Phase 4's gating subset is the parts of the stack that touch auth, tenancy, email and storage; the chi and pgx ports are not gating.
 
-| Phase                                                | Gating tasks                                                                                             |
-|------------------------------------------------------|----------------------------------------------------------------------------------------------------------|
-| Phase 1 — Security Remediation                       | **All** — T102, T103, T104, T105, T106, T107, T108, T109, T110, T111, T112, T113, T114, T115, T116, T117 |
-| Phase 2 — Correctness & Cleanup                      | T118, T119, T120, T121, T122, T123, T124, T126, T130, T131, T132, T133, T136, T224, T225                 |
-| Phase 3 — Platform & Delivery                        | ~~T139~~, ~~T140~~, ~~T141~~, ~~T142~~, ~~T143~~, ~~T144~~, ~~T145~~, ~~T146~~, ~~T150~~, ~~T151~~       |
-| Phase 4 — Stack Convergence (LL parity; incremental) | T153, T154, T158, T159, T160                                                                             |
-| Phase 5 — Core Workflow & Quoting                    | T028, T029, T030, T035, T167                                                                             |
-| Phase 6 — Payments to the Business                   | T169, T170, T061, T063                                                                                   |
-| Phase 7 — Dispatch & Field                           | T173, T174, T176                                                                                         |
-| Phase 8 — Customer Communications                    | T048, T049, T050                                                                                         |
-| Phase 9 — Customer Self-Service                      | T183, T081                                                                                               |
-| Phase 10 — Commercial/B2B Wedge                      | T186                                                                                                     |
-| Phase 11 — Integrations & Migration                  | T192, T193                                                                                               |
-| Phase 14 — Hosting & Launch Readiness                | T202, T203, T204, T205, T206, T207, T208, T209, T210, T211, T212, T213                                   |
-| Phase 16 — Go-to-Market                              | T218                                                                                                     |
+| Phase                                                | Gating tasks                                                                                                 |
+|------------------------------------------------------|--------------------------------------------------------------------------------------------------------------|
+| Phase 1 — Security Remediation                       | **All** — T102, T103, T104, T105, T106, T107, T108, T109, T110, T111, T112, T113, T114, T115, T116, T117     |
+| Phase 2 — Correctness & Cleanup                      | T118, T119, T120, T121, T122, T123, T124, T126, ~~T130~~, ~~T131~~, ~~T132~~, ~~T133~~, ~~T136~~, T224, T225 |
+| Phase 3 — Platform & Delivery                        | ~~T139~~, ~~T140~~, ~~T141~~, ~~T142~~, ~~T143~~, ~~T144~~, ~~T145~~, ~~T146~~, ~~T150~~, ~~T151~~           |
+| Phase 4 — Stack Convergence (LL parity; incremental) | T153, T154, T158, T159, T160                                                                                 |
+| Phase 5 — Core Workflow & Quoting                    | T028, T029, T030, T035, T167                                                                                 |
+| Phase 6 — Payments to the Business                   | T169, T170, T061, T063                                                                                       |
+| Phase 7 — Dispatch & Field                           | T173, T174, T176                                                                                             |
+| Phase 8 — Customer Communications                    | T048, T049, T050                                                                                             |
+| Phase 9 — Customer Self-Service                      | T183, T081                                                                                                   |
+| Phase 10 — Commercial/B2B Wedge                      | T186                                                                                                         |
+| Phase 11 — Integrations & Migration                  | T192, T193                                                                                                   |
+| Phase 14 — Hosting & Launch Readiness                | T202, T203, T204, T205, T206, T207, T208, T209, T210, T211, T212, T213                                       |
+| Phase 16 — Go-to-Market                              | T218                                                                                                         |
 
 **Explicitly NOT in the launch gate** (ship without them):
 
@@ -132,6 +132,15 @@ The minimum subset that must be done before real (paying) customers: **69 tasks,
 | ~~T043~~ | ~~0~~ | ~~Email~~      | ~~—~~ | ~~Wire payment reminder notifications~~                                                               |
 | ~~T053~~ | ~~0~~ | ~~Feature~~    | ~~—~~ | ~~Add "Repeat Job" button on customer detail~~                                                        |
 | ~~T100~~ | ~~0~~ | ~~Feature~~    | ~~—~~ | ~~Add business hours & timezone to org settings~~                                                     |
+| ~~T130~~ | ~~2~~ | ~~Bug~~        | ~~1~~ | ~~Login error swallowed by the refresh interceptor~~                                                  |
+| ~~T131~~ | ~~2~~ | ~~Bug~~        | ~~1~~ | ~~Public payment result pages for the /pay/:token flow~~                                              |
+| ~~T132~~ | ~~2~~ | ~~Security~~   | ~~2~~ | ~~Clear tenant and user data on logout and tenant switch~~                                            |
+| ~~T133~~ | ~~2~~ | ~~Bug~~        | ~~2~~ | ~~Job times entered and shown in the tenant's timezone, stored as true UTC~~                          |
+| ~~T134~~ | ~~2~~ | ~~Security~~   | ~~1~~ | ~~Strip sensitive query params from analytics and error breadcrumbs~~                                 |
+| ~~T135~~ | ~~2~~ | ~~Frontend~~   | ~~4~~ | ~~Frontend medium-severity sweep~~                                                                    |
+| ~~T136~~ | ~~2~~ | ~~Testing~~    | ~~3~~ | ~~Green frontend test suite and lint~~                                                                |
+| ~~T137~~ | ~~2~~ | ~~Cleanup~~    | ~~3~~ | ~~Frontend dead-code removal (~18.5k unreachable lines)~~                                             |
+| ~~T138~~ | ~~2~~ | ~~UX~~         | ~~2~~ | ~~Preview polish: honest contact form, legal pages marked draft, favicon~~                            |
 | ~~T139~~ | ~~3~~ | ~~DB~~         | ~~4~~ | ~~golang-migrate baseline (000001), cmd/migrate, dev-only startup migrations~~                        |
 | ~~T140~~ | ~~3~~ | ~~Backend~~    | ~~2~~ | ~~/version endpoint and schema-aware readiness~~                                                      |
 | ~~T141~~ | ~~3~~ | ~~Backend~~    | ~~4~~ | ~~Background tickers → internal job endpoints + scheduled-jobs workflow~~                             |
@@ -174,15 +183,6 @@ The minimum subset that must be done before real (paying) customers: **69 tasks,
 | T127     | 2     | Backend        | 3     | Backend reads tenant settings: currency, number prefixes, defaults                                    |
 | T128     | 2     | Backend        | 4     | Exports safe on multiple instances (object storage + persisted progress)                              |
 | T129     | 2     | Cleanup        | 4     | Backend dead-code removal and a stricter linter                                                       |
-| T130     | 2     | Bug            | 1     | Login error swallowed by the refresh interceptor                                                      |
-| T131     | 2     | Bug            | 1     | Public payment result pages for the /pay/:token flow                                                  |
-| T132     | 2     | Security       | 2     | Clear tenant and user data on logout and tenant switch                                                |
-| T133     | 2     | Bug            | 2     | Job times entered and shown in the tenant's timezone, stored as true UTC                              |
-| T134     | 2     | Security       | 1     | Strip sensitive query params from analytics and error breadcrumbs                                     |
-| T135     | 2     | Frontend       | 4     | Frontend medium-severity sweep                                                                        |
-| T136     | 2     | Testing        | 3     | Green frontend test suite and lint                                                                    |
-| T137     | 2     | Cleanup        | 3     | Frontend dead-code removal (~18.5k unreachable lines)                                                 |
-| T138     | 2     | UX             | 2     | Preview polish: honest contact form, legal pages marked draft, favicon                                |
 | T223     | 2     | Backend        | 4     | Request IDs and a standard API error envelope                                                         |
 | T224     | 2     | Bug            | 4     | Quote correctness: lost customer edits, accept race, expiry, editable sent quotes                     |
 | T225     | 2     | Bug            | 4     | Invoice totals: one server-side recalculation, tax/discount order, no double invoicing                |
@@ -616,8 +616,17 @@ Work completed under the old P0–P3/sprint TODO. Details are in Verified Comple
 
 ### Phase 2 — Correctness & Cleanup (T118, T119, T120, T121, T122, T123, T124, T125, T126, T127, T128, T129, T130, T131, T132, T133, T134, T135, T136, T137, T138, T223, T224, T225, T226)
 
-Money flows that are wired but broken (payments don't update invoices, reminders never sent, numbering wedges, a panicking webhook), frontend bugs users would hit in the preview, and dead code. From `docs/audits/2026-10-16/backend-correctness.md` and `docs/audits/2026-10-16/frontend.md`. **25 open tasks, ~69h.**
+Money flows that are wired but broken (payments don't update invoices, reminders never sent, numbering wedges, a panicking webhook), frontend bugs users would hit in the preview, and dead code. From `docs/audits/2026-10-16/backend-correctness.md` and `docs/audits/2026-10-16/frontend.md`. **16 open tasks, ~50h.** 9 done.
 
+- [x] T130 — Login error swallowed by the refresh interceptor ✓ (2026-10-16)
+- [x] T131 — Public payment result pages for the /pay/:token flow ✓ (2026-10-16)
+- [x] T132 — Clear tenant and user data on logout and tenant switch ✓ (2026-10-16)
+- [x] T133 — Job times entered and shown in the tenant's timezone, stored as true UTC ✓ (2026-10-16)
+- [x] T134 — Strip sensitive query params from analytics and error breadcrumbs ✓ (2026-10-16)
+- [x] T135 — Frontend medium-severity sweep ✓ (2026-10-16)
+- [x] T136 — Green frontend test suite and lint ✓ (2026-10-16)
+- [x] T137 — Frontend dead-code removal (~18.5k unreachable lines) ✓ (2026-10-16)
+- [x] T138 — Preview polish: honest contact form, legal pages marked draft, favicon ✓ (2026-10-16)
 - [ ] T118 — Recording a payment updates the invoice balance and status
 - [ ] T119 — Stripe Checkout charges the true balance due
 - [ ] T120 — Invoice and job numbering survives soft-delete and concurrency
@@ -630,15 +639,6 @@ Money flows that are wired but broken (payments don't update invoices, reminders
 - [ ] T127 — Backend reads tenant settings: currency, number prefixes, defaults
 - [ ] T128 — Exports safe on multiple instances (object storage + persisted progress)
 - [ ] T129 — Backend dead-code removal and a stricter linter
-- [ ] T130 — Login error swallowed by the refresh interceptor
-- [ ] T131 — Public payment result pages for the /pay/:token flow
-- [ ] T132 — Clear tenant and user data on logout and tenant switch
-- [ ] T133 — Job times entered and shown in the tenant's timezone, stored as true UTC
-- [ ] T134 — Strip sensitive query params from analytics and error breadcrumbs
-- [ ] T135 — Frontend medium-severity sweep
-- [ ] T136 — Green frontend test suite and lint
-- [ ] T137 — Frontend dead-code removal (~18.5k unreachable lines)
-- [ ] T138 — Preview polish: honest contact form, legal pages marked draft, favicon
 - [ ] T223 — Request IDs and a standard API error envelope
 - [ ] T224 — Quote correctness: lost customer edits, accept race, expiry, editable sent quotes
 - [ ] T225 — Invoice totals: one server-side recalculation, tax/discount order, no double invoicing
@@ -809,132 +809,6 @@ Money flows that are wired but broken (payments don't update invoices, reminders
 **Why we need it** — 476 unreachable functions and ~10–12k lines inflate every later migration (chi, pgx) and hide real bugs; the permissive linter is why swallowed errors built up.
 
 **Notes** — correctness audit §0, §4.4–4.6, §5, §6. Do before T155/T156 — the audit estimates ~30% less chi work after deletion.
-
----
-
-#### T130 — Login error swallowed by the refresh interceptor
-
-**Phase**: 2 · **Category**: Bug · **Hours**: 1 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: none
-
-**What it is** — A wrong password shows an error on the login page instead of a silent reload.
-
-**What it does** — In `frontend/src/services/api.ts:56-77` skip the 401 → refresh → `window.location.href='/login'` path for `/v1/auth/*` URLs, navigate via the router instead of a hard reload, and make refresh single-flight (a shared `refreshPromise`; the Dashboard fires 6 parallel requests, `DashboardPage.tsx:83-105`). Preserve deep links: `ProtectedRoute.tsx:20-22` should pass `state.from` and `LoginPage.tsx:43` should use the unused `getPostLoginRedirect()` (`routes/index.tsx:547`). Update `tests/integration/auth.integration.test.tsx`.
-
-**Why we need it** — The login endpoint returns 401 for bad credentials (`auth_handler.go:68,126,140`), so today a mistyped password blanks the form and `LoginPage`'s `setError` (`:44-49`) never renders. Emailed `/invoices/:id` links lose their target after login.
-
-**Notes** — frontend audit 3.1, 3.8.
-
----
-
-#### T131 — Public payment result pages for the /pay/:token flow
-
-**Phase**: 2 · **Category**: Bug · **Hours**: 1 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: none
-
-**What it is** — End customers who pay through the public link land on public success/cancelled pages, not the staff login.
-
-**What it does** — Add public routes (e.g. `/pay/success`, `/pay/cancelled`) with no tenant chrome, and point the Checkout success/cancel URLs at them (`backend/internal/api/routes/services.go:129-130`, built from `FRONTEND_URL`). Keep the staff-side deep link under `ProtectedRoute`. Update `tests/integration/invoice.integration.test.tsx`.
-
-**Why we need it** — `/invoices/payment-success|cancelled` sit inside `ProtectedRoute` (`routes/index.tsx:444-452`) while checkout starts from the public `GET /pay/:token` (`invoices_routes.go:96`), so a customer who just paid is dumped on `/login`.
-
-**Notes** — frontend audit 3.2.
-
----
-
-#### T132 — Clear tenant and user data on logout and tenant switch
-
-**Phase**: 2 · **Category**: Security · **Hours**: 2 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: none
-
-**What it is** — Logging out or switching tenant leaves no previous user's or tenant's data in the browser, and the `X-Tenant-ID` header always matches the validated current tenant.
-
-**What it does** — Drop `persistQueryClient` (`providers/QueryProvider.tsx:85-140`; there's no offline use case), or at least include `tenantId` in every query key (`['quotes', filters]`, `useRoles.ts:14-22`, …). On logout (`store/authStore.ts:70-87`) and tenant switch (`TenantSwitcher.tsx:42-44`): `queryClient.clear()`, reset the tenant store and remove `current_tenant_id`. Derive `X-Tenant-ID` from the store, not a separate localStorage key (`api.ts:33-45`); validate the persisted tenant against the freshly loaded list and write it when `loadTenants` picks `tenants[0]` (`tenantStore.ts:31-42`).
-
-**Why we need it** — On a shared office PC, user B sees user A's cached customers, quotes, roles and A/R for up to the 5-minute stale time, and B's requests carry A's tenant header.
-
-**Notes** — frontend audit 2.2, 2.3. Backend membership check on the header is T104. T162 later replaces the query layer with tenant-scoped key factories.
-
----
-
-#### T133 — Job times entered and shown in the tenant's timezone, stored as true UTC
-
-**Phase**: 2 · **Category**: Bug · **Hours**: 2 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: none
-
-**What it is** — A job scheduled for 09:00 shows at 09:00 everywhere — form, calendar and backend logic — in the tenant's timezone.
-
-**What it does** — `utils/epoch.ts:5-26` treats the `datetime-local` value as UTC (`value + ':00Z'`) while `JobCalendarPage.tsx:34-38` renders browser-local time. Convert inputs from the tenant timezone (`currentTenant.settings.timezone`, set via T100) with `@date-fns/tz`, store true UTC epoch, render the calendar in the tenant timezone. Fix the min/max bounds (`JobDetailPage.tsx:91-102`) and uses at `:184,256,289,318,563`. Also: default invoice/quote dates from `new Date().toISOString()` become tomorrow after ~7–8 pm in US zones (`InvoiceDetailPage.tsx:103-104`, `QuoteDetailPage.tsx:82,147`), and due/valid-until dates are sent as `T23:59:59Z` (`InvoiceDetailPage.tsx:265-268`, `QuoteDetailPage.tsx:232`).
-
-**Why we need it** — For an EDT dispatcher a 09:00 job shows at 05:00 on the calendar, and reminders and conflict detection see 05:00 local.
-
-**Notes** — frontend audit 3.3. Backend half (conflict detection, days overdue) is T099.
-
----
-
-#### T134 — Strip sensitive query params from analytics and error breadcrumbs
-
-**Phase**: 2 · **Category**: Security · **Hours**: 1 · **Status**: Open · **v1 Gate**: No · **Depends on**: none
-
-**What it is** — Reset, verification and invitation tokens never leave the browser to PostHog or Sentry.
-
-**What it does** — `App.tsx:9-17` `PageViewTracker` sends `location.search` on every navigation, so `/reset-password?token=…` (`ResetPasswordPage.tsx:40`), `/verify-email?token=…` and `/invitations/accept?token=…` ship single-use secrets to PostHog. Strip `search` (or allow-list params) before `trackEvent`; add a Sentry `beforeBreadcrumb` that drops `token=` (the existing `sanitizeData` in `services/errorTracking/sentry.ts:204` redacts by key name, not URL). Use `params: {token}` in `authApi.verifyEmail` (`api.ts:111`).
-
-**Why we need it** — Single-use account secrets are currently sent to a third party on every page view.
-
-**Notes** — frontend audit 2.4, 2.5.
-
----
-
-#### T135 — Frontend medium-severity sweep
-
-**Phase**: 2 · **Category**: Frontend · **Hours**: 4 · **Status**: Open · **v1 Gate**: No · **Depends on**: none
-
-**What it is** — Lists show errors as errors, pickers handle more than 100 customers, money is formatted by one helper, and a few stray fetch/Sentry settings are fixed.
-
-**What it does** — (1) Error vs empty states: `CustomersPage.tsx:34-48` sends errors to `console.error` and renders "No customers yet" (`:143`); `handleSearch` (`:50-54`) fires a double request with no ordering guard — same pattern across the ~26 `useEffect` pages; add `isError` UI. (2) Customer pickers capped at `page_size: 100` (`InvoiceDetailPage.tsx:112`, `QuoteDetailPage.tsx:90`, `JobDetailPage.tsx:162`) → async search combobox. (3) Tax-rate input shows `7.000000000000001` (`InvoiceDetailPage.tsx:127-129`, `QuoteDetailPage.tsx:105-107`); client totals use unrounded float math (`InvoiceDetailPage.tsx:236-252,682-685`, `QuoteDetailPage.tsx:203-218,622-625`). (4) Ten `formatCurrency` implementations, some taking cents and some dollars (`types/payment.ts:295`, `types/membership.ts:130` divide by 100) → one `utils/money.ts` with `formatCents`/`formatDollars`, tenant currency. (5) `components/payments/methods/AddPaymentMethod.tsx:88` uses raw `fetch` bypassing the axios instance (dead today — delete with T137 unless T171 revives it). (6) Sentry `tracePropagationTargets` (`services/errorTracking/sentry.ts:93`) point at `*.servicepro.com`; use same-origin `/api` and `servicepro.sharkfins.xyz`. (7) Lazy-load posthog-js and Sentry Replay (`main.tsx:5-18`, ~340 KB `vendor` chunk) and move `@sentry/react` from devDependencies to dependencies.
-
-**Why we need it** — A backend hiccup currently looks like "you have no customers"; tenants with 101+ customers can't invoice the 101st; mixing cents and dollars helpers with the same name is a latent 100× display bug.
-
-**Notes** — frontend audit 1.3, 3.4, 3.5, 3.6, 3.7. Items 1 and 3.7 are fully solved by T162.
-
----
-
-#### T136 — Green frontend test suite and lint
-
-**Phase**: 2 · **Category**: Testing · **Hours**: 3 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: none
-
-**What it is** — `npm run lint` and `vitest run` pass with no retries, on a pinned Node version.
-
-**What it does** — Fix the 8 lint warnings (`--max-warnings 0`), including the real `exhaustive-deps` one at `InvoiceDetailPage.tsx:107`. Fix the 87 failing tests: stub `document.elementFromPoint` in `src/test/setup.ts` (react-big-calendar DnD, 142 errors); delete the tests for removed subscription components (`tests/components/subscriptions/*`) and `types/subscription.ts`; update the auth store mock (`checkAuth`); stub `localStorage` explicitly (Node ≥ 25's experimental global shadows jsdom's); update integration tests whose text/role queries no longer match. Remove `retry: 1` (`vite.config.ts:166`), resolve the 2 skipped tests, replace deprecated `test.deps.inline` (`:142-145`). Node pinned via `frontend/.nvmrc` (22) + `engines`.
-
-**Why we need it** — A red suite with retries makes CI meaningless, and CLAUDE.md requires the integration tests to track the workflows.
-
-**Notes** — frontend audit 1.1, 1.2. Gating input for T145 (CI rewrite).
-
----
-
-#### T137 — Frontend dead-code removal (~18.5k unreachable lines)
-
-**Phase**: 2 · **Category**: Cleanup · **Hours**: 3 · **Status**: Open · **v1 Gate**: No · **Depends on**: none
-
-**What it is** — The frontend contains only code reachable from the router, and the ts-prune baseline is no longer needed.
-
-**What it does** — Delete: `components/templates/*` (no route), `components/payments/*` (stories/tests only), `components/{charts,kpi,skeletons,filters}/*`, `store/kpiStore.tsx`, `components/OptimizedImage.tsx`, the unused `components/quotes/*` (keep `QuoteActionsMenu`) and `quotes/utils/pdfGenerator.tsx` with `@react-pdf/renderer`, `hooks/useWebSocket.ts`, `services/realtime/*`, `hooks/useCache.ts`, the never-registered service worker (`service-worker.ts`, `utils/registerServiceWorker.tsx`) with `vite-plugin-pwa` and Workbox. Remove duplicate `Skeleton`, `DateRangePicker`, `theme/colors.ts`, the second loading/preload system and no-op `webpackChunkName` comments. Delete tracked scaffolding docs (`SETUP_SUMMARY.md`, `TEMPLATE_SYSTEM.md`, `components/quotes/*.md`, `components/roles/IMPLEMENTATION_SUMMARY.md`). Drop `.dead-code-baseline.json` once the baseline is empty.
-
-**Why we need it** — Dead code is most of the failing tests and misleading docs, and it multiplies the cost of T162–T164.
-
-**Notes** — frontend audit 4.1–4.3. Folds in the old P2 "Review Barrel Export Files" item. T018 (Feb 2026) removed an earlier ~2.7k lines. Do before T162–T164.
-
----
-
-#### T138 — Preview polish: honest contact form, legal pages marked draft, favicon
-
-**Phase**: 2 · **Category**: UX · **Hours**: 2 · **Status**: Open · **v1 Gate**: No · **Depends on**: none
-
-**What it is** — The public pages don't pretend: the contact form really sends, legal pages say they are drafts, and the site has icons and its own font.
-
-**What it does** — Wire `pages/Contact/ContactPage.tsx:23-27` (currently a `setTimeout` then "success") to an API endpoint that emails support, or replace it with `mailto:`. Mark Privacy/Terms (`pages/Legal/*Page.tsx:44` TODOs) "Draft — under review" with a fixed date instead of `Last updated: {today}` (`:40`). Replace the About page placeholder story (`AboutPage.tsx:62`). Add a favicon and the manifest icons (`public/` holds only `.gitkeep`; `index.html:5` references `/vite.svg`; `vite.config.ts:35-45` references `/icon-192.png`, `/icon-512.png`). Self-host Inter (`@fontsource-variable/inter`) instead of Google Fonts.
-
-**Why we need it** — Messages from prospects are silently dropped today, and the placeholder legal text and generic tab icon read as "template" to anyone invited.
-
-**Notes** — frontend audit 3.9, §7. Folds in the old P2 "Complete Footer Links" item (the pages now exist). Real legal review is T207.
 
 ---
 
@@ -3309,6 +3183,15 @@ Dated history from the original "Completed Items" list:
 
 ### 2026-10-16 — audit remediation session
 
+- **T130** — Login error swallowed by the refresh interceptor. The 401 refresh/redirect interceptor skips auth endpoints (login, register, refresh, logout, reset, verify) so login errors show; concurrent 401s share one refresh; tests (`src/services/__tests__/api.interceptor.test.ts`).
+- **T131** — Public payment result pages for the /pay/:token flow. `/invoices/payment-success` and `/invoices/payment-cancelled` (the URLs the backend already sends to Stripe) moved outside the auth guard; test.
+- **T132** — Clear tenant and user data on logout and tenant switch. Persisted React Query cache keyed by app version + user + tenant; logout, session expiry and a different user's login clear the in-memory and persisted cache, tenant state, `current_tenant_id` and `X-Tenant-ID`; tenant switch clears the query cache; tests.
+- **T133** — Job times entered and shown in the tenant's timezone, stored as true UTC. Job form, limits, list/detail/history/conflict displays and calendar use the tenant timezone (`settings.timezone`, browser fallback) via `Intl`; storage stays UTC; tests for EDT/EST/DST/Pacific/Honolulu + two job integration tests.
+- **T134** — Strip sensitive query params from analytics and error breadcrumbs. Query-param allowlist applied to PostHog page views + `before_send` and to Sentry events, transactions and breadcrumbs — tokens, codes, emails and Stripe session ids no longer leave the browser; tests.
+- **T135** — Frontend medium-severity sweep. Error + retry states on Customers/Jobs/Quotes/Invoices; customer pickers page past the 100 cap; one money utility (`src/utils/money.ts`: `formatDollars` for API decimals, `formatCents` for Stripe cents); tax rate display rounded; Sentry trace targets same-origin `/api` + localhost; `AddPaymentMethod` (raw fetch) removed as dead code. Not fixed: the quotes list search box is ignored by `getQuotes` (follow-up).
+- **T136** — Green frontend test suite and lint. In-memory storage stubs make the suite pass on Node 20/22 and ≥25; `document.elementFromPoint` polyfill; broken tests repaired, integration tests rewritten to the current UI (many silently passed behind `if (element)` guards); `retry: 1` removed; lint at zero warnings. 850 passed, 1 skipped (invalid-email login test blocked by native validation).
+- **T137** — Frontend dead-code removal (~18.5k unreachable lines). ~19k lines of unreachable source (~43k with tests/stories) removed after tracing imports from `src/main.tsx`: templates, payments, charts, kpi, filters, export, skeletons, realtime/WebSocket, unregistered service worker + PWA plugin; dropped `@react-pdf/renderer`, workbox, `vite-plugin-pwa`, `@tanstack/react-table`; dead-code baseline regenerated.
+- **T138** — Preview polish: honest contact form, legal pages marked draft, favicon. Contact form opens a mailto to `VITE_SUPPORT_EMAIL` (default support@sharkfins.xyz) instead of faking success; placeholder phone/address removed; Privacy/Terms marked 'Draft — pending legal review' (fixed date 2026-10-16); SVG favicon + apple-touch icon.
 - **T139** — golang-migrate baseline (000001), cmd/migrate, dev-only startup migrations. golang-migrate baseline `000001_initial_schema` (snapshot of the old 001_schema.sql) + `000002` (fixes `v_ar_aging_summary`, which never applied), embedded via `migrations/embed.go`; `cmd/migrate` (up/down/version/force; down refused in production); legacy DBs adopted at v1; `RUN_MIGRATIONS_ON_STARTUP` (dev default on). Dev seed moved to `backend/seeds/dev_seed.sql`.
 - **T140** — /version endpoint and schema-aware readiness. Root `GET /version` `{git_sha, app_version}` from `APP_VERSION`/`GIT_SHA`; hardcoded `/api/v1/version` removed; `/health` + `/health/ready` include version; readiness reports schema ok/ahead/behind/dirty and returns 503 on behind/dirty (rechecked every 30s).
 - **T141** — Background tickers → internal job endpoints + scheduled-jobs workflow. `POST /internal/jobs/payment-reminders` (header `X-Internal-Jobs-Token` = `INTERNAL_JOBS_SECRET`, 404 when unset); reminders claimed with `INSERT … ON CONFLICT DO NOTHING` before sending (re-run + concurrent tests); `RUN_BACKGROUND_WORKERS` gates in-process tickers (dev default on); `.github/workflows/scheduled-jobs.yml` hourly, inert until `vars.API_URL`. The analytics aggregator is never started and the webhook 'cleanup' tickers only evict per-instance caches, so they got no endpoints. Also fixed the ambiguous `status` column that stopped every automatic reminder (part of T121).
