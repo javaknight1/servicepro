@@ -2195,9 +2195,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
-                            [key: string]: string;
-                        };
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
             };
@@ -2231,9 +2229,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
-                            [key: string]: string;
-                        };
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
                 /** @description Unauthorized */
@@ -2242,9 +2238,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
-                            [key: string]: string;
-                        };
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
                 /** @description Internal Server Error */
@@ -2253,9 +2247,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
-                            [key: string]: string;
-                        };
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
             };
@@ -2344,9 +2336,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/octet-stream": {
-                            [key: string]: string;
-                        };
+                        "application/octet-stream": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
                 /** @description Internal Server Error */
@@ -2355,9 +2345,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/octet-stream": {
-                            [key: string]: string;
-                        };
+                        "application/octet-stream": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
             };
@@ -2406,9 +2394,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
-                            [key: string]: string;
-                        };
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
                 /** @description Not Found */
@@ -2417,9 +2403,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
-                            [key: string]: string;
-                        };
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
             };
@@ -2474,9 +2458,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
-                            [key: string]: string;
-                        };
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
                 /** @description Not Found */
@@ -2485,9 +2467,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
-                            [key: string]: string;
-                        };
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
             };
@@ -2536,9 +2516,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/octet-stream": {
-                            [key: string]: string;
-                        };
+                        "application/octet-stream": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
                 /** @description Not Found */
@@ -2547,9 +2525,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/octet-stream": {
-                            [key: string]: string;
-                        };
+                        "application/octet-stream": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
                 /** @description Conflict */
@@ -2558,9 +2534,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/octet-stream": {
-                            [key: string]: string;
-                        };
+                        "application/octet-stream": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
             };
@@ -2611,9 +2585,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
-                            [key: string]: string;
-                        };
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
                 /** @description Not Found */
@@ -2622,9 +2594,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
-                            [key: string]: string;
-                        };
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
             };
@@ -2675,9 +2645,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "text/event-stream": {
-                            [key: string]: string;
-                        };
+                        "text/event-stream": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
             };
@@ -7371,7 +7339,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["internal_api_handlers.ErrorResponse"];
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
                 /** @description Not Found */
@@ -7380,7 +7348,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["internal_api_handlers.ErrorResponse"];
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
                 /** @description Internal Server Error */
@@ -7389,7 +7357,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["internal_api_handlers.ErrorResponse"];
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
                 /** @description Service Unavailable */
@@ -7398,7 +7366,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["internal_api_handlers.ErrorResponse"];
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
             };
@@ -7449,7 +7417,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["internal_api_handlers.ErrorResponse"];
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
                 /** @description Not Found */
@@ -7458,7 +7426,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["internal_api_handlers.ErrorResponse"];
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
                 /** @description Internal Server Error */
@@ -7467,7 +7435,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["internal_api_handlers.ErrorResponse"];
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
             };
@@ -7516,7 +7484,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["internal_api_handlers.ErrorResponse"];
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
                 /** @description Not Found */
@@ -7525,7 +7493,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["internal_api_handlers.ErrorResponse"];
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
                 /** @description Invitation expired */
@@ -7534,7 +7502,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["internal_api_handlers.ErrorResponse"];
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
                 /** @description Internal Server Error */
@@ -7543,7 +7511,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["internal_api_handlers.ErrorResponse"];
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
             };
@@ -7598,7 +7566,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["internal_api_handlers.ErrorResponse"];
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
                 /** @description Unauthorized */
@@ -7607,7 +7575,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["internal_api_handlers.ErrorResponse"];
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
                 /** @description Forbidden */
@@ -7616,7 +7584,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["internal_api_handlers.ErrorResponse"];
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
                 /** @description Not Found */
@@ -7625,7 +7593,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["internal_api_handlers.ErrorResponse"];
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
                 /** @description Invitation expired or already used */
@@ -7634,7 +7602,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["internal_api_handlers.ErrorResponse"];
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
                 /** @description Internal Server Error */
@@ -7643,7 +7611,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["internal_api_handlers.ErrorResponse"];
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
             };
@@ -10990,6 +10958,15 @@ export interface paths {
                         "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
+                /** @description Already on this tier */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
                 /** @description Internal Server Error */
                 500: {
                     headers: {
@@ -11182,7 +11159,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["internal_api_handlers.ErrorResponse"];
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
                 /** @description Unauthorized */
@@ -11191,7 +11168,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["internal_api_handlers.ErrorResponse"];
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
                 /** @description Forbidden */
@@ -11200,7 +11177,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["internal_api_handlers.ErrorResponse"];
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
                 /** @description Internal Server Error */
@@ -11209,7 +11186,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["internal_api_handlers.ErrorResponse"];
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
             };
@@ -11251,7 +11228,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["internal_api_handlers.ErrorResponse"];
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
                 /** @description Unauthorized */
@@ -11260,7 +11237,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["internal_api_handlers.ErrorResponse"];
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
                 /** @description Forbidden */
@@ -11269,7 +11246,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["internal_api_handlers.ErrorResponse"];
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
                 /** @description User already a member */
@@ -11278,7 +11255,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["internal_api_handlers.ErrorResponse"];
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
                 /** @description Internal Server Error */
@@ -11287,7 +11264,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["internal_api_handlers.ErrorResponse"];
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
             };
@@ -11339,7 +11316,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["internal_api_handlers.ErrorResponse"];
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
                 /** @description Unauthorized */
@@ -11348,7 +11325,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["internal_api_handlers.ErrorResponse"];
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
                 /** @description Forbidden */
@@ -11357,7 +11334,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["internal_api_handlers.ErrorResponse"];
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
                 /** @description Not Found */
@@ -11366,7 +11343,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["internal_api_handlers.ErrorResponse"];
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
                 /** @description Internal Server Error */
@@ -11375,7 +11352,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["internal_api_handlers.ErrorResponse"];
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
             };
@@ -11429,7 +11406,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["internal_api_handlers.ErrorResponse"];
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
                 /** @description Unauthorized */
@@ -11438,7 +11415,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["internal_api_handlers.ErrorResponse"];
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
                 /** @description Forbidden */
@@ -11447,7 +11424,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["internal_api_handlers.ErrorResponse"];
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
                 /** @description Not Found */
@@ -11456,7 +11433,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["internal_api_handlers.ErrorResponse"];
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
                 /** @description Internal Server Error */
@@ -11465,7 +11442,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["internal_api_handlers.ErrorResponse"];
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
             };
@@ -13453,10 +13430,6 @@ export interface components {
             late_fee_percentage?: number;
             name: string;
             term_type: string;
-        };
-        "internal_api_handlers.ErrorResponse": {
-            error?: string;
-            message?: string;
         };
         "internal_api_handlers.GetPaymentStatusRequest": {
             current_date?: string;
