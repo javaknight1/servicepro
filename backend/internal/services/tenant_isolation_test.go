@@ -207,7 +207,7 @@ func TestTenantIsolation_InvoicesAndPayments(t *testing.T) {
 
 func TestTenantIsolation_Exports(t *testing.T) {
 	f := setupIsolation(t)
-	svc := NewUnifiedExportService(f.db, nil, t.TempDir(), "")
+	svc := NewUnifiedExportService(f.db, nil, NewLocalExportStore(t.TempDir()), "")
 
 	job, err := svc.StartExport(f.ctxA, f.userA, &models.ExportConfig{Format: models.ExportFormatCSV, ExportType: models.ExportTypeCustomers})
 	require.NoError(t, err)

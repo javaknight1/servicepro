@@ -21,6 +21,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/javaknight1/servicepro/backend/internal/models"
+	"github.com/javaknight1/servicepro/backend/internal/tenancy"
 	"github.com/javaknight1/servicepro/backend/internal/utils/epoch"
 	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"
 )
@@ -49,7 +50,7 @@ type UnifiedExportService interface {
 type unifiedExportService struct {
 	db         *gorm.DB
 	pdfService *PDFService
-	outputDir  string
+	files      ExportFileStore
 	baseURL    string
 }
 
@@ -57,14 +58,17 @@ type unifiedExportService struct {
 const exportTimeout = 2 * time.Minute
 
 // NewUnifiedExportService creates a new unified export service
-func NewUnifiedExportService(db *gorm.DB, pdfService *PDFService, outputDir, baseURL string) UnifiedExportService {
-	if outputDir == "" {
-		outputDir = "./exports"
+//
+// files is where finished exports are stored: NewObjectExportStore in any
+// deployed environment (T128), NewLocalExportStore for development and tests.
+func NewUnifiedExportService(db *gorm.DB, pdfService *PDFService, files ExportFileStore, baseURL string) UnifiedExportService {
+	if files == nil {
+		files = NewLocalExportStore("./exports")
 	}
 	return &unifiedExportService{
 		db:         db,
 		pdfService: pdfService,
-		outputDir:  outputDir,
+		files:      files,
 		baseURL:    baseURL,
 	}
 }
@@ -102,7 +106,12 @@ func (s *unifiedExportService) StartExport(ctx context.Context, userID uuid.UUID
 	// Generate filename
 	timestamp := time.Now().Format("20060102_150405")
 	job.Filename = fmt.Sprintf("%s_%s%s", config.ExportType, timestamp, config.Format.GetExtension())
-	job.FilePath = filepath.Join(s.outputDir, job.ID.String(), job.Filename)
+	// FilePath holds the storage key: exports/<tenant>/<job>/<file>.
+	tenantID, err := tenancy.MustTenantID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	job.FilePath = fmt.Sprintf("exports/%s/%s/%s", tenantID, job.ID, job.Filename)
 	job.MimeType = config.Format.GetMimeType()
 
 	// Save job to database
@@ -194,12 +203,8 @@ func (s *unifiedExportService) processExport(ctx context.Context, jobID uuid.UUI
 		return
 	}
 
-	if err := os.MkdirAll(filepath.Dir(job.FilePath), 0o755); err != nil {
-		s.failJob(ctx, &job, "Failed to write file")
-		return
-	}
-	if err := os.WriteFile(job.FilePath, exportData, 0o644); err != nil {
-		s.failJob(ctx, &job, "Failed to write file")
+	if err := s.files.Put(ctx, job.FilePath, exportData, job.MimeType); err != nil {
+		s.failJob(ctx, &job, "Failed to store export file")
 		return
 	}
 
@@ -889,7 +894,7 @@ func (s *unifiedExportService) GetExportFile(ctx context.Context, jobID uuid.UUI
 		return nil, nil, fmt.Errorf("export not ready for download")
 	}
 
-	file, err := os.Open(job.FilePath)
+	file, err := s.files.Open(ctx, job.FilePath)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to open export file: %w", err)
 	}
@@ -922,7 +927,7 @@ func (s *unifiedExportService) CleanupExpiredExports(ctx context.Context) error 
 	for i := range jobs {
 		job := &jobs[i]
 		if job.FilePath != "" {
-			if err := os.RemoveAll(filepath.Dir(job.FilePath)); err != nil {
+			if err := s.files.Delete(ctx, job.FilePath); err != nil {
 				return fmt.Errorf("remove export file: %w", err)
 			}
 		}
