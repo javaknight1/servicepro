@@ -131,31 +131,31 @@ func (c *Client) LogBatch(ctx context.Context, entries []*logging.LogEntry) erro
 // Debug implements logging.Client
 func (c *Client) Debug(ctx context.Context, msg string, fields map[string]any) {
 	entry := logging.NewLogEntry(logging.LevelDebug, msg).WithFields(fields)
-	c.Log(ctx, entry)
+	_ = c.Log(ctx, entry)
 }
 
 // Info implements logging.Client
 func (c *Client) Info(ctx context.Context, msg string, fields map[string]any) {
 	entry := logging.NewLogEntry(logging.LevelInfo, msg).WithFields(fields)
-	c.Log(ctx, entry)
+	_ = c.Log(ctx, entry)
 }
 
 // Warn implements logging.Client
 func (c *Client) Warn(ctx context.Context, msg string, fields map[string]any) {
 	entry := logging.NewLogEntry(logging.LevelWarn, msg).WithFields(fields)
-	c.Log(ctx, entry)
+	_ = c.Log(ctx, entry)
 }
 
 // Error implements logging.Client
 func (c *Client) Error(ctx context.Context, msg string, fields map[string]any) {
 	entry := logging.NewLogEntry(logging.LevelError, msg).WithFields(fields)
-	c.Log(ctx, entry)
+	_ = c.Log(ctx, entry)
 }
 
 // Fatal implements logging.Client
 func (c *Client) Fatal(ctx context.Context, msg string, fields map[string]any) {
 	entry := logging.NewLogEntry(logging.LevelFatal, msg).WithFields(fields)
-	c.Log(ctx, entry)
+	_ = c.Log(ctx, entry)
 }
 
 // WithFields implements logging.Client

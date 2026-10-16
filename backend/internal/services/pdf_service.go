@@ -18,6 +18,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/javaknight1/servicepro/backend/internal/models"
+	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"
 )
 
 // PDFService handles PDF generation from templates
@@ -55,8 +56,11 @@ func NewPDFService(wkhtmltopdfPath, tempDir, outputDir string) *PDFService {
 	}
 
 	// Ensure directories exist
-	os.MkdirAll(tempDir, 0755)
-	os.MkdirAll(outputDir, 0755)
+	for _, dir := range []string{tempDir, outputDir} {
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			logging.Warn(context.Background(), "[PDF-SERVICE] could not create directory", map[string]any{"dir": dir, "error": err.Error()})
+		}
+	}
 
 	return &PDFService{
 		wkhtmltopdfPath: wkhtmltopdfPath,
@@ -330,14 +334,18 @@ func (s *PDFService) buildWkhtmltopdfArgs(inputPath, outputPath string, options 
 	// Header/Footer HTML
 	if options.HeaderHTML != "" {
 		headerFile := filepath.Join(s.tempDir, fmt.Sprintf("header_%s.html", uuid.New().String()))
-		os.WriteFile(headerFile, []byte(options.HeaderHTML), 0644)
+		if err := os.WriteFile(headerFile, []byte(options.HeaderHTML), 0644); err != nil {
+			logging.Warn(context.Background(), "[PDF-SERVICE] could not write header HTML", map[string]any{"error": err.Error()})
+		}
 		args = append(args, "--header-html", headerFile)
 		defer os.Remove(headerFile)
 	}
 
 	if options.FooterHTML != "" {
 		footerFile := filepath.Join(s.tempDir, fmt.Sprintf("footer_%s.html", uuid.New().String()))
-		os.WriteFile(footerFile, []byte(options.FooterHTML), 0644)
+		if err := os.WriteFile(footerFile, []byte(options.FooterHTML), 0644); err != nil {
+			logging.Warn(context.Background(), "[PDF-SERVICE] could not write footer HTML", map[string]any{"error": err.Error()})
+		}
 		args = append(args, "--footer-html", footerFile)
 		defer os.Remove(footerFile)
 	}

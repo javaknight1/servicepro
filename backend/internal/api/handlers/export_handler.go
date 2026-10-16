@@ -13,6 +13,7 @@ import (
 	"github.com/javaknight1/servicepro/backend/internal/api/apierror"
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/services"
+	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"
 )
 
 // ExportHandler handles export-related API requests
@@ -239,7 +240,10 @@ func (h *ExportHandler) DownloadExport(c *gin.Context) {
 
 	// Stream file to response
 	c.Status(http.StatusOK)
-	io.Copy(c.Writer, file)
+	if _, err := io.Copy(c.Writer, file); err != nil {
+		// Headers are already sent; all we can do is record the broken download.
+		logging.Warn(c.Request.Context(), "[EXPORT-HANDLER] export download interrupted", map[string]any{"job_id": jobID.String(), "error": err.Error()})
+	}
 }
 
 // CancelExport cancels an in-progress export job
