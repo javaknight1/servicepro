@@ -36,13 +36,13 @@ export interface Invoice {
   issue_date: string;
   due_date: string;
   subtotal: number;
-  tax_rate: number;
+  tax_rate_id?: string;
   tax_amount: number;
   total: number;
   amount_paid: number;
   amount_due: number;
   notes?: string;
-  terms?: string;
+  terms_and_conditions?: string;
   lines: InvoiceLineItem[];
   // Payment token fields for online invoice payment
   payment_token?: string;

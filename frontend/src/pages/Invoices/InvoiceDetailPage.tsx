@@ -6,6 +6,9 @@ import {
   invoiceService,
   Invoice,
   InvoiceStatus,
+  type CreateInvoiceRequest,
+  type InvoiceLineRequest,
+  type UpdateInvoiceRequest,
 } from '@services/invoiceService';
 import {
   paymentReminderService,
@@ -53,15 +56,26 @@ interface InvoiceFormData {
   customer_id: string;
   issue_date: string;
   due_date: string;
+  /** Percent ("8.25"); sent as a direct rate fraction. */
   tax_rate: string;
   notes: string;
-  terms: string;
+  terms_and_conditions: string;
 }
 
 interface LineItemFormData {
   description: string;
   quantity: number | string;
   unit_price: number | string;
+  taxable: boolean;
+}
+
+/**
+ * The rate an invoice actually uses: the server stores it on every line
+ * (`lines[].tax_rate`, also when it came from a direct rate); `tax_rate` on
+ * the invoice is the configured tax-rate row for `tax_rate_id`, if any.
+ */
+function storedTaxRate(invoice: Invoice): string | number | undefined {
+  return invoice.lines?.[0]?.tax_rate ?? invoice.tax_rate?.rate;
 }
 
 const initialFormData: InvoiceFormData = {
@@ -70,13 +84,14 @@ const initialFormData: InvoiceFormData = {
   due_date: '',
   tax_rate: '0',
   notes: '',
-  terms: '',
+  terms_and_conditions: '',
 };
 
 const emptyLineItem: LineItemFormData = {
   description: '',
   quantity: 1,
   unit_price: 0,
+  taxable: true,
 };
 
 export function InvoiceDetailPage() {
@@ -110,6 +125,8 @@ export function InvoiceDetailPage() {
     useState(false);
   const [customerName, setCustomerName] = useState<string>('');
   const [invoice, setInvoice] = useState<Invoice | null>(null);
+  // The tax percent as loaded, so an unchanged rate isn't re-sent on save
+  const [loadedTaxRate, setLoadedTaxRate] = useState<string | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [showRefundModal, setShowRefundModal] = useState(false);
@@ -148,8 +165,9 @@ export function InvoiceDetailPage() {
         const invoice = await invoiceService.getInvoice(invoiceId);
         if (isStale()) return;
         setInvoice(invoice);
-        // Convert tax_rate from decimal (0.07) back to percentage (7) for display
-        const taxRatePercent = taxRateToPercent(invoice.tax_rate);
+        // Convert the stored rate from decimal (0.07) to percentage (7)
+        const taxRatePercent = taxRateToPercent(storedTaxRate(invoice));
+        setLoadedTaxRate(taxRatePercent);
         setFormData({
           customer_id: invoice.customer_id || '',
           issue_date: invoice.issue_date
@@ -158,7 +176,7 @@ export function InvoiceDetailPage() {
           due_date: invoice.due_date ? invoice.due_date.split('T')[0] : '',
           tax_rate: taxRatePercent,
           notes: invoice.notes || '',
-          terms: invoice.terms || '',
+          terms_and_conditions: invoice.terms_and_conditions || '',
         });
         if (invoice.lines && invoice.lines.length > 0) {
           setLineItems(
@@ -166,6 +184,7 @@ export function InvoiceDetailPage() {
               description: line.description,
               quantity: line.quantity,
               unit_price: line.unit_price,
+              taxable: line.taxable ?? true,
             }))
           );
         }
@@ -250,7 +269,7 @@ export function InvoiceDetailPage() {
   const handleLineItemChange = (
     index: number,
     field: keyof LineItemFormData,
-    value: string | number
+    value: string | number | boolean
   ) => {
     setLineItems((prev) => {
       const updated = [...prev];
@@ -280,8 +299,17 @@ export function InvoiceDetailPage() {
   };
 
   const calculateTax = () => {
+    // Taxable lines only, each rounded to cents (as the server does)
+    const rate = percentToTaxRate(formData.tax_rate);
     return roundToCents(
-      calculateSubtotal() * percentToTaxRate(formData.tax_rate)
+      lineItems.reduce(
+        (sum, item) =>
+          item.taxable
+            ? sum +
+              roundToCents(lineTotal(item.quantity, item.unit_price) * rate)
+            : sum,
+        0
+      )
     );
   };
 
@@ -305,40 +333,52 @@ export function InvoiceDetailPage() {
     // Convert tax rate from percentage (e.g., 7) to decimal (e.g., 0.07)
     const taxRateDecimal = percentToTaxRate(formData.tax_rate);
 
-    const submitData = {
-      customer_id: formData.customer_id,
-      issue_date: issueDateISO,
-      due_date: dueDateISO,
-      tax_rate: taxRateDecimal,
-      notes: formData.notes || undefined,
-      terms: formData.terms || undefined,
-      lines: lineItems.map((item) => ({
-        description: item.description,
-        quantity:
-          typeof item.quantity === 'string'
-            ? parseFloat(item.quantity) || 0
-            : item.quantity,
-        unit_price:
-          typeof item.unit_price === 'string'
-            ? parseFloat(item.unit_price) || 0
-            : item.unit_price,
-      })),
-    };
+    const lines: InvoiceLineRequest[] = lineItems.map((item) => ({
+      description: item.description,
+      quantity:
+        typeof item.quantity === 'string'
+          ? parseFloat(item.quantity) || 0
+          : item.quantity,
+      unit_price:
+        typeof item.unit_price === 'string'
+          ? parseFloat(item.unit_price) || 0
+          : item.unit_price,
+      taxable: item.taxable,
+    }));
 
     try {
       if (isNew) {
-        await invoiceService.createInvoice(
-          submitData as unknown as Partial<Invoice>
-        );
+        const createData: CreateInvoiceRequest = {
+          customer_id: formData.customer_id,
+          issue_date: issueDateISO,
+          due_date: dueDateISO,
+          tax_rate: taxRateDecimal,
+          notes: formData.notes || undefined,
+          lines,
+        };
+        const created = await invoiceService.createInvoice(createData);
+        // POST /invoices takes no terms field; set them on the new draft
+        if (formData.terms_and_conditions) {
+          await invoiceService.updateInvoice(created.id, {
+            terms_and_conditions: formData.terms_and_conditions,
+          });
+        }
         trackEvent(AnalyticsEvents.INVOICE_CREATED, {
           total: calculateTotal(),
           line_items: lineItems.length,
         });
       } else if (id) {
-        await invoiceService.updateInvoice(
-          id,
-          submitData as unknown as Partial<Invoice>
-        );
+        const updateData: UpdateInvoiceRequest = {
+          due_date: dueDateISO,
+          // Unchanged: omit it, so the invoice keeps its rate and tax_rate_id
+          tax_rate:
+            formData.tax_rate === loadedTaxRate ? undefined : taxRateDecimal,
+          // Empty strings clear the stored values
+          notes: formData.notes,
+          terms_and_conditions: formData.terms_and_conditions,
+          lines,
+        };
+        await invoiceService.updateInvoice(id, updateData);
       }
       navigate('/invoices');
     } catch (err) {
@@ -650,6 +690,12 @@ export function InvoiceDetailPage() {
                   step="0.01"
                   className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                 />
+                {invoice?.tax_rate?.name &&
+                  formData.tax_rate === loadedTaxRate && (
+                    <p className="mt-1 text-xs text-neutral-500">
+                      {invoice.tax_rate.name}
+                    </p>
+                  )}
               </div>
             </div>
           </div>
@@ -724,6 +770,17 @@ export function InvoiceDetailPage() {
                       className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                     />
                   </div>
+                  <label className="flex items-center gap-1 py-2 text-sm text-neutral-600">
+                    <input
+                      type="checkbox"
+                      checked={item.taxable}
+                      onChange={(e) =>
+                        handleLineItemChange(index, 'taxable', e.target.checked)
+                      }
+                      aria-label={`Line ${index + 1} taxable`}
+                    />
+                    Taxable
+                  </label>
                   <div className="w-24 text-right py-2 font-medium">
                     {formatDollars(lineTotal(item.quantity, item.unit_price))}
                   </div>
@@ -790,18 +847,18 @@ export function InvoiceDetailPage() {
               </div>
               <div>
                 <label
-                  htmlFor="terms"
+                  htmlFor="terms_and_conditions"
                   className="block text-sm font-medium text-neutral-700 mb-1"
                 >
-                  Payment Terms
+                  Terms & Conditions
                 </label>
                 <textarea
-                  id="terms"
-                  name="terms"
-                  value={formData.terms}
+                  id="terms_and_conditions"
+                  name="terms_and_conditions"
+                  value={formData.terms_and_conditions}
                   onChange={handleChange}
                   rows={3}
-                  placeholder="Payment terms..."
+                  placeholder="Terms and conditions..."
                   className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                 />
               </div>
