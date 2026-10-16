@@ -379,6 +379,13 @@ type QuoteListResponse struct {
 type QuoteQueryParams struct {
 	CustomerID *uuid.UUID   `form:"customer_id"`
 	Status     *QuoteStatus `form:"status"`
-	Page       int          `form:"page" binding:"min=1"`
-	PageSize   int          `form:"page_size" binding:"min=1,max=100"`
+	// Q matches quote number and customer first/last/full/company name
+	// (case-insensitive substring).
+	Q string `form:"q" binding:"max=100"`
+	// SortBy must be one of utils.QuoteAllowedSortColumns (kept in sync with
+	// this oneof); empty means created_at.
+	SortBy    string `form:"sort_by" binding:"omitempty,oneof=created_at updated_at quote_number status total valid_until"`
+	SortOrder string `form:"sort_order" binding:"omitempty,oneof=asc desc ASC DESC"`
+	Page      int    `form:"page" binding:"min=1"`
+	PageSize  int    `form:"page_size" binding:"min=1,max=100"`
 }

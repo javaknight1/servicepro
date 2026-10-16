@@ -3815,6 +3815,38 @@
                         "in": "query"
                     },
                     {
+                        "type": "string",
+                        "description": "Search quote number and customer first/last/company name (case-insensitive, max 100 chars)",
+                        "name": "q",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "created_at",
+                            "updated_at",
+                            "quote_number",
+                            "status",
+                            "total",
+                            "valid_until"
+                        ],
+                        "type": "string",
+                        "default": "created_at",
+                        "description": "Sort column",
+                        "name": "sort_by",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "asc",
+                            "desc"
+                        ],
+                        "type": "string",
+                        "default": "desc",
+                        "description": "Sort direction",
+                        "name": "sort_order",
+                        "in": "query"
+                    },
+                    {
                         "type": "integer",
                         "default": 1,
                         "description": "Page number",
@@ -3837,7 +3869,7 @@
                         }
                     },
                     "400": {
-                        "description": "Invalid request",
+                        "description": "Invalid request (including an unknown sort_by/sort_order)",
                         "schema": {
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -11,6 +12,7 @@ import (
 	"gorm.io/gorm/clause"
 
 	"github.com/javaknight1/servicepro/backend/internal/models"
+	"github.com/javaknight1/servicepro/backend/internal/utils"
 )
 
 // QuoteRepository implements QuoteRepositoryInterface
@@ -166,7 +168,10 @@ func (r *QuoteRepository) Delete(id uuid.UUID) error {
 	return r.db.Delete(&models.Quote{}, "id = ?", id).Error
 }
 
-// List retrieves quotes with pagination and filters
+// likeEscaper escapes LIKE wildcards in user search input (used with ESCAPE '\').
+var likeEscaper = strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
+
+// List retrieves quotes with pagination, filters, search (Q) and sorting.
 func (r *QuoteRepository) List(params *models.QuoteQueryParams) ([]models.Quote, int64, error) {
 	var quotes []models.Quote
 	var total int64
@@ -179,6 +184,21 @@ func (r *QuoteRepository) List(params *models.QuoteQueryParams) ([]models.Quote,
 	}
 	if params.Status != nil {
 		query = query.Where("status = ?", params.Status)
+	}
+	if q := strings.TrimSpace(params.Q); q != "" {
+		pattern := "%" + likeEscaper.Replace(strings.ToLower(q)) + "%"
+		// The customer subquery is raw SQL, so the tenancy plugin doesn't
+		// scope it: tie it to the quote's own (plugin-scoped) tenant_id.
+		query = query.Where(
+			`LOWER(quotes.quote_number) LIKE ? ESCAPE '\' OR quotes.customer_id IN (
+				SELECT c.id FROM customers c
+				WHERE c.tenant_id = quotes.tenant_id AND c.deleted_at IS NULL AND (
+					LOWER(c.first_name) LIKE ? ESCAPE '\' OR
+					LOWER(c.last_name) LIKE ? ESCAPE '\' OR
+					LOWER(c.company_name) LIKE ? ESCAPE '\' OR
+					LOWER(c.first_name || ' ' || c.last_name) LIKE ? ESCAPE '\'))`,
+			pattern, pattern, pattern, pattern, pattern,
+		)
 	}
 
 	// Count total
@@ -203,7 +223,8 @@ func (r *QuoteRepository) List(params *models.QuoteQueryParams) ([]models.Quote,
 		Preload("Items", func(db *gorm.DB) *gorm.DB {
 			return db.Order("sort_order ASC")
 		}).
-		Order("created_at DESC").
+		Order("quotes." + utils.SafeOrderClause(params.SortBy, params.SortOrder, utils.QuoteAllowedSortColumns, "created_at")).
+		Order("quotes.id").
 		Limit(pageSize).
 		Offset(offset).
 		Find(&quotes).Error
