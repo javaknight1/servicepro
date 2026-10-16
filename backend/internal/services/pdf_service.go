@@ -500,7 +500,7 @@ func (s *PDFService) GetDefaultSampleData() map[string]interface{} {
 
 // CheckWkhtmltopdfInstalled checks if wkhtmltopdf is installed and accessible
 func (s *PDFService) CheckWkhtmltopdfInstalled() error {
-	cmd := exec.Command(s.wkhtmltopdfPath, "--version")
+	cmd := exec.CommandContext(context.Background(), s.wkhtmltopdfPath, "--version")
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("wkhtmltopdf not found or not executable: %w", err)
 	}
