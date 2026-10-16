@@ -32,11 +32,6 @@ func NewRegistrationHandler(registrationService services.RegistrationServiceInte
 	}
 }
 
-// SetInvitationService sets the invitation service (for deferred initialization)
-func (h *RegistrationHandler) SetInvitationService(invitationService *services.InvitationService) {
-	h.invitationService = invitationService
-}
-
 // Register handles POST /api/v1/auth/register
 // @Summary User registration
 // @Description Register a new user account
