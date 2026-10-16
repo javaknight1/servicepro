@@ -120,6 +120,8 @@ func SetupServices(
 			svc.StripeClient = client
 			svc.StripeEvents = stripeService.NewEventProcessor()
 			svc.StripeEvents.RegisterDefaultHandlers()
+			// Platform billing (tenant subscriptions) shares this endpoint (T122).
+			services.RegisterBillingWebhookHandlers(svc.StripeEvents, svc.Stripe)
 			svc.StripeWebhook = stripeService.NewWebhookHandler(cfg, svc.StripeEvents)
 			// Persistent dedupe across restarts/instances (F-10).
 			svc.StripeWebhook.SetEventStore(stripeService.NewGormEventStore(db))

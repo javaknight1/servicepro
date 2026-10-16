@@ -13,14 +13,11 @@ import (
 	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"
 )
 
-// InvoicePaymentHandlerAdapter implements the stripe.InvoicePaymentHandler interface
-// and bridges the webhook handler to the invoice service
+// InvoicePaymentHandlerAdapter bridges checkout.session.completed webhook
+// events to the invoice service
 type InvoicePaymentHandlerAdapter struct {
 	invoiceService *InvoiceService
 }
-
-// Ensure InvoicePaymentHandlerAdapter implements stripe.InvoicePaymentHandler
-var _ stripeClient.InvoicePaymentHandler = (*InvoicePaymentHandlerAdapter)(nil)
 
 // NewInvoicePaymentHandlerAdapter creates a new adapter
 func NewInvoicePaymentHandlerAdapter(invoiceService *InvoiceService) *InvoicePaymentHandlerAdapter {

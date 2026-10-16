@@ -96,7 +96,6 @@ func SetupHandlers(
 	// Billing handler (optional - depends on Stripe service)
 	if svc.Stripe != nil {
 		h.Billing = handlers.NewBillingHandler(svc.Stripe)
-		h.Webhook = handlers.NewWebhookHandler(svc.Stripe, cfg.Stripe.WebhookSecret, repos.Tenant)
 	}
 
 	// Membership handler
