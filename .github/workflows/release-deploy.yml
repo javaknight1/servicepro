@@ -1,0 +1,281 @@
+name: Release
+
+# On a v* tag: migrate prod -> deploy the API to Cloud Run -> deploy the web
+# bundle to Cloudflare Workers -> publish the GitHub Release.
+#
+# The tag is the single action that ships (RELEASING.md). Plain pushes to
+# master do NOT deploy — ci.yml only lints/tests/builds.
+#
+# NOT HOSTED YET. Until the repo variable GCP_PROJECT_ID is set, the guard
+# reports deploy=false and migrate/api/web are SKIPPED (not failed): a tag then
+# only publishes the GitHub Release notes. Set the variables and secrets in
+# docs/ops/cloud-run-setup.md §8 to switch deploys on.
+#
+# Job order is deliberate and strictly sequential:
+#   guard    — the tag and the VERSION file must agree before anything runs;
+#              decides whether this release deploys
+#   migrate  — schema first; code must never land ahead of its schema
+#   api      — Cloud Run revision boots with no traffic, then takes 100%
+#   web      — after the API, so the bundle never calls an endpoint that
+#              isn't deployed yet
+#   release  — publish notes only once the deploy succeeded (or was skipped)
+on:
+  push:
+    tags:
+      - 'v*'
+  # A tag pushed with GITHUB_TOKEN does NOT fire `push: tags`, but
+  # workflow_dispatch always creates a run — so dependabot-automerge.yml pushes
+  # the tag and then dispatches this workflow against it.
+  #
+  # Dispatch it against the TAG ref, never a branch: every job reads
+  # GITHUB_REF_NAME as the version, so dispatching against master makes the
+  # guard compare "master" to VERSION and fail (before anything ships).
+  workflow_dispatch:
+
+permissions:
+  contents: write # create the GitHub Release
+  id-token: write # mint the OIDC token for Workload Identity Federation
+
+# Serialize releases. cancel-in-progress is FALSE on purpose: aborting a
+# half-finished deploy leaves a migrated database with the previous revision
+# still serving.
+concurrency:
+  group: release-production
+  cancel-in-progress: false
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      deploy: ${{ steps.target.outputs.deploy }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Tag must match the VERSION file
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME#v}"
+          file="$(tr -d '[:space:]' < VERSION)"
+          if [ "$tag" != "$file" ]; then
+            echo "::error::tag ${GITHUB_REF_NAME} does not match VERSION ($file). Run scripts/bump-version.sh, commit, then tag."
+            exit 1
+          fi
+          echo "release ${GITHUB_REF_NAME} matches VERSION $file"
+      - name: Decide whether to deploy
+        id: target
+        env:
+          GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+        run: |
+          if [ -n "${GCP_PROJECT_ID}" ]; then
+            echo "deploy=true" >> "$GITHUB_OUTPUT"
+            echo "Deploying ${GITHUB_REF_NAME} to project ${GCP_PROJECT_ID}."
+          else
+            echo "deploy=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::vars.GCP_PROJECT_ID is not set — skipping migrate/api/web. This release only publishes GitHub Release notes."
+            {
+              echo "### ${GITHUB_REF_NAME}: notes only"
+              echo
+              echo "Hosting is not configured (\`vars.GCP_PROJECT_ID\` unset), so migrate/api/web were skipped."
+              echo "See docs/ops/cloud-run-setup.md to switch deploys on."
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  migrate:
+    # Migrations run HERE, from the runner — not at server startup. On a
+    # scale-to-zero Cloud Run service startup migrations would re-run on every
+    # cold start, and a bad migration would crash-loop revisions instead of
+    # failing the deploy. See RELEASING.md.
+    needs: guard
+    if: needs.guard.outputs.deploy == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      # Session pooler / direct connection (port 5432), never a transaction
+      # pooler — golang-migrate holds an advisory lock across statements.
+      MIGRATION_DATABASE_URL: ${{ secrets.MIGRATION_DATABASE_URL }}
+      DATABASE_URL: ${{ secrets.MIGRATION_DATABASE_URL }}
+      ENV: production
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: backend/go.mod
+          check-latest: true
+          cache-dependency-path: backend/go.sum
+      - name: Check configuration
+        run: |
+          : "${MIGRATION_DATABASE_URL:?MIGRATION_DATABASE_URL secret is not set}"
+          case "$MIGRATION_DATABASE_URL" in
+            *:6543/*) echo "::error::MIGRATION_DATABASE_URL points at a transaction pooler (6543); use the session pooler / direct URL (5432)"; exit 1 ;;
+          esac
+      - name: Apply migrations (production)
+        working-directory: backend
+        run: go run ./cmd/migrate up
+      - name: Report schema version
+        working-directory: backend
+        # Exits non-zero if the schema is dirty, so a half-applied migration
+        # blocks the deploy rather than silently preceding it.
+        run: go run ./cmd/migrate version
+
+  api:
+    needs: migrate
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      # Job-level so step `if:` conditions can see it (a step's own env is not
+      # visible to that step's `if`). Sentry steps skip when it's unset.
+      SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          # Full history so the Sentry release step can attach commits.
+          fetch-depth: 0
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SA }}
+
+      - uses: google-github-actions/setup-gcloud@v3
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker "${{ vars.GCP_REGION }}-docker.pkg.dev" --quiet
+
+      - name: Build, push, and deploy to Cloud Run
+        env:
+          GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+          GCP_REGION: ${{ vars.GCP_REGION || 'us-central1' }}
+          AR_REPOSITORY: ${{ vars.AR_REPOSITORY || 'servicepro' }}
+          SERVICE_NAME: ${{ vars.CLOUD_RUN_SERVICE || 'servicepro-api' }}
+          GIT_SHA: ${{ github.sha }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: bash scripts/deploy-cloudrun.sh
+
+      - name: Verify the deployed revision is serving this commit
+        # deploy-cloudrun.sh already fails if the revision won't boot; this
+        # proves traffic actually moved. vars.API_URL is the direct run.app URL.
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+          API_URL: ${{ vars.API_URL }}
+        run: |
+          set -euo pipefail
+          : "${API_URL:?API_URL repo variable is not set}"
+          DEADLINE=$(( $(date +%s) + 180 ))
+          while [ "$(date +%s)" -lt "$DEADLINE" ]; do
+            ACTUAL=$(curl -sf "$API_URL/version" | jq -r '.git_sha // ""' 2>/dev/null || echo "")
+            if [ "$ACTUAL" = "$EXPECTED_SHA" ]; then
+              echo "deploy verified: /version returned $ACTUAL"
+              exit 0
+            fi
+            echo "waiting for traffic to shift... expected=$EXPECTED_SHA actual=${ACTUAL:-<unreachable>}"
+            sleep 10
+          done
+          echo "::error::${API_URL}/version never returned ${EXPECTED_SHA}. Check the Cloud Run revision logs."
+          exit 1
+
+      - name: Create Sentry release for the API
+        if: ${{ env.SENTRY_AUTH_TOKEN != '' }}
+        # Bookkeeping must never block shipping.
+        continue-on-error: true
+        uses: getsentry/action-release@v3
+        env:
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: servicepro-api
+        with:
+          environment: production
+          version: ${{ github.sha }}
+
+  web:
+    needs: api
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: frontend/.nvmrc
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+        working-directory: frontend
+      # The tag is the version (guard asserted they agree).
+      - name: Resolve release version
+        run: echo "APP_VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+      - run: npm run build
+        working-directory: frontend
+        env:
+          VITE_APP_VERSION: ${{ env.APP_VERSION }}
+          VITE_GIT_SHA: ${{ github.sha }}
+          # Same origin: the servicepro-web Worker proxies /api/* to Cloud Run.
+          VITE_API_URL: /api/v1
+          VITE_ENV: production
+          VITE_STRIPE_PUBLISHABLE_KEY: ${{ vars.VITE_STRIPE_PUBLISHABLE_KEY }}
+          VITE_SENTRY_DSN: ${{ secrets.SENTRY_DSN_WEB }}
+          VITE_POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY_WEB }}
+          VITE_POSTHOG_HOST: https://us.i.posthog.com
+      - name: Upload source maps to Sentry
+        if: ${{ env.SENTRY_AUTH_TOKEN != '' }}
+        continue-on-error: true
+        uses: getsentry/action-release@v3
+        env:
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: servicepro-web
+        with:
+          environment: production
+          version: ${{ github.sha }}
+          sourcemaps: frontend/dist
+      - name: Strip source maps from the publish dir
+        run: find frontend/dist -name '*.map' -delete
+      - name: Deploy to Cloudflare Workers (servicepro-web)
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          # wrangler.jsonc (Worker + static assets from ./dist) lives in
+          # frontend/. Workers deploys have no branch/preview ambiguity, so
+          # a detached-HEAD tag checkout deploys to production as-is.
+          workingDirectory: frontend
+          command: deploy
+      - name: Verify the public site serves this commit
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+          SITE_URL: ${{ vars.SITE_URL || 'https://servicepro.sharkfins.xyz' }}
+        run: |
+          set -euo pipefail
+          DEADLINE=$(( $(date +%s) + 180 ))
+          while [ "$(date +%s)" -lt "$DEADLINE" ]; do
+            ACTUAL=$(curl -sf "$SITE_URL/version" | jq -r '.git_sha // ""' 2>/dev/null || echo "")
+            if [ "$ACTUAL" = "$EXPECTED_SHA" ]; then
+              echo "site verified: $SITE_URL/version returned $ACTUAL (through the Worker proxy)"
+              exit 0
+            fi
+            echo "waiting for ${SITE_URL}... expected=$EXPECTED_SHA actual=${ACTUAL:-<unreachable>}"
+            sleep 10
+          done
+          echo "::error::${SITE_URL}/version never returned ${EXPECTED_SHA}."
+          exit 1
+
+  release:
+    # Runs when the deploy succeeded, or when deploys were skipped because
+    # hosting isn't configured yet (guard.deploy=false).
+    needs: [guard, api, web]
+    if: >-
+      ${{ !cancelled() && needs.guard.result == 'success' &&
+      (needs.guard.outputs.deploy != 'true' ||
+      (needs.api.result == 'success' && needs.web.result == 'success')) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0 # full history + tags so the notes can diff from the previous tag
+      - name: Publish GitHub Release
+        run: bash scripts/gh-release.sh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

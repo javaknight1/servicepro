@@ -1,0 +1,56 @@
+name: DB migrate (manual)
+
+# Manual production-migration escape hatch. Migrations normally run
+# automatically in release-deploy.yml (on a v* tag) BEFORE the deploy — this
+# workflow is only for applying migrations out-of-band (e.g. pre-applying an
+# additive migration ahead of the release that depends on it).
+#
+# Deliberately NOT wired to push-on-master: a plain master push must never
+# migrate prod ahead of a tagged release (RELEASING.md).
+#
+# Idempotent — golang-migrate tracks applied versions in schema_migrations, so
+# a re-run against an up-to-date database is a no-op.
+on:
+  workflow_dispatch:
+    inputs:
+      command:
+        description: 'Migration command'
+        required: true
+        default: version
+        type: choice
+        options:
+          - version # read-only: print applied version + dirty flag
+          - up # apply all pending migrations
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-production
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      # Session pooler / direct connection (port 5432), never a transaction
+      # pooler — golang-migrate holds an advisory lock across statements.
+      MIGRATION_DATABASE_URL: ${{ secrets.MIGRATION_DATABASE_URL }}
+      DATABASE_URL: ${{ secrets.MIGRATION_DATABASE_URL }}
+      ENV: production
+    steps:
+      - name: Check configuration
+        run: |
+          : "${MIGRATION_DATABASE_URL:?MIGRATION_DATABASE_URL secret is not set (see docs/ops/cloud-run-setup.md)}"
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: backend/go.mod
+          check-latest: true
+          cache-dependency-path: backend/go.sum
+      - name: Run migration command
+        working-directory: backend
+        env:
+          COMMAND: ${{ inputs.command }}
+        run: go run ./cmd/migrate "$COMMAND"

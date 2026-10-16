@@ -1,0 +1,24 @@
+# Changelog categories for GitHub's auto-generated release notes, grouped by
+# PR label.
+#
+# NOT used today: we push straight to master with no PRs, so
+# scripts/gh-release.sh builds the notes from commit subjects instead
+# (RELEASING.md). This file is here for the day there's a team and PRs — at
+# which point gh-release.sh can be swapped for `gh release create
+# --generate-notes` and these groupings take over with no other changes.
+changelog:
+  exclude:
+    labels:
+      - chore
+      - deps
+  categories:
+    - title: Features
+      labels: [feature, enhancement]
+    - title: Fixes
+      labels: [fix, bug]
+    - title: Performance
+      labels: [performance]
+    - title: Documentation
+      labels: [documentation]
+    - title: Other
+      labels: ['*']

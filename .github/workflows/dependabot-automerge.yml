@@ -1,0 +1,222 @@
+name: Dependabot auto-merge
+
+# Auto-merges Dependabot PRs once CI passes. Filters to patch + minor
+# only — major bumps need a human eye for breaking changes. Triggered on
+# workflow_run (not pull_request) because branch protection isn't
+# available on free-tier private repos, so GitHub's native `--auto` flag
+# has nothing to wait on; this workflow gates on CI completing instead.
+#
+# The `workflows:` value must match ci.yml's `name:` EXACTLY — a rename on
+# either side silently disables auto-merge, since workflow_run simply never
+# fires and there is no error to notice.
+#
+# AFTER MERGING, THIS WORKFLOW CUTS A RELEASE. A dependency fix that sits
+# unreleased on master protects nobody, and `deps:` is a PATCH signal in
+# bump-version.sh for exactly that reason ("a patched CVE arrives that way").
+#
+# Two things follow from that, and both are deliberate:
+#
+#   1. It ships EVERYTHING currently unreleased on master, not just the bump.
+#      That is the standing policy — master is a staging line kept releasable
+#      (RELEASING.md). Whatever is sitting there goes out, and the release notes
+#      say so.
+#   2. It validates master before tagging. A merge performed with GITHUB_TOKEN
+#      triggers no CI run, so without this step the deployed commit would be one
+#      CI had only ever seen as a PR. The tag is created only after that run is
+#      green, so a failure leaves a VERSION commit and no release rather than a
+#      tag that never shipped.
+#
+# It does NOT filter to security-only updates. Doing that reliably needs
+# dependabot/fetch-metadata with alert-lookup, which requires a PAT or App token
+# and pull_request context — a long-lived credential in exchange for releasing
+# slightly less often. Routine bumps shipping promptly is not a problem.
+#
+# Until hosting is configured (vars.GCP_PROJECT_ID unset), the dispatched
+# release-deploy.yml skips its deploy jobs and only publishes release notes.
+
+on:
+  workflow_run:
+    workflows: ['CI']
+    types: [completed]
+
+permissions:
+  contents: write # merge, push the VERSION bump, push the tag
+  pull-requests: write # merge / comment on the Dependabot PR
+  actions: write # dispatch ci.yml + release-deploy.yml and watch the CI run
+
+# Two Dependabot PRs merging minutes apart would otherwise both bump VERSION
+# from the same base and collide on the tag. Never cancel: a cancelled run can
+# leave a merged PR with no release.
+concurrency:
+  group: dependabot-automerge
+  cancel-in-progress: false
+
+jobs:
+  automerge:
+    if: >
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.actor.login == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Resolve PR + bump kind
+        id: meta
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH: ${{ github.event.workflow_run.head_branch }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          PR_JSON=$(gh pr list --repo "$REPO" --head "$BRANCH" --state open \
+            --json number,title,url --jq '.[0] // empty')
+          if [ -z "$PR_JSON" ]; then
+            echo "No open PR for branch $BRANCH — skipping"
+            exit 0
+          fi
+          NUMBER=$(jq -r .number <<<"$PR_JSON")
+          TITLE=$(jq -r .title <<<"$PR_JSON")
+          URL=$(jq -r .url <<<"$PR_JSON")
+          {
+            echo "number=$NUMBER"
+            echo "title=$TITLE"
+            echo "url=$URL"
+          } >> "$GITHUB_OUTPUT"
+
+          # Grouped bumps are configured in .github/dependabot.yml to only
+          # contain minor+patch updates, so they're always safe to auto-merge.
+          if grep -qiE 'group' <<<"$TITLE"; then
+            echo "kind=group" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Single-package bumps look like:
+          #   "deps(npm): bump axios from 1.15.1 to 1.16.0"
+          #   "deps(actions): bump actions/checkout from 4 to 6"
+          # Compare major version segments — same major = auto-merge,
+          # different major = leave for human review.
+          if [[ "$TITLE" =~ from\ ([0-9]+)(\.[0-9]+)?(\.[0-9]+)?\ to\ ([0-9]+)(\.[0-9]+)?(\.[0-9]+)? ]]; then
+            FROM_MAJOR="${BASH_REMATCH[1]}"
+            TO_MAJOR="${BASH_REMATCH[4]}"
+            if [ "$FROM_MAJOR" = "$TO_MAJOR" ]; then
+              echo "kind=patch_or_minor" >> "$GITHUB_OUTPUT"
+            else
+              echo "kind=major" >> "$GITHUB_OUTPUT"
+            fi
+          else
+            # Title doesn't match the standard pattern (multi-package non-group
+            # PR, etc.). Be conservative.
+            echo "kind=unknown" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Squash-merge
+        id: merge
+        if: steps.meta.outputs.number && (steps.meta.outputs.kind == 'group' || steps.meta.outputs.kind == 'patch_or_minor')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          echo "Merging PR #${{ steps.meta.outputs.number }} (${{ steps.meta.outputs.kind }}): ${{ steps.meta.outputs.title }}"
+          gh pr merge --squash --delete-branch --repo "$REPO" "${{ steps.meta.outputs.number }}"
+
+      - name: Skip note
+        if: steps.meta.outputs.number && (steps.meta.outputs.kind == 'major' || steps.meta.outputs.kind == 'unknown')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          echo "Leaving PR #${{ steps.meta.outputs.number }} for manual review (kind=${{ steps.meta.outputs.kind }})"
+          gh pr comment --repo "$REPO" "${{ steps.meta.outputs.number }}" --body \
+            "Auto-merge skipped: detected \`${{ steps.meta.outputs.kind }}\` bump. Needs manual review."
+
+      # ── Release ────────────────────────────────────────────────────────────
+      # Everything below runs only when a merge actually happened.
+
+      - name: Check out master (post-merge)
+        if: steps.merge.outcome == 'success'
+        uses: actions/checkout@v6
+        with:
+          ref: master
+          # Full history + tags: bump-version.sh reads the latest v* tag and the
+          # commits since it to pick the bump.
+          fetch-depth: 0
+
+      - name: Bump VERSION
+        id: bump
+        if: steps.merge.outcome == 'success'
+        run: |
+          set -euo pipefail
+          ./scripts/bump-version.sh
+          VERSION="$(tr -d '[:space:]' < VERSION)"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Next release: v$VERSION"
+
+      - name: Commit and push the bump
+        if: steps.merge.outcome == 'success'
+        env:
+          VERSION: ${{ steps.bump.outputs.version }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add VERSION
+          git commit -m "release: v${VERSION}"
+          git push origin master
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+        id: push
+
+      - name: Validate master before tagging
+        if: steps.merge.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SHA: ${{ steps.push.outputs.sha }}
+        run: |
+          set -euo pipefail
+          # The merge and the bump were both pushed with GITHUB_TOKEN, so no CI
+          # run exists for this tree. Start one and wait for it.
+          gh workflow run ci.yml --ref master
+          RID=""
+          for _ in $(seq 1 12); do
+            sleep 10
+            RID=$(gh run list --workflow=ci.yml --event workflow_dispatch --limit 10 \
+              --json databaseId,headSha \
+              --jq "[.[] | select(.headSha==\"$SHA\")][0].databaseId // empty")
+            # Explicit if, not `[ -n "$RID" ] && break`: under `set -e` a
+            # failing AND-list as the last command in the loop body aborts the
+            # step, so a run that is merely slow to appear would kill the
+            # release instead of being retried.
+            if [ -n "$RID" ]; then break; fi
+          done
+          if [ -z "$RID" ]; then
+            echo "::error::Could not find a CI run for $SHA — refusing to tag."
+            exit 1
+          fi
+          echo "Watching CI run $RID"
+          gh run watch "$RID" --exit-status --interval 15
+
+      - name: Tag and start the release
+        if: steps.merge.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.bump.outputs.version }}
+        run: |
+          set -euo pipefail
+          TAG="v${VERSION}"
+          git tag "$TAG"
+          git push origin "$TAG"
+          # The tag push cannot trigger release-deploy.yml (GITHUB_TOKEN), so
+          # dispatch it against the tag — where GITHUB_REF_NAME becomes the tag
+          # and every job reads the version it expects.
+          gh workflow run release-deploy.yml --ref "$TAG"
+          {
+            echo "### Auto-release ${TAG}"
+            echo
+            echo "Triggered by auto-merging [#${{ steps.meta.outputs.number }}](${{ steps.meta.outputs.url }})"
+            echo "— \`${{ steps.meta.outputs.title }}\`"
+            echo
+            echo "Shipping everything unreleased on master, not only that bump:"
+            echo
+            echo '```'
+            git log --no-merges --pretty='- %s' "$(git describe --tags --abbrev=0 "${TAG}^" 2>/dev/null || echo HEAD)..${TAG}" || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
