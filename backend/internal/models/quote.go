@@ -65,11 +65,13 @@ func (q *Quote) BeforeCreate(tx *gorm.DB) error {
 		q.ID = uuid.New()
 	}
 
-	// Generate quote number if not set
+	// Allocate the tenant's next quote number if not set (NextDocumentNumber).
 	if q.QuoteNumber == "" {
-		if err := q.GenerateQuoteNumber(tx); err != nil {
+		n, err := NextDocumentNumber(tx, q.TenantID, CounterQuote)
+		if err != nil {
 			return err
 		}
+		q.QuoteNumber = n
 	}
 
 	// Validate quote
@@ -246,18 +248,6 @@ func (q *Quote) CalculateTotals() {
 // CalculateItemTotal calculates the total for a quote item
 func (qi *QuoteItem) CalculateItemTotal() {
 	qi.Total = qi.Quantity.Mul(qi.UnitPrice).Round(2)
-}
-
-// GenerateQuoteNumber generates a unique quote number
-func (q *Quote) GenerateQuoteNumber(tx *gorm.DB) error {
-	var quoteNum string
-	err := tx.Raw("SELECT generate_quote_number()").Scan(&quoteNum).Error
-	if err != nil {
-		return fmt.Errorf("failed to generate quote number: %w", err)
-	}
-
-	q.QuoteNumber = quoteNum
-	return nil
 }
 
 // QuoteRequest represents a request to create or update a quote

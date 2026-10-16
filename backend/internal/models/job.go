@@ -97,17 +97,15 @@ func (Job) TableName() string {
 	return "jobs"
 }
 
-// BeforeCreate generates a job number if not provided
+// BeforeCreate allocates the tenant's next job number if none is set
+// (per-tenant counter; see NextDocumentNumber).
 func (j *Job) BeforeCreate(tx *gorm.DB) error {
 	if j.JobNumber == "" {
-		// Generate job number: JOB-YYYYMMDD-XXXX
-		now := time.Now()
-		var count int64
-		tx.Model(&Job{}).
-			Where("DATE(created_at) = ?", now.Format("2006-01-02")).
-			Count(&count)
-
-		j.JobNumber = now.Format("JOB-20060102-") + padLeft(int(count)+1, 4)
+		n, err := NextDocumentNumber(tx, j.TenantID, CounterJob)
+		if err != nil {
+			return err
+		}
+		j.JobNumber = n
 	}
 	return nil
 }
@@ -458,14 +456,4 @@ func (j *Job) ToResponse() JobResponse {
 	}
 
 	return response
-}
-
-// Helper function to pad numbers with leading zeros
-func padLeft(num, width int) string {
-	s := ""
-	for i := 0; i < width; i++ {
-		s += "0"
-	}
-	s += string(rune('0' + num))
-	return s[len(s)-width:]
 }

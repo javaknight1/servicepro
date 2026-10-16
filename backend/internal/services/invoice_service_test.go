@@ -1,7 +1,6 @@
 package services
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -202,7 +201,9 @@ func setupTestDB(t *testing.T) *gorm.DB {
 	`).Error
 	require.NoError(t, err)
 
-	return db
+	createTenantCountersTable(t, db)
+	// Documents are numbered per tenant; these tests run as one tenant.
+	return db.WithContext(legacyTestCtx)
 }
 
 // createTestUser creates a test user
@@ -264,7 +265,7 @@ func createTestCustomerInDB(t *testing.T, db *gorm.DB) uuid.UUID {
 func TestInvoiceService_CreateInvoice(t *testing.T) {
 	db := setupTestDB(t)
 	service := NewInvoiceService(db)
-	ctx := context.Background()
+	ctx := legacyTestCtx
 
 	userID := createTestUser(t, db)
 	customerID := createTestCustomerInDB(t, db)
@@ -342,7 +343,7 @@ func TestInvoiceService_CreateInvoice(t *testing.T) {
 func TestInvoiceService_GetInvoice(t *testing.T) {
 	db := setupTestDB(t)
 	service := NewInvoiceService(db)
-	ctx := context.Background()
+	ctx := legacyTestCtx
 
 	userID := createTestUser(t, db)
 	customerID := createTestCustomerInDB(t, db)
@@ -377,7 +378,7 @@ func TestInvoiceService_GetInvoice(t *testing.T) {
 func TestInvoiceService_UpdateInvoice(t *testing.T) {
 	db := setupTestDB(t)
 	service := NewInvoiceService(db)
-	ctx := context.Background()
+	ctx := legacyTestCtx
 
 	userID := createTestUser(t, db)
 	customerID := createTestCustomerInDB(t, db)
@@ -422,7 +423,7 @@ func TestInvoiceService_UpdateInvoice(t *testing.T) {
 func TestInvoiceService_DeleteInvoice(t *testing.T) {
 	db := setupTestDB(t)
 	service := NewInvoiceService(db)
-	ctx := context.Background()
+	ctx := legacyTestCtx
 
 	userID := createTestUser(t, db)
 	customerID := createTestCustomerInDB(t, db)
@@ -468,7 +469,7 @@ func TestInvoiceService_DeleteInvoice(t *testing.T) {
 func TestInvoiceService_ListInvoices(t *testing.T) {
 	db := setupTestDB(t)
 	service := NewInvoiceService(db)
-	ctx := context.Background()
+	ctx := legacyTestCtx
 
 	userID := createTestUser(t, db)
 	customer1 := createTestUser(t, db)
@@ -585,7 +586,7 @@ func TestInvoiceService_ListInvoices(t *testing.T) {
 func TestInvoiceService_RecordPayment(t *testing.T) {
 	db := setupTestDB(t)
 	service := NewInvoiceService(db)
-	ctx := context.Background()
+	ctx := legacyTestCtx
 
 	userID := createTestUser(t, db)
 	customerID := createTestCustomerInDB(t, db)
@@ -656,7 +657,7 @@ func TestInvoiceService_RecordPayment(t *testing.T) {
 func TestInvoiceService_SendInvoice(t *testing.T) {
 	db := setupTestDB(t)
 	service := NewInvoiceService(db)
-	ctx := context.Background()
+	ctx := legacyTestCtx
 
 	userID := createTestUser(t, db)
 	customerID := createTestCustomerInDB(t, db)
