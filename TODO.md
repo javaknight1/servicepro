@@ -99,237 +99,238 @@ The minimum subset that must be done before real (paying) customers: **43 tasks,
 
 ## Task Index
 
-| ID       | Phase | Category       | Hours  | Task                                                                                                  |
-|----------|-------|----------------|--------|-------------------------------------------------------------------------------------------------------|
-| ~~T001~~ | ~~0~~ | ~~Backend~~    | ~~—~~  | ~~Recovery middleware Sentry integration~~                                                            |
-| ~~T002~~ | ~~0~~ | ~~Frontend~~   | ~~—~~  | ~~Centralize direct fetch() calls~~                                                                   |
-| ~~T003~~ | ~~0~~ | ~~Frontend~~   | ~~—~~  | ~~Add CSP/HSTS headers to nginx.conf~~                                                                |
-| ~~T004~~ | ~~0~~ | ~~CI~~         | ~~—~~  | ~~Create GitHub Actions CI/CD workflows~~                                                             |
-| ~~T005~~ | ~~0~~ | ~~Monitoring~~ | ~~—~~  | ~~Expose /metrics endpoint for Prometheus~~                                                           |
-| ~~T006~~ | ~~0~~ | ~~Backend~~    | ~~—~~  | ~~Structured JSON logging (replace fmt.Printf)~~                                                      |
-| ~~T007~~ | ~~0~~ | ~~Frontend~~   | ~~—~~  | ~~Fix `any` types (50 instances)~~                                                                    |
-| ~~T008~~ | ~~0~~ | ~~Frontend~~   | ~~—~~  | ~~Remove @ts-nocheck directives~~                                                                     |
-| ~~T009~~ | ~~0~~ | ~~Frontend~~   | ~~—~~  | ~~Enable noUnusedLocals/noUnusedParameters~~                                                          |
-| ~~T010~~ | ~~0~~ | ~~Backend~~    | ~~—~~  | ~~Apply error tracking middleware~~                                                                   |
-| ~~T012~~ | ~~0~~ | ~~CI~~         | ~~—~~  | ~~Bundle size monitoring in CI~~                                                                      |
-| ~~T013~~ | ~~0~~ | ~~Testing~~    | ~~—~~  | ~~Increase frontend test coverage to 70%+~~                                                           |
-| ~~T014~~ | ~~0~~ | ~~Testing~~    | ~~—~~  | ~~Integration tests for critical workflows~~                                                          |
-| ~~T015~~ | ~~0~~ | ~~Docs~~       | ~~—~~  | ~~Generate OpenAPI/Swagger documentation~~                                                            |
-| ~~T016~~ | ~~0~~ | ~~Perf~~       | ~~—~~  | ~~Frontend bundle analysis + optimization~~                                                           |
-| ~~T017~~ | ~~0~~ | ~~Perf~~       | ~~—~~  | ~~Query performance monitoring~~                                                                      |
-| ~~T018~~ | ~~0~~ | ~~Cleanup~~    | ~~—~~  | ~~Dead code elimination~~                                                                             |
-| ~~T019~~ | ~~0~~ | ~~Feature~~    | ~~—~~  | ~~Integrate calendar view for job scheduling~~                                                        |
-| ~~T020~~ | ~~0~~ | ~~Feature~~    | ~~—~~  | ~~Build conflict detection API endpoint~~                                                             |
-| ~~T021~~ | ~~0~~ | ~~Cleanup~~    | ~~—~~  | ~~Extract duplicate file download utility~~                                                           |
-| ~~T022~~ | ~~0~~ | ~~Cleanup~~    | ~~—~~  | ~~Extract duplicate URLSearchParams builder~~                                                         |
-| ~~T023~~ | ~~0~~ | ~~Cleanup~~    | ~~—~~  | ~~Consolidate cache hooks (useLocalCache/useSession)~~                                                |
-| ~~T024~~ | ~~0~~ | ~~Monitoring~~ | ~~—~~  | ~~Full Sentry integration (frontend + backend)~~                                                      |
-| ~~T025~~ | ~~0~~ | ~~Monitoring~~ | ~~—~~  | ~~Integrate product analytics (PostHog)~~                                                             |
-| ~~T026~~ | ~~0~~ | ~~Reporting~~  | ~~—~~  | ~~Set up business KPI dashboard (Grafana)~~                                                           |
-| ~~T031~~ | ~~0~~ | ~~Reporting~~  | ~~—~~  | ~~Build A/R aging buckets report~~                                                                    |
-| ~~T032~~ | ~~0~~ | ~~Reporting~~  | ~~—~~  | ~~Build "Who Owes What" report~~                                                                      |
-| ~~T034~~ | ~~0~~ | ~~Email~~      | ~~—~~  | ~~Wire payment reminder automation~~                                                                  |
-| ~~T043~~ | ~~0~~ | ~~Email~~      | ~~—~~  | ~~Wire payment reminder notifications~~                                                               |
-| ~~T053~~ | ~~0~~ | ~~Feature~~    | ~~—~~  | ~~Add "Repeat Job" button on customer detail~~                                                        |
-| ~~T100~~ | ~~0~~ | ~~Feature~~    | ~~—~~  | ~~Add business hours & timezone to org settings~~                                                     |
-| ~~T102~~ | ~~1~~ | ~~Security~~   | ~~16~~ | ~~Tenant-scope all business data~~                                                                    |
-| ~~T103~~ | ~~1~~ | ~~Security~~   | ~~6~~  | ~~Authorize tenant member, invitation and role endpoints; no self-escalation~~                        |
-| ~~T104~~ | ~~1~~ | ~~Security~~   | ~~4~~  | ~~Evaluate permissions per tenant~~                                                                   |
-| ~~T105~~ | ~~1~~ | ~~Security~~   | ~~3~~  | ~~Remove or lock the raw Stripe passthrough endpoints~~                                               |
-| ~~T106~~ | ~~1~~ | ~~Security~~   | ~~5~~  | ~~Backend-enforced invite-only registration; reject non-edge traffic in production~~                  |
-| ~~T107~~ | ~~1~~ | ~~Security~~   | ~~2~~  | ~~Edge client-IP middleware and a safe trusted-proxy default~~                                        |
-| ~~T108~~ | ~~1~~ | ~~Security~~   | ~~2~~  | ~~Escape PDF export HTML; drop wkhtmltopdf local file access~~                                        |
-| ~~T109~~ | ~~1~~ | ~~Security~~   | ~~5~~  | ~~Stripe webhook reliability: persistent dedupe, accept retries, body limit, idempotent payment~~     |
-| ~~T110~~ | ~~1~~ | ~~Security~~   | ~~4~~  | ~~Token hardening: access vs refresh type, revoke on logout and password reset~~                      |
-| ~~T111~~ | ~~1~~ | ~~Security~~   | ~~3~~  | ~~Login hardening: no lockout DoS, uniform errors and timing~~                                        |
-| ~~T112~~ | ~~1~~ | ~~Security~~   | ~~1~~  | ~~Neutralise CSV/Excel formula injection in exports~~                                                 |
-| ~~T113~~ | ~~1~~ | ~~Security~~   | ~~1~~  | ~~Fail closed when no email or storage provider in production; never log tokens~~                     |
-| ~~T114~~ | ~~1~~ | ~~Security~~   | ~~2~~  | ~~Lock down /health detail, /metrics, Swagger and debug mode in production~~                          |
-| ~~T115~~ | ~~1~~ | ~~Security~~   | ~~3~~  | ~~Secure cookies by default and CSRF protection~~                                                     |
-| ~~T116~~ | ~~1~~ | ~~Security~~   | ~~3~~  | ~~Low-severity security sweep~~                                                                       |
-| ~~T117~~ | ~~1~~ | ~~Security~~   | ~~3~~  | ~~Remediate dependency vulnerabilities and bump the Go toolchain~~                                    |
-| ~~T118~~ | ~~2~~ | ~~Bug~~        | ~~3~~  | ~~Recording a payment updates the invoice balance and status~~                                        |
-| ~~T121~~ | ~~2~~ | ~~Bug~~        | ~~2~~  | ~~Payment reminders actually send~~                                                                   |
-| ~~T122~~ | ~~2~~ | ~~Bug~~        | ~~2~~  | ~~Fix /webhooks/stripe panicking on subscription and invoice events~~                                 |
-| ~~T123~~ | ~~2~~ | ~~Bug~~        | ~~3~~  | ~~Add the missing SQL functions and views behind customer search and reports~~                        |
-| ~~T126~~ | ~~2~~ | ~~Monitoring~~ | ~~2~~  | ~~Backend Sentry actually initialised; wire or delete the Loki/BetterStack/OTel stubs~~               |
-| ~~T128~~ | ~~2~~ | ~~Backend~~    | ~~4~~  | ~~Exports safe on multiple instances (object storage + persisted progress)~~                          |
-| ~~T130~~ | ~~2~~ | ~~Bug~~        | ~~1~~  | ~~Login error swallowed by the refresh interceptor~~                                                  |
-| ~~T131~~ | ~~2~~ | ~~Bug~~        | ~~1~~  | ~~Public payment result pages for the /pay/:token flow~~                                              |
-| ~~T132~~ | ~~2~~ | ~~Security~~   | ~~2~~  | ~~Clear tenant and user data on logout and tenant switch~~                                            |
-| ~~T133~~ | ~~2~~ | ~~Bug~~        | ~~2~~  | ~~Job times entered and shown in the tenant's timezone, stored as true UTC~~                          |
-| ~~T134~~ | ~~2~~ | ~~Security~~   | ~~1~~  | ~~Strip sensitive query params from analytics and error breadcrumbs~~                                 |
-| ~~T135~~ | ~~2~~ | ~~Frontend~~   | ~~4~~  | ~~Frontend medium-severity sweep~~                                                                    |
-| ~~T136~~ | ~~2~~ | ~~Testing~~    | ~~3~~  | ~~Green frontend test suite and lint~~                                                                |
-| ~~T137~~ | ~~2~~ | ~~Cleanup~~    | ~~3~~  | ~~Frontend dead-code removal (~18.5k unreachable lines)~~                                             |
-| ~~T138~~ | ~~2~~ | ~~UX~~         | ~~2~~  | ~~Preview polish: honest contact form, legal pages marked draft, favicon~~                            |
-| ~~T139~~ | ~~3~~ | ~~DB~~         | ~~4~~  | ~~golang-migrate baseline (000001), cmd/migrate, dev-only startup migrations~~                        |
-| ~~T140~~ | ~~3~~ | ~~Backend~~    | ~~2~~  | ~~/version endpoint and schema-aware readiness~~                                                      |
-| ~~T141~~ | ~~3~~ | ~~Backend~~    | ~~4~~  | ~~Background tickers → internal job endpoints + scheduled-jobs workflow~~                             |
-| ~~T142~~ | ~~3~~ | ~~Backend~~    | ~~2~~  | ~~Redis optional at boot~~                                                                            |
-| ~~T143~~ | ~~3~~ | ~~Infra~~      | ~~2~~  | ~~Cloud Run-ready Dockerfile and .dockerignore~~                                                      |
-| ~~T144~~ | ~~3~~ | ~~DB~~         | ~~1~~  | ~~DB pool sizing and pooler (simple protocol) support~~                                               |
-| ~~T145~~ | ~~3~~ | ~~CI~~         | ~~6~~  | ~~CI rewrite: lint, tests with Postgres+Redis, govulncheck, OpenAPI drift, frontend, Docker + Trivy~~ |
-| ~~T146~~ | ~~3~~ | ~~Deploy~~     | ~~5~~  | ~~Tag-driven release-deploy pipeline, VERSION scripts and RELEASING.md~~                              |
-| ~~T147~~ | ~~3~~ | ~~CI~~         | ~~2~~  | ~~Dependabot deps() prefixes, automerge and weekly security scan~~                                    |
-| ~~T148~~ | ~~3~~ | ~~CI~~         | ~~2~~  | ~~Versioned bash git hooks replace python pre-commit; commit-msg prefix contract~~                    |
-| ~~T149~~ | ~~3~~ | ~~Cleanup~~    | ~~2~~  | ~~Repo hygiene: tracked artifacts, Fly/nginx/cliff removal, .gitignore, single Makefile~~             |
-| ~~T150~~ | ~~3~~ | ~~Deploy~~     | ~~6~~  | ~~Cloudflare Workers static assets + /api edge proxy Worker + _headers~~                              |
-| ~~T151~~ | ~~3~~ | ~~Docs~~       | ~~3~~  | ~~Ops docs: Cloud Run setup, deploy/rollback, backups + nightly pg_dump → R2 workflow~~               |
-| ~~T152~~ | ~~3~~ | ~~CI~~         | ~~1~~  | ~~Commit generated OpenAPI and TS types for drift gating~~                                            |
-| ~~T226~~ | ~~2~~ | ~~Bug~~        | ~~3~~  | ~~Tenant creation and invitation acceptance in transactions; per-tenant uniqueness~~                  |
-| ~~T227~~ | ~~2~~ | ~~Bug~~        | ~~3~~  | ~~Frontend follow-through for the Phase 1 auth changes (invite codes, 429, logout-everywhere)~~       |
-| T119     | 2     | Payments       | 3      | Stripe Checkout charges the true balance due                                                          |
-| T120     | 2     | Bug            | 2      | Invoice and job numbering survives soft-delete and concurrency                                        |
-| T124     | 2     | Bug            | 4      | Enforce invoice status transitions; unify the two job state machines                                  |
-| T125     | 2     | Payments       | 3      | Handle refunds in the ledger                                                                          |
-| T127     | 2     | Backend        | 3      | Backend reads tenant settings: currency, number prefixes, defaults                                    |
-| T129     | 2     | Cleanup        | 4      | Backend dead-code removal and a stricter linter                                                       |
-| T223     | 2     | Backend        | 4      | Request IDs and a standard API error envelope                                                         |
-| T224     | 2     | Bug            | 4      | Quote correctness: lost customer edits, accept race, expiry, editable sent quotes                     |
-| T225     | 2     | Bug            | 4      | Invoice totals: one server-side recalculation, tax/discount order, no double invoicing                |
-| T228     | 2     | Bug            | 2      | Quotes list: backend search (q) and sort params                                                       |
-| T229     | 2     | Bug            | 2      | Invite and invitation API polish: distinct invalid-code error, encoded links, message field           |
-| T101     | 3     | Monitoring     | 2      | Upload source maps to Sentry for production builds                                                    |
-| T153     | 4     | Backend        | 24     | Repositories take ctx + tenantID; services stop taking *gorm.DB; transaction manager                  |
-| T154     | 4     | Security       | 12     | Postgres RLS backstop keyed on a per-transaction tenant GUC + isolation tests                         |
-| T155     | 4     | Backend        | 40     | Gin → chi                                                                                             |
-| T156     | 4     | Backend        | 120    | GORM → pgx/sqlc, one repository at a time                                                             |
-| T157     | 4     | Testing        | 16     | Drop GORM and sqlite; backend tests on Postgres via testcontainers                                    |
-| T158     | 4     | Auth           | 40     | Supabase Auth: own sign-in screens, JWKS verification, users.auth_user_id, invite flow                |
-| T159     | 4     | Email          | 6      | Email → Resend only (remove SES/SNS/CloudWatch and the AWS email SDKs)                                |
-| T160     | 4     | Infra          | 4      | Storage → Cloudflare R2 (fix presign host rewrite)                                                    |
-| T161     | 4     | Infra          | 4      | Production Redis: Upstash for rate limits/lockout/cache, or move them to Postgres                     |
-| T162     | 4     | Frontend       | 48     | Frontend server state → TanStack Query v5 (~26 pages)                                                 |
-| T163     | 4     | Frontend       | 40     | Tailwind v4 + semantic theme tokens + dark mode                                                       |
-| T164     | 4     | Frontend       | 16     | React 19, React Router 7, Vite major, ESLint 9, Headless UI 2                                         |
-| T165     | 4     | Monitoring     | 4      | Better Stack uptime/status + PostHog server-side events parity                                        |
-| T166     | 4     | Research       | 2      | Decide money representation (decimal vs integer cents) before the pgx port                            |
-| T028     | 5     | Feature        | 3      | Add "Convert Quote to Job" button                                                                     |
-| T029     | 5     | Feature        | 2      | Add "Generate Invoice from Job" button                                                                |
-| T030     | 5     | Feature        | 4      | Auto-populate invoice from job data                                                                   |
-| T033     | 5     | Reporting      | 2      | Add "Jobs Needing Invoice" dashboard widget                                                           |
-| T035     | 5     | Auth           | 4      | Create Technician role                                                                                |
-| T041     | 5     | Feature        | 6      | Implement quote auto follow-ups                                                                       |
-| T042     | 5     | UX             | 4      | Build follow-up queue UI                                                                              |
-| T051     | 5     | Email          | 4      | Implement quote follow-up email sequence                                                              |
-| T052     | 5     | Auth           | 3      | Create Dispatcher role                                                                                |
-| T058     | 5     | Feature        | 4      | Add required fields validation by job stage                                                           |
-| T060     | 5     | Feature        | 8      | Create quote template system (good/better/best)                                                       |
-| T062     | 5     | Feature        | 2      | Add quote aging tracking                                                                              |
-| T076     | 5     | Feature        | 1      | Add "Recreate Last Quote" button                                                                      |
-| T080     | 5     | Feature        | 3      | Create terms & conditions templates                                                                   |
-| T082     | 5     | Feature        | 2      | Add "Create Quote from Job" button                                                                    |
-| T167     | 5     | Feature        | 12     | Recurring service agreements UI wired to the recurrence engine                                        |
-| T168     | 5     | Feature        | 12     | Price book (services and materials catalog with flat-rate pricing)                                    |
-| T061     | 6     | Payments       | 6      | Add required deposit to accept quote                                                                  |
-| T063     | 6     | Payments       | 6      | Add deposit tracking and application                                                                  |
-| T083     | 6     | Payments       | 4      | Implement late fee calculation                                                                        |
-| T169     | 6     | Payments       | 24     | Stripe Connect Express onboarding; invoice payments routed to the tenant                              |
-| T170     | 6     | Payments       | 6      | Card + ACH invoice payments, ACH preferred for B2B                                                    |
-| T171     | 6     | Payments       | 10     | Saved payment methods + autopay                                                                       |
-| T172     | 6     | Payments       | 16     | Tap to Pay via Stripe Terminal                                                                        |
-| T027     | 7     | Feature        | 8      | Add drag-and-drop rescheduling to job calendar                                                        |
-| T038     | 7     | Feature        | 6      | Add technician availability management UI                                                             |
-| T039     | 7     | Feature        | 8      | Create emergency job insertion workflow                                                               |
-| T040     | 7     | SMS            | 3      | Add auto-notify on emergency insertion                                                                |
-| T056     | 7     | Feature        | 3      | Add workload capacity warnings                                                                        |
-| T057     | 7     | Feature        | 2      | Add double-booking override with reason                                                               |
-| T059     | 7     | Feature        | 3      | Add technician skill tags                                                                             |
-| T077     | 7     | Feature        | 4      | Add time-off request UI                                                                               |
-| T078     | 7     | Feature        | 4      | Add skill-based job matching suggestions                                                              |
-| T079     | 7     | Feature        | 1      | Add travel time notes field                                                                           |
-| T099     | 7     | Backend        | 4      | Add tenant timezone support for conflict detection                                                    |
-| T173     | 7     | Mobile         | 24     | Technician "My Day" mobile-first view                                                                 |
-| T174     | 7     | Feature        | 8      | Job photos and attachments (R2)                                                                       |
-| T175     | 7     | Feature        | 12     | Job checklists / forms                                                                                |
-| T176     | 7     | Feature        | 8      | Customer signature on completion + service report PDF emailed                                         |
-| T177     | 7     | Feature        | 12     | Time clock per job + timesheet export                                                                 |
-| T178     | 7     | Feature        | 8      | Map / route view of the day                                                                           |
-| T179     | 7     | Mobile         | 40     | Offline-capable tech app (queue + sync)                                                               |
-| T180     | 7     | Mobile         | 24     | Capacitor-wrapped iOS/Android apps in the stores                                                      |
-| T036     | 8     | Feature        | 3      | Add manual Call Log entry                                                                             |
-| T037     | 8     | Feature        | 4      | Auto-log system messages to customer activity                                                         |
-| T048     | 8     | Email          | 3      | Add appointment confirmation emails                                                                   |
-| T049     | 8     | SMS            | 4      | Add appointment reminder emails/SMS                                                                   |
-| T050     | 8     | SMS            | 2      | Add "Tech on the way" manual trigger                                                                  |
-| T054     | 8     | UX             | 4      | Create Communication Log component                                                                    |
-| T055     | 8     | UX             | 8      | Unified Customer Timeline view                                                                        |
-| T072     | 8     | Feature        | 6      | Create message template management UI                                                                 |
-| T073     | 8     | Feature        | 4      | Add rich variable system for templates                                                                |
-| T089     | 8     | Email          | 6      | Add email/SMS delivery tracking                                                                       |
-| T090     | 8     | Monitoring     | 3      | Add communication failure alerts                                                                      |
-| T091     | 8     | Feature        | 4      | Add notification preferences per customer                                                             |
-| T181     | 8     | SMS            | 20     | Two-way SMS inbox (Twilio + 10DLC)                                                                    |
-| T182     | 8     | Marketing      | 4      | Review request automation                                                                             |
-| T081     | 9     | Feature        | 4      | Add e-signature for quote acceptance                                                                  |
-| T183     | 9     | Feature        | 10     | Public quote approval page (approve/decline, e-sign, optional deposit)                                |
-| T184     | 9     | Feature        | 24     | Customer portal / client hub                                                                          |
-| T185     | 9     | Feature        | 12     | Online booking / request widget embeddable on websites                                                |
-| T044     | 10    | Feature        | 8      | Build collections dashboard                                                                           |
-| T064     | 10    | Feature        | 2      | Add last contact date tracking on invoices                                                            |
-| T065     | 10    | Feature        | 3      | Add promise-to-pay notes                                                                              |
-| T186     | 10    | Feature        | 16     | Multi-site customers (service locations; invoice per site or consolidated)                            |
-| T187     | 10    | Feature        | 6      | PO capture and matching on jobs and invoices                                                          |
-| T188     | 10    | Feature        | 8      | Consolidated monthly invoicing                                                                        |
-| T189     | 10    | Feature        | 6      | Statements of account (portal + email)                                                                |
-| T190     | 10    | Feature        | 24     | Property-manager approval workflow (NTE limits, multi-approver, email intake)                         |
-| T191     | 10    | Feature        | 12     | Maintenance agreements with autopay + renewal reminders                                               |
-| T095     | 11    | Integration    | 12     | Build outgoing webhooks system                                                                        |
-| T096     | 11    | Backend        | 4      | Build event log table                                                                                 |
-| T097     | 11    | Integration    | 4      | Add webhook retry logic                                                                               |
-| T098     | 11    | Docs           | 3      | Document public API (OpenAPI/Swagger)                                                                 |
-| T192     | 11    | Integration    | 32     | QuickBooks Online sync (customers, invoices, payments; one-way first)                                 |
-| T193     | 11    | Integration    | 8      | Import mappers for Jobber / Housecall Pro exports + generic CSV                                       |
-| T194     | 11    | Integration    | 12     | Zapier app                                                                                            |
-| T195     | 11    | Integration    | 8      | Wisetack consumer financing                                                                           |
-| T196     | 11    | Integration    | 12     | Gusto payroll / timesheets                                                                            |
-| T197     | 11    | Integration    | 8      | AI receptionist partner integration                                                                   |
-| T045     | 12    | Reporting      | 2      | Add aging quotes dashboard widget                                                                     |
-| T046     | 12    | Reporting      | 2      | Add follow-up queue dashboard widget                                                                  |
-| T047     | 12    | Reporting      | 4      | Build "stuck work" report                                                                             |
-| T066     | 12    | Reporting      | 4      | Add technician utilization widget                                                                     |
-| T067     | 12    | Reporting      | 2      | Add quote conversion rate metric                                                                      |
-| T068     | 12    | Reporting      | 3      | Build job-completion-to-invoice time report                                                           |
-| T069     | 12    | Reporting      | 3      | Build invoice-to-paid time report (DSO)                                                               |
-| T070     | 12    | Reporting      | 3      | Build revenue by service type report                                                                  |
-| T071     | 12    | Reporting      | 3      | Build collections rate report                                                                         |
-| T084     | 12    | Reporting      | 3      | Build quote-to-job conversion report                                                                  |
-| T085     | 12    | Reporting      | 3      | Build lead-to-quote time report                                                                       |
-| T086     | 12    | Reporting      | 2      | Build quote-to-acceptance time report                                                                 |
-| T087     | 12    | Reporting      | 3      | Build revenue by technician report                                                                    |
-| T088     | 12    | Reporting      | 4      | Add comparative analysis (vs prior period)                                                            |
-| T198     | 12    | Reporting      | 12     | Job costing / profit per job                                                                          |
-| T074     | 13    | Auth           | 3      | Create Accountant role                                                                                |
-| T075     | 13    | Auth           | 12     | Add field-level permission controls                                                                   |
-| T092     | 13    | Auth           | 6      | Implement 2FA (TOTP)                                                                                  |
-| T093     | 13    | Backend        | 12     | Implement comprehensive audit logging                                                                 |
-| T094     | 13    | Auth           | 0      | Add Google OAuth sign-in (Won't Do)                                                                   |
-| T199     | 13    | Feature        | 6      | One-click full data export (trust promise)                                                            |
-| T200     | 13    | Legal          | 6      | Account/tenant deletion + data retention policy                                                       |
-| T201     | 13    | Legal          | 3      | Privacy/CCPA handling SOP                                                                             |
-| T230     | 13    | Auth           | 3      | Expose the caller's effective permissions per tenant; decide who can delete an organization           |
-| T202     | 14    | Research       | 1      | Decide production database hosting (OWNER DECISION)                                                   |
-| T203     | 14    | Deploy         | 4      | GCP project + WIF + Artifact Registry + Cloud Run service                                             |
-| T204     | 14    | Deploy         | 2      | Deploy the Worker + DNS for servicepro.sharkfins.xyz                                                  |
-| T205     | 14    | Deploy         | 2      | Invite-gated preview launch                                                                           |
-| T206     | 14    | Email          | 2      | Production email domain on Resend (SPF/DKIM/DMARC)                                                    |
-| T207     | 14    | Legal          | 4      | Terms of Service + Privacy Policy legal review                                                        |
-| T208     | 14    | Ops            | 2      | Support inbox + Better Stack status page                                                              |
-| T209     | 14    | Ops            | 2      | Activate nightly backups to R2 + restore drill                                                        |
-| T210     | 14    | Billing        | 12     | ServicePro plans & billing: Solo/Team/Pro flat, unlimited users, founding offer                       |
-| T211     | 14    | Docs           | 1      | Update Fleet and the blog when ServicePro goes live                                                   |
-| T212     | 14    | Ops            | 2      | Production config review                                                                              |
-| T213     | 14    | Ops            | 1      | Cost guardrails (Cloud Run max instances × DB pool, budget alerts)                                    |
-| T214     | 15    | AI             | 24     | AI collections agent                                                                                  |
-| T215     | 15    | AI             | 20     | AI quote drafting from photos, voice or notes against the price book                                  |
-| T216     | 15    | AI             | 12     | "Ask your business" chat over reporting views                                                         |
-| T217     | 15    | AI             | 12     | MCP server for ServicePro                                                                             |
-| T218     | 16    | Research       | 10     | Customer discovery: interview 10 commercial service contractors                                       |
-| T219     | 16    | Marketing      | 12     | Marketing site with positioning + transparent pricing                                                 |
-| T220     | 16    | Marketing      | 4      | White-glove migration offer + playbook                                                                |
-| T221     | 16    | Marketing      | 8      | Comparison / alternative pages (vs Jobber, Housecall Pro, ServiceTitan)                               |
-| T222     | 16    | Research       | 6      | Validate secondary beachhead (inspection/compliance trades)                                           |
+| ID       | Phase  | Category       | Hours  | Task                                                                                                  |
+|----------|--------|----------------|--------|-------------------------------------------------------------------------------------------------------|
+| ~~T001~~ | ~~0~~  | ~~Backend~~    | ~~—~~  | ~~Recovery middleware Sentry integration~~                                                            |
+| ~~T002~~ | ~~0~~  | ~~Frontend~~   | ~~—~~  | ~~Centralize direct fetch() calls~~                                                                   |
+| ~~T003~~ | ~~0~~  | ~~Frontend~~   | ~~—~~  | ~~Add CSP/HSTS headers to nginx.conf~~                                                                |
+| ~~T004~~ | ~~0~~  | ~~CI~~         | ~~—~~  | ~~Create GitHub Actions CI/CD workflows~~                                                             |
+| ~~T005~~ | ~~0~~  | ~~Monitoring~~ | ~~—~~  | ~~Expose /metrics endpoint for Prometheus~~                                                           |
+| ~~T006~~ | ~~0~~  | ~~Backend~~    | ~~—~~  | ~~Structured JSON logging (replace fmt.Printf)~~                                                      |
+| ~~T007~~ | ~~0~~  | ~~Frontend~~   | ~~—~~  | ~~Fix `any` types (50 instances)~~                                                                    |
+| ~~T008~~ | ~~0~~  | ~~Frontend~~   | ~~—~~  | ~~Remove @ts-nocheck directives~~                                                                     |
+| ~~T009~~ | ~~0~~  | ~~Frontend~~   | ~~—~~  | ~~Enable noUnusedLocals/noUnusedParameters~~                                                          |
+| ~~T010~~ | ~~0~~  | ~~Backend~~    | ~~—~~  | ~~Apply error tracking middleware~~                                                                   |
+| ~~T012~~ | ~~0~~  | ~~CI~~         | ~~—~~  | ~~Bundle size monitoring in CI~~                                                                      |
+| ~~T013~~ | ~~0~~  | ~~Testing~~    | ~~—~~  | ~~Increase frontend test coverage to 70%+~~                                                           |
+| ~~T014~~ | ~~0~~  | ~~Testing~~    | ~~—~~  | ~~Integration tests for critical workflows~~                                                          |
+| ~~T015~~ | ~~0~~  | ~~Docs~~       | ~~—~~  | ~~Generate OpenAPI/Swagger documentation~~                                                            |
+| ~~T016~~ | ~~0~~  | ~~Perf~~       | ~~—~~  | ~~Frontend bundle analysis + optimization~~                                                           |
+| ~~T017~~ | ~~0~~  | ~~Perf~~       | ~~—~~  | ~~Query performance monitoring~~                                                                      |
+| ~~T018~~ | ~~0~~  | ~~Cleanup~~    | ~~—~~  | ~~Dead code elimination~~                                                                             |
+| ~~T019~~ | ~~0~~  | ~~Feature~~    | ~~—~~  | ~~Integrate calendar view for job scheduling~~                                                        |
+| ~~T020~~ | ~~0~~  | ~~Feature~~    | ~~—~~  | ~~Build conflict detection API endpoint~~                                                             |
+| ~~T021~~ | ~~0~~  | ~~Cleanup~~    | ~~—~~  | ~~Extract duplicate file download utility~~                                                           |
+| ~~T022~~ | ~~0~~  | ~~Cleanup~~    | ~~—~~  | ~~Extract duplicate URLSearchParams builder~~                                                         |
+| ~~T023~~ | ~~0~~  | ~~Cleanup~~    | ~~—~~  | ~~Consolidate cache hooks (useLocalCache/useSession)~~                                                |
+| ~~T024~~ | ~~0~~  | ~~Monitoring~~ | ~~—~~  | ~~Full Sentry integration (frontend + backend)~~                                                      |
+| ~~T025~~ | ~~0~~  | ~~Monitoring~~ | ~~—~~  | ~~Integrate product analytics (PostHog)~~                                                             |
+| ~~T026~~ | ~~0~~  | ~~Reporting~~  | ~~—~~  | ~~Set up business KPI dashboard (Grafana)~~                                                           |
+| ~~T031~~ | ~~0~~  | ~~Reporting~~  | ~~—~~  | ~~Build A/R aging buckets report~~                                                                    |
+| ~~T032~~ | ~~0~~  | ~~Reporting~~  | ~~—~~  | ~~Build "Who Owes What" report~~                                                                      |
+| ~~T034~~ | ~~0~~  | ~~Email~~      | ~~—~~  | ~~Wire payment reminder automation~~                                                                  |
+| ~~T043~~ | ~~0~~  | ~~Email~~      | ~~—~~  | ~~Wire payment reminder notifications~~                                                               |
+| ~~T053~~ | ~~0~~  | ~~Feature~~    | ~~—~~  | ~~Add "Repeat Job" button on customer detail~~                                                        |
+| ~~T100~~ | ~~0~~  | ~~Feature~~    | ~~—~~  | ~~Add business hours & timezone to org settings~~                                                     |
+| ~~T102~~ | ~~1~~  | ~~Security~~   | ~~16~~ | ~~Tenant-scope all business data~~                                                                    |
+| ~~T103~~ | ~~1~~  | ~~Security~~   | ~~6~~  | ~~Authorize tenant member, invitation and role endpoints; no self-escalation~~                        |
+| ~~T104~~ | ~~1~~  | ~~Security~~   | ~~4~~  | ~~Evaluate permissions per tenant~~                                                                   |
+| ~~T105~~ | ~~1~~  | ~~Security~~   | ~~3~~  | ~~Remove or lock the raw Stripe passthrough endpoints~~                                               |
+| ~~T106~~ | ~~1~~  | ~~Security~~   | ~~5~~  | ~~Backend-enforced invite-only registration; reject non-edge traffic in production~~                  |
+| ~~T107~~ | ~~1~~  | ~~Security~~   | ~~2~~  | ~~Edge client-IP middleware and a safe trusted-proxy default~~                                        |
+| ~~T108~~ | ~~1~~  | ~~Security~~   | ~~2~~  | ~~Escape PDF export HTML; drop wkhtmltopdf local file access~~                                        |
+| ~~T109~~ | ~~1~~  | ~~Security~~   | ~~5~~  | ~~Stripe webhook reliability: persistent dedupe, accept retries, body limit, idempotent payment~~     |
+| ~~T110~~ | ~~1~~  | ~~Security~~   | ~~4~~  | ~~Token hardening: access vs refresh type, revoke on logout and password reset~~                      |
+| ~~T111~~ | ~~1~~  | ~~Security~~   | ~~3~~  | ~~Login hardening: no lockout DoS, uniform errors and timing~~                                        |
+| ~~T112~~ | ~~1~~  | ~~Security~~   | ~~1~~  | ~~Neutralise CSV/Excel formula injection in exports~~                                                 |
+| ~~T113~~ | ~~1~~  | ~~Security~~   | ~~1~~  | ~~Fail closed when no email or storage provider in production; never log tokens~~                     |
+| ~~T114~~ | ~~1~~  | ~~Security~~   | ~~2~~  | ~~Lock down /health detail, /metrics, Swagger and debug mode in production~~                          |
+| ~~T115~~ | ~~1~~  | ~~Security~~   | ~~3~~  | ~~Secure cookies by default and CSRF protection~~                                                     |
+| ~~T116~~ | ~~1~~  | ~~Security~~   | ~~3~~  | ~~Low-severity security sweep~~                                                                       |
+| ~~T117~~ | ~~1~~  | ~~Security~~   | ~~3~~  | ~~Remediate dependency vulnerabilities and bump the Go toolchain~~                                    |
+| ~~T118~~ | ~~2~~  | ~~Bug~~        | ~~3~~  | ~~Recording a payment updates the invoice balance and status~~                                        |
+| ~~T121~~ | ~~2~~  | ~~Bug~~        | ~~2~~  | ~~Payment reminders actually send~~                                                                   |
+| ~~T122~~ | ~~2~~  | ~~Bug~~        | ~~2~~  | ~~Fix /webhooks/stripe panicking on subscription and invoice events~~                                 |
+| ~~T123~~ | ~~2~~  | ~~Bug~~        | ~~3~~  | ~~Add the missing SQL functions and views behind customer search and reports~~                        |
+| ~~T126~~ | ~~2~~  | ~~Monitoring~~ | ~~2~~  | ~~Backend Sentry actually initialised; wire or delete the Loki/BetterStack/OTel stubs~~               |
+| ~~T128~~ | ~~2~~  | ~~Backend~~    | ~~4~~  | ~~Exports safe on multiple instances (object storage + persisted progress)~~                          |
+| ~~T130~~ | ~~2~~  | ~~Bug~~        | ~~1~~  | ~~Login error swallowed by the refresh interceptor~~                                                  |
+| ~~T131~~ | ~~2~~  | ~~Bug~~        | ~~1~~  | ~~Public payment result pages for the /pay/:token flow~~                                              |
+| ~~T132~~ | ~~2~~  | ~~Security~~   | ~~2~~  | ~~Clear tenant and user data on logout and tenant switch~~                                            |
+| ~~T133~~ | ~~2~~  | ~~Bug~~        | ~~2~~  | ~~Job times entered and shown in the tenant's timezone, stored as true UTC~~                          |
+| ~~T134~~ | ~~2~~  | ~~Security~~   | ~~1~~  | ~~Strip sensitive query params from analytics and error breadcrumbs~~                                 |
+| ~~T135~~ | ~~2~~  | ~~Frontend~~   | ~~4~~  | ~~Frontend medium-severity sweep~~                                                                    |
+| ~~T136~~ | ~~2~~  | ~~Testing~~    | ~~3~~  | ~~Green frontend test suite and lint~~                                                                |
+| ~~T137~~ | ~~2~~  | ~~Cleanup~~    | ~~3~~  | ~~Frontend dead-code removal (~18.5k unreachable lines)~~                                             |
+| ~~T138~~ | ~~2~~  | ~~UX~~         | ~~2~~  | ~~Preview polish: honest contact form, legal pages marked draft, favicon~~                            |
+| ~~T139~~ | ~~3~~  | ~~DB~~         | ~~4~~  | ~~golang-migrate baseline (000001), cmd/migrate, dev-only startup migrations~~                        |
+| ~~T140~~ | ~~3~~  | ~~Backend~~    | ~~2~~  | ~~/version endpoint and schema-aware readiness~~                                                      |
+| ~~T141~~ | ~~3~~  | ~~Backend~~    | ~~4~~  | ~~Background tickers → internal job endpoints + scheduled-jobs workflow~~                             |
+| ~~T142~~ | ~~3~~  | ~~Backend~~    | ~~2~~  | ~~Redis optional at boot~~                                                                            |
+| ~~T143~~ | ~~3~~  | ~~Infra~~      | ~~2~~  | ~~Cloud Run-ready Dockerfile and .dockerignore~~                                                      |
+| ~~T144~~ | ~~3~~  | ~~DB~~         | ~~1~~  | ~~DB pool sizing and pooler (simple protocol) support~~                                               |
+| ~~T145~~ | ~~3~~  | ~~CI~~         | ~~6~~  | ~~CI rewrite: lint, tests with Postgres+Redis, govulncheck, OpenAPI drift, frontend, Docker + Trivy~~ |
+| ~~T146~~ | ~~3~~  | ~~Deploy~~     | ~~5~~  | ~~Tag-driven release-deploy pipeline, VERSION scripts and RELEASING.md~~                              |
+| ~~T147~~ | ~~3~~  | ~~CI~~         | ~~2~~  | ~~Dependabot deps() prefixes, automerge and weekly security scan~~                                    |
+| ~~T148~~ | ~~3~~  | ~~CI~~         | ~~2~~  | ~~Versioned bash git hooks replace python pre-commit; commit-msg prefix contract~~                    |
+| ~~T149~~ | ~~3~~  | ~~Cleanup~~    | ~~2~~  | ~~Repo hygiene: tracked artifacts, Fly/nginx/cliff removal, .gitignore, single Makefile~~             |
+| ~~T150~~ | ~~3~~  | ~~Deploy~~     | ~~6~~  | ~~Cloudflare Workers static assets + /api edge proxy Worker + _headers~~                              |
+| ~~T151~~ | ~~3~~  | ~~Docs~~       | ~~3~~  | ~~Ops docs: Cloud Run setup, deploy/rollback, backups + nightly pg_dump → R2 workflow~~               |
+| ~~T152~~ | ~~3~~  | ~~CI~~         | ~~1~~  | ~~Commit generated OpenAPI and TS types for drift gating~~                                            |
+| ~~T226~~ | ~~2~~  | ~~Bug~~        | ~~3~~  | ~~Tenant creation and invitation acceptance in transactions; per-tenant uniqueness~~                  |
+| ~~T227~~ | ~~2~~  | ~~Bug~~        | ~~3~~  | ~~Frontend follow-through for the Phase 1 auth changes (invite codes, 429, logout-everywhere)~~       |
+| ~~T229~~ | ~~2~~  | ~~Bug~~        | ~~2~~  | ~~Invite and invitation API polish: distinct invalid-code error, encoded links, message field~~       |
+| ~~T230~~ | ~~13~~ | ~~Auth~~       | ~~3~~  | ~~Expose the caller's effective permissions per tenant; decide who can delete an organization~~       |
+| T119     | 2      | Payments       | 3      | Stripe Checkout charges the true balance due                                                          |
+| T120     | 2      | Bug            | 2      | Invoice and job numbering survives soft-delete and concurrency                                        |
+| T124     | 2      | Bug            | 4      | Enforce invoice status transitions; unify the two job state machines                                  |
+| T125     | 2      | Payments       | 3      | Handle refunds in the ledger                                                                          |
+| T127     | 2      | Backend        | 3      | Backend reads tenant settings: currency, number prefixes, defaults                                    |
+| T129     | 2      | Cleanup        | 4      | Backend dead-code removal and a stricter linter                                                       |
+| T223     | 2      | Backend        | 4      | Request IDs and a standard API error envelope                                                         |
+| T224     | 2      | Bug            | 4      | Quote correctness: lost customer edits, accept race, expiry, editable sent quotes                     |
+| T225     | 2      | Bug            | 4      | Invoice totals: one server-side recalculation, tax/discount order, no double invoicing                |
+| T228     | 2      | Bug            | 2      | Quotes list: backend search (q) and sort params                                                       |
+| T101     | 3      | Monitoring     | 2      | Upload source maps to Sentry for production builds                                                    |
+| T153     | 4      | Backend        | 24     | Repositories take ctx + tenantID; services stop taking *gorm.DB; transaction manager                  |
+| T154     | 4      | Security       | 12     | Postgres RLS backstop keyed on a per-transaction tenant GUC + isolation tests                         |
+| T155     | 4      | Backend        | 40     | Gin → chi                                                                                             |
+| T156     | 4      | Backend        | 120    | GORM → pgx/sqlc, one repository at a time                                                             |
+| T157     | 4      | Testing        | 16     | Drop GORM and sqlite; backend tests on Postgres via testcontainers                                    |
+| T158     | 4      | Auth           | 40     | Supabase Auth: own sign-in screens, JWKS verification, users.auth_user_id, invite flow                |
+| T159     | 4      | Email          | 6      | Email → Resend only (remove SES/SNS/CloudWatch and the AWS email SDKs)                                |
+| T160     | 4      | Infra          | 4      | Storage → Cloudflare R2 (fix presign host rewrite)                                                    |
+| T161     | 4      | Infra          | 4      | Production Redis: Upstash for rate limits/lockout/cache, or move them to Postgres                     |
+| T162     | 4      | Frontend       | 48     | Frontend server state → TanStack Query v5 (~26 pages)                                                 |
+| T163     | 4      | Frontend       | 40     | Tailwind v4 + semantic theme tokens + dark mode                                                       |
+| T164     | 4      | Frontend       | 16     | React 19, React Router 7, Vite major, ESLint 9, Headless UI 2                                         |
+| T165     | 4      | Monitoring     | 4      | Better Stack uptime/status + PostHog server-side events parity                                        |
+| T166     | 4      | Research       | 2      | Decide money representation (decimal vs integer cents) before the pgx port                            |
+| T028     | 5      | Feature        | 3      | Add "Convert Quote to Job" button                                                                     |
+| T029     | 5      | Feature        | 2      | Add "Generate Invoice from Job" button                                                                |
+| T030     | 5      | Feature        | 4      | Auto-populate invoice from job data                                                                   |
+| T033     | 5      | Reporting      | 2      | Add "Jobs Needing Invoice" dashboard widget                                                           |
+| T035     | 5      | Auth           | 4      | Create Technician role                                                                                |
+| T041     | 5      | Feature        | 6      | Implement quote auto follow-ups                                                                       |
+| T042     | 5      | UX             | 4      | Build follow-up queue UI                                                                              |
+| T051     | 5      | Email          | 4      | Implement quote follow-up email sequence                                                              |
+| T052     | 5      | Auth           | 3      | Create Dispatcher role                                                                                |
+| T058     | 5      | Feature        | 4      | Add required fields validation by job stage                                                           |
+| T060     | 5      | Feature        | 8      | Create quote template system (good/better/best)                                                       |
+| T062     | 5      | Feature        | 2      | Add quote aging tracking                                                                              |
+| T076     | 5      | Feature        | 1      | Add "Recreate Last Quote" button                                                                      |
+| T080     | 5      | Feature        | 3      | Create terms & conditions templates                                                                   |
+| T082     | 5      | Feature        | 2      | Add "Create Quote from Job" button                                                                    |
+| T167     | 5      | Feature        | 12     | Recurring service agreements UI wired to the recurrence engine                                        |
+| T168     | 5      | Feature        | 12     | Price book (services and materials catalog with flat-rate pricing)                                    |
+| T061     | 6      | Payments       | 6      | Add required deposit to accept quote                                                                  |
+| T063     | 6      | Payments       | 6      | Add deposit tracking and application                                                                  |
+| T083     | 6      | Payments       | 4      | Implement late fee calculation                                                                        |
+| T169     | 6      | Payments       | 24     | Stripe Connect Express onboarding; invoice payments routed to the tenant                              |
+| T170     | 6      | Payments       | 6      | Card + ACH invoice payments, ACH preferred for B2B                                                    |
+| T171     | 6      | Payments       | 10     | Saved payment methods + autopay                                                                       |
+| T172     | 6      | Payments       | 16     | Tap to Pay via Stripe Terminal                                                                        |
+| T027     | 7      | Feature        | 8      | Add drag-and-drop rescheduling to job calendar                                                        |
+| T038     | 7      | Feature        | 6      | Add technician availability management UI                                                             |
+| T039     | 7      | Feature        | 8      | Create emergency job insertion workflow                                                               |
+| T040     | 7      | SMS            | 3      | Add auto-notify on emergency insertion                                                                |
+| T056     | 7      | Feature        | 3      | Add workload capacity warnings                                                                        |
+| T057     | 7      | Feature        | 2      | Add double-booking override with reason                                                               |
+| T059     | 7      | Feature        | 3      | Add technician skill tags                                                                             |
+| T077     | 7      | Feature        | 4      | Add time-off request UI                                                                               |
+| T078     | 7      | Feature        | 4      | Add skill-based job matching suggestions                                                              |
+| T079     | 7      | Feature        | 1      | Add travel time notes field                                                                           |
+| T099     | 7      | Backend        | 4      | Add tenant timezone support for conflict detection                                                    |
+| T173     | 7      | Mobile         | 24     | Technician "My Day" mobile-first view                                                                 |
+| T174     | 7      | Feature        | 8      | Job photos and attachments (R2)                                                                       |
+| T175     | 7      | Feature        | 12     | Job checklists / forms                                                                                |
+| T176     | 7      | Feature        | 8      | Customer signature on completion + service report PDF emailed                                         |
+| T177     | 7      | Feature        | 12     | Time clock per job + timesheet export                                                                 |
+| T178     | 7      | Feature        | 8      | Map / route view of the day                                                                           |
+| T179     | 7      | Mobile         | 40     | Offline-capable tech app (queue + sync)                                                               |
+| T180     | 7      | Mobile         | 24     | Capacitor-wrapped iOS/Android apps in the stores                                                      |
+| T036     | 8      | Feature        | 3      | Add manual Call Log entry                                                                             |
+| T037     | 8      | Feature        | 4      | Auto-log system messages to customer activity                                                         |
+| T048     | 8      | Email          | 3      | Add appointment confirmation emails                                                                   |
+| T049     | 8      | SMS            | 4      | Add appointment reminder emails/SMS                                                                   |
+| T050     | 8      | SMS            | 2      | Add "Tech on the way" manual trigger                                                                  |
+| T054     | 8      | UX             | 4      | Create Communication Log component                                                                    |
+| T055     | 8      | UX             | 8      | Unified Customer Timeline view                                                                        |
+| T072     | 8      | Feature        | 6      | Create message template management UI                                                                 |
+| T073     | 8      | Feature        | 4      | Add rich variable system for templates                                                                |
+| T089     | 8      | Email          | 6      | Add email/SMS delivery tracking                                                                       |
+| T090     | 8      | Monitoring     | 3      | Add communication failure alerts                                                                      |
+| T091     | 8      | Feature        | 4      | Add notification preferences per customer                                                             |
+| T181     | 8      | SMS            | 20     | Two-way SMS inbox (Twilio + 10DLC)                                                                    |
+| T182     | 8      | Marketing      | 4      | Review request automation                                                                             |
+| T081     | 9      | Feature        | 4      | Add e-signature for quote acceptance                                                                  |
+| T183     | 9      | Feature        | 10     | Public quote approval page (approve/decline, e-sign, optional deposit)                                |
+| T184     | 9      | Feature        | 24     | Customer portal / client hub                                                                          |
+| T185     | 9      | Feature        | 12     | Online booking / request widget embeddable on websites                                                |
+| T044     | 10     | Feature        | 8      | Build collections dashboard                                                                           |
+| T064     | 10     | Feature        | 2      | Add last contact date tracking on invoices                                                            |
+| T065     | 10     | Feature        | 3      | Add promise-to-pay notes                                                                              |
+| T186     | 10     | Feature        | 16     | Multi-site customers (service locations; invoice per site or consolidated)                            |
+| T187     | 10     | Feature        | 6      | PO capture and matching on jobs and invoices                                                          |
+| T188     | 10     | Feature        | 8      | Consolidated monthly invoicing                                                                        |
+| T189     | 10     | Feature        | 6      | Statements of account (portal + email)                                                                |
+| T190     | 10     | Feature        | 24     | Property-manager approval workflow (NTE limits, multi-approver, email intake)                         |
+| T191     | 10     | Feature        | 12     | Maintenance agreements with autopay + renewal reminders                                               |
+| T095     | 11     | Integration    | 12     | Build outgoing webhooks system                                                                        |
+| T096     | 11     | Backend        | 4      | Build event log table                                                                                 |
+| T097     | 11     | Integration    | 4      | Add webhook retry logic                                                                               |
+| T098     | 11     | Docs           | 3      | Document public API (OpenAPI/Swagger)                                                                 |
+| T192     | 11     | Integration    | 32     | QuickBooks Online sync (customers, invoices, payments; one-way first)                                 |
+| T193     | 11     | Integration    | 8      | Import mappers for Jobber / Housecall Pro exports + generic CSV                                       |
+| T194     | 11     | Integration    | 12     | Zapier app                                                                                            |
+| T195     | 11     | Integration    | 8      | Wisetack consumer financing                                                                           |
+| T196     | 11     | Integration    | 12     | Gusto payroll / timesheets                                                                            |
+| T197     | 11     | Integration    | 8      | AI receptionist partner integration                                                                   |
+| T045     | 12     | Reporting      | 2      | Add aging quotes dashboard widget                                                                     |
+| T046     | 12     | Reporting      | 2      | Add follow-up queue dashboard widget                                                                  |
+| T047     | 12     | Reporting      | 4      | Build "stuck work" report                                                                             |
+| T066     | 12     | Reporting      | 4      | Add technician utilization widget                                                                     |
+| T067     | 12     | Reporting      | 2      | Add quote conversion rate metric                                                                      |
+| T068     | 12     | Reporting      | 3      | Build job-completion-to-invoice time report                                                           |
+| T069     | 12     | Reporting      | 3      | Build invoice-to-paid time report (DSO)                                                               |
+| T070     | 12     | Reporting      | 3      | Build revenue by service type report                                                                  |
+| T071     | 12     | Reporting      | 3      | Build collections rate report                                                                         |
+| T084     | 12     | Reporting      | 3      | Build quote-to-job conversion report                                                                  |
+| T085     | 12     | Reporting      | 3      | Build lead-to-quote time report                                                                       |
+| T086     | 12     | Reporting      | 2      | Build quote-to-acceptance time report                                                                 |
+| T087     | 12     | Reporting      | 3      | Build revenue by technician report                                                                    |
+| T088     | 12     | Reporting      | 4      | Add comparative analysis (vs prior period)                                                            |
+| T198     | 12     | Reporting      | 12     | Job costing / profit per job                                                                          |
+| T074     | 13     | Auth           | 3      | Create Accountant role                                                                                |
+| T075     | 13     | Auth           | 12     | Add field-level permission controls                                                                   |
+| T092     | 13     | Auth           | 6      | Implement 2FA (TOTP)                                                                                  |
+| T093     | 13     | Backend        | 12     | Implement comprehensive audit logging                                                                 |
+| T094     | 13     | Auth           | 0      | Add Google OAuth sign-in (Won't Do)                                                                   |
+| T199     | 13     | Feature        | 6      | One-click full data export (trust promise)                                                            |
+| T200     | 13     | Legal          | 6      | Account/tenant deletion + data retention policy                                                       |
+| T201     | 13     | Legal          | 3      | Privacy/CCPA handling SOP                                                                             |
+| T231     | 13     | Auth           | 1      | Owner decision: may a tenant's owner/admin delete their own organization?                             |
+| T202     | 14     | Research       | 1      | Decide production database hosting (OWNER DECISION)                                                   |
+| T203     | 14     | Deploy         | 4      | GCP project + WIF + Artifact Registry + Cloud Run service                                             |
+| T204     | 14     | Deploy         | 2      | Deploy the Worker + DNS for servicepro.sharkfins.xyz                                                  |
+| T205     | 14     | Deploy         | 2      | Invite-gated preview launch                                                                           |
+| T206     | 14     | Email          | 2      | Production email domain on Resend (SPF/DKIM/DMARC)                                                    |
+| T207     | 14     | Legal          | 4      | Terms of Service + Privacy Policy legal review                                                        |
+| T208     | 14     | Ops            | 2      | Support inbox + Better Stack status page                                                              |
+| T209     | 14     | Ops            | 2      | Activate nightly backups to R2 + restore drill                                                        |
+| T210     | 14     | Billing        | 12     | ServicePro plans & billing: Solo/Team/Pro flat, unlimited users, founding offer                       |
+| T211     | 14     | Docs           | 1      | Update Fleet and the blog when ServicePro goes live                                                   |
+| T212     | 14     | Ops            | 2      | Production config review                                                                              |
+| T213     | 14     | Ops            | 1      | Cost guardrails (Cloud Run max instances × DB pool, budget alerts)                                    |
+| T214     | 15     | AI             | 24     | AI collections agent                                                                                  |
+| T215     | 15     | AI             | 20     | AI quote drafting from photos, voice or notes against the price book                                  |
+| T216     | 15     | AI             | 12     | "Ask your business" chat over reporting views                                                         |
+| T217     | 15     | AI             | 12     | MCP server for ServicePro                                                                             |
+| T218     | 16     | Research       | 10     | Customer discovery: interview 10 commercial service contractors                                       |
+| T219     | 16     | Marketing      | 12     | Marketing site with positioning + transparent pricing                                                 |
+| T220     | 16     | Marketing      | 4      | White-glove migration offer + playbook                                                                |
+| T221     | 16     | Marketing      | 8      | Comparison / alternative pages (vs Jobber, Housecall Pro, ServiceTitan)                               |
+| T222     | 16     | Research       | 6      | Validate secondary beachhead (inspection/compliance trades)                                           |
 
 ---
 
@@ -396,7 +397,7 @@ Work completed under the old P0–P3/sprint TODO. Details are in Verified Comple
 
 ### Phase 2 — Correctness & Cleanup (T118, T119, T120, T121, T122, T123, T124, T125, T126, T127, T128, T129, T130, T131, T132, T133, T134, T135, T136, T137, T138, T223, T224, T225, T226, T227, T228, T229)
 
-Money flows that are wired but broken (payments don't update invoices, reminders never sent, numbering wedges, a panicking webhook), frontend bugs users would hit in the preview, and dead code. From `docs/audits/2026-10-16/backend-correctness.md` and `docs/audits/2026-10-16/frontend.md`. **11 open tasks, ~35h.** 17 done.
+Money flows that are wired but broken (payments don't update invoices, reminders never sent, numbering wedges, a panicking webhook), frontend bugs users would hit in the preview, and dead code. From `docs/audits/2026-10-16/backend-correctness.md` and `docs/audits/2026-10-16/frontend.md`. **10 open tasks, ~33h.** 18 done.
 
 - [x] T118 — Recording a payment updates the invoice balance and status ✓ (2026-10-16)
 - [x] T121 — Payment reminders actually send ✓ (2026-10-16)
@@ -415,6 +416,7 @@ Money flows that are wired but broken (payments don't update invoices, reminders
 - [x] T138 — Preview polish: honest contact form, legal pages marked draft, favicon ✓ (2026-10-16)
 - [x] T226 — Tenant creation and invitation acceptance in transactions; per-tenant uniqueness ✓ (2026-10-16)
 - [x] T227 — Frontend follow-through for the Phase 1 auth changes (invite codes, 429, logout-everywhere) ✓ (2026-10-16)
+- [x] T229 — Invite and invitation API polish: distinct invalid-code error, encoded links, message field ✓ (2026-10-16)
 - [ ] T119 — Stripe Checkout charges the true balance due
 - [ ] T120 — Invoice and job numbering survives soft-delete and concurrency
 - [ ] T124 — Enforce invoice status transitions; unify the two job state machines
@@ -425,7 +427,6 @@ Money flows that are wired but broken (payments don't update invoices, reminders
 - [ ] T224 — Quote correctness: lost customer edits, accept race, expiry, editable sent quotes
 - [ ] T225 — Invoice totals: one server-side recalculation, tax/discount order, no double invoicing
 - [ ] T228 — Quotes list: backend search (q) and sort params
-- [ ] T229 — Invite and invitation API polish: distinct invalid-code error, encoded links, message field
 
 #### T119 — Stripe Checkout charges the true balance due
 
@@ -564,20 +565,6 @@ Money flows that are wired but broken (payments don't update invoices, reminders
 **Why we need it** — The quotes page has a search box that does nothing (frontend sends `search`/`sort_*`, backend ignores them) — reported in T135 and T227.
 
 **Notes** — Follow-up from T227 (2026-10-16). Invoices/customers/jobs lists already support search.
-
----
-
-#### T229 — Invite and invitation API polish: distinct invalid-code error, encoded links, message field
-
-**Phase**: 2 · **Category**: Bug · **Hours**: 2 · **Status**: Open · **v1 Gate**: No · **Depends on**: T106
-
-**What it is** — Registration and invitation errors are unambiguous and invitation links survive any email address.
-
-**What it does** — (1) Return 403 `invalid_invite_code` for unknown/expired/used-up/revoked invite codes instead of `registration_closed` (keep `registration_closed` for "no code supplied"); (2) build invitation register URLs with `url.Values` so emails containing `+` survive (`invitation_service.go`); (3) invitation handler responses include a human `message` alongside `error`, matching other handlers. Update frontend `RegisterPage`/`AcceptInvitationPage` to drop the guesswork; tests.
-
-**Why we need it** — The UI currently has to guess why an invite code was rejected, and an invitee whose email contains `+` gets a broken link.
-
-**Notes** — Follow-up from T227 (2026-10-16). Partially overlaps the T223 error envelope — do after T223 if it lands first.
 
 ---
 
@@ -2295,10 +2282,11 @@ Dashboard widgets and reports from the old TODO plus job costing. All tenant-sco
 
 ---
 
-### Phase 13 — Roles, Compliance & Trust (T074, T075, T092, T093, T094, T199, T200, T201, T230)
+### Phase 13 — Roles, Compliance & Trust (T074, T075, T092, T093, T094, T199, T200, T201, T230, T231)
 
-Remaining roles, audit logging, MFA, and the export/deletion promises that back the trust brand. **9 open tasks, ~51h.**
+Remaining roles, audit logging, MFA, and the export/deletion promises that back the trust brand. **9 open tasks, ~49h.** 1 done.
 
+- [x] T230 — Expose the caller's effective permissions per tenant; decide who can delete an organization ✓ (2026-10-16)
 - [ ] T074 — Create Accountant role
 - [ ] T075 — Add field-level permission controls
 - [ ] T092 — Implement 2FA (TOTP)
@@ -2307,7 +2295,7 @@ Remaining roles, audit logging, MFA, and the export/deletion promises that back 
 - [ ] T199 — One-click full data export (trust promise)
 - [ ] T200 — Account/tenant deletion + data retention policy
 - [ ] T201 — Privacy/CCPA handling SOP
-- [ ] T230 — Expose the caller's effective permissions per tenant; decide who can delete an organization
+- [ ] T231 — Owner decision: may a tenant's owner/admin delete their own organization?
 
 #### T074 — Create Accountant role
 
@@ -2415,17 +2403,17 @@ Remaining roles, audit logging, MFA, and the export/deletion promises that back 
 
 ---
 
-#### T230 — Expose the caller's effective permissions per tenant; decide who can delete an organization
+#### T231 — Owner decision: may a tenant's owner/admin delete their own organization?
 
-**Phase**: 13 · **Category**: Auth · **Hours**: 3 · **Status**: Open · **v1 Gate**: No · **Depends on**: T104
+**Phase**: 13 · **Category**: Auth · **Hours**: 1 · **Status**: Open · **v1 Gate**: No · **Depends on**: T230
 
-**What it is** — The frontend knows exactly what the signed-in user may do in the current tenant, and organization deletion has a deliberate owner rule.
+**What it is** — A deliberate rule for who can delete an organization, implemented as a permission grant.
 
-**What it does** — Return the caller's effective permission list for the current tenant (e.g. on `GET /tenants` or `GET /tenants/:id/me`), computed by the per-tenant checker from T104; replace the role-name guessing in `frontend/src/utils/tenantPermissions.ts` with it. Decide whether the tenant creator/owner (role `admin`) may delete their own organization — today only `super_admin` has `tenants.delete`, so the UI hides the button — and grant it via a new migration if yes (ties to T200 deletion/retention).
+**What it does** — Decide (owner) whether the tenant creator/`admin` role gets `tenants.delete`. If yes: grant it in a new migration + dev seed, and the UI (already gated on the effective permission list from T230) shows the button automatically. Pair with T200's deletion/retention policy (soft delete + export first).
 
-**Why we need it** — Custom roles get wrong UI affordances (actions shown that 403, or hidden that would work), and an owner can't delete their own organization.
+**Why we need it** — Today only the platform `super_admin` has `tenants.delete`, so a business owner can't close their own account — a trust problem once there are paying customers.
 
-**Notes** — Follow-up from T227 (2026-10-16). Owner decision needed on org deletion.
+**Notes** — Split out of T230 (2026-10-16), which shipped the effective-permissions endpoint and UI gating.
 
 ---
 
@@ -2958,3 +2946,5 @@ Dated history from the original "Completed Items" list:
 - **T152** — Commit generated OpenAPI and TS types for drift gating. `backend/docs/{swagger.json,swagger.yaml,docs.go}` and `frontend/src/types/api.generated.ts` committed; swag pinned via go.mod `tool` directive (`go tool swag`); `make openapi-check`, pre-commit hook and CI `openapi-drift` gate on them.
 - **T226** — Tenant creation and invitation acceptance in transactions; per-tenant uniqueness. Migration `000012`: tenant slug unique among live tenants, one pending invitation per `(tenant, LOWER(email))`; `TenantRepository.CreateWithOwner` creates tenant + owner membership + default subscription in one transaction (owner role by name; debug query and hard-coded UUID gone); invitation accept runs in one transaction with the invitation row locked, persists expiry, reactivates an existing member with the invited role (458209c, 591a6ed, 1489c79).
 - **T227** — Frontend follow-through for the Phase 1 auth changes (invite codes, 429, logout-everywhere). Registration form has an `invite_code` field (prefilled from `?invite=`/`?code=`/`?invite_code=`, hidden for tenant invitations) and distinct messages for invite-only / invalid code / invalid invitation and 429; login shows a generic 429 message and honours a safe same-origin `returnUrl` (`getSafeReturnUrl`); logout says it signs out every device; Cypress cases for the removed Stripe endpoints deleted; tenant settings/members/membership/billing pages show a permission message on 403 and hide actions built-in roles can't use (`src/utils/tenantPermissions.ts`); accept-invitation offers sign-up. Quotes search needs backend support (T228); invite-code/invitation API gaps → T229; effective permissions + org deletion → T230.
+- **T229** — Invite and invitation API polish: distinct invalid-code error, encoded links, message field. Invite-only registration returns distinct 403 codes `registration_closed` (nothing supplied) / `invalid_invite_code` / `invalid_invitation`, and RegisterPage maps them directly; invitation links built with `url.Values` (`inviteAcceptURL`/`inviteRegisterURL`) so emails with `+`/`&` survive; invitation handler errors are `{error: <code>, message: <text>}` (43ba167, 302f8e4, e9cf6fc).
+- **T230** — Expose the caller's effective permissions per tenant; decide who can delete an organization. `GET /api/v1/tenants/{id}/me` → `{tenant_id, role_id, role, role_level, permissions[]}` from `PermissionChecker.EffectivePermissionNames` (membership-gated, cross-tenant test); frontend `useTenantPermissions` (React Query) gates Team Members, Org Settings and Membership/Billing on specific permissions, delete button only with `tenants.delete` (6e0b27c, e159e51). Owner decision on org deletion split to T231.
