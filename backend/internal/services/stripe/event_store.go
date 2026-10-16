@@ -152,9 +152,3 @@ func (m *memoryEventStore) Release(_ context.Context, eventID string) error {
 	}
 	return nil
 }
-
-func (m *memoryEventStore) count() int {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	return len(m.events)
-}

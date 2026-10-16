@@ -285,25 +285,3 @@ func (h *WebhookHandler) sendErrorResponse(w http.ResponseWriter, statusCode int
 		Error:    message,
 	})
 }
-
-// TestWebhookSignature tests webhook signature verification (for testing only)
-func (h *WebhookHandler) TestWebhookSignature(payload []byte, signature string) error {
-	_, err := h.verifySignature(payload, signature)
-	return err
-}
-
-// GetProcessedEventsCount returns the number of events tracked by the
-// in-memory store (0 when a persistent store is installed).
-func (h *WebhookHandler) GetProcessedEventsCount() int {
-	if m, ok := h.store.(*memoryEventStore); ok {
-		return m.count()
-	}
-	return 0
-}
-
-// ClearProcessedEvents resets the in-memory store (for testing)
-func (h *WebhookHandler) ClearProcessedEvents() {
-	if _, ok := h.store.(*memoryEventStore); ok {
-		h.store = newMemoryEventStore()
-	}
-}
