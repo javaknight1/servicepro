@@ -44,7 +44,7 @@ func TestInvitationHandler_ErrorsHaveCodeAndMessage(t *testing.T) {
 		{"invite: bad tenant id", http.MethodPost, "/tenants/:id/invitations", "/tenants/nope/invitations",
 			`{"email":"a@b.test","role_id":"` + uuid.NewString() + `"}`, withUser, h.InviteMember, http.StatusBadRequest, "invalid_tenant_id"},
 		{"invite: invalid body", http.MethodPost, "/tenants/:id/invitations", "/tenants/" + tenantID.String() + "/invitations",
-			`{"email":"not-an-email"}`, withUser, h.InviteMember, http.StatusBadRequest, "invalid_request"},
+			`{"email":"not-an-email"}`, withUser, h.InviteMember, http.StatusBadRequest, "validation_failed"},
 		{"invite: no user", http.MethodPost, "/tenants/:id/invitations", "/tenants/" + tenantID.String() + "/invitations",
 			`{"email":"a@b.test","role_id":"` + uuid.NewString() + `"}`, noop, h.InviteMember, http.StatusUnauthorized, "unauthorized"},
 		{"cancel: bad invitation id", http.MethodDelete, "/tenants/:id/invitations/:invitation_id", "/tenants/" + tenantID.String() + "/invitations/nope",
