@@ -22,7 +22,8 @@ import {
   CreateJobAssignment,
   Job,
 } from '@services/jobService';
-import { customerService, Customer } from '@services/customerService';
+import type { Customer } from '@services/customerService';
+import { fetchAllCustomers } from '@services/customerLookup';
 import { getErrorMessage } from '@/utils/error';
 import { trackEvent, AnalyticsEvents } from '@services/analytics';
 import { datetimeLocalToEpoch, epochToDatetimeLocal } from '@/utils/epoch';
@@ -152,8 +153,8 @@ export function JobDetailPage() {
   const loadCustomers = async () => {
     setIsLoadingCustomers(true);
     try {
-      const response = await customerService.getCustomers({ page_size: 100 });
-      setCustomers(response.customers);
+      // Page through all customers (API caps page_size at 100)
+      setCustomers(await fetchAllCustomers());
     } catch (err) {
       console.error('Failed to load customers:', err);
     } finally {

@@ -20,7 +20,8 @@ import {
   taxRateToPercent,
 } from '@/utils/money';
 import { trackEvent, AnalyticsEvents } from '@services/analytics';
-import { customerService, Customer } from '@services/customerService';
+import type { Customer } from '@services/customerService';
+import { fetchAllCustomers } from '@services/customerLookup';
 import {
   ArrowLeft,
   Save,
@@ -99,8 +100,8 @@ export function InvoiceDetailPage() {
   const loadCustomers = async () => {
     setIsLoadingCustomers(true);
     try {
-      const response = await customerService.getCustomers({ page_size: 100 });
-      setCustomers(response.customers);
+      // Page through all customers (API caps page_size at 100)
+      setCustomers(await fetchAllCustomers());
     } catch (err) {
       console.error('Failed to load customers:', err);
     } finally {
