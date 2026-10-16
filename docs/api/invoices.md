@@ -143,6 +143,7 @@ POST /api/v1/invoices
   "tax_rate_id": "uuid",
   "po_number": "PO-12345",
   "notes": "Invoice notes",
+  "terms_and_conditions": "Net 30. Late fee 1.5%/month.",
   "discount_amount": "0.00",
   "lines": [
     {

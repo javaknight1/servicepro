@@ -405,15 +405,10 @@ export function InvoiceDetailPage() {
           due_date: dueDateISO,
           tax_rate: taxFromDefault ? undefined : taxRateDecimal,
           notes: formData.notes || undefined,
+          terms_and_conditions: formData.terms_and_conditions || undefined,
           lines,
         };
-        const created = await invoiceService.createInvoice(createData);
-        // POST /invoices takes no terms field; set them on the new draft
-        if (formData.terms_and_conditions) {
-          await invoiceService.updateInvoice(created.id, {
-            terms_and_conditions: formData.terms_and_conditions,
-          });
-        }
+        await invoiceService.createInvoice(createData);
         trackEvent(AnalyticsEvents.INVOICE_CREATED, {
           total: calculateTotal(),
           line_items: lineItems.length,

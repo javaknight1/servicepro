@@ -165,6 +165,7 @@ export interface CreateInvoiceRequest {
    * Omitted, the tenant's default tax rate applies. */
   tax_rate?: number;
   notes?: string;
+  terms_and_conditions?: string;
   lines: InvoiceLineRequest[];
 }
 

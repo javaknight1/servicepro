@@ -28,18 +28,44 @@ func NewInvoiceHandler(service *services.InvoiceService) *InvoiceHandler {
 
 // CreateInvoiceRequest represents the request to create an invoice
 type CreateInvoiceRequest struct {
-	CustomerID     uuid.UUID               `json:"customer_id" binding:"required"`
-	JobID          *uuid.UUID              `json:"job_id,omitempty"`
-	QuoteID        *uuid.UUID              `json:"quote_id,omitempty"`
-	IssueDate      *time.Time              `json:"issue_date,omitempty"`
-	DueDate        *time.Time              `json:"due_date,omitempty"`
-	PaymentTermID  *uuid.UUID              `json:"payment_term_id,omitempty"`
-	TaxRateID      *uuid.UUID              `json:"tax_rate_id,omitempty"`
-	TaxRate        *decimal.Decimal        `json:"tax_rate,omitempty"` // Direct tax rate (e.g., 0.07 for 7%)
-	PONumber       string                  `json:"po_number,omitempty"`
-	Notes          string                  `json:"notes,omitempty"`
-	DiscountAmount decimal.Decimal         `json:"discount_amount,omitempty"`
-	Lines          []CreateLineItemRequest `json:"lines" binding:"required,min=1,dive"`
+	CustomerID         uuid.UUID               `json:"customer_id" binding:"required"`
+	JobID              *uuid.UUID              `json:"job_id,omitempty"`
+	QuoteID            *uuid.UUID              `json:"quote_id,omitempty"`
+	IssueDate          *time.Time              `json:"issue_date,omitempty"`
+	DueDate            *time.Time              `json:"due_date,omitempty"`
+	PaymentTermID      *uuid.UUID              `json:"payment_term_id,omitempty"`
+	TaxRateID          *uuid.UUID              `json:"tax_rate_id,omitempty"`
+	TaxRate            *decimal.Decimal        `json:"tax_rate,omitempty"` // Direct tax rate (e.g., 0.07 for 7%)
+	PONumber           string                  `json:"po_number,omitempty"`
+	Notes              string                  `json:"notes,omitempty"`
+	TermsAndConditions string                  `json:"terms_and_conditions,omitempty"` // printed on the invoice
+	DiscountAmount     decimal.Decimal         `json:"discount_amount,omitempty"`
+	Lines              []CreateLineItemRequest `json:"lines" binding:"required,min=1,dive"`
+}
+
+// toInvoice maps the request onto a new invoice. Totals, line discounts and
+// taxes are computed by the service.
+func (req *CreateInvoiceRequest) toInvoice() *models.Invoice {
+	invoice := &models.Invoice{
+		CustomerID:         req.CustomerID,
+		JobID:              req.JobID,
+		QuoteID:            req.QuoteID,
+		PaymentTermID:      req.PaymentTermID,
+		TaxRateID:          req.TaxRateID,
+		PONumber:           req.PONumber,
+		Notes:              req.Notes,
+		TermsAndConditions: req.TermsAndConditions,
+		DiscountAmount:     req.DiscountAmount,
+	}
+	if req.IssueDate != nil {
+		invoice.IssueDate = *req.IssueDate
+	}
+	if req.DueDate != nil {
+		invoice.DueDate = *req.DueDate
+	}
+	invoice.Lines = toInvoiceLines(req.Lines)
+	invoice.ApplyTaxRate = req.TaxRate
+	return invoice
 }
 
 // CreateLineItemRequest represents a line item in create request
@@ -295,32 +321,7 @@ func (h *InvoiceHandler) CreateInvoice(c *gin.Context) {
 		return
 	}
 
-	// Convert request to invoice model
-	invoice := &models.Invoice{
-		CustomerID:     req.CustomerID,
-		JobID:          req.JobID,
-		QuoteID:        req.QuoteID,
-		PaymentTermID:  req.PaymentTermID,
-		TaxRateID:      req.TaxRateID,
-		PONumber:       req.PONumber,
-		Notes:          req.Notes,
-		DiscountAmount: req.DiscountAmount,
-	}
-
-	if req.IssueDate != nil {
-		invoice.IssueDate = *req.IssueDate
-	}
-
-	if req.DueDate != nil {
-		invoice.DueDate = *req.DueDate
-	}
-
-	// Totals, line discounts and taxes are computed by the service.
-	invoice.Lines = toInvoiceLines(req.Lines)
-	invoice.ApplyTaxRate = req.TaxRate
-
-	// Create invoice
-	created, err := h.service.CreateInvoice(ctx, invoice, userID)
+	created, err := h.service.CreateInvoice(ctx, req.toInvoice(), userID)
 	if err != nil {
 		respondInvoiceError(c, err, "Failed to create invoice")
 		return
