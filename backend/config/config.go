@@ -666,6 +666,16 @@ func getEnv(key, defaultValue string) string {
 	return value
 }
 
+// getEnvAsBool reads a boolean env var ("true", "1" or "yes" is true),
+// returning defaultValue when it is unset.
+func getEnvAsBool(key string, defaultValue bool) bool {
+	valueStr := getEnv(key, "")
+	if valueStr == "" {
+		return defaultValue
+	}
+	return valueStr == "true" || valueStr == "1" || valueStr == "yes"
+}
+
 // getEnvOrFile returns the value from an environment variable, or if empty,
 // tries to read from a file specified by fileEnvKey. Falls back to defaultValue.
 // This is useful for secrets that may be provided by external processes (e.g., Stripe CLI).
