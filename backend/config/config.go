@@ -12,26 +12,25 @@ import (
 
 // Config holds all configuration for the application
 type Config struct {
-	Server        ServerConfig
-	Database      DatabaseConfig
-	Redis         RedisConfig
-	JWT           JWTConfig
-	Auth          AuthConfig
-	Cookie        CookieConfig
-	RateLimit     RateLimitConfig
-	AWS           AWSConfig
-	S3Compatible  S3CompatibleConfig
-	SMTP          SMTPConfig
-	Resend        ResendConfig
-	Stripe        StripeConfig
-	Sentry        SentryConfig
-	Health        HealthConfig
-	Analytics     AnalyticsConfig
-	Prometheus    PrometheusConfig
-	OpenTelemetry OpenTelemetryConfig
-	PDF           PDFConfig
-	CORS          CORSConfig
-	SMS           SMSConfig
+	Server       ServerConfig
+	Database     DatabaseConfig
+	Redis        RedisConfig
+	JWT          JWTConfig
+	Auth         AuthConfig
+	Cookie       CookieConfig
+	RateLimit    RateLimitConfig
+	AWS          AWSConfig
+	S3Compatible S3CompatibleConfig
+	SMTP         SMTPConfig
+	Resend       ResendConfig
+	Stripe       StripeConfig
+	Sentry       SentryConfig
+	Health       HealthConfig
+	Analytics    AnalyticsConfig
+	Prometheus   PrometheusConfig
+	PDF          PDFConfig
+	CORS         CORSConfig
+	SMS          SMSConfig
 }
 
 // SMSConfig holds SMS service configuration
@@ -334,15 +333,6 @@ type PrometheusConfig struct {
 	MetricsToken string
 }
 
-// OpenTelemetryConfig holds OpenTelemetry tracing configuration
-type OpenTelemetryConfig struct {
-	Enabled     bool
-	Endpoint    string
-	Insecure    bool
-	ServiceName string
-	SampleRate  float64
-}
-
 // PDFConfig holds PDF generation configuration
 type PDFConfig struct {
 	// StorageType can be "local", "s3", or "both"
@@ -587,13 +577,6 @@ func Load() *Config {
 			PushGateway:  getEnv("PROMETHEUS_PUSH_GATEWAY", ""),
 			PushInterval: getEnvAsDuration("PROMETHEUS_PUSH_INTERVAL", "15s"),
 			MetricsToken: getEnv("METRICS_TOKEN", ""),
-		},
-		OpenTelemetry: OpenTelemetryConfig{
-			Enabled:     getEnvAsBool("OTEL_ENABLED", false),
-			Endpoint:    getEnv("OTEL_EXPORTER_OTLP_ENDPOINT", ""),
-			Insecure:    getEnvAsBool("OTEL_EXPORTER_OTLP_INSECURE", false),
-			ServiceName: getEnv("OTEL_SERVICE_NAME", "servicepro"),
-			SampleRate:  getEnvAsFloat("OTEL_TRACES_SAMPLE_RATE", 0.1),
 		},
 		PDF: PDFConfig{
 			StorageType: getEnv("PDF_STORAGE_TYPE", "local"),
