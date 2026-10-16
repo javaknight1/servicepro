@@ -763,7 +763,7 @@ export function QuoteDetailPage() {
                 <div className="w-64 space-y-2">
                   <div className="flex justify-between">
                     <span className="text-neutral-600">Subtotal:</span>
-                    <span className="font-medium">
+                    <span className="font-medium" data-testid="subtotal">
                       {formatDollars(calculateSubtotal())}
                     </span>
                   </div>
@@ -773,7 +773,7 @@ export function QuoteDetailPage() {
                         ? 'Tax (default rate):'
                         : `Tax (${formData.tax_rate}%):`}
                     </span>
-                    <span className="font-medium">
+                    <span className="font-medium" data-testid="tax">
                       {taxFromDefault
                         ? 'Set on save'
                         : formatDollars(calculateTax())}
@@ -781,7 +781,7 @@ export function QuoteDetailPage() {
                   </div>
                   <div className="flex justify-between text-lg font-semibold pt-2 border-t">
                     <span>Total:</span>
-                    <span>
+                    <span data-testid="total">
                       {taxFromDefault
                         ? `${formatDollars(calculateSubtotal())} + tax`
                         : formatDollars(calculateTotal())}
