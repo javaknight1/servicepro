@@ -69,6 +69,12 @@ import (
 	// Logging providers - blank imports to register providers
 	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"
 	_ "github.com/javaknight1/servicepro/backend/pkg/clients/logging/mock"
+
+	// Error tracking providers - blank imports to register providers. Without
+	// them errortracking.NewClient always failed and backend errors and panics
+	// never reached Sentry (T126).
+	_ "github.com/javaknight1/servicepro/backend/pkg/clients/errortracking/mock"
+	_ "github.com/javaknight1/servicepro/backend/pkg/clients/errortracking/sentry"
 )
 
 func main() {
