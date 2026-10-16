@@ -12,8 +12,8 @@ import type { Column } from '@components/shared';
 import { quoteService, QuoteFilters } from '@services/quoteService';
 import type { Quote } from '@app-types/quote';
 import { FileText, Plus, Search } from 'lucide-react';
-import { formatCurrency } from '@app-types';
 import { QuoteActionsMenu } from '@components/quotes';
+import { formatDollars } from '@/utils/money';
 
 const getQuoteStatusLabel = (status: string): string => {
   const labels: Record<string, string> = {
@@ -109,7 +109,7 @@ export function QuotesPage() {
       className: 'text-right',
       render: (value) => (
         <span className="font-medium text-neutral-900">
-          {formatCurrency(value as number)}
+          {formatDollars(value as number)}
         </span>
       ),
     },

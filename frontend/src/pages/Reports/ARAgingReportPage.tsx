@@ -19,17 +19,10 @@ import {
   AgingBucket,
 } from '../../types/arAging';
 import { cn } from '../../utils/cn';
+import { formatDollars } from '@/utils/money';
 
-// Format currency (handles both string and number inputs from decimal.Decimal)
-const formatCurrency = (amount: string | number): string => {
-  const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(numAmount || 0);
-};
+const formatMoney = (value: string | number): string =>
+  formatDollars(value, { wholeUnits: true });
 
 // Parse decimal string to number
 const toNumber = (value: string | number): number => {
@@ -210,7 +203,7 @@ export function ARAgingReportPage() {
                 <div>
                   <p className="text-sm text-gray-500">Total Outstanding</p>
                   <p className="text-xl font-semibold text-gray-900">
-                    {formatCurrency(summary.total_outstanding)}
+                    {formatMoney(summary.total_outstanding)}
                   </p>
                 </div>
               </div>
@@ -224,7 +217,7 @@ export function ARAgingReportPage() {
                 <div>
                   <p className="text-sm text-gray-500">Current (Not Due)</p>
                   <p className="text-xl font-semibold text-gray-900">
-                    {formatCurrency(summary.total_current)}
+                    {formatMoney(summary.total_current)}
                   </p>
                 </div>
               </div>
@@ -238,7 +231,7 @@ export function ARAgingReportPage() {
                 <div>
                   <p className="text-sm text-gray-500">Total Overdue</p>
                   <p className="text-xl font-semibold text-gray-900">
-                    {formatCurrency(summary.total_overdue)}
+                    {formatMoney(summary.total_overdue)}
                   </p>
                   <p className="text-xs text-gray-400">
                     {toNumber(summary.overdue_percentage).toFixed(1)}% of total
@@ -306,7 +299,7 @@ export function ARAgingReportPage() {
                     className="text-xl font-semibold mt-1"
                     style={{ color: bucket.color }}
                   >
-                    {formatCurrency(bucket.total_amount)}
+                    {formatMoney(bucket.total_amount)}
                   </p>
                   <p className="text-xs text-gray-500 mt-1">
                     {bucket.invoice_count} invoice
@@ -330,7 +323,7 @@ export function ARAgingReportPage() {
                       width: `${toNumber(bucket.percentage)}%`,
                       backgroundColor: bucket.color,
                     }}
-                    title={`${bucket.display_name}: ${formatCurrency(bucket.total_amount)}`}
+                    title={`${bucket.display_name}: ${formatMoney(bucket.total_amount)}`}
                   />
                 ))}
               </div>
@@ -410,7 +403,7 @@ export function ARAgingReportPage() {
                             </div>
                             <div className="text-right">
                               <p className="font-semibold text-gray-900">
-                                {formatCurrency(invoice.amount_due)}
+                                {formatMoney(invoice.amount_due)}
                               </p>
                               {invoice.days_overdue > 0 && (
                                 <p className="text-sm text-red-600">
@@ -426,7 +419,7 @@ export function ARAgingReportPage() {
                             <span>Due: {formatDate(invoice.due_date)}</span>
                             {toNumber(invoice.amount_paid) > 0 && (
                               <span className="text-green-600">
-                                Paid: {formatCurrency(invoice.amount_paid)}
+                                Paid: {formatMoney(invoice.amount_paid)}
                               </span>
                             )}
                           </div>

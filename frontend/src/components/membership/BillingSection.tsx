@@ -22,6 +22,7 @@ import { useBillingStore, useTenantStore } from '@store';
 import { useStripeContext } from '@/providers/StripeProvider';
 import { billingApi } from '@/services';
 import { formatCardBrand } from '@/types/payment';
+import { formatCents } from '@/utils/money';
 
 // Separate component for the card input form that uses Stripe hooks
 // This component only renders when Elements provider is available
@@ -400,7 +401,7 @@ export function BillingSection() {
                     <div className="flex items-center space-x-3">
                       {event.amount_cents && (
                         <span className="font-medium text-neutral-900">
-                          ${(event.amount_cents / 100).toFixed(2)}
+                          {formatCents(event.amount_cents)}
                         </span>
                       )}
                       <Badge

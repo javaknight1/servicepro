@@ -54,11 +54,7 @@ export type {
   InvoiceStats,
   InvoiceLineItem,
 } from './invoice';
-export {
-  InvoiceStatus,
-  getInvoiceStatusLabel,
-  formatCurrency,
-} from './invoice';
+export { InvoiceStatus, getInvoiceStatusLabel } from './invoice';
 
 export type {
   Quote,

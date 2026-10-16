@@ -12,6 +12,13 @@ import {
   type PaymentReminderResponse,
 } from '@services/paymentReminderService';
 import { getErrorMessage } from '@/utils/error';
+import {
+  formatDollars,
+  lineTotal,
+  percentToTaxRate,
+  roundToCents,
+  taxRateToPercent,
+} from '@/utils/money';
 import { trackEvent, AnalyticsEvents } from '@services/analytics';
 import { customerService, Customer } from '@services/customerService';
 import {
@@ -124,9 +131,7 @@ export function InvoiceDetailPage() {
     try {
       const invoice = await invoiceService.getInvoice(invoiceId);
       // Convert tax_rate from decimal (0.07) back to percentage (7) for display
-      const taxRatePercent = invoice.tax_rate
-        ? (invoice.tax_rate * 100).toString()
-        : '0';
+      const taxRatePercent = taxRateToPercent(invoice.tax_rate);
       setFormData({
         customer_id: invoice.customer_id || '',
         issue_date: invoice.issue_date ? invoice.issue_date.split('T')[0] : '',
@@ -233,26 +238,23 @@ export function InvoiceDetailPage() {
   };
 
   const calculateSubtotal = () => {
-    return lineItems.reduce((sum, item) => {
-      const qty =
-        typeof item.quantity === 'string'
-          ? parseFloat(item.quantity) || 0
-          : item.quantity;
-      const price =
-        typeof item.unit_price === 'string'
-          ? parseFloat(item.unit_price) || 0
-          : item.unit_price;
-      return sum + qty * price;
-    }, 0);
+    // Sum per-line totals rounded to cents, matching the server's math
+    return roundToCents(
+      lineItems.reduce(
+        (sum, item) => sum + lineTotal(item.quantity, item.unit_price),
+        0
+      )
+    );
   };
 
   const calculateTax = () => {
-    const taxRate = parseFloat(formData.tax_rate) || 0;
-    return calculateSubtotal() * (taxRate / 100);
+    return roundToCents(
+      calculateSubtotal() * percentToTaxRate(formData.tax_rate)
+    );
   };
 
   const calculateTotal = () => {
-    return calculateSubtotal() + calculateTax();
+    return roundToCents(calculateSubtotal() + calculateTax());
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -269,7 +271,7 @@ export function InvoiceDetailPage() {
       : undefined;
 
     // Convert tax rate from percentage (e.g., 7) to decimal (e.g., 0.07)
-    const taxRateDecimal = (parseFloat(formData.tax_rate) || 0) / 100;
+    const taxRateDecimal = percentToTaxRate(formData.tax_rate);
 
     const submitData = {
       customer_id: formData.customer_id,
@@ -676,15 +678,7 @@ export function InvoiceDetailPage() {
                     />
                   </div>
                   <div className="w-24 text-right py-2 font-medium">
-                    $
-                    {(
-                      (typeof item.quantity === 'string'
-                        ? parseFloat(item.quantity) || 0
-                        : item.quantity) *
-                      (typeof item.unit_price === 'string'
-                        ? parseFloat(item.unit_price) || 0
-                        : item.unit_price)
-                    ).toFixed(2)}
+                    {formatDollars(lineTotal(item.quantity, item.unit_price))}
                   </div>
                   <Button
                     type="button"
@@ -705,7 +699,7 @@ export function InvoiceDetailPage() {
                   <div className="flex justify-between">
                     <span className="text-neutral-600">Subtotal:</span>
                     <span className="font-medium">
-                      ${calculateSubtotal().toFixed(2)}
+                      {formatDollars(calculateSubtotal())}
                     </span>
                   </div>
                   <div className="flex justify-between">
@@ -713,12 +707,12 @@ export function InvoiceDetailPage() {
                       Tax ({formData.tax_rate}%):
                     </span>
                     <span className="font-medium">
-                      ${calculateTax().toFixed(2)}
+                      {formatDollars(calculateTax())}
                     </span>
                   </div>
                   <div className="flex justify-between text-lg font-semibold pt-2 border-t">
                     <span>Total:</span>
-                    <span>${calculateTotal().toFixed(2)}</span>
+                    <span>{formatDollars(calculateTotal())}</span>
                   </div>
                 </div>
               </div>

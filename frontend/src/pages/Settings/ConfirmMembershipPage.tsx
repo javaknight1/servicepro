@@ -13,7 +13,6 @@ import {
 import { useMembershipStore, useTenantStore, useBillingStore } from '@store';
 import { useStripeContext } from '@/providers/StripeProvider';
 import { billingApi, membershipApi } from '@/services';
-import { formatPrice } from '@/types/membership';
 import type {
   BillingCycle,
   SubscriptionChangePreview,
@@ -31,6 +30,7 @@ import {
   TrendingUp,
   TrendingDown,
 } from 'lucide-react';
+import { formatCents } from '@/utils/money';
 
 // Component for adding a new card
 function AddCardForm({
@@ -394,7 +394,7 @@ export function ConfirmMembershipPage() {
                             {preview.current_tier_name}
                           </span>
                           <span className="text-neutral-900">
-                            {formatPrice(preview.current_price_cents)}/
+                            {formatCents(preview.current_price_cents)}/
                             {preview.current_billing_cycle === 'annual'
                               ? 'year'
                               : 'month'}
@@ -427,7 +427,7 @@ export function ConfirmMembershipPage() {
                       {billingCycle === 'annual' ? 'Annual' : 'Monthly'} Price
                     </span>
                     <span className="font-semibold text-neutral-900">
-                      {isFree ? 'Free' : formatPrice(priceCents)}
+                      {isFree ? 'Free' : formatCents(priceCents)}
                       {!isFree && (
                         <span className="text-sm font-normal text-neutral-500">
                           /{billingCycle === 'annual' ? 'year' : 'month'}
@@ -448,7 +448,7 @@ export function ConfirmMembershipPage() {
                           </span>
                         </span>
                         <span className="font-semibold text-green-600">
-                          -{formatPrice(preview.proration_credit_cents)}
+                          -{formatCents(preview.proration_credit_cents)}
                         </span>
                       </div>
                     )}
@@ -460,7 +460,7 @@ export function ConfirmMembershipPage() {
                         Due Today
                       </span>
                       <span className="text-2xl font-bold text-primary-700">
-                        {formatPrice(preview.amount_due_today_cents)}
+                        {formatCents(preview.amount_due_today_cents)}
                       </span>
                     </div>
                   )}
@@ -482,7 +482,7 @@ export function ConfirmMembershipPage() {
                           }
                         )}
                         {' · '}
-                        {formatPrice(preview.next_billing_amount_cents)}
+                        {formatCents(preview.next_billing_amount_cents)}
                       </span>
                     </div>
                   )}
@@ -642,8 +642,8 @@ export function ConfirmMembershipPage() {
                       : 'Change'}
                   {!isFree &&
                     preview &&
-                    ` - ${formatPrice(preview.amount_due_today_cents)}`}
-                  {!isFree && !preview && ` - ${formatPrice(priceCents)}`}
+                    ` - ${formatCents(preview.amount_due_today_cents)}`}
+                  {!isFree && !preview && ` - ${formatCents(priceCents)}`}
                 </>
               )}
             </Button>

@@ -36,6 +36,10 @@ import {
   getSegmentDisplayName,
   getSegmentColor,
 } from '../../types/customer';
+import { formatDollars } from '@/utils/money';
+
+const formatMoney = (value: string | number): string =>
+  formatDollars(value, { wholeUnits: true });
 
 // Register Chart.js components
 ChartJS.register(
@@ -112,16 +116,6 @@ const CustomerReportPage: React.FC = () => {
     } finally {
       setIsExporting(false);
     }
-  };
-
-  const formatCurrency = (value: string | number): string => {
-    const num = typeof value === 'string' ? parseFloat(value) : value;
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(num);
   };
 
   const formatPercentage = (value: string | number): string => {
@@ -371,7 +365,7 @@ const CustomerReportPage: React.FC = () => {
                   <div>
                     <p className="text-sm text-gray-600">Total Revenue</p>
                     <p className="text-2xl font-bold text-gray-900">
-                      {formatCurrency(report.summary.total_revenue)}
+                      {formatMoney(report.summary.total_revenue)}
                     </p>
                   </div>
                   <div className="p-3 bg-purple-100 rounded-full">
@@ -380,7 +374,7 @@ const CustomerReportPage: React.FC = () => {
                 </div>
                 <p className="mt-4 text-sm text-gray-500">
                   Avg:{' '}
-                  {formatCurrency(report.summary.average_revenue_per_customer)}
+                  {formatMoney(report.summary.average_revenue_per_customer)}
                   /customer
                 </p>
               </div>
@@ -468,7 +462,7 @@ const CustomerReportPage: React.FC = () => {
                           {seg.count}
                         </p>
                         <p className="text-xs text-gray-500">
-                          {formatCurrency(seg.average_revenue)} avg
+                          {formatMoney(seg.average_revenue)} avg
                         </p>
                       </div>
                     ))}
@@ -533,7 +527,7 @@ const CustomerReportPage: React.FC = () => {
                               </span>
                             </td>
                             <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
-                              {formatCurrency(customer.total_revenue)}
+                              {formatMoney(customer.total_revenue)}
                             </td>
                             <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
                               {customer.total_jobs}
@@ -592,7 +586,7 @@ const CustomerReportPage: React.FC = () => {
                                   </div>
                                 </td>
                                 <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
-                                  {formatCurrency(customer.total_revenue)}
+                                  {formatMoney(customer.total_revenue)}
                                 </td>
                                 <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
                                   {customer.last_activity_date

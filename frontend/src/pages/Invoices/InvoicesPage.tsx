@@ -15,8 +15,9 @@ import {
   InvoiceFilters,
 } from '@services/invoiceService';
 import { Receipt, Plus, Search } from 'lucide-react';
-import { getInvoiceStatusLabel, formatCurrency } from '@app-types';
+import { getInvoiceStatusLabel } from '@app-types';
 import { InvoiceActionsMenu } from '@components/invoices';
+import { formatDollars } from '@/utils/money';
 
 export function InvoicesPage() {
   const navigate = useNavigate();
@@ -108,7 +109,7 @@ export function InvoicesPage() {
       className: 'text-right',
       render: (value) => (
         <span className="font-medium text-neutral-900">
-          {formatCurrency(value as number)}
+          {formatDollars(value as number)}
         </span>
       ),
     },
@@ -125,7 +126,7 @@ export function InvoicesPage() {
               : 'text-neutral-600'
           }
         >
-          {formatCurrency(value as number)}
+          {formatDollars(value as number)}
         </span>
       ),
     },
