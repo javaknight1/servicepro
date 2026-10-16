@@ -116,7 +116,7 @@ const mockJobs = [
     job_type: 'installation' as const,
     status: 'new' as const,
     priority: 'normal' as const,
-    scheduled_start_at: '2024-01-15T09:00:00Z',
+    scheduled_start_at: Date.UTC(2024, 0, 15, 9, 0) / 1000,
     scheduled_end_at: '2024-01-15T17:00:00Z',
     created_at: '2024-01-01T00:00:00Z',
     updated_at: '2024-01-01T00:00:00Z',
@@ -131,7 +131,7 @@ const mockJobs = [
     job_type: 'repair' as const,
     status: 'in_progress' as const,
     priority: 'high' as const,
-    scheduled_start_at: '2024-01-10T10:00:00Z',
+    scheduled_start_at: Date.UTC(2024, 0, 10, 10, 0) / 1000,
     scheduled_end_at: '2024-01-10T14:00:00Z',
     actual_start_at: '2024-01-10T10:15:00Z',
     created_at: '2024-01-02T00:00:00Z',
@@ -147,10 +147,10 @@ const mockJobs = [
     job_type: 'inspection' as const,
     status: 'completed' as const,
     priority: 'low' as const,
-    scheduled_start_at: '2024-01-05T08:00:00Z',
+    scheduled_start_at: Date.UTC(2024, 0, 5, 8, 0) / 1000,
     scheduled_end_at: '2024-01-05T10:00:00Z',
     actual_start_at: '2024-01-05T08:00:00Z',
-    actual_end_at: '2024-01-05T09:45:00Z',
+    actual_end_at: Date.UTC(2024, 0, 5, 9, 45) / 1000,
     created_at: '2024-01-03T00:00:00Z',
     updated_at: '2024-01-05T09:45:00Z',
   },
@@ -388,25 +388,14 @@ describe('Job Lifecycle Integration', () => {
       // Fill in required fields
       await user.type(screen.getByLabelText(/title/i), 'New Installation');
 
-      // Select customer (if dropdown)
-      const customerSelect = screen.queryByLabelText(/customer/i);
-      if (customerSelect) {
-        await user.click(customerSelect);
-        const customerOption = screen.queryByText(/John Doe/i);
-        if (customerOption) {
-          await user.click(customerOption);
-        }
-      }
-
-      // Select job type
-      const jobTypeSelect = screen.queryByLabelText(/type/i);
-      if (jobTypeSelect) {
-        await user.click(jobTypeSelect);
-        const installOption = screen.queryByText(/installation/i);
-        if (installOption) {
-          await user.click(installOption);
-        }
-      }
+      // Customer and job type are native <select>s
+      const customerSelect = await screen.findByLabelText(/customer/i);
+      await screen.findByRole('option', { name: /John Doe/i });
+      await user.selectOptions(customerSelect, 'customer-1');
+      await user.selectOptions(
+        screen.getByLabelText(/job type/i),
+        'installation'
+      );
 
       // Add description
       const descInput = screen.queryByLabelText(/description/i);
@@ -424,6 +413,8 @@ describe('Job Lifecycle Integration', () => {
         expect(jobService.createJob).toHaveBeenCalledWith(
           expect.objectContaining({
             title: 'New Installation',
+            customer_id: 'customer-1',
+            job_type: 'installation',
           })
         );
       });
@@ -600,31 +591,25 @@ describe('Job Lifecycle Integration', () => {
         expect(jobService.getJob).toHaveBeenCalledWith('job-1');
       });
 
-      // Find and click schedule button
-      const scheduleButton = screen.queryByRole('button', {
-        name: /schedule/i,
-      });
-      if (scheduleButton) {
-        await user.click(scheduleButton);
+      await user.click(
+        await screen.findByRole('button', { name: /^schedule$/i })
+      );
 
-        await waitFor(() => {
-          expect(jobService.transitionStatus).toHaveBeenCalledWith(
-            'job-1',
-            'scheduled',
-            expect.anything(),
-            expect.anything()
-          );
-        });
-      }
+      await waitFor(() => {
+        expect(jobService.transitionStatus).toHaveBeenCalledWith(
+          'job-1',
+          'scheduled'
+        );
+      });
     });
 
     it('should transition job from in_progress to completed', async () => {
       const user = userEvent.setup();
       vi.mocked(jobService.getJob).mockResolvedValue(mockJobs[1]); // In progress job
-      vi.mocked(jobService.completeJob).mockResolvedValue({
+      vi.mocked(jobService.transitionStatus).mockResolvedValue({
         ...mockJobs[1],
         status: 'completed' as const,
-        actual_end_at: '2024-01-10T14:00:00Z',
+        actual_end_at: Date.UTC(2024, 0, 10, 14, 0) / 1000,
       });
 
       const { JobDetailPage } =
@@ -642,29 +627,28 @@ describe('Job Lifecycle Integration', () => {
         expect(jobService.getJob).toHaveBeenCalledWith('job-2');
       });
 
-      // Find and click complete button
-      const completeButton = screen.queryByRole('button', {
-        name: /complete|finish/i,
-      });
-      if (completeButton) {
-        await user.click(completeButton);
+      await user.click(
+        await screen.findByRole('button', { name: /complete job/i })
+      );
 
-        await waitFor(() => {
-          expect(jobService.completeJob).toHaveBeenCalledWith(
-            'job-2',
-            expect.anything()
-          );
-        });
-      }
+      await waitFor(() => {
+        expect(jobService.transitionStatus).toHaveBeenCalledWith(
+          'job-2',
+          'completed'
+        );
+      });
     });
 
     it('should allow cancelling a job with reason', async () => {
       const user = userEvent.setup();
       vi.mocked(jobService.getJob).mockResolvedValue(mockJobs[0]);
-      vi.mocked(jobService.cancelJob).mockResolvedValue({
+      vi.mocked(jobService.transitionStatus).mockResolvedValue({
         ...mockJobs[0],
         status: 'cancelled' as const,
       });
+      const promptSpy = vi
+        .spyOn(window, 'prompt')
+        .mockReturnValue('Customer requested cancellation');
 
       const { JobDetailPage } =
         await import('../../src/pages/Jobs/JobDetailPage');
@@ -681,29 +665,20 @@ describe('Job Lifecycle Integration', () => {
         expect(jobService.getJob).toHaveBeenCalled();
       });
 
-      // Find cancel button
-      const cancelButton = screen.queryByRole('button', { name: /cancel/i });
-      if (cancelButton) {
-        await user.click(cancelButton);
+      await user.click(
+        await screen.findByRole('button', { name: /cancel job/i })
+      );
 
-        // Fill in reason if dialog appears
-        const reasonInput = screen.queryByLabelText(/reason/i);
-        if (reasonInput) {
-          await user.type(reasonInput, 'Customer requested cancellation');
-        }
-
-        // Confirm cancellation
-        const confirmButton = screen.queryByRole('button', {
-          name: /confirm|yes/i,
-        });
-        if (confirmButton) {
-          await user.click(confirmButton);
-        }
-
-        await waitFor(() => {
-          expect(jobService.cancelJob).toHaveBeenCalled();
-        });
-      }
+      expect(promptSpy).toHaveBeenCalled();
+      await waitFor(() => {
+        expect(jobService.transitionStatus).toHaveBeenCalledWith(
+          'job-1',
+          'cancelled',
+          'cancellation',
+          'Customer requested cancellation'
+        );
+      });
+      promptSpy.mockRestore();
     });
   });
 
@@ -772,11 +747,10 @@ describe('Job Lifecycle Integration', () => {
       });
 
       // Verify history is displayed
-      await waitFor(() => {
-        expect(
-          screen.getByText(/new.*scheduled|scheduled|in progress|completed/i)
-        ).toBeInTheDocument();
-      });
+      expect(
+        (await screen.findAllByText(/in progress/i)).length
+      ).toBeGreaterThan(0);
+      expect(screen.getAllByText(/completed/i).length).toBeGreaterThan(0);
     });
   });
 

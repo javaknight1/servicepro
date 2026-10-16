@@ -42,6 +42,7 @@ vi.mock('@/services/api', () => ({
 
 // Import after mocking
 import { useAuthStore, useTenantStore } from '@store';
+import { authApi } from '@/services/api';
 import { LoginPage } from '../../src/pages/Login/LoginPage';
 import { RegisterPage } from '../../src/pages/Register/RegisterPage';
 import { ForgotPasswordPage } from '../../src/pages/ForgotPassword/ForgotPasswordPage';
@@ -358,8 +359,6 @@ describe('Authentication Flow Integration', () => {
       );
 
       // Fill registration form
-      await user.type(screen.getByLabelText(/first name/i), 'Test');
-      await user.type(screen.getByLabelText(/last name/i), 'User');
       await user.type(screen.getByLabelText(/email/i), 'newuser@example.com');
       await user.type(screen.getByLabelText(/^password$/i), 'SecurePass123!');
       await user.type(
@@ -480,8 +479,6 @@ describe('Authentication Flow Integration', () => {
         </MemoryRouter>
       );
 
-      await user.type(screen.getByLabelText(/first name/i), 'Test');
-      await user.type(screen.getByLabelText(/last name/i), 'User');
       await user.type(screen.getByLabelText(/email/i), 'test@example.com');
       await user.type(screen.getByLabelText(/^password$/i), 'SecurePass123!');
       await user.type(
@@ -550,8 +547,11 @@ describe('Authentication Flow Integration', () => {
         screen.getByRole('button', { name: /send|reset|submit/i })
       );
 
+      // The page calls the API directly (not via the auth store)
       await waitFor(() => {
-        expect(mockRequestReset).toHaveBeenCalledWith('test@example.com');
+        expect(authApi.requestPasswordReset).toHaveBeenCalledWith({
+          email: 'test@example.com',
+        });
       });
     });
 
@@ -604,18 +604,11 @@ describe('Authentication Flow Integration', () => {
       );
 
       // Should show success message about email being sent
-      await waitFor(() => {
-        const successMessage = screen.queryByText(
+      expect(
+        await screen.findByText(
           /check your email|email sent|instructions sent/i
-        );
-        // Only assert if the component shows success message
-        if (successMessage) {
-          expect(successMessage).toBeInTheDocument();
-        } else {
-          // If no success message, at least verify the request was made
-          expect(mockRequestReset).toHaveBeenCalled();
-        }
-      });
+        )
+      ).toBeInTheDocument();
     });
   });
 

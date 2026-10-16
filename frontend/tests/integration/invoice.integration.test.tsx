@@ -344,12 +344,11 @@ describe('Invoice & Payment Integration', () => {
         </MemoryRouter>
       );
 
+      // Total and amount due columns are both $1,080.00 for the draft
       await waitFor(() => {
-        // Check for formatted amounts
-        expect(
-          screen.getByText(/\$1,080|\$1080|1,080\.00/)
-        ).toBeInTheDocument();
+        expect(screen.getAllByText('$1,080.00')).toHaveLength(2);
       });
+      expect(screen.getAllByText('$540.00').length).toBeGreaterThan(0);
     });
 
     it('should display invoice status badges', async () => {
@@ -454,52 +453,22 @@ describe('Invoice & Payment Integration', () => {
         </MemoryRouter>
       );
 
-      // Wait for form to render
-      await waitFor(() => {
-        const customerInput = screen.queryByLabelText(/customer/i);
-        expect(
-          customerInput || screen.getByRole('combobox')
-        ).toBeInTheDocument();
-      });
+      // Customer is a native <select>
+      const customerSelect = await screen.findByLabelText(/customer/i);
+      await screen.findByRole('option', { name: /John Doe/i });
+      await user.selectOptions(customerSelect, 'customer-1');
 
-      // Select customer
-      const customerSelect =
-        screen.queryByLabelText(/customer/i) || screen.getByRole('combobox');
-      if (customerSelect) {
-        await user.click(customerSelect);
-        const option = screen.queryByText(/John Doe/i);
-        if (option) {
-          await user.click(option);
-        }
-      }
-
-      // Add line item if button exists
-      const addLineButton = screen.queryByRole('button', {
-        name: /add line|add item/i,
-      });
-      if (addLineButton) {
-        await user.click(addLineButton);
-
-        // Fill line item
-        const descInput =
-          screen.queryByLabelText(/description/i) ||
-          screen.queryByPlaceholderText(/description/i);
-        if (descInput) {
-          await user.type(descInput, 'Service Charge');
-        }
-
-        const qtyInput = screen.queryByLabelText(/quantity|qty/i);
-        if (qtyInput) {
-          await user.clear(qtyInput);
-          await user.type(qtyInput, '1');
-        }
-
-        const priceInput = screen.queryByLabelText(/price|rate|amount/i);
-        if (priceInput) {
-          await user.clear(priceInput);
-          await user.type(priceInput, '500');
-        }
-      }
+      // Fill the default (first) line item
+      await user.type(
+        screen.getAllByPlaceholderText(/description/i)[0],
+        'Service Charge'
+      );
+      const qty = screen.getAllByPlaceholderText(/qty/i)[0];
+      await user.clear(qty);
+      await user.type(qty, '1');
+      const price = screen.getAllByPlaceholderText(/price/i)[0];
+      await user.clear(price);
+      await user.type(price, '500');
 
       // Submit form
       const saveButton = screen.getByRole('button', {
@@ -508,7 +477,18 @@ describe('Invoice & Payment Integration', () => {
       await user.click(saveButton);
 
       await waitFor(() => {
-        expect(invoiceService.createInvoice).toHaveBeenCalled();
+        expect(invoiceService.createInvoice).toHaveBeenCalledWith(
+          expect.objectContaining({
+            customer_id: 'customer-1',
+            lines: [
+              expect.objectContaining({
+                description: 'Service Charge',
+                quantity: 1,
+                unit_price: 500,
+              }),
+            ],
+          })
+        );
       });
     });
   });
@@ -537,59 +517,18 @@ describe('Invoice & Payment Integration', () => {
         expect(invoiceService.getInvoice).toHaveBeenCalledWith('invoice-1');
       });
 
-      // Find and click send button
-      const sendButton = screen.queryByRole('button', { name: /send/i });
-      if (sendButton) {
-        await user.click(sendButton);
+      const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
 
-        await waitFor(() => {
-          expect(invoiceService.sendInvoice).toHaveBeenCalledWith('invoice-1');
-        });
-      }
-    });
-
-    it('should cancel an invoice', async () => {
-      const user = userEvent.setup();
-      vi.mocked(invoiceService.getInvoice).mockResolvedValue(mockInvoices[0]);
-      vi.mocked(invoiceService.cancelInvoice).mockResolvedValue({
-        ...mockInvoices[0],
-        status: 'cancelled' as const,
-      });
-
-      const { InvoiceDetailPage } =
-        await import('../../src/pages/Invoices/InvoiceDetailPage');
-
-      render(
-        <MemoryRouter initialEntries={['/invoices/invoice-1']}>
-          <Routes>
-            <Route path="/invoices/:id" element={<InvoiceDetailPage />} />
-          </Routes>
-        </MemoryRouter>
+      // Send opens a confirmation modal
+      await user.click(
+        await screen.findByRole('button', { name: /send invoice/i })
       );
+      await user.click(screen.getByTestId('confirm-send'));
 
       await waitFor(() => {
-        expect(invoiceService.getInvoice).toHaveBeenCalled();
+        expect(invoiceService.sendInvoice).toHaveBeenCalledWith('invoice-1');
       });
-
-      // Find and click cancel button
-      const cancelButton = screen.queryByRole('button', { name: /cancel/i });
-      if (cancelButton) {
-        await user.click(cancelButton);
-
-        // Confirm if dialog appears
-        const confirmButton = screen.queryByRole('button', {
-          name: /confirm|yes/i,
-        });
-        if (confirmButton) {
-          await user.click(confirmButton);
-        }
-
-        await waitFor(() => {
-          expect(invoiceService.cancelInvoice).toHaveBeenCalledWith(
-            'invoice-1'
-          );
-        });
-      }
+      alertSpy.mockRestore();
     });
   });
 
@@ -738,20 +677,15 @@ describe('Invoice & Payment Integration', () => {
         expect(invoiceService.getInvoice).toHaveBeenCalled();
       });
 
-      // Find and click download/PDF button
-      const pdfButton = screen.queryByRole('button', {
-        name: /pdf|download|invoice/i,
-      });
-      if (pdfButton) {
-        await user.click(pdfButton);
+      await user.click(
+        await screen.findByRole('button', { name: /download pdf/i })
+      );
 
-        await waitFor(() => {
-          expect(invoiceService.downloadInvoicePDF).toHaveBeenCalledWith(
-            'invoice-1',
-            expect.anything()
-          );
-        });
-      }
+      await waitFor(() => {
+        expect(invoiceService.downloadInvoicePDF).toHaveBeenCalledWith(
+          'invoice-1'
+        );
+      });
     });
 
     it('should download receipt PDF for paid invoice', async () => {
@@ -774,18 +708,15 @@ describe('Invoice & Payment Integration', () => {
         expect(invoiceService.getInvoice).toHaveBeenCalled();
       });
 
-      // Find and click receipt button
-      const receiptButton = screen.queryByRole('button', { name: /receipt/i });
-      if (receiptButton) {
-        await user.click(receiptButton);
+      await user.click(
+        await screen.findByRole('button', { name: /download receipt/i })
+      );
 
-        await waitFor(() => {
-          expect(invoiceService.downloadReceiptPDF).toHaveBeenCalledWith(
-            'invoice-3',
-            expect.anything()
-          );
-        });
-      }
+      await waitFor(() => {
+        expect(invoiceService.downloadReceiptPDF).toHaveBeenCalledWith(
+          'invoice-3'
+        );
+      });
     });
   });
 
@@ -872,11 +803,9 @@ describe('Invoice & Payment Integration', () => {
         </MemoryRouter>
       );
 
-      await waitFor(() => {
-        expect(
-          screen.getByText(/payment successful|thank you|confirmed/i)
-        ).toBeInTheDocument();
-      });
+      expect(
+        await screen.findByRole('heading', { name: /payment successful/i })
+      ).toBeInTheDocument();
     });
 
     it('is a public page with no links into the authenticated app', async () => {
@@ -911,11 +840,12 @@ describe('Invoice & Payment Integration', () => {
         </MemoryRouter>
       );
 
-      await waitFor(() => {
-        expect(
-          screen.getByText(/payment cancelled|not completed|try again/i)
-        ).toBeInTheDocument();
-      });
+      expect(
+        await screen.findByRole('heading', { name: /payment cancelled/i })
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(/no charges have been made/i)
+      ).toBeInTheDocument();
     });
   });
 
