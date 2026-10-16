@@ -268,19 +268,21 @@ const InvoiceDetailPage = loadable(
   { chunkName: 'invoice-detail', delay: 100 }
 );
 
+// Public Stripe Checkout return pages (end customers paying via /pay/:token
+// are not app users, so these must not sit behind ProtectedRoute).
 const PaymentSuccessPage = loadable(
   () =>
-    import(/* webpackChunkName: "page-invoices" */ '@pages/Invoices').then(
-      (m) => ({ default: m.PaymentSuccessPage })
-    ),
+    import('@pages/Invoices/PaymentSuccessPage').then((m) => ({
+      default: m.PaymentSuccessPage,
+    })),
   { chunkName: 'payment-success', delay: 100 }
 );
 
 const PaymentCancelledPage = loadable(
   () =>
-    import(/* webpackChunkName: "page-invoices" */ '@pages/Invoices').then(
-      (m) => ({ default: m.PaymentCancelledPage })
-    ),
+    import('@pages/Invoices/PaymentCancelledPage').then((m) => ({
+      default: m.PaymentCancelledPage,
+    })),
   { chunkName: 'payment-cancelled', delay: 100 }
 );
 
@@ -400,6 +402,15 @@ export const preloadHandlers = {
 // App Routes Component
 // =============================================================================
 
+/**
+ * Stripe Checkout success/cancel paths. Must match the backend's
+ * InvoicePaymentConfig SuccessURL/CancelURL (backend/internal/api/routes/services.go).
+ */
+export const PUBLIC_PAYMENT_PATHS = {
+  success: '/invoices/payment-success',
+  cancelled: '/invoices/payment-cancelled',
+} as const;
+
 export function AppRoutes() {
   // Enable route preloading
   useRoutePreloading();
@@ -425,6 +436,16 @@ export function AppRoutes() {
       <Route path="/privacy" element={<PrivacyPolicyPage />} />
       <Route path="/terms" element={<TermsOfServicePage />} />
       <Route path="/invitations/accept" element={<AcceptInvitationPage />} />
+      {/* Stripe Checkout return URLs (backend: FRONTEND_URL + these paths).
+          Public: the payer is the end customer, not a logged-in user. */}
+      <Route
+        path={PUBLIC_PAYMENT_PATHS.success}
+        element={<PaymentSuccessPage />}
+      />
+      <Route
+        path={PUBLIC_PAYMENT_PATHS.cancelled}
+        element={<PaymentCancelledPage />}
+      />
 
       {/* Protected routes - require authentication */}
       <Route element={<ProtectedRoute />}>
@@ -442,14 +463,6 @@ export function AppRoutes() {
         <Route path="/quotes/:id" element={<QuoteDetailPage />} />
         <Route path="/invoices" element={<InvoicesPage />} />
         <Route path="/invoices/new" element={<InvoiceDetailPage />} />
-        <Route
-          path="/invoices/payment-success"
-          element={<PaymentSuccessPage />}
-        />
-        <Route
-          path="/invoices/payment-cancelled"
-          element={<PaymentCancelledPage />}
-        />
         <Route path="/invoices/:id" element={<InvoiceDetailPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/settings/organization" element={<OrgSettingsPage />} />
@@ -537,6 +550,13 @@ export function isProtectedRoute(path: string): boolean {
     '/team',
     '/reports',
   ];
+
+  if (
+    path === PUBLIC_PAYMENT_PATHS.success ||
+    path === PUBLIC_PAYMENT_PATHS.cancelled
+  ) {
+    return false;
+  }
 
   return protectedPaths.some((p) => path.startsWith(p));
 }
