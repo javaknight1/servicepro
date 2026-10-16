@@ -164,7 +164,7 @@ func TestLogin_InvalidRequest(t *testing.T) {
 	var response models.ErrorResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(t, err)
-	assert.Equal(t, "invalid_request", response.Error)
+	assert.Equal(t, "malformed_json", response.Error)
 }
 
 func TestLogin_InvalidCredentials(t *testing.T) {

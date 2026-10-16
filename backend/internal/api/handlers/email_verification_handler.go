@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/javaknight1/servicepro/backend/internal/api/apierror"
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/services"
 )
@@ -37,7 +38,7 @@ func (h *EmailVerificationHandler) VerifyEmail(c *gin.Context) {
 	// Get token from query parameter
 	token := c.Query("token")
 	if token == "" {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
 			Message: "Verification token is required",
 		})
@@ -51,7 +52,7 @@ func (h *EmailVerificationHandler) VerifyEmail(c *gin.Context) {
 	if err != nil {
 		// Handle different error types
 		if errors.Is(err, services.ErrInvalidVerificationToken) {
-			c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusUnauthorized, models.ErrorResponse{
 				Error:   "invalid_token",
 				Message: "Invalid or expired verification token",
 			})
@@ -59,10 +60,7 @@ func (h *EmailVerificationHandler) VerifyEmail(c *gin.Context) {
 		}
 
 		// Internal server error
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "internal_error",
-			Message: "An error occurred while verifying your email",
-		})
+		apierror.Internal(c, err, "An error occurred while verifying your email")
 		return
 	}
 
@@ -88,10 +86,7 @@ func (h *EmailVerificationHandler) ResendVerificationEmail(c *gin.Context) {
 
 	// Bind and validate request
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
-			Error:   "invalid_request",
-			Message: "Valid email address is required",
-		})
+		apierror.BindError(c, err)
 		return
 	}
 
@@ -100,7 +95,7 @@ func (h *EmailVerificationHandler) ResendVerificationEmail(c *gin.Context) {
 	if err != nil {
 		// Handle different error types
 		if errors.Is(err, services.ErrEmailAlreadyVerified) {
-			c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 				Error:   "already_verified",
 				Message: "Email address is already verified",
 			})

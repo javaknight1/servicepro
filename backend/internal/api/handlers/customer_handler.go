@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
+	"github.com/javaknight1/servicepro/backend/internal/api/apierror"
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/repository"
 )
@@ -41,24 +42,18 @@ func (h *CustomerHandler) CreateCustomer(c *gin.Context) {
 	var req models.CreateCustomerRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
-			Error:   "invalid_request",
-			Message: publicError(err),
-		})
+		apierror.BindError(c, err)
 		return
 	}
 
 	// Check if email already exists
 	exists, err := h.customerRepo.WithContext(c.Request.Context()).EmailExists(req.Email)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "internal_error",
-			Message: "Failed to check email existence",
-		})
+		apierror.Internal(c, err, "Failed to check email existence")
 		return
 	}
 	if exists {
-		c.JSON(http.StatusConflict, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusConflict, models.ErrorResponse{
 			Error:   "email_exists",
 			Message: "A customer with this email already exists",
 		})
@@ -118,16 +113,13 @@ func (h *CustomerHandler) CreateCustomer(c *gin.Context) {
 	// Create customer
 	if err := h.customerRepo.WithContext(c.Request.Context()).Create(customer); err != nil {
 		if errors.Is(err, repository.ErrEmailAlreadyExists) {
-			c.JSON(http.StatusConflict, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusConflict, models.ErrorResponse{
 				Error:   "email_exists",
 				Message: "A customer with this email already exists",
 			})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "internal_error",
-			Message: "Failed to create customer",
-		})
+		apierror.Internal(c, err, "Failed to create customer")
 		return
 	}
 
@@ -149,7 +141,7 @@ func (h *CustomerHandler) GetCustomer(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_id",
 			Message: "Invalid customer ID format",
 		})
@@ -159,16 +151,13 @@ func (h *CustomerHandler) GetCustomer(c *gin.Context) {
 	customer, err := h.customerRepo.WithContext(c.Request.Context()).GetByID(id)
 	if err != nil {
 		if errors.Is(err, repository.ErrCustomerNotFound) {
-			c.JSON(http.StatusNotFound, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusNotFound, models.ErrorResponse{
 				Error:   "customer_not_found",
 				Message: "Customer not found",
 			})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "internal_error",
-			Message: "Failed to retrieve customer",
-		})
+		apierror.Internal(c, err, "Failed to retrieve customer")
 		return
 	}
 
@@ -193,7 +182,7 @@ func (h *CustomerHandler) UpdateCustomer(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_id",
 			Message: "Invalid customer ID format",
 		})
@@ -202,10 +191,7 @@ func (h *CustomerHandler) UpdateCustomer(c *gin.Context) {
 
 	var req models.UpdateCustomerRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
-			Error:   "invalid_request",
-			Message: publicError(err),
-		})
+		apierror.BindError(c, err)
 		return
 	}
 
@@ -213,16 +199,13 @@ func (h *CustomerHandler) UpdateCustomer(c *gin.Context) {
 	customer, err := h.customerRepo.WithContext(c.Request.Context()).GetByID(id)
 	if err != nil {
 		if errors.Is(err, repository.ErrCustomerNotFound) {
-			c.JSON(http.StatusNotFound, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusNotFound, models.ErrorResponse{
 				Error:   "customer_not_found",
 				Message: "Customer not found",
 			})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "internal_error",
-			Message: "Failed to retrieve customer",
-		})
+		apierror.Internal(c, err, "Failed to retrieve customer")
 		return
 	}
 
@@ -301,16 +284,13 @@ func (h *CustomerHandler) UpdateCustomer(c *gin.Context) {
 	// Update customer
 	if err := h.customerRepo.WithContext(c.Request.Context()).Update(customer); err != nil {
 		if errors.Is(err, repository.ErrEmailAlreadyExists) {
-			c.JSON(http.StatusConflict, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusConflict, models.ErrorResponse{
 				Error:   "email_exists",
 				Message: "A customer with this email already exists",
 			})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "internal_error",
-			Message: "Failed to update customer",
-		})
+		apierror.Internal(c, err, "Failed to update customer")
 		return
 	}
 
@@ -332,7 +312,7 @@ func (h *CustomerHandler) DeleteCustomer(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_id",
 			Message: "Invalid customer ID format",
 		})
@@ -341,16 +321,13 @@ func (h *CustomerHandler) DeleteCustomer(c *gin.Context) {
 
 	if err := h.customerRepo.WithContext(c.Request.Context()).Delete(id); err != nil {
 		if errors.Is(err, repository.ErrCustomerNotFound) {
-			c.JSON(http.StatusNotFound, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusNotFound, models.ErrorResponse{
 				Error:   "customer_not_found",
 				Message: "Customer not found",
 			})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "internal_error",
-			Message: "Failed to delete customer",
-		})
+		apierror.Internal(c, err, "Failed to delete customer")
 		return
 	}
 
@@ -379,19 +356,13 @@ func (h *CustomerHandler) ListCustomers(c *gin.Context) {
 	var filter models.CustomerListFilter
 
 	if err := c.ShouldBindQuery(&filter); err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
-			Error:   "invalid_request",
-			Message: publicError(err),
-		})
+		apierror.BindError(c, err)
 		return
 	}
 
 	customers, total, err := h.customerRepo.WithContext(c.Request.Context()).List(&filter)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "internal_error",
-			Message: "Failed to retrieve customers",
-		})
+		apierror.Internal(c, err, "Failed to retrieve customers")
 		return
 	}
 
@@ -435,7 +406,7 @@ func (h *CustomerHandler) ListCustomers(c *gin.Context) {
 func (h *CustomerHandler) SearchCustomers(c *gin.Context) {
 	query := c.Query("q")
 	if query == "" {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
 			Message: "Search query is required",
 		})
@@ -444,10 +415,7 @@ func (h *CustomerHandler) SearchCustomers(c *gin.Context) {
 
 	customers, err := h.customerRepo.WithContext(c.Request.Context()).Search(query)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "internal_error",
-			Message: "Failed to search customers",
-		})
+		apierror.Internal(c, err, "Failed to search customers")
 		return
 	}
 
@@ -476,16 +444,13 @@ func (h *CustomerHandler) GetCustomerByEmail(c *gin.Context) {
 	customer, err := h.customerRepo.WithContext(c.Request.Context()).GetByEmail(email)
 	if err != nil {
 		if errors.Is(err, repository.ErrCustomerNotFound) {
-			c.JSON(http.StatusNotFound, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusNotFound, models.ErrorResponse{
 				Error:   "customer_not_found",
 				Message: "Customer not found",
 			})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "internal_error",
-			Message: "Failed to retrieve customer",
-		})
+		apierror.Internal(c, err, "Failed to retrieve customer")
 		return
 	}
 
@@ -544,7 +509,7 @@ func (h *CustomerHandler) AdvancedSearch(c *gin.Context) {
 
 	// Validate query
 	if query == "" {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
 			Message: "Search query is required",
 		})
@@ -568,10 +533,7 @@ func (h *CustomerHandler) AdvancedSearch(c *gin.Context) {
 	)
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "internal_error",
-			Message: "Failed to search customers",
-		})
+		apierror.Internal(c, err, "Failed to search customers")
 		return
 	}
 
@@ -607,7 +569,7 @@ func (h *CustomerHandler) AdvancedSearch(c *gin.Context) {
 func (h *CustomerHandler) Autocomplete(c *gin.Context) {
 	prefix := c.Query("q")
 	if prefix == "" {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
 			Message: "Search prefix is required",
 		})
@@ -626,10 +588,7 @@ func (h *CustomerHandler) Autocomplete(c *gin.Context) {
 
 	results, err := h.customerRepo.WithContext(c.Request.Context()).Autocomplete(prefix, limit)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "internal_error",
-			Message: "Failed to get autocomplete suggestions",
-		})
+		apierror.Internal(c, err, "Failed to get autocomplete suggestions")
 		return
 	}
 
@@ -647,10 +606,7 @@ func (h *CustomerHandler) Autocomplete(c *gin.Context) {
 func (h *CustomerHandler) GetSearchStats(c *gin.Context) {
 	stats, err := h.customerRepo.WithContext(c.Request.Context()).GetSearchStats()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "internal_error",
-			Message: "Failed to get search statistics",
-		})
+		apierror.Internal(c, err, "Failed to get search statistics")
 		return
 	}
 

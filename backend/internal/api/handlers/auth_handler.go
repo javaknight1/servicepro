@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/javaknight1/servicepro/backend/internal/api/apierror"
 	"github.com/javaknight1/servicepro/backend/internal/api/middleware"
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/services"
@@ -52,10 +53,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	} else {
 		// Bind and validate request
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, models.ErrorResponse{
-				Error:   "invalid_request",
-				Message: "Invalid email or password format",
-			})
+			apierror.BindError(c, err)
 			return
 		}
 	}
@@ -71,14 +69,14 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		switch {
 		case errors.Is(err, services.ErrInvalidCredentials), errors.Is(err, services.ErrAccountLocked):
 			h.rateLimiter.RecordLoginFailure(req.Email, ip)
-			c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusUnauthorized, models.ErrorResponse{
 				Error:   "invalid_credentials",
 				Message: "Invalid email or password",
 			})
 			return
 
 		case errors.Is(err, services.ErrEmailNotVerified):
-			c.JSON(http.StatusForbidden, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusForbidden, models.ErrorResponse{
 				Error:   "email_not_verified",
 				Message: "Please verify your email address before logging in. Check your inbox for the verification link.",
 			})
@@ -86,10 +84,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 		default:
 			// Internal server error
-			c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-				Error:   "internal_error",
-				Message: "An error occurred while processing your request",
-			})
+			apierror.Internal(c, err, "An error occurred while processing your request")
 			return
 		}
 	}
@@ -122,7 +117,7 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 	// Get refresh token from cookie
 	refreshToken, err := h.cookieManager.GetRefreshToken(c)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusUnauthorized, models.ErrorResponse{
 			Error:   "invalid_request",
 			Message: "Refresh token not found",
 		})
@@ -136,7 +131,7 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 		case errors.Is(err, services.ErrInvalidRefreshToken):
 			// Clear invalid cookies
 			h.cookieManager.ClearTokens(c)
-			c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusUnauthorized, models.ErrorResponse{
 				Error:   "invalid_token",
 				Message: "Invalid or expired refresh token",
 			})
@@ -144,7 +139,7 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 
 		case errors.Is(err, services.ErrAccountLocked):
 			h.cookieManager.ClearTokens(c)
-			c.JSON(http.StatusForbidden, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusForbidden, models.ErrorResponse{
 				Error:   "account_locked",
 				Message: "Account is locked. Please contact support.",
 			})
@@ -152,17 +147,14 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 
 		case errors.Is(err, services.ErrEmailNotVerified):
 			h.cookieManager.ClearTokens(c)
-			c.JSON(http.StatusForbidden, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusForbidden, models.ErrorResponse{
 				Error:   "email_not_verified",
 				Message: "Please verify your email address. Check your inbox for the verification link.",
 			})
 			return
 
 		default:
-			c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-				Error:   "internal_error",
-				Message: "An error occurred while refreshing the token",
-			})
+			apierror.Internal(c, err, "An error occurred while refreshing the token")
 			return
 		}
 	}

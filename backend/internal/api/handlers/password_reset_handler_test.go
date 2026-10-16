@@ -87,7 +87,7 @@ func TestRequestPasswordReset_InvalidJSON(t *testing.T) {
 	var response models.ErrorResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(t, err)
-	assert.Equal(t, "invalid_request", response.Error)
+	assert.Equal(t, "malformed_json", response.Error)
 }
 
 func TestRequestPasswordReset_InvalidEmail(t *testing.T) {
@@ -116,7 +116,7 @@ func TestRequestPasswordReset_InvalidEmail(t *testing.T) {
 	var response models.ErrorResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(t, err)
-	assert.Equal(t, "invalid_request", response.Error)
+	assert.Equal(t, "validation_failed", response.Error)
 
 	// Service should not be called since Gin validation fails
 	mockService.AssertNotCalled(t, "RequestPasswordReset")
@@ -212,7 +212,7 @@ func TestResetPassword_InvalidJSON(t *testing.T) {
 	var response models.ErrorResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(t, err)
-	assert.Equal(t, "invalid_request", response.Error)
+	assert.Equal(t, "malformed_json", response.Error)
 }
 
 func TestResetPassword_InvalidToken(t *testing.T) {

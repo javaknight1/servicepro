@@ -90,7 +90,7 @@ func TestRegisterHandler_InvalidRequest(t *testing.T) {
 	var response models.ErrorResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(t, err)
-	assert.Equal(t, "invalid_request", response.Error)
+	assert.Equal(t, "malformed_json", response.Error)
 }
 
 func TestRegisterHandler_InvalidEmail(t *testing.T) {
@@ -120,7 +120,7 @@ func TestRegisterHandler_InvalidEmail(t *testing.T) {
 	var response models.ErrorResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(t, err)
-	assert.Equal(t, "invalid_request", response.Error)
+	assert.Equal(t, "validation_failed", response.Error)
 
 	mockService.AssertExpectations(t)
 }
@@ -152,7 +152,7 @@ func TestRegisterHandler_PasswordTooShort(t *testing.T) {
 	var response models.ErrorResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(t, err)
-	assert.Equal(t, "invalid_request", response.Error)
+	assert.Equal(t, "validation_failed", response.Error)
 
 	mockService.AssertExpectations(t)
 }
