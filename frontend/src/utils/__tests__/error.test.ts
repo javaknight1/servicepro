@@ -3,12 +3,14 @@ import { AxiosError } from 'axios';
 import {
   getApiErrorInfo,
   getErrorMessage,
+  getFieldErrors,
   getTenantErrorMessage,
   isAxiosError,
   isAxiosErrorWithStatus,
   TENANT_ACCESS_DENIED_MESSAGE,
   TENANT_PERMISSION_MESSAGE,
   TOO_MANY_ATTEMPTS_MESSAGE,
+  withErrorReference,
 } from '../error';
 
 describe('error utilities', () => {
@@ -213,5 +215,76 @@ describe('API error helpers', () => {
         })
       )
     ).toBe('You cannot invite someone with a role above your own');
+  });
+});
+
+// T223: the error envelope's request_id and field errors
+describe('API error envelope', () => {
+  const axiosError = (
+    status: number,
+    data: unknown,
+    headers: Record<string, string> = {}
+  ) => {
+    const error = new AxiosError('Request failed');
+    error.response = {
+      data,
+      status,
+      statusText: '',
+      headers,
+      config: {} as never,
+    };
+    return error;
+  };
+
+  it('reads request_id and fields from the envelope', () => {
+    const error = axiosError(400, {
+      error: 'validation_failed',
+      message: 'Validation failed: email must be a valid email address',
+      request_id: 'req-123',
+      fields: { email: 'email must be a valid email address' },
+    });
+    expect(getApiErrorInfo(error)).toEqual({
+      status: 400,
+      code: 'validation_failed',
+      message: 'Validation failed: email must be a valid email address',
+      requestId: 'req-123',
+      fields: { email: 'email must be a valid email address' },
+    });
+    expect(getFieldErrors(error)).toEqual({
+      email: 'email must be a valid email address',
+    });
+    expect(getFieldErrors(new Error('x'))).toEqual({});
+  });
+
+  it('falls back to the X-Request-ID header for responses without the envelope', () => {
+    const error = axiosError(502, 'Bad Gateway', {
+      'x-request-id': 'edge-req-9',
+    });
+    expect(getApiErrorInfo(error).requestId).toBe('edge-req-9');
+  });
+
+  it('adds a reference to server errors only', () => {
+    const serverError = axiosError(500, {
+      error: 'internal_error',
+      message: 'Failed to accept quote',
+      request_id: 'req-500',
+    });
+    expect(getErrorMessage(serverError)).toBe(
+      'Failed to accept quote (Reference: req-500)'
+    );
+    expect(getTenantErrorMessage(serverError)).toBe(
+      'Failed to accept quote (Reference: req-500)'
+    );
+
+    const conflict = axiosError(409, {
+      error: 'cannot_accept',
+      message:
+        "Only sent or viewed quotes that haven't expired can be accepted",
+      request_id: 'req-409',
+    });
+    expect(getErrorMessage(conflict)).toBe(
+      "Only sent or viewed quotes that haven't expired can be accepted"
+    );
+    expect(withErrorReference('Oops', conflict)).toBe('Oops');
   });
 });

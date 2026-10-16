@@ -17,6 +17,8 @@ import type {
 } from '@app-types';
 import { API_BASE_URL } from '@config/endpoints';
 import { clearQueryCaches } from './queryCacheRegistry';
+import { addBreadcrumb, setTag } from './errorTracking';
+import { getApiErrorInfo } from '@/utils/error';
 
 // Create axios instance. Defaults to same-origin "/api" (Workers proxy in
 // production, Vite dev proxy locally); see src/config/endpoints.ts.
@@ -102,11 +104,32 @@ function refreshSession(): Promise<unknown> {
   return refreshPromise;
 }
 
+/**
+ * Server errors (5xx) leave their request ID in Sentry (T223): a
+ * breadcrumb on any later event, plus a `request_id` tag, so a reported
+ * error can be matched to the API's log lines. Only the path is recorded
+ * (no query string, which may carry tokens).
+ */
+function recordServerError(error: AxiosError<ApiError>): void {
+  const { status, requestId, code } = getApiErrorInfo(error);
+  if (status === undefined || status < 500 || !requestId) return;
+  const path = (error.config?.url ?? '').split('?')[0];
+  setTag('request_id', requestId);
+  addBreadcrumb({
+    category: 'api',
+    level: 'error',
+    message: `API ${status} ${code ?? ''}`.trim(),
+    data: { request_id: requestId, status, path },
+  });
+}
+
 // Response interceptor - handle token refresh
 // Tokens are in httpOnly cookies, so refresh is handled automatically by the backend
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError<ApiError>) => {
+    recordServerError(error);
+
     const originalRequest = error.config as
       | (InternalAxiosRequestConfig & { _retry?: boolean })
       | undefined;
