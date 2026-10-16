@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/javaknight1/servicepro/backend/internal/api/apierror"
 	"github.com/javaknight1/servicepro/backend/internal/tenancy"
 
 	"github.com/gin-gonic/gin"
@@ -37,17 +38,17 @@ func NewPublicInvoiceHandler(
 // @Produce		json
 // @Param			token	path	string	true	"Payment token"
 // @Success		303
-// @Failure		400	{object}	map[string]string
-// @Failure		404	{object}	map[string]string
-// @Failure		409	{object}	map[string]string
-// @Failure		410	{object}	map[string]string
-// @Failure		500	{object}	map[string]string
-// @Failure		503	{object}	map[string]string
+// @Failure		400	{object}	models.ErrorResponse
+// @Failure		404	{object}	models.ErrorResponse
+// @Failure		409	{object}	models.ErrorResponse
+// @Failure		410	{object}	models.ErrorResponse
+// @Failure		500	{object}	models.ErrorResponse
+// @Failure		503	{object}	models.ErrorResponse
 // @Router			/public/invoices/pay/{token} [get]
 func (h *PublicInvoiceHandler) PayInvoice(c *gin.Context) {
 	token := c.Param("token")
 	if token == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "payment token is required"})
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{Error: "payment token is required"})
 		return
 	}
 
@@ -79,7 +80,11 @@ func (h *PublicInvoiceHandler) PayInvoice(c *gin.Context) {
 			errorMessage = "payment service temporarily unavailable"
 		}
 
-		c.JSON(statusCode, gin.H{"error": errorMessage})
+		if statusCode == http.StatusInternalServerError {
+			apierror.Internal(c, err, sentenceCase(errorMessage))
+			return
+		}
+		apierror.WriteResponse(c, statusCode, models.ErrorResponse{Error: sentenceCase(errorMessage)})
 		return
 	}
 
@@ -95,14 +100,14 @@ func (h *PublicInvoiceHandler) PayInvoice(c *gin.Context) {
 // @Produce		json
 // @Param			token	path		string	true	"Payment token"
 // @Success		200		{object}	PublicInvoiceResponse
-// @Failure		400		{object}	map[string]string
-// @Failure		404		{object}	map[string]string
-// @Failure		500		{object}	map[string]string
+// @Failure		400		{object}	models.ErrorResponse
+// @Failure		404		{object}	models.ErrorResponse
+// @Failure		500		{object}	models.ErrorResponse
 // @Router			/public/invoices/details/{token} [get]
 func (h *PublicInvoiceHandler) GetInvoiceByToken(c *gin.Context) {
 	token := c.Param("token")
 	if token == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "payment token is required"})
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{Error: "payment token is required"})
 		return
 	}
 
@@ -121,7 +126,11 @@ func (h *PublicInvoiceHandler) GetInvoiceByToken(c *gin.Context) {
 			errorMessage = "invoice not found"
 		}
 
-		c.JSON(statusCode, gin.H{"error": errorMessage})
+		if statusCode == http.StatusInternalServerError {
+			apierror.Internal(c, err, sentenceCase(errorMessage))
+			return
+		}
+		apierror.WriteResponse(c, statusCode, models.ErrorResponse{Error: sentenceCase(errorMessage)})
 		return
 	}
 
@@ -139,12 +148,12 @@ func (h *PublicInvoiceHandler) GetInvoiceByToken(c *gin.Context) {
 // @Produce		json
 // @Param			token	path		string	true	"Payment token"
 // @Success		200		{object}	map[string]interface{}
-// @Failure		400		{object}	map[string]string
+// @Failure		400		{object}	models.ErrorResponse
 // @Router			/public/invoices/validate/{token} [get]
 func (h *PublicInvoiceHandler) ValidatePaymentToken(c *gin.Context) {
 	token := c.Param("token")
 	if token == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "payment token is required"})
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{Error: "payment token is required"})
 		return
 	}
 

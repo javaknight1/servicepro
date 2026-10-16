@@ -13,6 +13,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
+	apperrors "github.com/javaknight1/servicepro/backend/internal/errors"
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/tenancy"
 	"github.com/javaknight1/servicepro/backend/internal/utils"
@@ -68,6 +69,10 @@ var (
 	// ErrTaxRateNotFound is returned for an unknown tax_rate_id
 	ErrTaxRateNotFound = errors.New("tax rate not found")
 )
+
+// ErrReceiptNotAvailable is returned when asking for the receipt of an
+// invoice that isn't paid (T223: a typed 409 instead of a generic 400).
+var ErrReceiptNotAvailable = apperrors.Conflict("receipt_not_available", "A receipt is only available for paid invoices")
 
 // InvoiceService handles invoice business logic
 type InvoiceService struct {
@@ -1381,7 +1386,7 @@ func (s *InvoiceService) DownloadReceiptPDF(ctx context.Context, id uuid.UUID) (
 
 	// Only allow receipt download for paid invoices
 	if invoice.Status != models.InvoiceStatusPaid {
-		return nil, "", errors.New("receipt only available for paid invoices")
+		return nil, "", ErrReceiptNotAvailable
 	}
 
 	if s.pdfService == nil {

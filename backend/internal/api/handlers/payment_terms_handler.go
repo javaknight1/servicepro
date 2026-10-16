@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 
+	"github.com/javaknight1/servicepro/backend/internal/api/apierror"
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/services"
 )
@@ -102,7 +103,7 @@ type CalculatePaymentDetailsRequest struct {
 // @Produce json
 // @Param active_only query boolean false "Return only active payment terms"
 // @Success 200 {array} models.PaymentTerm
-// @Failure 500 {object} ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
 // @Router /payment-terms [get]
 // @Security BearerAuth
 func (h *PaymentTermsHandler) ListPaymentTerms(c *gin.Context) {
@@ -112,10 +113,7 @@ func (h *PaymentTermsHandler) ListPaymentTerms(c *gin.Context) {
 
 	terms, err := h.service.ListPaymentTerms(ctx, activeOnly)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{
-			Error:   "Failed to list payment terms",
-			Message: publicError(err),
-		})
+		apierror.Respond(c, err, "Failed to list payment terms")
 		return
 	}
 
@@ -130,8 +128,8 @@ func (h *PaymentTermsHandler) ListPaymentTerms(c *gin.Context) {
 // @Produce json
 // @Param id path string true "Payment Term ID"
 // @Success 200 {object} models.PaymentTerm
-// @Failure 400 {object} ErrorResponse
-// @Failure 404 {object} ErrorResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
 // @Router /payment-terms/{id} [get]
 // @Security BearerAuth
 func (h *PaymentTermsHandler) GetPaymentTerm(c *gin.Context) {
@@ -139,16 +137,13 @@ func (h *PaymentTermsHandler) GetPaymentTerm(c *gin.Context) {
 
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Invalid payment term ID"})
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{Error: "Invalid payment term ID"})
 		return
 	}
 
 	term, err := h.service.GetPaymentTerm(ctx, id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, ErrorResponse{
-			Error:   "Payment term not found",
-			Message: publicError(err),
-		})
+		apierror.Respond(c, err, "Failed to get payment term")
 		return
 	}
 
@@ -162,7 +157,7 @@ func (h *PaymentTermsHandler) GetPaymentTerm(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Success 200 {object} models.PaymentTerm
-// @Failure 404 {object} ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
 // @Router /payment-terms/default [get]
 // @Security BearerAuth
 func (h *PaymentTermsHandler) GetDefaultPaymentTerm(c *gin.Context) {
@@ -170,10 +165,7 @@ func (h *PaymentTermsHandler) GetDefaultPaymentTerm(c *gin.Context) {
 
 	term, err := h.service.GetDefaultPaymentTerm(ctx)
 	if err != nil {
-		c.JSON(http.StatusNotFound, ErrorResponse{
-			Error:   "Default payment term not found",
-			Message: publicError(err),
-		})
+		apierror.Respond(c, err, "Failed to get default payment term")
 		return
 	}
 
@@ -188,8 +180,8 @@ func (h *PaymentTermsHandler) GetDefaultPaymentTerm(c *gin.Context) {
 // @Produce json
 // @Param request body CreatePaymentTermRequest true "Payment term details"
 // @Success 201 {object} models.PaymentTerm
-// @Failure 400 {object} ErrorResponse
-// @Failure 500 {object} ErrorResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
 // @Router /payment-terms [post]
 // @Security BearerAuth
 func (h *PaymentTermsHandler) CreatePaymentTerm(c *gin.Context) {
@@ -197,10 +189,7 @@ func (h *PaymentTermsHandler) CreatePaymentTerm(c *gin.Context) {
 
 	var req CreatePaymentTermRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{
-			Error:   "Invalid request",
-			Message: publicError(err),
-		})
+		apierror.BindError(c, err)
 		return
 	}
 
@@ -219,10 +208,7 @@ func (h *PaymentTermsHandler) CreatePaymentTerm(c *gin.Context) {
 	}
 
 	if err := h.service.CreatePaymentTerm(ctx, term); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{
-			Error:   "Failed to create payment term",
-			Message: publicError(err),
-		})
+		apierror.Respond(c, err, "Failed to create payment term")
 		return
 	}
 
@@ -238,8 +224,8 @@ func (h *PaymentTermsHandler) CreatePaymentTerm(c *gin.Context) {
 // @Param id path string true "Payment Term ID"
 // @Param request body UpdatePaymentTermRequest true "Payment term updates"
 // @Success 200 {object} models.PaymentTerm
-// @Failure 400 {object} ErrorResponse
-// @Failure 500 {object} ErrorResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
 // @Router /payment-terms/{id} [put]
 // @Security BearerAuth
 func (h *PaymentTermsHandler) UpdatePaymentTerm(c *gin.Context) {
@@ -247,16 +233,13 @@ func (h *PaymentTermsHandler) UpdatePaymentTerm(c *gin.Context) {
 
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Invalid payment term ID"})
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{Error: "Invalid payment term ID"})
 		return
 	}
 
 	var req UpdatePaymentTermRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{
-			Error:   "Invalid request",
-			Message: publicError(err),
-		})
+		apierror.BindError(c, err)
 		return
 	}
 
@@ -294,20 +277,14 @@ func (h *PaymentTermsHandler) UpdatePaymentTerm(c *gin.Context) {
 	}
 
 	if err := h.service.UpdatePaymentTerm(ctx, id, updates); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{
-			Error:   "Failed to update payment term",
-			Message: publicError(err),
-		})
+		apierror.Respond(c, err, "Failed to update payment term")
 		return
 	}
 
 	// Fetch updated term
 	term, err := h.service.GetPaymentTerm(ctx, id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{
-			Error:   "Failed to fetch updated payment term",
-			Message: publicError(err),
-		})
+		apierror.Respond(c, err, "Failed to fetch updated payment term")
 		return
 	}
 
@@ -322,8 +299,8 @@ func (h *PaymentTermsHandler) UpdatePaymentTerm(c *gin.Context) {
 // @Produce json
 // @Param id path string true "Payment Term ID"
 // @Success 204
-// @Failure 400 {object} ErrorResponse
-// @Failure 500 {object} ErrorResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
 // @Router /payment-terms/{id} [delete]
 // @Security BearerAuth
 func (h *PaymentTermsHandler) DeletePaymentTerm(c *gin.Context) {
@@ -331,15 +308,12 @@ func (h *PaymentTermsHandler) DeletePaymentTerm(c *gin.Context) {
 
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Invalid payment term ID"})
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{Error: "Invalid payment term ID"})
 		return
 	}
 
 	if err := h.service.DeletePaymentTerm(ctx, id); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{
-			Error:   "Failed to delete payment term",
-			Message: publicError(err),
-		})
+		apierror.Respond(c, err, "Failed to delete payment term")
 		return
 	}
 
@@ -354,7 +328,7 @@ func (h *PaymentTermsHandler) DeletePaymentTerm(c *gin.Context) {
 // @Produce json
 // @Param request body CalculateDueDateRequest true "Due date calculation parameters"
 // @Success 200 {object} map[string]interface{}
-// @Failure 400 {object} ErrorResponse
+// @Failure 400 {object} models.ErrorResponse
 // @Router /payment-terms/calculate/due-date [post]
 // @Security BearerAuth
 func (h *PaymentTermsHandler) CalculateDueDate(c *gin.Context) {
@@ -362,10 +336,7 @@ func (h *PaymentTermsHandler) CalculateDueDate(c *gin.Context) {
 
 	var req CalculateDueDateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{
-			Error:   "Invalid request",
-			Message: publicError(err),
-		})
+		apierror.BindError(c, err)
 		return
 	}
 
@@ -376,10 +347,7 @@ func (h *PaymentTermsHandler) CalculateDueDate(c *gin.Context) {
 
 	dueDate, err := h.service.CalculateDueDate(ctx, req.IssueDate, req.PaymentTermID, timezone)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{
-			Error:   "Failed to calculate due date",
-			Message: publicError(err),
-		})
+		apierror.Respond(c, err, "Failed to calculate due date")
 		return
 	}
 
@@ -398,7 +366,7 @@ func (h *PaymentTermsHandler) CalculateDueDate(c *gin.Context) {
 // @Produce json
 // @Param request body CalculateDiscountRequest true "Discount calculation parameters"
 // @Success 200 {object} map[string]interface{}
-// @Failure 400 {object} ErrorResponse
+// @Failure 400 {object} models.ErrorResponse
 // @Router /payment-terms/calculate/discount [post]
 // @Security BearerAuth
 func (h *PaymentTermsHandler) CalculateDiscount(c *gin.Context) {
@@ -406,10 +374,7 @@ func (h *PaymentTermsHandler) CalculateDiscount(c *gin.Context) {
 
 	var req CalculateDiscountRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{
-			Error:   "Invalid request",
-			Message: publicError(err),
-		})
+		apierror.BindError(c, err)
 		return
 	}
 
@@ -417,10 +382,7 @@ func (h *PaymentTermsHandler) CalculateDiscount(c *gin.Context) {
 		ctx, req.InvoiceAmount, req.PaymentDate, req.IssueDate, req.PaymentTermID,
 	)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{
-			Error:   "Failed to calculate discount",
-			Message: publicError(err),
-		})
+		apierror.Respond(c, err, "Failed to calculate discount")
 		return
 	}
 
@@ -440,7 +402,7 @@ func (h *PaymentTermsHandler) CalculateDiscount(c *gin.Context) {
 // @Produce json
 // @Param request body CalculateLateFeeRequest true "Late fee calculation parameters"
 // @Success 200 {object} map[string]interface{}
-// @Failure 400 {object} ErrorResponse
+// @Failure 400 {object} models.ErrorResponse
 // @Router /payment-terms/calculate/late-fee [post]
 // @Security BearerAuth
 func (h *PaymentTermsHandler) CalculateLateFee(c *gin.Context) {
@@ -448,10 +410,7 @@ func (h *PaymentTermsHandler) CalculateLateFee(c *gin.Context) {
 
 	var req CalculateLateFeeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{
-			Error:   "Invalid request",
-			Message: publicError(err),
-		})
+		apierror.BindError(c, err)
 		return
 	}
 
@@ -464,10 +423,7 @@ func (h *PaymentTermsHandler) CalculateLateFee(c *gin.Context) {
 		ctx, req.InvoiceAmount, req.CurrentDate, req.DueDate, req.PaymentTermID, timezone,
 	)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{
-			Error:   "Failed to calculate late fee",
-			Message: publicError(err),
-		})
+		apierror.Respond(c, err, "Failed to calculate late fee")
 		return
 	}
 
@@ -487,7 +443,7 @@ func (h *PaymentTermsHandler) CalculateLateFee(c *gin.Context) {
 // @Produce json
 // @Param request body GetPaymentStatusRequest true "Payment status parameters"
 // @Success 200 {object} services.PaymentStatus
-// @Failure 400 {object} ErrorResponse
+// @Failure 400 {object} models.ErrorResponse
 // @Router /payment-terms/calculate/status [post]
 // @Security BearerAuth
 func (h *PaymentTermsHandler) GetPaymentStatus(c *gin.Context) {
@@ -495,10 +451,7 @@ func (h *PaymentTermsHandler) GetPaymentStatus(c *gin.Context) {
 
 	var req GetPaymentStatusRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{
-			Error:   "Invalid request",
-			Message: publicError(err),
-		})
+		apierror.BindError(c, err)
 		return
 	}
 
@@ -516,10 +469,7 @@ func (h *PaymentTermsHandler) GetPaymentStatus(c *gin.Context) {
 		ctx, req.InvoiceAmount, req.IssueDate, req.DueDate, req.PaymentTermID, currentDate, timezone,
 	)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{
-			Error:   "Failed to get payment status",
-			Message: publicError(err),
-		})
+		apierror.Respond(c, err, "Failed to get payment status")
 		return
 	}
 
@@ -534,7 +484,7 @@ func (h *PaymentTermsHandler) GetPaymentStatus(c *gin.Context) {
 // @Produce json
 // @Param request body CalculatePaymentDetailsRequest true "Payment details calculation parameters"
 // @Success 200 {object} services.PaymentCalculationResult
-// @Failure 400 {object} ErrorResponse
+// @Failure 400 {object} models.ErrorResponse
 // @Router /payment-terms/calculate/details [post]
 // @Security BearerAuth
 func (h *PaymentTermsHandler) CalculatePaymentDetails(c *gin.Context) {
@@ -542,10 +492,7 @@ func (h *PaymentTermsHandler) CalculatePaymentDetails(c *gin.Context) {
 
 	var req CalculatePaymentDetailsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{
-			Error:   "Invalid request",
-			Message: publicError(err),
-		})
+		apierror.BindError(c, err)
 		return
 	}
 
@@ -558,10 +505,7 @@ func (h *PaymentTermsHandler) CalculatePaymentDetails(c *gin.Context) {
 		ctx, req.InvoiceAmount, req.IssueDate, req.PaymentTermID, req.PaymentDate, timezone,
 	)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{
-			Error:   "Failed to calculate payment details",
-			Message: publicError(err),
-		})
+		apierror.Respond(c, err, "Failed to calculate payment details")
 		return
 	}
 

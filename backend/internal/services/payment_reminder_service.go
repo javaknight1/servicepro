@@ -15,6 +15,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
+	apperrors "github.com/javaknight1/servicepro/backend/internal/errors"
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	emailclient "github.com/javaknight1/servicepro/backend/pkg/clients/email"
 	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"
@@ -41,6 +42,15 @@ type PaymentReminderServiceConfig struct {
 }
 
 // NewPaymentReminderService creates a new payment reminder service
+
+// Manual reminder domain errors (T223).
+var (
+	// ErrReminderNotAllowed: the invoice's status doesn't take reminders (409)
+	ErrReminderNotAllowed = apperrors.Conflict("reminder_not_allowed", "Reminders can't be sent for this invoice's status")
+	// ErrReminderNoCustomer: the invoice has no customer to remind (409)
+	ErrReminderNoCustomer = apperrors.Conflict("reminder_no_customer", "This invoice has no customer to send a reminder to")
+)
+
 func NewPaymentReminderService(db *gorm.DB, cfg *PaymentReminderServiceConfig) *PaymentReminderService {
 	svc := &PaymentReminderService{db: db}
 	if cfg != nil {
@@ -319,13 +329,13 @@ func (s *PaymentReminderService) SendManualReminder(ctx context.Context, tenantI
 	}
 
 	if invoice.Customer == nil {
-		return nil, fmt.Errorf("invoice has no associated customer")
+		return nil, ErrReminderNoCustomer
 	}
 
 	// Check invoice is in a remindable status
 	switch invoice.Status {
 	case models.InvoiceStatusPaid, models.InvoiceStatusCancelled, models.InvoiceStatusRefunded, models.InvoiceStatusDraft:
-		return nil, fmt.Errorf("cannot send reminder for invoice with status %s", invoice.Status)
+		return nil, ErrReminderNotAllowed.WithMessage(fmt.Sprintf("Reminders can't be sent for %s invoices", invoice.Status))
 	}
 
 	// Load tenant

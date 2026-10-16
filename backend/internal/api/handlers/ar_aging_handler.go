@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/javaknight1/servicepro/backend/internal/api/apierror"
 	"github.com/javaknight1/servicepro/backend/internal/api/middleware"
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/services"
@@ -42,7 +43,7 @@ func NewARAgingHandler(service services.ARAgingService) *ARAgingHandler {
 func (h *ARAgingHandler) GetARAgingReport(c *gin.Context) {
 	tenantID, err := middleware.GetTenantID(c)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusUnauthorized, models.ErrorResponse{
 			Error:   "unauthorized",
 			Message: "Tenant context required",
 		})
@@ -51,14 +52,11 @@ func (h *ARAgingHandler) GetARAgingReport(c *gin.Context) {
 
 	var query models.ARAgingQuery
 	if err := c.ShouldBindQuery(&query); err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
-			Error:   "invalid_request",
-			Message: "Invalid query parameters: " + publicError(err),
-		})
+		apierror.BindError(c, err)
 		return
 	}
 	if err := query.ParseCustomerID(); err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
 			Message: "Invalid customer_id: " + publicError(err),
 		})
@@ -70,10 +68,7 @@ func (h *ARAgingHandler) GetARAgingReport(c *gin.Context) {
 
 	report, err := h.service.GenerateReport(c.Request.Context(), tenantID, &query)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "internal_error",
-			Message: "Failed to generate A/R aging report: " + publicError(err),
-		})
+		apierror.Internal(c, err, "Failed to generate A/R aging report")
 		return
 	}
 
@@ -95,7 +90,7 @@ func (h *ARAgingHandler) GetARAgingReport(c *gin.Context) {
 func (h *ARAgingHandler) GetBucketSummary(c *gin.Context) {
 	tenantID, err := middleware.GetTenantID(c)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusUnauthorized, models.ErrorResponse{
 			Error:   "unauthorized",
 			Message: "Tenant context required",
 		})
@@ -104,14 +99,11 @@ func (h *ARAgingHandler) GetBucketSummary(c *gin.Context) {
 
 	var query models.ARAgingQuery
 	if err := c.ShouldBindQuery(&query); err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
-			Error:   "invalid_request",
-			Message: "Invalid query parameters: " + publicError(err),
-		})
+		apierror.BindError(c, err)
 		return
 	}
 	if err := query.ParseCustomerID(); err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
 			Message: "Invalid customer_id: " + publicError(err),
 		})
@@ -122,10 +114,7 @@ func (h *ARAgingHandler) GetBucketSummary(c *gin.Context) {
 
 	buckets, err := h.service.GetBucketSummary(c.Request.Context(), tenantID, &query)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "internal_error",
-			Message: "Failed to get bucket summary: " + publicError(err),
-		})
+		apierror.Internal(c, err, "Failed to get bucket summary")
 		return
 	}
 
@@ -151,7 +140,7 @@ func (h *ARAgingHandler) GetBucketSummary(c *gin.Context) {
 func (h *ARAgingHandler) GetInvoicesByBucket(c *gin.Context) {
 	tenantID, err := middleware.GetTenantID(c)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusUnauthorized, models.ErrorResponse{
 			Error:   "unauthorized",
 			Message: "Tenant context required",
 		})
@@ -170,7 +159,7 @@ func (h *ARAgingHandler) GetInvoicesByBucket(c *gin.Context) {
 		models.AgingBucket90Plus:  true,
 	}
 	if !validBuckets[bucket] {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
 			Message: "Invalid bucket: must be one of current, 1-30, 31-60, 61-90, 90+",
 		})
@@ -179,14 +168,11 @@ func (h *ARAgingHandler) GetInvoicesByBucket(c *gin.Context) {
 
 	var query models.ARAgingQuery
 	if err := c.ShouldBindQuery(&query); err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
-			Error:   "invalid_request",
-			Message: "Invalid query parameters: " + publicError(err),
-		})
+		apierror.BindError(c, err)
 		return
 	}
 	if err := query.ParseCustomerID(); err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
 			Message: "Invalid customer_id: " + publicError(err),
 		})
@@ -197,10 +183,7 @@ func (h *ARAgingHandler) GetInvoicesByBucket(c *gin.Context) {
 
 	invoices, err := h.service.GetInvoicesByBucket(c.Request.Context(), tenantID, bucket, &query)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "internal_error",
-			Message: "Failed to get invoices: " + publicError(err),
-		})
+		apierror.Internal(c, err, "Failed to get invoices")
 		return
 	}
 
@@ -226,7 +209,7 @@ func (h *ARAgingHandler) GetInvoicesByBucket(c *gin.Context) {
 func (h *ARAgingHandler) GetCustomerSummary(c *gin.Context) {
 	tenantID, err := middleware.GetTenantID(c)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusUnauthorized, models.ErrorResponse{
 			Error:   "unauthorized",
 			Message: "Tenant context required",
 		})
@@ -235,14 +218,11 @@ func (h *ARAgingHandler) GetCustomerSummary(c *gin.Context) {
 
 	var query models.ARAgingQuery
 	if err := c.ShouldBindQuery(&query); err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
-			Error:   "invalid_request",
-			Message: "Invalid query parameters: " + publicError(err),
-		})
+		apierror.BindError(c, err)
 		return
 	}
 	if err := query.ParseCustomerID(); err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
 			Message: "Invalid customer_id: " + publicError(err),
 		})
@@ -253,10 +233,7 @@ func (h *ARAgingHandler) GetCustomerSummary(c *gin.Context) {
 
 	customers, err := h.service.GetCustomerSummary(c.Request.Context(), tenantID, &query)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "internal_error",
-			Message: "Failed to get customer summary: " + publicError(err),
-		})
+		apierror.Internal(c, err, "Failed to get customer summary")
 		return
 	}
 
@@ -281,7 +258,7 @@ func (h *ARAgingHandler) GetCustomerSummary(c *gin.Context) {
 func (h *ARAgingHandler) ExportARAgingReport(c *gin.Context) {
 	tenantID, err := middleware.GetTenantID(c)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusUnauthorized, models.ErrorResponse{
 			Error:   "unauthorized",
 			Message: "Tenant context required",
 		})
@@ -290,20 +267,14 @@ func (h *ARAgingHandler) ExportARAgingReport(c *gin.Context) {
 
 	var req models.ARAgingExportRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
-			Error:   "invalid_request",
-			Message: "Invalid request body: " + publicError(err),
-		})
+		apierror.BindError(c, err)
 		return
 	}
 
 	// Generate the report data
 	report, err := h.service.GenerateReport(c.Request.Context(), tenantID, &req.Query)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "internal_error",
-			Message: "Failed to generate report: " + publicError(err),
-		})
+		apierror.Internal(c, err, "Failed to generate report")
 		return
 	}
 
@@ -312,10 +283,7 @@ func (h *ARAgingHandler) ExportARAgingReport(c *gin.Context) {
 	for _, bucket := range report.Buckets {
 		invoices, err := h.service.GetInvoicesByBucket(c.Request.Context(), tenantID, bucket.Bucket, &req.Query)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-				Error:   "internal_error",
-				Message: "Failed to get invoices: " + publicError(err),
-			})
+			apierror.Internal(c, err, "Failed to get invoices")
 			return
 		}
 		allInvoices = append(allInvoices, invoices...)

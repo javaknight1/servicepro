@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/javaknight1/servicepro/backend/internal/api/apierror"
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/services"
 )
@@ -44,10 +45,7 @@ func (h *RevenueHandler) GetRevenueReport(c *gin.Context) {
 
 	// Bind query parameters
 	if err := c.ShouldBindQuery(&query); err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
-			Error:   "invalid_request",
-			Message: "Invalid query parameters: " + publicError(err),
-		})
+		apierror.BindError(c, err)
 		return
 	}
 
@@ -58,10 +56,7 @@ func (h *RevenueHandler) GetRevenueReport(c *gin.Context) {
 	startTime := time.Now()
 	report, err := h.revenueService.GenerateReport(c.Request.Context(), &query)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "internal_error",
-			Message: "Failed to generate revenue report: " + publicError(err),
-		})
+		apierror.Internal(c, err, "Failed to generate revenue report")
 		return
 	}
 
@@ -90,10 +85,7 @@ func (h *RevenueHandler) GetRevenueTimeSeries(c *gin.Context) {
 	var query models.RevenueReportQuery
 
 	if err := c.ShouldBindQuery(&query); err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
-			Error:   "invalid_request",
-			Message: "Invalid query parameters: " + publicError(err),
-		})
+		apierror.BindError(c, err)
 		return
 	}
 
@@ -102,10 +94,7 @@ func (h *RevenueHandler) GetRevenueTimeSeries(c *gin.Context) {
 
 	timeSeries, err := h.revenueService.GetTimeSeries(c.Request.Context(), &query)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "internal_error",
-			Message: "Failed to get time series data: " + publicError(err),
-		})
+		apierror.Internal(c, err, "Failed to get time series data")
 		return
 	}
 
@@ -132,10 +121,7 @@ func (h *RevenueHandler) GetRevenueCategoryBreakdown(c *gin.Context) {
 	var query models.RevenueReportQuery
 
 	if err := c.ShouldBindQuery(&query); err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
-			Error:   "invalid_request",
-			Message: "Invalid query parameters: " + publicError(err),
-		})
+		apierror.BindError(c, err)
 		return
 	}
 
@@ -143,10 +129,7 @@ func (h *RevenueHandler) GetRevenueCategoryBreakdown(c *gin.Context) {
 
 	categories, err := h.revenueService.GetCategoryBreakdown(c.Request.Context(), &query)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "internal_error",
-			Message: "Failed to get category breakdown: " + publicError(err),
-		})
+		apierror.Internal(c, err, "Failed to get category breakdown")
 		return
 	}
 
@@ -173,10 +156,7 @@ func (h *RevenueHandler) GetTopCustomers(c *gin.Context) {
 	var query models.RevenueReportQuery
 
 	if err := c.ShouldBindQuery(&query); err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
-			Error:   "invalid_request",
-			Message: "Invalid query parameters: " + publicError(err),
-		})
+		apierror.BindError(c, err)
 		return
 	}
 
@@ -193,10 +173,7 @@ func (h *RevenueHandler) GetTopCustomers(c *gin.Context) {
 
 	customers, err := h.revenueService.GetTopCustomers(c.Request.Context(), &query, limit)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "internal_error",
-			Message: "Failed to get top customers: " + publicError(err),
-		})
+		apierror.Internal(c, err, "Failed to get top customers")
 		return
 	}
 
@@ -221,10 +198,7 @@ func (h *RevenueHandler) ExportReport(c *gin.Context) {
 	var req models.ReportExportRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
-			Error:   "invalid_request",
-			Message: "Invalid export request: " + publicError(err),
-		})
+		apierror.BindError(c, err)
 		return
 	}
 
@@ -237,7 +211,7 @@ func (h *RevenueHandler) ExportReport(c *gin.Context) {
 	}
 
 	if !validFormats[req.Format] {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_format",
 			Message: "Invalid export format. Supported formats: csv, json, xlsx, pdf",
 		})
@@ -246,10 +220,7 @@ func (h *RevenueHandler) ExportReport(c *gin.Context) {
 
 	export, err := h.revenueService.ExportReport(c.Request.Context(), &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "export_failed",
-			Message: "Failed to export report: " + publicError(err),
-		})
+		apierror.Internal(c, err, "Failed to export report")
 		return
 	}
 
@@ -286,7 +257,7 @@ func (h *RevenueHandler) RefreshCache(c *gin.Context) {
 	periodEndStr := c.Query("period_end")
 
 	if periodType == "" || periodStartStr == "" || periodEndStr == "" {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "missing_params",
 			Message: "period_type, period_start, and period_end are required",
 		})
@@ -295,7 +266,7 @@ func (h *RevenueHandler) RefreshCache(c *gin.Context) {
 
 	periodStart, err := time.Parse(time.RFC3339, periodStartStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_date",
 			Message: "Invalid period_start format. Use RFC3339 format",
 		})
@@ -304,7 +275,7 @@ func (h *RevenueHandler) RefreshCache(c *gin.Context) {
 
 	periodEnd, err := time.Parse(time.RFC3339, periodEndStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_date",
 			Message: "Invalid period_end format. Use RFC3339 format",
 		})
@@ -312,10 +283,7 @@ func (h *RevenueHandler) RefreshCache(c *gin.Context) {
 	}
 
 	if err := h.revenueService.RefreshCache(c.Request.Context(), periodType, periodStart, periodEnd); err != nil {
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "cache_refresh_failed",
-			Message: "Failed to refresh cache: " + publicError(err),
-		})
+		apierror.Internal(c, err, "Failed to refresh cache")
 		return
 	}
 
@@ -343,10 +311,7 @@ func (h *RevenueHandler) GetChartData(c *gin.Context) {
 	var query models.RevenueReportQuery
 
 	if err := c.ShouldBindQuery(&query); err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
-			Error:   "invalid_request",
-			Message: "Invalid query parameters: " + publicError(err),
-		})
+		apierror.BindError(c, err)
 		return
 	}
 
@@ -357,10 +322,7 @@ func (h *RevenueHandler) GetChartData(c *gin.Context) {
 	// Get time series data
 	timeSeries, err := h.revenueService.GetTimeSeries(c.Request.Context(), &query)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "internal_error",
-			Message: "Failed to get chart data: " + publicError(err),
-		})
+		apierror.Internal(c, err, "Failed to get chart data")
 		return
 	}
 
