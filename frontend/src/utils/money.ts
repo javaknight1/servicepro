@@ -68,6 +68,23 @@ export function lineTotal(
 }
 
 /**
+ * An invoice line's discount in dollars, as the server computes it: the
+ * percentage of the line total when one is set, else the fixed amount.
+ */
+export function lineDiscount(
+  quantity: string | number,
+  unitPrice: string | number,
+  discountPercentage?: string | number,
+  discountAmount?: string | number
+): number {
+  const percent = toAmount(discountPercentage);
+  if (percent > 0) {
+    return roundToCents((lineTotal(quantity, unitPrice) * percent) / 100);
+  }
+  return roundToCents(toAmount(discountAmount));
+}
+
+/**
  * Tax rate fraction (0.07, or "0.0700" from the API) → percent string for an
  * input ("7"), without float artefacts like "7.000000000000001".
  */

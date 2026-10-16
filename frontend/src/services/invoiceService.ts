@@ -25,6 +25,10 @@ export interface InvoiceLineItem {
   taxable?: boolean;
   /** The rate the server applied to this line (fraction, e.g. "0.0825"). */
   tax_rate?: string | number;
+  /** Line discount as a percent of quantity x price ("10" = 10%). */
+  discount_percentage?: string | number;
+  /** Line discount in dollars (computed by the server from a percentage). */
+  discount_amount?: string | number;
 }
 
 /** A configured tax rate (`models.TaxRate`); `rate` is a fraction. */
@@ -152,6 +156,10 @@ export interface InvoiceLineRequest {
   unit_price: number;
   /** Omitted = taxable. */
   taxable?: boolean;
+  /** Percent of quantity x price; wins over discount_amount. */
+  discount_percentage?: number;
+  /** Fixed discount in dollars. */
+  discount_amount?: number;
 }
 
 /** Body of POST /invoices (handlers.CreateInvoiceRequest). */

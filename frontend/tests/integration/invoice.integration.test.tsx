@@ -756,6 +756,57 @@ describe('Invoice & Payment Integration', () => {
       expect(body.tax_rate).toBeUndefined();
     });
 
+    it('keeps per-line discounts on save (T237)', async () => {
+      const user = userEvent.setup({ delay: null });
+      const [labor, parts] = mockInvoices[0].lines;
+      vi.mocked(invoiceService.getInvoice).mockResolvedValue({
+        ...mockInvoices[0],
+        lines: [
+          { ...labor, discount_percentage: '10.00', discount_amount: '80.00' },
+          { ...parts, discount_percentage: '0.00', discount_amount: '25.00' },
+        ],
+      });
+      vi.mocked(invoiceService.updateInvoice).mockResolvedValue(
+        mockInvoices[0]
+      );
+      const { InvoiceDetailPage } =
+        await import('../../src/pages/Invoices/InvoiceDetailPage');
+      render(
+        <MemoryRouter initialEntries={['/invoices/invoice-1']}>
+          <Routes>
+            <Route path="/invoices/:id" element={<InvoiceDetailPage />} />
+          </Routes>
+        </MemoryRouter>
+      );
+
+      // Line totals net of their discounts: $720 and $175
+      expect(await screen.findByText('$720.00')).toBeInTheDocument();
+      expect(screen.getByText('10% discount')).toBeInTheDocument();
+      expect(screen.getByText('$175.00')).toBeInTheDocument();
+      expect(screen.getByText('$25.00 discount')).toBeInTheDocument();
+      // Subtotal $895; 8% tax on the taxable $720 line only
+      expect(screen.getByText('$895.00')).toBeInTheDocument();
+      expect(screen.getByText('$57.60')).toBeInTheDocument();
+
+      await user.click(screen.getByRole('button', { name: /save changes/i }));
+      await waitFor(() => {
+        expect(invoiceService.updateInvoice).toHaveBeenCalled();
+      });
+      const [, body] = vi.mocked(invoiceService.updateInvoice).mock.calls[0];
+      expect(body.lines).toEqual([
+        expect.objectContaining({
+          description: 'HVAC Installation Service',
+          discount_percentage: 10,
+          discount_amount: undefined,
+        }),
+        expect.objectContaining({
+          description: 'Parts and Materials',
+          discount_percentage: undefined,
+          discount_amount: 25,
+        }),
+      ]);
+    });
+
     it('sends a changed tax rate as a fraction', async () => {
       const user = userEvent.setup({ delay: null });
       const taxInput = await renderDraft();
