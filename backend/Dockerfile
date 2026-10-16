@@ -9,7 +9,7 @@
 # The image contains two static binaries:
 #   /app/server   the API (default CMD)
 #   /app/migrate  golang-migrate runner: docker run ... /app/migrate up|version
-# SQL migrations and templates are embedded in the binaries; nothing else is
+# SQL migrations are embedded in the binaries; nothing else is
 # copied from the source tree.
 
 # ---- Build stage -------------------------------------------------------------
