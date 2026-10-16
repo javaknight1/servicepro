@@ -35,6 +35,7 @@ import {
 import { trackEvent, AnalyticsEvents } from '@services/analytics';
 import type { Customer } from '@services/customerService';
 import { fetchAllCustomers } from '@services/customerLookup';
+import { paymentTermService } from '@services/paymentTermService';
 import {
   ArrowLeft,
   Save,
@@ -74,6 +75,13 @@ interface LineItemFormData {
  * (`lines[].tax_rate`, also when it came from a direct rate); `tax_rate` on
  * the invoice is the configured tax-rate row for `tax_rate_id`, if any.
  */
+/** "YYYY-MM-DD" plus `days`, as "YYYY-MM-DD". */
+function addDays(date: string, days: number): string {
+  const d = new Date(date + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().split('T')[0];
+}
+
 function storedTaxRate(invoice: Invoice): string | number | undefined {
   return invoice.lines?.[0]?.tax_rate ?? invoice.tax_rate?.rate;
 }
@@ -131,6 +139,11 @@ export function InvoiceDetailPage() {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [showRefundModal, setShowRefundModal] = useState(false);
   const { currentTenant } = useTenantStore();
+  // Tenant defaults (T127): the API applies them when a new invoice omits
+  // the tax rate / payment term; the form prefills to match.
+  const defaultTaxRateId = currentTenant?.settings?.defaultTaxRateId;
+  const defaultPaymentTermId = currentTenant?.settings?.defaultPaymentTermId;
+  const [defaultTermName, setDefaultTermName] = useState<string | null>(null);
   const { can } = useTenantPermissions(currentTenant);
 
   const loadCustomers = async () => {
@@ -237,6 +250,44 @@ export function InvoiceDetailPage() {
       cancelled = true;
     };
   }, [id, isNew, loadInvoice]);
+
+  // New invoice + tenant default tax rate: leave the rate blank so the API
+  // applies the default (there is no tax-rate endpoint to show its value).
+  useEffect(() => {
+    if (isNew && defaultTaxRateId) {
+      setFormData((prev) => ({ ...prev, tax_rate: '' }));
+    }
+  }, [isNew, defaultTaxRateId]);
+
+  // New invoice + tenant default payment term: due date = issue date + term.
+  useEffect(() => {
+    if (!isNew || !defaultPaymentTermId) return;
+    let cancelled = false;
+    paymentTermService
+      .getPaymentTerm(defaultPaymentTermId)
+      .then((term) => {
+        if (cancelled) return;
+        setDefaultTermName(term.name);
+        setFormData((prev) =>
+          prev.issue_date
+            ? {
+                ...prev,
+                due_date: addDays(prev.issue_date, term.days_until_due),
+              }
+            : prev
+        );
+      })
+      .catch((err) => {
+        console.error('Failed to load default payment term:', err);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isNew, defaultPaymentTermId]);
+
+  // Blank rate on a new invoice: the tenant's default applies on save
+  const taxFromDefault =
+    isNew && Boolean(defaultTaxRateId) && formData.tax_rate === '';
 
   const handleSendReminder = async () => {
     if (!id || isNew) return;
@@ -352,7 +403,7 @@ export function InvoiceDetailPage() {
           customer_id: formData.customer_id,
           issue_date: issueDateISO,
           due_date: dueDateISO,
-          tax_rate: taxRateDecimal,
+          tax_rate: taxFromDefault ? undefined : taxRateDecimal,
           notes: formData.notes || undefined,
           lines,
         };
@@ -670,6 +721,11 @@ export function InvoiceDetailPage() {
                   required
                   className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                 />
+                {isNew && defaultTermName && (
+                  <p className="mt-1 text-xs text-neutral-500">
+                    Payment term: {defaultTermName}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -688,8 +744,16 @@ export function InvoiceDetailPage() {
                   min="0"
                   max="100"
                   step="0.01"
+                  placeholder={
+                    isNew && defaultTaxRateId ? 'Default rate' : undefined
+                  }
                   className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                 />
+                {taxFromDefault && (
+                  <p className="mt-1 text-xs text-neutral-500">
+                    Left blank, your default tax rate applies.
+                  </p>
+                )}
                 {invoice?.tax_rate?.name &&
                   formData.tax_rate === loadedTaxRate && (
                     <p className="mt-1 text-xs text-neutral-500">
@@ -808,15 +872,23 @@ export function InvoiceDetailPage() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-neutral-600">
-                      Tax ({formData.tax_rate}%):
+                      {taxFromDefault
+                        ? 'Tax (default rate):'
+                        : `Tax (${formData.tax_rate}%):`}
                     </span>
                     <span className="font-medium">
-                      {formatDollars(calculateTax())}
+                      {taxFromDefault
+                        ? 'Set on save'
+                        : formatDollars(calculateTax())}
                     </span>
                   </div>
                   <div className="flex justify-between text-lg font-semibold pt-2 border-t">
                     <span>Total:</span>
-                    <span>{formatDollars(calculateTotal())}</span>
+                    <span>
+                      {taxFromDefault
+                        ? `${formatDollars(calculateSubtotal())} + tax`
+                        : formatDollars(calculateTotal())}
+                    </span>
                   </div>
                 </div>
               </div>

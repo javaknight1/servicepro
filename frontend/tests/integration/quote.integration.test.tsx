@@ -416,6 +416,55 @@ describe('Quote Workflow Integration', () => {
     });
   });
 
+  describe('Tenant default tax rate on a new quote (T127)', () => {
+    it('leaves the rate blank and omits it so the API applies the default', async () => {
+      const user = userEvent.setup({ delay: null });
+      const tenantWithDefaults = {
+        ...mockTenant,
+        settings: { defaultTaxRateId: 'tax-rate-1' },
+      };
+      vi.mocked(useTenantStore).mockImplementation((selector) => {
+        const state = {
+          currentTenant: tenantWithDefaults,
+          tenants: [tenantWithDefaults],
+        };
+        return typeof selector === 'function' ? selector(state) : state;
+      });
+      vi.mocked(quoteService.createQuote).mockResolvedValue(mockQuotes[0]);
+
+      const { QuoteDetailPage } =
+        await import('../../src/pages/Quotes/QuoteDetailPage');
+      render(
+        <MemoryRouter initialEntries={['/quotes/new']}>
+          <Routes>
+            <Route path="/quotes/new" element={<QuoteDetailPage />} />
+          </Routes>
+        </MemoryRouter>
+      );
+
+      const taxInput = await screen.findByLabelText(/tax rate/i);
+      await waitFor(() => expect(taxInput).toHaveValue(null));
+      expect(
+        screen.getByText(/left blank, your default tax rate applies/i)
+      ).toBeInTheDocument();
+
+      const customerSelect = screen.getByLabelText(/customer/i);
+      await screen.findByRole('option', { name: /John Doe/i });
+      await user.selectOptions(customerSelect, 'customer-1');
+      await user.type(
+        screen.getAllByPlaceholderText(/description/i)[0],
+        'Service Charge'
+      );
+      await user.click(screen.getByRole('button', { name: /create quote/i }));
+
+      await waitFor(() => {
+        expect(quoteService.createQuote).toHaveBeenCalled();
+      });
+      const [body] = vi.mocked(quoteService.createQuote).mock.calls[0];
+      expect(body.tax_rate).toBeUndefined();
+    });
+  });
+
   describe('Quote Status Transitions', () => {
     const renderQuote = async (quoteId: string) => {
       const { QuoteDetailPage } =
