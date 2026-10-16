@@ -19,6 +19,13 @@ import { persistQueryClient } from '@tanstack/react-query-persist-client';
 import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persister';
 import { QUERY_CONFIG, CACHE_TIMES } from '../config/cache-config';
 import { cache } from '../utils/cache';
+import {
+  REACT_QUERY_PERSIST_KEY,
+  getQueryPersistBuster,
+  registerQueryClient,
+} from '../services/queryCacheRegistry';
+import { useAuthStore } from '../store/authStore';
+import { useTenantStore } from '../store/tenantStore';
 
 // =============================================================================
 // Query Client Configuration
@@ -97,7 +104,7 @@ const persister = createSyncStoragePersister({
   },
   serialize: (data) => JSON.stringify(data),
   deserialize: (data) => JSON.parse(data),
-  key: 'react-query-cache',
+  key: REACT_QUERY_PERSIST_KEY,
   throttleTime: 1000,
 });
 
@@ -118,15 +125,24 @@ export function QueryProvider({
 }: QueryProviderProps) {
   const [queryClient] = useState(() => createQueryClient());
   const [isRestored, setIsRestored] = useState(!enablePersistence);
+  const userId = useAuthStore((state) => state.user?.id ?? null);
+  const tenantId = useTenantStore((state) => state.currentTenant?.id ?? null);
 
-  // Setup persistence
+  // Expose the client so logout / tenant switch can clear it
+  useEffect(() => {
+    registerQueryClient(queryClient);
+    return () => registerQueryClient(null);
+  }, [queryClient]);
+
+  // Setup persistence. The buster is scoped to user + tenant so a persisted
+  // cache written for another user or tenant is discarded on restore.
   useEffect(() => {
     if (enablePersistence) {
       const [unsubscribe, restorePromise] = persistQueryClient({
         queryClient,
         persister,
         maxAge: CACHE_TIMES.EXTENDED,
-        buster: import.meta.env.VITE_APP_VERSION || '1.0.0',
+        buster: getQueryPersistBuster(userId, tenantId),
         dehydrateOptions: {
           shouldDehydrateQuery: (query) => {
             // Only persist successful queries
@@ -135,7 +151,7 @@ export function QueryProvider({
         },
       });
 
-      restorePromise.then(() => {
+      restorePromise.finally(() => {
         setIsRestored(true);
       });
 
@@ -143,7 +159,7 @@ export function QueryProvider({
         unsubscribe();
       };
     }
-  }, [queryClient, enablePersistence]);
+  }, [queryClient, enablePersistence, userId, tenantId]);
 
   // Setup online/offline handling
   useEffect(() => {

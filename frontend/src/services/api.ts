@@ -15,6 +15,7 @@ import type {
   ApiError,
   User,
 } from '@app-types';
+import { clearQueryCaches } from './queryCacheRegistry';
 
 // Create axios instance
 const api: AxiosInstance = axios.create({
@@ -27,7 +28,15 @@ const api: AxiosInstance = axios.create({
 });
 
 // Storage key for current tenant (matches tenantStore)
-const CURRENT_TENANT_KEY = 'current_tenant_id';
+export const CURRENT_TENANT_KEY = 'current_tenant_id';
+
+/** Remove any X-Tenant-ID default header from an axios instance. */
+export function clearTenantHeader(instance: AxiosInstance): void {
+  const common = instance.defaults?.headers?.common;
+  if (common && 'X-Tenant-ID' in common) {
+    delete common['X-Tenant-ID'];
+  }
+}
 
 // Request interceptor - add tenant ID to requests
 // Note: Auth tokens are handled via httpOnly cookies (automatically sent with withCredentials: true)
@@ -114,6 +123,8 @@ api.interceptors.response.use(
         localStorage.removeItem('auth-storage'); // Clear zustand persisted auth state
         localStorage.removeItem('tenant-storage'); // Clear tenant state
         localStorage.removeItem(CURRENT_TENANT_KEY);
+        clearTenantHeader(api);
+        clearQueryCaches(); // Drop cached server data (memory + persisted)
         if (window.location.pathname !== '/login') {
           window.location.href = '/login';
         }

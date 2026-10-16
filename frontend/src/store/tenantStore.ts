@@ -9,6 +9,7 @@ import type {
   UpdateTenantRequest,
   AddMemberRequest,
 } from '@/types/tenant';
+import { clearQueryCaches } from '@/services/queryCacheRegistry';
 
 const TENANT_STORAGE_KEY = 'tenant-storage';
 const CURRENT_TENANT_KEY = 'current_tenant_id';
@@ -29,16 +30,32 @@ export const useTenantStore = create<TenantState>()(
 
           set({ tenants, isLoading: false });
 
-          // If no current tenant is set, use the first one
+          // Re-validate the persisted current tenant against the freshly
+          // loaded list: it may belong to a previous user on this browser.
           const { currentTenant } = get();
-          if (!currentTenant && tenants.length > 0) {
+          const stillMember = currentTenant
+            ? tenants.find((t) => t.id === currentTenant.id)
+            : undefined;
+
+          if (stillMember) {
+            localStorage.setItem(CURRENT_TENANT_KEY, stillMember.id);
+            set({ currentTenant: stillMember });
+          } else if (tenants.length > 0) {
             // Check if there's a saved tenant ID
             const savedTenantId = localStorage.getItem(CURRENT_TENANT_KEY);
-            const savedTenant = savedTenantId
-              ? tenants.find((t) => t.id === savedTenantId)
-              : null;
+            const nextTenant =
+              (savedTenantId && tenants.find((t) => t.id === savedTenantId)) ||
+              tenants[0];
 
-            set({ currentTenant: savedTenant || tenants[0] });
+            if (currentTenant && currentTenant.id !== nextTenant.id) {
+              clearQueryCaches();
+            }
+            // Keep the request header (read from storage) in sync with the UI
+            localStorage.setItem(CURRENT_TENANT_KEY, nextTenant.id);
+            set({ currentTenant: nextTenant });
+          } else {
+            localStorage.removeItem(CURRENT_TENANT_KEY);
+            set({ currentTenant: null });
           }
         } catch (error) {
           set({
@@ -50,6 +67,10 @@ export const useTenantStore = create<TenantState>()(
       },
 
       setCurrentTenant: (tenant: Tenant) => {
+        if (get().currentTenant?.id !== tenant.id) {
+          // Cached server data belongs to the previous tenant
+          clearQueryCaches();
+        }
         localStorage.setItem(CURRENT_TENANT_KEY, tenant.id);
         set({ currentTenant: tenant });
       },
@@ -62,11 +83,13 @@ export const useTenantStore = create<TenantState>()(
           throw new Error('Organization not found');
         }
 
+        if (get().currentTenant?.id !== tenantId) {
+          // Cached server data (memory + persisted) belongs to the old tenant
+          clearQueryCaches();
+        }
+
         localStorage.setItem(CURRENT_TENANT_KEY, tenantId);
         set({ currentTenant: tenant });
-
-        // Optionally reload other stores/data when tenant changes
-        // This could trigger a page reload or data refresh
       },
 
       createTenant: async (data: CreateTenantRequest) => {
