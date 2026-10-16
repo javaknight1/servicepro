@@ -29,6 +29,7 @@ func jobHistory(t *testing.T, f *isolationFixture, jobID interface{}) []models.J
 // into a NOT NULL enum, error swallowed) and assignments got AssignedAt = 0.
 func TestCreateJob_RecordsHistoryAndAssignmentTime(t *testing.T) {
 	f := setupIsolation(t)
+	f.addMember(t, f.ctxA, f.userA, true)
 	svc := realJobService(f)
 
 	resp, err := svc.CreateJob(&models.CreateJobRequest{

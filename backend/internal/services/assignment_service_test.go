@@ -53,6 +53,7 @@ func TestCreateAssignment_Success(t *testing.T) {
 	}
 
 	mockJobRepo.On("GetByID", jobID).Return(job, nil)
+	mockJobRepo.On("IsActiveTenantMember", job.TenantID, mock.Anything).Return(true, nil)
 	mockUserRepo.On("GetByID", technicianID).Return(technician, nil)
 	mockJobRepo.On("GetByAssignedUser", technicianID).Return([]models.Job{}, nil)
 	mockJobRepo.On("AddAssignment", mock.AnythingOfType("*models.JobAssignment")).Return(nil)
@@ -114,6 +115,7 @@ func TestCreateAssignment_TechnicianNotFound(t *testing.T) {
 	}
 
 	mockJobRepo.On("GetByID", job.ID).Return(job, nil)
+	mockJobRepo.On("IsActiveTenantMember", job.TenantID, mock.Anything).Return(true, nil)
 	mockUserRepo.On("GetByID", technicianID).Return(nil, gorm.ErrRecordNotFound)
 
 	assignment, err := service.CreateAssignment(ctx, req, uuid.New())
@@ -152,6 +154,7 @@ func TestCreateAssignment_NotTechnicianRole(t *testing.T) {
 	}
 
 	mockJobRepo.On("GetByID", job.ID).Return(job, nil)
+	mockJobRepo.On("IsActiveTenantMember", job.TenantID, mock.Anything).Return(true, nil)
 	mockUserRepo.On("GetByID", userID).Return(user, nil)
 
 	assignment, err := service.CreateAssignment(ctx, req, uuid.New())
@@ -205,6 +208,7 @@ func TestCreateAssignment_TechnicianNotAvailable(t *testing.T) {
 	}
 
 	mockJobRepo.On("GetByID", job.ID).Return(job, nil)
+	mockJobRepo.On("IsActiveTenantMember", job.TenantID, mock.Anything).Return(true, nil)
 	mockUserRepo.On("GetByID", technicianID).Return(technician, nil)
 	mockJobRepo.On("GetByAssignedUser", technicianID).Return([]models.Job{conflictJob}, nil)
 
@@ -256,6 +260,7 @@ func TestBulkAssignTechnicians_Success(t *testing.T) {
 	// Setup mocks for both technicians
 	// Note: GetByAssignedUser is only called if job has scheduled times, which this test job doesn't have
 	mockJobRepo.On("GetByID", jobID).Return(job, nil).Times(2)
+	mockJobRepo.On("IsActiveTenantMember", job.TenantID, mock.Anything).Return(true, nil)
 	mockUserRepo.On("GetByID", tech1ID).Return(tech1, nil)
 	mockUserRepo.On("GetByID", tech2ID).Return(tech2, nil)
 	mockJobRepo.On("AddAssignment", mock.AnythingOfType("*models.JobAssignment")).Return(nil).Times(2)

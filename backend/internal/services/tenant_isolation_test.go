@@ -37,7 +37,7 @@ func setupIsolation(t *testing.T) *isolationFixture {
 	sqlDB.SetMaxOpenConns(1)
 
 	for _, m := range []any{
-		&models.Tenant{}, &models.User{}, &models.Customer{}, &models.Job{}, &models.JobAssignment{},
+		&models.Tenant{}, &models.TenantUser{}, &models.User{}, &models.Customer{}, &models.Job{}, &models.JobAssignment{},
 		&models.JobMaterial{}, &models.JobNote{}, &models.Quote{}, &models.QuoteItem{},
 		&models.Invoice{}, &models.InvoiceLine{}, &models.InvoicePayment{},
 		&models.PaymentTerm{}, &models.TaxRate{}, &models.Payment{}, &models.ExportJob{}, &models.InvoiceAuditLog{}, &models.JobStatusTransition{}, &models.InvoiceRefund{},
@@ -59,6 +59,16 @@ func setupIsolation(t *testing.T) *isolationFixture {
 	require.NoError(t, repo.WithContext(f.ctxA).Create(f.custA))
 	require.NoError(t, repo.WithContext(f.ctxB).Create(f.custB))
 	return f
+}
+
+// addMember gives userID a membership (active or not) in ctx's tenant.
+func (f *isolationFixture) addMember(t *testing.T, ctx context.Context, userID uuid.UUID, active bool) {
+	t.Helper()
+	tenantID, ok := tenancy.TenantID(ctx)
+	require.True(t, ok)
+	require.NoError(t, f.db.Create(&models.TenantUser{
+		ID: uuid.New(), TenantID: tenantID, UserID: userID, RoleID: uuid.New(), IsActive: active,
+	}).Error)
 }
 
 // setTenantSettings stores settings as the tenant of ctx (the fixture starts

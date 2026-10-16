@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"errors"
 
 	"github.com/javaknight1/servicepro/backend/internal/utils/epoch"
 
@@ -281,8 +282,41 @@ func (r *JobRepository) GetJobsRequiringFollowUp() ([]models.Job, error) {
 	return jobs, err
 }
 
-// AddAssignment adds a technician assignment to a job
+// ErrAssigneeNotInTenant means the user being assigned is not an active
+// member (tenant_users, is_active) of the job's tenant — unknown users and
+// other tenants' users look the same to the caller (T238).
+var ErrAssigneeNotInTenant = errors.New("assignee is not an active member of the job's tenant")
+
+// IsActiveTenantMember reports whether userID has an active membership in
+// tenantID.
+func (r *JobRepository) IsActiveTenantMember(tenantID, userID uuid.UUID) (bool, error) {
+	if tenantID == uuid.Nil || userID == uuid.Nil {
+		return false, nil
+	}
+	var count int64
+	err := r.db.Model(&models.TenantUser{}).
+		Where("tenant_id = ? AND user_id = ? AND is_active = ?", tenantID, userID, true).
+		Count(&count).Error
+	return count > 0, err
+}
+
+// AddAssignment adds a technician assignment to a job. The job must be
+// visible to the caller (tenant-scoped) and the user must be an active member
+// of the job's tenant; otherwise gorm.ErrRecordNotFound / ErrAssigneeNotInTenant
+// (T238 — this used to end in a foreign-key violation, or silently accept
+// another tenant's user).
 func (r *JobRepository) AddAssignment(assignment *models.JobAssignment) error {
+	var job models.Job
+	if err := r.db.Select("id", "tenant_id").Where("id = ?", assignment.JobID).Take(&job).Error; err != nil {
+		return err
+	}
+	ok, err := r.IsActiveTenantMember(job.TenantID, assignment.UserID)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return ErrAssigneeNotInTenant
+	}
 	return r.db.Create(assignment).Error
 }
 

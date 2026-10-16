@@ -94,6 +94,9 @@ type JobRepositoryInterface interface {
 	GetJobsByTechnicianAndDateRange(techID uuid.UUID, start, end int64) ([]models.Job, error)
 
 	// Assignment operations
+	// IsActiveTenantMember reports whether the user is an active member of
+	// the tenant (T238: only members can be assigned to its jobs).
+	IsActiveTenantMember(tenantID, userID uuid.UUID) (bool, error)
 	AddAssignment(assignment *models.JobAssignment) error
 	RemoveAssignment(assignmentID uuid.UUID) error
 	GetJobAssignments(jobID uuid.UUID) ([]models.JobAssignment, error)

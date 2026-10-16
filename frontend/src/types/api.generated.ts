@@ -2787,7 +2787,7 @@ export interface paths {
                         "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
-                /** @description Customer not found */
+                /** @description Customer not found, or an assignee is not an active member of this account */
                 404: {
                     headers: {
                         [name: string]: unknown;
@@ -3605,7 +3605,7 @@ export interface paths {
                         "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
-                /** @description Job not found */
+                /** @description Job not found, or technician not an active member of this account */
                 404: {
                     headers: {
                         [name: string]: unknown;

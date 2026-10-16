@@ -90,6 +90,11 @@ func (m *MockJobRepository) GetJobsByTechnicianAndDateRange(techID uuid.UUID, st
 	return args.Get(0).([]models.Job), args.Error(1)
 }
 
+func (m *MockJobRepository) IsActiveTenantMember(tenantID, userID uuid.UUID) (bool, error) {
+	args := m.Called(tenantID, userID)
+	return args.Bool(0), args.Error(1)
+}
+
 func (m *MockJobRepository) AddAssignment(assignment *models.JobAssignment) error {
 	args := m.Called(assignment)
 	return args.Error(0)

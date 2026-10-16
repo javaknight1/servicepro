@@ -87,6 +87,11 @@ func (m *MockJobRepository) GetJobsRequiringFollowUp() ([]models.Job, error) {
 	return args.Get(0).([]models.Job), args.Error(1)
 }
 
+func (m *MockJobRepository) IsActiveTenantMember(tenantID, userID uuid.UUID) (bool, error) {
+	args := m.Called(tenantID, userID)
+	return args.Bool(0), args.Error(1)
+}
+
 func (m *MockJobRepository) AddAssignment(assignment *models.JobAssignment) error {
 	args := m.Called(assignment)
 	return args.Error(0)
@@ -637,6 +642,7 @@ func TestJobService_AssignTechnician_Success(t *testing.T) {
 	adminID := uuid.New()
 
 	mockJobRepo.On("GetByID", job.ID).Return(job, nil)
+	mockJobRepo.On("IsActiveTenantMember", job.TenantID, techID).Return(true, nil)
 	mockJobRepo.On("AddAssignment", mock.AnythingOfType("*models.JobAssignment")).Return(nil)
 
 	err := service.AssignTechnician(job.ID, techID, "Lead Technician", adminID, models.UserRoleAdmin)

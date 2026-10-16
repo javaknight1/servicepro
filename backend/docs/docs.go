@@ -2332,7 +2332,7 @@ const docTemplate = `{
                         }
                     },
                     "404": {
-                        "description": "Customer not found",
+                        "description": "Customer not found, or an assignee is not an active member of this account",
                         "schema": {
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
@@ -2979,7 +2979,7 @@ const docTemplate = `{
                         }
                     },
                     "404": {
-                        "description": "Job not found",
+                        "description": "Job not found, or technician not an active member of this account",
                         "schema": {
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
