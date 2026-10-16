@@ -300,7 +300,7 @@ func (h *ARAgingHandler) ExportARAgingReport(c *gin.Context) {
 		c.Header("Content-Disposition", "attachment; filename="+filename)
 
 		// Write CSV header
-		c.Writer.WriteString("Invoice Number,Customer,Company,Issue Date,Due Date,Total Amount,Amount Paid,Amount Due,Days Overdue,Bucket,Status\n")
+		_, _ = c.Writer.WriteString("Invoice Number,Customer,Company,Issue Date,Due Date,Total Amount,Amount Paid,Amount Due,Days Overdue,Bucket,Status\n")
 
 		// Write CSV rows
 		for _, inv := range allInvoices {
@@ -308,7 +308,7 @@ func (h *ARAgingHandler) ExportARAgingReport(c *gin.Context) {
 			if inv.CompanyName != nil {
 				companyName = *inv.CompanyName
 			}
-			c.Writer.WriteString(
+			_, _ = c.Writer.WriteString(
 				inv.InvoiceNumber + "," +
 					inv.CustomerName + "," +
 					companyName + "," +

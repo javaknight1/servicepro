@@ -18,8 +18,18 @@ linters:
     - staticcheck
     - gocritic
     - errorlint
+    - errcheck
 
   settings:
+    errcheck:
+      # excelize cell/style setters only fail on an invalid cell reference or
+      # sheet name, which the export builder generates itself.
+      exclude-functions:
+        - (*github.com/xuri/excelize/v2.File).SetCellValue
+        - (*github.com/xuri/excelize/v2.File).SetCellStyle
+        - (*github.com/xuri/excelize/v2.File).SetSheetName
+        - (*github.com/xuri/excelize/v2.File).SetPanes
+        - (*github.com/xuri/excelize/v2.File).AutoFilter
     govet:
       disable:
         - printf

@@ -360,7 +360,9 @@ func (s *ImportService) ProcessNextJob(ctx context.Context) error {
 	rows := make([]models.CSVImportRow, len(rowsData))
 	for i, rowInterface := range rowsData {
 		rowBytes, _ := json.Marshal(rowInterface)
-		json.Unmarshal(rowBytes, &rows[i])
+		if err := json.Unmarshal(rowBytes, &rows[i]); err != nil {
+			return fmt.Errorf("decode import row %d: %w", i, err)
+		}
 	}
 
 	// Process the import

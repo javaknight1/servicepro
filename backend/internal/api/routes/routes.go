@@ -218,7 +218,8 @@ func NewRouteConfig(db *gorm.DB, redis *redis.Client, email emailclient.Client, 
 	// Register analytics event handler for Stripe checkout payments
 	if svc.StripeEvents != nil && analytics != nil {
 		svc.StripeEvents.RegisterHandler(stripeService.EventCheckoutSessionCompleted, func(ctx context.Context, event *stripe.Event) error {
-			analytics.CaptureEvent(ctx, &analyticsclient.Event{
+			// Analytics is best effort: a capture failure must not make Stripe retry the webhook.
+			_ = analytics.CaptureEvent(ctx, &analyticsclient.Event{
 				Name:       "payment_received",
 				DistinctID: "system",
 				Properties: map[string]any{"source": "stripe_checkout", "event_type": event.Type},
