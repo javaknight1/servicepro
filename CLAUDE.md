@@ -107,7 +107,13 @@ golang-migrate, files in `backend/migrations/`, embedded into the binary.
 
 - GORM today (pgx/sqlc is the target — keep new repository methods behind interfaces that take
   `ctx` and `tenantID`, so the port is mechanical). UUID primary keys, `timestamptz`.
-- Errors: custom error types (`internal/errors`); never return raw `err.Error()` to clients.
+- Errors: return typed domain errors from `internal/errors` (status + snake_case code + safe message
+  + optional field errors) and write every error response through `internal/api/apierror`
+  (`Respond`, `BindError`) — one envelope `{error, message, request_id, fields?}` (see
+  `docs/api/errors.md`). Conflicts are 409, not-found/cross-tenant 404, validation 400; anything
+  untyped becomes a logged generic 500. Never return raw `err.Error()` to clients.
+- Every request carries an `X-Request-ID` (in logs, responses and Sentry); log through the
+  context-aware logger so lines carry it.
 - Logging: structured logger with a contextual prefix (e.g. `[INVOICE-SERVICE]`); no PII or tokens.
 - Client IP: always `middleware.ClientIP(c)` (trusts `X-SP-Client-IP` only with a valid
   `X-SP-Edge-Secret`) — never read `X-Forwarded-For` directly.
