@@ -22,7 +22,7 @@ func newSentInvoice(t *testing.T, f *isolationFixture, total int64, status model
 	now := time.Now()
 	inv, err := svc.CreateInvoice(f.ctxA, &models.Invoice{
 		CustomerID: f.custA.ID, InvoiceNumber: "INV-" + uuid.NewString()[:8], IssueDate: now, DueDate: now.Add(24 * time.Hour),
-		TotalAmount: decimal.NewFromInt(total),
+		Lines: oneLine(total),
 	}, f.userA)
 	require.NoError(t, err)
 	require.NoError(t, f.db.WithContext(f.ctxA).Model(&models.Invoice{}).Where("id = ?", inv.ID).Update("status", status).Error)
@@ -157,7 +157,7 @@ func TestPostgres_RecordPayment_ConcurrentPaymentsCannotOverpay(t *testing.T) {
 	now := time.Now()
 	inv, err := svc.CreateInvoice(tn.ctx, &models.Invoice{
 		CustomerID: tn.customerID, InvoiceNumber: "INV-RACE-1", IssueDate: now, DueDate: now.Add(24 * time.Hour),
-		Subtotal: decimal.NewFromInt(100), TotalAmount: decimal.NewFromInt(100),
+		Lines: oneLine(100),
 	}, tn.userID)
 	require.NoError(t, err)
 	require.NoError(t, db.WithContext(tn.ctx).Model(&models.Invoice{}).Where("id = ?", inv.ID).Update("status", models.InvoiceStatusSent).Error)
@@ -206,7 +206,7 @@ func TestPostgres_MarkInvoiceAsPaid_ConcurrentReplaysCreditOnce(t *testing.T) {
 	now := time.Now()
 	inv, err := svc.CreateInvoice(tn.ctx, &models.Invoice{
 		CustomerID: tn.customerID, InvoiceNumber: "INV-RACE-2", IssueDate: now, DueDate: now.Add(24 * time.Hour),
-		Subtotal: decimal.NewFromInt(100), TotalAmount: decimal.NewFromInt(100),
+		Lines: oneLine(100),
 	}, tn.userID)
 	require.NoError(t, err)
 	require.NoError(t, db.WithContext(tn.ctx).Model(&models.Invoice{}).Where("id = ?", inv.ID).Update("status", models.InvoiceStatusSent).Error)

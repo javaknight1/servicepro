@@ -21,7 +21,7 @@ func TestMarkInvoiceAsPaid_IdempotentPerSession(t *testing.T) {
 
 	inv, err := svc.CreateInvoice(f.ctxA, &models.Invoice{
 		CustomerID: f.custA.ID, InvoiceNumber: "INV-PAY-1", IssueDate: now, DueDate: now.Add(24 * time.Hour),
-		TotalAmount: decimal.NewFromInt(100),
+		Lines: oneLine(100),
 	}, f.userA)
 	require.NoError(t, err)
 
