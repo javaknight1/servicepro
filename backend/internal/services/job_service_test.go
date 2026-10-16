@@ -142,6 +142,16 @@ func (m *MockJobRepository) GetTechnicianWorkload(userID uuid.UUID) (map[string]
 	return args.Get(0).(map[string]interface{}), args.Error(1)
 }
 
+func (m *MockJobRepository) CreateWithTransition(job *models.Job, transition *models.JobStatusTransition) error {
+	args := m.Called(job, transition)
+	return args.Error(0)
+}
+
+func (m *MockJobRepository) UpdateWithTransition(job *models.Job, transition *models.JobStatusTransition) error {
+	args := m.Called(job, transition)
+	return args.Error(0)
+}
+
 func (m *MockJobRepository) CreateStatusTransition(transition *models.JobStatusTransition) error {
 	args := m.Called(transition)
 	return args.Error(0)
@@ -315,14 +325,13 @@ func TestJobService_CreateJob_Success(t *testing.T) {
 	}
 
 	mockCustomerRepo.On("GetByID", customerID).Return(customer, nil)
-	mockJobRepo.On("Create", mock.AnythingOfType("*models.Job")).Return(nil).Run(func(args mock.Arguments) {
+	mockJobRepo.On("CreateWithTransition", mock.AnythingOfType("*models.Job"), mock.AnythingOfType("*models.JobStatusTransition")).Return(nil).Run(func(args mock.Arguments) {
 		// Set the ID so GetByID can find it
 		job := args.Get(0).(*models.Job)
 		if job.ID == uuid.Nil {
 			job.ID = uuid.New()
 		}
 	})
-	mockJobRepo.On("CreateStatusTransition", mock.AnythingOfType("*models.JobStatusTransition")).Return(nil)
 	mockJobRepo.On("GetByID", mock.AnythingOfType("uuid.UUID")).Return(&models.Job{
 		ID:         uuid.New(),
 		CustomerID: customerID,
@@ -499,8 +508,7 @@ func TestJobService_StartJob_Success(t *testing.T) {
 	job.Status = models.JobStatusScheduled
 
 	mockJobRepo.On("GetByID", job.ID).Return(job, nil)
-	mockJobRepo.On("Update", mock.AnythingOfType("*models.Job")).Return(nil)
-	mockJobRepo.On("CreateStatusTransition", mock.AnythingOfType("*models.JobStatusTransition")).Return(nil)
+	mockJobRepo.On("UpdateWithTransition", mock.AnythingOfType("*models.Job"), mock.AnythingOfType("*models.JobStatusTransition")).Return(nil)
 
 	response, err := service.StartJob(job.ID, job.CreatedBy, models.UserRoleTechnician)
 
@@ -521,8 +529,7 @@ func TestJobService_CompleteJob_Success(t *testing.T) {
 	job.ActualStartAt = &actualStart // Set actual start time for completion
 
 	mockJobRepo.On("GetByID", job.ID).Return(job, nil)
-	mockJobRepo.On("Update", mock.AnythingOfType("*models.Job")).Return(nil)
-	mockJobRepo.On("CreateStatusTransition", mock.AnythingOfType("*models.JobStatusTransition")).Return(nil)
+	mockJobRepo.On("UpdateWithTransition", mock.AnythingOfType("*models.Job"), mock.AnythingOfType("*models.JobStatusTransition")).Return(nil)
 
 	response, err := service.CompleteJob(job.ID, "Job completed successfully", job.CreatedBy, models.UserRoleTechnician)
 
@@ -541,8 +548,7 @@ func TestJobService_CancelJob_AdminSuccess(t *testing.T) {
 	adminID := uuid.New()
 
 	mockJobRepo.On("GetByID", job.ID).Return(job, nil)
-	mockJobRepo.On("Update", mock.AnythingOfType("*models.Job")).Return(nil)
-	mockJobRepo.On("CreateStatusTransition", mock.AnythingOfType("*models.JobStatusTransition")).Return(nil)
+	mockJobRepo.On("UpdateWithTransition", mock.AnythingOfType("*models.Job"), mock.AnythingOfType("*models.JobStatusTransition")).Return(nil)
 
 	response, err := service.CancelJob(job.ID, "Customer requested cancellation", adminID, models.UserRoleAdmin)
 

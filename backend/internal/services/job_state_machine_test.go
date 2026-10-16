@@ -14,8 +14,7 @@ import (
 func jobServiceWith(job *models.Job) (*JobService, *MockJobRepository) {
 	repo := new(MockJobRepository)
 	repo.On("GetByID", job.ID).Return(job, nil)
-	repo.On("Update", mock.AnythingOfType("*models.Job")).Return(nil)
-	repo.On("CreateStatusTransition", mock.AnythingOfType("*models.JobStatusTransition")).Return(nil)
+	repo.On("UpdateWithTransition", mock.AnythingOfType("*models.Job"), mock.AnythingOfType("*models.JobStatusTransition")).Return(nil)
 	return NewJobService(repo, new(MockCustomerRepository), nil), repo
 }
 
@@ -41,7 +40,7 @@ func TestStartJob_FromEnRoute(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, models.JobStatusInProgress, resp.Status)
 	assert.NotNil(t, job.ActualStartAt)
-	repo.AssertCalled(t, "CreateStatusTransition", mock.MatchedBy(func(tr *models.JobStatusTransition) bool {
+	repo.AssertCalled(t, "UpdateWithTransition", mock.Anything, mock.MatchedBy(func(tr *models.JobStatusTransition) bool {
 		return tr.FromStatus == models.JobStatusEnRoute && tr.ToStatus == models.JobStatusInProgress
 	}))
 }
@@ -68,6 +67,7 @@ func TestUpdateJob_RejectsStatusChange(t *testing.T) {
 	_, err := svc.UpdateJob(job.ID, &models.UpdateJobRequest{Status: &to}, job.CreatedBy, models.UserRoleAdmin)
 	assert.ErrorIs(t, err, validators.ErrStatusNotUpdatable)
 	repo.AssertNotCalled(t, "Update", mock.Anything)
+	repo.AssertNotCalled(t, "UpdateWithTransition", mock.Anything, mock.Anything)
 	assert.Equal(t, models.JobStatusScheduled, job.Status)
 }
 
