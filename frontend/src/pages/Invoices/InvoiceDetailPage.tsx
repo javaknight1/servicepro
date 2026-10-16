@@ -31,6 +31,7 @@ import { useTenantStore } from '@store';
 import { useTenantPermissions } from '@/utils/tenantPermissions';
 import {
   formatDollars,
+  lineDiscount,
   lineTotal,
   toAmount,
   percentToTaxRate,
@@ -76,6 +77,22 @@ interface LineItemFormData {
   quantity: number | string;
   unit_price: number | string;
   taxable: boolean;
+  /** Kept from the API so an edit doesn't drop it (T237); not editable here. */
+  discount_percentage?: number | string;
+  discount_amount?: number | string;
+}
+
+/** A form line's total after its discount, in dollars. */
+function lineNet(item: LineItemFormData): number {
+  return roundToCents(
+    lineTotal(item.quantity, item.unit_price) -
+      lineDiscount(
+        item.quantity,
+        item.unit_price,
+        item.discount_percentage,
+        item.discount_amount
+      )
+  );
 }
 
 /**
@@ -211,6 +228,8 @@ export function InvoiceDetailPage() {
               quantity: line.quantity,
               unit_price: line.unit_price,
               taxable: line.taxable ?? true,
+              discount_percentage: line.discount_percentage,
+              discount_amount: line.discount_amount,
             }))
           );
         }
@@ -379,10 +398,7 @@ export function InvoiceDetailPage() {
   const calculateSubtotal = () => {
     // Sum per-line totals rounded to cents, matching the server's math
     return roundToCents(
-      lineItems.reduce(
-        (sum, item) => sum + lineTotal(item.quantity, item.unit_price),
-        0
-      )
+      lineItems.reduce((sum, item) => sum + lineNet(item), 0)
     );
   };
 
@@ -392,10 +408,7 @@ export function InvoiceDetailPage() {
     return roundToCents(
       lineItems.reduce(
         (sum, item) =>
-          item.taxable
-            ? sum +
-              roundToCents(lineTotal(item.quantity, item.unit_price) * rate)
-            : sum,
+          item.taxable ? sum + roundToCents(lineNet(item) * rate) : sum,
         0
       )
     );
@@ -432,6 +445,17 @@ export function InvoiceDetailPage() {
           ? parseFloat(item.unit_price) || 0
           : item.unit_price,
       taxable: item.taxable,
+      // Round-trip the line's discount; a percentage is re-applied by the
+      // server to the new quantity/price (T237)
+      discount_percentage:
+        toAmount(item.discount_percentage) > 0
+          ? toAmount(item.discount_percentage)
+          : undefined,
+      discount_amount:
+        toAmount(item.discount_percentage) > 0 ||
+        toAmount(item.discount_amount) <= 0
+          ? undefined
+          : toAmount(item.discount_amount),
     }));
 
     try {
@@ -876,8 +900,16 @@ export function InvoiceDetailPage() {
                     />
                     Taxable
                   </label>
-                  <div className="w-24 text-right py-2 font-medium">
-                    {formatDollars(lineTotal(item.quantity, item.unit_price))}
+                  <div className="w-28 text-right py-2 font-medium">
+                    {formatDollars(lineNet(item))}
+                    {lineNet(item) <
+                      lineTotal(item.quantity, item.unit_price) && (
+                      <div className="text-xs font-normal text-neutral-500">
+                        {toAmount(item.discount_percentage) > 0
+                          ? `${toAmount(item.discount_percentage)}% discount`
+                          : `${formatDollars(item.discount_amount)} discount`}
+                      </div>
+                    )}
                   </div>
                   <Button
                     type="button"

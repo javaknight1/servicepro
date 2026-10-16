@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   formatCents,
   formatDollars,
+  lineDiscount,
   lineTotal,
   percentToTaxRate,
   roundToCents,
@@ -36,6 +37,13 @@ describe('money utils', () => {
     expect(roundToCents(1.005)).toBe(1.01);
     expect(roundToCents(0.1 + 0.2)).toBe(0.3);
     expect(lineTotal('3', '19.99')).toBe(59.97);
+  });
+
+  it('computes a line discount like the server (percentage wins)', () => {
+    expect(lineDiscount(2, 100, '10', '5')).toBe(20);
+    expect(lineDiscount('3', '19.99', '15')).toBe(9);
+    expect(lineDiscount(1, 50, '0', '5.50')).toBe(5.5);
+    expect(lineDiscount(1, 50)).toBe(0);
   });
 
   it('shows tax rates without float artefacts', () => {
