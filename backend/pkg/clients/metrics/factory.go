@@ -42,13 +42,11 @@ func GetRegisteredProviders() []Provider {
 // Provider selection order:
 // 1. If cfg.Server.Env == "development" -> Mock
 // 2. If cfg.Prometheus.Enabled -> Prometheus
-// 3. If cfg.AWS.Region != "" -> CloudWatch
-// 4. Fallback -> Mock
+// 3. Fallback -> Mock (CloudWatch was removed in T126)
 //
 // Note: Providers must be registered by importing their packages with blank imports:
 //
 //	import _ "github.com/javaknight1/servicepro/backend/pkg/clients/metrics/mock"
-//	import _ "github.com/javaknight1/servicepro/backend/pkg/clients/metrics/cloudwatch"
 //	import _ "github.com/javaknight1/servicepro/backend/pkg/clients/metrics/prometheus"
 func NewClient(ctx context.Context, cfg *config.Config) (Client, error) {
 	if cfg == nil {
@@ -82,12 +80,7 @@ func detectProvider(cfg *config.Config) Provider {
 		return ProviderPrometheus
 	}
 
-	// 3. Check for AWS credentials (CloudWatch)
-	if cfg.AWS.Region != "" {
-		return ProviderCloudWatch
-	}
-
-	// 4. Fallback to mock
+	// 3. Fallback to mock
 	return ProviderMock
 }
 

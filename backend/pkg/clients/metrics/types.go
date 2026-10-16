@@ -8,7 +8,6 @@ import (
 type Provider string
 
 const (
-	ProviderCloudWatch Provider = "cloudwatch"
 	ProviderPrometheus Provider = "prometheus"
 	ProviderMock       Provider = "mock"
 )
