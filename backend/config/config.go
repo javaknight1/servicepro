@@ -180,6 +180,10 @@ type ServerConfig struct {
 	// disables the edge headers entirely.
 	EdgeProxySecret string
 
+	// EnableSwagger serves Swagger UI at /api/docs (ENABLE_SWAGGER; default
+	// true only in development).
+	EnableSwagger bool
+
 	// InternalJobsSecret authorizes POST /internal/jobs/* via the
 	// X-Internal-Jobs-Token header. Empty disables the job endpoints (404).
 	InternalJobsSecret string
@@ -342,6 +346,9 @@ type PrometheusConfig struct {
 	Subsystem    string        // Metrics subsystem prefix
 	PushGateway  string        // Push gateway URL (for batch jobs)
 	PushInterval time.Duration // Interval for pushing metrics
+	// MetricsToken is required as "Authorization: Bearer <token>" on the
+	// metrics endpoint. Outside development an empty token disables /metrics.
+	MetricsToken string
 }
 
 // OpenTelemetryConfig holds OpenTelemetry tracing configuration
@@ -449,6 +456,7 @@ func Load() *Config {
 			TrustedProxies:     getEnvAsStringSlice("SERVER_TRUSTED_PROXIES", []string{}),
 
 			EdgeProxySecret:      getEnv("EDGE_PROXY_SECRET", ""),
+			EnableSwagger:        getEnvAsBool("ENABLE_SWAGGER", isDev),
 			InternalJobsSecret:   getEnv("INTERNAL_JOBS_SECRET", ""),
 			RunBackgroundWorkers: getEnvAsBool("RUN_BACKGROUND_WORKERS", isDev),
 			AppVersion:           getEnv("APP_VERSION", "dev"),
@@ -607,6 +615,7 @@ func Load() *Config {
 			Subsystem:    getEnv("PROMETHEUS_SUBSYSTEM", ""),
 			PushGateway:  getEnv("PROMETHEUS_PUSH_GATEWAY", ""),
 			PushInterval: getEnvAsDuration("PROMETHEUS_PUSH_INTERVAL", "15s"),
+			MetricsToken: getEnv("METRICS_TOKEN", ""),
 		},
 		OpenTelemetry: OpenTelemetryConfig{
 			Enabled:     getEnvAsBool("OTEL_ENABLED", false),

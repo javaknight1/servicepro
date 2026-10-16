@@ -116,8 +116,10 @@ func setupHealthEndpoints(router *gin.Engine, db *gorm.DB, redisClient *redis.Cl
 	// Start the background health check runner
 	health.StartHealthSystem(runner)
 
-	// Create health handler
+	// Create health handler. Outside development the detailed report is only
+	// returned to callers presenting INTERNAL_JOBS_SECRET or from loopback.
 	healthHandler := handlers.NewHealthHandler(checker)
+	healthHandler.SetDetailAccess(cfg.Server.Env == "development", cfg.Server.InternalJobsSecret)
 
 	// Register health endpoints
 	// /health - Detailed health report (for monitoring dashboards)
@@ -138,10 +140,10 @@ func setupHealthEndpoints(router *gin.Engine, db *gorm.DB, redisClient *redis.Cl
 func setupSwaggerEndpoint(router *gin.Engine, cfg *config.Config) {
 	ctx := context.Background()
 
-	// Only enable Swagger in non-production environments by default
-	// Can be overridden with SWAGGER_ENABLED=true
-	if cfg.Server.Env == "production" {
-		logging.Info(ctx, "Swagger documentation disabled in production", map[string]any{"source": "swagger"})
+	// Swagger UI exposes the full API map: only when ENABLE_SWAGGER=true
+	// (default true in development only).
+	if !cfg.Server.EnableSwagger {
+		logging.Info(ctx, "Swagger documentation disabled (ENABLE_SWAGGER=false)", map[string]any{"source": "swagger"})
 		return
 	}
 
@@ -171,8 +173,14 @@ func setupMetricsEndpoint(router *gin.Engine, metrics metricsclient.Client, cfg 
 		metricsPath = "/metrics"
 	}
 
-	// Wrap the Prometheus HTTP handler for Gin
-	router.GET(metricsPath, gin.WrapH(metrics.Handler()))
+	// /metrics includes platform KPIs (tenants, revenue, A/R). Require a
+	// bearer token; outside development, no token means no endpoint.
+	token := cfg.Prometheus.MetricsToken
+	if token == "" && cfg.Server.Env != "development" {
+		logging.Warn(ctx, "METRICS_TOKEN not set: /metrics endpoint disabled", map[string]any{"source": "metrics"})
+		return
+	}
+	router.GET(metricsPath, middleware.RequireBearerToken(token), gin.WrapH(metrics.Handler()))
 
 	logging.Info(ctx, "Prometheus metrics endpoint registered", map[string]any{"path": metricsPath, "source": "metrics"})
 }

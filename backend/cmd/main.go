@@ -107,8 +107,9 @@ func main() {
 		logging.Info(ctx, "Analytics client initialized", nil)
 	}
 
-	// Set Gin mode based on environment
-	if cfg.Server.Env == "production" {
+	// Gin debug mode only for local development (any deployed env, including
+	// preview/staging, runs in release mode).
+	if cfg.Server.Env != "development" {
 		gin.SetMode(gin.ReleaseMode)
 	}
 

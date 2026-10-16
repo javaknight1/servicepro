@@ -7837,7 +7837,7 @@ export interface paths {
         };
         /**
          * Health check
-         * @description Returns detailed health information including all dependency check results, the app version and git SHA
+         * @description Returns {"status"} publicly; the detailed report (dependency checks, version, git SHA) only in development, from loopback, or with X-Internal-Jobs-Token / Bearer INTERNAL_JOBS_SECRET
          */
         get: {
             parameters: {
