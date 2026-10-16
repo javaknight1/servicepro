@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -634,14 +635,51 @@ func stringPtrValue(s *string) string {
 	return *s
 }
 
-// ConvertDecimalToCents converts a decimal amount to cents (integer)
+// ConvertDecimalToCents converts a USD-style (2-decimal) amount to cents,
+// rounding half away from zero. Prefer ToMinorUnits with the real currency.
 func ConvertDecimalToCents(amount decimal.Decimal) int64 {
-	return amount.Mul(decimal.NewFromInt(100)).IntPart()
+	return ToMinorUnits(amount, "usd")
 }
 
-// ConvertCentsToDecimal converts cents (integer) to decimal amount
+// ConvertCentsToDecimal converts cents (integer) to a 2-decimal amount.
+// Prefer FromMinorUnits with the real currency.
 func ConvertCentsToDecimal(cents int64) decimal.Decimal {
-	return decimal.NewFromInt(cents).Div(decimal.NewFromInt(100))
+	return FromMinorUnits(cents, "usd")
+}
+
+// Stripe's zero- and three-decimal currencies
+// (https://docs.stripe.com/currencies#minor-units). Everything else uses 2.
+var (
+	zeroDecimalCurrencies = map[string]bool{
+		"bif": true, "clp": true, "djf": true, "gnf": true, "jpy": true, "kmf": true, "krw": true, "mga": true,
+		"pyg": true, "rwf": true, "ugx": true, "vnd": true, "vuv": true, "xaf": true, "xof": true, "xpf": true,
+	}
+	threeDecimalCurrencies = map[string]bool{"bhd": true, "jod": true, "kwd": true, "omr": true, "tnd": true}
+)
+
+// MinorUnitExponent returns how many decimal places a currency's smallest
+// unit has (2 for USD cents, 0 for JPY, 3 for KWD).
+func MinorUnitExponent(currency string) int32 {
+	c := strings.ToLower(strings.TrimSpace(currency))
+	switch {
+	case zeroDecimalCurrencies[c]:
+		return 0
+	case threeDecimalCurrencies[c]:
+		return 3
+	}
+	return 2
+}
+
+// ToMinorUnits converts an amount to the currency's smallest unit for Stripe,
+// rounding half away from zero (never truncating: 10.005 USD is 1001 cents).
+func ToMinorUnits(amount decimal.Decimal, currency string) int64 {
+	return amount.Shift(MinorUnitExponent(currency)).Round(0).IntPart()
+}
+
+// FromMinorUnits converts a Stripe amount in the currency's smallest unit
+// back to a decimal amount.
+func FromMinorUnits(units int64, currency string) decimal.Decimal {
+	return decimal.New(units, -MinorUnitExponent(currency))
 }
 
 // Rate limiter implementation
