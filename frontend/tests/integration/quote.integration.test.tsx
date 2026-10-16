@@ -9,7 +9,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import React from 'react';
@@ -793,6 +793,48 @@ describe('Quote Workflow Integration', () => {
         await screen.findByText('Quote cannot be sent in current status')
       ).toBeInTheDocument();
       expect(screen.getByText('Draft')).toBeInTheDocument();
+    });
+
+    it('shows a refused list action inline instead of window.alert', async () => {
+      const user = userEvent.setup({ delay: null });
+      const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+      vi.mocked(quoteService.acceptQuote).mockRejectedValue({
+        response: {
+          status: 403,
+          data: {
+            error: 'cannot_accept',
+            message: 'Quote cannot be accepted in current status',
+          },
+        },
+      });
+
+      const { QuotesPage } = await import('../../src/pages/Quotes/QuotesPage');
+      render(
+        <MemoryRouter initialEntries={['/quotes']}>
+          <QuotesPage />
+        </MemoryRouter>
+      );
+
+      const row = (await screen.findByText('QT-002')).closest('tr');
+      expect(row).not.toBeNull();
+      await user.click(
+        within(row as HTMLElement).getByRole('button', {
+          name: 'Quote actions',
+        })
+      );
+      await user.click(screen.getByRole('menuitem', { name: /accept quote/i }));
+
+      const banner = await screen.findByRole('alert');
+      expect(banner).toHaveTextContent(
+        'Quote cannot be accepted in current status'
+      );
+      expect(alertSpy).not.toHaveBeenCalled();
+
+      await user.click(
+        within(banner).getByRole('button', { name: /dismiss/i })
+      );
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+      alertSpy.mockRestore();
     });
   });
 });
