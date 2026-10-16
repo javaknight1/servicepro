@@ -91,11 +91,9 @@ export function initErrorTracking(config: ErrorTrackingConfig): void {
       }),
     ],
 
-    tracePropagationTargets: [
-      'localhost',
-      /^https:\/\/api\.servicepro\.com/,
-      /^https:\/\/.*\.servicepro\.com/,
-    ],
+    // The API is same-origin (axios baseURL '/api'), so only propagate
+    // trace headers to our own /api routes (and localhost in dev).
+    tracePropagationTargets: [/^\/api(\/|$)/, /^https?:\/\/localhost(:\d+)?\//],
 
     replaysSessionSampleRate: 0.1,
     replaysOnErrorSampleRate: 1.0,
