@@ -58,6 +58,7 @@ func SetupHandlers(
 
 	// Tenant handler
 	h.Tenant = handlers.NewTenantHandler(svc.Tenant)
+	h.Tenant.SetPermissions(mw.PermChecker)
 
 	// Invitation handler
 	h.Invitation = handlers.NewInvitationHandler(svc.Invitation)

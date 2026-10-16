@@ -605,3 +605,47 @@ func TestPermissionChecker_TenantScoped(t *testing.T) {
 	assert.False(t, mr.Exists(checker.getCacheKey(user.ID, tenantA)))
 	assert.False(t, mr.Exists(checker.getCacheKey(user.ID, tenantB)))
 }
+
+// T230: the effective permission list is per tenant and matches CheckPermission.
+func TestPermissionChecker_EffectivePermissionNames(t *testing.T) {
+	db := setupTestDB(t)
+	redisClient, mr := setupTestRedis(t)
+	defer mr.Close()
+
+	checker := NewPermissionChecker(repository.NewPermissionRepository(db), redisClient)
+	ctx := context.Background()
+
+	user := createTestUser(t, db, "member@example.com")
+	read := createTestPermission(t, db, "customers.read", "customers", "read")
+	del := createTestPermission(t, db, "customers.delete", "customers", "delete")
+	platform := createTestPermission(t, db, "settings.read", "settings", "read")
+	admin := createTestRole(t, db, "admin", 80)
+	guest := createTestRole(t, db, "guest", 20)
+	platformRole := createTestRole(t, db, "platform_reader", 10)
+	for _, rp := range [][2]uuid.UUID{{admin.ID, del.ID}, {admin.ID, read.ID}, {guest.ID, read.ID}, {platformRole.ID, platform.ID}} {
+		require.NoError(t, db.Exec("INSERT INTO role_permissions (role_id, permission_id) VALUES (?, ?)", rp[0], rp[1]).Error)
+	}
+	require.NoError(t, db.Exec("INSERT INTO user_roles (user_id, role_id) VALUES (?, ?)", user.ID, platformRole.ID).Error)
+
+	tenantA, tenantB := uuid.New(), uuid.New()
+	require.NoError(t, db.Exec("INSERT INTO tenant_users (id, tenant_id, user_id, role_id, is_active) VALUES (?, ?, ?, ?, 1)", uuid.New(), tenantA, user.ID, guest.ID).Error)
+	require.NoError(t, db.Exec("INSERT INTO tenant_users (id, tenant_id, user_id, role_id, is_active) VALUES (?, ?, ?, ?, 1)", uuid.New(), tenantB, user.ID, admin.ID).Error)
+
+	namesA, err := checker.EffectivePermissionNames(ctx, user.ID, tenantA)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"customers.read", "settings.read"}, namesA, "guest in A plus platform role; admin in B does not leak")
+
+	namesB, err := checker.EffectivePermissionNames(ctx, user.ID, tenantB)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"customers.delete", "customers.read", "settings.read"}, namesB, "sorted and de-duplicated")
+
+	for _, name := range namesB {
+		ok, err := checker.CheckPermission(ctx, user.ID, tenantB, name)
+		require.NoError(t, err)
+		assert.True(t, ok, name)
+	}
+
+	namesNone, err := checker.EffectivePermissionNames(ctx, user.ID, uuid.New())
+	require.NoError(t, err)
+	assert.Equal(t, []string{"settings.read"}, namesNone, "a tenant the user is not in adds nothing")
+}
