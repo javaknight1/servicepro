@@ -134,6 +134,7 @@ export default defineConfig(({ mode }) => ({
     include: [
       'src/**/*.{test,spec}.{ts,tsx}',
       'tests/**/*.{test,spec}.{ts,tsx}',
+      'worker/**/*.{test,spec}.ts',
     ],
     deps: {
       inline: ['@sentry/tracing'],
