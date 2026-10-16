@@ -15406,6 +15406,10 @@ const docTemplate = `{
                 },
                 "tax_rate_id": {
                     "type": "string"
+                },
+                "terms_and_conditions": {
+                    "description": "printed on the invoice",
+                    "type": "string"
                 }
             }
         },

@@ -13698,6 +13698,8 @@ export interface components {
             /** @description Direct tax rate (e.g., 0.07 for 7%) */
             tax_rate?: number;
             tax_rate_id?: string;
+            /** @description printed on the invoice */
+            terms_and_conditions?: string;
         };
         "internal_api_handlers.CreateLineItemRequest": {
             description: string;

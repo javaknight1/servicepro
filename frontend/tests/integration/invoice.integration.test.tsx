@@ -524,15 +524,12 @@ describe('Invoice & Payment Integration', () => {
       });
     });
 
-    it('sets terms_and_conditions on the new invoice (create takes none)', async () => {
+    it('sends terms_and_conditions with the create (no follow-up update)', async () => {
       const user = userEvent.setup({ delay: null });
       vi.mocked(invoiceService.createInvoice).mockResolvedValue({
         ...mockInvoices[0],
         id: 'invoice-new',
       });
-      vi.mocked(invoiceService.updateInvoice).mockResolvedValue(
-        mockInvoices[0]
-      );
 
       const { InvoiceDetailPage } =
         await import('../../src/pages/Invoices/InvoiceDetailPage');
@@ -555,14 +552,11 @@ describe('Invoice & Payment Integration', () => {
       await user.click(screen.getByRole('button', { name: /create invoice/i }));
 
       await waitFor(() => {
-        expect(invoiceService.updateInvoice).toHaveBeenCalledWith(
-          'invoice-new',
-          { terms_and_conditions: 'Net 15' }
+        expect(invoiceService.createInvoice).toHaveBeenCalledWith(
+          expect.objectContaining({ terms_and_conditions: 'Net 15' })
         );
       });
-      const [createBody] = vi.mocked(invoiceService.createInvoice).mock
-        .calls[0];
-      expect(createBody).not.toHaveProperty('terms');
+      expect(invoiceService.updateInvoice).not.toHaveBeenCalled();
     });
   });
 
