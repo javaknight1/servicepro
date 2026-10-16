@@ -41,6 +41,14 @@ var (
 	ErrPaymentTokenVoided = errors.New("payment token has been voided")
 	// ErrInvoiceNotPayable is returned when invoice is not in a payable status
 	ErrInvoiceNotPayable = errors.New("invoice is not in a payable status")
+	// ErrPaymentNotAllowed is returned when recording a payment on a draft,
+	// cancelled or refunded invoice
+	ErrPaymentNotAllowed = errors.New("payments can only be recorded on sent, viewed, overdue or partially paid invoices")
+	// ErrOverpayment is returned when a payment exceeds the balance due
+	ErrOverpayment = errors.New("payment amount exceeds outstanding balance")
+	// ErrInvoiceHasPayments is returned when deleting or cancelling an invoice
+	// that has payments recorded against it
+	ErrInvoiceHasPayments = errors.New("invoice has recorded payments; refund them first")
 )
 
 // InvoiceService handles invoice business logic
@@ -250,28 +258,32 @@ func (s *InvoiceService) UpdateInvoice(ctx context.Context, id uuid.UUID, update
 
 // DeleteInvoice soft deletes an invoice
 func (s *InvoiceService) DeleteInvoice(ctx context.Context, id uuid.UUID) error {
-	// Get invoice to check status
-	invoice, err := s.GetInvoice(ctx, id)
-	if err != nil {
-		return err
-	}
+	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// Lock so a payment can't land between the check and the delete.
+		invoice, err := lockInvoice(tx, id)
+		if err != nil {
+			return err
+		}
+		if invoice.Status == models.InvoiceStatusPaid {
+			return errors.New("cannot delete paid invoice")
+		}
+		paid, err := hasPayments(tx, invoice)
+		if err != nil {
+			return err
+		}
+		if paid {
+			return ErrInvoiceHasPayments
+		}
 
-	// Don't allow deletion of paid invoices
-	if invoice.Status == models.InvoiceStatusPaid {
-		return errors.New("cannot delete paid invoice")
-	}
-
-	// Soft delete
-	result := s.db.WithContext(ctx).Delete(&models.Invoice{}, id)
-	if result.Error != nil {
-		return fmt.Errorf("failed to delete invoice: %w", result.Error)
-	}
-
-	if result.RowsAffected == 0 {
-		return ErrInvoiceNotFound
-	}
-
-	return nil
+		result := tx.Delete(&models.Invoice{}, "id = ?", id)
+		if result.Error != nil {
+			return fmt.Errorf("failed to delete invoice: %w", result.Error)
+		}
+		if result.RowsAffected == 0 {
+			return ErrInvoiceNotFound
+		}
+		return nil
+	})
 }
 
 // ListInvoices retrieves invoices with filtering and pagination
@@ -398,36 +410,115 @@ func (s *InvoiceService) AddLineItem(ctx context.Context, invoiceID uuid.UUID, l
 	return lineItem, nil
 }
 
-// RecordPayment records a payment for an invoice
+// RecordPayment records a manual payment (cash, check, ACH, ...) against an
+// invoice.
+//
+// In one transaction it locks the invoice row (SELECT ... FOR UPDATE),
+// re-checks status and balance under the lock, inserts the payment and
+// updates amount_paid, status and paid_date — so two concurrent payments can
+// never overpay the invoice (correctness audit 7.C1, 7.M15).
 func (s *InvoiceService) RecordPayment(ctx context.Context, payment *models.InvoicePayment) (*models.InvoicePayment, error) {
-	// Validate payment
 	if payment.Amount.LessThanOrEqual(decimal.Zero) {
 		return nil, errors.New("payment amount must be greater than zero")
 	}
+	payment.Amount = payment.Amount.Round(2)
+	if payment.PaymentDate.IsZero() {
+		payment.PaymentDate = time.Now()
+	}
 
-	// Get invoice
-	invoice, err := s.GetInvoice(ctx, payment.InvoiceID)
+	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		invoice, err := lockInvoice(tx, payment.InvoiceID)
+		if err != nil {
+			return err
+		}
+		if invoice.Status == models.InvoiceStatusPaid {
+			return ErrInvoiceAlreadyPaid
+		}
+		if !invoice.Status.AcceptsPayments() {
+			return ErrPaymentNotAllowed
+		}
+		if payment.Amount.GreaterThan(invoice.BalanceDue()) {
+			return ErrOverpayment
+		}
+
+		if err := tx.Create(payment).Error; err != nil {
+			return fmt.Errorf("failed to record payment: %w", err)
+		}
+		return applyPayment(tx, invoice, payment.Amount, payment.PaymentDate, nil)
+	})
 	if err != nil {
 		return nil, err
 	}
-
-	// Calculate amount due if database didn't compute it (for SQLite compatibility)
-	amountDue := invoice.AmountDue
-	if amountDue.IsZero() && invoice.TotalAmount.GreaterThan(decimal.Zero) {
-		amountDue = invoice.TotalAmount.Sub(invoice.AmountPaid)
-	}
-
-	// Check if payment exceeds outstanding amount
-	if payment.Amount.GreaterThan(amountDue) {
-		return nil, errors.New("payment amount exceeds outstanding balance")
-	}
-
-	// Create payment (triggers will update invoice)
-	if err := s.db.WithContext(ctx).Create(payment).Error; err != nil {
-		return nil, fmt.Errorf("failed to record payment: %w", err)
-	}
-
 	return payment, nil
+}
+
+// lockInvoice loads an invoice with SELECT ... FOR UPDATE inside tx. The
+// tenancy plugin scopes the lookup, so another tenant's invoice is not found.
+func lockInvoice(tx *gorm.DB, id uuid.UUID) (*models.Invoice, error) {
+	var invoice models.Invoice
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&invoice, "id = ?", id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrInvoiceNotFound
+		}
+		return nil, err
+	}
+	if afterInvoiceLockHook != nil {
+		afterInvoiceLockHook()
+	}
+	return &invoice, nil
+}
+
+// afterInvoiceLockHook lets concurrency tests widen the window between the
+// locked read and the write. Always nil outside tests.
+var afterInvoiceLockHook func()
+
+// applyPayment adds amount to a locked invoice's amount_paid and moves it to
+// partially_paid or paid. Closed invoices (cancelled, refunded) keep their
+// status: money received for them is still recorded, and needs a refund.
+func applyPayment(tx *gorm.DB, invoice *models.Invoice, amount decimal.Decimal, paidAt time.Time, extra map[string]interface{}) error {
+	newAmountPaid := invoice.AmountPaid.Add(amount)
+	updates := map[string]interface{}{"amount_paid": newAmountPaid}
+	for k, v := range extra {
+		updates[k] = v
+	}
+
+	switch invoice.Status {
+	case models.InvoiceStatusCancelled, models.InvoiceStatusRefunded:
+		// keep status
+	default:
+		if newAmountPaid.GreaterThanOrEqual(invoice.TotalAmount) {
+			updates["status"] = models.InvoiceStatusPaid
+			updates["paid_date"] = paidAt
+		} else {
+			updates["status"] = models.InvoiceStatusPartiallyPaid
+		}
+	}
+
+	if err := tx.Model(&models.Invoice{}).Where("id = ?", invoice.ID).Updates(updates).Error; err != nil {
+		return fmt.Errorf("failed to update invoice balance: %w", err)
+	}
+	return nil
+}
+
+// nonEmpty returns nil for "" so optional reference columns stay NULL.
+func nonEmpty(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
+}
+
+// hasPayments reports whether money has been recorded against a (locked)
+// invoice.
+func hasPayments(tx *gorm.DB, invoice *models.Invoice) (bool, error) {
+	if invoice.AmountPaid.GreaterThan(decimal.Zero) {
+		return true, nil
+	}
+	var n int64
+	if err := tx.Model(&models.InvoicePayment{}).Where("invoice_id = ?", invoice.ID).Count(&n).Error; err != nil {
+		return false, err
+	}
+	return n > 0, nil
 }
 
 // SendInvoice marks an invoice as sent and generates a payment token
@@ -487,22 +578,33 @@ func (s *InvoiceService) SendInvoice(ctx context.Context, id uuid.UUID) (*models
 
 // CancelInvoice cancels an invoice
 func (s *InvoiceService) CancelInvoice(ctx context.Context, id uuid.UUID, reason string) (*models.Invoice, error) {
-	invoice, err := s.GetInvoice(ctx, id)
+	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		invoice, err := lockInvoice(tx, id)
+		if err != nil {
+			return err
+		}
+		if invoice.Status == models.InvoiceStatusPaid {
+			return errors.New("cannot cancel paid invoice")
+		}
+		paid, err := hasPayments(tx, invoice)
+		if err != nil {
+			return err
+		}
+		if paid {
+			return ErrInvoiceHasPayments
+		}
+
+		updates := map[string]interface{}{
+			"status": models.InvoiceStatusCancelled,
+			"notes":  fmt.Sprintf("%s\n\nCancellation reason: %s", invoice.Notes, reason),
+		}
+		if err := tx.Model(&models.Invoice{}).Where("id = ?", id).Updates(updates).Error; err != nil {
+			return fmt.Errorf("failed to cancel invoice: %w", err)
+		}
+		return nil
+	})
 	if err != nil {
 		return nil, err
-	}
-
-	if invoice.Status == models.InvoiceStatusPaid {
-		return nil, errors.New("cannot cancel paid invoice")
-	}
-
-	updates := map[string]interface{}{
-		"status": models.InvoiceStatusCancelled,
-		"notes":  fmt.Sprintf("%s\n\nCancellation reason: %s", invoice.Notes, reason),
-	}
-
-	if err := s.db.WithContext(ctx).Model(&models.Invoice{}).Where("id = ?", id).Updates(updates).Error; err != nil {
-		return nil, fmt.Errorf("failed to cancel invoice: %w", err)
 	}
 
 	return s.GetInvoice(ctx, id)
@@ -697,46 +799,63 @@ func (s *InvoiceService) ValidatePaymentToken(ctx context.Context, token string)
 
 // MarkInvoiceAsPaid applies a Stripe Checkout payment to an invoice.
 //
-// It is idempotent per checkout session: the invoice row is locked
-// (SELECT ... FOR UPDATE) and a session that was already applied is not
-// credited again, so duplicate webhook deliveries — even to two instances at
-// once — can't double-count a partial payment (F-10). A unique index on
-// stripe_checkout_session_id (migration 000006) backs this up.
+// The money has already been taken, so unlike RecordPayment it never
+// rejects: it records an invoice_payments row and updates amount_paid and
+// status in one transaction under the invoice row lock (T118). Money received
+// for a cancelled or refunded invoice is recorded without reviving it.
+//
+// It is idempotent per checkout session: a session that already has a
+// payment row is not credited again, so duplicate webhook deliveries — even
+// to two instances at once — can't double-count a payment (F-10). The unique
+// index on invoice_payments.stripe_checkout_session_id (migration 000007)
+// backs this up.
 func (s *InvoiceService) MarkInvoiceAsPaid(ctx context.Context, id uuid.UUID, amountPaid decimal.Decimal, stripeCheckoutSessionID, stripePaymentIntentID string) (*models.Invoice, error) {
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		var invoice models.Invoice
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&invoice, "id = ?", id).Error; err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return ErrInvoiceNotFound
-			}
+		invoice, err := lockInvoice(tx, id)
+		if err != nil {
 			return err
 		}
 
-		if invoice.Status == models.InvoiceStatusPaid {
-			return nil
-		}
-		if stripeCheckoutSessionID != "" && invoice.StripeCheckoutSessionID != nil &&
-			*invoice.StripeCheckoutSessionID == stripeCheckoutSessionID {
-			return nil // this session was already applied
-		}
-
-		newAmountPaid := invoice.AmountPaid.Add(amountPaid)
-		newStatus := models.InvoiceStatusPartiallyPaid
-		if newAmountPaid.GreaterThanOrEqual(invoice.TotalAmount) {
-			newStatus = models.InvoiceStatusPaid
+		if stripeCheckoutSessionID != "" {
+			var n int64
+			if err := tx.Model(&models.InvoicePayment{}).
+				Where("invoice_id = ? AND stripe_checkout_session_id = ?", id, stripeCheckoutSessionID).
+				Count(&n).Error; err != nil {
+				return err
+			}
+			if n > 0 {
+				return nil // this session was already applied
+			}
 		}
 
-		updates := map[string]interface{}{
-			"status":                     newStatus,
-			"amount_paid":                newAmountPaid,
-			"paid_date":                  time.Now(),
-			"stripe_checkout_session_id": stripeCheckoutSessionID,
-			"stripe_payment_intent_id":   stripePaymentIntentID,
+		if !invoice.Status.AcceptsPayments() || amountPaid.GreaterThan(invoice.BalanceDue()) {
+			logging.Warn(ctx, "[INVOICE-SERVICE] Stripe payment received for an invoice that was not expecting it; recorded for manual review", map[string]any{
+				"invoice_id": id, "status": invoice.Status, "amount": amountPaid.StringFixed(2), "balance_due": invoice.BalanceDue().StringFixed(2),
+			})
 		}
-		if err := tx.Model(&models.Invoice{}).Where("id = ?", id).Updates(updates).Error; err != nil {
-			return fmt.Errorf("failed to mark invoice as paid: %w", err)
+
+		now := time.Now()
+		payment := &models.InvoicePayment{
+			InvoiceID:               id,
+			Amount:                  amountPaid,
+			PaymentDate:             now,
+			PaymentMethod:           "stripe",
+			ReferenceNumber:         stripePaymentIntentID,
+			StripeCheckoutSessionID: nonEmpty(stripeCheckoutSessionID),
+			StripePaymentIntentID:   nonEmpty(stripePaymentIntentID),
 		}
-		return nil
+		if err := tx.Create(payment).Error; err != nil {
+			return fmt.Errorf("failed to record stripe payment: %w", err)
+		}
+
+		extra := map[string]interface{}{}
+		if stripeCheckoutSessionID != "" {
+			extra["stripe_checkout_session_id"] = stripeCheckoutSessionID
+		}
+		if stripePaymentIntentID != "" {
+			extra["stripe_payment_intent_id"] = stripePaymentIntentID
+		}
+		return applyPayment(tx, invoice, amountPaid, now, extra)
 	})
 	if err != nil {
 		return nil, err

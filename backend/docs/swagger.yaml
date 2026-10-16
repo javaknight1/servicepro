@@ -1417,7 +1417,9 @@ definitions:
       created_at:
         type: string
       created_by:
-        description: Metadata
+        description: |-
+          CreatedBy is the staff member who recorded the payment; nil for
+          payments recorded by a Stripe webhook.
         type: string
       id:
         type: string
@@ -1434,6 +1436,14 @@ definitions:
       payment_method:
         type: string
       reference_number:
+        type: string
+      stripe_checkout_session_id:
+        description: |-
+          Stripe references for online payments (nil for manually recorded
+          payments). A checkout session is applied at most once (unique index,
+          migration 000007).
+        type: string
+      stripe_payment_intent_id:
         type: string
       updated_at:
         type: string
@@ -3516,15 +3526,6 @@ definitions:
         description: Valid is true if Time is not NULL
         type: boolean
     type: object
-  internal_api_handlers.BulkDownloadRequest:
-    properties:
-      document_ids:
-        items:
-          type: string
-        type: array
-      file_name:
-        type: string
-    type: object
   internal_api_handlers.CalculateDiscountRequest:
     properties:
       invoice_amount:
@@ -3679,56 +3680,6 @@ definitions:
     - name
     - term_type
     type: object
-  internal_api_handlers.DownloadRecord:
-    properties:
-      content_type:
-        type: string
-      document_id:
-        type: string
-      document_key:
-        type: string
-      duration_ms:
-        description: Download duration in milliseconds
-        type: integer
-      error:
-        type: string
-      file_name:
-        type: string
-      file_size:
-        type: integer
-      id:
-        type: string
-      method:
-        description: stream, redirect, url_generated, bulk
-        type: string
-      referer:
-        type: string
-      success:
-        type: boolean
-      timestamp:
-        type: string
-      user_agent:
-        type: string
-      user_email:
-        type: string
-      user_id:
-        type: string
-      user_ip:
-        type: string
-    type: object
-  internal_api_handlers.DownloadURLResponse:
-    properties:
-      expires_at:
-        type: string
-      file_name:
-        type: string
-      mime_type:
-        type: string
-      size:
-        type: integer
-      url:
-        type: string
-    type: object
   internal_api_handlers.ErrorResponse:
     properties:
       error:
@@ -3755,19 +3706,6 @@ definitions:
     - invoice_amount
     - issue_date
     - payment_term_id
-    type: object
-  internal_api_handlers.HistoryResponse:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/internal_api_handlers.DownloadRecord'
-        type: array
-      limit:
-        type: integer
-      offset:
-        type: integer
-      total_count:
-        type: integer
     type: object
   internal_api_handlers.InviteMemberRequest:
     properties:
@@ -8061,282 +7999,6 @@ paths:
       summary: Get import template
       tags:
       - Import/Export
-  /documents/bulk-download:
-    post:
-      consumes:
-      - application/json
-      description: Downloads multiple documents as a ZIP file
-      parameters:
-      - description: Bulk download request
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/internal_api_handlers.BulkDownloadRequest'
-      produces:
-      - application/zip
-      responses:
-        "200":
-          description: OK
-          schema:
-            type: file
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "404":
-          description: Not Found
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "429":
-          description: Too Many Requests
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Bulk download
-      tags:
-      - Documents
-  /documents/download-url/{id}:
-    get:
-      consumes:
-      - application/json
-      description: Returns a presigned URL for downloading a document
-      parameters:
-      - description: Document ID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: URL expiration (e.g., 1h, 30m)
-        in: query
-        name: expires_in
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/internal_api_handlers.DownloadURLResponse'
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "403":
-          description: Forbidden
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "404":
-          description: Not Found
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "429":
-          description: Too Many Requests
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Get download URL
-      tags:
-      - Documents
-  /documents/download/{id}:
-    get:
-      consumes:
-      - application/json
-      description: Downloads a document by ID. Small files are streamed directly,
-        large files redirect to presigned URL.
-      parameters:
-      - description: Document ID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Display inline instead of download
-        in: query
-        name: inline
-        type: boolean
-      produces:
-      - application/octet-stream
-      responses:
-        "200":
-          description: OK
-          schema:
-            type: file
-        "307":
-          description: Temporary Redirect
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "403":
-          description: Forbidden
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "404":
-          description: Not Found
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "429":
-          description: Too Many Requests
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Download document
-      tags:
-      - Documents
-  /documents/history:
-    get:
-      consumes:
-      - application/json
-      description: Returns the current user's download history
-      parameters:
-      - default: 50
-        description: Maximum items to return
-        in: query
-        name: limit
-        type: integer
-      - default: 0
-        description: Items to skip
-        in: query
-        name: offset
-        type: integer
-      - description: Filter start date (YYYY-MM-DD)
-        in: query
-        name: start_date
-        type: string
-      - description: Filter end date (YYYY-MM-DD)
-        in: query
-        name: end_date
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/internal_api_handlers.HistoryResponse'
-        "501":
-          description: Not Implemented
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Get download history
-      tags:
-      - Documents
-  /documents/history/{id}:
-    get:
-      consumes:
-      - application/json
-      description: Returns the download history for a specific document
-      parameters:
-      - description: Document ID
-        in: path
-        name: id
-        required: true
-        type: string
-      - default: 50
-        description: Maximum items to return
-        in: query
-        name: limit
-        type: integer
-      - default: 0
-        description: Items to skip
-        in: query
-        name: offset
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/internal_api_handlers.HistoryResponse'
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "501":
-          description: Not Implemented
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Get document download history
-      tags:
-      - Documents
-  /documents/stats:
-    get:
-      consumes:
-      - application/json
-      description: Returns download statistics for the current user
-      parameters:
-      - default: 30d
-        description: Time period (24h, 7d, 30d, 90d)
-        in: query
-        name: period
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-        "501":
-          description: Not Implemented
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Get download stats
-      tags:
-      - Documents
   /health:
     get:
       consumes:

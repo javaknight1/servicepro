@@ -639,7 +639,7 @@ func (h *InvoiceHandler) RecordPayment(c *gin.Context) {
 		PaymentMethod:   req.PaymentMethod,
 		ReferenceNumber: req.ReferenceNumber,
 		Notes:           req.Notes,
-		CreatedBy:       userID,
+		CreatedBy:       &userID,
 	}
 
 	if req.PaymentDate != nil {
