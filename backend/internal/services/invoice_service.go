@@ -451,6 +451,10 @@ func guardInvoiceSource(tx *gorm.DB, invoice *models.Invoice) error {
 		if err := requireNoActiveInvoice(tx, "quote_id", *invoice.QuoteID); err != nil {
 			return err
 		}
+		// An invoice for a quote bills in the quote's currency (T127).
+		if quote.Currency != "" {
+			invoice.Currency = quote.Currency
+		}
 	}
 	return nil
 }

@@ -23,6 +23,7 @@ type Quote struct {
 	TaxRate       decimal.Decimal `json:"tax_rate" gorm:"type:decimal(5,4);not null;default:0.0000"`
 	TaxAmount     decimal.Decimal `json:"tax_amount" gorm:"type:decimal(12,2);not null;default:0.00"`
 	Total         decimal.Decimal `json:"total" gorm:"type:decimal(12,2);not null;default:0.00"`
+	Currency      string          `json:"currency" gorm:"type:varchar(3);not null;default:'USD'"` // ISO 4217, from the tenant setting at create time
 	Notes         *string         `json:"notes,omitempty" gorm:"type:text"`
 	Terms         *string         `json:"terms,omitempty" gorm:"type:text"`
 	Items         []QuoteItem     `json:"items,omitempty" gorm:"foreignKey:QuoteID;constraint:OnDelete:CASCADE"`
@@ -72,6 +73,9 @@ func (q *Quote) BeforeCreate(tx *gorm.DB) error {
 			return err
 		}
 		q.QuoteNumber = n
+	}
+	if q.Currency == "" {
+		q.Currency = documentCurrency(tx, q.TenantID)
 	}
 
 	// Validate quote
@@ -294,6 +298,7 @@ type QuoteResponse struct {
 	TaxRate     decimal.Decimal     `json:"tax_rate"`
 	TaxAmount   decimal.Decimal     `json:"tax_amount"`
 	Total       decimal.Decimal     `json:"total"`
+	Currency    string              `json:"currency"`
 	Notes       *string             `json:"notes,omitempty"`
 	Terms       *string             `json:"terms,omitempty"`
 	Items       []QuoteItemResponse `json:"items"`
@@ -334,6 +339,7 @@ func (q *Quote) ToResponse() QuoteResponse {
 		TaxRate:     q.TaxRate,
 		TaxAmount:   q.TaxAmount,
 		Total:       q.Total,
+		Currency:    q.Currency,
 		Notes:       q.Notes,
 		Terms:       q.Terms,
 		CreatedBy:   q.CreatedBy,

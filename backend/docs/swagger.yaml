@@ -1273,6 +1273,11 @@ definitions:
       created_by:
         description: Metadata
         type: string
+      currency:
+        description: |-
+          Currency is the ISO 4217 code the invoice is billed in, fixed at create
+          time from the tenant's currency setting (or the source quote's).
+        type: string
       customer:
         allOf:
         - $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.Customer'
@@ -2319,6 +2324,8 @@ definitions:
       created_at:
         type: string
       created_by:
+        type: string
+      currency:
         type: string
       customer:
         $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.UserResponse'
@@ -3721,6 +3728,11 @@ definitions:
         type: string
       created_by:
         description: Metadata
+        type: string
+      currency:
+        description: |-
+          Currency is the ISO 4217 code the invoice is billed in, fixed at create
+          time from the tenant's currency setting (or the source quote's).
         type: string
       customer:
         allOf:

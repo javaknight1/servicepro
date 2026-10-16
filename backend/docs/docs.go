@@ -11679,6 +11679,10 @@ const docTemplate = `{
                     "description": "Metadata",
                     "type": "string"
                 },
+                "currency": {
+                    "description": "Currency is the ISO 4217 code the invoice is billed in, fixed at create\ntime from the tenant's currency setting (or the source quote's).",
+                    "type": "string"
+                },
                 "customer": {
                     "description": "Relationships",
                     "allOf": [
@@ -13198,6 +13202,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "created_by": {
+                    "type": "string"
+                },
+                "currency": {
                     "type": "string"
                 },
                 "customer": {
@@ -15263,6 +15270,10 @@ const docTemplate = `{
                 },
                 "created_by": {
                     "description": "Metadata",
+                    "type": "string"
+                },
+                "currency": {
+                    "description": "Currency is the ISO 4217 code the invoice is billed in, fixed at create\ntime from the tenant's currency setting (or the source quote's).",
                     "type": "string"
                 },
                 "customer": {

@@ -12266,6 +12266,11 @@ export interface components {
             created_at?: string;
             /** @description Metadata */
             created_by?: string;
+            /**
+             * @description Currency is the ISO 4217 code the invoice is billed in, fixed at create
+             *     time from the tenant's currency setting (or the source quote's).
+             */
+            currency?: string;
             /** @description Relationships */
             customer?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.Customer"];
             customer_id?: string;
@@ -12754,6 +12759,7 @@ export interface components {
         "github_com_javaknight1_servicepro_backend_internal_models.QuoteResponse": {
             created_at?: string;
             created_by?: string;
+            currency?: string;
             customer?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.UserResponse"];
             customer_id?: string;
             id?: string;
@@ -13380,6 +13386,11 @@ export interface components {
             created_at?: string;
             /** @description Metadata */
             created_by?: string;
+            /**
+             * @description Currency is the ISO 4217 code the invoice is billed in, fixed at create
+             *     time from the tenant's currency setting (or the source quote's).
+             */
+            currency?: string;
             /** @description Relationships */
             customer?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.Customer"];
             customer_id?: string;

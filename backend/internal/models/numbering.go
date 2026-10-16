@@ -47,11 +47,7 @@ var ErrNoTenantForNumber = errors.New("cannot number a document without a tenant
 // tx must be the transaction the document is inserted in (GORM hooks run
 // inside the create transaction).
 func NextDocumentNumber(tx *gorm.DB, tenantID uuid.UUID, kind string) (string, error) {
-	if tenantID == uuid.Nil {
-		if id, ok := tenancy.TenantID(tx.Statement.Context); ok {
-			tenantID = id
-		}
-	}
+	tenantID = documentTenantID(tx, tenantID)
 	if tenantID == uuid.Nil {
 		return "", ErrNoTenantForNumber
 	}
@@ -84,6 +80,51 @@ func NextDocumentNumber(tx *gorm.DB, tenantID uuid.UUID, kind string) (string, e
 		}
 	}
 	return "", fmt.Errorf("allocate %s number: too many numbers already taken", kind)
+}
+
+// documentTenantID is the document's tenant, or (when the hook runs before
+// the tenancy plugin has stamped it) the tenant of the statement's context.
+func documentTenantID(tx *gorm.DB, tenantID uuid.UUID) uuid.UUID {
+	if tenantID == uuid.Nil {
+		if id, ok := tenancy.TenantID(tx.Statement.Context); ok {
+			return id
+		}
+	}
+	return tenantID
+}
+
+// DefaultCurrency is used when a tenant has no (valid) currency setting.
+const DefaultCurrency = "USD"
+
+// TenantCurrency returns the tenant's ISO 4217 currency setting upper-cased,
+// or USD when it is unset or not a three-letter code (T127).
+func TenantCurrency(settings TenantSettings) string {
+	return NormalizeCurrency(settings.Currency)
+}
+
+// NormalizeCurrency upper-cases a three-letter currency code, or returns
+// USD for anything else (including empty).
+func NormalizeCurrency(code string) string {
+	c := strings.ToUpper(strings.TrimSpace(code))
+	if len(c) != 3 {
+		return DefaultCurrency
+	}
+	for _, r := range c {
+		if r < 'A' || r > 'Z' {
+			return DefaultCurrency
+		}
+	}
+	return c
+}
+
+// documentCurrency is the currency a new invoice/quote is billed in: the
+// tenant's currency setting, read in the create transaction.
+func documentCurrency(tx *gorm.DB, tenantID uuid.UUID) string {
+	tenantID = documentTenantID(tx, tenantID)
+	if tenantID == uuid.Nil {
+		return DefaultCurrency
+	}
+	return TenantCurrency(TenantSettingsInTx(tx.Session(&gorm.Session{NewDB: true}), tenantID))
 }
 
 // maxNumberPrefixLen keeps prefix + 6-digit counter well inside the
