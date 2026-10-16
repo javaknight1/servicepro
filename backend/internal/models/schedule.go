@@ -68,7 +68,7 @@ type Schedule struct {
 	CancelledAt         *int64             `json:"cancelled_at" gorm:"type:bigint"`
 	CancelledBy         *uuid.UUID         `json:"cancelled_by" gorm:"type:uuid"`
 	CancellationReason  *string            `json:"cancellation_reason" gorm:"type:text"`
-	RemindersEnabled    bool               `json:"reminders_enabled" gorm:"default:true"`
+	RemindersEnabled    bool               `json:"reminders_enabled"` // no default:true tag (it turns false into true on insert)
 	ReminderTime        *int64             `json:"reminder_time" gorm:"type:bigint"`
 	Color               *string            `json:"color" gorm:"type:varchar(7)"` // Hex color code
 	CreatedBy           uuid.UUID          `json:"created_by" gorm:"type:uuid;not null"`

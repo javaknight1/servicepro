@@ -12281,6 +12281,7 @@ export interface components {
             sort_order?: number;
             tax_amount?: number;
             tax_rate?: number;
+            /** @description no default tag: GORM would turn an explicit false into the DB default true (audit 7.M3) */
             taxable?: boolean;
             unit_of_measure?: string;
             unit_price?: number;
@@ -12585,6 +12586,7 @@ export interface components {
             discount_percentage?: number;
             grace_period_days?: number;
             id?: string;
+            /** @description no default:true tag (it turns false into true on insert) */
             is_active?: boolean;
             is_default?: boolean;
             late_fee_amount?: number;
@@ -12896,6 +12898,7 @@ export interface components {
             effective_date?: string;
             expiry_date?: string;
             id?: string;
+            /** @description no default:true tag (it turns false into true on insert) */
             is_active?: boolean;
             is_compound?: boolean;
             name?: string;
@@ -13293,6 +13296,7 @@ export interface components {
             discount_days?: number;
             discount_percentage?: number;
             grace_period_days?: number;
+            /** @description default true */
             is_active?: boolean;
             is_default?: boolean;
             late_fee_amount?: number;

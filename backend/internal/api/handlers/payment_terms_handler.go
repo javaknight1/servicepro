@@ -34,7 +34,7 @@ type CreatePaymentTermRequest struct {
 	LateFeeAmount      decimal.Decimal `json:"late_fee_amount"`
 	GracePeriodDays    int             `json:"grace_period_days" binding:"min=0"`
 	IsDefault          bool            `json:"is_default"`
-	IsActive           bool            `json:"is_active"`
+	IsActive           *bool           `json:"is_active"` // default true
 }
 
 // UpdatePaymentTermRequest represents the request to update a payment term
@@ -215,7 +215,7 @@ func (h *PaymentTermsHandler) CreatePaymentTerm(c *gin.Context) {
 		LateFeeAmount:      req.LateFeeAmount,
 		GracePeriodDays:    req.GracePeriodDays,
 		IsDefault:          req.IsDefault,
-		IsActive:           req.IsActive,
+		IsActive:           req.IsActive == nil || *req.IsActive,
 	}
 
 	if err := h.service.CreatePaymentTerm(ctx, term); err != nil {
