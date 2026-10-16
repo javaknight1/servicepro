@@ -83,7 +83,7 @@ func SetupHandlers(
 
 	// Stripe handlers (optional - depends on Stripe configuration)
 	if svc.StripeClient != nil && svc.StripeWebhook != nil {
-		h.Stripe = handlers.NewStripeHandler(svc.StripeClient, svc.StripeWebhook)
+		h.Stripe = handlers.NewStripeHandler(svc.StripeWebhook)
 	}
 
 	// Billing handler (optional - depends on Stripe service)
