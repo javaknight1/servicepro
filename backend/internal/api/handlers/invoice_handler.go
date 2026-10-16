@@ -16,12 +16,6 @@ import (
 	"github.com/javaknight1/servicepro/backend/internal/services"
 )
 
-// ErrorResponse represents an error response
-type ErrorResponse struct {
-	Error   string `json:"error"`
-	Message string `json:"message,omitempty"`
-}
-
 // InvoiceHandler handles invoice HTTP requests
 type InvoiceHandler struct {
 	service *services.InvoiceService

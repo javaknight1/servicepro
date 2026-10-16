@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
+	"github.com/javaknight1/servicepro/backend/internal/api/apierror"
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/services"
 	csvpkg "github.com/javaknight1/servicepro/backend/pkg/csv"
@@ -48,10 +49,7 @@ func (h *ImportExportHandler) ImportCustomers(c *gin.Context) {
 	// Parse form data
 	var req models.ImportRequest
 	if err := c.ShouldBind(&req); err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
-			Error:   "invalid_request",
-			Message: publicError(err),
-		})
+		apierror.BindError(c, err)
 		return
 	}
 
@@ -63,7 +61,7 @@ func (h *ImportExportHandler) ImportCustomers(c *gin.Context) {
 	// Get uploaded file
 	file, header, err := c.Request.FormFile("file")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
 			Message: "file is required",
 		})
@@ -73,7 +71,7 @@ func (h *ImportExportHandler) ImportCustomers(c *gin.Context) {
 
 	// Validate file format
 	if req.Format != "csv" {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_format",
 			Message: "only CSV format is supported for import",
 		})
@@ -83,17 +81,14 @@ func (h *ImportExportHandler) ImportCustomers(c *gin.Context) {
 	// Read file content into buffer for multiple reads
 	buf := new(bytes.Buffer)
 	if _, err := io.Copy(buf, file); err != nil {
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "internal_error",
-			Message: "failed to read file",
-		})
+		apierror.Internal(c, err, "failed to read file")
 		return
 	}
 
 	// Count rows
 	rowCount, err := csvpkg.CountRows(bytes.NewReader(buf.Bytes()))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_file",
 			Message: fmt.Sprintf("failed to read CSV: %v", err),
 		})
@@ -101,7 +96,7 @@ func (h *ImportExportHandler) ImportCustomers(c *gin.Context) {
 	}
 
 	if rowCount == 0 {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_file",
 			Message: "file contains no data rows",
 		})
@@ -109,7 +104,7 @@ func (h *ImportExportHandler) ImportCustomers(c *gin.Context) {
 	}
 
 	if rowCount > 10000 {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "file_too_large",
 			Message: "file exceeds maximum of 10,000 rows",
 		})
@@ -120,7 +115,7 @@ func (h *ImportExportHandler) ImportCustomers(c *gin.Context) {
 	parser := csvpkg.NewParser(bytes.NewReader(buf.Bytes()))
 	rows, parseErrors, err := parser.ParseCustomers()
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "parse_error",
 			Message: fmt.Sprintf("failed to parse CSV: %v", err),
 		})
@@ -139,7 +134,7 @@ func (h *ImportExportHandler) ImportCustomers(c *gin.Context) {
 			errorMessages = append(errorMessages, e.String())
 		}
 
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "validation_error",
 			Message: fmt.Sprintf("file contains %d validation errors", len(parseErrors)),
 			Details: errorMessages,
@@ -150,7 +145,7 @@ func (h *ImportExportHandler) ImportCustomers(c *gin.Context) {
 	// Get user ID from context (set by auth middleware)
 	userID, exists := c.Get("user_id")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusUnauthorized, models.ErrorResponse{
 			Error:   "unauthorized",
 			Message: "user not authenticated",
 		})
@@ -159,10 +154,7 @@ func (h *ImportExportHandler) ImportCustomers(c *gin.Context) {
 
 	userUUID, ok := userID.(uuid.UUID)
 	if !ok {
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "internal_error",
-			Message: "invalid user ID format",
-		})
+		apierror.Internal(c, err, "invalid user ID format")
 		return
 	}
 
@@ -174,10 +166,7 @@ func (h *ImportExportHandler) ImportCustomers(c *gin.Context) {
 		len(rows),
 	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "internal_error",
-			Message: "failed to create import job",
-		})
+		apierror.Internal(c, err, "failed to create import job")
 		return
 	}
 
@@ -189,10 +178,7 @@ func (h *ImportExportHandler) ImportCustomers(c *gin.Context) {
 		req.DuplicateHandling,
 		req.DryRun,
 	); err != nil {
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "internal_error",
-			Message: "failed to enqueue import job",
-		})
+		apierror.Internal(c, err, "failed to enqueue import job")
 		return
 	}
 
@@ -221,7 +207,7 @@ func (h *ImportExportHandler) GetImportStatus(c *gin.Context) {
 	jobIDStr := c.Param("job_id")
 	jobID, err := uuid.Parse(jobIDStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
 			Message: "invalid job ID",
 		})
@@ -230,7 +216,7 @@ func (h *ImportExportHandler) GetImportStatus(c *gin.Context) {
 
 	job, err := h.importService.GetImportJob(c.Request.Context(), jobID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusNotFound, models.ErrorResponse{
 			Error:   "not_found",
 			Message: "import job not found",
 		})
@@ -246,10 +232,7 @@ func (h *ImportExportHandler) GetImportStatus(c *gin.Context) {
 	// Get errors (limit to 100)
 	importErrors, err := h.importService.GetImportErrors(c.Request.Context(), jobID, 100)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "internal_error",
-			Message: "failed to retrieve import errors",
-		})
+		apierror.Internal(c, err, "failed to retrieve import errors")
 		return
 	}
 
@@ -293,7 +276,7 @@ func (h *ImportExportHandler) GetImportStatus(c *gin.Context) {
 // @Failure		410	{object}	models.ErrorResponse
 // @Router			/customers/export [get]
 func (h *ImportExportHandler) ExportCustomers(c *gin.Context) {
-	c.JSON(http.StatusGone, models.ErrorResponse{
+	apierror.WriteResponse(c, http.StatusGone, models.ErrorResponse{
 		Error:   "deprecated",
 		Message: "This endpoint has been deprecated. Use POST /api/v1/exports with export_type='customers' for async exports with progress tracking.",
 	})

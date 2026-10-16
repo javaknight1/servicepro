@@ -10,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
+	"github.com/javaknight1/servicepro/backend/internal/api/apierror"
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/services"
 )
@@ -47,21 +48,21 @@ type StartExportRequest struct {
 // @Produce json
 // @Param request body StartExportRequest true "Export configuration"
 // @Success 202 {object} models.ExportJobResponse
-// @Failure 400 {object} map[string]string
-// @Failure 401 {object} map[string]string
-// @Failure 500 {object} map[string]string
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/exports [post]
 func (h *ExportHandler) StartExport(c *gin.Context) {
 	var req StartExportRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": publicError(err)})
+		apierror.BindError(c, err)
 		return
 	}
 
 	// Get user ID from context (set by auth middleware)
 	userID, exists := c.Get("user_id")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "user not authenticated"})
+		apierror.WriteResponse(c, http.StatusUnauthorized, models.ErrorResponse{Error: "user not authenticated"})
 		return
 	}
 
@@ -79,7 +80,7 @@ func (h *ExportHandler) StartExport(c *gin.Context) {
 
 	job, err := h.exportService.StartExport(c.Request.Context(), userID.(uuid.UUID), config)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": publicError(err)})
+		apierror.Respond(c, err, "Failed to start export")
 		return
 	}
 
@@ -93,20 +94,20 @@ func (h *ExportHandler) StartExport(c *gin.Context) {
 // @Produce json
 // @Param id path string true "Export job ID"
 // @Success 200 {object} models.ExportJobResponse
-// @Failure 400 {object} map[string]string
-// @Failure 404 {object} map[string]string
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
 // @Router /api/v1/exports/{id} [get]
 func (h *ExportHandler) GetExportStatus(c *gin.Context) {
 	idStr := c.Param("id")
 	jobID, err := uuid.Parse(idStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid job ID"})
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{Error: "invalid job ID"})
 		return
 	}
 
 	response, err := h.exportService.GetExportStatus(c.Request.Context(), jobID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "export job not found"})
+		apierror.WriteResponse(c, http.StatusNotFound, models.ErrorResponse{Error: "export job not found"})
 		return
 	}
 
@@ -120,21 +121,21 @@ func (h *ExportHandler) GetExportStatus(c *gin.Context) {
 // @Produce json
 // @Param id path string true "Export job ID"
 // @Success 200 {object} models.ExportProgress
-// @Failure 400 {object} map[string]string
-// @Failure 404 {object} map[string]string
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
 // @Router /api/v1/exports/{id}/progress [get]
 func (h *ExportHandler) GetExportProgress(c *gin.Context) {
 	idStr := c.Param("id")
 	jobID, err := uuid.Parse(idStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid job ID"})
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{Error: "invalid job ID"})
 		return
 	}
 
 	// Progress lives on the tenant-scoped job row, so any instance answers.
 	progress, err := h.exportService.GetProgress(c.Request.Context(), jobID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "export job not found"})
+		apierror.WriteResponse(c, http.StatusNotFound, models.ErrorResponse{Error: "export job not found"})
 		return
 	}
 
@@ -148,19 +149,19 @@ func (h *ExportHandler) GetExportProgress(c *gin.Context) {
 // @Produce text/event-stream
 // @Param id path string true "Export job ID"
 // @Success 200 {string} string "SSE stream"
-// @Failure 400 {object} map[string]string
+// @Failure 400 {object} models.ErrorResponse
 // @Router /api/v1/exports/{id}/stream [get]
 func (h *ExportHandler) StreamExportProgress(c *gin.Context) {
 	idStr := c.Param("id")
 	jobID, err := uuid.Parse(idStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid job ID"})
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{Error: "invalid job ID"})
 		return
 	}
 
 	// Verify the job belongs to the caller's tenant before streaming.
 	if _, err := h.exportService.GetExportStatus(c.Request.Context(), jobID); err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "export job not found"})
+		apierror.WriteResponse(c, http.StatusNotFound, models.ErrorResponse{Error: "export job not found"})
 		return
 	}
 
@@ -201,25 +202,25 @@ func (h *ExportHandler) StreamExportProgress(c *gin.Context) {
 // @Produce application/octet-stream
 // @Param id path string true "Export job ID"
 // @Success 200 {file} binary
-// @Failure 400 {object} map[string]string
-// @Failure 404 {object} map[string]string
-// @Failure 409 {object} map[string]string
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Failure 409 {object} models.ErrorResponse
 // @Router /api/v1/exports/{id}/download [get]
 func (h *ExportHandler) DownloadExport(c *gin.Context) {
 	idStr := c.Param("id")
 	jobID, err := uuid.Parse(idStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid job ID"})
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{Error: "invalid job ID"})
 		return
 	}
 
 	file, job, err := h.exportService.GetExportFile(c.Request.Context(), jobID)
 	if err != nil {
 		if publicError(err) == "export not ready for download" {
-			c.JSON(http.StatusConflict, gin.H{"error": publicError(err)})
+			apierror.Write(c, http.StatusConflict, "export_not_ready", "The export isn't ready for download yet")
 			return
 		}
-		c.JSON(http.StatusNotFound, gin.H{"error": "export not found"})
+		apierror.WriteResponse(c, http.StatusNotFound, models.ErrorResponse{Error: "export not found"})
 		return
 	}
 	defer file.Close()
@@ -227,7 +228,7 @@ func (h *ExportHandler) DownloadExport(c *gin.Context) {
 	// Exports hold bulk tenant data: only the member who requested the
 	// export may download it (the lookup itself is tenant-scoped).
 	if uid, ok := c.Get("user_id"); !ok || uid != job.UserID {
-		c.JSON(http.StatusNotFound, gin.H{"error": "export not found"})
+		apierror.WriteResponse(c, http.StatusNotFound, models.ErrorResponse{Error: "export not found"})
 		return
 	}
 
@@ -248,19 +249,19 @@ func (h *ExportHandler) DownloadExport(c *gin.Context) {
 // @Produce json
 // @Param id path string true "Export job ID"
 // @Success 200 {object} map[string]string
-// @Failure 400 {object} map[string]string
-// @Failure 404 {object} map[string]string
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
 // @Router /api/v1/exports/{id}/cancel [post]
 func (h *ExportHandler) CancelExport(c *gin.Context) {
 	idStr := c.Param("id")
 	jobID, err := uuid.Parse(idStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid job ID"})
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{Error: "invalid job ID"})
 		return
 	}
 
 	if err := h.exportService.CancelExport(c.Request.Context(), jobID); err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "export job not found or not cancellable"})
+		apierror.WriteResponse(c, http.StatusNotFound, models.ErrorResponse{Error: "export job not found or not cancellable"})
 		return
 	}
 
@@ -274,12 +275,12 @@ func (h *ExportHandler) CancelExport(c *gin.Context) {
 // @Produce json
 // @Param limit query int false "Maximum number of exports to return" default(20)
 // @Success 200 {array} models.ExportJobResponse
-// @Failure 401 {object} map[string]string
+// @Failure 401 {object} models.ErrorResponse
 // @Router /api/v1/exports [get]
 func (h *ExportHandler) ListExports(c *gin.Context) {
 	userID, exists := c.Get("user_id")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "user not authenticated"})
+		apierror.WriteResponse(c, http.StatusUnauthorized, models.ErrorResponse{Error: "user not authenticated"})
 		return
 	}
 
@@ -294,7 +295,7 @@ func (h *ExportHandler) ListExports(c *gin.Context) {
 
 	exports, err := h.exportService.ListExports(c.Request.Context(), userID.(uuid.UUID), limit)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": publicError(err)})
+		apierror.Respond(c, err, "Failed to list exports")
 		return
 	}
 
@@ -309,13 +310,13 @@ func (h *ExportHandler) ListExports(c *gin.Context) {
 // @Produce application/octet-stream
 // @Param request body StartExportRequest true "Export configuration"
 // @Success 200 {file} binary
-// @Failure 400 {object} map[string]string
-// @Failure 500 {object} map[string]string
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/exports/quick [post]
 func (h *ExportHandler) QuickExport(c *gin.Context) {
 	var req StartExportRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": publicError(err)})
+		apierror.BindError(c, err)
 		return
 	}
 
@@ -353,12 +354,12 @@ func (h *ExportHandler) QuickExport(c *gin.Context) {
 		data, err = h.exportService.ExportToPDF(c.Request.Context(), nil, config)
 		filename = fmt.Sprintf("%s_%s.pdf", config.ExportType, timestamp)
 	default:
-		c.JSON(http.StatusBadRequest, gin.H{"error": "unsupported format"})
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{Error: "unsupported format"})
 		return
 	}
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": publicError(err)})
+		apierror.Respond(c, err, "Failed to generate export")
 		return
 	}
 

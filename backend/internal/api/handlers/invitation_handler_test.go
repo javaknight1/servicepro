@@ -15,6 +15,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 
+	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/services"
 )
 
@@ -67,7 +68,7 @@ func TestInvitationHandler_ErrorsHaveCodeAndMessage(t *testing.T) {
 			router.ServeHTTP(w, req)
 
 			assert.Equal(t, tc.wantStatus, w.Code)
-			var resp ErrorResponse
+			var resp models.ErrorResponse
 			require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
 			assert.Equal(t, tc.wantCode, resp.Error)
 			assert.NotEmpty(t, resp.Message, "a human message accompanies the code")

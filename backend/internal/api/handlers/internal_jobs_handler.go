@@ -9,6 +9,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/javaknight1/servicepro/backend/internal/api/apierror"
+	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/services"
 	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"
 )
@@ -49,12 +51,12 @@ type PaymentRemindersJobResponse struct {
 // wrong token (constant-time compare).
 func (h *InternalJobsHandler) Authorize(c *gin.Context) {
 	if h.secret == "" {
-		c.AbortWithStatusJSON(http.StatusNotFound, ErrorResponse{Error: "Not found"})
+		apierror.WriteResponse(c, http.StatusNotFound, models.ErrorResponse{Error: "Not found"})
 		return
 	}
 	got := strings.TrimSpace(c.GetHeader(InternalJobsTokenHeader))
 	if got == "" || subtle.ConstantTimeCompare([]byte(got), []byte(h.secret)) != 1 {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, ErrorResponse{Error: "Invalid internal jobs token"})
+		apierror.WriteResponse(c, http.StatusUnauthorized, models.ErrorResponse{Error: "Invalid internal jobs token"})
 		return
 	}
 	c.Next()
@@ -67,14 +69,14 @@ func (h *InternalJobsHandler) Authorize(c *gin.Context) {
 // @Produce		json
 // @Param			X-Internal-Jobs-Token	header		string	true	"Internal jobs secret"
 // @Success		200						{object}	PaymentRemindersJobResponse
-// @Failure		401						{object}	ErrorResponse
-// @Failure		404						{object}	ErrorResponse
-// @Failure		500						{object}	ErrorResponse
-// @Failure		503						{object}	ErrorResponse
+// @Failure		401						{object}	models.ErrorResponse
+// @Failure		404						{object}	models.ErrorResponse
+// @Failure		500						{object}	models.ErrorResponse
+// @Failure		503						{object}	models.ErrorResponse
 // @Router			/internal/jobs/payment-reminders [post]
 func (h *InternalJobsHandler) RunPaymentReminders(c *gin.Context) {
 	if h.reminders == nil {
-		c.JSON(http.StatusServiceUnavailable, ErrorResponse{Error: "Payment reminder service not configured"})
+		apierror.WriteResponse(c, http.StatusServiceUnavailable, models.ErrorResponse{Error: "Payment reminder service not configured"})
 		return
 	}
 
@@ -82,7 +84,7 @@ func (h *InternalJobsHandler) RunPaymentReminders(c *gin.Context) {
 	result, err := h.reminders.ProcessAllTenants(c.Request.Context())
 	if err != nil {
 		logging.Error(c.Request.Context(), "[INTERNAL-JOBS] payment-reminders failed", map[string]any{"error": err.Error()})
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Payment reminders job failed"})
+		apierror.WriteResponse(c, http.StatusInternalServerError, models.ErrorResponse{Error: "Payment reminders job failed"})
 		return
 	}
 
