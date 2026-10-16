@@ -114,7 +114,6 @@ type Handlers struct {
 	ARAging           *handlers.ARAgingHandler
 	Stripe            *handlers.StripeHandler
 	Billing           *handlers.BillingHandler
-	Webhook           *handlers.WebhookHandler
 	Membership        *handlers.MembershipHandler
 	Export            *handlers.ExportHandler
 	ImportExport      *handlers.ImportExportHandler

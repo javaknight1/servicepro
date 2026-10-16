@@ -13,7 +13,6 @@ func Setup(router *gin.RouterGroup, cfg *routeconfigs.RouteConfig) {
 
 	// Setup route groups
 	SetupAuthRoutes(router, cfg)
-	SetupWebhookRoutes(router, cfg)
 	SetupUserRoutes(router, cfg)
 	SetupCustomerRoutes(router, cfg)
 	SetupJobRoutes(router, cfg)
