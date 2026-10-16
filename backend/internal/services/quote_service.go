@@ -126,11 +126,16 @@ func (s *QuoteService) CreateQuote(req *models.QuoteRequest, userID uuid.UUID) (
 	quote := &models.Quote{
 		CustomerID: req.CustomerID,
 		ValidUntil: req.ValidUntil,
-		TaxRate:    req.TaxRate,
 		Notes:      req.Notes,
 		Terms:      req.Terms,
 		CreatedBy:  userID,
 		Status:     models.QuoteStatusDraft,
+	}
+	// No tax rate in the request: the tenant's default applies (T127).
+	if req.TaxRate != nil {
+		quote.TaxRate = *req.TaxRate
+	} else {
+		quote.ApplyDefaultTaxRate = true
 	}
 
 	// Create quote items
@@ -240,7 +245,9 @@ func (s *QuoteService) UpdateQuote(id uuid.UUID, req *models.QuoteRequest, userI
 	// Update quote fields
 	existingQuote.CustomerID = req.CustomerID
 	existingQuote.ValidUntil = req.ValidUntil
-	existingQuote.TaxRate = req.TaxRate
+	if req.TaxRate != nil {
+		existingQuote.TaxRate = *req.TaxRate
+	}
 	existingQuote.Notes = req.Notes
 	existingQuote.Terms = req.Terms
 	existingQuote.UpdatedBy = &userID
