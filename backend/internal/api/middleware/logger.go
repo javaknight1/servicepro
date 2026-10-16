@@ -35,9 +35,10 @@ func RequestLogger() gin.HandlerFunc {
 		// Get error message if any
 		errorMessage := c.Errors.ByType(gin.ErrorTypePrivate).String()
 
-		// Build full path
-		if raw != "" {
-			path = path + "?" + raw
+		// Query values (tokens, emails, codes) are never logged — only the
+		// parameter names (T239)
+		if keys := QueryKeys(raw); keys != "" {
+			path = path + " query_keys=" + keys
 		}
 
 		// Log format: [timestamp] status latency client_ip method path error
@@ -69,7 +70,7 @@ func StructuredLogger() gin.HandlerFunc {
 			"timestamp":  time.Now().Format(time.RFC3339),
 			"method":     c.Request.Method,
 			"path":       c.Request.URL.Path,
-			"query":      c.Request.URL.RawQuery,
+			"query_keys": QueryKeys(c.Request.URL.RawQuery), // names only, never values (T239)
 			"status":     c.Writer.Status(),
 			"latency_ms": latency.Milliseconds(),
 			"client_ip":  c.ClientIP(),

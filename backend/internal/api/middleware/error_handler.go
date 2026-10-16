@@ -44,7 +44,7 @@ func RecoveryMiddleware(errorTracker errortracking.Client) gin.HandlerFunc {
 						scope.SetExtra("stack_trace", stack)
 						scope.SetExtra("request_method", c.Request.Method)
 						scope.SetExtra("request_path", c.Request.URL.Path)
-						scope.SetExtra("request_query", c.Request.URL.RawQuery)
+						scope.SetExtra("request_query_keys", QueryKeys(c.Request.URL.RawQuery)) // names only (T239)
 						scope.SetExtra("client_ip", c.ClientIP())
 
 						// Add user context if available

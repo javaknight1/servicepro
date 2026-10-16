@@ -49,7 +49,7 @@ type AccessLogEntry struct {
 	RequestID    string            `json:"request_id"`
 	Method       string            `json:"method"`
 	Path         string            `json:"path"`
-	Query        string            `json:"query,omitempty"`
+	Query        string            `json:"query,omitempty"` // sorted parameter names only (T239)
 	StatusCode   int               `json:"status_code"`
 	ResponseTime int64             `json:"response_time_ms"`
 	RequestSize  int64             `json:"request_size,omitempty"`
@@ -387,9 +387,9 @@ func (al *AccessLogger) buildLogEntry(
 		Tags:         []string{},
 	}
 
-	// Add query parameters
+	// Add query parameter names — never their values (T239)
 	if al.config.LogQueryParams && len(c.Request.URL.RawQuery) > 0 {
-		entry.Query = al.filterSensitiveData(c.Request.URL.RawQuery)
+		entry.Query = QueryKeys(c.Request.URL.RawQuery)
 	}
 
 	// Add user agent

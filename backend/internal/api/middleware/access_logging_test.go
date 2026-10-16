@@ -264,16 +264,17 @@ func TestAccessLogging_QueryParams(t *testing.T) {
 	})
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/test?page=1&limit=10", nil)
+	req, _ := http.NewRequest("GET", "/test?page=1&limit=10&token=secret123", nil)
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	// Read log file to verify query params were logged
+	// Parameter names are logged, values never are (T239)
 	logContent, err := os.ReadFile(logger.config.LogFilePath)
 	assert.NoError(t, err)
-	assert.Contains(t, string(logContent), "page=1")
-	assert.Contains(t, string(logContent), "limit=10")
+	assert.Contains(t, string(logContent), "limit,page,token")
+	assert.NotContains(t, string(logContent), "secret123")
+	assert.NotContains(t, string(logContent), "page=1")
 }
 
 func TestAccessLogging_Metrics(t *testing.T) {
