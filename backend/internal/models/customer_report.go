@@ -94,23 +94,6 @@ func (CustomerMetricsCache) TableName() string {
 	return "customer_metrics_cache"
 }
 
-// CustomerSegmentDefinition represents a segment definition
-type CustomerSegmentDefinition struct {
-	ID          uuid.UUID      `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
-	Name        string         `gorm:"type:varchar(50);not null;uniqueIndex" json:"name"`
-	Description string         `gorm:"type:text" json:"description,omitempty"`
-	Criteria    map[string]any `gorm:"type:jsonb;not null" json:"criteria"`
-	Color       string         `gorm:"type:varchar(7)" json:"color,omitempty"`
-	Priority    int            `gorm:"not null;default:0" json:"priority"`
-	IsActive    bool           `gorm:"not null;default:true" json:"is_active"`
-	CreatedAt   time.Time      `json:"created_at"`
-	UpdatedAt   time.Time      `json:"updated_at"`
-}
-
-func (CustomerSegmentDefinition) TableName() string {
-	return "customer_segments"
-}
-
 // CustomerReportQuery represents query parameters for customer reports
 type CustomerReportQuery struct {
 	StartDate    *time.Time       `json:"start_date" form:"start_date"`
@@ -230,16 +213,6 @@ type CustomerReportMetadata struct {
 	TotalRecords  int                 `json:"total_records"`
 	CacheUsed     bool                `json:"cache_used"`
 	ExecutionTime int64               `json:"execution_time_ms"`
-}
-
-// CustomerActivitySummary represents activity summary for a customer
-type CustomerActivitySummary struct {
-	CustomerID       uuid.UUID                    `json:"customer_id"`
-	TotalActivities  int                          `json:"total_activities"`
-	ByType           map[CustomerActivityType]int `json:"by_type"`
-	FirstActivity    *time.Time                   `json:"first_activity,omitempty"`
-	LastActivity     *time.Time                   `json:"last_activity,omitempty"`
-	RecentActivities []CustomerActivity           `json:"recent_activities,omitempty"`
 }
 
 // CohortData represents customer cohort retention data

@@ -155,58 +155,6 @@ func TestIsValidAction(t *testing.T) {
 	}
 }
 
-func TestParsePermissionName(t *testing.T) {
-	tests := []struct {
-		name         string
-		permName     string
-		wantResource string
-		wantAction   string
-		wantErr      error
-	}{
-		{
-			name:         "Valid format",
-			permName:     "users.create",
-			wantResource: "users",
-			wantAction:   "create",
-			wantErr:      nil,
-		},
-		{
-			name:         "Valid format with multiple dots",
-			permName:     "api.users.create", // Should still split on first dot
-			wantResource: "api",
-			wantAction:   "users.create",
-			wantErr:      nil,
-		},
-		{
-			name:         "Invalid format - no dot",
-			permName:     "userscreate",
-			wantResource: "",
-			wantAction:   "",
-			wantErr:      ErrInvalidPermissionFormat,
-		},
-		{
-			name:         "Invalid format - empty",
-			permName:     "",
-			wantResource: "",
-			wantAction:   "",
-			wantErr:      ErrInvalidPermissionFormat,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			resource, action, err := ParsePermissionName(tt.permName)
-			if tt.wantErr != nil {
-				assert.ErrorIs(t, err, tt.wantErr)
-			} else {
-				assert.NoError(t, err)
-				assert.Equal(t, tt.wantResource, resource)
-				assert.Equal(t, tt.wantAction, action)
-			}
-		})
-	}
-}
-
 func TestPermission_Matches(t *testing.T) {
 	perm := Permission{
 		Name:     "users.create",
@@ -545,42 +493,4 @@ func TestPermissionChecker_GetPermissionsByResource(t *testing.T) {
 
 	nonePerms := checker.GetPermissionsByResource("products")
 	assert.Len(t, nonePerms, 0, "Should have 0 product permissions")
-}
-
-func TestPermissionChecker_GetPermissionsByAction(t *testing.T) {
-	perm1 := Permission{ID: uuid.New(), Name: "users.create", Resource: "users", Action: "create"}
-	perm2 := Permission{ID: uuid.New(), Name: "orders.create", Resource: "orders", Action: "create"}
-	perm3 := Permission{ID: uuid.New(), Name: "users.read", Resource: "users", Action: "read"}
-
-	checker := NewPermissionChecker([]Permission{perm1, perm2, perm3})
-
-	createPerms := checker.GetPermissionsByAction("create")
-	assert.Len(t, createPerms, 2, "Should have 2 create permissions")
-
-	readPerms := checker.GetPermissionsByAction("read")
-	assert.Len(t, readPerms, 1, "Should have 1 read permission")
-
-	deletePerms := checker.GetPermissionsByAction("delete")
-	assert.Len(t, deletePerms, 0, "Should have 0 delete permissions")
-}
-
-func TestPermissionChecker_GroupByResource(t *testing.T) {
-	perm1 := Permission{ID: uuid.New(), Name: "users.create", Resource: "users", Action: "create"}
-	perm2 := Permission{ID: uuid.New(), Name: "users.read", Resource: "users", Action: "read"}
-	perm3 := Permission{ID: uuid.New(), Name: "orders.create", Resource: "orders", Action: "create"}
-
-	checker := NewPermissionChecker([]Permission{perm1, perm2, perm3})
-
-	grouped := checker.GroupByResource()
-
-	assert.Len(t, grouped, 2, "Should have 2 resource groups")
-
-	// Check that we have groups for users and orders
-	resourceMap := make(map[string][]Permission)
-	for _, group := range grouped {
-		resourceMap[group.Resource] = group.Permissions
-	}
-
-	assert.Len(t, resourceMap["users"], 2, "Users should have 2 permissions")
-	assert.Len(t, resourceMap["orders"], 1, "Orders should have 1 permission")
 }

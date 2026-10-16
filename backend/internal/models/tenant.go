@@ -346,23 +346,3 @@ func (tu *TenantUser) ToMemberResponse() TenantMemberResponse {
 
 	return response
 }
-
-// ListTenantsResponse represents the response for listing tenants
-type ListTenantsResponse struct {
-	Tenants    []TenantResponse `json:"tenants"`
-	Total      int64            `json:"total"`
-	Page       int              `json:"page"`
-	PageSize   int              `json:"page_size"`
-	TotalPages int              `json:"total_pages"`
-}
-
-// TenantSwitchRequest represents the request to switch active tenant
-type TenantSwitchRequest struct {
-	TenantID uuid.UUID `json:"tenant_id" binding:"required"`
-}
-
-// TenantSwitchResponse represents the response after switching tenant
-type TenantSwitchResponse struct {
-	Tenant TenantResponse `json:"tenant"`
-	Token  string         `json:"token"` // New JWT with tenant context
-}

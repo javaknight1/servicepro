@@ -212,24 +212,6 @@ func (ScheduleConflict) TableName() string {
 	return "schedule_conflicts"
 }
 
-// ScheduleRequest represents a request to create or update a schedule
-type ScheduleRequest struct {
-	JobID               uuid.UUID      `json:"job_id" binding:"required"`
-	Title               string         `json:"title" binding:"required,min=1,max=200"`
-	Description         string         `json:"description"`
-	StartTime           int64          `json:"start_time" binding:"required"`
-	EndTime             int64          `json:"end_time" binding:"required"`
-	AllDay              bool           `json:"all_day"`
-	RecurrenceType      RecurrenceType `json:"recurrence_type"`
-	RecurringScheduleID *uuid.UUID     `json:"recurring_schedule_id"`
-	AssignedTechIDs     []uuid.UUID    `json:"assigned_tech_ids"`
-	Location            string         `json:"location" binding:"max=200"`
-	Notes               *string        `json:"notes"`
-	Color               *string        `json:"color" binding:"omitempty,len=7"` // Hex color
-	RemindersEnabled    bool           `json:"reminders_enabled"`
-	ReminderTime        *int64         `json:"reminder_time"`
-}
-
 // ScheduleResponse represents the response for schedule operations
 type ScheduleResponse struct {
 	ID                  uuid.UUID      `json:"id"`
@@ -281,14 +263,6 @@ func (s *Schedule) ToResponse() ScheduleResponse {
 	}
 
 	return resp
-}
-
-// ScheduleListResponse represents a paginated list of schedules
-type ScheduleListResponse struct {
-	Schedules []ScheduleResponse `json:"schedules"`
-	Total     int64              `json:"total"`
-	Page      int                `json:"page"`
-	PageSize  int                `json:"page_size"`
 }
 
 // ScheduleQueryParams represents query parameters for listing schedules

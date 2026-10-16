@@ -236,50 +236,6 @@ func (r *Role) validateHierarchyRecursive(visited map[uuid.UUID]bool) error {
 	return nil
 }
 
-// RoleAssignment represents the many-to-many relationship between users and roles
-type RoleAssignment struct {
-	UserID     uuid.UUID  `json:"user_id" gorm:"type:uuid;primaryKey"`
-	RoleID     uuid.UUID  `json:"role_id" gorm:"type:uuid;primaryKey"`
-	User       User       `json:"user" gorm:"foreignKey:UserID"`
-	Role       Role       `json:"role" gorm:"foreignKey:RoleID"`
-	AssignedAt time.Time  `json:"assigned_at" gorm:"default:CURRENT_TIMESTAMP"`
-	AssignedBy *uuid.UUID `json:"assigned_by,omitempty" gorm:"type:uuid"`
-	ExpiresAt  *time.Time `json:"expires_at,omitempty"`
-}
-
-// TableName overrides the table name
-func (RoleAssignment) TableName() string {
-	return "user_roles"
-}
-
-// IsExpired checks if the role assignment has expired
-func (ra *RoleAssignment) IsExpired() bool {
-	if ra.ExpiresAt == nil {
-		return false
-	}
-	return time.Now().After(*ra.ExpiresAt)
-}
-
-// IsActive checks if the role assignment is currently active
-func (ra *RoleAssignment) IsActive() bool {
-	return !ra.IsExpired()
-}
-
-// RolePermission represents the many-to-many relationship between roles and permissions
-type RolePermission struct {
-	RoleID       uuid.UUID  `json:"role_id" gorm:"type:uuid;primaryKey"`
-	PermissionID uuid.UUID  `json:"permission_id" gorm:"type:uuid;primaryKey"`
-	Role         Role       `json:"role" gorm:"foreignKey:RoleID"`
-	Permission   Permission `json:"permission" gorm:"foreignKey:PermissionID"`
-	GrantedAt    time.Time  `json:"granted_at" gorm:"default:CURRENT_TIMESTAMP"`
-	GrantedBy    *uuid.UUID `json:"granted_by,omitempty" gorm:"type:uuid"`
-}
-
-// TableName overrides the table name
-func (RolePermission) TableName() string {
-	return "role_permissions"
-}
-
 // RoleResponse is the response DTO for role information
 type RoleResponse struct {
 	ID             uuid.UUID            `json:"id"`

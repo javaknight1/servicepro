@@ -407,41 +407,6 @@ func (InvoiceAuditLog) TableName() string {
 	return "invoice_audit_log"
 }
 
-// InvoiceSummary represents a view of invoice summary data
-type InvoiceSummary struct {
-	ID            uuid.UUID       `gorm:"type:uuid;primary_key" json:"id"`
-	InvoiceNumber string          `json:"invoice_number"`
-	CustomerID    uuid.UUID       `json:"customer_id"`
-	Status        InvoiceStatus   `json:"status"`
-	IssueDate     time.Time       `json:"issue_date"`
-	DueDate       time.Time       `json:"due_date"`
-	TotalAmount   decimal.Decimal `json:"total_amount"`
-	AmountPaid    decimal.Decimal `json:"amount_paid"`
-	AmountDue     decimal.Decimal `json:"amount_due"`
-	LineItemCount int             `json:"line_item_count"`
-	IsOverdue     bool            `json:"is_overdue"`
-	DaysOverdue   int             `json:"days_overdue"`
-}
-
-// TableName specifies the view name
-func (InvoiceSummary) TableName() string {
-	return "invoice_summary"
-}
-
-// RevenueByMonth represents monthly revenue statistics
-type RevenueByMonth struct {
-	Month            time.Time       `gorm:"type:timestamp" json:"month"`
-	InvoiceCount     int             `json:"invoice_count"`
-	TotalRevenue     decimal.Decimal `json:"total_revenue"`
-	TotalPaid        decimal.Decimal `json:"total_paid"`
-	TotalOutstanding decimal.Decimal `json:"total_outstanding"`
-}
-
-// TableName specifies the view name
-func (RevenueByMonth) TableName() string {
-	return "revenue_by_month"
-}
-
 // InvoiceFilter represents filter criteria for listing invoices
 type InvoiceFilter struct {
 	CustomerID *uuid.UUID
@@ -465,16 +430,4 @@ type InvoiceListResponse struct {
 	Page       int       `json:"page"`
 	PageSize   int       `json:"page_size"`
 	TotalPages int       `json:"total_pages"`
-}
-
-// InvoiceValidationError represents validation errors
-type InvoiceValidationError struct {
-	Field   string `json:"field"`
-	Message string `json:"message"`
-}
-
-// InvoiceValidationResult represents the result of invoice validation
-type InvoiceValidationResult struct {
-	IsValid bool                     `json:"is_valid"`
-	Errors  []InvoiceValidationError `json:"errors,omitempty"`
 }
