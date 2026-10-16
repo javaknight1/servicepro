@@ -1,220 +1,244 @@
-# Claude Code Instructions for ServicePro
+# CLAUDE.md — ServicePro
 
-This file contains project-specific instructions for Claude Code to follow when working on this codebase.
+Read this every session before writing code. `TODO.md` is the *what to do, in order* (indexed tasks,
+phases, launch gate, decisions). This file pins the rules an agent will otherwise quietly violate —
+especially tenant isolation and the money path.
 
-## Database Migrations
+## What this is
 
-**IMPORTANT: Do NOT create separate migration files.**
+Multi-tenant field-service management SaaS: CRM, jobs/work orders, scheduling + dispatch, quotes,
+invoices, payments, collections, reports. A **tenant** is a service business (ServicePro's customer);
+its **customers** are the people/companies it does work for.
 
-All database schema changes should be made directly to the main schema file:
+- **Positioning** (TODO.md "Product framing", `docs/product/competitive-research-2026-10.md`): the
+  field service platform that gets you paid — built for small commercial/B2B contractors (1–10 techs)
+  billing on net terms. Flat price, unlimited users, no contract.
+- **Status (2026-10-16): local-only, not hosted.** The 2026-10-16 audit (`docs/audits/2026-10-16/`)
+  found critical tenant-isolation and auth-escalation flaws; TODO.md Phase 1 must be complete before
+  anything is exposed to the internet, even invite-only. The production DB host is an open owner
+  decision (TODO T202).
 
-- `/backend/migrations/001_schema.sql`
+## Stack
 
-When adding new tables, columns, indexes, or seed data:
+| Layer    | Today                                                              | Target (TODO Phase 4, League Looper parity)                       |
+| -------- | ------------------------------------------------------------------ | ----------------------------------------------------------------- |
+| API      | Go 1.26, Gin, GORM, Postgres 16, Redis (optional)                  | chi, pgx/sqlc, Postgres RLS backstop, Upstash (if Redis needed)   |
+| Auth     | Own JWT (httpOnly cookies) + bcrypt                                | Supabase Auth; own `users` table keyed by `auth_user_id`          |
+| Web      | React 18, Vite, TS strict, Zustand + React Query, Tailwind v3      | React 19, TanStack Query for all server state, Tailwind v4 tokens |
+| Email    | Resend / SES / SMTP (Mailpit locally)                              | Resend only                                                       |
+| Storage  | S3-compatible (MinIO locally)                                      | Cloudflare R2                                                     |
+| Payments | Stripe (platform account)                                          | Stripe Connect — money goes to the tenant (T169)                  |
+| Obs.     | Sentry, PostHog, Prometheus `/metrics`, Grafana (local only)       | + Better Stack uptime/status                                      |
+| Hosting  | none                                                               | Cloudflare Worker (static assets + `/api` proxy) → Cloud Run      |
 
-1. Add the changes to the appropriate section in `001_schema.sql`
-2. Use `ON CONFLICT` clauses for INSERT statements to make them idempotent
-3. Follow the existing patterns for table creation, indexes, and triggers
+Decision record: TODO.md "Architecture decisions" (D1–D6). **Stay Go API + React SPA — not Next.js**
+(D1). Migrate incrementally; the app must keep working at every step. Don't introduce a new vendor or
+framework without recording a decision there first.
 
-This approach is used during development. When we push to production, we will implement proper incremental migrations.
+## Hard rules (the reason this file exists)
 
-## Project Structure
+1. **Every tenant-owned query is tenant-scoped.** Tenant comes only from the authenticated membership
+   context, never from a client-supplied ID alone. Reads by ID filter `tenant_id` too (cross-tenant →
+   404). New tenant tables get `tenant_id NOT NULL` + a `(tenant_id, …)` index. Add a cross-tenant test
+   for every new repository. (Phase 4 adds RLS as a backstop — it is not a substitute.)
+2. **Authorization is per tenant.** Permission checks take the tenant; a role in tenant A grants
+   nothing in tenant B. No endpoint may let a caller raise their own role; `super_admin` is never
+   assignable through the API.
+3. **Money:** amounts are `shopspring/decimal` today (never `float64`); totals are computed
+   server-side; payment state changes happen in one transaction. Integer cents is under evaluation
+   (T166) — don't mix representations in new code.
+4. **Stripe:** payment state is confirmed only from a signature-verified, deduplicated webhook — never
+   from a client redirect. Every Stripe write carries an idempotency key. Never accept a raw Stripe ID
+   from the client; look up our own tenant-scoped row and use its stored ID.
+5. **Background work must be idempotent.** Jobs run as `POST /internal/jobs/<name>` (token-protected)
+   triggered by `.github/workflows/scheduled-jobs.yml`; in-process tickers are dev-only
+   (`RUN_BACKGROUND_WORKERS`). Claim before acting (e.g. `INSERT … ON CONFLICT DO NOTHING`).
+6. **Secrets never in the repo** (the GitHub repo is public). `.env` files are gitignored; never print
+   secret values — key names only.
 
-### Backend (Go)
+## Project structure
 
-- Models: `/backend/internal/models/`
-- Repositories: `/backend/internal/repository/`
-- Services: `/backend/internal/services/`
-- Handlers: `/backend/internal/api/handlers/`
-- Routes: `/backend/internal/api/routes/`
-- Permissions: `/backend/internal/permissions/`
+```
+servicepro/
+├── CLAUDE.md · TODO.md · RELEASING.md · VERSION · Makefile · docker-compose.yml
+├── backend/                     # Go API (module github.com/javaknight1/servicepro/backend)
+│   ├── cmd/main.go              # server entrypoint
+│   ├── cmd/migrate/             # golang-migrate CLI (up/down/version/force)
+│   ├── config/config.go         # env-based config
+│   ├── migrations/              # 00000N_name.{up,down}.sql, embedded (embed.go)
+│   ├── seeds/dev_seed.sql       # dev-only seed data (never a migration)
+│   ├── internal/models/         # GORM models
+│   ├── internal/repository/     # data access
+│   ├── internal/services/       # business logic
+│   ├── internal/api/handlers/   # HTTP handlers (swag annotations)
+│   ├── internal/api/routes/     # route wiring
+│   ├── internal/api/middleware/ # auth, permissions, edge client IP, rate limits
+│   ├── internal/permissions/    # permission constants
+│   ├── pkg/                     # clients (email, storage, sms, logging, …), database
+│   └── docs/                    # GENERATED swagger (committed)
+├── frontend/                    # React SPA
+│   ├── src/{types,services,store,components,pages,routes}/
+│   ├── worker/                  # Cloudflare Worker: /api/* + /version proxy, assets
+│   ├── wrangler.jsonc           # servicepro-web, servicepro.sharkfins.xyz (not deployed)
+│   └── public/_headers          # CSP/HSTS/cache headers for the static assets
+├── docs/                        # ops/, audits/, product/, architecture/, api/, …
+├── scripts/                     # bump-version, gh-release, deploy-cloudrun, git-hooks/
+└── .github/workflows/           # ci, release-deploy, migrate, db-backup, scheduled-jobs, …
+```
 
-### Frontend (React/TypeScript)
+## Database migrations — ALWAYS ADDITIVE
 
-- Types: `/frontend/src/types/`
-- Services: `/frontend/src/services/`
-- Stores: `/frontend/src/store/`
-- Components: `/frontend/src/components/`
-- Pages: `/frontend/src/pages/`
-- Routes: `/frontend/src/routes/`
+golang-migrate, files in `backend/migrations/`, embedded into the binary.
 
-## Coding Conventions
+- **Never edit a migration that exists on master.** Every schema change is a new pair:
+  `make migrate-create NAME=add_foo` → `00000N_add_foo.up.sql` + `.down.sql`. Use `IF [NOT] EXISTS`.
+  (The old "edit `001_schema.sql` in place" rule is retired: `000001_initial_schema` is a one-time
+  baseline snapshot of it, 2026-10-16.)
+- Schema change and the code that needs it ship in the same commit. Update `backend/seeds/dev_seed.sql`
+  when you add NOT NULL columns so `make seed` keeps working. Seed `INSERT`s use `ON CONFLICT`.
+- Local: the server self-migrates (`RUN_MIGRATIONS_ON_STARTUP`, default on in development);
+  `make migrate`, `make migrate-version`, `make db-fresh-seed`. Production: the release pipeline's
+  `migrate` job owns migrations; the server never migrates at startup. `/health/ready` reports schema
+  state and returns 503 when the DB is behind or dirty.
+
+## Coding conventions
 
 ### Backend
 
-- Use GORM for database operations
-- Follow existing error handling patterns with custom error types
-- Add logging with contextual prefixes (e.g., `[SERVICE-NAME]`)
-- Use UUID for primary keys
+- GORM today (pgx/sqlc is the target — keep new repository methods behind interfaces that take
+  `ctx` and `tenantID`, so the port is mechanical). UUID primary keys, `timestamptz`.
+- Errors: custom error types (`internal/errors`); never return raw `err.Error()` to clients.
+- Logging: structured logger with a contextual prefix (e.g. `[INVOICE-SERVICE]`); no PII or tokens.
+- Client IP: always `middleware.ClientIP(c)` (trusts `X-SP-Client-IP` only with a valid
+  `X-SP-Edge-Secret`) — never read `X-Forwarded-For` directly.
 
 ### Frontend
 
-- Use Zustand for state management
-- Use axios-based API services (see `/frontend/src/services/api.ts`)
-- Follow existing component patterns in `/frontend/src/components/shared/`
-- Use TypeScript strict mode
-
-**IMPORTANT: Never use `any` type.** Always use proper TypeScript types:
-
-- For unknown error types in catch blocks, use `unknown` and the `getErrorMessage()` utility from `/frontend/src/utils/error.ts`
-- For third-party library callbacks, create typed interfaces (see examples in `/frontend/src/components/calendar/types.ts`)
-- For test mocks, create proper mock interfaces instead of using `as any`
-- If you must cast an incomplete mock object, use `as unknown as ProperType` instead of `as any`
+- Zustand for client state; React Query for server state (TanStack Query everywhere is the target).
+- API calls only through the axios services (`frontend/src/services/api.ts`); same-origin `/api`.
+- Follow `frontend/src/components/shared/` patterns. TypeScript strict.
+- **Never use `any`.** Use `unknown` + `getErrorMessage()` (`frontend/src/utils/error.ts`) in catch
+  blocks; typed interfaces for third-party callbacks (see `frontend/src/components/calendar/types.ts`);
+  proper mock interfaces in tests; if you must cast an incomplete mock, `as unknown as ProperType`.
+- Never send tokens/emails/query strings to analytics (PostHog/Sentry) — strip them.
 
 ## Permissions
 
-When adding new features that require permissions:
+When a feature needs a new permission:
 
-1. Add constants to `/backend/internal/permissions/constants.go`
-2. Update `AllPermissions()` function
-3. Update `DefaultRolePermissions()` for appropriate roles
-4. Update `PermissionsByResource()` map
-5. Add permission grants to `001_schema.sql` seed data
+1. Add the constant to `backend/internal/permissions/constants.go`
+2. Update `AllPermissions()`
+3. Update `DefaultRolePermissions()` for the right roles
+4. Update `PermissionsByResource()`
+5. Grant it to roles in a **new migration** (and the dev seed if needed)
 
-## TODO Task Management
+## Environment variables
 
-The `/TODO.md` file uses an indexed task system. Each task has a unique ID (e.g., T001, T002).
+When adding a backend env var, update all three in the same change:
 
-When implementing a task from TODO.md:
+1. `backend/.env.example` — descriptive comment; placeholders for secrets (`sk_test_xxxx`); real
+   defaults for non-sensitive config.
+2. `backend/.env` (gitignored, local) — secrets get `# TODO: Get from …`; non-sensitive defaults
+   match `.env.example`.
+3. `backend/config/config.go` — struct field + `getEnv()` with a sensible default.
 
-1. Look up the task by its ID in the Task Index table
-2. Find the detailed description in the appropriate priority section (P0, P1, P2, P3)
-3. After completing, mark it complete in both the Sprint Roadmap and the detailed section
-4. Move completed items to the "Verified Complete" section with a brief description
-
-When adding new tasks to TODO.md:
-
-1. Assign the next available ID (T019, T020, etc.)
-2. Add to the Task Index table with priority, category, and brief description
-3. Add to the appropriate Sprint Roadmap section with the ID
-4. Add detailed description in the appropriate priority section (P0/P1/P2/P3)
-
----
-
-## Environment Variables
-
-**IMPORTANT: Always update both `.env` files when adding new environment variables.**
-
-When adding new environment variables to the backend:
-
-1. Add to `/backend/.env.example`:
-   - Include a descriptive comment explaining the variable
-   - Use placeholder/example values for sensitive data (e.g., `sk_test_xxxx`, `your-api-key-here`)
-   - Use actual default values for non-sensitive configuration
-
-2. Add to `/backend/.env`:
-   - For sensitive values that need to be obtained elsewhere, add a `# TODO:` comment
-   - For non-sensitive defaults, use the same values as `.env.example`
-   - Example: `STRIPE_API_KEY=  # TODO: Get from Stripe Dashboard`
-
-3. Update `/backend/config/config.go`:
-   - Add the field to the appropriate config struct
-   - Add the `getEnv()` call in `Load()` with a sensible default
-
-This ensures developers can quickly set up their environment by copying `.env.example` to `.env`.
-
----
+Frontend vars live in `frontend/.env.example` (`VITE_*`, baked in at build time). Worker vars/secrets
+live in `frontend/wrangler.jsonc` / `wrangler secret put` (`API_ORIGIN`, `EDGE_PROXY_SECRET`).
 
 ## Makefile
 
-**IMPORTANT: Use the single root Makefile for all build tasks.**
+**One root `Makefile`; never add Makefiles in subdirectories.** New tasks follow the `backend-*` /
+`frontend-*` naming. `make help` lists everything. Common: `make setup`, `make dev`, `make up`,
+`make migrate`, `make seed`, `make test`, `make lint`, `make ci-local`, `make docs`, `make bump`.
 
-All make targets should be defined in the root `/Makefile`. Do NOT create separate Makefiles in subdirectories (e.g., `/backend/Makefile` or `/frontend/Makefile`).
+## API documentation (OpenAPI)
 
-Key targets:
-
-- `make swagger` - Generate Swagger documentation from Go annotations
-- `make generate-api` - Generate TypeScript API types from Swagger
-- `make docs` - Run the full API documentation pipeline (swagger + generate-api)
-- `make help` - List all available targets
-
-When adding new backend or frontend build tasks, add them to the root Makefile following the existing patterns for `backend-*` and `frontend-*` targets.
-
----
-
-## API Documentation (OpenAPI/Swagger)
-
-**IMPORTANT: Keep API documentation in sync with code changes.**
-
-When modifying backend API endpoints (handlers), always update the Swagger annotations:
-
-1. **Adding a new endpoint**: Add full swagger annotations above the handler function:
-
-   ```go
-   // @Summary      Short description
-   // @Description  Longer description
-   // @Tags         ResourceName
-   // @Accept       json
-   // @Produce      json
-   // @Security     BearerAuth
-   // @Param        id   path      string  true  "Resource ID"
-   // @Param        body body      models.RequestType  true  "Request body"
-   // @Success      200  {object}  models.ResponseType
-   // @Failure      400  {object}  models.ErrorResponse
-   // @Router       /resource/{id} [get]
-   ```
-
-2. **Modifying an endpoint**: Update the annotations to reflect changes to:
-   - Request/response types
-   - Path or query parameters
-   - Status codes
-   - Security requirements
-
-3. **Removing an endpoint**: Remove the handler and its annotations
-
-4. **After making changes**: Regenerate the documentation:
-   ```bash
-   make docs
-   ```
-   This regenerates both the Swagger JSON and the frontend TypeScript types.
-
-The generated files are:
-
-- `backend/docs/swagger.json` - OpenAPI specification
-- `frontend/src/types/api.generated.ts` - TypeScript types for API responses
-
----
+Swag annotations on every handler (`@Summary @Description @Tags @Accept @Produce @Security @Param
+@Success @Failure @Router`). Add/modify/remove them with the endpoint. After any annotation change run
+**`make docs`** and commit `backend/docs/` + `frontend/src/types/api.generated.ts` — they are committed
+on purpose; the pre-commit hook and CI's `openapi-drift` job fail on drift. swag is pinned by the
+`tool` directive in `backend/go.mod` (`go tool swag`).
 
 ## Testing
 
-### Integration Tests
+- Backend: `make backend-test` (race, integration skipped). Integration: `make test-integration`.
+- Frontend: `make frontend-test` (vitest). Integration tests in `frontend/tests/integration/`
+  (`auth`, `customer`, `job`, `quote`, `invoice`) — **update them when you change those workflows**
+  (new page/component in a flow, API service method changes → mocks, validation, routing, new status
+  transitions). Utilities in `frontend/tests/integration/setup.ts` (`renderWithProviders()`, mock
+  stores, `createMockApiResponse()`, entity factories).
+- Every security fix gets a regression test; every new repository gets a cross-tenant test.
+- `make ci-local` runs the core CI gates before you push.
 
-**IMPORTANT: Update integration tests when modifying critical workflows.**
+## Git hooks & commit message contract
 
-Integration tests are located in `/frontend/tests/integration/` and cover critical user workflows:
+Install once: `make install-hooks` (symlinks `scripts/git-hooks/*`). pre-commit runs golangci-lint,
+Go tests/build and the OpenAPI drift check on staged backend changes, eslint + tsc on staged frontend
+changes. commit-msg enforces the prefix list. Don't bypass with `--no-verify`.
 
-- `auth.integration.test.tsx` - Authentication flows (login, register, password reset)
-- `customer.integration.test.tsx` - Customer CRUD operations
-- `job.integration.test.tsx` - Job lifecycle (creation, status transitions, completion)
-- `quote.integration.test.tsx` - Quote workflow (creation, sending, acceptance)
-- `invoice.integration.test.tsx` - Invoice & payment flows
+**Commits are the changelog** (`scripts/gh-release.sh` builds release notes from subjects;
+`scripts/bump-version.sh` reads them to pick the version):
 
-When making changes that affect these workflows, update the corresponding integration tests:
+| Prefix                                                              | In release notes? | Bump    |
+| ------------------------------------------------------------------- | ----------------- | ------- |
+| `feat:`                                                             | yes               | MINOR   |
+| `fix:`                                                              | yes               | PATCH   |
+| `<type>!:` / `BREAKING CHANGE`                                      | yes               | MINOR pre-1.0, MAJOR after |
+| `deps:` / `deps(go):` / `deps(npm):`                                | no                | PATCH   |
+| `chore: docs: ci: build: test: style: refactor: perf: release:`     | no                | none    |
 
-1. **Adding a new page/component in a workflow**: Add test cases covering the new functionality
-2. **Changing API service methods**: Update mocks in the relevant test file
-3. **Modifying form validation**: Update validation test cases
-4. **Changing navigation/routing**: Update navigation assertions
-5. **Adding new status transitions**: Add test cases for the new transitions
+Legacy `minor:`/`major:` subjects (≤ v0.7.0) are still understood by the bump script; don't use them.
+Format: `type: short description (T0XX)`. One logical change per commit; commit after every task.
 
-### Running Tests
+## Releases & hosting
 
-```bash
-# Run all tests
-npm test
+Tag-driven: `make bump` → commit `VERSION` → `git tag vX.Y.Z && git push origin vX.Y.Z`. Full process
+in `RELEASING.md`; one-time setup in `docs/ops/cloud-run-setup.md`; rollback in `docs/ops/deploy.md`;
+backups in `docs/ops/backups.md`. `release-deploy.yml` skips every deploy job until the repo variable
+`GCP_PROJECT_ID` exists, so today a tag only publishes GitHub Release notes.
 
-# Run integration tests only
-npm test -- tests/integration
+Planned production shape (nothing is provisioned): `servicepro.sharkfins.xyz` → Worker
+`servicepro-web` (static assets, SPA fallback) → `/api/*` and `/version` proxied to Cloud Run
+`servicepro-api` with `X-SP-Client-IP` + `X-SP-Edge-Secret`. The API rejects non-edge traffic in
+production. Cloud Run instances × DB pool must stay under the DB's connection limit.
 
-# Run with coverage
-npm run test:coverage
+## TODO task management
+
+`TODO.md` uses indexed tasks (T001…). It is the in-repo source of truth; the Notion **Tasks** database
+(app = ServicePro, under Apps → All Apps → ServicePro) mirrors it for tracking.
+
+When implementing a task:
+
+1. Find it in the Task Index, then its `#### T### — …` section under its phase.
+2. When done, update **all three places** in TODO.md: strike through every cell of its Task Index
+   row (`| ~~T042~~ | ~~5~~ | ~~Feature~~ | ~~4~~ | ~~Title~~ |`), check it off in the phase section,
+   and add a line to **Verified Complete** (ID + what was done + where). Update "Last Updated".
+3. Commit immediately (`type: description (T0XX)`).
+4. Mirror the status in Notion (Status = Done, Completed date, Commit Message) — if the Notion tools
+   aren't available in the session, say so in your summary so it can be synced later.
+
+When adding a task: next free ID; a Task Index row (completed rows first by ID, then open by
+Phase → ID; keep the columns padded — see the snippet at the top of TODO.md's Task Index or re-pad
+with a script); a full section using the template below; cross-references both ways; "Last Updated";
+and a matching Notion task.
+
+```markdown
+#### T### — Task title
+
+**Phase**: N · **Category**: X · **Hours**: N · **Status**: Open · **v1 Gate**: Yes/No · **Depends on**: T### (or "none")
+
+**What it is** — the deliverable.
+**What it does** — implementation gist.
+**Why we need it** — what breaks if skipped.
+**Notes** — audit refs, decisions, supersession.
 ```
 
-### Test Utilities
+Deferred / Won't Do tasks get an abbreviated section (status + why + revisit condition). Use
+`/analysis T###` (`.claude/commands/analysis.md`) for a deep pre-implementation analysis.
 
-Shared test utilities are in `/frontend/tests/integration/setup.ts`:
+## Fleet & blog
 
-- `renderWithProviders()` - Render with QueryClient and Router
-- `createMockAuthStore()` / `createMockTenantStore()` - Create mock store states
-- `createMockApiResponse()` / `createMockApiError()` - Create mock API responses
-- Mock data factories for common entities (users, tenants, customers, jobs, quotes, invoices)
+This app is tracked in Fleet as `SP`; run `/fleet-sync` after any change to hosting, vendors, plans,
+auth, data providers, domains or monthly costs. When `servicepro.sharkfins.xyz` goes live (T211), add
+it to the blog (`src/pages/apps.astro`, `INFRA.md` in `~/repositories/blogs/rob-blog`; commit there,
+ask before pushing).
