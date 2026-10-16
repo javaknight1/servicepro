@@ -45,6 +45,11 @@ func Setup(router *gin.Engine, db *gorm.DB, redisClient *redis.Client, email ema
 	// Apply CORS middleware (must handle preflight OPTIONS requests before other middleware)
 	router.Use(middleware.CORSMiddleware(&cfg.CORS, cfg.Server.Env))
 
+	// Unknown routes answer in the standard error envelope (T223), not
+	// gin's plain-text 404.
+	router.NoRoute(middleware.NotFoundHandler())
+	router.NoMethod(middleware.MethodNotAllowedHandler())
+
 	// Apply security headers to all responses
 	securityConfig := middleware.DefaultSecurityHeadersConfig(cfg.Server.Env)
 	router.Use(middleware.SecurityHeaders(securityConfig))

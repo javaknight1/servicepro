@@ -14,6 +14,7 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"github.com/javaknight1/servicepro/backend/config"
+	"github.com/javaknight1/servicepro/backend/internal/api/apierror"
 )
 
 // RateLimitTier represents the tier of rate limiting to apply
@@ -114,11 +115,7 @@ func (rl *APIRateLimiter) RateLimit(tier RateLimitTier) gin.HandlerFunc {
 			}
 			c.Header("Retry-After", strconv.Itoa(retryAfter))
 
-			c.JSON(http.StatusTooManyRequests, gin.H{
-				"error":       "rate_limit_exceeded",
-				"message":     fmt.Sprintf("Too many requests. Limit: %d requests per %v", limit, rl.config.Window),
-				"retry_after": retryAfter,
-			})
+			apierror.Write(c, http.StatusTooManyRequests, "rate_limit_exceeded", fmt.Sprintf("Too many requests. Limit: %d requests per %v", limit, rl.config.Window))
 			c.Abort()
 			return
 		}

@@ -11,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
+	"github.com/javaknight1/servicepro/backend/internal/api/apierror"
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/services/permissions"
 	"github.com/javaknight1/servicepro/backend/pkg/auth"
@@ -70,7 +71,7 @@ func (pm *PermissionMiddleware) RequireAuth() gin.HandlerFunc {
 		if tokenString == "" {
 			authHeader := c.GetHeader("Authorization")
 			if authHeader == "" {
-				c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+				apierror.WriteResponse(c, http.StatusUnauthorized, models.ErrorResponse{
 					Error:   "unauthorized",
 					Message: "Authentication required",
 				})
@@ -81,7 +82,7 @@ func (pm *PermissionMiddleware) RequireAuth() gin.HandlerFunc {
 			// Parse Bearer token
 			parts := strings.SplitN(authHeader, " ", 2)
 			if len(parts) != 2 || parts[0] != "Bearer" {
-				c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+				apierror.WriteResponse(c, http.StatusUnauthorized, models.ErrorResponse{
 					Error:   "unauthorized",
 					Message: "Invalid authorization header format",
 				})
@@ -95,7 +96,7 @@ func (pm *PermissionMiddleware) RequireAuth() gin.HandlerFunc {
 		// Validate token
 		claims, err := pm.jwtManager.ValidateToken(tokenString)
 		if err != nil {
-			c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusUnauthorized, models.ErrorResponse{
 				Error:   "unauthorized",
 				Message: "Invalid or expired token",
 			})
@@ -106,7 +107,7 @@ func (pm *PermissionMiddleware) RequireAuth() gin.HandlerFunc {
 		// Only access tokens authenticate API calls; a (long-lived) refresh
 		// token must never work as a bearer token (F-11).
 		if claims.Type != auth.AccessToken {
-			c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusUnauthorized, models.ErrorResponse{
 				Error:   "unauthorized",
 				Message: "Invalid or expired token",
 			})
@@ -117,7 +118,7 @@ func (pm *PermissionMiddleware) RequireAuth() gin.HandlerFunc {
 		// Parse user ID from claims
 		userID, err := uuid.Parse(claims.UserID)
 		if err != nil {
-			c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusUnauthorized, models.ErrorResponse{
 				Error:   "unauthorized",
 				Message: "Invalid user ID in token",
 			})
@@ -129,7 +130,7 @@ func (pm *PermissionMiddleware) RequireAuth() gin.HandlerFunc {
 		if pm.tokenVersions != nil {
 			current, err := pm.tokenVersions(userID)
 			if err != nil || current != claims.TokenVersion {
-				c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+				apierror.WriteResponse(c, http.StatusUnauthorized, models.ErrorResponse{
 					Error:   "unauthorized",
 					Message: "Session has expired, please sign in again",
 				})
@@ -155,7 +156,7 @@ func (pm *PermissionMiddleware) RequirePermission(permissionName string) gin.Han
 		// Get user ID from context (set by RequireAuth)
 		userID, exists := pm.getUserID(c)
 		if !exists {
-			c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusUnauthorized, models.ErrorResponse{
 				Error:   "unauthorized",
 				Message: "User not authenticated",
 			})
@@ -168,10 +169,7 @@ func (pm *PermissionMiddleware) RequirePermission(permissionName string) gin.Han
 		hasPermission, err := pm.checker.CheckPermission(ctx, userID, tenantIDFromContext(c), permissionName)
 		if err != nil {
 			log.Printf("[ERROR] Permission check failed for user %s: %v", userID, err)
-			c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-				Error:   "permission_check_failed",
-				Message: "Failed to verify permissions",
-			})
+			apierror.Internal(c, err, "Failed to verify permissions")
 			c.Abort()
 			return
 		}
@@ -181,7 +179,7 @@ func (pm *PermissionMiddleware) RequirePermission(permissionName string) gin.Han
 			log.Printf("[SECURITY] Access denied for user %s to permission %s on %s %s",
 				userID, permissionName, c.Request.Method, c.Request.URL.Path)
 
-			c.JSON(http.StatusForbidden, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusForbidden, models.ErrorResponse{
 				Error:   "forbidden",
 				Message: fmt.Sprintf("You do not have permission to perform this action (required: %s)", permissionName),
 			})
@@ -208,7 +206,7 @@ func (pm *PermissionMiddleware) RequireResourceAction(resource, action string) g
 		// Get user ID from context
 		userID, exists := pm.getUserID(c)
 		if !exists {
-			c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusUnauthorized, models.ErrorResponse{
 				Error:   "unauthorized",
 				Message: "User not authenticated",
 			})
@@ -221,10 +219,7 @@ func (pm *PermissionMiddleware) RequireResourceAction(resource, action string) g
 		hasPermission, err := pm.checker.CheckResourceAction(ctx, userID, tenantIDFromContext(c), resource, action)
 		if err != nil {
 			log.Printf("[ERROR] Resource action check failed for user %s: %v", userID, err)
-			c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-				Error:   "permission_check_failed",
-				Message: "Failed to verify permissions",
-			})
+			apierror.Internal(c, err, "Failed to verify permissions")
 			c.Abort()
 			return
 		}
@@ -234,7 +229,7 @@ func (pm *PermissionMiddleware) RequireResourceAction(resource, action string) g
 			log.Printf("[SECURITY] Access denied for user %s to %s.%s on %s %s",
 				userID, resource, action, c.Request.Method, c.Request.URL.Path)
 
-			c.JSON(http.StatusForbidden, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusForbidden, models.ErrorResponse{
 				Error:   "forbidden",
 				Message: fmt.Sprintf("You do not have permission to %s %s", action, resource),
 			})
@@ -258,7 +253,7 @@ func (pm *PermissionMiddleware) RequireAnyPermission(permissionNames ...string) 
 	return func(c *gin.Context) {
 		userID, exists := pm.getUserID(c)
 		if !exists {
-			c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusUnauthorized, models.ErrorResponse{
 				Error:   "unauthorized",
 				Message: "User not authenticated",
 			})
@@ -270,10 +265,7 @@ func (pm *PermissionMiddleware) RequireAnyPermission(permissionNames ...string) 
 		hasPermission, err := pm.checker.CheckAnyPermission(ctx, userID, tenantIDFromContext(c), permissionNames...)
 		if err != nil {
 			log.Printf("[ERROR] Any permission check failed for user %s: %v", userID, err)
-			c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-				Error:   "permission_check_failed",
-				Message: "Failed to verify permissions",
-			})
+			apierror.Internal(c, err, "Failed to verify permissions")
 			c.Abort()
 			return
 		}
@@ -282,7 +274,7 @@ func (pm *PermissionMiddleware) RequireAnyPermission(permissionNames ...string) 
 			log.Printf("[SECURITY] Access denied for user %s (required any of: %v) on %s %s",
 				userID, permissionNames, c.Request.Method, c.Request.URL.Path)
 
-			c.JSON(http.StatusForbidden, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusForbidden, models.ErrorResponse{
 				Error:   "forbidden",
 				Message: "You do not have the required permissions",
 			})
@@ -300,7 +292,7 @@ func (pm *PermissionMiddleware) RequireAllPermissions(permissionNames ...string)
 	return func(c *gin.Context) {
 		userID, exists := pm.getUserID(c)
 		if !exists {
-			c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusUnauthorized, models.ErrorResponse{
 				Error:   "unauthorized",
 				Message: "User not authenticated",
 			})
@@ -312,10 +304,7 @@ func (pm *PermissionMiddleware) RequireAllPermissions(permissionNames ...string)
 		hasPermission, err := pm.checker.CheckAllPermissions(ctx, userID, tenantIDFromContext(c), permissionNames...)
 		if err != nil {
 			log.Printf("[ERROR] All permissions check failed for user %s: %v", userID, err)
-			c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-				Error:   "permission_check_failed",
-				Message: "Failed to verify permissions",
-			})
+			apierror.Internal(c, err, "Failed to verify permissions")
 			c.Abort()
 			return
 		}
@@ -324,7 +313,7 @@ func (pm *PermissionMiddleware) RequireAllPermissions(permissionNames ...string)
 			log.Printf("[SECURITY] Access denied for user %s (required all of: %v) on %s %s",
 				userID, permissionNames, c.Request.Method, c.Request.URL.Path)
 
-			c.JSON(http.StatusForbidden, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusForbidden, models.ErrorResponse{
 				Error:   "forbidden",
 				Message: "You do not have all the required permissions",
 			})
@@ -343,7 +332,7 @@ func (pm *PermissionMiddleware) RequireAdmin() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userID, exists := pm.getUserID(c)
 		if !exists {
-			c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusUnauthorized, models.ErrorResponse{
 				Error:   "unauthorized",
 				Message: "User not authenticated",
 			})
@@ -355,10 +344,7 @@ func (pm *PermissionMiddleware) RequireAdmin() gin.HandlerFunc {
 		isAdmin, err := pm.checker.IsAdmin(ctx, userID, tenantIDFromContext(c))
 		if err != nil {
 			log.Printf("[ERROR] Admin check failed for user %s: %v", userID, err)
-			c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-				Error:   "permission_check_failed",
-				Message: "Failed to verify admin status",
-			})
+			apierror.Internal(c, err, "Failed to verify admin status")
 			c.Abort()
 			return
 		}
@@ -367,7 +353,7 @@ func (pm *PermissionMiddleware) RequireAdmin() gin.HandlerFunc {
 			log.Printf("[SECURITY] Non-admin user %s attempted to access admin route: %s %s",
 				userID, c.Request.Method, c.Request.URL.Path)
 
-			c.JSON(http.StatusForbidden, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusForbidden, models.ErrorResponse{
 				Error:   "forbidden",
 				Message: "This action requires administrator privileges",
 			})
@@ -385,7 +371,7 @@ func (pm *PermissionMiddleware) RequireSuperAdmin() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userID, exists := pm.getUserID(c)
 		if !exists {
-			c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusUnauthorized, models.ErrorResponse{
 				Error:   "unauthorized",
 				Message: "User not authenticated",
 			})
@@ -397,10 +383,7 @@ func (pm *PermissionMiddleware) RequireSuperAdmin() gin.HandlerFunc {
 		isSuperAdmin, err := pm.checker.IsSuperAdmin(ctx, userID)
 		if err != nil {
 			log.Printf("[ERROR] Super admin check failed for user %s: %v", userID, err)
-			c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-				Error:   "permission_check_failed",
-				Message: "Failed to verify super admin status",
-			})
+			apierror.Internal(c, err, "Failed to verify super admin status")
 			c.Abort()
 			return
 		}
@@ -409,7 +392,7 @@ func (pm *PermissionMiddleware) RequireSuperAdmin() gin.HandlerFunc {
 			log.Printf("[SECURITY] Non-super-admin user %s attempted to access super admin route: %s %s",
 				userID, c.Request.Method, c.Request.URL.Path)
 
-			c.JSON(http.StatusForbidden, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusForbidden, models.ErrorResponse{
 				Error:   "forbidden",
 				Message: "This action requires super administrator privileges",
 			})
