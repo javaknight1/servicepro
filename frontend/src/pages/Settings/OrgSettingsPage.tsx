@@ -21,7 +21,7 @@ import {
   type PaymentReminderSettings,
 } from '@services/paymentReminderService';
 import { getTenantErrorMessage } from '@/utils/error';
-import { canDeleteTenant, canManageTenant } from '@/utils/tenantPermissions';
+import { useTenantPermissions } from '@/utils/tenantPermissions';
 import {
   Building2,
   Users,
@@ -77,10 +77,13 @@ export function OrgSettingsPage() {
     null
   );
 
-  // Hints from the caller's role in this tenant; the API still enforces
-  // tenants.manage / tenants.update / tenants.delete and answers 403.
-  const canManage = canManageTenant(currentTenant?.role);
-  const canDelete = canDeleteTenant(currentTenant?.role);
+  // The caller's effective permissions in this tenant (GET /tenants/:id/me);
+  // the API still enforces each one and answers 403.
+  const {
+    canManageMembers: canManage,
+    canUpdateTenant: canEditSettings,
+    canDeleteTenant: canDelete,
+  } = useTenantPermissions(currentTenant);
 
   // Form state for general settings
   const [name, setName] = useState('');
@@ -169,7 +172,7 @@ export function OrgSettingsPage() {
       loadMembers();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, currentTenant]);
+  }, [activeTab, currentTenant, canManage]);
 
   const loadMembers = async () => {
     if (!currentTenant) return;
@@ -530,7 +533,7 @@ export function OrgSettingsPage() {
                       onSubmit={handleSaveGeneral}
                       className="space-y-4 mt-6"
                     >
-                      {!canManage && (
+                      {!canEditSettings && (
                         <p className="text-sm text-neutral-600">
                           Only organization admins can change these settings.
                         </p>
@@ -543,7 +546,7 @@ export function OrgSettingsPage() {
                         onChange={(e) => setName(e.target.value)}
                         required
                         fullWidth
-                        disabled={!canManage}
+                        disabled={!canEditSettings}
                       />
 
                       <Input
@@ -553,7 +556,7 @@ export function OrgSettingsPage() {
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="contact@company.com"
                         fullWidth
-                        disabled={!canManage}
+                        disabled={!canEditSettings}
                       />
 
                       <Input
@@ -563,10 +566,10 @@ export function OrgSettingsPage() {
                         onChange={(e) => setPhone(e.target.value)}
                         placeholder="+1 (555) 123-4567"
                         fullWidth
-                        disabled={!canManage}
+                        disabled={!canEditSettings}
                       />
 
-                      {canManage && (
+                      {canEditSettings && (
                         <div className="flex justify-end space-x-3 pt-4">
                           <Button
                             type="button"

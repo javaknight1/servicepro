@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import type { Tenant, TenantMember } from '@/types/tenant';
 
@@ -23,6 +24,7 @@ vi.mock('@store', () => ({
 
 vi.mock('@services/tenantService', () => ({
   tenantApi: {
+    getMyAccess: vi.fn(),
     getPendingInvitations: vi.fn(),
     inviteMember: vi.fn(),
     cancelInvitation: vi.fn(),
@@ -61,10 +63,28 @@ const member: TenantMember = {
 
 const renderPage = () =>
   render(
-    <MemoryRouter>
-      <TeamMembersPage />
-    </MemoryRouter>
+    <QueryClientProvider
+      client={
+        new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      }
+    >
+      <MemoryRouter>
+        <TeamMembersPage />
+      </MemoryRouter>
+    </QueryClientProvider>
   );
+
+/** GET /tenants/:id/me answers with these permissions. */
+const grant = (role: string, permissions: string[]) =>
+  vi.mocked(tenantApi.getMyAccess).mockResolvedValue({
+    data: {
+      tenant_id: 'tenant-1',
+      role_id: `r-${role}`,
+      role,
+      role_level: 50,
+      permissions,
+    },
+  } as unknown as Awaited<ReturnType<typeof tenantApi.getMyAccess>>);
 
 describe('TeamMembersPage permissions', () => {
   beforeEach(() => {
@@ -81,6 +101,7 @@ describe('TeamMembersPage permissions', () => {
 
   it('shows management actions to admins', async () => {
     currentTenant = tenant('admin');
+    grant('admin', ['tenants.read', 'tenants.manage']);
     getMembers.mockResolvedValue([member]);
     renderPage();
 
@@ -94,6 +115,7 @@ describe('TeamMembersPage permissions', () => {
 
   it('hides management actions from roles without tenants.manage', async () => {
     currentTenant = tenant('user');
+    grant('user', ['tenants.read']);
     getMembers.mockResolvedValue([member]);
     renderPage();
 
@@ -107,8 +129,40 @@ describe('TeamMembersPage permissions', () => {
     expect(tenantApi.getPendingInvitations).not.toHaveBeenCalled();
   });
 
+  it('shows management actions to a custom role granted tenants.manage', async () => {
+    currentTenant = tenant('office_lead');
+    grant('office_lead', ['tenants.read', 'tenants.manage']);
+    getMembers.mockResolvedValue([member]);
+    renderPage();
+
+    expect(await screen.findByText('tech@example.com')).toBeInTheDocument();
+    expect(
+      await screen.findByRole('button', { name: /invite member/i })
+    ).toBeInTheDocument();
+    expect(tenantApi.getMyAccess).toHaveBeenCalledWith('tenant-1');
+  });
+
+  it('follows the permission list over the role name', async () => {
+    // Named "admin" but the API grants no tenants.manage in this tenant.
+    currentTenant = tenant('admin');
+    grant('admin', ['tenants.read']);
+    getMembers.mockResolvedValue([member]);
+    renderPage();
+
+    expect(await screen.findByText('tech@example.com')).toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', { name: /invite member/i })
+      ).not.toBeInTheDocument()
+    );
+    expect(screen.queryByTitle('Remove member')).not.toBeInTheDocument();
+  });
+
   it('renders a permission message when the API answers 403', async () => {
     currentTenant = tenant();
+    vi.mocked(tenantApi.getMyAccess).mockRejectedValue({
+      response: { status: 403, data: { error: 'tenant_access_denied' } },
+    });
     getMembers.mockRejectedValue({
       response: {
         status: 403,

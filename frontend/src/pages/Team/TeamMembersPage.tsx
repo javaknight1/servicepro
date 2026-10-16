@@ -16,7 +16,7 @@ import { useTenantStore } from '@store';
 import { roleApi } from '@services/roleApi';
 import { tenantApi } from '@services/tenantService';
 import { getTenantErrorMessage } from '@/utils/error';
-import { canManageTenant } from '@/utils/tenantPermissions';
+import { useTenantPermissions } from '@/utils/tenantPermissions';
 import {
   UserPlus,
   Trash2,
@@ -46,9 +46,9 @@ export function TeamMembersPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
-  // Hint from the caller's role in this tenant; the API still enforces
-  // tenants.manage on every member/invitation change and answers 403.
-  const canManage = canManageTenant(currentTenant?.role);
+  // tenants.manage from the caller's effective permissions in this tenant
+  // (GET /tenants/:id/me); the API still enforces it and answers 403.
+  const { canManageMembers: canManage } = useTenantPermissions(currentTenant);
 
   // Invite member modal
   const [showAddModal, setShowAddModal] = useState(false);
@@ -64,10 +64,12 @@ export function TeamMembersPage() {
   );
   const [selectedRoleId, setSelectedRoleId] = useState('');
 
+  // Reload when the permission answer arrives: invitations and roles are
+  // only fetched for callers who may manage members.
   useEffect(() => {
     loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentTenant]);
+  }, [currentTenant, canManage]);
 
   const loadData = async () => {
     if (!currentTenant) return;

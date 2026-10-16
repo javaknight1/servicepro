@@ -37,6 +37,17 @@ export interface TenantSettings {
   businessHours?: Record<string, DaySchedule>;
 }
 
+/** The caller's access in one tenant (`GET /tenants/:id/me`). */
+export interface TenantAccess {
+  tenant_id: string;
+  role_id: string;
+  /** The caller's membership role name in this tenant. */
+  role: string;
+  role_level: number;
+  /** Exact permission names the API grants the caller in this tenant. */
+  permissions: string[];
+}
+
 export interface TenantMember {
   id: string;
   user_id: string;

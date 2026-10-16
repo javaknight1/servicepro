@@ -13,15 +13,16 @@ import {
 import { useMembershipStore, useTenantStore } from '@store';
 import { BillingSection } from './BillingSection';
 import { formatCents } from '@/utils/money';
-import { canManageTenant } from '@/utils/tenantPermissions';
+import { useTenantPermissions } from '@/utils/tenantPermissions';
 
 export function MembershipTab() {
   const navigate = useNavigate();
   const { currentTenant } = useTenantStore();
   const { currentMembership, isLoading, error, loadMembership } =
     useMembershipStore();
-  // Plan changes and billing need membership.update / membership.billing.
-  const canManage = canManageTenant(currentTenant?.role);
+  // Plan changes need membership.update; billing needs membership.billing.
+  const { canChangePlan: canManage, canManageBilling } =
+    useTenantPermissions(currentTenant);
 
   useEffect(() => {
     if (currentTenant?.id) {
@@ -204,7 +205,7 @@ export function MembershipTab() {
       </Card>
 
       {/* Billing Section (membership.billing) */}
-      {canManage && <BillingSection />}
+      {canManageBilling && <BillingSection />}
     </div>
   );
 }
