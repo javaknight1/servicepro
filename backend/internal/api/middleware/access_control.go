@@ -289,7 +289,7 @@ func (acm *AccessControlMiddleware) CORS() gin.HandlerFunc {
 
 // checkIPAccess validates IP-based access control
 func (acm *AccessControlMiddleware) checkIPAccess(c *gin.Context) bool {
-	clientIP := c.ClientIP()
+	clientIP := ClientIP(c)
 
 	// Parse IP to validate it's a real IP
 	ip := net.ParseIP(clientIP)
@@ -316,7 +316,7 @@ func (acm *AccessControlMiddleware) checkGeographicAccess(c *gin.Context) bool {
 	// TODO: Implement GeoIP lookup if needed
 
 	// Example implementation:
-	// country := geoip.Lookup(c.ClientIP())
+	// country := geoip.Lookup(ClientIP(c))
 	// if !acm.config.RouteProtection.IsCountryAllowed(country) {
 	//     acm.denyAccess(c, "geo_blocked", "Access denied from your location", http.StatusForbidden)
 	//     return false
@@ -330,7 +330,7 @@ func (acm *AccessControlMiddleware) checkRequestSize(c *gin.Context) bool {
 	// Check content length
 	if c.Request.ContentLength > acm.config.RouteProtection.MaxRequestSize {
 		log.Printf("[SECURITY] Request too large: %d bytes from %s",
-			c.Request.ContentLength, c.ClientIP())
+			c.Request.ContentLength, ClientIP(c))
 		acm.denyAccess(c, "request_too_large",
 			fmt.Sprintf("Request body too large (max: %d bytes)", acm.config.RouteProtection.MaxRequestSize),
 			http.StatusRequestEntityTooLarge)
@@ -368,16 +368,16 @@ func (acm *AccessControlMiddleware) checkRouteRateLimit(c *gin.Context) bool {
 				limitKey = fmt.Sprintf("ratelimit:route:%s:user:%s", routeKey, userID)
 			} else {
 				// Fall back to IP if user not authenticated
-				limitKey = fmt.Sprintf("ratelimit:route:%s:ip:%s", routeKey, c.ClientIP())
+				limitKey = fmt.Sprintf("ratelimit:route:%s:ip:%s", routeKey, ClientIP(c))
 			}
 		} else {
-			limitKey = fmt.Sprintf("ratelimit:route:%s:ip:%s", routeKey, c.ClientIP())
+			limitKey = fmt.Sprintf("ratelimit:route:%s:ip:%s", routeKey, ClientIP(c))
 		}
 	} else {
 		// Use default rate limit
 		limit = acm.config.RouteProtection.DefaultRateLimit
 		window = acm.config.RouteProtection.DefaultRateWindow
-		limitKey = fmt.Sprintf("ratelimit:route:default:%s", c.ClientIP())
+		limitKey = fmt.Sprintf("ratelimit:route:default:%s", ClientIP(c))
 	}
 
 	// Check rate limit using Redis
@@ -397,7 +397,7 @@ func (acm *AccessControlMiddleware) checkRouteRateLimit(c *gin.Context) bool {
 	// Check if limit exceeded
 	if count > int64(limit) {
 		ttl, _ := acm.redisClient.TTL(ctx, limitKey).Result()
-		log.Printf("[SECURITY] Rate limit exceeded for %s from %s", routeKey, c.ClientIP())
+		log.Printf("[SECURITY] Rate limit exceeded for %s from %s", routeKey, ClientIP(c))
 		acm.denyAccess(c, "rate_limit_exceeded",
 			fmt.Sprintf("Too many requests. Please try again in %v", ttl.Round(time.Second)),
 			http.StatusTooManyRequests)
@@ -532,7 +532,7 @@ func (acm *AccessControlMiddleware) auditResourceAccess(
 	resourceType, action, result string,
 ) {
 	log.Printf("[AUDIT] User: %s, Resource: %s, Action: %s, Result: %s, IP: %s, Path: %s",
-		userID, resourceType, action, result, c.ClientIP(), c.Request.URL.Path)
+		userID, resourceType, action, result, ClientIP(c), c.Request.URL.Path)
 }
 
 // denyAccess sends an access denied response

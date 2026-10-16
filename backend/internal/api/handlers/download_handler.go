@@ -13,6 +13,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+
+	"github.com/javaknight1/servicepro/backend/internal/api/middleware"
 )
 
 // =============================================================================
@@ -768,7 +770,7 @@ func (h *DownloadHandler) getUserInfo(c *gin.Context) *UserInfo {
 		ID:      c.GetHeader("X-User-ID"),
 		Email:   c.GetHeader("X-User-Email"),
 		Role:    c.GetHeader("X-User-Role"),
-		IP:      c.ClientIP(),
+		IP:      middleware.ClientIP(c),
 		Headers: make(map[string]string),
 	}
 

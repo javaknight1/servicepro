@@ -32,6 +32,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/javaknight1/servicepro/backend/config"
+	"github.com/javaknight1/servicepro/backend/internal/api/middleware"
 	"github.com/javaknight1/servicepro/backend/internal/api/routes"
 	"github.com/javaknight1/servicepro/backend/internal/health"
 	analyticsclient "github.com/javaknight1/servicepro/backend/pkg/clients/analytics"
@@ -201,6 +202,9 @@ func main() {
 	// Use gin.New() instead of gin.Default() so we can use our custom RecoveryMiddleware
 	// that integrates with error tracking (Sentry)
 	router := gin.New()
+	// Resolve the real visitor IP from the edge proxy headers before anything
+	// (logger, rate limiters) reads c.ClientIP().
+	router.Use(middleware.EdgeClientIP(cfg.Server.EdgeProxySecret))
 	router.Use(gin.Logger()) // Add Gin's logger middleware
 
 	// Apply Gin-specific configuration
@@ -208,6 +212,13 @@ func main() {
 	if len(cfg.Server.TrustedProxies) > 0 {
 		if err := router.SetTrustedProxies(cfg.Server.TrustedProxies); err != nil {
 			logging.Warn(ctx, "Failed to set trusted proxies", map[string]any{"error": err.Error()})
+		}
+	} else if cfg.Server.EdgeProxySecret != "" {
+		// Behind the edge proxy the visitor IP comes only from the verified
+		// X-SP-Client-IP header; never trust caller-supplied X-Forwarded-For
+		// (Gin trusts every proxy by default).
+		if err := router.SetTrustedProxies(nil); err != nil {
+			logging.Warn(ctx, "Failed to disable trusted proxies", map[string]any{"error": err.Error()})
 		}
 	}
 
