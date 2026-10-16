@@ -62,12 +62,12 @@
 
 ## v1 Launch Gate
 
-The minimum subset that must be done before real (paying) customers: **48 tasks, ~346h**. Everything else is post-launch growth or depth. The invite-gated preview (T205) needs only Phase 1 plus T106/T204/T206; the gate below is for opening to paying customers. Phase 4's gating subset is the parts of the stack that touch auth, tenancy, email and storage; the chi and pgx ports are not gating.
+The minimum subset that must be done before real (paying) customers: **43 tasks, ~334h**. Everything else is post-launch growth or depth. The invite-gated preview (T205) needs only Phase 1 plus T106/T204/T206; the gate below is for opening to paying customers. Phase 4's gating subset is the parts of the stack that touch auth, tenancy, email and storage; the chi and pgx ports are not gating.
 
 | Phase                                                | Gating tasks                                                                                                                                                             |
 |------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Phase 1 — Security Remediation                       | **All** — ~~T102~~, ~~T103~~, ~~T104~~, ~~T105~~, ~~T106~~, ~~T107~~, ~~T108~~, ~~T109~~, ~~T110~~, ~~T111~~, ~~T112~~, ~~T113~~, ~~T114~~, ~~T115~~, ~~T116~~, ~~T117~~ |
-| Phase 2 — Correctness & Cleanup                      | T118, T119, T120, T121, T122, T123, T124, T126, ~~T130~~, ~~T131~~, ~~T132~~, ~~T133~~, ~~T136~~, T224, T225, ~~T227~~                                                   |
+| Phase 2 — Correctness & Cleanup                      | ~~T118~~, T119, T120, ~~T121~~, ~~T122~~, ~~T123~~, T124, ~~T126~~, ~~T130~~, ~~T131~~, ~~T132~~, ~~T133~~, ~~T136~~, T224, T225, ~~T227~~                               |
 | Phase 3 — Platform & Delivery                        | ~~T139~~, ~~T140~~, ~~T141~~, ~~T142~~, ~~T143~~, ~~T144~~, ~~T145~~, ~~T146~~, ~~T150~~, ~~T151~~                                                                       |
 | Phase 4 — Stack Convergence (LL parity; incremental) | T153, T154, T158, T159, T160                                                                                                                                             |
 | Phase 5 — Core Workflow & Quoting                    | T028, T029, T030, T035, T167                                                                                                                                             |
@@ -148,6 +148,12 @@ The minimum subset that must be done before real (paying) customers: **48 tasks,
 | ~~T115~~ | ~~1~~ | ~~Security~~   | ~~3~~  | ~~Secure cookies by default and CSRF protection~~                                                     |
 | ~~T116~~ | ~~1~~ | ~~Security~~   | ~~3~~  | ~~Low-severity security sweep~~                                                                       |
 | ~~T117~~ | ~~1~~ | ~~Security~~   | ~~3~~  | ~~Remediate dependency vulnerabilities and bump the Go toolchain~~                                    |
+| ~~T118~~ | ~~2~~ | ~~Bug~~        | ~~3~~  | ~~Recording a payment updates the invoice balance and status~~                                        |
+| ~~T121~~ | ~~2~~ | ~~Bug~~        | ~~2~~  | ~~Payment reminders actually send~~                                                                   |
+| ~~T122~~ | ~~2~~ | ~~Bug~~        | ~~2~~  | ~~Fix /webhooks/stripe panicking on subscription and invoice events~~                                 |
+| ~~T123~~ | ~~2~~ | ~~Bug~~        | ~~3~~  | ~~Add the missing SQL functions and views behind customer search and reports~~                        |
+| ~~T126~~ | ~~2~~ | ~~Monitoring~~ | ~~2~~  | ~~Backend Sentry actually initialised; wire or delete the Loki/BetterStack/OTel stubs~~               |
+| ~~T128~~ | ~~2~~ | ~~Backend~~    | ~~4~~  | ~~Exports safe on multiple instances (object storage + persisted progress)~~                          |
 | ~~T130~~ | ~~2~~ | ~~Bug~~        | ~~1~~  | ~~Login error swallowed by the refresh interceptor~~                                                  |
 | ~~T131~~ | ~~2~~ | ~~Bug~~        | ~~1~~  | ~~Public payment result pages for the /pay/:token flow~~                                              |
 | ~~T132~~ | ~~2~~ | ~~Security~~   | ~~2~~  | ~~Clear tenant and user data on logout and tenant switch~~                                            |
@@ -171,23 +177,17 @@ The minimum subset that must be done before real (paying) customers: **48 tasks,
 | ~~T150~~ | ~~3~~ | ~~Deploy~~     | ~~6~~  | ~~Cloudflare Workers static assets + /api edge proxy Worker + _headers~~                              |
 | ~~T151~~ | ~~3~~ | ~~Docs~~       | ~~3~~  | ~~Ops docs: Cloud Run setup, deploy/rollback, backups + nightly pg_dump → R2 workflow~~               |
 | ~~T152~~ | ~~3~~ | ~~CI~~         | ~~1~~  | ~~Commit generated OpenAPI and TS types for drift gating~~                                            |
+| ~~T226~~ | ~~2~~ | ~~Bug~~        | ~~3~~  | ~~Tenant creation and invitation acceptance in transactions; per-tenant uniqueness~~                  |
 | ~~T227~~ | ~~2~~ | ~~Bug~~        | ~~3~~  | ~~Frontend follow-through for the Phase 1 auth changes (invite codes, 429, logout-everywhere)~~       |
-| T118     | 2     | Bug            | 3      | Recording a payment updates the invoice balance and status                                            |
 | T119     | 2     | Payments       | 3      | Stripe Checkout charges the true balance due                                                          |
 | T120     | 2     | Bug            | 2      | Invoice and job numbering survives soft-delete and concurrency                                        |
-| T121     | 2     | Bug            | 2      | Payment reminders actually send                                                                       |
-| T122     | 2     | Bug            | 2      | Fix /webhooks/stripe panicking on subscription and invoice events                                     |
-| T123     | 2     | Bug            | 3      | Add the missing SQL functions and views behind customer search and reports                            |
 | T124     | 2     | Bug            | 4      | Enforce invoice status transitions; unify the two job state machines                                  |
 | T125     | 2     | Payments       | 3      | Handle refunds in the ledger                                                                          |
-| T126     | 2     | Monitoring     | 2      | Backend Sentry actually initialised; wire or delete the Loki/BetterStack/OTel stubs                   |
 | T127     | 2     | Backend        | 3      | Backend reads tenant settings: currency, number prefixes, defaults                                    |
-| T128     | 2     | Backend        | 4      | Exports safe on multiple instances (object storage + persisted progress)                              |
 | T129     | 2     | Cleanup        | 4      | Backend dead-code removal and a stricter linter                                                       |
 | T223     | 2     | Backend        | 4      | Request IDs and a standard API error envelope                                                         |
 | T224     | 2     | Bug            | 4      | Quote correctness: lost customer edits, accept race, expiry, editable sent quotes                     |
 | T225     | 2     | Bug            | 4      | Invoice totals: one server-side recalculation, tax/discount order, no double invoicing                |
-| T226     | 2     | Bug            | 3      | Tenant creation and invitation acceptance in transactions; per-tenant uniqueness                      |
 | T228     | 2     | Bug            | 2      | Quotes list: backend search (q) and sort params                                                       |
 | T229     | 2     | Bug            | 2      | Invite and invitation API polish: distinct invalid-code error, encoded links, message field           |
 | T101     | 3     | Monitoring     | 2      | Upload source maps to Sentry for production builds                                                    |
@@ -396,8 +396,14 @@ Work completed under the old P0–P3/sprint TODO. Details are in Verified Comple
 
 ### Phase 2 — Correctness & Cleanup (T118, T119, T120, T121, T122, T123, T124, T125, T126, T127, T128, T129, T130, T131, T132, T133, T134, T135, T136, T137, T138, T223, T224, T225, T226, T227, T228, T229)
 
-Money flows that are wired but broken (payments don't update invoices, reminders never sent, numbering wedges, a panicking webhook), frontend bugs users would hit in the preview, and dead code. From `docs/audits/2026-10-16/backend-correctness.md` and `docs/audits/2026-10-16/frontend.md`. **18 open tasks, ~54h.** 10 done.
+Money flows that are wired but broken (payments don't update invoices, reminders never sent, numbering wedges, a panicking webhook), frontend bugs users would hit in the preview, and dead code. From `docs/audits/2026-10-16/backend-correctness.md` and `docs/audits/2026-10-16/frontend.md`. **11 open tasks, ~35h.** 17 done.
 
+- [x] T118 — Recording a payment updates the invoice balance and status ✓ (2026-10-16)
+- [x] T121 — Payment reminders actually send ✓ (2026-10-16)
+- [x] T122 — Fix /webhooks/stripe panicking on subscription and invoice events ✓ (2026-10-16)
+- [x] T123 — Add the missing SQL functions and views behind customer search and reports ✓ (2026-10-16)
+- [x] T126 — Backend Sentry actually initialised; wire or delete the Loki/BetterStack/OTel stubs ✓ (2026-10-16)
+- [x] T128 — Exports safe on multiple instances (object storage + persisted progress) ✓ (2026-10-16)
 - [x] T130 — Login error swallowed by the refresh interceptor ✓ (2026-10-16)
 - [x] T131 — Public payment result pages for the /pay/:token flow ✓ (2026-10-16)
 - [x] T132 — Clear tenant and user data on logout and tenant switch ✓ (2026-10-16)
@@ -407,39 +413,19 @@ Money flows that are wired but broken (payments don't update invoices, reminders
 - [x] T136 — Green frontend test suite and lint ✓ (2026-10-16)
 - [x] T137 — Frontend dead-code removal (~18.5k unreachable lines) ✓ (2026-10-16)
 - [x] T138 — Preview polish: honest contact form, legal pages marked draft, favicon ✓ (2026-10-16)
+- [x] T226 — Tenant creation and invitation acceptance in transactions; per-tenant uniqueness ✓ (2026-10-16)
 - [x] T227 — Frontend follow-through for the Phase 1 auth changes (invite codes, 429, logout-everywhere) ✓ (2026-10-16)
-- [ ] T118 — Recording a payment updates the invoice balance and status
 - [ ] T119 — Stripe Checkout charges the true balance due
 - [ ] T120 — Invoice and job numbering survives soft-delete and concurrency
-- [ ] T121 — Payment reminders actually send
-- [ ] T122 — Fix /webhooks/stripe panicking on subscription and invoice events
-- [ ] T123 — Add the missing SQL functions and views behind customer search and reports
 - [ ] T124 — Enforce invoice status transitions; unify the two job state machines
 - [ ] T125 — Handle refunds in the ledger
-- [ ] T126 — Backend Sentry actually initialised; wire or delete the Loki/BetterStack/OTel stubs
 - [ ] T127 — Backend reads tenant settings: currency, number prefixes, defaults
-- [ ] T128 — Exports safe on multiple instances (object storage + persisted progress)
 - [ ] T129 — Backend dead-code removal and a stricter linter
 - [ ] T223 — Request IDs and a standard API error envelope
 - [ ] T224 — Quote correctness: lost customer edits, accept race, expiry, editable sent quotes
 - [ ] T225 — Invoice totals: one server-side recalculation, tax/discount order, no double invoicing
-- [ ] T226 — Tenant creation and invitation acceptance in transactions; per-tenant uniqueness
 - [ ] T228 — Quotes list: backend search (q) and sort params
 - [ ] T229 — Invite and invitation API polish: distinct invalid-code error, encoded links, message field
-
-#### T118 — Recording a payment updates the invoice balance and status
-
-**Phase**: 2 · **Category**: Bug · **Hours**: 3 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: none
-
-**What it is** — Recording a payment (manual or Stripe) increments `amount_paid`, moves the invoice to `partially_paid` or `paid`, and sets `paid_date`, atomically.
-
-**What it does** — In one transaction: `SELECT … FOR UPDATE` the invoice, insert the payment, update `amount_paid`, `status` and `paid_date`. Reject payments on `draft`, `cancelled` and `refunded` invoices and overpayments (checked under the lock). Make `DeleteInvoice`/`CancelInvoice` refuse invoices that have payments (`invoice_service.go:249,482`). Test against Postgres.
-
-**Why we need it** — `invoice_service.go:412-415` says "triggers will update invoice", but `001_schema.sql` has no such trigger (only `:614` updated_at, `:634` number, `:719` updated_at). So a recorded payment leaves the invoice `sent`, A/R still shows it owed, reminders keep firing, the online pay link charges the full amount again, and the overpayment guard never trips.
-
-**Notes** — correctness audit 7.C1 (critical), 7.M15. Folds in the old "Resolve Payment Tracking TODOs" item. Stripe-side idempotency is T109; refunds are T125.
-
----
 
 #### T119 — Stripe Checkout charges the true balance due
 
@@ -466,48 +452,6 @@ Money flows that are wired but broken (payments don't update invoices, reminders
 **Why we need it** — Invoice numbering reads through the soft-delete scope while the UNIQUE constraint (`schema:571`) includes deleted rows, so deleting the newest draft makes every later invoice create fail. Job numbering does the same, so after any job deletion job creation fails until midnight. Both race under concurrency and are global across tenants.
 
 **Notes** — correctness audit 7.C3, 7.C4.
-
----
-
-#### T121 — Payment reminders actually send
-
-**Phase**: 2 · **Category**: Bug · **Hours**: 2 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: none
-
-**What it is** — The reminder run finds overdue invoices, sends only the next reminder that's due, on the customer's channel (email or SMS), at most once.
-
-**What it does** — Qualify the columns in `payment_reminder_service.go:93` (`invoices.status`, `invoices.due_date`) — the join with `customers` makes `status` ambiguous, so the query errors for every tenant. Pass the SMS client into the service (`routes/services.go:161` hard-codes `SMSClient: nil`). Send only the next due reminder per pass (today one pass sends #1, #2 and #3 at once for long-overdue invoices, `:116-141`); stop manual reminders using `MAX+1` numbering that skips automatic #1 (`:228-233`); let `failed` rows retry (`:164-190`); claim the `(invoice_id, reminder_number)` row before sending (UNIQUE at `schema:1824`); check the error on the dedupe `Count` (`:121`); make `Worker.Stop()` idempotent (`payment_reminder_worker.go:57`).
-
-**Why we need it** — T034/T043 shipped the feature, but because of the ambiguous column, reminders have never been sent — and automated collections is the product's wedge.
-
-**Notes** — correctness audit 7.H1, 3.4, 7.M8. Scheduling moves out of the process in T141. Days-overdue uses UTC (`:113,148`) — tenant timezone is T099/T127.
-
----
-
-#### T122 — Fix /webhooks/stripe panicking on subscription and invoice events
-
-**Phase**: 2 · **Category**: Bug · **Hours**: 2 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: none
-
-**What it is** — One Stripe webhook endpoint handles both platform billing (subscriptions) and invoice payments without panicking.
-
-**What it does** — Delete the legacy handler behind `POST /api/v1/webhooks/stripe` (`webhook_handler.go`; registered at `routes/v1/auth_routes.go:33-34`), whose `ctx.(interface{ Request() *http.Request })` assertions at `:108,130,165` always panic. Port its `customer.subscription.*`, `invoice.paid` and `invoice.payment_failed` handling into the processor behind `POST /api/v1/stripe/webhooks` (`services/stripe/webhook.go:224`, which already uses `IgnoreAPIVersionMismatch`). Delete the dead DB-backed `services/stripe/webhook_handler.go` (53 unreachable functions). Point the Stripe dashboard at the single endpoint.
-
-**Why we need it** — Every subscription and invoice event currently returns 500 and Stripe retries for 3 days, so ServicePro's own plan state never syncs. Two endpoints that both handle `invoice.paid` would double-process if both were configured.
-
-**Notes** — security audit F-9; correctness audit 4.1, 5.3. Needed before T210 (ServicePro plans).
-
----
-
-#### T123 — Add the missing SQL functions and views behind customer search and reports
-
-**Phase**: 2 · **Category**: Bug · **Hours**: 3 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: none
-
-**What it is** — Customer advanced search, autocomplete, stats and the customer report endpoints return data instead of 500s.
-
-**What it does** — `customer_repository.go:268,291` call `search_customers()`, `:315` calls `autocomplete_customers()` and `:330` reads view `customer_search_stats` — none exist in `001_schema.sql`. `customer_report_service.go:502` reads `v_customer_cohorts` and `:544` calls `refresh_customer_metrics_cache()` — neither exists, and `customer_metrics_cache` is never populated, so top/at-risk/segment reports are empty. `:116,140` use `Table("customers")` while the filters reference alias `c.` (`:742-757`), so any filtered request fails with "missing FROM-clause entry for table c". Either add the objects to the schema or rewrite the queries in Go (preferred: fewer DB-side objects to port in T156). Add GIN `gin_trgm_ops` indexes on customer name/email (pg_trgm is installed but unused; the `%term%` searches at `:123,201` scan).
-
-**Why we need it** — `GET /customers/advanced-search`, `/autocomplete` and `/stats` always 500, and the customer report pages are broken or empty.
-
-**Notes** — correctness audit 7.H8, 7.H9, index list item 2. Must be tenant-scoped (T102).
 
 ---
 
@@ -539,20 +483,6 @@ Money flows that are wired but broken (payments don't update invoices, reminders
 
 ---
 
-#### T126 — Backend Sentry actually initialised; wire or delete the Loki/BetterStack/OTel stubs
-
-**Phase**: 2 · **Category**: Monitoring · **Hours**: 2 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: none
-
-**What it is** — Backend panics and errors reach Sentry, logs go to stdout as structured JSON, and provider packages that are never linked are deleted.
-
-**What it does** — Blank-import `pkg/clients/errortracking/sentry` (and `/mock`) in `cmd/main.go` — neither is in `go list -deps ./cmd`, so `errortracking.NewClient` always fails and `RecoveryMiddleware` (`middleware/error_handler.go:126`) reports nothing. Default to a JSON stdout logger in production (Cloud Run ships stdout to Cloud Logging); delete `logging/{betterstack,loki,cloudwatch}`, `metrics/cloudwatch` and `pkg/clients/tracing/*` plus the `go.opentelemetry.io/*` modules and `OTEL_*` config (`config.go:542-548`). Replace `logging.Fatal(...)`+`os.Exit(1)` in `cmd/main.go` with a `run() error` so deferred flushes (Sentry, PostHog) run.
-
-**Why we need it** — The "Integrated Sentry logs" commit (d15346e) only touched the frontend; backend errors are invisible today, and in production the logging and metrics factories fail on providers that aren't compiled in.
-
-**Notes** — correctness audit 3.1, 3.2, 3.3, §6 (`main.go` flush). Folds in the old P3 "Advanced Observability Setup (Loki/BetterStack)" item — Better Stack is used for uptime/status only (T165, T208).
-
----
-
 #### T127 — Backend reads tenant settings: currency, number prefixes, defaults
 
 **Phase**: 2 · **Category**: Backend · **Hours**: 3 · **Status**: Open · **v1 Gate**: No · **Depends on**: T102
@@ -563,21 +493,7 @@ Money flows that are wired but broken (payments don't update invoices, reminders
 
 **Why we need it** — None of these settings is read anywhere in backend code (0 references outside the model), so admins change them and nothing happens.
 
-**Notes** — correctness audit 3.5, 7.M9 (date-only part). Timezone and business hours are T099 (T100 stored them).
-
----
-
-#### T128 — Exports safe on multiple instances (object storage + persisted progress)
-
-**Phase**: 2 · **Category**: Backend · **Hours**: 4 · **Status**: Open · **v1 Gate**: No · **Depends on**: T160
-
-**What it is** — Export jobs write their file to object storage, keep progress in the DB, and can be downloaded from any instance via a presigned URL.
-
-**What it does** — Today exports write to `./exports/<jobID>/` (`unified_export_service.go:107,169,202`), hold progress in process memory (`initProgress`, `:116`), run in a detached goroutine with `context.Background()` (`:121`) and serve downloads with `os.Open(job.FilePath)` (`:944`). Upload to R2 through the storage client, return presigned URLs, store progress on the export job row, check the swallowed status-save errors (`:141,158,225,981,1038`). Small exports can run synchronously. Tests use `t.TempDir()` instead of `./test_exports` (`unified_export_service_test.go:142`).
-
-**Why we need it** — On Cloud Run a download routed to another instance 404s, a scale-down loses the file, and with request-based CPU the goroutine is throttled after the POST returns.
-
-**Notes** — correctness audit 1.4, §6, §0 (test artifacts). T199 (full data export) reuses this.
+**Notes** — correctness audit 3.5, 7.M9 (date-only part). Timezone and business hours are T099 (T100 stored them). **Progress 2026-10-16:** done — whole-calendar-day due dates/grace/discount/days-overdue (`calendar_dates.go`), payment-terms calculate endpoints and reminder days-overdue use the tenant timezone (`loadTenantSettings` in `services/tenant_settings.go`, commits b4c2d6f, a4c3bbe). Remaining: currency on invoices/quotes/Stripe, number prefixes in the T120 counters, `DefaultPaymentTermID`/`DefaultTaxRateID` on invoice/quote create, then hide no-effect settings in the UI.
 
 ---
 
@@ -634,20 +550,6 @@ Money flows that are wired but broken (payments don't update invoices, reminders
 **Why we need it** — Customers can be billed a stale or wrongly taxed total, non-taxable lines get taxed, and nothing stops the same job being invoiced twice.
 
 **Notes** — correctness audit 7.H3, 7.M3, 7.M5, 7.M7. Job money stored as `float64` (7.M14) is decided in T166. T029/T030 depend on the double-invoicing guard.
-
----
-
-#### T226 — Tenant creation and invitation acceptance in transactions; per-tenant uniqueness
-
-**Phase**: 2 · **Category**: Bug · **Hours**: 3 · **Status**: Open · **v1 Gate**: No · **Depends on**: T102
-
-**What it is** — Creating a tenant and accepting an invitation either fully succeed or leave nothing behind, re-invites work, and uniqueness rules are per tenant.
-
-**What it does** — Wrap tenant + owner membership + default tier in one transaction (`tenant_service.go:109-136` creates, then soft-deletes on failure, which burns the globally UNIQUE slug at `001_schema.sql:1036` forever; tier failure at `:154-158` is only logged); make the slug unique `WHERE deleted_at IS NULL`; drop the debug query (`:145-150`) and hard-coded admin role UUID (`:119`). Accept invitations in one transaction with `SELECT … FOR UPDATE` and set `IsActive`, `RoleID`, `AcceptedAt` on an existing `tenant_users` row (`invitation_service.go:195-257`, `:226-229`; errors discarded at `:207,286`). Make invitation uniqueness a partial index `WHERE status = 'pending'` (`schema:1095`), and make customer email (`:221`), the one-default payment term (`:567`) and one-default invoice template (`:769`) unique per tenant.
-
-**Why we need it** — A failed signup locks the user out of their own slug, a re-invited ex-member stays deactivated with their old role, and re-inviting after a cancelled invite fails with a duplicate-key error.
-
-**Notes** — correctness audit 4.2, 4.3, 7.M12, 7.M13. Authorization of these endpoints is T103.
 
 ---
 
@@ -3025,6 +2927,12 @@ Dated history from the original "Completed Items" list:
 - **T115** — Secure cookies by default and CSRF protection. `COOKIE_SECURE` defaults true outside development; refresh cookie always SameSite=Strict; cookie-authenticated mutations require `X-Requested-With: XMLHttpRequest` (sent by `frontend/src/services/api.ts`); CORS allowed headers include `X-Requested-With`, `X-Tenant-ID`.
 - **T116** — Low-severity security sweep. F-17: central `publicError()` replaces raw `err.Error()` at 146 handler sites; F-18: SES webhook routes removed; F-19: profile pictures over 4000×4000 rejected before decode; F-21: public invoice-by-number route removed (T104); F-22: global limiter recognises signed-in users. F-24: emails no longer logged (user_id instead), `QueryLogger.ParamsFilter` keeps bound values out of logged SQL; F-25: unrouted `download_handler.go` and `AccessControlMiddleware` deleted. F-23 (import size/row caps) moved to the import task (T193).
 - **T117** — Remediate dependency vulnerabilities and bump the Go toolchain. Bumped x/net, x/text, excelize, grpc, otel, quic-go, AWS SDK modules; `toolchain go1.27.2`; Dockerfile builder `golang:1.27-alpine`; `govulncheck ./...` reports no vulnerabilities.
+- **T118** — Recording a payment updates the invoice balance and status. Recording a payment updates the invoice's paid amount, balance due and status in the same transaction (commit fbb1c5f).
+- **T121** — Payment reminders actually send. Each run sends only the latest due reminder per invoice; failed or stale (>1h) pending claims retried; ignored errors checked; SMS client wired through `SetupServices`; worker `Stop()` idempotent; manual reminders numbered separately (migration `000010`, `payment_reminders.is_manual`, unique `(invoice_id, is_manual, reminder_number)`); frontend shows "Manual #n" (81fab9f).
+- **T122** — Fix /webhooks/stripe panicking on subscription and invoice events. `customer.subscription.*`, `invoice.paid`, `invoice.payment_failed` handled on `POST /api/v1/stripe/webhooks` (`services/billing_webhook_handlers.go`; unknown customer acked, lookup failure → 503 so Stripe retries); legacy `/webhooks/stripe` handler + route, dead `services/stripe/webhook_handler.go` and unwired `handlers/webhooks` deleted (c57f10d). Point the Stripe dashboard at the single endpoint when hosting (T204).
+- **T123** — Add the missing SQL functions and views behind customer search and reports. Migration `000011` trigram indexes for customer search/autocomplete; customer metrics computed in Go from tenant-scoped loads (`services/customer_metrics.go`) and refreshed when missing/stale, so top/at-risk/segment reports fill; filtered-summary SQL error and retention rate fixed; tenant-scoped cohort retention report implemented in Go (4eeb05a, 6c02870, 829f143).
+- **T126** — Backend Sentry actually initialised; wire or delete the Loki/BetterStack/OTel stubs. Sentry provider linked into the binary (blank imports + test); outside development logs are JSON lines on stdout with Cloud Logging keys; Better Stack/Loki/CloudWatch log shippers, CloudWatch metrics and OTel tracing stubs deleted with their modules/config; `main` → `run() error` so Sentry/PostHog flush on startup failure (9c49364, 40bf2c2, bede549, 4f43fa4).
+- **T128** — Exports safe on multiple instances (object storage + persisted progress). Exports run in the request (2-min limit) with progress/status persisted on `export_jobs` (cancel sticks; `/progress` + SSE read the row); files stored via `ExportFileStore` in object storage at `exports/<tenant>/<job>/<file>` (local `./exports` only without a storage client), download streams the stored file, cleanup deletes it; tenant context required (da7d052, ff8c0c8). Very large exports may hit `SERVER_WRITE_TIMEOUT` — revisit with a job runner.
 - **T130** — Login error swallowed by the refresh interceptor. The 401 refresh/redirect interceptor skips auth endpoints (login, register, refresh, logout, reset, verify) so login errors show; concurrent 401s share one refresh; tests (`src/services/__tests__/api.interceptor.test.ts`).
 - **T131** — Public payment result pages for the /pay/:token flow. `/invoices/payment-success` and `/invoices/payment-cancelled` (the URLs the backend already sends to Stripe) moved outside the auth guard; test.
 - **T132** — Clear tenant and user data on logout and tenant switch. Persisted React Query cache keyed by app version + user + tenant; logout, session expiry and a different user's login clear the in-memory and persisted cache, tenant state, `current_tenant_id` and `X-Tenant-ID`; tenant switch clears the query cache; tests.
@@ -3048,4 +2956,5 @@ Dated history from the original "Completed Items" list:
 - **T150** — Cloudflare Workers static assets + /api edge proxy Worker + _headers. `frontend/wrangler.jsonc` (worker `servicepro-web`, SPA fallback, `run_worker_first` for `/api/*` + `/version`, custom domain servicepro.sharkfins.xyz, workers.dev/previews off, `EDGE_PROXY_SECRET` required), `frontend/worker/{index,proxy}.ts` (503 when `API_ORIGIN` unset, raw body streamed, `X-SP-Client-IP`/`X-SP-Edge-Secret` set and spoofed copies stripped) with 22 tests, `public/_headers` (CSP/HSTS/cache) + `.assetsignore`; same-origin `/api` default; verified with `wrangler deploy --dry-run` and `wrangler dev`. Not deployed (T204).
 - **T151** — Ops docs: Cloud Run setup, deploy/rollback, backups + nightly pg_dump → R2 workflow. `docs/ops/cloud-run-setup.md`, `docs/ops/deploy.md` (rollback incl. Workers versions), `docs/ops/backups.md`; `.github/workflows/db-backup.yml` nightly pg_dump → R2 `servicepro-backups`, skipped until the `MIGRATION_DATABASE_URL` secret exists (activation + restore drill: T209).
 - **T152** — Commit generated OpenAPI and TS types for drift gating. `backend/docs/{swagger.json,swagger.yaml,docs.go}` and `frontend/src/types/api.generated.ts` committed; swag pinned via go.mod `tool` directive (`go tool swag`); `make openapi-check`, pre-commit hook and CI `openapi-drift` gate on them.
+- **T226** — Tenant creation and invitation acceptance in transactions; per-tenant uniqueness. Migration `000012`: tenant slug unique among live tenants, one pending invitation per `(tenant, LOWER(email))`; `TenantRepository.CreateWithOwner` creates tenant + owner membership + default subscription in one transaction (owner role by name; debug query and hard-coded UUID gone); invitation accept runs in one transaction with the invitation row locked, persists expiry, reactivates an existing member with the invited role (458209c, 591a6ed, 1489c79).
 - **T227** — Frontend follow-through for the Phase 1 auth changes (invite codes, 429, logout-everywhere). Registration form has an `invite_code` field (prefilled from `?invite=`/`?code=`/`?invite_code=`, hidden for tenant invitations) and distinct messages for invite-only / invalid code / invalid invitation and 429; login shows a generic 429 message and honours a safe same-origin `returnUrl` (`getSafeReturnUrl`); logout says it signs out every device; Cypress cases for the removed Stripe endpoints deleted; tenant settings/members/membership/billing pages show a permission message on 403 and hide actions built-in roles can't use (`src/utils/tenantPermissions.ts`); accept-invitation offers sign-up. Quotes search needs backend support (T228); invite-code/invitation API gaps → T229; effective permissions + org deletion → T230.
