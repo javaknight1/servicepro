@@ -106,14 +106,14 @@ func (c *Client) Send(ctx context.Context, msg *email.EmailMessage) (*email.Send
 			fromHeader = msg.From
 		}
 	}
-	emailBuilder.WriteString(fmt.Sprintf("From: %s\r\n", fromHeader))
+	fmt.Fprintf(&emailBuilder, "From: %s\r\n", fromHeader)
 
 	// To header
-	emailBuilder.WriteString(fmt.Sprintf("To: %s\r\n", strings.Join(msg.To, ", ")))
+	fmt.Fprintf(&emailBuilder, "To: %s\r\n", strings.Join(msg.To, ", "))
 
 	// CC header (if any)
 	if len(msg.CC) > 0 {
-		emailBuilder.WriteString(fmt.Sprintf("Cc: %s\r\n", strings.Join(msg.CC, ", ")))
+		fmt.Fprintf(&emailBuilder, "Cc: %s\r\n", strings.Join(msg.CC, ", "))
 	}
 
 	// Reply-To header
@@ -121,49 +121,49 @@ func (c *Client) Send(ctx context.Context, msg *email.EmailMessage) (*email.Send
 	if replyTo == "" {
 		replyTo = from
 	}
-	emailBuilder.WriteString(fmt.Sprintf("Reply-To: %s\r\n", replyTo))
+	fmt.Fprintf(&emailBuilder, "Reply-To: %s\r\n", replyTo)
 
 	// Subject
-	emailBuilder.WriteString(fmt.Sprintf("Subject: %s\r\n", msg.Subject))
+	fmt.Fprintf(&emailBuilder, "Subject: %s\r\n", msg.Subject)
 
 	// Date
-	emailBuilder.WriteString(fmt.Sprintf("Date: %s\r\n", time.Now().Format(time.RFC1123Z)))
+	fmt.Fprintf(&emailBuilder, "Date: %s\r\n", time.Now().Format(time.RFC1123Z))
 
 	// Message-ID
 	messageID := fmt.Sprintf("<%d.%s@%s>", time.Now().UnixNano(), "smtp", c.config.Host)
-	emailBuilder.WriteString(fmt.Sprintf("Message-ID: %s\r\n", messageID))
+	fmt.Fprintf(&emailBuilder, "Message-ID: %s\r\n", messageID)
 
 	// MIME headers
 	emailBuilder.WriteString("MIME-Version: 1.0\r\n")
 
 	// Custom headers
 	for key, value := range msg.Headers {
-		emailBuilder.WriteString(fmt.Sprintf("%s: %s\r\n", key, value))
+		fmt.Fprintf(&emailBuilder, "%s: %s\r\n", key, value)
 	}
 
 	// Content type and body
 	if msg.HTMLBody != "" && msg.TextBody != "" {
 		// Multipart message
 		boundary := fmt.Sprintf("boundary_%d", time.Now().UnixNano())
-		emailBuilder.WriteString(fmt.Sprintf("Content-Type: multipart/alternative; boundary=\"%s\"\r\n", boundary))
+		fmt.Fprintf(&emailBuilder, "Content-Type: multipart/alternative; boundary=\"%s\"\r\n", boundary)
 		emailBuilder.WriteString("\r\n")
 
 		// Text part
-		emailBuilder.WriteString(fmt.Sprintf("--%s\r\n", boundary))
+		fmt.Fprintf(&emailBuilder, "--%s\r\n", boundary)
 		emailBuilder.WriteString("Content-Type: text/plain; charset=\"UTF-8\"\r\n")
 		emailBuilder.WriteString("\r\n")
 		emailBuilder.WriteString(msg.TextBody)
 		emailBuilder.WriteString("\r\n")
 
 		// HTML part
-		emailBuilder.WriteString(fmt.Sprintf("--%s\r\n", boundary))
+		fmt.Fprintf(&emailBuilder, "--%s\r\n", boundary)
 		emailBuilder.WriteString("Content-Type: text/html; charset=\"UTF-8\"\r\n")
 		emailBuilder.WriteString("\r\n")
 		emailBuilder.WriteString(msg.HTMLBody)
 		emailBuilder.WriteString("\r\n")
 
 		// End boundary
-		emailBuilder.WriteString(fmt.Sprintf("--%s--\r\n", boundary))
+		fmt.Fprintf(&emailBuilder, "--%s--\r\n", boundary)
 	} else if msg.HTMLBody != "" {
 		emailBuilder.WriteString("Content-Type: text/html; charset=\"UTF-8\"\r\n")
 		emailBuilder.WriteString("\r\n")

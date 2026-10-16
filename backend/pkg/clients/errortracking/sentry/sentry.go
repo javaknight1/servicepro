@@ -2,6 +2,7 @@ package sentry
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -55,7 +56,7 @@ type Client struct {
 // NewClient creates a new Sentry error tracking client
 func NewClient(cfg *Config, appCfg *config.Config) (*Client, error) {
 	if cfg.DSN == "" {
-		return nil, fmt.Errorf("Sentry DSN is required")
+		return nil, errors.New("sentry DSN is required")
 	}
 
 	sampleRate := cfg.TracesSampleRate

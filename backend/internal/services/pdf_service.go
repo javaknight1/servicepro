@@ -257,11 +257,11 @@ func (s *PDFService) BuildFooter(tmpl *models.InvoiceTemplate) string {
 		textAlign = "right"
 	}
 
-	builder.WriteString(fmt.Sprintf(`
+	fmt.Fprintf(&builder, `
 <div style="text-align: %s; font-size: 10px; color: #666; padding: 5px;">
     %s
 </div>
-`, textAlign, pageNumberHTML))
+`, textAlign, pageNumberHTML)
 
 	return builder.String()
 }

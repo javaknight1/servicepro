@@ -2,6 +2,7 @@ package resend
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -48,7 +49,7 @@ func NewClient(cfg *Config) (*Client, error) {
 	}
 
 	if cfg.APIKey == "" {
-		return nil, fmt.Errorf("Resend API key is required")
+		return nil, errors.New("resend API key is required")
 	}
 
 	if cfg.FromEmail == "" {

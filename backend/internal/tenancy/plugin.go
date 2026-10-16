@@ -136,7 +136,7 @@ func addCondition(stmt *gorm.Statement, cond clause.Expression) {
 		// Always parenthesise the caller's conditions: GORM does not wrap a
 		// single raw "a OR b" string, which would otherwise bind as
 		// "a OR (b AND tenant)".
-		existing := clause.Expr{SQL: "(?)", Vars: []interface{}{clause.AndConditions{Exprs: where.Exprs}}}
+		existing := clause.Expr{SQL: "(?)", Vars: []interface{}{clause.AndConditions(where)}}
 		exprs = []clause.Expression{existing, cond}
 	}
 	c.Expression = clause.Where{Exprs: exprs}

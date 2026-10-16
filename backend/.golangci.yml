@@ -15,6 +15,7 @@ linters:
     - unused
     - ineffassign
     - sqlclosecheck
+    - staticcheck
 
   settings:
     govet:
