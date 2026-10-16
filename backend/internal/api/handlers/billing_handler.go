@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
+	"github.com/javaknight1/servicepro/backend/internal/api/apierror"
 	"github.com/javaknight1/servicepro/backend/internal/api/middleware"
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/services"
@@ -49,16 +50,13 @@ func (h *BillingHandler) CreateSetupIntent(c *gin.Context) {
 	response, err := h.stripeService.CreateSetupIntent(c.Request.Context(), tenantID)
 	if err != nil {
 		if errors.Is(err, services.ErrStripeNotConfigured) {
-			c.JSON(http.StatusServiceUnavailable, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusServiceUnavailable, models.ErrorResponse{
 				Error:   "stripe_not_configured",
 				Message: "Stripe is not configured",
 			})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "setup_intent_failed",
-			Message: "Failed to create setup intent",
-		})
+		apierror.Internal(c, err, "Failed to create setup intent")
 		return
 	}
 
@@ -89,26 +87,20 @@ func (h *BillingHandler) AddPaymentMethod(c *gin.Context) {
 
 	var req models.AddSavedPaymentMethodRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
-			Error:   "invalid_request",
-			Message: publicError(err),
-		})
+		apierror.BindError(c, err)
 		return
 	}
 
 	response, err := h.stripeService.AddPaymentMethod(c.Request.Context(), tenantID, req.PaymentMethodID, req.SetAsDefault)
 	if err != nil {
 		if errors.Is(err, services.ErrStripeNotConfigured) {
-			c.JSON(http.StatusServiceUnavailable, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusServiceUnavailable, models.ErrorResponse{
 				Error:   "stripe_not_configured",
 				Message: "Stripe is not configured",
 			})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "add_payment_method_failed",
-			Message: "Failed to add payment method",
-		})
+		apierror.Internal(c, err, "Failed to add payment method")
 		return
 	}
 
@@ -137,10 +129,7 @@ func (h *BillingHandler) GetPaymentMethods(c *gin.Context) {
 
 	response, err := h.stripeService.GetPaymentMethods(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "fetch_failed",
-			Message: "Failed to fetch payment methods",
-		})
+		apierror.Internal(c, err, "Failed to fetch payment methods")
 		return
 	}
 
@@ -172,7 +161,7 @@ func (h *BillingHandler) SetDefaultPaymentMethod(c *gin.Context) {
 	pmIDStr := c.Param("pmId")
 	pmID, err := uuid.Parse(pmIDStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_id",
 			Message: "Invalid payment method ID format",
 		})
@@ -182,16 +171,13 @@ func (h *BillingHandler) SetDefaultPaymentMethod(c *gin.Context) {
 	err = h.stripeService.SetDefaultPaymentMethod(c.Request.Context(), tenantID, pmID)
 	if err != nil {
 		if errors.Is(err, services.ErrPaymentMethodNotFound) {
-			c.JSON(http.StatusNotFound, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusNotFound, models.ErrorResponse{
 				Error:   "not_found",
 				Message: "Payment method not found",
 			})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "update_failed",
-			Message: "Failed to set default payment method",
-		})
+		apierror.Internal(c, err, "Failed to set default payment method")
 		return
 	}
 
@@ -223,7 +209,7 @@ func (h *BillingHandler) DeletePaymentMethod(c *gin.Context) {
 	pmIDStr := c.Param("pmId")
 	pmID, err := uuid.Parse(pmIDStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_id",
 			Message: "Invalid payment method ID format",
 		})
@@ -233,16 +219,13 @@ func (h *BillingHandler) DeletePaymentMethod(c *gin.Context) {
 	err = h.stripeService.DeletePaymentMethod(c.Request.Context(), tenantID, pmID)
 	if err != nil {
 		if errors.Is(err, services.ErrPaymentMethodNotFound) {
-			c.JSON(http.StatusNotFound, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusNotFound, models.ErrorResponse{
 				Error:   "not_found",
 				Message: "Payment method not found",
 			})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "delete_failed",
-			Message: "Failed to delete payment method",
-		})
+		apierror.Internal(c, err, "Failed to delete payment method")
 		return
 	}
 
@@ -284,10 +267,7 @@ func (h *BillingHandler) GetBillingHistory(c *gin.Context) {
 
 	response, err := h.stripeService.GetBillingHistory(c.Request.Context(), tenantID, page, pageSize)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "fetch_failed",
-			Message: "Failed to fetch billing history",
-		})
+		apierror.Internal(c, err, "Failed to fetch billing history")
 		return
 	}
 
@@ -324,7 +304,7 @@ func (h *BillingHandler) getTenantID(c *gin.Context) (uuid.UUID, error) {
 	idStr := c.Param("id")
 	tenantID, err := uuid.Parse(idStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_id",
 			Message: "Invalid tenant ID format",
 		})
@@ -334,7 +314,7 @@ func (h *BillingHandler) getTenantID(c *gin.Context) (uuid.UUID, error) {
 	// Verify user has access to this tenant
 	userTenantID, err := middleware.GetTenantID(c)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusUnauthorized, models.ErrorResponse{
 			Error:   "unauthorized",
 			Message: "User not authenticated",
 		})
@@ -342,7 +322,7 @@ func (h *BillingHandler) getTenantID(c *gin.Context) (uuid.UUID, error) {
 	}
 
 	if tenantID != userTenantID {
-		c.JSON(http.StatusForbidden, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusForbidden, models.ErrorResponse{
 			Error:   "forbidden",
 			Message: "Access denied to this tenant",
 		})

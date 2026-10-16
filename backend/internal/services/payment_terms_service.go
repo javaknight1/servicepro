@@ -4,12 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 
+	apperrors "github.com/javaknight1/servicepro/backend/internal/errors"
 	"github.com/javaknight1/servicepro/backend/internal/models"
 )
 
@@ -53,6 +55,23 @@ type PaymentStatus struct {
 	NotificationType     string          `json:"notification_type,omitempty"`
 }
 
+// Payment term domain errors (T223).
+var (
+	// ErrPaymentTermNotFound: no such payment term in this tenant
+	ErrPaymentTermNotFound = apperrors.NotFound("payment_term_not_found", "Payment term not found")
+	// ErrNoDefaultPaymentTerm: the tenant has no active default term
+	ErrNoDefaultPaymentTerm = apperrors.NotFound("no_default_payment_term", "No default payment term is set")
+	// ErrPaymentTermInUse: invoices reference the term (WithMessage gives the count)
+	ErrPaymentTermInUse = apperrors.Conflict("payment_term_in_use", "This payment term is used by invoices and can't be deleted")
+	// ErrInvalidPaymentTerm: validation failed (WithMessage gives the reason)
+	ErrInvalidPaymentTerm = apperrors.BadRequest("invalid_payment_term", "Invalid payment term")
+)
+
+// invalidPaymentTerm is ErrInvalidPaymentTerm with the validation reason.
+func invalidPaymentTerm(reason string) error {
+	return ErrInvalidPaymentTerm.WithMessage(strings.ToUpper(reason[:1]) + reason[1:])
+}
+
 // CreatePaymentTerm creates a new payment term
 func (s *PaymentTermsService) CreatePaymentTerm(ctx context.Context, term *models.PaymentTerm) error {
 	if err := s.validatePaymentTerm(term); err != nil {
@@ -78,7 +97,7 @@ func (s *PaymentTermsService) GetPaymentTerm(ctx context.Context, id uuid.UUID) 
 	var term models.PaymentTerm
 	if err := s.db.WithContext(ctx).Where("id = ?", id).First(&term).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("payment term not found")
+			return nil, ErrPaymentTermNotFound
 		}
 		return nil, fmt.Errorf("failed to get payment term: %w", err)
 	}
@@ -90,7 +109,7 @@ func (s *PaymentTermsService) GetDefaultPaymentTerm(ctx context.Context) (*model
 	var term models.PaymentTerm
 	if err := s.db.WithContext(ctx).Where("is_default = ? AND is_active = ?", true, true).First(&term).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("no default payment term found")
+			return nil, ErrNoDefaultPaymentTerm
 		}
 		return nil, fmt.Errorf("failed to get default payment term: %w", err)
 	}
@@ -141,7 +160,7 @@ func (s *PaymentTermsService) DeletePaymentTerm(ctx context.Context, id uuid.UUI
 	}
 
 	if count > 0 {
-		return fmt.Errorf("cannot delete payment term: it is used by %d invoice(s)", count)
+		return ErrPaymentTermInUse.WithMessage(fmt.Sprintf("This payment term is used by %d invoice(s) and can't be deleted", count))
 	}
 
 	if err := s.db.WithContext(ctx).Delete(&models.PaymentTerm{}, id).Error; err != nil {
@@ -436,39 +455,39 @@ func (s *PaymentTermsService) CalculatePaymentDetails(
 // validatePaymentTerm validates payment term data
 func (s *PaymentTermsService) validatePaymentTerm(term *models.PaymentTerm) error {
 	if term.Name == "" {
-		return errors.New("payment term name is required")
+		return invalidPaymentTerm("payment term name is required")
 	}
 
 	if term.DaysUntilDue < 0 {
-		return errors.New("days until due must be non-negative")
+		return invalidPaymentTerm("days until due must be non-negative")
 	}
 
 	if !term.DiscountPercentage.IsZero() {
 		if term.DiscountPercentage.LessThan(decimal.Zero) || term.DiscountPercentage.GreaterThan(decimal.NewFromInt(100)) {
-			return errors.New("discount percentage must be between 0 and 100")
+			return invalidPaymentTerm("discount percentage must be between 0 and 100")
 		}
 	}
 
 	if term.DiscountDays < 0 {
-		return errors.New("discount days must be non-negative")
+		return invalidPaymentTerm("discount days must be non-negative")
 	}
 
 	if term.DiscountDays > term.DaysUntilDue {
-		return errors.New("discount days cannot exceed days until due")
+		return invalidPaymentTerm("discount days cannot exceed days until due")
 	}
 
 	if !term.LateFeePercentage.IsZero() {
 		if term.LateFeePercentage.LessThan(decimal.Zero) || term.LateFeePercentage.GreaterThan(decimal.NewFromInt(100)) {
-			return errors.New("late fee percentage must be between 0 and 100")
+			return invalidPaymentTerm("late fee percentage must be between 0 and 100")
 		}
 	}
 
 	if !term.LateFeeAmount.IsZero() && term.LateFeeAmount.LessThan(decimal.Zero) {
-		return errors.New("late fee amount must be non-negative")
+		return invalidPaymentTerm("late fee amount must be non-negative")
 	}
 
 	if term.GracePeriodDays < 0 {
-		return errors.New("grace period days must be non-negative")
+		return invalidPaymentTerm("grace period days must be non-negative")
 	}
 
 	return nil
