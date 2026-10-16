@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -130,23 +131,10 @@ func (h *ExportHandler) GetExportProgress(c *gin.Context) {
 		return
 	}
 
-	// The tenant-scoped DB lookup is the authority: in-memory progress is
-	// keyed by job ID only, so never serve it for another tenant's job.
-	response, err := h.exportService.GetExportStatus(c.Request.Context(), jobID)
+	// Progress lives on the tenant-scoped job row, so any instance answers.
+	progress, err := h.exportService.GetProgress(c.Request.Context(), jobID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "export job not found"})
-		return
-	}
-
-	progress := h.exportService.GetProgress(jobID)
-	if progress == nil {
-		c.JSON(http.StatusOK, models.ExportProgress{
-			JobID:            response.ID,
-			Status:           response.Status,
-			TotalRecords:     response.TotalRecords,
-			ProcessedRecords: response.ProcessedRecords,
-			Progress:         response.Progress,
-		})
 		return
 	}
 
@@ -181,27 +169,28 @@ func (h *ExportHandler) StreamExportProgress(c *gin.Context) {
 	c.Header("Cache-Control", "no-cache")
 	c.Header("Connection", "keep-alive")
 
-	progressChan := h.exportService.SubscribeToProgress(jobID)
-
-	// Stream progress updates
+	// Poll the persisted progress (works from any instance, T128).
+	ticker := time.NewTicker(500 * time.Millisecond)
+	defer ticker.Stop()
+	first := true
 	c.Stream(func(w io.Writer) bool {
-		select {
-		case progress, ok := <-progressChan:
-			if !ok {
+		if !first {
+			select {
+			case <-ticker.C:
+			case <-c.Request.Context().Done():
 				return false
 			}
-			c.SSEvent("progress", progress)
+		}
+		first = false
 
-			// Close stream when completed or failed
-			if progress.Status == models.ExportJobStatusCompleted ||
-				progress.Status == models.ExportJobStatusFailed ||
-				progress.Status == models.ExportJobStatusCancelled {
-				return false
-			}
-			return true
-		case <-c.Request.Context().Done():
+		progress, err := h.exportService.GetProgress(c.Request.Context(), jobID)
+		if err != nil {
 			return false
 		}
+		c.SSEvent("progress", progress)
+		return progress.Status != models.ExportJobStatusCompleted &&
+			progress.Status != models.ExportJobStatusFailed &&
+			progress.Status != models.ExportJobStatusCancelled
 	})
 }
 
