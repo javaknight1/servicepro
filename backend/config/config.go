@@ -173,11 +173,39 @@ type ServerConfig struct {
 	// Gin-specific settings
 	MaxMultipartMemory int64    // Max memory for multipart form parsing (bytes)
 	TrustedProxies     []string // List of trusted proxy IPs for X-Forwarded-For
+
+	// EdgeProxySecret is shared with the Cloudflare Worker that proxies
+	// /api/* to Cloud Run. When a request carries X-SP-Edge-Secret equal to
+	// this value, X-SP-Client-IP is trusted as the visitor's IP. Empty
+	// disables the edge headers entirely.
+	EdgeProxySecret string
+
+	// InternalJobsSecret authorizes POST /internal/jobs/* via the
+	// X-Internal-Jobs-Token header. Empty disables the job endpoints (404).
+	InternalJobsSecret string
+
+	// RunBackgroundWorkers starts in-process periodic jobs (payment
+	// reminders, KPI metrics collector). Default true in development, false
+	// elsewhere: on Cloud Run these run via /internal/jobs/* from a scheduler.
+	RunBackgroundWorkers bool
+
+	// AppVersion / GitSHA identify the running build (baked into the image
+	// as ENV by the Dockerfile). Read by internal/version; mirrored here.
+	AppVersion string
+	GitSHA     string
 }
 
 // DatabaseConfig holds database configuration
 type DatabaseConfig struct {
-	URL                 string
+	URL string
+	// RunMigrationsOnStartup applies pending embedded migrations when the
+	// server boots. Default true in development, false elsewhere (deployed
+	// environments migrate from the release pipeline via cmd/migrate).
+	RunMigrationsOnStartup bool
+	// SimpleProtocol disables server-side prepared statements (pgx simple
+	// protocol). Required behind a transaction-mode pooler such as Supabase's
+	// on port 6543; enabled automatically when the URL uses that port.
+	SimpleProtocol      bool
 	MaxOpenConns        int
 	MaxIdleConns        int
 	ConnMaxLifetime     time.Duration
@@ -366,14 +394,34 @@ const (
 	insecureJWTSecretDefault = "your-secret-key-change-this-in-production"
 )
 
+// DefaultDatabaseURL is the local docker-compose database, used when
+// DATABASE_URL is unset (also by cmd/migrate).
+const DefaultDatabaseURL = "postgresql://postgres:password@localhost:5432/servicepro?sslmode=disable"
+
+// defaultDevRedisURL is used when REDIS_URL is unset in development only.
+// In other environments an unset REDIS_URL means "Redis not configured".
+const defaultDevRedisURL = "redis://localhost:6379"
+
 func Load() *Config {
 	// Load .env file if it exists (for local development)
 	_ = godotenv.Load()
 
+	// Several defaults differ between local development and deployed
+	// environments (migrations, background workers, pool size, Redis).
+	env := getEnv("ENV", "development")
+	isDev := env == "development"
+
+	defaultMaxOpenConns := 10 // MaxOpenConns x max instances must fit Supabase's connection limit
+	defaultRedisURL := ""
+	if isDev {
+		defaultMaxOpenConns = 25
+		defaultRedisURL = defaultDevRedisURL
+	}
+
 	cfg := &Config{
 		Server: ServerConfig{
 			Port:        getEnv("PORT", "8080"),
-			Env:         getEnv("ENV", "development"),
+			Env:         env,
 			FrontendURL: getEnv("FRONTEND_URL", "http://localhost:3000"),
 			BackendURL:  getEnv("BACKEND_URL", "http://localhost:8080"),
 
@@ -387,18 +435,26 @@ func Load() *Config {
 			// Gin settings
 			MaxMultipartMemory: int64(getEnvAsInt("SERVER_MAX_MULTIPART_MEMORY", 32)) << 20, // Default 32MB
 			TrustedProxies:     getEnvAsStringSlice("SERVER_TRUSTED_PROXIES", []string{}),
+
+			EdgeProxySecret:      getEnv("EDGE_PROXY_SECRET", ""),
+			InternalJobsSecret:   getEnv("INTERNAL_JOBS_SECRET", ""),
+			RunBackgroundWorkers: getEnvAsBool("RUN_BACKGROUND_WORKERS", isDev),
+			AppVersion:           getEnv("APP_VERSION", "dev"),
+			GitSHA:               getEnv("GIT_SHA", "unknown"),
 		},
 		Database: DatabaseConfig{
-			URL:                 getEnv("DATABASE_URL", "postgresql://postgres:password@localhost:5432/servicepro?sslmode=disable"),
-			MaxOpenConns:        getEnvAsInt("DB_MAX_OPEN_CONNS", 25),
-			MaxIdleConns:        getEnvAsInt("DB_MAX_IDLE_CONNS", 5),
-			ConnMaxLifetime:     getEnvAsDuration("DB_CONN_MAX_LIFETIME", "5m"),
-			SlowQueryThreshold:  getEnvAsDuration("DB_SLOW_QUERY_THRESHOLD", "100ms"),
-			QueryAlertThreshold: getEnvAsDuration("DB_QUERY_ALERT_THRESHOLD", "1s"),
-			LogAllQueries:       getEnvAsBool("DB_LOG_ALL_QUERIES", false),
+			URL:                    getEnv("DATABASE_URL", DefaultDatabaseURL),
+			RunMigrationsOnStartup: getEnvAsBool("RUN_MIGRATIONS_ON_STARTUP", isDev),
+			SimpleProtocol:         getEnvAsBool("DB_SIMPLE_PROTOCOL", false),
+			MaxOpenConns:           getEnvAsInt("DB_MAX_OPEN_CONNS", defaultMaxOpenConns),
+			MaxIdleConns:           getEnvAsInt("DB_MAX_IDLE_CONNS", 5),
+			ConnMaxLifetime:        getEnvAsDuration("DB_CONN_MAX_LIFETIME", "5m"),
+			SlowQueryThreshold:     getEnvAsDuration("DB_SLOW_QUERY_THRESHOLD", "100ms"),
+			QueryAlertThreshold:    getEnvAsDuration("DB_QUERY_ALERT_THRESHOLD", "1s"),
+			LogAllQueries:          getEnvAsBool("DB_LOG_ALL_QUERIES", false),
 		},
 		Redis: RedisConfig{
-			URL:      getEnv("REDIS_URL", "redis://localhost:6379"),
+			URL:      getEnv("REDIS_URL", defaultRedisURL),
 			Password: getEnv("REDIS_PASSWORD", ""),
 			DB:       getEnvAsInt("REDIS_DB", 0),
 		},
@@ -430,7 +486,7 @@ func Load() *Config {
 			BurstMultiplier:    getEnvAsFloat("RATE_LIMIT_BURST", 1.2),        // 20% burst capacity
 			Window:             getEnvAsDuration("RATE_LIMIT_WINDOW", "1m"),   // 1 minute window
 			TrustedProxies:     getEnvAsStringSlice("RATE_LIMIT_TRUSTED_PROXIES", []string{}),
-			ExcludedPaths:      getEnvAsStringSlice("RATE_LIMIT_EXCLUDED_PATHS", []string{"/health", "/api/v1/version"}),
+			ExcludedPaths:      getEnvAsStringSlice("RATE_LIMIT_EXCLUDED_PATHS", []string{"/health", "/version"}),
 		},
 		AWS: AWSConfig{
 			Region:          getEnv("AWS_REGION", "us-east-1"),

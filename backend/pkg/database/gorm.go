@@ -24,8 +24,16 @@ func NewGormDB(cfg *config.DatabaseConfig) (*gorm.DB, *QueryLogger, error) {
 		Logger: queryLogger,
 	}
 
+	// Behind a transaction-mode pooler (Supabase/Supavisor on :6543) a
+	// connection may change between statements, so server-side prepared
+	// statements must not be used: switch pgx to the simple protocol.
+	simpleProtocol := cfg.SimpleProtocol || UsesTransactionPooler(cfg.URL)
+
 	// Connect to database
-	db, err := gorm.Open(postgres.Open(cfg.URL), gormConfig)
+	db, err := gorm.Open(postgres.New(postgres.Config{
+		DSN:                  cfg.URL,
+		PreferSimpleProtocol: simpleProtocol,
+	}), gormConfig)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
@@ -46,6 +54,9 @@ func NewGormDB(cfg *config.DatabaseConfig) (*gorm.DB, *QueryLogger, error) {
 		return nil, nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
-	logging.Info(context.Background(), "Successfully connected to PostgreSQL database via GORM", nil)
+	logging.Info(context.Background(), "Successfully connected to PostgreSQL database via GORM", map[string]any{
+		"max_open_conns":  cfg.MaxOpenConns,
+		"simple_protocol": simpleProtocol,
+	})
 	return db, queryLogger, nil
 }

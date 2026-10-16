@@ -90,8 +90,9 @@ func (db *TestDB) RunMigrations(t *testing.T, migrationsPath string) {
 	testDBMu.Lock()
 	defer testDBMu.Unlock()
 
-	// Find all migration files
-	files, err := filepath.Glob(filepath.Join(migrationsPath, "*.sql"))
+	// Find all golang-migrate "up" files (NNNNNN_name.up.sql); never run the
+	// .down.sql files, which drop the schema.
+	files, err := filepath.Glob(filepath.Join(migrationsPath, "*.up.sql"))
 	if err != nil {
 		t.Fatalf("Failed to find migration files: %v", err)
 	}

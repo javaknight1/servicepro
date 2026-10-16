@@ -126,6 +126,15 @@ func main() {
 	}
 	defer sqlDB.Close()
 
+	// Apply pending migrations (development default). Deployed environments
+	// migrate from the release pipeline (`cmd/migrate up`) before deploying.
+	if cfg.Database.RunMigrationsOnStartup {
+		if err := database.RunMigrations(cfg.Database.URL); err != nil {
+			logging.Fatal(ctx, "[MIGRATE] Failed to apply migrations at startup", map[string]any{"error": err.Error()})
+			os.Exit(1)
+		}
+	}
+
 	// Connect to Redis
 	redisClient, err := database.NewRedisClient(&cfg.Redis)
 	if err != nil {
