@@ -165,7 +165,6 @@ func SetupServices(
 	// Tenant service
 	svc.Tenant = services.NewTenantService(repos.Tenant, repos.User)
 	svc.Tenant.SetPermissionInvalidator(permChecker)
-	svc.Tenant.SetMembershipAssigner(svc.Membership)
 
 	// Invitation service
 	svc.Invitation = services.NewInvitationService(db, emailClient, cfg.Server.FrontendURL)
