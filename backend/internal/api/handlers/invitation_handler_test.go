@@ -15,6 +15,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 
+	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/services"
 )
 
@@ -44,7 +45,7 @@ func TestInvitationHandler_ErrorsHaveCodeAndMessage(t *testing.T) {
 		{"invite: bad tenant id", http.MethodPost, "/tenants/:id/invitations", "/tenants/nope/invitations",
 			`{"email":"a@b.test","role_id":"` + uuid.NewString() + `"}`, withUser, h.InviteMember, http.StatusBadRequest, "invalid_tenant_id"},
 		{"invite: invalid body", http.MethodPost, "/tenants/:id/invitations", "/tenants/" + tenantID.String() + "/invitations",
-			`{"email":"not-an-email"}`, withUser, h.InviteMember, http.StatusBadRequest, "invalid_request"},
+			`{"email":"not-an-email"}`, withUser, h.InviteMember, http.StatusBadRequest, "validation_failed"},
 		{"invite: no user", http.MethodPost, "/tenants/:id/invitations", "/tenants/" + tenantID.String() + "/invitations",
 			`{"email":"a@b.test","role_id":"` + uuid.NewString() + `"}`, noop, h.InviteMember, http.StatusUnauthorized, "unauthorized"},
 		{"cancel: bad invitation id", http.MethodDelete, "/tenants/:id/invitations/:invitation_id", "/tenants/" + tenantID.String() + "/invitations/nope",
@@ -67,7 +68,7 @@ func TestInvitationHandler_ErrorsHaveCodeAndMessage(t *testing.T) {
 			router.ServeHTTP(w, req)
 
 			assert.Equal(t, tc.wantStatus, w.Code)
-			var resp ErrorResponse
+			var resp models.ErrorResponse
 			require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
 			assert.Equal(t, tc.wantCode, resp.Error)
 			assert.NotEmpty(t, resp.Message, "a human message accompanies the code")

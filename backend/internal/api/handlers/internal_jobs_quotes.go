@@ -7,6 +7,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/javaknight1/servicepro/backend/internal/api/apierror"
+	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"
 )
 
@@ -28,9 +30,9 @@ type QuoteExpiryJobResponse struct {
 // @Produce		json
 // @Param			X-Internal-Jobs-Token	header		string	true	"Internal jobs secret"
 // @Success		200						{object}	QuoteExpiryJobResponse
-// @Failure		401						{object}	ErrorResponse
-// @Failure		404						{object}	ErrorResponse
-// @Failure		500						{object}	ErrorResponse
+// @Failure		401						{object}	models.ErrorResponse
+// @Failure		404						{object}	models.ErrorResponse
+// @Failure		500						{object}	models.ErrorResponse
 // @Router			/internal/jobs/quote-expiry [post]
 func RunQuoteExpiry(expire QuoteExpirer) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -38,7 +40,7 @@ func RunQuoteExpiry(expire QuoteExpirer) gin.HandlerFunc {
 		n, err := expire(c.Request.Context(), start)
 		if err != nil {
 			logging.Error(c.Request.Context(), "[INTERNAL-JOBS] quote-expiry failed", map[string]any{"error": err.Error()})
-			c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Quote expiry job failed"})
+			apierror.WriteResponse(c, http.StatusInternalServerError, models.ErrorResponse{Error: "Quote expiry job failed"})
 			return
 		}
 		c.JSON(http.StatusOK, QuoteExpiryJobResponse{

@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
+	"github.com/javaknight1/servicepro/backend/internal/api/apierror"
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/repository"
 )
@@ -35,7 +36,7 @@ func (h *UserHandler) GetCurrentUser(c *gin.Context) {
 	// Get user ID from context (set by auth middleware)
 	userIDStr, exists := c.Get("user_id")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusUnauthorized, models.ErrorResponse{
 			Error:   "unauthorized",
 			Message: "User not authenticated",
 		})
@@ -50,14 +51,14 @@ func (h *UserHandler) GetCurrentUser(c *gin.Context) {
 		var err error
 		userID, err = uuid.Parse(v)
 		if err != nil {
-			c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusUnauthorized, models.ErrorResponse{
 				Error:   "unauthorized",
 				Message: "Invalid user ID",
 			})
 			return
 		}
 	default:
-		c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusUnauthorized, models.ErrorResponse{
 			Error:   "unauthorized",
 			Message: "Invalid user ID format",
 		})
@@ -67,7 +68,7 @@ func (h *UserHandler) GetCurrentUser(c *gin.Context) {
 	// Get user from repository
 	user, err := h.userRepo.GetByID(userID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusNotFound, models.ErrorResponse{
 			Error:   "not_found",
 			Message: "User not found",
 		})
@@ -95,7 +96,7 @@ func (h *UserHandler) UpdateProfile(c *gin.Context) {
 	// Get user ID from context (set by auth middleware)
 	userIDStr, exists := c.Get("user_id")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusUnauthorized, models.ErrorResponse{
 			Error:   "unauthorized",
 			Message: "User not authenticated",
 		})
@@ -110,14 +111,14 @@ func (h *UserHandler) UpdateProfile(c *gin.Context) {
 		var err error
 		userID, err = uuid.Parse(v)
 		if err != nil {
-			c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusUnauthorized, models.ErrorResponse{
 				Error:   "unauthorized",
 				Message: "Invalid user ID",
 			})
 			return
 		}
 	default:
-		c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusUnauthorized, models.ErrorResponse{
 			Error:   "unauthorized",
 			Message: "Invalid user ID format",
 		})
@@ -127,29 +128,20 @@ func (h *UserHandler) UpdateProfile(c *gin.Context) {
 	// Parse request body
 	var req models.UpdateProfileRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
-			Error:   "invalid_request",
-			Message: "Invalid request body",
-		})
+		apierror.BindError(c, err)
 		return
 	}
 
 	// Update user profile
 	if err := h.userRepo.UpdateProfile(userID, req.FirstName, req.LastName); err != nil {
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "update_failed",
-			Message: "Failed to update profile",
-		})
+		apierror.Internal(c, err, "Failed to update profile")
 		return
 	}
 
 	// Get updated user
 	user, err := h.userRepo.GetByID(userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "fetch_failed",
-			Message: "Failed to fetch updated user",
-		})
+		apierror.Internal(c, err, "Failed to fetch updated user")
 		return
 	}
 

@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
+	"github.com/javaknight1/servicepro/backend/internal/api/apierror"
 	"github.com/javaknight1/servicepro/backend/internal/api/middleware"
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/repository"
@@ -54,7 +55,7 @@ func (h *TenantHandler) SetPermissions(p EffectivePermissions) {
 func (h *TenantHandler) GetMyAccess(c *gin.Context) {
 	userID, err := middleware.GetUserID(c)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusUnauthorized, models.ErrorResponse{
 			Error:   "unauthorized",
 			Message: "User not authenticated",
 		})
@@ -63,26 +64,20 @@ func (h *TenantHandler) GetMyAccess(c *gin.Context) {
 	// The tenant comes from RequireTenantFromPath, which verified membership.
 	tenantID, err := middleware.GetTenantID(c)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_tenant_id",
 			Message: "Invalid tenant ID",
 		})
 		return
 	}
 	if h.permissions == nil {
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "internal_error",
-			Message: "An error occurred while processing your request",
-		})
+		apierror.Internal(c, err, "An error occurred while processing your request")
 		return
 	}
 
 	names, err := h.permissions.EffectivePermissionNames(c.Request.Context(), userID, tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "fetch_failed",
-			Message: "Failed to load permissions",
-		})
+		apierror.Internal(c, err, "Failed to load permissions")
 		return
 	}
 	if names == nil {
@@ -119,16 +114,13 @@ func (h *TenantHandler) GetMyAccess(c *gin.Context) {
 func (h *TenantHandler) CreateTenant(c *gin.Context) {
 	var req models.CreateTenantRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
-			Error:   "invalid_request",
-			Message: publicError(err),
-		})
+		apierror.BindError(c, err)
 		return
 	}
 
 	userID, err := middleware.GetUserID(c)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusUnauthorized, models.ErrorResponse{
 			Error:   "unauthorized",
 			Message: "User not authenticated",
 		})
@@ -139,20 +131,17 @@ func (h *TenantHandler) CreateTenant(c *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrInvalidTenantName):
-			c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 				Error:   "invalid_name",
 				Message: "Invalid tenant name",
 			})
 		case errors.Is(err, services.ErrInvalidTenantSlug):
-			c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 				Error:   "invalid_slug",
 				Message: "Invalid or already used slug",
 			})
 		default:
-			c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-				Error:   "create_failed",
-				Message: "Failed to create organization",
-			})
+			apierror.Internal(c, err, "Failed to create organization")
 		}
 		return
 	}
@@ -177,7 +166,7 @@ func (h *TenantHandler) GetTenant(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_id",
 			Message: "Invalid tenant ID format",
 		})
@@ -187,16 +176,13 @@ func (h *TenantHandler) GetTenant(c *gin.Context) {
 	tenant, err := h.tenantService.GetTenant(c.Request.Context(), id)
 	if err != nil {
 		if errors.Is(err, repository.ErrTenantNotFound) {
-			c.JSON(http.StatusNotFound, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusNotFound, models.ErrorResponse{
 				Error:   "not_found",
 				Message: "Organization not found",
 			})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "fetch_failed",
-			Message: "Failed to fetch organization",
-		})
+		apierror.Internal(c, err, "Failed to fetch organization")
 		return
 	}
 
@@ -221,7 +207,7 @@ func (h *TenantHandler) UpdateTenant(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_id",
 			Message: "Invalid tenant ID format",
 		})
@@ -230,10 +216,7 @@ func (h *TenantHandler) UpdateTenant(c *gin.Context) {
 
 	var req models.UpdateTenantRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
-			Error:   "invalid_request",
-			Message: publicError(err),
-		})
+		apierror.BindError(c, err)
 		return
 	}
 
@@ -241,25 +224,22 @@ func (h *TenantHandler) UpdateTenant(c *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, repository.ErrTenantNotFound):
-			c.JSON(http.StatusNotFound, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusNotFound, models.ErrorResponse{
 				Error:   "not_found",
 				Message: "Organization not found",
 			})
 		case errors.Is(err, services.ErrInvalidTenantName):
-			c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 				Error:   "invalid_name",
 				Message: "Invalid tenant name",
 			})
 		case errors.Is(err, services.ErrInvalidTenantSlug):
-			c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 				Error:   "invalid_slug",
 				Message: "Invalid or already used slug",
 			})
 		default:
-			c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-				Error:   "update_failed",
-				Message: "Failed to update organization",
-			})
+			apierror.Internal(c, err, "Failed to update organization")
 		}
 		return
 	}
@@ -284,7 +264,7 @@ func (h *TenantHandler) DeleteTenant(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_id",
 			Message: "Invalid tenant ID format",
 		})
@@ -293,16 +273,13 @@ func (h *TenantHandler) DeleteTenant(c *gin.Context) {
 
 	if err := h.tenantService.DeleteTenant(c.Request.Context(), id); err != nil {
 		if errors.Is(err, repository.ErrTenantNotFound) {
-			c.JSON(http.StatusNotFound, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusNotFound, models.ErrorResponse{
 				Error:   "not_found",
 				Message: "Organization not found",
 			})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "delete_failed",
-			Message: "Failed to delete organization",
-		})
+		apierror.Internal(c, err, "Failed to delete organization")
 		return
 	}
 
@@ -323,7 +300,7 @@ func (h *TenantHandler) DeleteTenant(c *gin.Context) {
 func (h *TenantHandler) ListUserTenants(c *gin.Context) {
 	userID, err := middleware.GetUserID(c)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusUnauthorized, models.ErrorResponse{
 			Error:   "unauthorized",
 			Message: "User not authenticated",
 		})
@@ -332,10 +309,7 @@ func (h *TenantHandler) ListUserTenants(c *gin.Context) {
 
 	tenants, err := h.tenantService.GetUserTenants(c.Request.Context(), userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "fetch_failed",
-			Message: "Failed to fetch organizations",
-		})
+		apierror.Internal(c, err, "Failed to fetch organizations")
 		return
 	}
 
@@ -364,7 +338,7 @@ func (h *TenantHandler) AddMember(c *gin.Context) {
 	idStr := c.Param("id")
 	tenantID, err := uuid.Parse(idStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_id",
 			Message: "Invalid tenant ID format",
 		})
@@ -373,16 +347,13 @@ func (h *TenantHandler) AddMember(c *gin.Context) {
 
 	var req models.AddMemberRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
-			Error:   "invalid_request",
-			Message: publicError(err),
-		})
+		apierror.BindError(c, err)
 		return
 	}
 
 	userID, err := middleware.GetUserID(c)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusUnauthorized, models.ErrorResponse{
 			Error:   "unauthorized",
 			Message: "User not authenticated",
 		})
@@ -394,21 +365,18 @@ func (h *TenantHandler) AddMember(c *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, repository.ErrUserAlreadyInTenant):
-			c.JSON(http.StatusConflict, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusConflict, models.ErrorResponse{
 				Error:   "already_member",
 				Message: "User is already a member of this organization",
 			})
 		case writeRoleRuleError(c, err):
 		case errors.Is(err, services.ErrMemberNotAddable):
-			c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 				Error:   "add_member_failed",
 				Message: "Could not add this member. Send them an invitation instead.",
 			})
 		default:
-			c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-				Error:   "add_member_failed",
-				Message: "Failed to add member",
-			})
+			apierror.Internal(c, err, "Failed to add member")
 		}
 		return
 	}
@@ -435,7 +403,7 @@ func (h *TenantHandler) RemoveMember(c *gin.Context) {
 	idStr := c.Param("id")
 	tenantID, err := uuid.Parse(idStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_id",
 			Message: "Invalid tenant ID format",
 		})
@@ -445,7 +413,7 @@ func (h *TenantHandler) RemoveMember(c *gin.Context) {
 	userIDStr := c.Param("userId")
 	userID, err := uuid.Parse(userIDStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_user_id",
 			Message: "Invalid user ID format",
 		})
@@ -454,7 +422,7 @@ func (h *TenantHandler) RemoveMember(c *gin.Context) {
 
 	actorID, err := middleware.GetUserID(c)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusUnauthorized, models.ErrorResponse{
 			Error:   "unauthorized",
 			Message: "User not authenticated",
 		})
@@ -466,20 +434,17 @@ func (h *TenantHandler) RemoveMember(c *gin.Context) {
 		switch {
 		case writeRoleRuleError(c, err):
 		case errors.Is(err, repository.ErrUserNotInTenant):
-			c.JSON(http.StatusNotFound, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusNotFound, models.ErrorResponse{
 				Error:   "not_member",
 				Message: "User is not a member of this organization",
 			})
 		case errors.Is(err, services.ErrCannotRemoveOwner):
-			c.JSON(http.StatusForbidden, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusForbidden, models.ErrorResponse{
 				Error:   "cannot_remove_owner",
 				Message: "Cannot remove the organization owner",
 			})
 		default:
-			c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-				Error:   "remove_member_failed",
-				Message: "Failed to remove member",
-			})
+			apierror.Internal(c, err, "Failed to remove member")
 		}
 		return
 	}
@@ -507,7 +472,7 @@ func (h *TenantHandler) UpdateMemberRole(c *gin.Context) {
 	idStr := c.Param("id")
 	tenantID, err := uuid.Parse(idStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_id",
 			Message: "Invalid tenant ID format",
 		})
@@ -517,7 +482,7 @@ func (h *TenantHandler) UpdateMemberRole(c *gin.Context) {
 	userIDStr := c.Param("userId")
 	userID, err := uuid.Parse(userIDStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_user_id",
 			Message: "Invalid user ID format",
 		})
@@ -526,16 +491,13 @@ func (h *TenantHandler) UpdateMemberRole(c *gin.Context) {
 
 	var req models.UpdateMemberRoleRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
-			Error:   "invalid_request",
-			Message: publicError(err),
-		})
+		apierror.BindError(c, err)
 		return
 	}
 
 	actorID, err := middleware.GetUserID(c)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusUnauthorized, models.ErrorResponse{
 			Error:   "unauthorized",
 			Message: "User not authenticated",
 		})
@@ -547,20 +509,17 @@ func (h *TenantHandler) UpdateMemberRole(c *gin.Context) {
 		switch {
 		case writeRoleRuleError(c, err):
 		case errors.Is(err, repository.ErrUserNotInTenant):
-			c.JSON(http.StatusNotFound, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusNotFound, models.ErrorResponse{
 				Error:   "not_member",
 				Message: "User is not a member of this organization",
 			})
 		case errors.Is(err, services.ErrCannotChangeOwnerRole):
-			c.JSON(http.StatusForbidden, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusForbidden, models.ErrorResponse{
 				Error:   "cannot_change_owner_role",
 				Message: "Cannot change the organization owner's role",
 			})
 		default:
-			c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-				Error:   "update_role_failed",
-				Message: "Failed to update member role",
-			})
+			apierror.Internal(c, err, "Failed to update member role")
 		}
 		return
 	}
@@ -586,7 +545,7 @@ func (h *TenantHandler) GetTenantMembers(c *gin.Context) {
 	idStr := c.Param("id")
 	tenantID, err := uuid.Parse(idStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_id",
 			Message: "Invalid tenant ID format",
 		})
@@ -596,10 +555,7 @@ func (h *TenantHandler) GetTenantMembers(c *gin.Context) {
 	// Membership in tenantID is verified by RequireTenantFromPath.
 	members, err := h.tenantService.GetTenantMembers(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "fetch_failed",
-			Message: "Failed to fetch members",
-		})
+		apierror.Internal(c, err, "Failed to fetch members")
 		return
 	}
 
@@ -613,17 +569,17 @@ func (h *TenantHandler) GetTenantMembers(c *gin.Context) {
 func writeRoleRuleError(c *gin.Context, err error) bool {
 	switch {
 	case errors.Is(err, services.ErrCannotChangeOwnRole):
-		c.JSON(http.StatusForbidden, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusForbidden, models.ErrorResponse{
 			Error:   "cannot_change_own_role",
 			Message: "You cannot change your own role",
 		})
 	case errors.Is(err, services.ErrInsufficientRoleLevel):
-		c.JSON(http.StatusForbidden, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusForbidden, models.ErrorResponse{
 			Error:   "insufficient_role",
 			Message: "You cannot grant a role above your own or manage a member who outranks you",
 		})
 	case errors.Is(err, services.ErrRoleNotAssignable):
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_role",
 			Message: "This role cannot be assigned",
 		})

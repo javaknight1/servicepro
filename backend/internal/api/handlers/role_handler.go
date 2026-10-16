@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/javaknight1/servicepro/backend/internal/api/apierror"
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/repository"
 )
@@ -32,12 +33,10 @@ func NewRoleHandler(permissionRepo *repository.PermissionRepository) *RoleHandle
 // @Failure		500	{object}	models.ErrorResponse
 // @Router			/roles [get]
 func (h *RoleHandler) GetRoles(c *gin.Context) {
+	var roles []models.Role // named type: swag resolves models.* via this import
 	roles, err := h.permissionRepo.GetAllRoles()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "fetch_failed",
-			Message: "Failed to fetch roles",
-		})
+		apierror.Internal(c, err, "Failed to fetch roles")
 		return
 	}
 
@@ -57,10 +56,7 @@ func (h *RoleHandler) GetRoles(c *gin.Context) {
 func (h *RoleHandler) GetPermissions(c *gin.Context) {
 	permissions, err := h.permissionRepo.GetAllPermissions()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "fetch_failed",
-			Message: "Failed to fetch permissions",
-		})
+		apierror.Internal(c, err, "Failed to fetch permissions")
 		return
 	}
 
@@ -83,10 +79,7 @@ func (h *RoleHandler) GetRolePermissions(c *gin.Context) {
 
 	permissions, err := h.permissionRepo.GetRolePermissions(roleID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "fetch_failed",
-			Message: "Failed to fetch role permissions",
-		})
+		apierror.Internal(c, err, "Failed to fetch role permissions")
 		return
 	}
 

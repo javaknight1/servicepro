@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
+	"github.com/javaknight1/servicepro/backend/internal/api/apierror"
 	"github.com/javaknight1/servicepro/backend/internal/api/middleware"
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/services"
@@ -37,10 +38,7 @@ func NewMembershipHandler(membershipService *services.MembershipService) *Member
 func (h *MembershipHandler) GetAllTiers(c *gin.Context) {
 	tiers, err := h.membershipService.GetAllTiers(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "fetch_failed",
-			Message: "Failed to fetch membership tiers",
-		})
+		apierror.Internal(c, err, "Failed to fetch membership tiers")
 		return
 	}
 
@@ -64,7 +62,7 @@ func (h *MembershipHandler) GetTenantMembership(c *gin.Context) {
 	idStr := c.Param("id")
 	tenantID, err := uuid.Parse(idStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_id",
 			Message: "Invalid tenant ID format",
 		})
@@ -74,16 +72,13 @@ func (h *MembershipHandler) GetTenantMembership(c *gin.Context) {
 	membership, err := h.membershipService.GetTenantMembership(c.Request.Context(), tenantID)
 	if err != nil {
 		if errors.Is(err, services.ErrNoActiveSubscription) {
-			c.JSON(http.StatusNotFound, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusNotFound, models.ErrorResponse{
 				Error:   "no_subscription",
 				Message: "No active subscription found for this tenant",
 			})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "fetch_failed",
-			Message: "Failed to fetch membership",
-		})
+		apierror.Internal(c, err, "Failed to fetch membership")
 		return
 	}
 
@@ -104,13 +99,14 @@ func (h *MembershipHandler) GetTenantMembership(c *gin.Context) {
 // @Failure		401		{object}	models.ErrorResponse
 // @Failure		402		{object}	models.ErrorResponse
 // @Failure		404		{object}	models.ErrorResponse
+// @Failure		409		{object}	models.ErrorResponse	"Already on this tier"
 // @Failure		500		{object}	models.ErrorResponse
 // @Router			/tenants/{id}/membership [put]
 func (h *MembershipHandler) UpdateTenantMembership(c *gin.Context) {
 	idStr := c.Param("id")
 	tenantID, err := uuid.Parse(idStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_id",
 			Message: "Invalid tenant ID format",
 		})
@@ -119,16 +115,13 @@ func (h *MembershipHandler) UpdateTenantMembership(c *gin.Context) {
 
 	var req models.UpdateMembershipRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
-			Error:   "invalid_request",
-			Message: publicError(err),
-		})
+		apierror.BindError(c, err)
 		return
 	}
 
 	userID, err := middleware.GetUserID(c)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusUnauthorized, models.ErrorResponse{
 			Error:   "unauthorized",
 			Message: "User not authenticated",
 		})
@@ -139,25 +132,22 @@ func (h *MembershipHandler) UpdateTenantMembership(c *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrMembershipTierNotFound):
-			c.JSON(http.StatusNotFound, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusNotFound, models.ErrorResponse{
 				Error:   "tier_not_found",
 				Message: "Membership tier not found",
 			})
 		case errors.Is(err, services.ErrSameTier):
-			c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusConflict, models.ErrorResponse{
 				Error:   "same_tier",
 				Message: "Tenant is already on this membership tier",
 			})
 		case errors.Is(err, services.ErrPaymentMethodRequired):
-			c.JSON(http.StatusPaymentRequired, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusPaymentRequired, models.ErrorResponse{
 				Error:   "payment_method_required",
 				Message: "A payment method is required to upgrade to a paid tier. Please add a payment method first.",
 			})
 		default:
-			c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-				Error:   "update_failed",
-				Message: "Failed to update membership",
-			})
+			apierror.Internal(c, err, "Failed to update membership")
 		}
 		return
 	}
@@ -183,7 +173,7 @@ func (h *MembershipHandler) PreviewSubscriptionChange(c *gin.Context) {
 	idStr := c.Param("id")
 	tenantID, err := uuid.Parse(idStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_id",
 			Message: "Invalid tenant ID format",
 		})
@@ -192,10 +182,7 @@ func (h *MembershipHandler) PreviewSubscriptionChange(c *gin.Context) {
 
 	var req models.PreviewSubscriptionChangeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
-			Error:   "invalid_request",
-			Message: publicError(err),
-		})
+		apierror.BindError(c, err)
 		return
 	}
 
@@ -203,15 +190,12 @@ func (h *MembershipHandler) PreviewSubscriptionChange(c *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrMembershipTierNotFound):
-			c.JSON(http.StatusNotFound, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusNotFound, models.ErrorResponse{
 				Error:   "tier_not_found",
 				Message: "Membership tier not found",
 			})
 		default:
-			c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-				Error:   "preview_failed",
-				Message: "Failed to preview subscription change",
-			})
+			apierror.Internal(c, err, "Failed to preview subscription change")
 		}
 		return
 	}
@@ -235,7 +219,7 @@ func (h *MembershipHandler) GetSubscriptionHistory(c *gin.Context) {
 	idStr := c.Param("id")
 	tenantID, err := uuid.Parse(idStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_id",
 			Message: "Invalid tenant ID format",
 		})
@@ -244,10 +228,7 @@ func (h *MembershipHandler) GetSubscriptionHistory(c *gin.Context) {
 
 	history, err := h.membershipService.GetSubscriptionHistory(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "fetch_failed",
-			Message: "Failed to fetch subscription history",
-		})
+		apierror.Internal(c, err, "Failed to fetch subscription history")
 		return
 	}
 
