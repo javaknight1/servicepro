@@ -15970,7 +15970,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "tax_rate": {
-                    "description": "Direct tax rate (e.g., 0.07 for 7%)",
+                    "description": "Direct tax rate (e.g., 0.07 for 7%); without tax_rate_id it clears the invoice's tax_rate_id",
                     "type": "number"
                 },
                 "tax_rate_id": {

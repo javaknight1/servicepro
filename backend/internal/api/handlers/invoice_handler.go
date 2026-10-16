@@ -89,7 +89,7 @@ type UpdateInvoiceRequest struct {
 	DueDate            *time.Time              `json:"due_date,omitempty"`
 	PaymentTermID      *uuid.UUID              `json:"payment_term_id,omitempty"`
 	TaxRateID          *uuid.UUID              `json:"tax_rate_id,omitempty"`
-	TaxRate            *decimal.Decimal        `json:"tax_rate,omitempty"` // Direct tax rate (e.g., 0.07 for 7%)
+	TaxRate            *decimal.Decimal        `json:"tax_rate,omitempty"` // Direct tax rate (e.g., 0.07 for 7%); without tax_rate_id it clears the invoice's tax_rate_id
 	PONumber           *string                 `json:"po_number,omitempty"`
 	Notes              *string                 `json:"notes,omitempty"`
 	DiscountAmount     *decimal.Decimal        `json:"discount_amount,omitempty"`
