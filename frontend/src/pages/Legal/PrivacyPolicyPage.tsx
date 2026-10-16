@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@components/shared';
 import { Footer } from '@components/layout';
+import { LEGAL_DRAFT_DATE, SUPPORT_EMAIL } from '@/config/support';
 
 export function PrivacyPolicyPage() {
   return (
@@ -36,12 +37,16 @@ export function PrivacyPolicyPage() {
           <h1 className="text-4xl font-bold text-neutral-900 mb-2">
             Privacy Policy
           </h1>
-          <p className="text-neutral-500 mb-8">
-            Last updated: {new Date().toLocaleDateString()}
-          </p>
+          <div
+            role="note"
+            className="mb-8 p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-800"
+          >
+            <strong>Draft — pending legal review.</strong> This document is a
+            draft for the invite-only preview and is not yet final. Draft dated{' '}
+            {LEGAL_DRAFT_DATE}.
+          </div>
 
           <div className="prose prose-neutral max-w-none">
-            {/* TODO: Replace with your actual privacy policy content */}
             <section className="mb-8">
               <h2 className="text-2xl font-bold text-neutral-900 mb-4">
                 1. Introduction
@@ -127,10 +132,10 @@ export function PrivacyPolicyPage() {
                 If you have questions about this Privacy Policy, please contact
                 us at{' '}
                 <a
-                  href="mailto:privacy@servicepro.com"
+                  href={`mailto:${SUPPORT_EMAIL}`}
                   className="text-primary-600 hover:underline"
                 >
-                  privacy@servicepro.com
+                  {SUPPORT_EMAIL}
                 </a>
                 .
               </p>

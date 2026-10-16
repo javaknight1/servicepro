@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@components/shared';
 import { Footer } from '@components/layout';
+import { LEGAL_DRAFT_DATE, SUPPORT_EMAIL } from '@/config/support';
 
 export function TermsOfServicePage() {
   return (
@@ -36,12 +37,16 @@ export function TermsOfServicePage() {
           <h1 className="text-4xl font-bold text-neutral-900 mb-2">
             Terms of Service
           </h1>
-          <p className="text-neutral-500 mb-8">
-            Last updated: {new Date().toLocaleDateString()}
-          </p>
+          <div
+            role="note"
+            className="mb-8 p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-800"
+          >
+            <strong>Draft — pending legal review.</strong> This document is a
+            draft for the invite-only preview and is not yet final. Draft dated{' '}
+            {LEGAL_DRAFT_DATE}.
+          </div>
 
           <div className="prose prose-neutral max-w-none">
-            {/* TODO: Replace with your actual terms of service content */}
             <section className="mb-8">
               <h2 className="text-2xl font-bold text-neutral-900 mb-4">
                 1. Acceptance of Terms
@@ -152,10 +157,10 @@ export function TermsOfServicePage() {
                 If you have questions about these Terms of Service, please
                 contact us at{' '}
                 <a
-                  href="mailto:legal@servicepro.com"
+                  href={`mailto:${SUPPORT_EMAIL}`}
                   className="text-primary-600 hover:underline"
                 >
-                  legal@servicepro.com
+                  {SUPPORT_EMAIL}
                 </a>
                 .
               </p>
