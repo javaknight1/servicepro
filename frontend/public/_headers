@@ -1,0 +1,37 @@
+# Workers static assets response headers (replaces nginx.conf /
+# security-headers.conf). Applied to asset responses only: /api/* and
+# /version are answered by worker/index.ts and carry the API's own headers.
+# https://developers.cloudflare.com/workers/static-assets/headers/
+#
+# CSP third parties (keep in sync with src/):
+#   Stripe.js / Elements  js.stripe.com, *.js.stripe.com, api.stripe.com,
+#                         hooks.stripe.com (3DS), *.stripe.com telemetry
+#   Sentry                *.sentry.io ingest; replay runs in a blob: worker
+#   PostHog               *.posthog.com (VITE_POSTHOG_HOST, default us.i.posthog.com)
+#   Google Fonts          fonts.googleapis.com (CSS), fonts.gstatic.com (files)
+# If VITE_POSTHOG_HOST is pointed at a reverse proxy on another host, add it
+# to connect-src and script-src.
+
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://js.stripe.com https://*.js.stripe.com https://*.posthog.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' wss://servicepro.sharkfins.xyz https://api.stripe.com https://*.stripe.com https://*.sentry.io https://*.posthog.com; frame-src https://js.stripe.com https://*.js.stripe.com https://hooks.stripe.com; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: SAMEORIGIN
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(self "https://js.stripe.com")
+
+# Content-hashed Vite output: cache forever.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# The app shell and service worker must always revalidate so deploys take
+# effect immediately. (SPA fallback responses for deep links get the platform
+# default, public, max-age=0, must-revalidate, which is equivalent.)
+/
+  Cache-Control: no-cache
+/index.html
+  Cache-Control: no-cache
+/service-worker.js
+  Cache-Control: no-cache
+/manifest.webmanifest
+  Cache-Control: no-cache
