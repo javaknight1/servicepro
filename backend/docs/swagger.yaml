@@ -3702,6 +3702,32 @@ definitions:
     - name
     - term_type
     type: object
+  internal_api_handlers.CreateTaxRateRequest:
+    properties:
+      description:
+        type: string
+      is_active:
+        description: default true
+        type: boolean
+      is_compound:
+        type: boolean
+      name:
+        maxLength: 100
+        type: string
+      rate:
+        description: 'fraction: 0.0825 = 8.25%'
+        type: number
+      region:
+        maxLength: 100
+        type: string
+      tax_type:
+        allOf:
+        - $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.TaxType'
+        description: default sales_tax
+    required:
+    - name
+    - rate
+    type: object
   internal_api_handlers.GetPaymentStatusRequest:
     properties:
       current_date:
@@ -4027,6 +4053,25 @@ definitions:
         type: number
       name:
         type: string
+    type: object
+  internal_api_handlers.UpdateTaxRateRequest:
+    properties:
+      description:
+        type: string
+      is_active:
+        type: boolean
+      is_compound:
+        type: boolean
+      name:
+        maxLength: 100
+        type: string
+      rate:
+        type: number
+      region:
+        maxLength: 100
+        type: string
+      tax_type:
+        $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.TaxType'
     type: object
   time.Duration:
     enum:
@@ -7812,6 +7857,179 @@ paths:
       summary: Get revenue time series data
       tags:
       - reports
+  /api/v1/tax-rates:
+    get:
+      description: The tenant's own tax rates plus the global defaults (tenant_id
+        omitted), ordered by name.
+      parameters:
+      - description: Only active rates
+        in: query
+        name: active_only
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.TaxRate'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List tax rates
+      tags:
+      - tax-rates
+    post:
+      consumes:
+      - application/json
+      description: Adds a tax rate owned by the tenant. rate is a fraction between
+        0 and 1 (0.0825 = 8.25%).
+      parameters:
+      - description: Tax rate
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_api_handlers.CreateTaxRateRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.TaxRate'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a tax rate
+      tags:
+      - tax-rates
+  /api/v1/tax-rates/{id}:
+    delete:
+      description: Deletes one of the tenant's own tax rates. Global defaults are
+        read-only (403); a rate used by invoices is 409 tax_rate_in_use (deactivate
+        it instead).
+      parameters:
+      - description: Tax rate ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete a tax rate
+      tags:
+      - tax-rates
+    get:
+      description: One of the tenant's tax rates or a global default. Another tenant's
+        rate is 404.
+      parameters:
+      - description: Tax rate ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.TaxRate'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get a tax rate
+      tags:
+      - tax-rates
+    put:
+      consumes:
+      - application/json
+      description: Changes the given fields of one of the tenant's own tax rates.
+        Global defaults are read-only (403 tax_rate_read_only); another tenant's rate
+        is 404.
+      parameters:
+      - description: Tax rate ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Fields to change
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_api_handlers.UpdateTaxRateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.TaxRate'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update a tax rate
+      tags:
+      - tax-rates
   /billing/config:
     get:
       consumes:

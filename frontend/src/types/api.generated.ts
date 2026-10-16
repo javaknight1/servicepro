@@ -6891,6 +6891,299 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tax-rates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List tax rates
+         * @description The tenant's own tax rates plus the global defaults (tenant_id omitted), ordered by name.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Only active rates */
+                    active_only?: boolean;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.TaxRate"][];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Internal Server Error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * Create a tax rate
+         * @description Adds a tax rate owned by the tenant. rate is a fraction between 0 and 1 (0.0825 = 8.25%).
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            /** @description Tax rate */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["internal_api_handlers.CreateTaxRateRequest"];
+                };
+            };
+            responses: {
+                /** @description Created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.TaxRate"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tax-rates/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a tax rate
+         * @description One of the tenant's tax rates or a global default. Another tenant's rate is 404.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Tax rate ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.TaxRate"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        /**
+         * Update a tax rate
+         * @description Changes the given fields of one of the tenant's own tax rates. Global defaults are read-only (403 tax_rate_read_only); another tenant's rate is 404.
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Tax rate ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            /** @description Fields to change */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["internal_api_handlers.UpdateTaxRateRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.TaxRate"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /**
+         * Delete a tax rate
+         * @description Deletes one of the tenant's own tax rates. Global defaults are read-only (403); a rate used by invoices is 409 tax_rate_in_use (deactivate it instead).
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Tax rate ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description No Content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/billing/config": {
         parameters: {
             query?: never;
@@ -13431,6 +13724,18 @@ export interface components {
             name: string;
             term_type: string;
         };
+        "internal_api_handlers.CreateTaxRateRequest": {
+            description?: string;
+            /** @description default true */
+            is_active?: boolean;
+            is_compound?: boolean;
+            name: string;
+            /** @description fraction: 0.0825 = 8.25% */
+            rate: number;
+            region?: string;
+            /** @description default sales_tax */
+            tax_type?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.TaxType"];
+        };
         "internal_api_handlers.GetPaymentStatusRequest": {
             current_date?: string;
             due_date: string;
@@ -13594,6 +13899,15 @@ export interface components {
             late_fee_amount?: number;
             late_fee_percentage?: number;
             name?: string;
+        };
+        "internal_api_handlers.UpdateTaxRateRequest": {
+            description?: string;
+            is_active?: boolean;
+            is_compound?: boolean;
+            name?: string;
+            rate?: number;
+            region?: string;
+            tax_type?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.TaxType"];
         };
         /**
          * Format: int64

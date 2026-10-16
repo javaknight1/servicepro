@@ -335,6 +335,30 @@ POST /api/v1/invoices/:id/cancel
 
 - Cannot cancel invoices with status `paid`
 
+## Tax Rates
+
+Configured tax rates are picked on invoices by `tax_rate_id` (quotes store the rate itself, so the
+web app copies the picked rate's `rate` into the quote's `tax_rate`).
+
+```http
+GET    /api/v1/tax-rates?active_only=true   # tax_rates.read
+GET    /api/v1/tax-rates/:id                # tax_rates.read
+POST   /api/v1/tax-rates                    # tax_rates.manage
+PUT    /api/v1/tax-rates/:id                # tax_rates.manage
+DELETE /api/v1/tax-rates/:id                # tax_rates.manage
+```
+
+- A tenant sees its own rates plus the global defaults (rows without `tenant_id`), ordered by name.
+  Another tenant's rate is `404 tax_rate_not_found`.
+- Global defaults are read-only: changing or deleting one is `403 tax_rate_read_only`.
+- `rate` is a fraction between 0 and 1 with at most 4 decimals (`"0.0825"` = 8.25%); `tax_type` is
+  one of `sales_tax` (default), `vat`, `gst`, `hst`, `exempt`. Invalid input is `400 invalid_tax_rate`.
+- A rate an invoice uses can't be deleted (`409 tax_rate_in_use`); set `is_active: false` instead.
+
+```json
+{ "name": "Springfield Sales Tax", "rate": "0.0825", "tax_type": "sales_tax", "region": "Springfield, IL" }
+```
+
 ## Invoice Status
 
 | Status         | Description                 |

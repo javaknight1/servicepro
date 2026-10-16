@@ -75,6 +75,7 @@ type Services struct {
 	PDF               *services.PDFService
 	Import            *services.ImportService
 	PaymentTerms      *services.PaymentTermsService
+	TaxRates          *services.TaxRateService
 	StripeClient      *stripeService.Client
 	StripeEvents      *stripeService.EventProcessor
 	StripeWebhook     *stripeService.WebhookHandler
@@ -119,6 +120,7 @@ type Handlers struct {
 	ImportExport      *handlers.ImportExportHandler
 	ProfilePicture    *handlers.ProfilePictureHandler
 	PaymentTerms      *handlers.PaymentTermsHandler
+	TaxRate           *handlers.TaxRateHandler
 	Conflict          *handlers.ConflictHandler
 	PaymentReminder   *handlers.PaymentReminderHandler
 }
