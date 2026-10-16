@@ -1,293 +1,205 @@
+// Package errors defines typed domain errors: failures the client caused or
+// can act on (not found, conflicting state, validation, permission), each
+// carrying an HTTP status, a stable machine code and a message that is safe
+// to show to a user (T223).
+//
+// Services return (or wrap with %w) these errors; the API layer
+// (internal/api/apierror) turns them into the standard error envelope
+// documented in docs/api/errors.md. Any error that is NOT one of these is
+// treated as an infrastructure failure and becomes a generic 500, so a
+// database or driver message never reaches a client (T116).
+//
+// Import it as apperrors to avoid shadowing the standard library:
+//
+//	import apperrors "github.com/javaknight1/servicepro/backend/internal/errors"
 package errors
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
-	"runtime"
-
-	"github.com/getsentry/sentry-go"
 )
 
-// ErrorCode represents a unique error code
-type ErrorCode string
-
-// Error codes
+// Standard codes for the generic cases. Domain errors should prefer a more
+// specific snake_case code (e.g. "cannot_accept") when a client may branch on it.
 const (
-	CodeUnknown         ErrorCode = "UNKNOWN"
-	CodeValidation      ErrorCode = "VALIDATION_ERROR"
-	CodeNotFound        ErrorCode = "NOT_FOUND"
-	CodeUnauthorized    ErrorCode = "UNAUTHORIZED"
-	CodeForbidden       ErrorCode = "FORBIDDEN"
-	CodeConflict        ErrorCode = "CONFLICT"
-	CodeRateLimit       ErrorCode = "RATE_LIMIT"
-	CodeInternal        ErrorCode = "INTERNAL_ERROR"
-	CodeBadRequest      ErrorCode = "BAD_REQUEST"
-	CodeTimeout         ErrorCode = "TIMEOUT"
-	CodeServiceUnavail  ErrorCode = "SERVICE_UNAVAILABLE"
-	CodeDatabaseError   ErrorCode = "DATABASE_ERROR"
-	CodeExternalService ErrorCode = "EXTERNAL_SERVICE_ERROR"
-	CodePaymentError    ErrorCode = "PAYMENT_ERROR"
-	CodeEmailError      ErrorCode = "EMAIL_ERROR"
-	CodeFileUploadError ErrorCode = "FILE_UPLOAD_ERROR"
+	CodeBadRequest       = "bad_request"
+	CodeValidation       = "validation_failed"
+	CodeUnauthorized     = "unauthorized"
+	CodeForbidden        = "forbidden"
+	CodeNotFound         = "not_found"
+	CodeMethodNotAllowed = "method_not_allowed"
+	CodeConflict         = "conflict"
+	CodePayloadTooLarge  = "payload_too_large"
+	CodeUnprocessable    = "unprocessable"
+	CodeRateLimited      = "rate_limited"
+	CodeInternal         = "internal_error"
+	CodeUnavailable      = "service_unavailable"
 )
 
-// AppError represents an application-specific error
-type AppError struct {
-	Code       ErrorCode              `json:"code"`
-	Message    string                 `json:"message"`
-	Details    string                 `json:"details,omitempty"`
-	HTTPStatus int                    `json:"-"`
-	Cause      error                  `json:"-"`
-	Stack      string                 `json:"-"`
-	Context    map[string]interface{} `json:"-"`
-	Retryable  bool                   `json:"-"`
+// Error is a domain error that is safe to return to API clients.
+type Error struct {
+	// Status is the HTTP status the API answers with.
+	Status int
+	// Code is a stable snake_case identifier clients may branch on.
+	Code string
+	// Message is human-readable and safe to display.
+	Message string
+	// Fields maps request field names (JSON names) to a problem description,
+	// for validation errors.
+	Fields map[string]string
+
+	cause  error
+	origin *Error // the sentinel a WithCause/WithMessage copy was made from
 }
 
-// Error implements the error interface
-func (e *AppError) Error() string {
-	if e.Details != "" {
-		return fmt.Sprintf("%s: %s (%s)", e.Code, e.Message, e.Details)
+// Error returns the safe message, so logging a domain error or comparing its
+// text behaves like the plain sentinel errors it replaces.
+func (e *Error) Error() string {
+	if e.cause != nil {
+		return e.Message + ": " + e.cause.Error()
 	}
-	return fmt.Sprintf("%s: %s", e.Code, e.Message)
+	return e.Message
 }
 
-// Unwrap returns the underlying cause
-func (e *AppError) Unwrap() error {
-	return e.Cause
+// Unwrap exposes the cause (for logging and errors.Is on the cause).
+func (e *Error) Unwrap() error { return e.cause }
+
+// Is reports whether e was copied (WithCause/WithMessage) from target, so
+// errors.Is(err, ErrSentinel) keeps working on decorated copies.
+func (e *Error) Is(target error) bool {
+	t, ok := target.(*Error)
+	return ok && e.origin != nil && e.origin == t
 }
 
-// WithCause adds a cause to the error
-func (e *AppError) WithCause(cause error) *AppError {
-	e.Cause = cause
+func (e *Error) clone() *Error {
+	cp := *e
+	if cp.origin == nil {
+		cp.origin = e
+	}
+	return &cp
+}
+
+// WithCause returns a copy that records the underlying error (for logs only;
+// the cause is never sent to clients).
+func (e *Error) WithCause(cause error) *Error {
+	cp := e.clone()
+	cp.cause = cause
+	return cp
+}
+
+// WithMessage returns a copy with a more specific safe message.
+func (e *Error) WithMessage(message string) *Error {
+	cp := e.clone()
+	cp.Message = message
+	return cp
+}
+
+// New creates a domain error with an explicit status and code.
+func New(status int, code, message string) *Error {
+	return &Error{Status: status, Code: code, Message: message}
+}
+
+// BadRequest is a 400 for a malformed or unusable request.
+func BadRequest(code, message string) *Error {
+	return New(http.StatusBadRequest, code, message)
+}
+
+// Validation is a 400 with per-field problems (JSON field name -> message).
+func Validation(message string, fields map[string]string) *Error {
+	e := New(http.StatusBadRequest, CodeValidation, message)
+	e.Fields = fields
 	return e
 }
 
-// WithDetails adds details to the error
-func (e *AppError) WithDetails(details string) *AppError {
-	e.Details = details
-	return e
+// NotFound is a 404. Cross-tenant reads use it too, so another tenant's
+// rows are indistinguishable from rows that don't exist.
+func NotFound(code, message string) *Error {
+	return New(http.StatusNotFound, code, message)
 }
 
-// WithContext adds context to the error
-func (e *AppError) WithContext(key string, value interface{}) *AppError {
-	if e.Context == nil {
-		e.Context = make(map[string]interface{})
+// Forbidden is a 403: the caller may not do this (permissions, role).
+// Not for state conflicts — use Conflict.
+func Forbidden(code, message string) *Error {
+	return New(http.StatusForbidden, code, message)
+}
+
+// Conflict is a 409: the resource's current state doesn't allow the change
+// (invalid status transition, duplicate, concurrent update).
+func Conflict(code, message string) *Error {
+	return New(http.StatusConflict, code, message)
+}
+
+// Unprocessable is a 422: the request is well-formed but breaks a business rule.
+func Unprocessable(code, message string) *Error {
+	return New(http.StatusUnprocessableEntity, code, message)
+}
+
+// As returns the domain error in err's chain, if any.
+func As(err error) (*Error, bool) {
+	var e *Error
+	if errors.As(err, &e) {
+		return e, true
 	}
-	e.Context[key] = value
-	return e
+	return nil, false
 }
 
-// IsRetryable returns whether the error is retryable
-func (e *AppError) IsRetryable() bool {
-	return e.Retryable
-}
-
-// ToSentryLevel converts the error to a Sentry level
-func (e *AppError) ToSentryLevel() sentry.Level {
-	switch {
-	case e.HTTPStatus >= 500:
-		return sentry.LevelError
-	case e.HTTPStatus >= 400:
-		return sentry.LevelWarning
-	default:
-		return sentry.LevelInfo
+// CodeForStatus is the default code for an HTTP status, used when a response
+// has no more specific code.
+func CodeForStatus(status int) string {
+	switch status {
+	case http.StatusBadRequest:
+		return CodeBadRequest
+	case http.StatusUnauthorized:
+		return CodeUnauthorized
+	case http.StatusForbidden:
+		return CodeForbidden
+	case http.StatusNotFound:
+		return CodeNotFound
+	case http.StatusMethodNotAllowed:
+		return CodeMethodNotAllowed
+	case http.StatusConflict:
+		return CodeConflict
+	case http.StatusRequestEntityTooLarge:
+		return CodePayloadTooLarge
+	case http.StatusUnprocessableEntity:
+		return CodeUnprocessable
+	case http.StatusTooManyRequests:
+		return CodeRateLimited
+	case http.StatusServiceUnavailable:
+		return CodeUnavailable
 	}
-}
-
-// New creates a new AppError
-func New(code ErrorCode, message string) *AppError {
-	return &AppError{
-		Code:       code,
-		Message:    message,
-		HTTPStatus: codeToHTTPStatus(code),
-		Stack:      captureStack(),
+	if status >= 500 {
+		return CodeInternal
 	}
+	return CodeBadRequest
 }
 
-// Wrap wraps an existing error with an AppError
-func Wrap(err error, code ErrorCode, message string) *AppError {
-	return &AppError{
-		Code:       code,
-		Message:    message,
-		HTTPStatus: codeToHTTPStatus(code),
-		Cause:      err,
-		Stack:      captureStack(),
+// MessageForStatus is the default user-facing message for an HTTP status.
+func MessageForStatus(status int) string {
+	switch status {
+	case http.StatusBadRequest:
+		return "The request is invalid"
+	case http.StatusUnauthorized:
+		return "Authentication required"
+	case http.StatusForbidden:
+		return "You don't have permission to do this"
+	case http.StatusNotFound:
+		return "Not found"
+	case http.StatusMethodNotAllowed:
+		return "Method not allowed"
+	case http.StatusConflict:
+		return "The request conflicts with the current state of the resource"
+	case http.StatusRequestEntityTooLarge:
+		return "The request is too large"
+	case http.StatusUnprocessableEntity:
+		return "The request could not be processed"
+	case http.StatusTooManyRequests:
+		return "Too many requests, try again shortly"
+	case http.StatusServiceUnavailable:
+		return "The service is temporarily unavailable"
 	}
-}
-
-// Error constructors
-
-// NewValidationError creates a validation error
-func NewValidationError(message string, details ...string) *AppError {
-	err := New(CodeValidation, message)
-	if len(details) > 0 {
-		err.Details = details[0]
+	if status >= 500 {
+		return "Something went wrong on our side. Please try again."
 	}
-	return err
-}
-
-// NewNotFoundError creates a not found error
-func NewNotFoundError(resource string) *AppError {
-	return New(CodeNotFound, fmt.Sprintf("%s not found", resource))
-}
-
-// NewUnauthorizedError creates an unauthorized error
-func NewUnauthorizedError(message ...string) *AppError {
-	msg := "Authentication required"
-	if len(message) > 0 {
-		msg = message[0]
-	}
-	return New(CodeUnauthorized, msg)
-}
-
-// NewForbiddenError creates a forbidden error
-func NewForbiddenError(message ...string) *AppError {
-	msg := "Access denied"
-	if len(message) > 0 {
-		msg = message[0]
-	}
-	return New(CodeForbidden, msg)
-}
-
-// NewConflictError creates a conflict error
-func NewConflictError(message string) *AppError {
-	return New(CodeConflict, message)
-}
-
-// NewRateLimitError creates a rate limit error
-func NewRateLimitError() *AppError {
-	err := New(CodeRateLimit, "Rate limit exceeded")
-	err.Retryable = true
-	return err
-}
-
-// NewInternalError creates an internal error
-func NewInternalError(message string) *AppError {
-	return New(CodeInternal, message)
-}
-
-// NewBadRequestError creates a bad request error
-func NewBadRequestError(message string) *AppError {
-	return New(CodeBadRequest, message)
-}
-
-// NewTimeoutError creates a timeout error
-func NewTimeoutError(message string) *AppError {
-	err := New(CodeTimeout, message)
-	err.Retryable = true
-	return err
-}
-
-// NewDatabaseError creates a database error
-func NewDatabaseError(cause error) *AppError {
-	return Wrap(cause, CodeDatabaseError, "Database operation failed")
-}
-
-// NewExternalServiceError creates an external service error
-func NewExternalServiceError(service string, cause error) *AppError {
-	err := Wrap(cause, CodeExternalService, fmt.Sprintf("External service error: %s", service))
-	err.Retryable = true
-	return err
-}
-
-// Error checking functions
-
-// IsAppError checks if an error is an AppError
-func IsAppError(err error) bool {
-	var appErr *AppError
-	return errors.As(err, &appErr)
-}
-
-// GetAppError extracts an AppError from an error
-func GetAppError(err error) *AppError {
-	var appErr *AppError
-	if errors.As(err, &appErr) {
-		return appErr
-	}
-	return nil
-}
-
-// IsNotFound checks if an error is a not found error
-func IsNotFound(err error) bool {
-	appErr := GetAppError(err)
-	return appErr != nil && appErr.Code == CodeNotFound
-}
-
-// IsValidation checks if an error is a validation error
-func IsValidation(err error) bool {
-	appErr := GetAppError(err)
-	return appErr != nil && appErr.Code == CodeValidation
-}
-
-// IsUnauthorized checks if an error is an unauthorized error
-func IsUnauthorized(err error) bool {
-	appErr := GetAppError(err)
-	return appErr != nil && appErr.Code == CodeUnauthorized
-}
-
-// IsForbidden checks if an error is a forbidden error
-func IsForbidden(err error) bool {
-	appErr := GetAppError(err)
-	return appErr != nil && appErr.Code == CodeForbidden
-}
-
-// IsRetryable checks if an error is retryable
-func IsRetryable(err error) bool {
-	appErr := GetAppError(err)
-	return appErr != nil && appErr.Retryable
-}
-
-// Helper functions
-
-func codeToHTTPStatus(code ErrorCode) int {
-	switch code {
-	case CodeValidation, CodeBadRequest:
-		return http.StatusBadRequest
-	case CodeNotFound:
-		return http.StatusNotFound
-	case CodeUnauthorized:
-		return http.StatusUnauthorized
-	case CodeForbidden:
-		return http.StatusForbidden
-	case CodeConflict:
-		return http.StatusConflict
-	case CodeRateLimit:
-		return http.StatusTooManyRequests
-	case CodeTimeout:
-		return http.StatusGatewayTimeout
-	case CodeServiceUnavail:
-		return http.StatusServiceUnavailable
-	default:
-		return http.StatusInternalServerError
-	}
-}
-
-func captureStack() string {
-	buf := make([]byte, 4096)
-	n := runtime.Stack(buf, false)
-	return string(buf[:n])
-}
-
-// ErrorResponse is the JSON response format for errors
-type ErrorResponse struct {
-	Error   string `json:"error"`
-	Code    string `json:"code"`
-	Message string `json:"message"`
-	Details string `json:"details,omitempty"`
-}
-
-// ToResponse converts an AppError to an ErrorResponse
-func (e *AppError) ToResponse() ErrorResponse {
-	return ErrorResponse{
-		Error:   e.Code.String(),
-		Code:    string(e.Code),
-		Message: e.Message,
-		Details: e.Details,
-	}
-}
-
-// String returns the string representation of an ErrorCode
-func (c ErrorCode) String() string {
-	return string(c)
+	return "The request could not be processed"
 }

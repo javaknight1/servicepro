@@ -11310,16 +11310,33 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "details": {
+                    "description": "Details lists extra messages, e.g. per-row import errors.",
                     "type": "array",
                     "items": {
                         "type": "string"
                     }
                 },
                 "error": {
-                    "type": "string"
+                    "description": "Error is a stable snake_case machine code (e.g. \"not_found\", \"cannot_accept\").",
+                    "type": "string",
+                    "example": "cannot_accept"
+                },
+                "fields": {
+                    "description": "Fields maps request field names to problems (validation errors only).",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
                 },
                 "message": {
-                    "type": "string"
+                    "description": "Message is human-readable and safe to show to the user.",
+                    "type": "string",
+                    "example": "This quote can no longer be accepted"
+                },
+                "request_id": {
+                    "description": "RequestID matches the X-Request-ID response header and the server's log lines.",
+                    "type": "string",
+                    "example": "3f6c1b9e-2a4d-4e7b-9a51-0c8d2f1e6b7a"
                 }
             }
         },
