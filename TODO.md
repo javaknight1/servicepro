@@ -1,6 +1,6 @@
 # ServicePro — Roadmap
 
-**Last Updated**: 2026-10-16 (TODO reformatted from the P0–P3/sprint layout to League Looper's indexed phase format: Task Index with ID/Phase/Category/Hours, one detailed section per open task, a v1 Launch Gate and Verified Complete. A full audit of the repo (backend security, backend correctness, frontend, infra — stored in `docs/audits/2026-10-16/`) is filed as Phases 1–3 (T102–T152, T223–T226). The stack-convergence plan towards League Looper's stack is Phase 4 (T153–T166). Competitive research (`docs/product/competitive-research-2026-10.md`) became product Phases 5–16, merging the open T027–T101 tasks with new T167–T222. Hosting is deferred: ServicePro stays local-only until the production database decision (T202). Old IDs T001–T101 are kept; T011 never existed. Same day: Phase 3 platform work T139–T152 landed — golang-migrate, /version + schema-aware readiness, internal job endpoints, optional Redis, Cloud Run image, LL-style CI/release/hooks, Cloudflare Worker edge (not deployed); frontend fixes T130–T138; all of Phase 1 security (T102–T117) — tenant isolation plugin, per-tenant authz, invite-only registration, token/login/webhook/CSRF hardening, no known Go vulns; T227 added for the frontend follow-through.)
+**Last Updated**: 2026-10-16 (TODO reformatted from the P0–P3/sprint layout to League Looper's indexed phase format: Task Index with ID/Phase/Category/Hours, one detailed section per open task, a v1 Launch Gate and Verified Complete. A full audit of the repo (backend security, backend correctness, frontend, infra — stored in `docs/audits/2026-10-16/`) is filed as Phases 1–3 (T102–T152, T223–T226). The stack-convergence plan towards League Looper's stack is Phase 4 (T153–T166). Competitive research (`docs/product/competitive-research-2026-10.md`) became product Phases 5–16, merging the open T027–T101 tasks with new T167–T222. Hosting is deferred: ServicePro stays local-only until the production database decision (T202). Old IDs T001–T101 are kept; T011 never existed. Same day: Phase 3 platform work T139–T152 landed — golang-migrate, /version + schema-aware readiness, internal job endpoints, optional Redis, Cloud Run image, LL-style CI/release/hooks, Cloudflare Worker edge (not deployed); frontend fixes T130–T138; all of Phase 1 security (T102–T117) — tenant isolation plugin, per-tenant authz, invite-only registration, token/login/webhook/CSRF hardening, no known Go vulns; T227 added for the frontend follow-through. Same day: Phase 2 correctness work landed (T118–T129, T223–T239 — money path, numbering, status machines, refunds, quotes, tenant settings, error envelope + request IDs, ~39k lines of dead backend code removed, stricter golangci-lint); follow-ups T241–T244 filed.)
 
 > **How to read this file.** Every task has an ID (T###). The **Task Index** lists all of them: completed rows
 > (struck through) first by ID, then open rows by Phase → ID. Each open task has exactly one detailed section under
@@ -62,23 +62,23 @@
 
 ## v1 Launch Gate
 
-The minimum subset that must be done before real (paying) customers: **38 tasks, ~317h**. Everything else is post-launch growth or depth. The invite-gated preview (T205) needs only Phase 1 plus T106/T204/T206; the gate below is for opening to paying customers. Phase 4's gating subset is the parts of the stack that touch auth, tenancy, email and storage; the chi and pgx ports are not gating.
+The minimum subset that must be done before real (paying) customers: **40 tasks, ~321h**. Everything else is post-launch growth or depth. The invite-gated preview (T205) needs only Phase 1 plus T106/T204/T206; the gate below is for opening to paying customers. Phase 4's gating subset is the parts of the stack that touch auth, tenancy, email and storage; the chi and pgx ports are not gating.
 
-| Phase                                                | Gating tasks                                                                                                                                                                                           |
-|------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Phase 1 — Security Remediation                       | **All** — ~~T102~~, ~~T103~~, ~~T104~~, ~~T105~~, ~~T106~~, ~~T107~~, ~~T108~~, ~~T109~~, ~~T110~~, ~~T111~~, ~~T112~~, ~~T113~~, ~~T114~~, ~~T115~~, ~~T116~~, ~~T117~~                               |
-| Phase 2 — Correctness & Cleanup                      | ~~T118~~, ~~T119~~, ~~T120~~, ~~T121~~, ~~T122~~, ~~T123~~, ~~T124~~, ~~T126~~, ~~T130~~, ~~T131~~, ~~T132~~, ~~T133~~, ~~T136~~, ~~T224~~, ~~T225~~, ~~T227~~, ~~T232~~, ~~T234~~, ~~T238~~, ~~T239~~ |
-| Phase 3 — Platform & Delivery                        | ~~T139~~, ~~T140~~, ~~T141~~, ~~T142~~, ~~T143~~, ~~T144~~, ~~T145~~, ~~T146~~, ~~T150~~, ~~T151~~                                                                                                     |
-| Phase 4 — Stack Convergence (LL parity; incremental) | T153, T154, T158, T159, T160                                                                                                                                                                           |
-| Phase 5 — Core Workflow & Quoting                    | T028, T029, T030, T035, T167                                                                                                                                                                           |
-| Phase 6 — Payments to the Business                   | T169, T170, T061, T063                                                                                                                                                                                 |
-| Phase 7 — Dispatch & Field                           | T173, T174, T176                                                                                                                                                                                       |
-| Phase 8 — Customer Communications                    | T048, T049, T050                                                                                                                                                                                       |
-| Phase 9 — Customer Self-Service                      | T183, T081                                                                                                                                                                                             |
-| Phase 10 — Commercial/B2B Wedge                      | T186                                                                                                                                                                                                   |
-| Phase 11 — Integrations & Migration                  | T192, T193                                                                                                                                                                                             |
-| Phase 14 — Hosting & Launch Readiness                | T202, T203, T204, T205, T206, T207, T208, T209, T210, T211, T212, T213                                                                                                                                 |
-| Phase 16 — Go-to-Market                              | T218                                                                                                                                                                                                   |
+| Phase                                                | Gating tasks                                                                                                                                                                                                       |
+|------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Phase 1 — Security Remediation                       | **All** — ~~T102~~, ~~T103~~, ~~T104~~, ~~T105~~, ~~T106~~, ~~T107~~, ~~T108~~, ~~T109~~, ~~T110~~, ~~T111~~, ~~T112~~, ~~T113~~, ~~T114~~, ~~T115~~, ~~T116~~, ~~T117~~                                           |
+| Phase 2 — Correctness & Cleanup                      | ~~T118~~, ~~T119~~, ~~T120~~, ~~T121~~, ~~T122~~, ~~T123~~, ~~T124~~, ~~T126~~, ~~T130~~, ~~T131~~, ~~T132~~, ~~T133~~, ~~T136~~, ~~T224~~, ~~T225~~, ~~T227~~, ~~T232~~, ~~T234~~, ~~T238~~, ~~T239~~, T241, T243 |
+| Phase 3 — Platform & Delivery                        | ~~T139~~, ~~T140~~, ~~T141~~, ~~T142~~, ~~T143~~, ~~T144~~, ~~T145~~, ~~T146~~, ~~T150~~, ~~T151~~                                                                                                                 |
+| Phase 4 — Stack Convergence (LL parity; incremental) | T153, T154, T158, T159, T160                                                                                                                                                                                       |
+| Phase 5 — Core Workflow & Quoting                    | T028, T029, T030, T035, T167                                                                                                                                                                                       |
+| Phase 6 — Payments to the Business                   | T169, T170, T061, T063                                                                                                                                                                                             |
+| Phase 7 — Dispatch & Field                           | T173, T174, T176                                                                                                                                                                                                   |
+| Phase 8 — Customer Communications                    | T048, T049, T050                                                                                                                                                                                                   |
+| Phase 9 — Customer Self-Service                      | T183, T081                                                                                                                                                                                                         |
+| Phase 10 — Commercial/B2B Wedge                      | T186                                                                                                                                                                                                               |
+| Phase 11 — Integrations & Migration                  | T192, T193                                                                                                                                                                                                         |
+| Phase 14 — Hosting & Launch Readiness                | T202, T203, T204, T205, T206, T207, T208, T209, T210, T211, T212, T213                                                                                                                                             |
+| Phase 16 — Go-to-Market                              | T218                                                                                                                                                                                                               |
 
 **Explicitly NOT in the launch gate** (ship without them):
 
@@ -159,6 +159,7 @@ The minimum subset that must be done before real (paying) customers: **38 tasks,
 | ~~T126~~ | ~~2~~  | ~~Monitoring~~ | ~~2~~  | ~~Backend Sentry actually initialised; wire or delete the Loki/BetterStack/OTel stubs~~               |
 | ~~T127~~ | ~~2~~  | ~~Backend~~    | ~~3~~  | ~~Backend reads tenant settings: currency, number prefixes, defaults~~                                |
 | ~~T128~~ | ~~2~~  | ~~Backend~~    | ~~4~~  | ~~Exports safe on multiple instances (object storage + persisted progress)~~                          |
+| ~~T129~~ | ~~2~~  | ~~Cleanup~~    | ~~4~~  | ~~Backend dead-code removal and a stricter linter~~                                                   |
 | ~~T130~~ | ~~2~~  | ~~Bug~~        | ~~1~~  | ~~Login error swallowed by the refresh interceptor~~                                                  |
 | ~~T131~~ | ~~2~~  | ~~Bug~~        | ~~1~~  | ~~Public payment result pages for the /pay/:token flow~~                                              |
 | ~~T132~~ | ~~2~~  | ~~Security~~   | ~~2~~  | ~~Clear tenant and user data on logout and tenant switch~~                                            |
@@ -196,7 +197,10 @@ The minimum subset that must be done before real (paying) customers: **38 tasks,
 | ~~T237~~ | ~~2~~  | ~~Backend~~    | ~~3~~  | ~~Tax rates API + tax-rate picker; terms on invoice create; keep line discounts on edit~~             |
 | ~~T238~~ | ~~2~~  | ~~Security~~   | ~~1~~  | ~~Job assignment checks the technician belongs to the tenant~~                                        |
 | ~~T239~~ | ~~2~~  | ~~Security~~   | ~~1~~  | ~~Access log drops query strings~~                                                                    |
-| T129     | 2      | Cleanup        | 4      | Backend dead-code removal and a stricter linter                                                       |
+| T241     | 2      | Bug            | 3      | CSV imports are queued but never processed                                                            |
+| T242     | 2      | Bug            | 1      | PDF header/footer files are deleted before wkhtmltopdf reads them                                     |
+| T243     | 2      | Security       | 1      | A/R aging CSV export: proper CSV writer + formula neutralisation                                      |
+| T244     | 2      | Bug            | 3      | Handle the discarded GORM .Error results                                                              |
 | T101     | 3      | Monitoring     | 2      | Upload source maps to Sentry for production builds                                                    |
 | T153     | 4      | Backend        | 24     | Repositories take ctx + tenantID; services stop taking *gorm.DB; transaction manager                  |
 | T154     | 4      | Security       | 12     | Postgres RLS backstop keyed on a per-transaction tenant GUC + isolation tests                         |
@@ -404,9 +408,9 @@ Work completed under the old P0–P3/sprint TODO. Details are in Verified Comple
 - [x] T116 — Low-severity security sweep ✓ (2026-10-16)
 - [x] T117 — Remediate dependency vulnerabilities and bump the Go toolchain ✓ (2026-10-16)
 
-### Phase 2 — Correctness & Cleanup (T118, T119, T120, T121, T122, T123, T124, T125, T126, T127, T128, T129, T130, T131, T132, T133, T134, T135, T136, T137, T138, T223, T224, T225, T226, T227, T228, T229, T232, T233, T234, T237, T238, T239)
+### Phase 2 — Correctness & Cleanup (T118, T119, T120, T121, T122, T123, T124, T125, T126, T127, T128, T129, T130, T131, T132, T133, T134, T135, T136, T137, T138, T223, T224, T225, T226, T227, T228, T229, T232, T233, T234, T237, T238, T239, T241, T242, T243, T244)
 
-Money flows that are wired but broken (payments don't update invoices, reminders never sent, numbering wedges, a panicking webhook), frontend bugs users would hit in the preview, and dead code. From `docs/audits/2026-10-16/backend-correctness.md` and `docs/audits/2026-10-16/frontend.md`. **1 open tasks, ~4h.** 33 done.
+Money flows that are wired but broken (payments don't update invoices, reminders never sent, numbering wedges, a panicking webhook), frontend bugs users would hit in the preview, and dead code. From `docs/audits/2026-10-16/backend-correctness.md` and `docs/audits/2026-10-16/frontend.md`. **4 open tasks, ~8h.** 34 done.
 
 - [x] T118 — Recording a payment updates the invoice balance and status ✓ (2026-10-16)
 - [x] T119 — Stripe Checkout charges the true balance due ✓ (2026-10-16)
@@ -419,6 +423,7 @@ Money flows that are wired but broken (payments don't update invoices, reminders
 - [x] T126 — Backend Sentry actually initialised; wire or delete the Loki/BetterStack/OTel stubs ✓ (2026-10-16)
 - [x] T127 — Backend reads tenant settings: currency, number prefixes, defaults ✓ (2026-10-16)
 - [x] T128 — Exports safe on multiple instances (object storage + persisted progress) ✓ (2026-10-16)
+- [x] T129 — Backend dead-code removal and a stricter linter ✓ (2026-10-16)
 - [x] T130 — Login error swallowed by the refresh interceptor ✓ (2026-10-16)
 - [x] T131 — Public payment result pages for the /pay/:token flow ✓ (2026-10-16)
 - [x] T132 — Clear tenant and user data on logout and tenant switch ✓ (2026-10-16)
@@ -441,19 +446,64 @@ Money flows that are wired but broken (payments don't update invoices, reminders
 - [x] T237 — Tax rates API + tax-rate picker; terms on invoice create; keep line discounts on edit ✓ (2026-10-16)
 - [x] T238 — Job assignment checks the technician belongs to the tenant ✓ (2026-10-16)
 - [x] T239 — Access log drops query strings ✓ (2026-10-16)
-- [ ] T129 — Backend dead-code removal and a stricter linter
+- [ ] T241 — CSV imports are queued but never processed
+- [ ] T242 — PDF header/footer files are deleted before wkhtmltopdf reads them
+- [ ] T243 — A/R aging CSV export: proper CSV writer + formula neutralisation
+- [ ] T244 — Handle the discarded GORM .Error results
 
-#### T129 — Backend dead-code removal and a stricter linter
+#### T241 — CSV imports are queued but never processed
 
-**Phase**: 2 · **Category**: Cleanup · **Hours**: 4 · **Status**: Open · **v1 Gate**: No · **Depends on**: T126
+**Phase**: 2 · **Category**: Bug · **Hours**: 3 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T102
 
-**What it is** — The backend contains only code the binary uses, and the linter catches unused code and swallowed errors from now on.
+**What it is** — An uploaded import actually runs and reports per-row results.
 
-**What it does** — Delete the 21 never-linked packages (`internal/analytics`, `api/handlers/webhooks`, `api/validators`, `internal/errors` (or adopt it in T223), `models/payment`, `services/recurring` (unless T167 adopts it), `services/subscriptions`, `pkg/search`, `pkg/utils/permissions`, `templates`, `templates/email`, the logging/metrics/tracing providers from T126) and the large unreachable chunks (`assignment_handler.go` + `assignment_service.go` + `pkg/notifications`, the download stack, `middleware/{access_control,access_logging,auth,logger}.go`, `quote_status_machine.go` (see T224), `invoice_template_service.go`, `conflict/{validator,resolver}.go`, legacy `repository/user_repository.go` + `UserRepositoryInterface` + `pkg/database/postgres.go`). Enable `errcheck` (excluding Close and excelize), `staticcheck`, `unused`, `ineffassign` in `.golangci.yml`; fix the 2 goimports failures (`internal/analytics/aggregator.go:10`, `repository/schedule_repository.go:4`), the deprecated `strings.Title` calls and the 16 discarded GORM `.Error` sites. Delete `backend/tests/Makefile` (single-Makefile rule). `go mod tidy`.
+**What it does** — The import handler enqueues jobs but nothing calls `ImportService.ProcessNextJob`/`ProcessImport`, so every import stays pending. Run imports via an internal job (`POST /internal/jobs/imports`, idempotent claim, added to scheduled-jobs.yml) or in-request for small files; cap size/rows (F-23, `MaxBytesReader`); tenant-scoped (already tenant-aware since T102); tests.
 
-**Why we need it** — 476 unreachable functions and ~10–12k lines inflate every later migration (chi, pgx) and hide real bugs; the permissive linter is why swallowed errors built up.
+**Why we need it** — Customers can't bring their data in, which blocks the white-glove migration (T193/T220).
 
-**Notes** — correctness audit §0, §4.4–4.6, §5, §6. Do before T155/T156 — the audit estimates ~30% less chi work after deletion.
+**Notes** — Found during T129 (2026-10-16). T193 depends on this.
+
+---
+
+#### T242 — PDF header/footer files are deleted before wkhtmltopdf reads them
+
+**Phase**: 2 · **Category**: Bug · **Hours**: 1 · **Status**: Open · **v1 Gate**: No · **Depends on**: none
+
+**What it is** — Export PDFs get their header/footer (page numbers).
+
+**What it does** — `PDFService.buildWkhtmltopdfArgs` writes the header/footer HTML and `defer os.Remove`s them inside the builder, so they're gone before wkhtmltopdf runs. Return a cleanup func and remove after the command finishes; test that the files exist while the command runs.
+
+**Why we need it** — Export PDFs silently lose page-number footers.
+
+**Notes** — Found during T129 (2026-10-16).
+
+---
+
+#### T243 — A/R aging CSV export: proper CSV writer + formula neutralisation
+
+**Phase**: 2 · **Category**: Security · **Hours**: 1 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T112
+
+**What it is** — The A/R aging export is valid CSV and safe to open in Excel.
+
+**What it does** — It builds lines by string concatenation: commas/quotes in customer names break columns and it skips the `csvsafe` formula-injection helper from T112. Use `encoding/csv` + `csvsafe`; test with a name containing `,`, `"` and a leading `=`.
+
+**Why we need it** — Formula injection (T112) is still open on this one export.
+
+**Notes** — Found during T129 (2026-10-16).
+
+---
+
+#### T244 — Handle the discarded GORM .Error results
+
+**Phase**: 2 · **Category**: Bug · **Hours**: 3 · **Status**: Open · **v1 Gate**: No · **Depends on**: none
+
+**What it is** — No database write silently fails.
+
+**What it does** — ~16 sites call GORM chains without checking `.Error` (correctness audit §6); errcheck can't see them. Check each: propagate, or log with context where best-effort is intended; tests where behaviour changes. Also retire the legacy `UserRepositoryInterface` once auth/registration move to the GORM repository.
+
+**Why we need it** — A failed write currently reports success.
+
+**Notes** — Left over from T129 (2026-10-16).
 
 ---
 
@@ -1918,7 +1968,7 @@ QuickBooks (the #1 B2B buying gate), import mappers, and partner integrations in
 
 #### T193 — Import mappers for Jobber / Housecall Pro exports + generic CSV
 
-**Phase**: 11 · **Category**: Integration · **Hours**: 8 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T186
+**Phase**: 11 · **Category**: Integration · **Hours**: 8 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T186, T241
 
 **What it is** — New tenants import customers, sites, jobs and open invoices from Jobber or Housecall Pro exports, or any CSV.
 
@@ -2860,6 +2910,7 @@ Dated history from the original "Completed Items" list:
 - **T126** — Backend Sentry actually initialised; wire or delete the Loki/BetterStack/OTel stubs. Sentry provider linked into the binary (blank imports + test); outside development logs are JSON lines on stdout with Cloud Logging keys; Better Stack/Loki/CloudWatch log shippers, CloudWatch metrics and OTel tracing stubs deleted with their modules/config; `main` → `run() error` so Sentry/PostHog flush on startup failure (9c49364, 40bf2c2, bede549, 4f43fa4).
 - **T127** — Backend reads tenant settings: currency, number prefixes, defaults. Tenant prefixes drive INV-/QUO-/JOB- numbering (sanitised, fallback defaults); migration `000013` adds `currency` to invoices/quotes (set from the tenant at create, quote→invoice inherits; Stripe Checkout and the public invoice use it); invoice/quote create apply the tenant's default payment term and tax rate (tenant-scoped, active rows only; quote `tax_rate` now optional); calendar-day dates + tenant timezone (earlier); business hours labelled 'Coming soon' (b4c2d6f, a4c3bbe, 2a6f3ab, 432935d, 6039d8f, cbf9d94). Settings UI → T235; currency display → T236.
 - **T128** — Exports safe on multiple instances (object storage + persisted progress). Exports run in the request (2-min limit) with progress/status persisted on `export_jobs` (cancel sticks; `/progress` + SSE read the row); files stored via `ExportFileStore` in object storage at `exports/<tenant>/<job>/<file>` (local `./exports` only without a storage client), download streams the stored file, cleanup deletes it; tenant context required (da7d052, ff8c0c8). Very large exports may hit `SERVER_WRITE_TIMEOUT` — revisit with a job runner.
+- **T129** — Backend dead-code removal and a stricter linter. ~39k lines of unreachable backend code deleted across 21 commits (unlinked packages: templates, analytics, api/validators, services/recurring, services/subscriptions, pkg/search, pkg/notifications; dead models.Payment/PaymentRefund + webhook records; unrouted assignment handler/service (8 documented-but-never-served /assignments paths dropped from the spec); unused middleware, limiters, Stripe wrappers, health/PDF/model helpers; legacy database/sql user repo); golangci-lint now runs unused, ineffassign, sqlclosecheck, staticcheck, gocritic, errorlint, errcheck, noctx, rowserrcheck and gosec (narrow justified nolints; server-written files 0600/0750); real bug fixed: A/R aging CSV days-overdue ≥10 written as punctuation (42136cb); golangci-lint pinned v2.14.0 (65c8dd3 … 017304c, 7b31816). Follow-ups T241–T244.
 - **T130** — Login error swallowed by the refresh interceptor. The 401 refresh/redirect interceptor skips auth endpoints (login, register, refresh, logout, reset, verify) so login errors show; concurrent 401s share one refresh; tests (`src/services/__tests__/api.interceptor.test.ts`).
 - **T131** — Public payment result pages for the /pay/:token flow. `/invoices/payment-success` and `/invoices/payment-cancelled` (the URLs the backend already sends to Stripe) moved outside the auth guard; test.
 - **T132** — Clear tenant and user data on logout and tenant switch. Persisted React Query cache keyed by app version + user + tenant; logout, session expiry and a different user's login clear the in-memory and persisted cache, tenant state, `current_tenant_id` and `X-Tenant-ID`; tenant switch clears the query cache; tests.
