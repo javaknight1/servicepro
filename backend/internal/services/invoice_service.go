@@ -15,6 +15,7 @@ import (
 
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/utils"
+	"github.com/javaknight1/servicepro/backend/internal/utils/epoch"
 	"github.com/javaknight1/servicepro/backend/pkg/clients/email"
 	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"
 )
@@ -160,6 +161,10 @@ func (s *InvoiceService) CreateInvoice(ctx context.Context, invoice *models.Invo
 
 		if err := tx.Create(invoice).Error; err != nil {
 			return fmt.Errorf("failed to create invoice: %w", err)
+		}
+		if err := moveInvoiceJob(tx, invoice, models.JobStatusCompleted, models.JobStatusInvoiced,
+			fmt.Sprintf("Invoice %s created", invoice.InvoiceNumber), userID); err != nil {
+			return err
 		}
 
 		// Load relationships
@@ -729,9 +734,43 @@ func applyPayment(tx *gorm.DB, invoice *models.Invoice, amount decimal.Decimal, 
 		return fmt.Errorf("failed to update invoice balance: %w", err)
 	}
 	if to, ok := updates["status"].(models.InvoiceStatus); ok {
-		return recordInvoiceTransition(tx, invoice.ID, invoice.Status, to, "payment", nil)
+		if err := recordInvoiceTransition(tx, invoice.ID, invoice.Status, to, "payment", nil); err != nil {
+			return err
+		}
+		if to == models.InvoiceStatusPaid {
+			return moveInvoiceJob(tx, invoice, models.JobStatusInvoiced, models.JobStatusPaid,
+				fmt.Sprintf("Invoice %s paid", invoice.InvoiceNumber), invoice.CreatedBy)
+		}
 	}
 	return nil
+}
+
+// moveInvoiceJob moves the job an invoice was created from along the job
+// state machine (completed→invoiced on invoicing, invoiced→paid when the
+// invoice is paid, back again on cancel/refund), with a history row in the
+// same transaction (T124/T225, audit 7.M5). Jobs in any other status are
+// left alone (e.g. a deposit invoice for a job still in progress).
+func moveInvoiceJob(tx *gorm.DB, invoice *models.Invoice, from, to models.JobStatus, note string, by uuid.UUID) error {
+	if invoice.JobID == nil {
+		return nil
+	}
+	var job models.Job
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&job, "id = ?", *invoice.JobID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil // job deleted since
+		}
+		return err
+	}
+	if job.Status != from || !models.CanTransition(from, to) {
+		return nil
+	}
+	if err := tx.Model(&models.Job{}).Where("id = ?", job.ID).Update("status", to).Error; err != nil {
+		return fmt.Errorf("failed to update job status: %w", err)
+	}
+	return tx.Create(&models.JobStatusTransition{
+		ID: uuid.New(), JobID: job.ID, FromStatus: from, ToStatus: to,
+		Reason: models.ReasonOther, Notes: &note, ChangedBy: by, TransitionedAt: epoch.NowEpoch(),
+	}).Error
 }
 
 // nonEmpty returns nil for "" so optional reference columns stay NULL.
@@ -851,7 +890,12 @@ func (s *InvoiceService) CancelInvoice(ctx context.Context, id uuid.UUID, reason
 		if err := tx.Model(&models.Invoice{}).Where("id = ?", id).Updates(updates).Error; err != nil {
 			return fmt.Errorf("failed to cancel invoice: %w", err)
 		}
-		return recordInvoiceTransition(tx, id, invoice.Status, models.InvoiceStatusCancelled, "cancelled", nil)
+		if err := recordInvoiceTransition(tx, id, invoice.Status, models.InvoiceStatusCancelled, "cancelled", nil); err != nil {
+			return err
+		}
+		// The job can be invoiced again.
+		return moveInvoiceJob(tx, invoice, models.JobStatusInvoiced, models.JobStatusCompleted,
+			fmt.Sprintf("Invoice %s cancelled", invoice.InvoiceNumber), invoice.CreatedBy)
 	})
 	if err != nil {
 		return nil, err
