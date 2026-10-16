@@ -1,0 +1,7 @@
+# Files in dist/ that must not be uploaded as public static assets.
+# Hidden source maps are for Sentry upload only (see build.sourcemap).
+*.map
+# Pre-compressed copies from vite-plugin-compression; Cloudflare compresses
+# responses itself and would serve these only as literal .gz/.br downloads.
+*.gz
+*.br

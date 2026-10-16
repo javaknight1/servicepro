@@ -1,0 +1,56 @@
+// Cloudflare Workers config for the ServicePro web app (servicepro.sharkfins.xyz).
+//
+// The Vite build in ./dist is served as Workers static assets. Unknown paths
+// fall back to index.html (SPA routing). Only /api/* and /version run the
+// Worker in worker/index.ts, which proxies them same-origin to the Go API on
+// Cloud Run, so the browser never makes a cross-origin API call.
+//
+// Not deployed yet. Before the first release:
+//   1. Set vars.API_ORIGIN below (or override it in the release workflow) to
+//      the Cloud Run service URL, e.g. https://servicepro-api-<hash>-uc.a.run.app
+//      While it is empty the Worker answers /api/* and /version with 503.
+//   2. Store the shared edge secret (must match the API's EDGE_PROXY_SECRET):
+//        npx wrangler secret put EDGE_PROXY_SECRET
+//      Deploys fail until it is set (see "secrets" below). For `wrangler dev`,
+//      put EDGE_PROXY_SECRET=... in frontend/.dev.vars (gitignored) instead.
+//   3. Re-run `npm run cf:typegen` after any change to this file.
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "servicepro-web",
+  "main": "worker/index.ts",
+  // Latest date supported by the installed wrangler/workerd.
+  "compatibility_date": "2026-10-12",
+  "upload_source_maps": true,
+
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    // Requires wrangler >= 4.20. Everything else is served straight from
+    // assets without invoking the Worker.
+    "run_worker_first": ["/api/*", "/version"],
+  },
+
+  "routes": [{ "pattern": "servicepro.sharkfins.xyz", "custom_domain": true }],
+  "workers_dev": false,
+  "preview_urls": false,
+
+  "observability": {
+    "enabled": true,
+  },
+
+  "vars": {
+    // Cloud Run origin of the Go API, without a trailing slash. Set at
+    // release time; empty means "API not configured" (503).
+    "API_ORIGIN": "",
+  },
+
+  // Secrets: names only, values via `npx wrangler secret put <NAME>`.
+  // `wrangler deploy` refuses to deploy until every required secret is set,
+  // and `wrangler types` generates Env typings from this list.
+  //   EDGE_PROXY_SECRET - sent as X-SP-Edge-Secret so the API trusts
+  //                       X-SP-Client-IP. Must match backend EDGE_PROXY_SECRET.
+  "secrets": {
+    "required": ["EDGE_PROXY_SECRET"],
+  },
+}

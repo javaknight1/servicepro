@@ -89,8 +89,10 @@ export const buildOptions: BuildOptions = {
   // Asset directory within outDir
   assetsDir: 'assets',
 
-  // Enable source maps for production (can be disabled for smaller builds)
-  sourcemap: process.env.GENERATE_SOURCEMAP === 'true',
+  // Hidden source maps: emitted for Sentry upload but not referenced from the
+  // bundles. public/.assetsignore keeps *.map out of the Workers deploy.
+  // Set GENERATE_SOURCEMAP=false to skip them (faster local builds).
+  sourcemap: process.env.GENERATE_SOURCEMAP === 'false' ? false : 'hidden',
 
   // Minification
   minify: 'terser',
