@@ -297,8 +297,7 @@ func (s *DocumentPDFService) buildQuotePDFData(quote *models.Quote) *pdf.QuoteDa
 		data.CustomerName = "Customer"
 	}
 
-	// Build line items and calculate totals
-	var subtotal float64
+	// Build line items; totals come from the quote (decimal), not a float re-sum
 	for _, item := range quote.Items {
 		lineItem := pdf.QuoteLineItem{
 			Description: item.Description,
@@ -307,10 +306,9 @@ func (s *DocumentPDFService) buildQuotePDFData(quote *models.Quote) *pdf.QuoteDa
 			Amount:      item.Total.InexactFloat64(),
 		}
 		data.LineItems = append(data.LineItems, lineItem)
-		subtotal += item.Total.InexactFloat64()
 	}
 
-	data.Subtotal = subtotal
+	data.Subtotal = quote.Subtotal.InexactFloat64()
 	data.TaxAmount = quote.TaxAmount.InexactFloat64()
 	data.Total = quote.Total.InexactFloat64()
 

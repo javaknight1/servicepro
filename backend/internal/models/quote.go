@@ -233,10 +233,11 @@ func (q *Quote) IsFinal() bool {
 
 // CalculateTotals calculates and updates the quote totals
 func (q *Quote) CalculateTotals() {
-	// Calculate subtotal from items
+	// Subtotal is the sum of the ROUNDED item totals (what the items show), so
+	// the quote's lines always add up to its subtotal (audit 7.L1).
 	subtotal := decimal.Zero
 	for _, item := range q.Items {
-		itemTotal := item.Quantity.Mul(item.UnitPrice)
+		itemTotal := item.Quantity.Mul(item.UnitPrice).Round(2)
 		subtotal = subtotal.Add(itemTotal)
 	}
 
