@@ -625,7 +625,7 @@ func (s *unifiedExportService) writeCustomersExcel(f *excelize.File, sheet strin
 		Fill:      excelize.Fill{Type: "pattern", Color: []string{"#E0E0E0"}, Pattern: 1},
 		Alignment: &excelize.Alignment{Horizontal: "center"},
 	})
-	f.SetCellStyle(sheet, "A1", fmt.Sprintf("%s1", string(rune('A'+len(headers)-1))), headerStyle)
+	f.SetCellStyle(sheet, "A1", fmt.Sprintf("%s1", string(rune('A'+len(headers)-1))), headerStyle) //nolint:gosec // G115: headers is a fixed list of 11 columns
 
 	// Write data
 	for i, customer := range customers {
@@ -657,7 +657,7 @@ func (s *unifiedExportService) writeCustomersExcel(f *excelize.File, sheet strin
 
 	// Auto filter
 	if opts.AutoFilter && len(customers) > 0 {
-		lastCol := string(rune('A' + len(headers) - 1))
+		lastCol := string(rune('A' + len(headers) - 1)) //nolint:gosec // G115: headers is a fixed list of 11 columns
 		f.AutoFilter(sheet, fmt.Sprintf("A1:%s%d", lastCol, len(customers)+1), nil)
 	}
 
@@ -769,7 +769,7 @@ func (s *unifiedExportService) ExportToPDF(ctx context.Context, data interface{}
 		return nil, fmt.Errorf("failed to generate PDF: %w", err)
 	}
 
-	return os.ReadFile(tempFile)
+	return os.ReadFile(tempFile) //nolint:gosec // G304: tempFile is a server-generated path in the temp dir
 }
 
 // pdfExportTemplate renders export PDFs. html/template escapes every value

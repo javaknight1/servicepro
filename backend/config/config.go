@@ -379,7 +379,7 @@ const (
 
 // DefaultDatabaseURL is the local docker-compose database, used when
 // DATABASE_URL is unset (also by cmd/migrate).
-const DefaultDatabaseURL = "postgresql://postgres:password@localhost:5432/servicepro?sslmode=disable"
+const DefaultDatabaseURL = "postgresql://postgres:password@localhost:5432/servicepro?sslmode=disable" //nolint:gosec // G101: well-known local docker-compose credentials, not a secret
 
 // defaultDevRedisURL is used when REDIS_URL is unset in development only.
 // In other environments an unset REDIS_URL means "Redis not configured".
@@ -690,11 +690,11 @@ func getEnvOrFile(key, fileEnvKey, defaultValue string) string {
 	// If a file path is specified, try to read from it
 	filePath := os.Getenv(fileEnvKey)
 	if filePath != "" {
-		data, err := os.ReadFile(filePath)
+		data, err := os.ReadFile(filePath) //nolint:gosec // G304: the *_FILE path is operator-supplied config (secret mounts)
 		if err == nil {
 			value = strings.TrimSpace(string(data))
 			if value != "" {
-				log.Printf("[CONFIG] Loaded %s from file: %s", key, filePath)
+				log.Printf("[CONFIG] Loaded %s from file: %s", key, filePath) //nolint:gosec // G706: key is a constant and the path is operator config
 				return value
 			}
 		}

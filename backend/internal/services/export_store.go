@@ -76,10 +76,10 @@ func (s *localExportStore) Put(_ context.Context, key string, data []byte, _ str
 	if err != nil {
 		return err
 	}
-	if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(p), 0o750); err != nil {
 		return err
 	}
-	return os.WriteFile(p, data, 0o644)
+	return os.WriteFile(p, data, 0o600)
 }
 
 func (s *localExportStore) Open(_ context.Context, key string) (io.ReadCloser, error) {
@@ -87,7 +87,7 @@ func (s *localExportStore) Open(_ context.Context, key string) (io.ReadCloser, e
 	if err != nil {
 		return nil, err
 	}
-	data, err := os.ReadFile(p)
+	data, err := os.ReadFile(p) //nolint:gosec // G304: p comes from s.path, which confines the key to the store directory
 	if err != nil {
 		return nil, err
 	}

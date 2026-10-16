@@ -912,7 +912,7 @@ func (s *InvoiceService) SendInvoice(ctx context.Context, id uuid.UUID) (*models
 
 	// Send email asynchronously if email client is configured
 	if s.emailClient != nil && invoice.Customer != nil {
-		go s.sendInvoiceEmail(invoice)
+		go s.sendInvoiceEmail(invoice) //nolint:gosec // G118: detached on purpose, the email must not be cancelled when the request ends
 	}
 
 	return invoice, nil

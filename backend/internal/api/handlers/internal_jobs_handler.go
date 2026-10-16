@@ -16,7 +16,7 @@ import (
 )
 
 // InternalJobsTokenHeader carries INTERNAL_JOBS_SECRET on /internal/jobs/*.
-const InternalJobsTokenHeader = "X-Internal-Jobs-Token"
+const InternalJobsTokenHeader = "X-Internal-Jobs-Token" //nolint:gosec // G101: a header name, not a credential
 
 // ReminderRunner runs one automatic payment-reminder pass
 // (implemented by *services.PaymentReminderService).

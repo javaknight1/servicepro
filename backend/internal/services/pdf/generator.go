@@ -68,13 +68,13 @@ func NewGenerator(ctx context.Context, config *Config, logger Logger) (*Generato
 
 	// Create local storage directory if needed
 	if config.Storage.Type == "local" || config.Storage.Type == "both" {
-		if err := os.MkdirAll(config.Storage.LocalPath, 0755); err != nil {
+		if err := os.MkdirAll(config.Storage.LocalPath, 0750); err != nil {
 			return nil, fmt.Errorf("failed to create storage directory: %w", err)
 		}
 	}
 
 	// Create temp directory
-	if err := os.MkdirAll(config.TempDir, 0755); err != nil {
+	if err := os.MkdirAll(config.TempDir, 0750); err != nil {
 		return nil, fmt.Errorf("failed to create temp directory: %w", err)
 	}
 
@@ -344,7 +344,7 @@ func (g *Generator) saveToStorage(ctx context.Context, content []byte, filename 
 	// Save to local storage
 	if (g.config.Storage.Type == "local" || g.config.Storage.Type == "both") && !opts.SkipLocalStorage {
 		localPath := filepath.Join(g.config.Storage.LocalPath, filename)
-		if err := os.WriteFile(localPath, content, 0644); err != nil {
+		if err := os.WriteFile(localPath, content, 0600); err != nil {
 			return fmt.Errorf("failed to save locally: %w", err)
 		}
 		result.LocalPath = localPath
