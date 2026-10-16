@@ -853,6 +853,7 @@ export function InvoiceDetailPage() {
                         )
                       }
                       placeholder="Description"
+                      data-testid="item-description"
                       required
                       className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                     />
@@ -865,6 +866,7 @@ export function InvoiceDetailPage() {
                         handleLineItemChange(index, 'quantity', e.target.value)
                       }
                       placeholder="Qty"
+                      data-testid="item-quantity"
                       min="0"
                       step="1"
                       required
@@ -883,6 +885,7 @@ export function InvoiceDetailPage() {
                         )
                       }
                       placeholder="Price"
+                      data-testid="item-price"
                       min="0"
                       step="0.01"
                       required
@@ -929,7 +932,7 @@ export function InvoiceDetailPage() {
                 <div className="w-64 space-y-2">
                   <div className="flex justify-between">
                     <span className="text-neutral-600">Subtotal:</span>
-                    <span className="font-medium">
+                    <span className="font-medium" data-testid="subtotal">
                       {formatDollars(calculateSubtotal())}
                     </span>
                   </div>
@@ -939,7 +942,7 @@ export function InvoiceDetailPage() {
                         ? 'Tax (default rate):'
                         : `Tax (${formData.tax_rate}%):`}
                     </span>
-                    <span className="font-medium">
+                    <span className="font-medium" data-testid="tax">
                       {taxFromDefault
                         ? 'Set on save'
                         : formatDollars(calculateTax())}
@@ -947,7 +950,7 @@ export function InvoiceDetailPage() {
                   </div>
                   <div className="flex justify-between text-lg font-semibold pt-2 border-t">
                     <span>Total:</span>
-                    <span>
+                    <span data-testid="total">
                       {taxFromDefault
                         ? `${formatDollars(calculateSubtotal())} + tax`
                         : formatDollars(calculateTotal())}

@@ -121,7 +121,19 @@ describe('Invoice Workflow', () => {
     });
 
     it('should calculate totals with tax', () => {
+      cy.intercept('GET', '**/api/v1/tax-rates*', {
+        body: [
+          {
+            id: 'tax-rate-1',
+            name: 'City Sales Tax',
+            rate: '0.0825',
+            tax_type: 'sales_tax',
+            is_active: true,
+          },
+        ],
+      }).as('getTaxRates');
       invoicesPage.clickAddInvoice();
+      cy.wait('@getTaxRates');
 
       invoicesPage.selectCustomer('John Smith');
 
@@ -130,10 +142,13 @@ describe('Invoice Workflow', () => {
       cy.get('[data-testid="item-quantity"]').first().clear().type('1');
       cy.get('[data-testid="item-price"]').first().clear().type('100.00');
 
+      // Pick the configured 8.25% rate
+      cy.get('#tax_rate_id').select('tax-rate-1');
+
       // Check subtotal
       cy.get('[data-testid="subtotal"]').should('contain.text', '100.00');
 
-      // Tax should be applied (8.25%)
+      // Tax should be applied (8.25% of $100)
       cy.get('[data-testid="tax"]').should('contain.text', '8.25');
 
       // Total should include tax

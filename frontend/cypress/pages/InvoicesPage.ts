@@ -20,7 +20,11 @@ export interface InvoiceData {
   paymentTerms?: string;
   discount?: number;
   discountType?: 'percentage' | 'fixed';
+  /** A typed rate in percent (8.25); picks "Custom rate" when the tenant has
+   * configured tax rates. */
   taxRate?: number;
+  /** A configured tax rate to pick by its option text (e.g. "City Sales Tax"). */
+  taxRateName?: string;
 }
 
 export class InvoicesPage extends BasePage {
@@ -49,7 +53,11 @@ export class InvoicesPage extends BasePage {
     paymentTermsSelect: '[name="paymentTerms"], [data-testid="payment-terms"]',
     discountInput: '[name="discount"], [data-testid="discount-input"]',
     discountTypeSelect: '[name="discountType"], [data-testid="discount-type"]',
-    taxRateInput: '[name="taxRate"], [data-testid="tax-rate"]',
+    // Tax rate picker (T237): a select of configured rates (#tax_rate_id) with
+    // a "Custom rate" option; the percent input (#tax_rate) shows for a
+    // custom rate, or on its own when the tenant has no configured rates.
+    taxRateSelect: '#tax_rate_id',
+    taxRateInput: '#tax_rate',
 
     // Line items
     lineItemsContainer: '[data-testid="line-items"], .line-items',
@@ -181,10 +189,17 @@ export class InvoicesPage extends BasePage {
       }
     }
 
-    if (data.taxRate) {
-      cy.get(this.pageSelectors.taxRateInput)
-        .clear()
-        .type(data.taxRate.toString());
+    if (data.taxRateName) {
+      cy.get(this.pageSelectors.taxRateSelect)
+        .find('option')
+        .contains(data.taxRateName)
+        .then(($option) => {
+          cy.get(this.pageSelectors.taxRateSelect).select(
+            String($option.val())
+          );
+        });
+    } else if (data.taxRate !== undefined) {
+      this.setCustomTaxRate(data.taxRate);
     }
 
     if (data.notes) {
@@ -194,6 +209,17 @@ export class InvoicesPage extends BasePage {
     if (data.paymentTerms) {
       cy.get(this.pageSelectors.paymentTermsSelect).select(data.paymentTerms);
     }
+  }
+
+  // Type a tax rate in percent, switching the picker to "Custom rate" first
+  // when the tenant has configured rates.
+  setCustomTaxRate(percent: number): void {
+    cy.get('body').then(($body) => {
+      if ($body.find(this.pageSelectors.taxRateSelect).length > 0) {
+        cy.get(this.pageSelectors.taxRateSelect).select('');
+      }
+    });
+    cy.get(this.pageSelectors.taxRateInput).clear().type(percent.toString());
   }
 
   // Add line item
