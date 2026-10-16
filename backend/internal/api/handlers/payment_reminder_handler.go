@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -89,7 +90,7 @@ func (h *PaymentReminderHandler) SendManualReminder(c *gin.Context) {
 
 	reminder, err := h.service.SendManualReminder(ctx, tenantID, invoiceID)
 	if err != nil {
-		if err == services.ErrInvoiceNotFound {
+		if errors.Is(err, services.ErrInvoiceNotFound) {
 			apierror.WriteResponse(c, http.StatusNotFound, models.ErrorResponse{Error: "Invoice not found"})
 			return
 		}

@@ -210,7 +210,7 @@ func (g *Generator) Generate(ctx context.Context, data TemplateData, opts *Gener
 	// Render template
 	if err := templateFunc(pdf, data, g.getEffectiveConfig(opts)); err != nil {
 		g.incrementErrorCount()
-		return nil, fmt.Errorf("%w: %v", ErrTemplateRender, err)
+		return nil, fmt.Errorf("%w: %w", ErrTemplateRender, err)
 	}
 
 	// Render footer
@@ -220,7 +220,7 @@ func (g *Generator) Generate(ctx context.Context, data TemplateData, opts *Gener
 	var buf bytes.Buffer
 	if err := pdf.Output(&buf); err != nil {
 		g.incrementErrorCount()
-		return nil, fmt.Errorf("%w: %v", ErrPDFGenerationFailed, err)
+		return nil, fmt.Errorf("%w: %w", ErrPDFGenerationFailed, err)
 	}
 
 	content := buf.Bytes()
@@ -299,7 +299,7 @@ func (g *Generator) GenerateToWriter(ctx context.Context, data TemplateData, w i
 	// Render template
 	if err := templateFunc(pdf, data, g.getEffectiveConfig(opts)); err != nil {
 		g.incrementErrorCount()
-		return fmt.Errorf("%w: %v", ErrTemplateRender, err)
+		return fmt.Errorf("%w: %w", ErrTemplateRender, err)
 	}
 
 	// Render footer
@@ -308,7 +308,7 @@ func (g *Generator) GenerateToWriter(ctx context.Context, data TemplateData, w i
 	// Output to writer
 	if err := pdf.Output(w); err != nil {
 		g.incrementErrorCount()
-		return fmt.Errorf("%w: %v", ErrPDFGenerationFailed, err)
+		return fmt.Errorf("%w: %w", ErrPDFGenerationFailed, err)
 	}
 
 	g.incrementGeneratedCount()
@@ -361,7 +361,7 @@ func (g *Generator) saveToStorage(ctx context.Context, content []byte, filename 
 			ContentType: aws.String("application/pdf"),
 		})
 		if err != nil {
-			return fmt.Errorf("%w: %v", ErrS3UploadFailed, err)
+			return fmt.Errorf("%w: %w", ErrS3UploadFailed, err)
 		}
 
 		result.S3Key = key

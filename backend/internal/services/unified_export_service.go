@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/csv"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html/template"
 	"io"
@@ -974,7 +975,7 @@ func (s *unifiedExportService) failJob(ctx context.Context, job *models.ExportJo
 		"error_message": errorMsg,
 		"completed_at":  completedAt,
 	})
-	if err != nil && err != errExportNotActive {
+	if err != nil && !errors.Is(err, errExportNotActive) {
 		logExportError(ctx, job.ID, err)
 	}
 }

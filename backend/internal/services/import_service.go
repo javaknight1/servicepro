@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -64,7 +65,7 @@ func (s *ImportService) CreateImportJob(
 func (s *ImportService) GetImportJob(ctx context.Context, jobID uuid.UUID) (*models.ImportJob, error) {
 	var job models.ImportJob
 	if err := s.db.WithContext(ctx).Where("id = ?", jobID).First(&job).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, fmt.Errorf("import job not found")
 		}
 		return nil, fmt.Errorf("failed to get import job: %w", err)
@@ -316,7 +317,7 @@ func (s *ImportService) ProcessNextJob(ctx context.Context) error {
 	// Pop from queue
 	result, err := s.redisClient.BLPop(ctx, 5*time.Second, queueKey).Result()
 	if err != nil {
-		if err == redis.Nil {
+		if errors.Is(err, redis.Nil) {
 			// No jobs in queue
 			return nil
 		}

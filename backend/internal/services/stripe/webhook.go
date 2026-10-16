@@ -119,7 +119,7 @@ func (h *WebhookHandler) HandleWebhook(ctx context.Context, req *WebhookRequest)
 	claim, err := h.store.Claim(ctx, event.ID, string(event.Type))
 	if err != nil {
 		return &WebhookResponse{Received: false, EventID: event.ID, Error: "event store unavailable"},
-			fmt.Errorf("%w: %v", ErrWebhookRetryLater, err)
+			fmt.Errorf("%w: %w", ErrWebhookRetryLater, err)
 	}
 	switch claim {
 	case ClaimDuplicate:
@@ -138,7 +138,7 @@ func (h *WebhookHandler) HandleWebhook(ctx context.Context, req *WebhookRequest)
 				Received: false,
 				EventID:  event.ID,
 				Error:    "event processing failed",
-			}, fmt.Errorf("%w: event processing failed: %v", ErrWebhookRetryLater, err)
+			}, fmt.Errorf("%w: event processing failed: %w", ErrWebhookRetryLater, err)
 		}
 	}
 

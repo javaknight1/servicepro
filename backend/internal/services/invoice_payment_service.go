@@ -93,7 +93,7 @@ func (s *InvoicePaymentService) CreateCheckoutSessionForInvoice(ctx context.Cont
 	sess, err := session.New(params)
 	if err != nil {
 		logging.Error(ctx, "[INVOICE-PAYMENT] Failed to create checkout session for invoice", map[string]any{"invoice_id": invoice.ID, "error": err})
-		return nil, fmt.Errorf("%w: %v", ErrCheckoutSessionCreationFailed, err)
+		return nil, fmt.Errorf("%w: %w", ErrCheckoutSessionCreationFailed, err)
 	}
 
 	logging.Info(ctx, "[INVOICE-PAYMENT] Created checkout session for invoice", map[string]any{"session_id": sess.ID, "invoice_id": invoice.ID})

@@ -96,7 +96,7 @@ func (s *ProfilePictureService) UploadProfilePicture(ctx context.Context, userID
 	// Encode as JPEG
 	var buf bytes.Buffer
 	if err := jpeg.Encode(&buf, resized, &jpeg.Options{Quality: JPEGQuality}); err != nil {
-		return "", fmt.Errorf("%w: %v", ErrImageProcessing, err)
+		return "", fmt.Errorf("%w: %w", ErrImageProcessing, err)
 	}
 
 	// Generate unique filename

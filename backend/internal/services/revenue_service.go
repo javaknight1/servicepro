@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -440,11 +441,11 @@ func (s *revenueReportService) RefreshCache(ctx context.Context, periodType mode
 		Where("period_type = ? AND period_start = ? AND period_end = ?", periodType, periodStart, periodEnd).
 		First(&cache).Error
 
-	if cacheErr != nil && cacheErr != gorm.ErrRecordNotFound {
+	if cacheErr != nil && !errors.Is(cacheErr, gorm.ErrRecordNotFound) {
 		return fmt.Errorf("failed to check cache: %w", cacheErr)
 	}
 
-	isNewRecord := cacheErr == gorm.ErrRecordNotFound
+	isNewRecord := errors.Is(cacheErr, gorm.ErrRecordNotFound)
 
 	query := &models.RevenueReportQuery{
 		StartDate:  &periodStart,
@@ -499,7 +500,7 @@ func (s *revenueReportService) GetCachedSummary(ctx context.Context, periodType 
 		First(&cache).Error
 
 	if err != nil {
-		if err == gorm.ErrRecordNotFound {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("failed to get cache: %w", err)
