@@ -25,8 +25,14 @@ const (
 
 var (
 	// ErrRegistrationClosed is returned when invite_only mode is active and
-	// the request carries neither a valid invite code nor a valid invitation.
+	// the request carries neither an invite code nor an invitation.
 	ErrRegistrationClosed = errors.New("registration requires a valid invite code or invitation")
+	// ErrInvalidInviteCode is returned when the supplied invite code is
+	// unknown, revoked, expired or used up.
+	ErrInvalidInviteCode = errors.New("invite code is not valid")
+	// ErrInvalidInvitation is returned when the supplied tenant invitation is
+	// unknown, no longer pending, expired or addressed to another email.
+	ErrInvalidInvitation = errors.New("invitation is not valid for this email")
 	// ErrInviteCodeNotFound is returned when an invite code doesn't exist.
 	ErrInviteCodeNotFound = errors.New("invite code not found")
 )
@@ -110,10 +116,11 @@ func (s *InviteCodeService) Revoke(ctx context.Context, id uuid.UUID) error {
 }
 
 // Consume atomically uses one registration of a code. It fails with
-// ErrRegistrationClosed when the code is unknown, revoked, expired or used up.
+// ErrInvalidInviteCode when the code is empty, unknown, revoked, expired or
+// used up.
 func (s *InviteCodeService) Consume(ctx context.Context, code string) error {
 	if strings.TrimSpace(code) == "" {
-		return ErrRegistrationClosed
+		return ErrInvalidInviteCode
 	}
 	res := s.db.WithContext(ctx).Model(&models.InviteCode{}).
 		Where("code_hash = ? AND revoked_at IS NULL AND (expires_at IS NULL OR expires_at > ?) AND (max_uses = 0 OR uses < max_uses)",
@@ -123,7 +130,7 @@ func (s *InviteCodeService) Consume(ctx context.Context, code string) error {
 		return res.Error
 	}
 	if res.RowsAffected == 0 {
-		return ErrRegistrationClosed
+		return ErrInvalidInviteCode
 	}
 	return nil
 }
@@ -144,7 +151,13 @@ type RegistrationGate struct {
 
 // Admit decides whether a registration may proceed. It returns a release
 // function to call if the registration subsequently fails (so a consumed
-// invite-code use is returned), or ErrRegistrationClosed.
+// invite-code use is returned), or an error:
+//
+//   - ErrInvalidInviteCode when an invite code was supplied but is not valid
+//     (and no valid invitation admitted the request);
+//   - ErrInvalidInvitation when only an invitation was supplied and it is not
+//     a pending, unexpired invitation for this email;
+//   - ErrRegistrationClosed when neither was supplied.
 //
 // In invite_only mode the request must carry either a pending, unexpired
 // tenant invitation addressed to this email, or a valid invite code.
@@ -153,18 +166,27 @@ func (g *RegistrationGate) Admit(ctx context.Context, email string, inviteCode, 
 	if g == nil || g.Mode != RegistrationModeInviteOnly {
 		return noop, nil
 	}
-	if invitationToken != nil && *invitationToken != "" && g.Invitations != nil {
+	hasInvitation := invitationToken != nil && strings.TrimSpace(*invitationToken) != ""
+	hasCode := inviteCode != nil && strings.TrimSpace(*inviteCode) != ""
+
+	if hasInvitation && g.Invitations != nil {
 		if g.Invitations.IsPendingInvitationFor(ctx, *invitationToken, email) {
 			return noop, nil
 		}
 	}
-	if inviteCode != nil && *inviteCode != "" && g.InviteCodes != nil {
-		if err := g.InviteCodes.Consume(ctx, *inviteCode); err == nil {
+	if hasCode {
+		if g.InviteCodes == nil {
+			return noop, ErrInvalidInviteCode
+		}
+		err := g.InviteCodes.Consume(ctx, *inviteCode)
+		if err == nil {
 			code := *inviteCode
 			return func() { g.InviteCodes.Release(context.WithoutCancel(ctx), code) }, nil
-		} else if !errors.Is(err, ErrRegistrationClosed) {
-			return noop, err
 		}
+		return noop, err
+	}
+	if hasInvitation {
+		return noop, ErrInvalidInvitation
 	}
 	return noop, ErrRegistrationClosed
 }

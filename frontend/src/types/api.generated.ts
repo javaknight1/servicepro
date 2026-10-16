@@ -1016,7 +1016,7 @@ export interface paths {
                         "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
-                /** @description Registration requires an invite code or invitation */
+                /** @description registration_closed (no invite code or invitation), invalid_invite_code or invalid_invitation */
                 403: {
                     headers: {
                         [name: string]: unknown;

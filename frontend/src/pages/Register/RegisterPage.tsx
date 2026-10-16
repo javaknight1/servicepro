@@ -32,20 +32,18 @@ const INVALID_INVITE_CODE_MESSAGE =
 const INVALID_INVITATION_MESSAGE =
   'This invitation is no longer valid for this email address. Ask the person who invited you to send a new invitation.';
 
-/**
- * Map a failed registration to a user-facing message. The API answers
- * 403 `registration_closed` both when no code was sent and when the code or
- * invitation was rejected, so which one we show depends on what was sent.
- */
-function getRegisterErrorMessage(
-  err: unknown,
-  sent: { inviteCode?: string; invitationToken?: string }
-): string {
+/** Messages for the API's invite-only rejection codes (403). */
+const INVITE_ONLY_ERROR_MESSAGES: Record<string, string> = {
+  registration_closed: INVITE_ONLY_MESSAGE,
+  invalid_invite_code: INVALID_INVITE_CODE_MESSAGE,
+  invalid_invitation: INVALID_INVITATION_MESSAGE,
+};
+
+/** Map a failed registration to a user-facing message. */
+function getRegisterErrorMessage(err: unknown): string {
   const { status, code, message } = getApiErrorInfo(err);
-  if (status === 403 && code === 'registration_closed') {
-    if (sent.inviteCode) return INVALID_INVITE_CODE_MESSAGE;
-    if (sent.invitationToken) return INVALID_INVITATION_MESSAGE;
-    return INVITE_ONLY_MESSAGE;
+  if (status === 403 && code && INVITE_ONLY_ERROR_MESSAGES[code]) {
+    return INVITE_ONLY_ERROR_MESSAGES[code];
   }
   if (status === 429) return TOO_MANY_ATTEMPTS_MESSAGE;
   return (
@@ -124,16 +122,15 @@ export function RegisterPage() {
   }, [invitationToken, setValue]);
 
   const onSubmit = async (data: RegisterFormData) => {
-    const sent = {
-      invitationToken: invitationToken || undefined,
-      inviteCode: data.inviteCode || undefined,
-    };
     try {
       setError('');
-      await register_action(data.email, data.password, sent);
+      await register_action(data.email, data.password, {
+        invitationToken: invitationToken || undefined,
+        inviteCode: data.inviteCode || undefined,
+      });
       setSuccess(true);
     } catch (err: unknown) {
-      setError(getRegisterErrorMessage(err, sent));
+      setError(getRegisterErrorMessage(err));
     }
   };
 

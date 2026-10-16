@@ -38,24 +38,24 @@ func TestInviteCode_ConsumeRules(t *testing.T) {
 	require.NoError(t, svc.Consume(ctx, code))
 	// Case/dash-insensitive.
 	require.NoError(t, svc.Consume(ctx, " "+lowerNoDash(code)+" "))
-	assert.ErrorIs(t, svc.Consume(ctx, code), ErrRegistrationClosed, "max uses reached")
+	assert.ErrorIs(t, svc.Consume(ctx, code), ErrInvalidInviteCode, "max uses reached")
 
 	svc.Release(ctx, code)
 	require.NoError(t, svc.Consume(ctx, code), "released use can be reused")
 
-	assert.ErrorIs(t, svc.Consume(ctx, "NOPE-NOPE-NOPE-NOPE"), ErrRegistrationClosed)
+	assert.ErrorIs(t, svc.Consume(ctx, "NOPE-NOPE-NOPE-NOPE"), ErrInvalidInviteCode)
 
 	revoked, ric, err := svc.Create(ctx, 0, 0, nil, nil)
 	require.NoError(t, err)
 	require.NoError(t, svc.Revoke(ctx, ric.ID))
-	assert.ErrorIs(t, svc.Consume(ctx, revoked), ErrRegistrationClosed)
+	assert.ErrorIs(t, svc.Consume(ctx, revoked), ErrInvalidInviteCode)
 	assert.ErrorIs(t, svc.Revoke(ctx, uuid.New()), ErrInviteCodeNotFound)
 
 	expired, eic, err := svc.Create(ctx, 1, time.Hour, nil, nil)
 	require.NoError(t, err)
 	past := time.Now().Add(-time.Minute)
 	require.NoError(t, svc.db.Model(&models.InviteCode{}).Where("id = ?", eic.ID).Update("expires_at", past).Error)
-	assert.ErrorIs(t, svc.Consume(ctx, expired), ErrRegistrationClosed)
+	assert.ErrorIs(t, svc.Consume(ctx, expired), ErrInvalidInviteCode)
 }
 
 func lowerNoDash(s string) string {
@@ -95,7 +95,7 @@ func TestRegistrationGate(t *testing.T) {
 	release, err := gate.Admit(ctx, "a@x.test", &code, nil)
 	require.NoError(t, err)
 	_, err = gate.Admit(ctx, "b@x.test", &code, nil)
-	assert.ErrorIs(t, err, ErrRegistrationClosed, "single-use code")
+	assert.ErrorIs(t, err, ErrInvalidInviteCode, "single-use code")
 	release()
 	_, err = gate.Admit(ctx, "b@x.test", &code, nil)
 	assert.NoError(t, err, "released after failed registration")
@@ -109,5 +109,16 @@ func TestRegistrationGate(t *testing.T) {
 	_, err = gate.Admit(ctx, "invitee@x.test", nil, &tok)
 	assert.NoError(t, err, "pending invitation for the same email admits")
 	_, err = gate.Admit(ctx, "someone-else@x.test", nil, &tok)
-	assert.ErrorIs(t, err, ErrRegistrationClosed, "invitation for another email does not")
+	assert.ErrorIs(t, err, ErrInvalidInvitation, "invitation for another email does not")
+	unknown := "no-such-token"
+	_, err = gate.Admit(ctx, "invitee@x.test", nil, &unknown)
+	assert.ErrorIs(t, err, ErrInvalidInvitation, "unknown invitation token")
+	bogus := "NOPE-NOPE-NOPE-NOPE"
+	_, err = gate.Admit(ctx, "someone-else@x.test", &bogus, &tok)
+	assert.ErrorIs(t, err, ErrInvalidInviteCode, "a rejected code is reported even alongside a bad invitation")
+	_, err = gate.Admit(ctx, "invitee@x.test", &bogus, &tok)
+	assert.NoError(t, err, "a valid invitation admits even with a bad code")
+	blank := "  "
+	_, err = gate.Admit(ctx, "a@x.test", &blank, nil)
+	assert.ErrorIs(t, err, ErrRegistrationClosed, "a blank code counts as no code")
 }
