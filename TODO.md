@@ -193,10 +193,10 @@ The minimum subset that must be done before real (paying) customers: **38 tasks,
 | ~~T232~~ | ~~2~~  | ~~Bug~~        | ~~2~~  | ~~Frontend money calls match the API: record payment URL, cancel reason, refunds, quote revise~~      |
 | ~~T233~~ | ~~2~~  | ~~Bug~~        | ~~1~~  | ~~JobMaterial.Billable default:true stores false as true~~                                            |
 | ~~T234~~ | ~~2~~  | ~~Bug~~        | ~~2~~  | ~~Invoice/quote forms use the API's fields: tax_rate_id, terms_and_conditions, default tax prefill~~  |
+| ~~T237~~ | ~~2~~  | ~~Backend~~    | ~~3~~  | ~~Tax rates API + tax-rate picker; terms on invoice create; keep line discounts on edit~~             |
 | ~~T238~~ | ~~2~~  | ~~Security~~   | ~~1~~  | ~~Job assignment checks the technician belongs to the tenant~~                                        |
 | ~~T239~~ | ~~2~~  | ~~Security~~   | ~~1~~  | ~~Access log drops query strings~~                                                                    |
 | T129     | 2      | Cleanup        | 4      | Backend dead-code removal and a stricter linter                                                       |
-| T237     | 2      | Backend        | 3      | Tax rates API + tax-rate picker; terms on invoice create; keep line discounts on edit                 |
 | T101     | 3      | Monitoring     | 2      | Upload source maps to Sentry for production builds                                                    |
 | T153     | 4      | Backend        | 24     | Repositories take ctx + tenantID; services stop taking *gorm.DB; transaction manager                  |
 | T154     | 4      | Security       | 12     | Postgres RLS backstop keyed on a per-transaction tenant GUC + isolation tests                         |
@@ -406,7 +406,7 @@ Work completed under the old P0–P3/sprint TODO. Details are in Verified Comple
 
 ### Phase 2 — Correctness & Cleanup (T118, T119, T120, T121, T122, T123, T124, T125, T126, T127, T128, T129, T130, T131, T132, T133, T134, T135, T136, T137, T138, T223, T224, T225, T226, T227, T228, T229, T232, T233, T234, T237, T238, T239)
 
-Money flows that are wired but broken (payments don't update invoices, reminders never sent, numbering wedges, a panicking webhook), frontend bugs users would hit in the preview, and dead code. From `docs/audits/2026-10-16/backend-correctness.md` and `docs/audits/2026-10-16/frontend.md`. **2 open tasks, ~7h.** 32 done.
+Money flows that are wired but broken (payments don't update invoices, reminders never sent, numbering wedges, a panicking webhook), frontend bugs users would hit in the preview, and dead code. From `docs/audits/2026-10-16/backend-correctness.md` and `docs/audits/2026-10-16/frontend.md`. **1 open tasks, ~4h.** 33 done.
 
 - [x] T118 — Recording a payment updates the invoice balance and status ✓ (2026-10-16)
 - [x] T119 — Stripe Checkout charges the true balance due ✓ (2026-10-16)
@@ -438,10 +438,10 @@ Money flows that are wired but broken (payments don't update invoices, reminders
 - [x] T232 — Frontend money calls match the API: record payment URL, cancel reason, refunds, quote revise ✓ (2026-10-16)
 - [x] T233 — JobMaterial.Billable default:true stores false as true ✓ (2026-10-16)
 - [x] T234 — Invoice/quote forms use the API's fields: tax_rate_id, terms_and_conditions, default tax prefill ✓ (2026-10-16)
+- [x] T237 — Tax rates API + tax-rate picker; terms on invoice create; keep line discounts on edit ✓ (2026-10-16)
 - [x] T238 — Job assignment checks the technician belongs to the tenant ✓ (2026-10-16)
 - [x] T239 — Access log drops query strings ✓ (2026-10-16)
 - [ ] T129 — Backend dead-code removal and a stricter linter
-- [ ] T237 — Tax rates API + tax-rate picker; terms on invoice create; keep line discounts on edit
 
 #### T129 — Backend dead-code removal and a stricter linter
 
@@ -454,20 +454,6 @@ Money flows that are wired but broken (payments don't update invoices, reminders
 **Why we need it** — 476 unreachable functions and ~10–12k lines inflate every later migration (chi, pgx) and hide real bugs; the permissive linter is why swallowed errors built up.
 
 **Notes** — correctness audit §0, §4.4–4.6, §5, §6. Do before T155/T156 — the audit estimates ~30% less chi work after deletion.
-
----
-
-#### T237 — Tax rates API + tax-rate picker; terms on invoice create; keep line discounts on edit
-
-**Phase**: 2 · **Category**: Backend · **Hours**: 3 · **Status**: Open · **v1 Gate**: No · **Depends on**: T234
-
-**What it is** — Tax rates can be listed and picked in the UI, a new invoice's terms save in one call, and editing lines keeps their discounts.
-
-**What it does** — Add tenant-scoped `GET /tax-rates` (list, include global rows) and CRUD (`tax_rates.manage` permission, new migration for the grant) with swag + cross-tenant tests; frontend invoice/quote forms use a `tax_rate_id` picker and show the default rate's value; add `terms_and_conditions` to `CreateInvoiceRequest` and drop the frontend's follow-up `PUT` workaround; the invoice form round-trips per-line `discount_percentage`/`discount_amount` instead of dropping them; refresh the stale Cypress invoice selectors.
-
-**Why we need it** — There's no way to manage or pick configured tax rates, so every invoice uses a hand-typed rate; line discounts set via the API are silently lost when the invoice is edited in the UI.
-
-**Notes** — Follow-up from the T234 report (2026-10-16). T235's default-tax-rate picker needs this list endpoint.
 
 ---
 
@@ -989,7 +975,7 @@ The quote → job → invoice loop, roles for field and office staff, recurring 
 
 **What it is** — Owners can set the business settings the backend now honours, and invalid values are rejected when saved.
 
-**What it does** — Add controls to Org Settings for currency (ISO 4217 list), invoice/quote/job prefixes (≤20 chars, no control characters), default payment term and default tax rate (tenant-scoped pickers), and date format (or remove it — nothing reads it). Backend: validate the tenant settings payload on save with field errors (today it stores anything and sanitises on read). Tests both sides.
+**What it does** — Add controls to Org Settings for currency (ISO 4217 list), invoice/quote/job prefixes (≤20 chars, no control characters), default payment term and default tax rate (tenant-scoped pickers), a tax-rates management screen on top of the T237 CRUD API (`tax_rates.manage`), and date format (or remove it — nothing reads it). Backend: validate the tenant settings payload on save with field errors (today it stores anything and sanitises on read). Tests both sides.
 
 **Why we need it** — T127 made the backend read these settings, but there is no UI to set them, so every tenant is stuck on USD / INV- / no defaults.
 
@@ -2908,5 +2894,6 @@ Dated history from the original "Completed Items" list:
 - **T232** — Frontend money calls match the API: record payment URL, cancel reason, refunds, quote revise. Record Payment / Cancel Invoice (reason required) / Record Refund dialogs and a Payments + Refunds section on the invoice page against `/invoices/{id}/payments`, `/cancel`, `/refunds` (refund gated on `payments.refund`); API 400/409 reasons shown; Refunded badge; quote detail shows number + status and the API's refusal reason, QuoteActionsMenu reports errors; integration tests assert every step (6ddd208, 8aac090, 74ec760). Field mismatches → T234.
 - **T233** — JobMaterial.Billable default:true stores false as true. `JobMaterial.Billable` `default:true` removed; `AddMaterial` defaults omitted `billable` to true explicitly; regression tests (ced0464).
 - **T234** — Invoice/quote forms use the API's fields: tax_rate_id, terms_and_conditions, default tax prefill. Invoice form shows the stored tax rate (API returns the rate object, so edits used to zero the tax) and keeps per-line taxable flags; `terms_and_conditions` read/sent; typed create/update request bodies; new invoices/quotes prefill the tenant's default tax rate (left to the server) and payment term (due date from `days_until_due`); QuotesPage shows refused list actions in an inline banner (3cf699c, 9df0441, 228fd35). Tax-rate picker + create terms field → T237.
+- **T237** — Tax rates API + tax-rate picker; terms on invoice create; keep line discounts on edit. Tenant-scoped tax rates API (`GET/POST/PUT/DELETE /api/v1/tax-rates`, own + global rows; global read-only 403, in-use delete 409) with `tax_rates.read` (all roles) / `tax_rates.manage` (super_admin, admin) via migration `000014`; `CreateInvoiceRequest.terms_and_conditions` (follow-up PUT removed); direct `tax_rate` on update clears `tax_rate_id`; `TaxRatePicker` on invoice (sends `tax_rate_id`) and quote forms; invoice form round-trips per-line discounts; Cypress selectors refreshed; cross-tenant + Postgres grant tests (98d7df6, 115dcb0, 4826dbe, 7db9374, 8072299, d1fc6b6). Tax-rate management screen → T235.
 - **T238** — Job assignment checks the technician belongs to the tenant. Every assignment path (create job with assignees, `POST /jobs/:id/assign`, `POST /assignments`, bulk) requires an active `tenant_users` membership in the job's tenant; unknown/inactive/other-tenant users get a typed 404 (`assignee_not_found` / `technician_not_found`); CreateJob checks before writing; repository backstop `IsActiveTenantMember`; cross-tenant tests (cef9489).
 - **T239** — Access log drops query strings. Access log logs the path plus sorted query KEYS only (`middleware.QueryKeys`); same for the unused request loggers, `AccessLogger` and the panic handler's Sentry extra; test asserts `?token=secret123` never reaches a log line (9cc9f5e).
