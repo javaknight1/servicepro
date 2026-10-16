@@ -63,6 +63,28 @@ export interface QuoteRequest {
   items: LineItemFormData[];
 }
 
+/** Columns GET /v1/quotes accepts for sort_by (anything else is a 400). */
+export type QuoteSortField =
+  | 'created_at'
+  | 'updated_at'
+  | 'quote_number'
+  | 'status'
+  | 'total'
+  | 'valid_until';
+
+const QUOTE_SORT_FIELDS: readonly string[] = [
+  'created_at',
+  'updated_at',
+  'quote_number',
+  'status',
+  'total',
+  'valid_until',
+] satisfies readonly QuoteSortField[];
+
+export function isQuoteSortField(value: string): value is QuoteSortField {
+  return QUOTE_SORT_FIELDS.includes(value);
+}
+
 export interface QuoteListResponse {
   quotes: Quote[];
   total: number;

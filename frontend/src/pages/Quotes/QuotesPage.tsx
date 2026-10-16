@@ -12,10 +12,13 @@ import {
 } from '@components/shared';
 import type { Column } from '@components/shared';
 import { quoteService, QuoteFilters } from '@services/quoteService';
-import type { Quote } from '@app-types/quote';
+import { isQuoteSortField, type Quote } from '@app-types/quote';
 import { FileText, Plus, Search } from 'lucide-react';
 import { QuoteActionsMenu } from '@components/quotes';
 import { formatDollars } from '@/utils/money';
+
+/** Wait this long after the last keystroke before searching. */
+const SEARCH_DEBOUNCE_MS = 300;
 
 const getQuoteStatusLabel = (status: string): string => {
   const labels: Record<string, string> = {
@@ -68,10 +71,25 @@ export function QuotesPage() {
     }
   };
 
+  // Apply a search term (back to page 1); a no-op when it hasn't changed so
+  // the load effect doesn't refetch the same page.
+  const applySearch = (term: string) => {
+    const q = term.trim() || undefined;
+    setFilters((prev) => (prev.q === q ? prev : { ...prev, q, page: 1 }));
+  };
+
+  // Search as the user types, debounced.
+  useEffect(() => {
+    const timer = setTimeout(
+      () => applySearch(searchQuery),
+      SEARCH_DEBOUNCE_MS
+    );
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    // New filters object re-triggers the load effect (no double request)
-    setFilters({ ...filters, page: 1 });
+    applySearch(searchQuery); // Enter searches immediately
   };
 
   const columns: Column<Quote>[] = [
@@ -189,7 +207,7 @@ export function QuotesPage() {
             message={loadError}
             onRetry={loadQuotes}
           />
-        ) : !isLoading && quotes.length === 0 && !searchQuery ? (
+        ) : !isLoading && quotes.length === 0 && !filters.q ? (
           <EmptyState
             icon={<FileText className="h-12 w-12" />}
             title="No quotes yet"
@@ -216,12 +234,16 @@ export function QuotesPage() {
             sorting={{
               sortBy: filters.sort_by || 'created_at',
               sortOrder: filters.sort_order || 'desc',
-              onSort: (sortBy, sortOrder) =>
+              onSort: (sortBy, sortOrder) => {
+                // Only columns the API can sort by (others would be a 400).
+                if (!isQuoteSortField(sortBy)) return;
                 setFilters({
                   ...filters,
                   sort_by: sortBy,
                   sort_order: sortOrder,
-                }),
+                  page: 1,
+                });
+              },
             }}
           />
         )}

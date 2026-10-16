@@ -1,5 +1,10 @@
 import api from './api';
-import { Quote, QuoteListResponse, QuoteStats } from '../types/quote';
+import {
+  Quote,
+  QuoteListResponse,
+  QuoteSortField,
+  QuoteStats,
+} from '../types/quote';
 import { downloadPDF } from '../utils/fileDownload';
 
 export interface PDFDownloadResponse {
@@ -11,9 +16,11 @@ export interface PDFDownloadResponse {
 export interface QuoteFilters {
   customer_id?: string;
   status?: string;
+  /** Search: quote number, customer first/last/company name */
+  q?: string;
   page?: number;
   page_size?: number;
-  sort_by?: string;
+  sort_by?: QuoteSortField;
   sort_order?: 'asc' | 'desc';
 }
 
@@ -33,6 +40,8 @@ class QuoteService {
 
     if (filters.customer_id) params.append('customer_id', filters.customer_id);
     if (filters.status) params.append('status', filters.status);
+    const q = filters.q?.trim();
+    if (q) params.append('q', q);
     if (filters.page) params.append('page', filters.page.toString());
     if (filters.page_size)
       params.append('page_size', filters.page_size.toString());
