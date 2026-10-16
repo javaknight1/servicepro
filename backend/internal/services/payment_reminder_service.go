@@ -322,7 +322,7 @@ func (s *PaymentReminderService) SendManualReminder(ctx context.Context, tenantI
 	if err := s.db.WithContext(ctx).
 		Preload("Customer").
 		First(&invoice, "id = ?", invoiceID).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrInvoiceNotFound
 		}
 		return nil, fmt.Errorf("failed to load invoice: %w", err)

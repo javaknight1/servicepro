@@ -252,7 +252,7 @@ func (h *InvoiceHandler) GetInvoice(c *gin.Context) {
 
 	invoice, err := h.service.GetInvoice(ctx, id)
 	if err != nil {
-		if err == services.ErrInvoiceNotFound {
+		if errors.Is(err, services.ErrInvoiceNotFound) {
 			apierror.WriteResponse(c, http.StatusNotFound, models.ErrorResponse{Error: "Invoice not found"})
 			return
 		}
@@ -426,7 +426,7 @@ func (h *InvoiceHandler) DeleteInvoice(c *gin.Context) {
 	}
 
 	if err := h.service.DeleteInvoice(ctx, id); err != nil {
-		if err == services.ErrInvoiceNotFound {
+		if errors.Is(err, services.ErrInvoiceNotFound) {
 			apierror.WriteResponse(c, http.StatusNotFound, models.ErrorResponse{Error: "Invoice not found"})
 			return
 		}
@@ -462,7 +462,7 @@ func (h *InvoiceHandler) SendInvoice(c *gin.Context) {
 
 	invoice, err := h.service.SendInvoice(ctx, id)
 	if err != nil {
-		if err == services.ErrInvoiceNotFound {
+		if errors.Is(err, services.ErrInvoiceNotFound) {
 			apierror.WriteResponse(c, http.StatusNotFound, models.ErrorResponse{Error: "Invoice not found"})
 			return
 		}
@@ -533,7 +533,7 @@ func (h *InvoiceHandler) RecordPayment(c *gin.Context) {
 
 	created, err := h.service.RecordPayment(ctx, payment)
 	if err != nil {
-		if err == services.ErrInvoiceNotFound {
+		if errors.Is(err, services.ErrInvoiceNotFound) {
 			apierror.WriteResponse(c, http.StatusNotFound, models.ErrorResponse{Error: "Invoice not found"})
 			return
 		}
@@ -579,7 +579,7 @@ func (h *InvoiceHandler) CancelInvoice(c *gin.Context) {
 
 	invoice, err := h.service.CancelInvoice(ctx, id, req.Reason)
 	if err != nil {
-		if err == services.ErrInvoiceNotFound {
+		if errors.Is(err, services.ErrInvoiceNotFound) {
 			apierror.WriteResponse(c, http.StatusNotFound, models.ErrorResponse{Error: "Invoice not found"})
 			return
 		}
@@ -614,7 +614,7 @@ func (h *InvoiceHandler) GetInvoicePDF(c *gin.Context) {
 
 	content, filename, err := h.service.DownloadInvoicePDF(ctx, id)
 	if err != nil {
-		if err == services.ErrInvoiceNotFound {
+		if errors.Is(err, services.ErrInvoiceNotFound) {
 			apierror.WriteResponse(c, http.StatusNotFound, models.ErrorResponse{Error: "Invoice not found"})
 			return
 		}
@@ -654,7 +654,7 @@ func (h *InvoiceHandler) GetReceiptPDF(c *gin.Context) {
 
 	content, filename, err := h.service.DownloadReceiptPDF(ctx, id)
 	if err != nil {
-		if err == services.ErrInvoiceNotFound {
+		if errors.Is(err, services.ErrInvoiceNotFound) {
 			apierror.WriteResponse(c, http.StatusNotFound, models.ErrorResponse{Error: "Invoice not found"})
 			return
 		}

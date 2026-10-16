@@ -17,6 +17,7 @@ linters:
     - sqlclosecheck
     - staticcheck
     - gocritic
+    - errorlint
 
   settings:
     govet:
