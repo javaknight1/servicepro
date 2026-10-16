@@ -196,5 +196,21 @@ describe('API error helpers', () => {
       getTenantErrorMessage(apiError(400, { message: 'Bad slug' }), 'x')
     ).toBe('Bad slug');
     expect(getTenantErrorMessage({}, 'fallback')).toBe('fallback');
+    // Specific 403s from handlers keep their own explanation
+    expect(
+      getTenantErrorMessage(
+        apiError(403, {
+          error: 'cannot_change_own_role',
+          message: 'You cannot change your own role',
+        })
+      )
+    ).toBe('You cannot change your own role');
+    expect(
+      getTenantErrorMessage(
+        apiError(403, {
+          error: 'You cannot invite someone with a role above your own',
+        })
+      )
+    ).toBe('You cannot invite someone with a role above your own');
   });
 });

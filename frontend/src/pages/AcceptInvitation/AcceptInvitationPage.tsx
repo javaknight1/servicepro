@@ -6,6 +6,7 @@ import { useAuthStore } from '@store';
 import { invitationApi } from '@services/tenantService';
 import { CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import type { Invitation } from '@/types/tenant';
+import { getApiErrorInfo } from '@/utils/error';
 
 export function AcceptInvitationPage() {
   const navigate = useNavigate();
@@ -46,10 +47,9 @@ export function AcceptInvitationPage() {
         setStatus('success');
       } catch (err: unknown) {
         console.error('Failed to accept invitation:', err);
-        const axiosError = err as { response?: { data?: { error?: string } } };
-        setError(
-          axiosError.response?.data?.error || 'Failed to accept invitation'
-        );
+        // The invitation handler puts its human message in `error`
+        const info = getApiErrorInfo(err);
+        setError(info.message || info.code || 'Failed to accept invitation');
         setStatus('error');
       }
     };
@@ -59,8 +59,13 @@ export function AcceptInvitationPage() {
 
   const handleLogin = () => {
     // Redirect to login with return URL
-    const returnUrl = `/invitations/accept?token=${token}`;
+    const returnUrl = `/invitations/accept?token=${encodeURIComponent(token ?? '')}`;
     navigate(`/login?returnUrl=${encodeURIComponent(returnUrl)}`);
+  };
+
+  const handleRegister = () => {
+    // New users register with the invitation token (no invite code needed)
+    navigate(`/register?invitation=${encodeURIComponent(token ?? '')}`);
   };
 
   const handleGoToDashboard = () => {
@@ -102,9 +107,14 @@ export function AcceptInvitationPage() {
                 <p className="text-neutral-600 mb-6">
                   Please log in to accept this invitation.
                 </p>
-                <Button onClick={handleLogin} fullWidth>
-                  Go to Login
-                </Button>
+                <div className="space-y-3">
+                  <Button onClick={handleLogin} fullWidth>
+                    Go to Login
+                  </Button>
+                  <Button onClick={handleRegister} variant="outline" fullWidth>
+                    New to ServicePro? Create an account
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
