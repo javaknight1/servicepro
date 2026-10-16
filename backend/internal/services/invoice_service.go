@@ -14,6 +14,7 @@ import (
 	"gorm.io/gorm/clause"
 
 	"github.com/javaknight1/servicepro/backend/internal/models"
+	"github.com/javaknight1/servicepro/backend/internal/tenancy"
 	"github.com/javaknight1/servicepro/backend/internal/utils"
 	"github.com/javaknight1/servicepro/backend/internal/utils/epoch"
 	"github.com/javaknight1/servicepro/backend/pkg/clients/email"
@@ -111,6 +112,10 @@ func (s *InvoiceService) CreateInvoice(ctx context.Context, invoice *models.Invo
 	// Set default dates if not provided
 	if invoice.IssueDate.IsZero() {
 		invoice.IssueDate = time.Now()
+	}
+
+	if err := s.applyTenantInvoiceDefaults(ctx, invoice); err != nil {
+		return nil, err
 	}
 
 	// Calculate due date based on payment terms
@@ -406,6 +411,43 @@ func resolveTaxRate(tx *gorm.DB, direct *decimal.Decimal, taxRateID *uuid.UUID, 
 		}
 	}
 	return decimal.Zero, nil
+}
+
+// applyTenantInvoiceDefaults fills a new invoice's payment term and tax rate
+// from the tenant's settings when the request gave neither (T127). The
+// defaults are looked up within the caller's tenant (models.DefaultPaymentTerm
+// / DefaultTaxRate), so a stale or foreign ID in the settings is ignored.
+func (s *InvoiceService) applyTenantInvoiceDefaults(ctx context.Context, invoice *models.Invoice) error {
+	needTerm := invoice.PaymentTermID == nil
+	needTax := invoice.TaxRateID == nil && invoice.ApplyTaxRate == nil
+	if !needTerm && !needTax {
+		return nil
+	}
+	tenantID, ok := tenancy.TenantID(ctx)
+	if !ok {
+		return nil
+	}
+	db := s.db.WithContext(ctx)
+	settings := models.TenantSettingsInTx(db, tenantID)
+	if needTerm {
+		term, err := models.DefaultPaymentTerm(db, tenantID, settings)
+		if err != nil {
+			return fmt.Errorf("load default payment term: %w", err)
+		}
+		if term != nil {
+			invoice.PaymentTermID = &term.ID
+		}
+	}
+	if needTax {
+		rate, err := models.DefaultTaxRate(db, tenantID, settings)
+		if err != nil {
+			return fmt.Errorf("load default tax rate: %w", err)
+		}
+		if rate != nil {
+			invoice.TaxRateID = &rate.ID
+		}
+	}
+	return nil
 }
 
 // guardInvoiceSource locks the job and/or quote an invoice is created from

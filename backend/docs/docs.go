@@ -13167,7 +13167,6 @@ const docTemplate = `{
             "required": [
                 "customer_id",
                 "items",
-                "tax_rate",
                 "valid_until"
             ],
             "properties": {
@@ -13185,6 +13184,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "tax_rate": {
+                    "description": "TaxRate is a fraction (0.0825 = 8.25%). Omitted on create, the\ntenant's default tax rate applies (T127); omitted on update, the\nquote keeps its current rate.",
                     "type": "number"
                 },
                 "terms": {

@@ -34,6 +34,11 @@ type Quote struct {
 	CreatedAt     time.Time       `json:"created_at"`
 	UpdatedAt     time.Time       `json:"updated_at"`
 	DeletedAt     gorm.DeletedAt  `json:"-" gorm:"index"`
+
+	// ApplyDefaultTaxRate is a create-time input only (not stored): the
+	// request gave no tax rate, so BeforeCreate applies the tenant's default
+	// tax rate (TenantSettings.DefaultTaxRateID, T127) and recomputes totals.
+	ApplyDefaultTaxRate bool `json:"-" gorm:"-" swaggerignore:"true"`
 }
 
 // QuoteItem represents a line item in a quote
@@ -77,12 +82,37 @@ func (q *Quote) BeforeCreate(tx *gorm.DB) error {
 	if q.Currency == "" {
 		q.Currency = documentCurrency(tx, q.TenantID)
 	}
+	if q.ApplyDefaultTaxRate {
+		if err := q.applyDefaultTaxRate(tx); err != nil {
+			return err
+		}
+	}
 
 	// Validate quote
 	if err := q.Validate(); err != nil {
 		return err
 	}
 
+	return nil
+}
+
+// applyDefaultTaxRate sets the tenant's default tax rate (if any) and
+// recomputes the totals; without one the quote stays untaxed.
+func (q *Quote) applyDefaultTaxRate(tx *gorm.DB) error {
+	tenantID := documentTenantID(tx, q.TenantID)
+	if tenantID == uuid.Nil {
+		return nil
+	}
+	// A fresh session (it keeps the context, so tenant scoping still applies).
+	db := tx.Session(&gorm.Session{NewDB: true})
+	rate, err := DefaultTaxRate(db, tenantID, TenantSettingsInTx(db, tenantID))
+	if err != nil {
+		return err
+	}
+	if rate != nil {
+		q.TaxRate = rate.Rate
+		q.CalculateTotals()
+	}
 	return nil
 }
 
@@ -269,12 +299,15 @@ func (qi *QuoteItem) CalculateItemTotal() {
 
 // QuoteRequest represents a request to create or update a quote
 type QuoteRequest struct {
-	CustomerID uuid.UUID          `json:"customer_id" binding:"required"`
-	ValidUntil time.Time          `json:"valid_until" binding:"required"`
-	TaxRate    decimal.Decimal    `json:"tax_rate" binding:"required"`
-	Notes      *string            `json:"notes"`
-	Terms      *string            `json:"terms"`
-	Items      []QuoteItemRequest `json:"items" binding:"required,min=1,dive"`
+	CustomerID uuid.UUID `json:"customer_id" binding:"required"`
+	ValidUntil time.Time `json:"valid_until" binding:"required"`
+	// TaxRate is a fraction (0.0825 = 8.25%). Omitted on create, the
+	// tenant's default tax rate applies (T127); omitted on update, the
+	// quote keeps its current rate.
+	TaxRate *decimal.Decimal   `json:"tax_rate,omitempty"`
+	Notes   *string            `json:"notes"`
+	Terms   *string            `json:"terms"`
+	Items   []QuoteItemRequest `json:"items" binding:"required,min=1,dive"`
 }
 
 // QuoteItemRequest represents a request to create or update a quote item

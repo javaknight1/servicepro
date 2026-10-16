@@ -136,7 +136,7 @@ func TestCreateQuote_Success(t *testing.T) {
 	quoteRequest := models.QuoteRequest{
 		CustomerID: customerID,
 		ValidUntil: validUntil,
-		TaxRate:    decimal.NewFromFloat(0.0825),
+		TaxRate:    decPtr(decimal.NewFromFloat(0.0825)),
 		Items: []models.QuoteItemRequest{
 			{
 				Description: "Test Service",
@@ -229,7 +229,7 @@ func TestCreateQuote_Unauthorized(t *testing.T) {
 	quoteRequest := models.QuoteRequest{
 		CustomerID: uuid.New(),
 		ValidUntil: time.Now().Add(30 * 24 * time.Hour),
-		TaxRate:    decimal.NewFromFloat(0.0825),
+		TaxRate:    decPtr(decimal.NewFromFloat(0.0825)),
 		Items: []models.QuoteItemRequest{
 			{
 				Description: "Test Service",
@@ -368,7 +368,7 @@ func TestUpdateQuote_Success(t *testing.T) {
 	quoteRequest := models.QuoteRequest{
 		CustomerID: customerID,
 		ValidUntil: validUntil,
-		TaxRate:    decimal.NewFromFloat(0.0825),
+		TaxRate:    decPtr(decimal.NewFromFloat(0.0825)),
 		Items: []models.QuoteItemRequest{
 			{
 				Description: "Updated Service",
@@ -423,7 +423,7 @@ func TestUpdateQuote_CannotBeEdited(t *testing.T) {
 	quoteRequest := models.QuoteRequest{
 		CustomerID: uuid.New(),
 		ValidUntil: time.Now().Add(30 * 24 * time.Hour),
-		TaxRate:    decimal.NewFromFloat(0.0825),
+		TaxRate:    decPtr(decimal.NewFromFloat(0.0825)),
 		Items: []models.QuoteItemRequest{
 			{
 				Description: "Test",
@@ -684,3 +684,6 @@ func TestGetQuoteStats_Error(t *testing.T) {
 
 // WithContext implements the interface; the mock ignores the context.
 func (m *MockQuoteService) WithContext(_ context.Context) services.QuoteServiceInterface { return m }
+
+// decPtr returns a pointer to d (optional decimal request fields).
+func decPtr(d decimal.Decimal) *decimal.Decimal { return &d }

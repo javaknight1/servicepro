@@ -12752,7 +12752,12 @@ export interface components {
             customer_id: string;
             items: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.QuoteItemRequest"][];
             notes?: string;
-            tax_rate: number;
+            /**
+             * @description TaxRate is a fraction (0.0825 = 8.25%). Omitted on create, the
+             *     tenant's default tax rate applies (T127); omitted on update, the
+             *     quote keeps its current rate.
+             */
+            tax_rate?: number;
             terms?: string;
             valid_until: string;
         };
