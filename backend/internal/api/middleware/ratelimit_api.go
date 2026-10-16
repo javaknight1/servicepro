@@ -34,7 +34,6 @@ type APIRateLimiter struct {
 	redis    *redis.Client
 	config   *config.RateLimitConfig
 	fallback *inMemoryRateLimiter
-	mu       sync.RWMutex
 	identify IdentityResolver
 }
 

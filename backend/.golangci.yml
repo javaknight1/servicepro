@@ -12,6 +12,9 @@ linters:
     - bodyclose
     - unconvert
     - misspell
+    - unused
+    - ineffassign
+    - sqlclosecheck
 
   settings:
     govet:
