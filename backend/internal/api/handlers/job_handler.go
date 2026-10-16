@@ -86,7 +86,7 @@ func (h *JobHandler) CreateJob(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
-			Message: "Invalid job data: " + err.Error(),
+			Message: "Invalid job data: " + publicError(err),
 		})
 		return
 	}
@@ -103,13 +103,13 @@ func (h *JobHandler) CreateJob(c *gin.Context) {
 		case errors.Is(err, gorm.ErrRecordNotFound):
 			c.JSON(http.StatusNotFound, models.ErrorResponse{
 				Error:   "not_found",
-				Message: err.Error(),
+				Message: publicError(err),
 			})
 		default:
 			log.Printf("Error creating job: %v", err)
 			c.JSON(http.StatusBadRequest, models.ErrorResponse{
 				Error:   "creation_failed",
-				Message: err.Error(),
+				Message: publicError(err),
 			})
 		}
 		return
@@ -269,7 +269,7 @@ func (h *JobHandler) UpdateJob(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
-			Message: "Invalid job data: " + err.Error(),
+			Message: "Invalid job data: " + publicError(err),
 		})
 		return
 	}
@@ -292,7 +292,7 @@ func (h *JobHandler) UpdateJob(c *gin.Context) {
 			log.Printf("Error updating job: %v", err)
 			c.JSON(http.StatusBadRequest, models.ErrorResponse{
 				Error:   "update_failed",
-				Message: err.Error(),
+				Message: publicError(err),
 			})
 		}
 		return
@@ -350,7 +350,7 @@ func (h *JobHandler) DeleteJob(c *gin.Context) {
 			log.Printf("Error deleting job: %v", err)
 			c.JSON(http.StatusBadRequest, models.ErrorResponse{
 				Error:   "delete_failed",
-				Message: err.Error(),
+				Message: publicError(err),
 			})
 		}
 		return
@@ -394,7 +394,7 @@ func (h *JobHandler) ListJobs(c *gin.Context) {
 	if err := c.ShouldBindQuery(&filter); err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
-			Message: "Invalid query parameters: " + err.Error(),
+			Message: "Invalid query parameters: " + publicError(err),
 		})
 		return
 	}
@@ -596,7 +596,7 @@ func (h *JobHandler) StartJob(c *gin.Context) {
 			log.Printf("Error starting job: %v", err)
 			c.JSON(http.StatusBadRequest, models.ErrorResponse{
 				Error:   "start_failed",
-				Message: err.Error(),
+				Message: publicError(err),
 			})
 		}
 		return
@@ -662,7 +662,7 @@ func (h *JobHandler) CompleteJob(c *gin.Context) {
 			log.Printf("Error completing job: %v", err)
 			c.JSON(http.StatusBadRequest, models.ErrorResponse{
 				Error:   "complete_failed",
-				Message: err.Error(),
+				Message: publicError(err),
 			})
 		}
 		return
@@ -728,7 +728,7 @@ func (h *JobHandler) CancelJob(c *gin.Context) {
 			log.Printf("Error cancelling job: %v", err)
 			c.JSON(http.StatusBadRequest, models.ErrorResponse{
 				Error:   "cancel_failed",
-				Message: err.Error(),
+				Message: publicError(err),
 			})
 		}
 		return
@@ -794,7 +794,7 @@ func (h *JobHandler) PutOnHold(c *gin.Context) {
 			log.Printf("Error putting job on hold: %v", err)
 			c.JSON(http.StatusBadRequest, models.ErrorResponse{
 				Error:   "hold_failed",
-				Message: err.Error(),
+				Message: publicError(err),
 			})
 		}
 		return
@@ -852,7 +852,7 @@ func (h *JobHandler) ResumeJob(c *gin.Context) {
 			log.Printf("Error resuming job: %v", err)
 			c.JSON(http.StatusBadRequest, models.ErrorResponse{
 				Error:   "resume_failed",
-				Message: err.Error(),
+				Message: publicError(err),
 			})
 		}
 		return
@@ -902,7 +902,7 @@ func (h *JobHandler) AssignTechnician(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
-			Message: "Invalid request: " + err.Error(),
+			Message: "Invalid request: " + publicError(err),
 		})
 		return
 	}
@@ -934,7 +934,7 @@ func (h *JobHandler) AssignTechnician(c *gin.Context) {
 			log.Printf("Error assigning technician: %v", err)
 			c.JSON(http.StatusBadRequest, models.ErrorResponse{
 				Error:   "assignment_failed",
-				Message: err.Error(),
+				Message: publicError(err),
 			})
 		}
 		return
@@ -1005,7 +1005,7 @@ func (h *JobHandler) UnassignTechnician(c *gin.Context) {
 			log.Printf("Error unassigning technician: %v", err)
 			c.JSON(http.StatusBadRequest, models.ErrorResponse{
 				Error:   "unassignment_failed",
-				Message: err.Error(),
+				Message: publicError(err),
 			})
 		}
 		return
@@ -1053,7 +1053,7 @@ func (h *JobHandler) AddMaterial(c *gin.Context) {
 	if err := c.ShouldBindJSON(&material); err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
-			Message: "Invalid material data: " + err.Error(),
+			Message: "Invalid material data: " + publicError(err),
 		})
 		return
 	}
@@ -1076,7 +1076,7 @@ func (h *JobHandler) AddMaterial(c *gin.Context) {
 			log.Printf("Error adding material: %v", err)
 			c.JSON(http.StatusBadRequest, models.ErrorResponse{
 				Error:   "add_material_failed",
-				Message: err.Error(),
+				Message: publicError(err),
 			})
 		}
 		return
@@ -1126,7 +1126,7 @@ func (h *JobHandler) AddNote(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
-			Message: "Invalid note data: " + err.Error(),
+			Message: "Invalid note data: " + publicError(err),
 		})
 		return
 	}
@@ -1144,7 +1144,7 @@ func (h *JobHandler) AddNote(c *gin.Context) {
 			log.Printf("Error adding note: %v", err)
 			c.JSON(http.StatusBadRequest, models.ErrorResponse{
 				Error:   "add_note_failed",
-				Message: err.Error(),
+				Message: publicError(err),
 			})
 		}
 		return
@@ -1309,7 +1309,7 @@ func (h *JobHandler) TransitionStatus(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
-			Message: "Invalid request: " + err.Error(),
+			Message: "Invalid request: " + publicError(err),
 		})
 		return
 	}
@@ -1332,7 +1332,7 @@ func (h *JobHandler) TransitionStatus(c *gin.Context) {
 			log.Printf("Error transitioning job status: %v", err)
 			c.JSON(http.StatusBadRequest, models.ErrorResponse{
 				Error:   "transition_failed",
-				Message: err.Error(),
+				Message: publicError(err),
 			})
 		}
 		return

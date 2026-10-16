@@ -25,9 +25,8 @@ func SetupAuthRoutes(router *gin.RouterGroup, cfg *routeconfigs.RouteConfig) {
 func SetupWebhookRoutes(router *gin.RouterGroup, cfg *routeconfigs.RouteConfig) {
 	webhooks := router.Group("/webhooks")
 	{
-		// AWS SES webhooks
-		webhooks.POST("/ses-bounce", cfg.Handlers.EmailVerification.HandleSESBounce)
-		webhooks.POST("/ses-notification", cfg.Handlers.EmailVerification.HandleSESNotification)
+		// The AWS SES bounce/notification webhooks were removed (F-18): they
+		// had no SNS signature verification and email is moving to Resend.
 
 		// Stripe webhooks (handled separately in billing routes if configured)
 		if cfg.Handlers.Webhook != nil {

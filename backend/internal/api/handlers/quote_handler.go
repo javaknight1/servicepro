@@ -44,7 +44,7 @@ func (h *QuoteHandler) CreateQuote(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
-			Message: "Invalid quote data: " + err.Error(),
+			Message: "Invalid quote data: " + publicError(err),
 		})
 		return
 	}
@@ -65,7 +65,7 @@ func (h *QuoteHandler) CreateQuote(c *gin.Context) {
 		if errors.Is(err, services.ErrInvalidQuoteData) {
 			c.JSON(http.StatusBadRequest, models.ErrorResponse{
 				Error:   "invalid_data",
-				Message: err.Error(),
+				Message: publicError(err),
 			})
 			return
 		}
@@ -102,7 +102,7 @@ func (h *QuoteHandler) ListQuotes(c *gin.Context) {
 	if err := c.ShouldBindQuery(&params); err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
-			Message: "Invalid query parameters: " + err.Error(),
+			Message: "Invalid query parameters: " + publicError(err),
 		})
 		return
 	}
@@ -233,7 +233,7 @@ func (h *QuoteHandler) UpdateQuote(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
-			Message: "Invalid quote data: " + err.Error(),
+			Message: "Invalid quote data: " + publicError(err),
 		})
 		return
 	}
@@ -270,7 +270,7 @@ func (h *QuoteHandler) UpdateQuote(c *gin.Context) {
 		if errors.Is(err, services.ErrInvalidQuoteData) {
 			c.JSON(http.StatusBadRequest, models.ErrorResponse{
 				Error:   "invalid_data",
-				Message: err.Error(),
+				Message: publicError(err),
 			})
 			return
 		}
@@ -627,7 +627,7 @@ func (h *QuoteHandler) GetQuotePDF(c *gin.Context) {
 		log.Printf("[QUOTE-HANDLER] Failed to get quote PDF for %s: %v", id, err)
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
 			Error:   "internal_error",
-			Message: "Failed to get quote PDF: " + err.Error(),
+			Message: "Failed to get quote PDF: " + publicError(err),
 		})
 		return
 	}

@@ -300,32 +300,6 @@ definitions:
     - BillingEventStatusSucceeded
     - BillingEventStatusFailed
     - BillingEventStatusPending
-  github_com_javaknight1_servicepro_backend_internal_models.BounceEvent:
-    properties:
-      bounceSubType:
-        type: string
-      bounceType:
-        type: string
-      bouncedRecipients:
-        items:
-          $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.BouncedRecipient'
-        type: array
-      feedbackId:
-        type: string
-      timestamp:
-        type: string
-    type: object
-  github_com_javaknight1_servicepro_backend_internal_models.BouncedRecipient:
-    properties:
-      action:
-        type: string
-      diagnosticCode:
-        type: string
-      emailAddress:
-        type: string
-      status:
-        type: string
-    type: object
   github_com_javaknight1_servicepro_backend_internal_models.CSVExportOptions:
     properties:
       bom:
@@ -1900,25 +1874,6 @@ definitions:
       token:
         type: string
     type: object
-  github_com_javaknight1_servicepro_backend_internal_models.MailEvent:
-    properties:
-      destination:
-        items:
-          type: string
-        type: array
-      messageId:
-        type: string
-      sendingAccountId:
-        type: string
-      source:
-        type: string
-      sourceArn:
-        type: string
-      sourceIp:
-        type: string
-      timestamp:
-        type: string
-    type: object
   github_com_javaknight1_servicepro_backend_internal_models.MembershipStatus:
     enum:
     - active
@@ -2633,15 +2588,6 @@ definitions:
         items:
           $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.User'
         type: array
-    type: object
-  github_com_javaknight1_servicepro_backend_internal_models.SESBounceNotification:
-    properties:
-      bounce:
-        $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.BounceEvent'
-      mail:
-        $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.MailEvent'
-      notificationType:
-        type: string
     type: object
   github_com_javaknight1_servicepro_backend_internal_models.SavedPaymentMethodResponse:
     properties:
@@ -7943,36 +7889,6 @@ paths:
             additionalProperties: true
             type: object
       summary: Webhook health check
-      tags:
-      - webhooks
-  /api/v1/webhooks/ses-bounce:
-    post:
-      consumes:
-      - application/json
-      description: Processes bounce notifications from AWS SES
-      parameters:
-      - description: SES Bounce Notification
-        in: body
-        name: notification
-        required: true
-        schema:
-          $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.SESBounceNotification'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            type: string
-        "400":
-          description: Invalid request
-          schema:
-            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
-        "500":
-          description: Internal server error
-          schema:
-            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
-      summary: Handle AWS SES bounce notifications
       tags:
       - webhooks
   /api/v1/webhooks/stripe:

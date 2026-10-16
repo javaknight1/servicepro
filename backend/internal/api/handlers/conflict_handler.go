@@ -49,7 +49,7 @@ func (h *ConflictHandler) CheckConflicts(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
-			Message: "Invalid request body: " + err.Error(),
+			Message: "Invalid request body: " + publicError(err),
 		})
 		return
 	}
@@ -60,7 +60,7 @@ func (h *ConflictHandler) CheckConflicts(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
 			Error:   "internal_error",
-			Message: "Failed to check conflicts: " + err.Error(),
+			Message: "Failed to check conflicts: " + publicError(err),
 		})
 		return
 	}

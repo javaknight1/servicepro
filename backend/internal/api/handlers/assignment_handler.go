@@ -76,7 +76,7 @@ func (h *AssignmentHandler) CreateAssignment(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
-			Message: "Invalid request data: " + err.Error(),
+			Message: "Invalid request data: " + publicError(err),
 		})
 		return
 	}
@@ -159,7 +159,7 @@ func (h *AssignmentHandler) BulkCreateAssignments(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
-			Message: "Invalid request data: " + err.Error(),
+			Message: "Invalid request data: " + publicError(err),
 		})
 		return
 	}
@@ -177,7 +177,7 @@ func (h *AssignmentHandler) BulkCreateAssignments(c *gin.Context) {
 	// Convert errors to strings
 	errorStrings := make([]string, len(errs))
 	for i, err := range errs {
-		errorStrings[i] = err.Error()
+		errorStrings[i] = publicError(err)
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -302,7 +302,7 @@ func (h *AssignmentHandler) UpdateAssignment(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
-			Message: "Invalid request data: " + err.Error(),
+			Message: "Invalid request data: " + publicError(err),
 		})
 		return
 	}
@@ -362,7 +362,7 @@ func (h *AssignmentHandler) CheckAvailability(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
-			Message: "Invalid request data: " + err.Error(),
+			Message: "Invalid request data: " + publicError(err),
 		})
 		return
 	}
@@ -374,7 +374,7 @@ func (h *AssignmentHandler) CheckAvailability(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
 			Error:   "internal_error",
-			Message: "Failed to check availability: " + err.Error(),
+			Message: "Failed to check availability: " + publicError(err),
 		})
 		return
 	}
@@ -408,7 +408,7 @@ func (h *AssignmentHandler) GetAvailableTechnicians(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
-			Message: "Invalid request data: " + err.Error(),
+			Message: "Invalid request data: " + publicError(err),
 		})
 		return
 	}
@@ -420,7 +420,7 @@ func (h *AssignmentHandler) GetAvailableTechnicians(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
 			Error:   "internal_error",
-			Message: "Failed to get available technicians: " + err.Error(),
+			Message: "Failed to get available technicians: " + publicError(err),
 		})
 		return
 	}
@@ -460,7 +460,7 @@ func (h *AssignmentHandler) OptimizeAssignments(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
-			Message: "Invalid request data: " + err.Error(),
+			Message: "Invalid request data: " + publicError(err),
 		})
 		return
 	}
@@ -472,7 +472,7 @@ func (h *AssignmentHandler) OptimizeAssignments(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
 			Error:   "internal_error",
-			Message: "Failed to optimize assignments: " + err.Error(),
+			Message: "Failed to optimize assignments: " + publicError(err),
 		})
 		return
 	}
@@ -538,7 +538,7 @@ func (h *AssignmentHandler) GetTechnicianWorkload(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
 			Error:   "internal_error",
-			Message: "Failed to get workload: " + err.Error(),
+			Message: "Failed to get workload: " + publicError(err),
 		})
 		return
 	}

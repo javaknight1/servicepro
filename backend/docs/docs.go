@@ -5792,52 +5792,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/webhooks/ses-bounce": {
-            "post": {
-                "description": "Processes bounce notifications from AWS SES",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "webhooks"
-                ],
-                "summary": "Handle AWS SES bounce notifications",
-                "parameters": [
-                    {
-                        "description": "SES Bounce Notification",
-                        "name": "notification",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.SESBounceNotification"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "400": {
-                        "description": "Invalid request",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
         "/api/v1/webhooks/stripe": {
             "post": {
                 "description": "Receives and processes Stripe webhook events",
@@ -10694,46 +10648,6 @@ const docTemplate = `{
                 "BillingEventStatusPending"
             ]
         },
-        "github_com_javaknight1_servicepro_backend_internal_models.BounceEvent": {
-            "type": "object",
-            "properties": {
-                "bounceSubType": {
-                    "type": "string"
-                },
-                "bounceType": {
-                    "type": "string"
-                },
-                "bouncedRecipients": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.BouncedRecipient"
-                    }
-                },
-                "feedbackId": {
-                    "type": "string"
-                },
-                "timestamp": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_javaknight1_servicepro_backend_internal_models.BouncedRecipient": {
-            "type": "object",
-            "properties": {
-                "action": {
-                    "type": "string"
-                },
-                "diagnosticCode": {
-                    "type": "string"
-                },
-                "emailAddress": {
-                    "type": "string"
-                },
-                "status": {
-                    "type": "string"
-                }
-            }
-        },
         "github_com_javaknight1_servicepro_backend_internal_models.CSVExportOptions": {
             "type": "object",
             "properties": {
@@ -13038,35 +12952,6 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_javaknight1_servicepro_backend_internal_models.MailEvent": {
-            "type": "object",
-            "properties": {
-                "destination": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "messageId": {
-                    "type": "string"
-                },
-                "sendingAccountId": {
-                    "type": "string"
-                },
-                "source": {
-                    "type": "string"
-                },
-                "sourceArn": {
-                    "type": "string"
-                },
-                "sourceIp": {
-                    "type": "string"
-                },
-                "timestamp": {
-                    "type": "string"
-                }
-            }
-        },
         "github_com_javaknight1_servicepro_backend_internal_models.MembershipStatus": {
             "type": "string",
             "enum": [
@@ -14115,20 +14000,6 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.User"
                     }
-                }
-            }
-        },
-        "github_com_javaknight1_servicepro_backend_internal_models.SESBounceNotification": {
-            "type": "object",
-            "properties": {
-                "bounce": {
-                    "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.BounceEvent"
-                },
-                "mail": {
-                    "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.MailEvent"
-                },
-                "notificationType": {
-                    "type": "string"
                 }
             }
         },

@@ -43,7 +43,7 @@ func (h *CustomerHandler) CreateCustomer(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
-			Message: err.Error(),
+			Message: publicError(err),
 		})
 		return
 	}
@@ -204,7 +204,7 @@ func (h *CustomerHandler) UpdateCustomer(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
-			Message: err.Error(),
+			Message: publicError(err),
 		})
 		return
 	}
@@ -381,7 +381,7 @@ func (h *CustomerHandler) ListCustomers(c *gin.Context) {
 	if err := c.ShouldBindQuery(&filter); err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
-			Message: err.Error(),
+			Message: publicError(err),
 		})
 		return
 	}

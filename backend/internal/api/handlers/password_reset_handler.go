@@ -123,7 +123,7 @@ func (h *PasswordResetHandler) ResetPassword(c *gin.Context) {
 			errors.Is(err, auth.ErrPasswordNoSpecial):
 			c.JSON(http.StatusBadRequest, models.ErrorResponse{
 				Error:   "weak_password",
-				Message: err.Error(),
+				Message: publicError(err),
 			})
 			return
 

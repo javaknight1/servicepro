@@ -46,7 +46,7 @@ func (h *RevenueHandler) GetRevenueReport(c *gin.Context) {
 	if err := c.ShouldBindQuery(&query); err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
-			Message: "Invalid query parameters: " + err.Error(),
+			Message: "Invalid query parameters: " + publicError(err),
 		})
 		return
 	}
@@ -60,7 +60,7 @@ func (h *RevenueHandler) GetRevenueReport(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
 			Error:   "internal_error",
-			Message: "Failed to generate revenue report: " + err.Error(),
+			Message: "Failed to generate revenue report: " + publicError(err),
 		})
 		return
 	}
@@ -92,7 +92,7 @@ func (h *RevenueHandler) GetRevenueTimeSeries(c *gin.Context) {
 	if err := c.ShouldBindQuery(&query); err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
-			Message: "Invalid query parameters: " + err.Error(),
+			Message: "Invalid query parameters: " + publicError(err),
 		})
 		return
 	}
@@ -104,7 +104,7 @@ func (h *RevenueHandler) GetRevenueTimeSeries(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
 			Error:   "internal_error",
-			Message: "Failed to get time series data: " + err.Error(),
+			Message: "Failed to get time series data: " + publicError(err),
 		})
 		return
 	}
@@ -134,7 +134,7 @@ func (h *RevenueHandler) GetRevenueCategoryBreakdown(c *gin.Context) {
 	if err := c.ShouldBindQuery(&query); err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
-			Message: "Invalid query parameters: " + err.Error(),
+			Message: "Invalid query parameters: " + publicError(err),
 		})
 		return
 	}
@@ -145,7 +145,7 @@ func (h *RevenueHandler) GetRevenueCategoryBreakdown(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
 			Error:   "internal_error",
-			Message: "Failed to get category breakdown: " + err.Error(),
+			Message: "Failed to get category breakdown: " + publicError(err),
 		})
 		return
 	}
@@ -175,7 +175,7 @@ func (h *RevenueHandler) GetTopCustomers(c *gin.Context) {
 	if err := c.ShouldBindQuery(&query); err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
-			Message: "Invalid query parameters: " + err.Error(),
+			Message: "Invalid query parameters: " + publicError(err),
 		})
 		return
 	}
@@ -195,7 +195,7 @@ func (h *RevenueHandler) GetTopCustomers(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
 			Error:   "internal_error",
-			Message: "Failed to get top customers: " + err.Error(),
+			Message: "Failed to get top customers: " + publicError(err),
 		})
 		return
 	}
@@ -223,7 +223,7 @@ func (h *RevenueHandler) ExportReport(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
-			Message: "Invalid export request: " + err.Error(),
+			Message: "Invalid export request: " + publicError(err),
 		})
 		return
 	}
@@ -248,7 +248,7 @@ func (h *RevenueHandler) ExportReport(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
 			Error:   "export_failed",
-			Message: "Failed to export report: " + err.Error(),
+			Message: "Failed to export report: " + publicError(err),
 		})
 		return
 	}
@@ -314,7 +314,7 @@ func (h *RevenueHandler) RefreshCache(c *gin.Context) {
 	if err := h.revenueService.RefreshCache(c.Request.Context(), periodType, periodStart, periodEnd); err != nil {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
 			Error:   "cache_refresh_failed",
-			Message: "Failed to refresh cache: " + err.Error(),
+			Message: "Failed to refresh cache: " + publicError(err),
 		})
 		return
 	}
@@ -345,7 +345,7 @@ func (h *RevenueHandler) GetChartData(c *gin.Context) {
 	if err := c.ShouldBindQuery(&query); err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
-			Message: "Invalid query parameters: " + err.Error(),
+			Message: "Invalid query parameters: " + publicError(err),
 		})
 		return
 	}
@@ -359,7 +359,7 @@ func (h *RevenueHandler) GetChartData(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
 			Error:   "internal_error",
-			Message: "Failed to get chart data: " + err.Error(),
+			Message: "Failed to get chart data: " + publicError(err),
 		})
 		return
 	}

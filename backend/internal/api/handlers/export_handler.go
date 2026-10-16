@@ -53,7 +53,7 @@ type StartExportRequest struct {
 func (h *ExportHandler) StartExport(c *gin.Context) {
 	var req StartExportRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": publicError(err)})
 		return
 	}
 
@@ -78,7 +78,7 @@ func (h *ExportHandler) StartExport(c *gin.Context) {
 
 	job, err := h.exportService.StartExport(c.Request.Context(), userID.(uuid.UUID), config)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": publicError(err)})
 		return
 	}
 
@@ -226,8 +226,8 @@ func (h *ExportHandler) DownloadExport(c *gin.Context) {
 
 	file, job, err := h.exportService.GetExportFile(c.Request.Context(), jobID)
 	if err != nil {
-		if err.Error() == "export not ready for download" {
-			c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+		if publicError(err) == "export not ready for download" {
+			c.JSON(http.StatusConflict, gin.H{"error": publicError(err)})
 			return
 		}
 		c.JSON(http.StatusNotFound, gin.H{"error": "export not found"})
@@ -305,7 +305,7 @@ func (h *ExportHandler) ListExports(c *gin.Context) {
 
 	exports, err := h.exportService.ListExports(c.Request.Context(), userID.(uuid.UUID), limit)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": publicError(err)})
 		return
 	}
 
@@ -326,7 +326,7 @@ func (h *ExportHandler) ListExports(c *gin.Context) {
 func (h *ExportHandler) QuickExport(c *gin.Context) {
 	var req StartExportRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": publicError(err)})
 		return
 	}
 
@@ -369,7 +369,7 @@ func (h *ExportHandler) QuickExport(c *gin.Context) {
 	}
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": publicError(err)})
 		return
 	}
 

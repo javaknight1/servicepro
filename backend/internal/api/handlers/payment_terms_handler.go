@@ -114,7 +114,7 @@ func (h *PaymentTermsHandler) ListPaymentTerms(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{
 			Error:   "Failed to list payment terms",
-			Message: err.Error(),
+			Message: publicError(err),
 		})
 		return
 	}
@@ -147,7 +147,7 @@ func (h *PaymentTermsHandler) GetPaymentTerm(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusNotFound, ErrorResponse{
 			Error:   "Payment term not found",
-			Message: err.Error(),
+			Message: publicError(err),
 		})
 		return
 	}
@@ -172,7 +172,7 @@ func (h *PaymentTermsHandler) GetDefaultPaymentTerm(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusNotFound, ErrorResponse{
 			Error:   "Default payment term not found",
-			Message: err.Error(),
+			Message: publicError(err),
 		})
 		return
 	}
@@ -199,7 +199,7 @@ func (h *PaymentTermsHandler) CreatePaymentTerm(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse{
 			Error:   "Invalid request",
-			Message: err.Error(),
+			Message: publicError(err),
 		})
 		return
 	}
@@ -221,7 +221,7 @@ func (h *PaymentTermsHandler) CreatePaymentTerm(c *gin.Context) {
 	if err := h.service.CreatePaymentTerm(ctx, term); err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse{
 			Error:   "Failed to create payment term",
-			Message: err.Error(),
+			Message: publicError(err),
 		})
 		return
 	}
@@ -255,7 +255,7 @@ func (h *PaymentTermsHandler) UpdatePaymentTerm(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse{
 			Error:   "Invalid request",
-			Message: err.Error(),
+			Message: publicError(err),
 		})
 		return
 	}
@@ -296,7 +296,7 @@ func (h *PaymentTermsHandler) UpdatePaymentTerm(c *gin.Context) {
 	if err := h.service.UpdatePaymentTerm(ctx, id, updates); err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse{
 			Error:   "Failed to update payment term",
-			Message: err.Error(),
+			Message: publicError(err),
 		})
 		return
 	}
@@ -306,7 +306,7 @@ func (h *PaymentTermsHandler) UpdatePaymentTerm(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{
 			Error:   "Failed to fetch updated payment term",
-			Message: err.Error(),
+			Message: publicError(err),
 		})
 		return
 	}
@@ -338,7 +338,7 @@ func (h *PaymentTermsHandler) DeletePaymentTerm(c *gin.Context) {
 	if err := h.service.DeletePaymentTerm(ctx, id); err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse{
 			Error:   "Failed to delete payment term",
-			Message: err.Error(),
+			Message: publicError(err),
 		})
 		return
 	}
@@ -364,7 +364,7 @@ func (h *PaymentTermsHandler) CalculateDueDate(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse{
 			Error:   "Invalid request",
-			Message: err.Error(),
+			Message: publicError(err),
 		})
 		return
 	}
@@ -378,7 +378,7 @@ func (h *PaymentTermsHandler) CalculateDueDate(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse{
 			Error:   "Failed to calculate due date",
-			Message: err.Error(),
+			Message: publicError(err),
 		})
 		return
 	}
@@ -408,7 +408,7 @@ func (h *PaymentTermsHandler) CalculateDiscount(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse{
 			Error:   "Invalid request",
-			Message: err.Error(),
+			Message: publicError(err),
 		})
 		return
 	}
@@ -419,7 +419,7 @@ func (h *PaymentTermsHandler) CalculateDiscount(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse{
 			Error:   "Failed to calculate discount",
-			Message: err.Error(),
+			Message: publicError(err),
 		})
 		return
 	}
@@ -450,7 +450,7 @@ func (h *PaymentTermsHandler) CalculateLateFee(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse{
 			Error:   "Invalid request",
-			Message: err.Error(),
+			Message: publicError(err),
 		})
 		return
 	}
@@ -466,7 +466,7 @@ func (h *PaymentTermsHandler) CalculateLateFee(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse{
 			Error:   "Failed to calculate late fee",
-			Message: err.Error(),
+			Message: publicError(err),
 		})
 		return
 	}
@@ -497,7 +497,7 @@ func (h *PaymentTermsHandler) GetPaymentStatus(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse{
 			Error:   "Invalid request",
-			Message: err.Error(),
+			Message: publicError(err),
 		})
 		return
 	}
@@ -518,7 +518,7 @@ func (h *PaymentTermsHandler) GetPaymentStatus(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse{
 			Error:   "Failed to get payment status",
-			Message: err.Error(),
+			Message: publicError(err),
 		})
 		return
 	}
@@ -544,7 +544,7 @@ func (h *PaymentTermsHandler) CalculatePaymentDetails(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse{
 			Error:   "Invalid request",
-			Message: err.Error(),
+			Message: publicError(err),
 		})
 		return
 	}
@@ -560,7 +560,7 @@ func (h *PaymentTermsHandler) CalculatePaymentDetails(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse{
 			Error:   "Failed to calculate payment details",
-			Message: err.Error(),
+			Message: publicError(err),
 		})
 		return
 	}

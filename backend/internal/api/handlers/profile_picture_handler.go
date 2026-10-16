@@ -94,6 +94,13 @@ func (h *ProfilePictureHandler) UploadProfilePicture(c *gin.Context) {
 			})
 			return
 		}
+		if errors.Is(err, services.ErrImageTooLarge) {
+			c.JSON(http.StatusBadRequest, models.ErrorResponse{
+				Error:   "image_too_large",
+				Message: "Image dimensions exceed the maximum allowed (4000x4000)",
+			})
+			return
+		}
 		if errors.Is(err, services.ErrInvalidImageFormat) {
 			c.JSON(http.StatusBadRequest, models.ErrorResponse{
 				Error:   "invalid_format",

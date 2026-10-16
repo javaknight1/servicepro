@@ -101,7 +101,7 @@ func (h *RegistrationHandler) Register(c *gin.Context) {
 		case errors.Is(err, auth.ErrPasswordTooShort):
 			c.JSON(http.StatusBadRequest, models.ErrorResponse{
 				Error:   "weak_password",
-				Message: err.Error(),
+				Message: publicError(err),
 			})
 			return
 
@@ -111,7 +111,7 @@ func (h *RegistrationHandler) Register(c *gin.Context) {
 			errors.Is(err, auth.ErrPasswordNoSpecial):
 			c.JSON(http.StatusBadRequest, models.ErrorResponse{
 				Error:   "weak_password",
-				Message: err.Error(),
+				Message: publicError(err),
 			})
 			return
 

@@ -6959,68 +6959,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/webhooks/ses-bounce": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Handle AWS SES bounce notifications
-         * @description Processes bounce notifications from AWS SES
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            /** @description SES Bounce Notification */
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.SESBounceNotification"];
-                };
-            };
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": string;
-                    };
-                };
-                /** @description Invalid request */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
-                    };
-                };
-                /** @description Internal server error */
-                500: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/webhooks/stripe": {
         parameters: {
             query?: never;
@@ -12324,19 +12262,6 @@ export interface components {
         };
         /** @enum {string} */
         "github_com_javaknight1_servicepro_backend_internal_models.BillingEventStatus": "succeeded" | "failed" | "pending";
-        "github_com_javaknight1_servicepro_backend_internal_models.BounceEvent": {
-            bounceSubType?: string;
-            bounceType?: string;
-            bouncedRecipients?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.BouncedRecipient"][];
-            feedbackId?: string;
-            timestamp?: string;
-        };
-        "github_com_javaknight1_servicepro_backend_internal_models.BouncedRecipient": {
-            action?: string;
-            diagnosticCode?: string;
-            emailAddress?: string;
-            status?: string;
-        };
         "github_com_javaknight1_servicepro_backend_internal_models.CSVExportOptions": {
             /** @description Include UTF-8 BOM for Excel compatibility */
             bom?: boolean;
@@ -13042,15 +12967,6 @@ export interface components {
             refreshToken?: string;
             token?: string;
         };
-        "github_com_javaknight1_servicepro_backend_internal_models.MailEvent": {
-            destination?: string[];
-            messageId?: string;
-            sendingAccountId?: string;
-            source?: string;
-            sourceArn?: string;
-            sourceIp?: string;
-            timestamp?: string;
-        };
         /** @enum {string} */
         "github_com_javaknight1_servicepro_backend_internal_models.MembershipStatus": "active" | "cancelled" | "expired" | "pending";
         "github_com_javaknight1_servicepro_backend_internal_models.MembershipTier": {
@@ -13380,11 +13296,6 @@ export interface components {
             permissions?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.Permission"][];
             updated_at?: string;
             users?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.User"][];
-        };
-        "github_com_javaknight1_servicepro_backend_internal_models.SESBounceNotification": {
-            bounce?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.BounceEvent"];
-            mail?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.MailEvent"];
-            notificationType?: string;
         };
         "github_com_javaknight1_servicepro_backend_internal_models.SavedPaymentMethodResponse": {
             card_brand?: string;
