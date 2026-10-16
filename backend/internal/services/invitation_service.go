@@ -11,6 +11,7 @@ import (
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/pkg/clients/email"
@@ -78,7 +79,8 @@ func (s *InvitationService) InviteMember(ctx context.Context, tenantID uuid.UUID
 	if userExists {
 		// Check if user is already a member
 		var existingMember models.TenantUser
-		if err := s.db.WithContext(ctx).Where("tenant_id = ? AND user_id = ?", tenantID, existingUser.ID).First(&existingMember).Error; err == nil {
+		// A deactivated former member can be invited again (T226).
+		if err := s.db.WithContext(ctx).Where("tenant_id = ? AND user_id = ? AND is_active = ?", tenantID, existingUser.ID, true).First(&existingMember).Error; err == nil {
 			return nil, ErrUserAlreadyMember
 		}
 
@@ -202,77 +204,100 @@ func (s *InvitationService) InviteMember(ctx context.Context, tenantID uuid.UUID
 
 // AcceptInvitation accepts an invitation for an existing user
 func (s *InvitationService) AcceptInvitation(ctx context.Context, token string, userID uuid.UUID) error {
-	var invitation models.OrganizationInvitation
-	if err := s.db.WithContext(ctx).Where("token = ?", token).First(&invitation).Error; err != nil {
-		return ErrInvitationNotFound
-	}
+	return s.acceptInvitation(ctx, token, userID)
+}
 
-	if invitation.Status != models.InvitationStatusPending {
-		return ErrInvitationAlreadyUsed
-	}
+// acceptInvitation accepts a pending invitation in one transaction (T226):
+// the invitation row is locked (SELECT ... FOR UPDATE) so two concurrent
+// accepts cannot both succeed, and an existing tenant_users row (a former,
+// deactivated member being re-invited) is reactivated with the invited role.
+func (s *InvitationService) acceptInvitation(ctx context.Context, token string, userID uuid.UUID) error {
+	expired := false
+	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var invitation models.OrganizationInvitation
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("token = ?", token).First(&invitation).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return ErrInvitationNotFound
+			}
+			return fmt.Errorf("load invitation: %w", err)
+		}
 
-	if invitation.IsExpired() {
-		invitation.Status = models.InvitationStatusExpired
-		s.db.WithContext(ctx).Save(&invitation)
-		return ErrInvitationExpired
-	}
+		if invitation.Status != models.InvitationStatusPending {
+			return ErrInvitationAlreadyUsed
+		}
 
-	// Get user to verify email matches
-	var user models.User
-	if err := s.db.WithContext(ctx).First(&user, userID).Error; err != nil {
-		return fmt.Errorf("user not found")
-	}
+		if invitation.IsExpired() {
+			expired = true
+			return tx.Model(&invitation).Update("status", models.InvitationStatusExpired).Error
+		}
 
-	if !strings.EqualFold(user.Email, invitation.Email) {
-		return ErrInvitationEmailMismatch
-	}
+		// The invitation must have been issued to this user's email;
+		// otherwise anyone holding a leaked link could join the tenant.
+		var user models.User
+		if err := tx.First(&user, "id = ?", userID).Error; err != nil {
+			return fmt.Errorf("user not found")
+		}
+		if !strings.EqualFold(strings.TrimSpace(user.Email), strings.TrimSpace(invitation.Email)) {
+			return ErrInvitationEmailMismatch
+		}
+		if err := rejectUnassignableInvitationRole(tx, invitation.RoleID); err != nil {
+			return err
+		}
 
-	if err := s.rejectUnassignableInvitationRole(ctx, invitation.RoleID); err != nil {
+		now := time.Now()
+		var existing models.TenantUser
+		err := tx.Where("tenant_id = ? AND user_id = ?", invitation.TenantID, userID).First(&existing).Error
+		switch {
+		case err == nil:
+			// Re-invited former member: reactivate with the invited role.
+			if err := tx.Model(&existing).Updates(map[string]interface{}{
+				"is_active":   true,
+				"role_id":     invitation.RoleID,
+				"accepted_at": now,
+				"invited_by":  invitation.InvitedBy,
+				"invited_at":  invitation.CreatedAt,
+			}).Error; err != nil {
+				return fmt.Errorf("failed to update tenant user: %w", err)
+			}
+		case errors.Is(err, gorm.ErrRecordNotFound):
+			if err := tx.Create(&models.TenantUser{
+				TenantID:   invitation.TenantID,
+				UserID:     userID,
+				RoleID:     invitation.RoleID,
+				InvitedBy:  &invitation.InvitedBy,
+				InvitedAt:  &invitation.CreatedAt,
+				AcceptedAt: &now,
+				IsActive:   true,
+			}).Error; err != nil {
+				return fmt.Errorf("failed to create tenant user: %w", err)
+			}
+		default:
+			return fmt.Errorf("load tenant user: %w", err)
+		}
+
+		if err := tx.Model(&invitation).Updates(map[string]interface{}{
+			"status":      models.InvitationStatusAccepted,
+			"accepted_at": now,
+		}).Error; err != nil {
+			return fmt.Errorf("failed to update invitation: %w", err)
+		}
+		return nil
+	})
+	if err != nil {
 		return err
 	}
-
-	now := time.Now()
-
-	// Check if tenant_user already exists
-	var existingTenantUser models.TenantUser
-	if err := s.db.WithContext(ctx).Where("tenant_id = ? AND user_id = ?", invitation.TenantID, userID).First(&existingTenantUser).Error; err == nil {
-		// Update existing record
-		existingTenantUser.AcceptedAt = &now
-		if err := s.db.WithContext(ctx).Save(&existingTenantUser).Error; err != nil {
-			return fmt.Errorf("failed to update tenant user: %w", err)
-		}
-	} else {
-		// Create new TenantUser
-		tenantUser := &models.TenantUser{
-			TenantID:   invitation.TenantID,
-			UserID:     userID,
-			RoleID:     invitation.RoleID,
-			InvitedBy:  &invitation.InvitedBy,
-			InvitedAt:  &invitation.CreatedAt,
-			AcceptedAt: &now,
-			IsActive:   true,
-		}
-
-		if err := s.db.WithContext(ctx).Create(tenantUser).Error; err != nil {
-			return fmt.Errorf("failed to create tenant user: %w", err)
-		}
+	if expired {
+		return ErrInvitationExpired
 	}
-
-	// Update invitation status
-	invitation.Status = models.InvitationStatusAccepted
-	invitation.AcceptedAt = &now
-	if err := s.db.WithContext(ctx).Save(&invitation).Error; err != nil {
-		return fmt.Errorf("failed to update invitation: %w", err)
-	}
-
 	return nil
 }
 
 // rejectUnassignableInvitationRole refuses invitations that would grant
 // super_admin (defence in depth for invitations created before F-1 was fixed).
-func (s *InvitationService) rejectUnassignableInvitationRole(ctx context.Context, roleID uuid.UUID) error {
+func rejectUnassignableInvitationRole(db *gorm.DB, roleID uuid.UUID) error {
 	var role models.Role
-	if err := s.db.WithContext(ctx).First(&role, roleID).Error; err != nil {
+	if err := db.First(&role, "id = ?", roleID).Error; err != nil {
 		return ErrRoleNotAssignable
 	}
 	if role.HierarchyLevel >= SuperAdminHierarchyLevel || role.Name == "super_admin" {
@@ -312,58 +337,7 @@ func (s *InvitationService) GetInvitationByToken(ctx context.Context, token stri
 
 // AcceptInvitationOnRegistration processes invitation acceptance during registration
 func (s *InvitationService) AcceptInvitationOnRegistration(ctx context.Context, token string, userID uuid.UUID) error {
-	var invitation models.OrganizationInvitation
-	if err := s.db.WithContext(ctx).Where("token = ?", token).First(&invitation).Error; err != nil {
-		return ErrInvitationNotFound
-	}
-
-	if invitation.Status != models.InvitationStatusPending {
-		return ErrInvitationAlreadyUsed
-	}
-
-	if invitation.IsExpired() {
-		invitation.Status = models.InvitationStatusExpired
-		s.db.WithContext(ctx).Save(&invitation)
-		return ErrInvitationExpired
-	}
-
-	// The invitation must have been issued to the registering user's email;
-	// otherwise anyone holding a leaked link could join the tenant.
-	var user models.User
-	if err := s.db.WithContext(ctx).First(&user, "id = ?", userID).Error; err != nil {
-		return fmt.Errorf("user not found")
-	}
-	if !strings.EqualFold(strings.TrimSpace(user.Email), strings.TrimSpace(invitation.Email)) {
-		return ErrInvitationEmailMismatch
-	}
-	if err := s.rejectUnassignableInvitationRole(ctx, invitation.RoleID); err != nil {
-		return err
-	}
-
-	// Create TenantUser
-	now := time.Now()
-	tenantUser := &models.TenantUser{
-		TenantID:   invitation.TenantID,
-		UserID:     userID,
-		RoleID:     invitation.RoleID,
-		InvitedBy:  &invitation.InvitedBy,
-		InvitedAt:  &invitation.CreatedAt,
-		AcceptedAt: &now,
-		IsActive:   true,
-	}
-
-	if err := s.db.WithContext(ctx).Create(tenantUser).Error; err != nil {
-		return fmt.Errorf("failed to create tenant user: %w", err)
-	}
-
-	// Update invitation status
-	invitation.Status = models.InvitationStatusAccepted
-	invitation.AcceptedAt = &now
-	if err := s.db.WithContext(ctx).Save(&invitation).Error; err != nil {
-		return fmt.Errorf("failed to update invitation: %w", err)
-	}
-
-	return nil
+	return s.acceptInvitation(ctx, token, userID)
 }
 
 // GetPendingInvitationsForTenant returns all pending invitations for a tenant
