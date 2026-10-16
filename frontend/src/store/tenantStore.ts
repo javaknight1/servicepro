@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { tenantApi } from '@/services/tenantService';
-import { getErrorMessage } from '@/utils/error';
+import { getErrorMessage, getTenantErrorMessage } from '@/utils/error';
 import type {
   Tenant,
   TenantState,
@@ -119,13 +119,18 @@ export const useTenantStore = create<TenantState>()(
           const response = await tenantApi.update(id, data);
           const updatedTenant = response.data;
 
+          // The update response has no caller role; keep the one from
+          // GET /tenants (it drives which management actions are shown).
+          const withRole = (prev: Tenant): Tenant => ({
+            ...updatedTenant,
+            role: updatedTenant.role ?? prev.role,
+          });
+
           set((state) => ({
-            tenants: state.tenants.map((t) =>
-              t.id === id ? updatedTenant : t
-            ),
+            tenants: state.tenants.map((t) => (t.id === id ? withRole(t) : t)),
             currentTenant:
               state.currentTenant?.id === id
-                ? updatedTenant
+                ? withRole(state.currentTenant)
                 : state.currentTenant,
             isLoading: false,
           }));
@@ -133,7 +138,10 @@ export const useTenantStore = create<TenantState>()(
           return updatedTenant;
         } catch (error) {
           set({
-            error: getErrorMessage(error, 'Failed to update organization'),
+            error: getTenantErrorMessage(
+              error,
+              'Failed to update organization'
+            ),
             isLoading: false,
           });
           throw error;
@@ -158,7 +166,10 @@ export const useTenantStore = create<TenantState>()(
           });
         } catch (error) {
           set({
-            error: getErrorMessage(error, 'Failed to delete organization'),
+            error: getTenantErrorMessage(
+              error,
+              'Failed to delete organization'
+            ),
             isLoading: false,
           });
           throw error;

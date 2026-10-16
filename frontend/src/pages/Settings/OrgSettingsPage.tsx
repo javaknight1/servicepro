@@ -20,7 +20,8 @@ import {
   paymentReminderService,
   type PaymentReminderSettings,
 } from '@services/paymentReminderService';
-import { getErrorMessage } from '@/utils/error';
+import { getTenantErrorMessage } from '@/utils/error';
+import { canDeleteTenant, canManageTenant } from '@/utils/tenantPermissions';
 import {
   Building2,
   Users,
@@ -71,6 +72,15 @@ export function OrgSettingsPage() {
   );
   const [roles, setRoles] = useState<Role[]>([]);
   const [membersLoading, setMembersLoading] = useState(false);
+  const [membersError, setMembersError] = useState<string | null>(null);
+  const [memberActionError, setMemberActionError] = useState<string | null>(
+    null
+  );
+
+  // Hints from the caller's role in this tenant; the API still enforces
+  // tenants.manage / tenants.update / tenants.delete and answers 403.
+  const canManage = canManageTenant(currentTenant?.role);
+  const canDelete = canDeleteTenant(currentTenant?.role);
 
   // Form state for general settings
   const [name, setName] = useState('');
@@ -164,30 +174,39 @@ export function OrgSettingsPage() {
   const loadMembers = async () => {
     if (!currentTenant) return;
     setMembersLoading(true);
+    setMembersError(null);
+    setMemberActionError(null);
     try {
       const memberList = await getMembers(currentTenant.id);
       setMembers(memberList);
 
-      // Load pending invitations
-      try {
-        const invitationsResponse = await tenantApi.getPendingInvitations(
-          currentTenant.id
-        );
-        setPendingInvitations(invitationsResponse.data || []);
-      } catch (invErr) {
-        console.error('Failed to load invitations:', invErr);
+      // Invitations and roles are management data (tenants.manage)
+      if (canManage) {
+        try {
+          const invitationsResponse = await tenantApi.getPendingInvitations(
+            currentTenant.id
+          );
+          setPendingInvitations(invitationsResponse.data || []);
+        } catch (invErr) {
+          console.error('Failed to load invitations:', invErr);
+          setPendingInvitations([]);
+        }
+
+        // Load roles for the invite modal
+        try {
+          const roleList = await roleApi.getRoles().then((res) => res.data);
+          setRoles(roleList);
+        } catch (roleErr) {
+          console.error('Failed to load roles:', roleErr);
+        }
+      } else {
         setPendingInvitations([]);
       }
-
-      // Load roles for the invite modal
-      try {
-        const roleList = await roleApi.getRoles().then((res) => res.data);
-        setRoles(roleList);
-      } catch (roleErr) {
-        console.error('Failed to load roles:', roleErr);
-      }
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Failed to load members:', err);
+      setMembers([]);
+      setPendingInvitations([]);
+      setMembersError(getTenantErrorMessage(err, 'Failed to load members'));
     } finally {
       setMembersLoading(false);
     }
@@ -210,7 +229,7 @@ export function OrgSettingsPage() {
     } catch (err) {
       console.error('Failed to load reminder settings:', err);
       setReminderSettingsError(
-        getErrorMessage(err, 'Failed to load reminder settings')
+        getTenantErrorMessage(err, 'Failed to load reminder settings')
       );
     } finally {
       setReminderSettingsLoading(false);
@@ -270,7 +289,7 @@ export function OrgSettingsPage() {
     } catch (err) {
       console.error('Failed to save business hours:', err);
       setBusinessHoursError(
-        getErrorMessage(err, 'Failed to save business hours')
+        getTenantErrorMessage(err, 'Failed to save business hours')
       );
     } finally {
       setBusinessHoursSaving(false);
@@ -290,7 +309,7 @@ export function OrgSettingsPage() {
     } catch (err) {
       console.error('Failed to save reminder settings:', err);
       setReminderSettingsError(
-        getErrorMessage(err, 'Failed to save reminder settings')
+        getTenantErrorMessage(err, 'Failed to save reminder settings')
       );
     } finally {
       setReminderSettingsSaving(false);
@@ -355,7 +374,7 @@ export function OrgSettingsPage() {
       loadMembers();
     } catch (err) {
       console.error('Failed to invite member:', err);
-      setInviteError(getErrorMessage(err, 'Failed to send invitation'));
+      setInviteError(getTenantErrorMessage(err, 'Failed to send invitation'));
     } finally {
       setIsInviting(false);
     }
@@ -373,8 +392,11 @@ export function OrgSettingsPage() {
     try {
       await tenantApi.cancelInvitation(currentTenant.id, invitation.id);
       loadMembers();
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Failed to cancel invitation:', err);
+      setMemberActionError(
+        getTenantErrorMessage(err, 'Failed to cancel invitation')
+      );
     }
   };
 
@@ -384,8 +406,11 @@ export function OrgSettingsPage() {
     try {
       await tenantApi.resendInvitation(currentTenant.id, invitation.id);
       alert('Invitation resent successfully');
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Failed to resend invitation:', err);
+      setMemberActionError(
+        getTenantErrorMessage(err, 'Failed to resend invitation')
+      );
     }
   };
 
@@ -396,8 +421,11 @@ export function OrgSettingsPage() {
     try {
       await removeMember(currentTenant.id, userId);
       loadMembers();
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Failed to remove member:', err);
+      setMemberActionError(
+        getTenantErrorMessage(err, 'Failed to remove member')
+      );
     }
   };
 
@@ -502,6 +530,12 @@ export function OrgSettingsPage() {
                       onSubmit={handleSaveGeneral}
                       className="space-y-4 mt-6"
                     >
+                      {!canManage && (
+                        <p className="text-sm text-neutral-600">
+                          Only organization admins can change these settings.
+                        </p>
+                      )}
+
                       <Input
                         label="Organization Name"
                         type="text"
@@ -509,6 +543,7 @@ export function OrgSettingsPage() {
                         onChange={(e) => setName(e.target.value)}
                         required
                         fullWidth
+                        disabled={!canManage}
                       />
 
                       <Input
@@ -518,6 +553,7 @@ export function OrgSettingsPage() {
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="contact@company.com"
                         fullWidth
+                        disabled={!canManage}
                       />
 
                       <Input
@@ -527,65 +563,73 @@ export function OrgSettingsPage() {
                         onChange={(e) => setPhone(e.target.value)}
                         placeholder="+1 (555) 123-4567"
                         fullWidth
+                        disabled={!canManage}
                       />
 
-                      <div className="flex justify-end space-x-3 pt-4">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => {
-                            setName(currentTenant.name);
-                            setEmail(currentTenant.email || '');
-                            setPhone(currentTenant.phone || '');
-                          }}
-                        >
-                          Reset
-                        </Button>
-                        <Button
-                          type="submit"
-                          variant="primary"
-                          disabled={isSaving || isLoading}
-                        >
-                          {isSaving ? 'Saving...' : 'Save Changes'}
-                        </Button>
-                      </div>
+                      {canManage && (
+                        <div className="flex justify-end space-x-3 pt-4">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => {
+                              setName(currentTenant.name);
+                              setEmail(currentTenant.email || '');
+                              setPhone(currentTenant.phone || '');
+                            }}
+                          >
+                            Reset
+                          </Button>
+                          <Button
+                            type="submit"
+                            variant="primary"
+                            disabled={isSaving || isLoading}
+                          >
+                            {isSaving ? 'Saving...' : 'Save Changes'}
+                          </Button>
+                        </div>
+                      )}
                     </form>
                   </CardContent>
                 </Card>
 
-                {/* Danger Zone */}
-                <Card
-                  variant="elevated"
-                  padding="lg"
-                  className="border-red-200"
-                >
-                  <CardHeader>
-                    <CardTitle className="text-red-700">Danger Zone</CardTitle>
-                    <CardDescription>
-                      Irreversible and destructive actions
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center justify-between py-4">
-                      <div>
-                        <p className="text-sm font-medium text-neutral-900">
-                          Delete Organization
-                        </p>
-                        <p className="text-sm text-neutral-600">
-                          Permanently delete this organization and all its data
-                        </p>
+                {/* Danger Zone (tenants.delete) */}
+                {canDelete && (
+                  <Card
+                    variant="elevated"
+                    padding="lg"
+                    className="border-red-200"
+                  >
+                    <CardHeader>
+                      <CardTitle className="text-red-700">
+                        Danger Zone
+                      </CardTitle>
+                      <CardDescription>
+                        Irreversible and destructive actions
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-center justify-between py-4">
+                        <div>
+                          <p className="text-sm font-medium text-neutral-900">
+                            Delete Organization
+                          </p>
+                          <p className="text-sm text-neutral-600">
+                            Permanently delete this organization and all its
+                            data
+                          </p>
+                        </div>
+                        <Button
+                          variant="outline"
+                          className="text-red-600 border-red-300 hover:bg-red-50"
+                          onClick={() => setShowDeleteModal(true)}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete
+                        </Button>
                       </div>
-                      <Button
-                        variant="outline"
-                        className="text-red-600 border-red-300 hover:bg-red-50"
-                        onClick={() => setShowDeleteModal(true)}
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Delete
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
+                )}
               </>
             )}
 
@@ -599,20 +643,37 @@ export function OrgSettingsPage() {
                         Manage who has access to this organization
                       </CardDescription>
                     </div>
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onClick={() => setShowAddMemberModal(true)}
-                    >
-                      <UserPlus className="h-4 w-4 mr-2" />
-                      Invite Member
-                    </Button>
+                    {canManage && !membersError && (
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() => setShowAddMemberModal(true)}
+                      >
+                        <UserPlus className="h-4 w-4 mr-2" />
+                        Invite Member
+                      </Button>
+                    )}
                   </div>
                 </CardHeader>
                 <CardContent>
+                  {memberActionError && (
+                    <div
+                      role="alert"
+                      className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm"
+                    >
+                      {memberActionError}
+                    </div>
+                  )}
                   {membersLoading ? (
                     <div className="py-8 text-center text-neutral-500">
                       Loading members...
+                    </div>
+                  ) : membersError ? (
+                    <div
+                      role="alert"
+                      className="py-8 text-center text-neutral-600"
+                    >
+                      {membersError}
                     </div>
                   ) : members.length === 0 &&
                     pendingInvitations.length === 0 ? (
@@ -646,18 +707,21 @@ export function OrgSettingsPage() {
                                   </div>
                                 </div>
                               </div>
-                              <div className="flex items-center space-x-2">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() =>
-                                    handleRemoveMember(member.user_id)
-                                  }
-                                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
+                              {canManage && (
+                                <div className="flex items-center space-x-2">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() =>
+                                      handleRemoveMember(member.user_id)
+                                    }
+                                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                    title="Remove member"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              )}
                             </div>
                           ))}
                         </div>

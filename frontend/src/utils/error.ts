@@ -112,8 +112,3 @@ export function getTenantErrorMessage(
   if (status === 429) return TOO_MANY_ATTEMPTS_MESSAGE;
   return message || getErrorMessage(error, fallback);
 }
-
-/** True when the error is an HTTP 403 from the API. */
-export function isForbiddenError(error: unknown): boolean {
-  return getApiErrorInfo(error).status === 403;
-}

@@ -6,7 +6,6 @@ import {
   getTenantErrorMessage,
   isAxiosError,
   isAxiosErrorWithStatus,
-  isForbiddenError,
   TENANT_ACCESS_DENIED_MESSAGE,
   TENANT_PERMISSION_MESSAGE,
   TOO_MANY_ATTEMPTS_MESSAGE,
@@ -197,10 +196,5 @@ describe('API error helpers', () => {
       getTenantErrorMessage(apiError(400, { message: 'Bad slug' }), 'x')
     ).toBe('Bad slug');
     expect(getTenantErrorMessage({}, 'fallback')).toBe('fallback');
-  });
-
-  it('isForbiddenError detects 403 only', () => {
-    expect(isForbiddenError(apiError(403, {}))).toBe(true);
-    expect(isForbiddenError(apiError(401, {}))).toBe(false);
   });
 });

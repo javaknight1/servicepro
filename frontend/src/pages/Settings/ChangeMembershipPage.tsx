@@ -20,6 +20,7 @@ import {
   Loader2,
   AlertCircle,
 } from 'lucide-react';
+import { getTenantErrorMessage } from '@/utils/error';
 
 // Separate component for adding a card (needs Elements context)
 interface AddCardModalContentProps {
@@ -85,10 +86,8 @@ function AddCardModalContent({
 
       cardElement.clear();
       onSuccess();
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : 'Failed to add card';
-      setAddError(message);
+    } catch (error: unknown) {
+      setAddError(getTenantErrorMessage(error, 'Failed to add card'));
     } finally {
       setIsProcessing(false);
     }
