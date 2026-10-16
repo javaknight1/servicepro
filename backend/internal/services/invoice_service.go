@@ -59,6 +59,10 @@ var (
 	ErrInvoiceSourceStatus = errors.New("cannot invoice a cancelled job")
 	// ErrQuoteNotAccepted is returned when invoicing a quote that wasn't accepted
 	ErrQuoteNotAccepted = errors.New("only accepted quotes can be invoiced")
+	// ErrInvoiceClosed is returned when editing a paid, cancelled or refunded invoice
+	ErrInvoiceClosed = errors.New("paid, cancelled and refunded invoices can't be edited")
+	// ErrInvalidInvoiceTransition is returned for a status change the invoice state machine forbids
+	ErrInvalidInvoiceTransition = errors.New("this invoice status change is not allowed")
 	// ErrTaxRateNotFound is returned for an unknown tax_rate_id
 	ErrTaxRateNotFound = errors.New("tax rate not found")
 )
@@ -253,6 +257,9 @@ func (s *InvoiceService) UpdateInvoice(ctx context.Context, id uuid.UUID, upd *I
 		}
 		if existing.Status == models.InvoiceStatusPaid {
 			return ErrInvoiceAlreadyPaid
+		}
+		if !existing.Status.IsEditable() {
+			return ErrInvoiceClosed
 		}
 
 		fields := map[string]interface{}{"updated_by": userID}
@@ -464,7 +471,7 @@ func (s *InvoiceService) DeleteInvoice(ctx context.Context, id uuid.UUID) error 
 			return err
 		}
 		if invoice.Status == models.InvoiceStatusPaid {
-			return errors.New("cannot delete paid invoice")
+			return ErrInvoiceAlreadyPaid
 		}
 		paid, err := hasPayments(tx, invoice)
 		if err != nil {
@@ -596,6 +603,9 @@ func (s *InvoiceService) AddLineItem(ctx context.Context, invoiceID uuid.UUID, l
 		if invoice.Status == models.InvoiceStatusPaid {
 			return ErrInvoiceAlreadyPaid
 		}
+		if !invoice.Status.IsEditable() {
+			return ErrInvoiceClosed
+		}
 		var lines []models.InvoiceLine
 		if err := tx.Where("invoice_id = ?", invoiceID).Order("sort_order ASC").Find(&lines).Error; err != nil {
 			return err
@@ -718,6 +728,9 @@ func applyPayment(tx *gorm.DB, invoice *models.Invoice, amount decimal.Decimal, 
 	if err := tx.Model(&models.Invoice{}).Where("id = ?", invoice.ID).Updates(updates).Error; err != nil {
 		return fmt.Errorf("failed to update invoice balance: %w", err)
 	}
+	if to, ok := updates["status"].(models.InvoiceStatus); ok {
+		return recordInvoiceTransition(tx, invoice.ID, invoice.Status, to, "payment", nil)
+	}
 	return nil
 }
 
@@ -744,47 +757,58 @@ func hasPayments(tx *gorm.DB, invoice *models.Invoice) (bool, error) {
 
 // SendInvoice marks an invoice as sent and generates a payment token
 func (s *InvoiceService) SendInvoice(ctx context.Context, id uuid.UUID) (*models.Invoice, error) {
-	invoice, err := s.GetInvoice(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-
-	// Allow sending draft invoices or resending already-sent invoices
-	if invoice.Status != models.InvoiceStatusDraft && invoice.Status != models.InvoiceStatusSent {
-		return nil, errors.New("only draft or sent invoices can be sent")
-	}
-
-	// Validate invoice before sending (only for draft invoices)
-	if invoice.Status == models.InvoiceStatusDraft {
-		if err := s.validateForSending(invoice); err != nil {
-			return nil, err
-		}
-	}
-
 	// Generate new payment token
 	token, err := s.generatePaymentToken()
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate payment token: %w", err)
 	}
 
-	// Update invoice with new token and status
-	now := time.Now()
-	expiresAt := now.Add(PaymentTokenExpiry)
+	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		invoice, err := lockInvoice(tx, id)
+		if err != nil {
+			return err
+		}
 
-	updates := map[string]interface{}{
-		"status":                   models.InvoiceStatusSent,
-		"sent_date":                now,
-		"payment_token":            token,
-		"payment_token_expires_at": expiresAt,
-		"payment_token_voided_at":  nil, // Clear any previous voided timestamp
-	}
+		// A draft is issued (draft→sent); an open invoice with money still
+		// owed can be re-sent with a fresh pay link, keeping its status.
+		switch {
+		case invoice.Status == models.InvoiceStatusDraft:
+			var lineCount int64
+			if err := tx.Model(&models.InvoiceLine{}).Where("invoice_id = ?", id).Count(&lineCount).Error; err != nil {
+				return err
+			}
+			if err := s.validateForSending(invoice, lineCount); err != nil {
+				return err
+			}
+		case invoice.Status.AcceptsPayments():
+		default:
+			return ErrInvalidInvoiceTransition
+		}
 
-	if err := s.db.WithContext(ctx).Model(&models.Invoice{}).Where("id = ?", id).Updates(updates).Error; err != nil {
-		return nil, fmt.Errorf("failed to send invoice: %w", err)
+		now := time.Now()
+		updates := map[string]interface{}{
+			"sent_date":                now,
+			"payment_token":            token,
+			"payment_token_expires_at": now.Add(PaymentTokenExpiry),
+			"payment_token_voided_at":  nil, // Clear any previous voided timestamp
+		}
+		if invoice.Status == models.InvoiceStatusDraft {
+			updates["status"] = models.InvoiceStatusSent
+		}
+		if err := tx.Model(&models.Invoice{}).Where("id = ?", id).Updates(updates).Error; err != nil {
+			return fmt.Errorf("failed to send invoice: %w", err)
+		}
+		if invoice.Status != models.InvoiceStatusDraft {
+			return nil // re-send: status unchanged
+		}
+		return recordInvoiceTransition(tx, id, invoice.Status, models.InvoiceStatusSent, "sent", nil)
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	// Reload invoice
-	invoice, err = s.GetInvoice(ctx, id)
+	invoice, err := s.GetInvoice(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -805,7 +829,7 @@ func (s *InvoiceService) CancelInvoice(ctx context.Context, id uuid.UUID, reason
 			return err
 		}
 		if invoice.Status == models.InvoiceStatusPaid {
-			return errors.New("cannot cancel paid invoice")
+			return ErrInvoiceAlreadyPaid
 		}
 		paid, err := hasPayments(tx, invoice)
 		if err != nil {
@@ -814,15 +838,20 @@ func (s *InvoiceService) CancelInvoice(ctx context.Context, id uuid.UUID, reason
 		if paid {
 			return ErrInvoiceHasPayments
 		}
+		if invoice.Status == models.InvoiceStatusCancelled || !invoice.Status.CanTransitionTo(models.InvoiceStatusCancelled) {
+			return ErrInvalidInvoiceTransition
+		}
 
 		updates := map[string]interface{}{
 			"status": models.InvoiceStatusCancelled,
 			"notes":  fmt.Sprintf("%s\n\nCancellation reason: %s", invoice.Notes, reason),
+			// The pay link must stop working.
+			"payment_token_voided_at": time.Now(),
 		}
 		if err := tx.Model(&models.Invoice{}).Where("id = ?", id).Updates(updates).Error; err != nil {
 			return fmt.Errorf("failed to cancel invoice: %w", err)
 		}
-		return nil
+		return recordInvoiceTransition(tx, id, invoice.Status, models.InvoiceStatusCancelled, "cancelled", nil)
 	})
 	if err != nil {
 		return nil, err
@@ -896,19 +925,39 @@ func (s *InvoiceService) validateInvoice(invoice *models.Invoice) error {
 	return nil
 }
 
-func (s *InvoiceService) validateForSending(invoice *models.Invoice) error {
+func (s *InvoiceService) validateForSending(invoice *models.Invoice, lineCount int64) error {
 	if invoice.Status != models.InvoiceStatusDraft {
-		return errors.New("only draft invoices can be sent")
+		return invalidInvoice("only draft invoices can be sent")
 	}
 
-	if len(invoice.Lines) == 0 {
-		return errors.New("invoice must have at least one line item")
+	if lineCount == 0 {
+		return invalidInvoice("invoice must have at least one line item")
 	}
 
 	if invoice.TotalAmount.LessThanOrEqual(decimal.Zero) {
-		return errors.New("invoice total must be greater than zero")
+		return invalidInvoice("invoice total must be greater than zero")
 	}
 
+	return nil
+}
+
+// recordInvoiceTransition writes a status change to invoice_audit_log in the
+// same transaction as the change. by is nil for system changes (webhooks).
+func recordInvoiceTransition(tx *gorm.DB, invoiceID uuid.UUID, from, to models.InvoiceStatus, action string, by *uuid.UUID) error {
+	if from == to {
+		return nil
+	}
+	changedByType := "system"
+	if by != nil {
+		changedByType = "user"
+	}
+	entry := &models.InvoiceAuditLog{
+		ID: uuid.New(), InvoiceID: invoiceID, Action: action,
+		FromStatus: &from, ToStatus: &to, ChangedBy: by, ChangedByType: changedByType,
+	}
+	if err := tx.Omit("ip_address").Create(entry).Error; err != nil {
+		return fmt.Errorf("failed to record invoice status change: %w", err)
+	}
 	return nil
 }
 

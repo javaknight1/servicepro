@@ -61,7 +61,9 @@ type CreateLineItemRequest struct {
 
 // UpdateInvoiceRequest represents the request to update an invoice
 type UpdateInvoiceRequest struct {
-	Status             *models.InvoiceStatus   `json:"status,omitempty"`
+	// Status can not be set: it changes only through send, cancel and payments
+	// (T124). Sending it is rejected with 400.
+	Status             *models.InvoiceStatus   `json:"status,omitempty" swaggerignore:"true"`
 	DueDate            *time.Time              `json:"due_date,omitempty"`
 	PaymentTermID      *uuid.UUID              `json:"payment_term_id,omitempty"`
 	TaxRateID          *uuid.UUID              `json:"tax_rate_id,omitempty"`
@@ -342,6 +344,7 @@ func (h *InvoiceHandler) CreateInvoice(c *gin.Context) {
 // @Success 200 {object} models.Invoice
 // @Failure 400 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
+// @Failure 409 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
 // @Router /invoices/{id} [put]
 // @Security BearerAuth
@@ -357,6 +360,12 @@ func (h *InvoiceHandler) UpdateInvoice(c *gin.Context) {
 	var req UpdateInvoiceRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse{Error: publicError(err)})
+		return
+	}
+	if req.Status != nil {
+		// {"status":"paid"} used to mark an invoice paid with no money
+		// received, and revived cancelled invoices (audit 7.H2).
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "status can't be set directly; send, cancel or record a payment instead"})
 		return
 	}
 
@@ -406,6 +415,7 @@ func (h *InvoiceHandler) UpdateInvoice(c *gin.Context) {
 // @Success 204
 // @Failure 400 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
+// @Failure 409 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
 // @Router /invoices/{id} [delete]
 // @Security BearerAuth
@@ -423,7 +433,7 @@ func (h *InvoiceHandler) DeleteInvoice(c *gin.Context) {
 			c.JSON(http.StatusNotFound, ErrorResponse{Error: "Invoice not found"})
 			return
 		}
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: publicError(err)})
+		c.JSON(invoiceErrorStatus(err), ErrorResponse{Error: publicError(err)})
 		return
 	}
 
@@ -440,6 +450,7 @@ func (h *InvoiceHandler) DeleteInvoice(c *gin.Context) {
 // @Success 200 {object} models.Invoice
 // @Failure 400 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
+// @Failure 409 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
 // @Router /invoices/{id}/send [post]
 // @Security BearerAuth
@@ -458,7 +469,7 @@ func (h *InvoiceHandler) SendInvoice(c *gin.Context) {
 			c.JSON(http.StatusNotFound, ErrorResponse{Error: "Invoice not found"})
 			return
 		}
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: publicError(err)})
+		c.JSON(invoiceErrorStatus(err), ErrorResponse{Error: publicError(err)})
 		return
 	}
 
@@ -476,6 +487,7 @@ func (h *InvoiceHandler) SendInvoice(c *gin.Context) {
 // @Success 201 {object} models.InvoicePayment
 // @Failure 400 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
+// @Failure 409 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
 // @Router /invoices/{id}/payments [post]
 // @Security BearerAuth
@@ -528,7 +540,7 @@ func (h *InvoiceHandler) RecordPayment(c *gin.Context) {
 			c.JSON(http.StatusNotFound, ErrorResponse{Error: "Invoice not found"})
 			return
 		}
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: publicError(err)})
+		c.JSON(invoiceErrorStatus(err), ErrorResponse{Error: publicError(err)})
 		return
 	}
 
@@ -546,6 +558,7 @@ func (h *InvoiceHandler) RecordPayment(c *gin.Context) {
 // @Success 200 {object} models.Invoice
 // @Failure 400 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
+// @Failure 409 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
 // @Router /invoices/{id}/cancel [post]
 // @Security BearerAuth
@@ -573,7 +586,7 @@ func (h *InvoiceHandler) CancelInvoice(c *gin.Context) {
 			c.JSON(http.StatusNotFound, ErrorResponse{Error: "Invoice not found"})
 			return
 		}
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: publicError(err)})
+		c.JSON(invoiceErrorStatus(err), ErrorResponse{Error: publicError(err)})
 		return
 	}
 
@@ -686,7 +699,12 @@ func invoiceErrorStatus(err error) int {
 	switch {
 	case errors.Is(err, services.ErrInvoiceNotFound), errors.Is(err, services.ErrCustomerNotFound):
 		return http.StatusNotFound
+	case errors.Is(err, services.ErrInvoiceClosed), errors.Is(err, services.ErrInvalidInvoiceTransition):
+		return http.StatusConflict
 	case errors.Is(err, services.ErrInvoiceAlreadyPaid),
+		errors.Is(err, services.ErrInvoiceHasPayments),
+		errors.Is(err, services.ErrPaymentNotAllowed),
+		errors.Is(err, services.ErrOverpayment),
 		errors.Is(err, services.ErrInvalidLineItem),
 		errors.Is(err, services.ErrInvalidDiscount),
 		errors.Is(err, services.ErrInvalidTaxRate),
