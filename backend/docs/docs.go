@@ -12403,6 +12403,9 @@ const docTemplate = `{
                 "invoice_number": {
                     "type": "string"
                 },
+                "is_manual": {
+                    "type": "boolean"
+                },
                 "recipient": {
                     "type": "string"
                 },

@@ -183,6 +183,7 @@ func main() {
 	smsClient, err := smsclient.NewClient(ctx, cfg)
 	if err != nil {
 		logging.Warn(ctx, "SMS client not initialized", map[string]any{"error": err.Error(), "note": "SMS notifications disabled"})
+		smsClient = nil // reminders fall back to email
 	} else {
 		logging.Info(ctx, "SMS client initialized", map[string]any{"provider": smsClient.GetProviderInfo().DisplayName})
 	}

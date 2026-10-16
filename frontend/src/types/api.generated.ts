@@ -12167,6 +12167,7 @@ export interface components {
             id?: string;
             invoice_id?: string;
             invoice_number?: string;
+            is_manual?: boolean;
             recipient?: string;
             reminder_number?: number;
             sent_at?: number;

@@ -6,6 +6,8 @@ export interface PaymentReminderResponse {
   invoice_number: string;
   customer_name: string;
   reminder_number: number;
+  /** Manual reminders are numbered separately from the automatic schedule. */
+  is_manual: boolean;
   channel: 'email' | 'sms';
   status: 'pending' | 'sent' | 'failed';
   tone: 'friendly' | 'firm' | 'final';

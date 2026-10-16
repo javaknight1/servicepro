@@ -2,7 +2,6 @@ package services
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -47,6 +46,10 @@ func (s *customerReportService) GenerateReport(ctx context.Context, query *model
 	}
 
 	s.setDefaultQueryParams(query)
+
+	if err := s.ensureMetricsFresh(ctx); err != nil {
+		return nil, err
+	}
 
 	response := &models.CustomerReportResponse{}
 
@@ -118,10 +121,10 @@ func (s *customerReportService) calculateSummary(ctx context.Context, query *mod
 		Count  int
 	}
 
-	statusQuery := s.db.WithContext(ctx).Table("customers").
-		Select("status, COUNT(*) as count").
-		Where("deleted_at IS NULL").
-		Group("status")
+	statusQuery := s.db.WithContext(ctx).Table("customers c").
+		Select("c.status, COUNT(*) as count").
+		Where("c.deleted_at IS NULL").
+		Group("c.status")
 
 	statusQuery = s.applyBaseFilters(statusQuery, query)
 
@@ -207,6 +210,10 @@ func (s *customerReportService) calculateSummary(ctx context.Context, query *mod
 }
 
 func (s *customerReportService) GetSegmentBreakdown(ctx context.Context, query *models.CustomerReportQuery) ([]models.SegmentBreakdownData, error) {
+	if err := s.ensureMetricsFresh(ctx); err != nil {
+		return nil, err
+	}
+
 	var results []struct {
 		Segment      string
 		Count        int64
@@ -421,6 +428,10 @@ func (s *customerReportService) GetAcquisitionTrend(ctx context.Context, query *
 }
 
 func (s *customerReportService) GetTopCustomers(ctx context.Context, query *models.CustomerReportQuery, limit int) ([]models.CustomerMetricsData, error) {
+	if err := s.ensureMetricsFresh(ctx); err != nil {
+		return nil, err
+	}
+
 	var results []models.CustomerMetricsData
 
 	topQuery := s.db.WithContext(ctx).Table("customers c").
@@ -461,6 +472,10 @@ func (s *customerReportService) GetTopCustomers(ctx context.Context, query *mode
 }
 
 func (s *customerReportService) GetAtRiskCustomers(ctx context.Context, limit int) ([]models.CustomerMetricsData, error) {
+	if err := s.ensureMetricsFresh(ctx); err != nil {
+		return nil, err
+	}
+
 	var results []models.CustomerMetricsData
 
 	atRiskQuery := s.db.WithContext(ctx).Table("customers c").
@@ -499,40 +514,11 @@ func (s *customerReportService) GetAtRiskCustomers(ctx context.Context, limit in
 	return results, nil
 }
 
-func (s *customerReportService) GetCohortData(ctx context.Context, months int) ([]models.CohortData, error) {
-	// v_customer_cohorts was never created by a migration and a raw view
-	// query would not be tenant-scoped; report the feature as unavailable
-	// rather than risk a cross-tenant read.
-	return nil, ErrCohortsUnavailable
-}
-
-// ErrCohortsUnavailable is returned by GetCohortAnalysis until a tenant-aware
-// cohort query exists.
-var ErrCohortsUnavailable = errors.New("cohort analysis is not available")
-
 // tenantFilterValue returns the caller's tenant for explicit filters on
 // joined tables, or uuid.Nil (matches nothing) when there is none.
 func tenantFilterValue(ctx context.Context) uuid.UUID {
 	id, _ := tenancy.TenantID(ctx)
 	return id
-}
-
-func (s *customerReportService) RefreshMetricsCache(ctx context.Context, customerID *uuid.UUID) error {
-	var query string
-	var args []any
-
-	if customerID != nil {
-		query = "SELECT refresh_customer_metrics_cache($1)"
-		args = append(args, *customerID)
-	} else {
-		query = "SELECT refresh_customer_metrics_cache(NULL)"
-	}
-
-	if err := s.db.WithContext(ctx).Exec(query, args...).Error; err != nil {
-		return fmt.Errorf("failed to refresh metrics cache: %w", err)
-	}
-
-	return nil
 }
 
 func (s *customerReportService) RecordActivity(ctx context.Context, activity *models.CustomerActivity) error {
@@ -696,16 +682,19 @@ func (s *customerReportService) calculateRetentionRate(ctx context.Context, quer
 	// Simple retention: active customers / (total customers - new customers)
 	var activeCount, totalCount, newCount int64
 
-	baseQuery := s.db.WithContext(ctx).Table("customers").Where("deleted_at IS NULL")
-
-	baseQuery.Count(&totalCount)
-	baseQuery.Where("status = ?", models.CustomerStatusActive).Count(&activeCount)
-
+	base := func() *gorm.DB {
+		return s.db.WithContext(ctx).Table("customers c").Where("c.deleted_at IS NULL")
+	}
+	if err := base().Count(&totalCount).Error; err != nil {
+		return decimal.Zero
+	}
+	if err := base().Where("c.status = ?", models.CustomerStatusActive).Count(&activeCount).Error; err != nil {
+		return decimal.Zero
+	}
 	if query.StartDate != nil {
-		s.db.WithContext(ctx).Table("customers").
-			Where("deleted_at IS NULL").
-			Where("created_at >= ?", query.StartDate).
-			Count(&newCount)
+		if err := base().Where("c.created_at >= ?", query.StartDate).Count(&newCount).Error; err != nil {
+			return decimal.Zero
+		}
 	}
 
 	existingCustomers := totalCount - newCount
@@ -713,11 +702,9 @@ func (s *customerReportService) calculateRetentionRate(ctx context.Context, quer
 		return decimal.NewFromInt(100)
 	}
 
-	retention := decimal.NewFromInt(activeCount).
+	return decimal.NewFromInt(activeCount).
 		Div(decimal.NewFromInt(existingCustomers)).
 		Mul(decimal.NewFromInt(100))
-
-	return retention
 }
 
 func (s *customerReportService) applyBaseFilters(query *gorm.DB, reportQuery *models.CustomerReportQuery) *gorm.DB {

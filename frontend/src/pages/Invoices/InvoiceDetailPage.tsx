@@ -840,7 +840,9 @@ export function InvoiceDetailPage() {
                           className="border-b border-neutral-100"
                         >
                           <td className="py-2 px-3">
-                            {reminder.reminder_number}
+                            {reminder.is_manual
+                              ? `Manual #${reminder.reminder_number}`
+                              : reminder.reminder_number}
                           </td>
                           <td className="py-2 px-3">
                             <Badge

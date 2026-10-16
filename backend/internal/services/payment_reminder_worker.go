@@ -13,6 +13,7 @@ type PaymentReminderWorker struct {
 	service  *PaymentReminderService
 	interval time.Duration
 	stopChan chan struct{}
+	stopOnce sync.Once
 	wg       sync.WaitGroup
 }
 
@@ -52,8 +53,8 @@ func (w *PaymentReminderWorker) run(ctx context.Context) {
 	}
 }
 
-// Stop gracefully stops the background worker
+// Stop gracefully stops the background worker. Safe to call more than once.
 func (w *PaymentReminderWorker) Stop() {
-	close(w.stopChan)
+	w.stopOnce.Do(func() { close(w.stopChan) })
 	w.wg.Wait()
 }

@@ -147,60 +147,72 @@ func (s *PaymentReminderService) ProcessTenantReminders(ctx context.Context, ten
 
 		daysOverdue := int(time.Since(invoice.DueDate).Hours() / 24)
 
-		// Determine which reminder number is due
-		for reminderIdx, dayThreshold := range reminderDays {
-			reminderNumber := reminderIdx + 1
+		// Only the latest reminder whose threshold has passed is due. Earlier
+		// slots that were never sent (the invoice became overdue before the
+		// first run, or reminders were just enabled) are skipped rather than
+		// sent all at once.
+		reminderNumber := 0
+		for idx, dayThreshold := range reminderDays {
 			if daysOverdue >= dayThreshold {
-				// Check if already sent (Unscoped: a soft-deleted record still
-				// occupies the unique (invoice_id, reminder_number) slot).
-				var count int64
-				s.db.WithContext(ctx).Unscoped().Model(&models.PaymentReminder{}).
-					Where("invoice_id = ? AND reminder_number = ?", invoice.ID, reminderNumber).
-					Count(&count)
-				if count > 0 {
-					continue
-				}
-
-				// Determine channel and send
-				channel, recipient := s.resolveChannel(invoice.Customer)
-				if channel == "" {
-					logging.Warn(ctx, fmt.Sprintf("%s Skipping reminder for invoice %s: customer %s has all contact methods disabled",
-						logPrefix, invoice.InvoiceNumber, invoice.Customer.GetDisplayName()), nil)
-					result.Skipped++
-					continue
-				}
-
-				tone := determineTone(daysOverdue)
-				err := s.SendReminder(ctx, tenant, invoice, invoice.Customer, reminderNumber, channel, recipient, tone)
-				switch {
-				case errors.Is(err, ErrReminderAlreadySent):
-					// Another run claimed this reminder between the check and the insert.
-					result.Skipped++
-				case err != nil:
-					result.Failed++
-					logging.Error(ctx, fmt.Sprintf("%s Failed to send reminder for invoice %s", logPrefix, invoice.InvoiceNumber),
-						map[string]any{"error": err.Error(), "reminder_number": reminderNumber})
-				default:
-					result.Sent++
-				}
+				reminderNumber = idx + 1
 			}
+		}
+		if reminderNumber == 0 {
+			continue
+		}
+
+		// Determine channel and send
+		channel, recipient := s.resolveChannel(invoice.Customer)
+		if channel == "" {
+			logging.Warn(ctx, fmt.Sprintf("%s Skipping reminder for invoice %s: customer has all contact methods disabled",
+				logPrefix, invoice.InvoiceNumber), map[string]any{"invoice_id": invoice.ID.String()})
+			result.Skipped++
+			continue
+		}
+
+		tone := determineTone(daysOverdue)
+		_, err := s.sendReminder(ctx, tenant, invoice, invoice.Customer, reminderNumber, false, channel, recipient, tone)
+		switch {
+		case errors.Is(err, ErrReminderAlreadySent):
+			// Already sent, or another run holds the claim.
+			result.Skipped++
+		case err != nil:
+			result.Failed++
+			logging.Error(ctx, fmt.Sprintf("%s Failed to send reminder for invoice %s", logPrefix, invoice.InvoiceNumber),
+				map[string]any{"error": err.Error(), "reminder_number": reminderNumber})
+		default:
+			result.Sent++
 		}
 	}
 	return result
 }
 
-// SendReminder sends a single payment reminder
+// staleReminderClaim is how long a "pending" reminder may sit before another
+// run may take it over (the run that claimed it crashed before sending).
+const staleReminderClaim = time.Hour
+
+// SendReminder sends automatic reminder #reminderNumber for an invoice.
 func (s *PaymentReminderService) SendReminder(ctx context.Context, tenant *models.Tenant, invoice *models.Invoice, customer *models.Customer, reminderNumber int, channel, recipient, tone string) error {
+	_, err := s.sendReminder(ctx, tenant, invoice, customer, reminderNumber, false, channel, recipient, tone)
+	return err
+}
+
+// sendReminder claims the (invoice, kind, number) slot and sends the reminder.
+//
+// The claim is the idempotency guard: a new row is inserted with ON CONFLICT
+// DO NOTHING; an existing row is only taken over when its previous send
+// failed (retry) or its claim is stale. Anything else returns
+// ErrReminderAlreadySent and sends nothing.
+func (s *PaymentReminderService) sendReminder(ctx context.Context, tenant *models.Tenant, invoice *models.Invoice, customer *models.Customer, reminderNumber int, manual bool, channel, recipient, tone string) (*models.PaymentReminder, error) {
 	subject := buildSubject(invoice.InvoiceNumber, tone, int(time.Since(invoice.DueDate).Hours()/24))
 
-	// Create reminder record
-	now := time.Now().Unix()
 	reminder := &models.PaymentReminder{
 		ID:             uuid.New(),
 		TenantID:       tenant.ID,
 		InvoiceID:      invoice.ID,
 		CustomerID:     customer.ID,
 		ReminderNumber: reminderNumber,
+		IsManual:       manual,
 		Channel:        channel,
 		Status:         "pending",
 		Tone:           tone,
@@ -208,15 +220,37 @@ func (s *PaymentReminderService) SendReminder(ctx context.Context, tenant *model
 		Subject:        subject,
 	}
 
-	// Claim the (invoice_id, reminder_number) slot before sending. The unique
-	// constraint makes this the idempotency guard: if a concurrent run already
-	// inserted it, nothing is inserted and nothing is sent.
 	res := s.db.WithContext(ctx).Clauses(clause.OnConflict{DoNothing: true}).Create(reminder)
 	if res.Error != nil {
-		return fmt.Errorf("failed to create reminder record: %w", res.Error)
+		return nil, fmt.Errorf("failed to create reminder record: %w", res.Error)
 	}
 	if res.RowsAffected == 0 {
-		return ErrReminderAlreadySent
+		// The slot exists. Retake it only if the earlier send failed or its
+		// claim is stale (Unscoped: a soft-deleted row still holds the slot).
+		var existing models.PaymentReminder
+		if err := s.db.WithContext(ctx).Unscoped().
+			Where("invoice_id = ? AND is_manual = ? AND reminder_number = ?", invoice.ID, manual, reminderNumber).
+			First(&existing).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil, ErrReminderAlreadySent
+			}
+			return nil, fmt.Errorf("failed to load reminder record: %w", err)
+		}
+		retake := s.db.WithContext(ctx).Unscoped().Model(&models.PaymentReminder{}).
+			Where("id = ? AND deleted_at IS NULL AND (status = ? OR (status = ? AND updated_at < ?))",
+				existing.ID, "failed", "pending", time.Now().Add(-staleReminderClaim)).
+			Updates(map[string]interface{}{
+				"status": "pending", "channel": channel, "recipient": recipient,
+				"tone": tone, "subject": subject, "error_message": nil, "updated_at": time.Now(),
+			})
+		if retake.Error != nil {
+			return nil, fmt.Errorf("failed to reclaim reminder record: %w", retake.Error)
+		}
+		if retake.RowsAffected == 0 {
+			return nil, ErrReminderAlreadySent
+		}
+		reminder.ID = existing.ID
+		reminder.CreatedAt = existing.CreatedAt
 	}
 
 	// Send via appropriate channel
@@ -226,27 +260,38 @@ func (s *PaymentReminderService) SendReminder(ctx context.Context, tenant *model
 		sendErr = s.sendEmailReminder(ctx, tenant, invoice, customer, tone, subject, recipient)
 	case "sms":
 		sendErr = s.sendSMSReminder(ctx, invoice, customer, tone, recipient)
+	default:
+		sendErr = fmt.Errorf("unsupported reminder channel %q", channel)
 	}
 
-	// Update reminder status
+	// Record the outcome. A failed row is retried by the next run.
 	if sendErr != nil {
 		errMsg := sendErr.Error()
-		s.db.WithContext(ctx).Model(reminder).Updates(map[string]interface{}{
+		if err := s.db.WithContext(ctx).Model(reminder).Updates(map[string]interface{}{
 			"status":        "failed",
 			"error_message": errMsg,
-		})
-		return fmt.Errorf("failed to send reminder: %w", sendErr)
+		}).Error; err != nil {
+			logging.Error(ctx, fmt.Sprintf("%s Failed to record reminder failure", logPrefix), map[string]any{"error": err.Error(), "reminder_id": reminder.ID.String()})
+		}
+		return nil, fmt.Errorf("failed to send reminder: %w", sendErr)
 	}
 
-	s.db.WithContext(ctx).Model(reminder).Updates(map[string]interface{}{
+	sentAt := time.Now().Unix()
+	if err := s.db.WithContext(ctx).Model(reminder).Updates(map[string]interface{}{
 		"status":  "sent",
-		"sent_at": now,
-	})
+		"sent_at": sentAt,
+	}).Error; err != nil {
+		// The message went out; a later run would see a stale "pending" claim
+		// and could resend, so surface this loudly.
+		logging.Error(ctx, fmt.Sprintf("%s Reminder sent but status update failed", logPrefix), map[string]any{"error": err.Error(), "reminder_id": reminder.ID.String()})
+	}
+	reminder.Status = "sent"
+	reminder.SentAt = &sentAt
 
 	logging.Info(ctx, fmt.Sprintf("%s Reminder sent for invoice %s (#%d via %s)", logPrefix, invoice.InvoiceNumber, reminderNumber, channel),
-		map[string]any{"invoice_id": invoice.ID.String(), "customer": customer.GetDisplayName(), "tone": tone})
+		map[string]any{"invoice_id": invoice.ID.String(), "manual": manual, "tone": tone})
 
-	return nil
+	return reminder, nil
 }
 
 // SendManualReminder sends a manual reminder for an invoice
@@ -278,12 +323,15 @@ func (s *PaymentReminderService) SendManualReminder(ctx context.Context, tenantI
 		return nil, fmt.Errorf("failed to load tenant: %w", err)
 	}
 
-	// Get next reminder number
+	// Manual reminders are numbered separately from the automatic schedule
+	// so they never take an automatic slot.
 	var maxNumber int
-	s.db.WithContext(ctx).Model(&models.PaymentReminder{}).
-		Where("invoice_id = ?", invoiceID).
+	if err := s.db.WithContext(ctx).Unscoped().Model(&models.PaymentReminder{}).
+		Where("invoice_id = ? AND is_manual = ?", invoiceID, true).
 		Select("COALESCE(MAX(reminder_number), 0)").
-		Scan(&maxNumber)
+		Scan(&maxNumber).Error; err != nil {
+		return nil, fmt.Errorf("failed to number reminder: %w", err)
+	}
 	reminderNumber := maxNumber + 1
 
 	// Determine channel
@@ -298,19 +346,12 @@ func (s *PaymentReminderService) SendManualReminder(ctx context.Context, tenantI
 	}
 	tone := determineTone(daysOverdue)
 
-	if err := s.SendReminder(ctx, &tenant, &invoice, invoice.Customer, reminderNumber, channel, recipient, tone); err != nil {
+	reminder, err := s.sendReminder(ctx, &tenant, &invoice, invoice.Customer, reminderNumber, true, channel, recipient, tone)
+	if err != nil {
 		return nil, err
 	}
-
-	// Load the created reminder for response
-	var reminder models.PaymentReminder
-	if err := s.db.WithContext(ctx).
-		Preload("Invoice").
-		Preload("Customer").
-		Where("invoice_id = ? AND reminder_number = ?", invoiceID, reminderNumber).
-		First(&reminder).Error; err != nil {
-		return nil, fmt.Errorf("failed to load created reminder: %w", err)
-	}
+	reminder.Invoice = &invoice
+	reminder.Customer = invoice.Customer
 
 	resp := reminder.ToResponse()
 	return &resp, nil
