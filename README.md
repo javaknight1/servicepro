@@ -2,6 +2,8 @@
 
 A comprehensive service management platform for field service businesses. Built with Go (backend) and React (frontend).
 
+> **Not hosted yet — local only.** The hosting target (API on Google Cloud Run, web on Cloudflare Workers at `servicepro.sharkfins.xyz`) and the release pipeline are wired up but inert. See [docs/deployment](docs/deployment/README.md).
+
 ## Overview
 
 ServicePro provides tools for managing:
@@ -17,14 +19,15 @@ ServicePro provides tools for managing:
 
 ### Backend
 
-- **Language**: Go 1.21+
+- **Language**: Go (version in `backend/go.mod`, currently 1.24)
 - **Framework**: Gin
-- **Database**: PostgreSQL 15+ with GORM
-- **Cache**: Redis
+- **Database**: PostgreSQL 16 with GORM; golang-migrate migrations in `backend/migrations/`
+- **Cache**: Redis 7
 - **Authentication**: JWT with bcrypt
 
 ### Frontend
 
+- **Runtime**: Node.js 22 (`frontend/.nvmrc`)
 - **Framework**: React 18 with TypeScript
 - **Build Tool**: Vite
 - **State**: Zustand + React Query
@@ -35,20 +38,27 @@ ServicePro provides tools for managing:
 ### Prerequisites
 
 - Docker & Docker Compose
-- Go 1.21+ (for backend development)
-- Node.js 18+ (for frontend development)
+- Go matching `backend/go.mod` (for running the backend on the host)
+- Node.js 22 (`nvm use` in `frontend/`)
+- `golangci-lint` (optional locally; `make install-golangci-lint`)
 
-### Start with Docker
+### Everything in Docker
 
 ```bash
-# Start all services
-make dev
+cp backend/.env.example backend/.env   # first time only
+make docker-dev                        # postgres, redis, mailpit, minio, api, web, grafana
+```
 
-# View logs
-make logs
+The API container migrates its own database on startup
+(`RUN_MIGRATIONS_ON_STARTUP=true`). Load test data with `make seed`
+(login `dev@servicepro.local` / `password123`).
 
-# Stop services
-make stop
+### Backend and frontend on the host
+
+```bash
+make setup          # npm ci + go mod download, git hooks, db containers, migrate, seed
+make dev-backend    # terminal 1 — http://localhost:8080
+make dev-frontend   # terminal 2 — http://localhost:3000
 ```
 
 ### Access the Application
@@ -56,23 +66,31 @@ make stop
 - Frontend: http://localhost:3000
 - Backend API: http://localhost:8080
 - API Health: http://localhost:8080/health
+- Swagger UI: http://localhost:8080/api/docs
+- Mailpit: http://localhost:8025
+- Grafana: http://localhost:3001 (admin/admin)
 
 ## Project Structure
 
 ```
 servicepro/
-├── backend/              # Go backend service
-├── frontend/             # React frontend app
+├── backend/              # Go API (cmd/, internal/, migrations/, seeds/, docs/ = generated OpenAPI)
+├── frontend/             # React app + Cloudflare Worker (wrangler.jsonc, worker/)
 ├── docs/                 # Developer documentation
 │   ├── getting-started/  # Setup guides
 │   ├── api/              # API reference
 │   ├── architecture/     # System design
-│   ├── features/         # Feature docs
+│   ├── deployment/       # Hosting overview
+│   ├── ops/              # Cloud Run setup, deploy/rollback, backups
 │   └── observability/    # Monitoring docs
+├── scripts/              # bump-version, gh-release, deploy-cloudrun, git-hooks/
+├── .github/workflows/    # CI, release, scheduled jobs, backups
 ├── help/                 # End-user documentation
 ├── training/             # Training materials
-├── docker-compose.yml    # Local development
-└── Makefile              # Build commands
+├── docker-compose.yml    # Local development stack
+├── Makefile              # All build tasks (`make help`)
+├── RELEASING.md          # Versioning + release process
+└── VERSION               # Current release version
 ```
 
 ## Documentation
@@ -83,57 +101,36 @@ servicepro/
 | **Full Setup**    | [docs/getting-started/full-setup.md](docs/getting-started/full-setup.md)   |
 | **API Reference** | [docs/api/](docs/api/)                                                     |
 | **Architecture**  | [docs/architecture/](docs/architecture/)                                   |
+| **Releasing**     | [RELEASING.md](RELEASING.md)                                               |
+| **Deployment**    | [docs/deployment/](docs/deployment/README.md), [docs/ops/](docs/ops/)      |
 | **Help Center**   | [help/](help/)                                                             |
 
 ## Development
 
-### Backend
+Every task goes through the single root Makefile — run `make help` for the full list.
 
 ```bash
-cd backend
-make run        # Start server
-make test       # Run tests
-make lint       # Lint code
+make install-hooks   # pre-commit (lint/test/build/OpenAPI drift) + commit-msg hooks
+make test            # backend + frontend unit tests
+make lint            # golangci-lint + eslint
+make ci-local        # the core CI gates
+make docs            # regenerate swagger + TypeScript API types (commit the result)
+make migrate         # apply migrations to the local db
+make migrate-create NAME=add_foo
+make seed            # load backend/seeds/dev_seed.sql
 ```
 
-### Frontend
+## Releases
 
-```bash
-cd frontend
-npm run dev     # Development server
-npm run build   # Production build
-npm run test    # Run tests
-```
-
-### Useful Make Commands
-
-```bash
-make dev        # Start all services with Docker
-make stop       # Stop all services
-make logs       # View service logs
-make test       # Run all tests
-make lint       # Run linters
-make clean      # Clean build artifacts
-```
-
-## Deployment
-
-> **Coming Soon**: Deployment documentation will be added once hosting infrastructure is finalized.
+Commits use type prefixes (`feat:`, `fix:`, `deps:`, `chore:`, ...) — they are
+the changelog. Releases ship from a `v*` tag; `make bump` picks the version.
+History up to v0.7.0 is in [CHANGELOG.md](CHANGELOG.md); later releases are
+GitHub Releases. See [RELEASING.md](RELEASING.md).
 
 ## Contributing
 
-1. Create a feature branch from `master`
-2. Make your changes
-3. Run tests and linting
-4. Submit a pull request
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
 Proprietary - All rights reserved.
-
-## Support
-
-- **Help Center**: [/help](help/)
-- **Email**: support@servicepro.com

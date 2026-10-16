@@ -58,16 +58,15 @@ Welcome to the ServicePro documentation. This guide covers everything you need t
 
 ### Deployment
 
-_Coming Soon_ - Deployment documentation is being developed as infrastructure decisions are finalized.
-
-For now, see the [Quick Start Guide](./getting-started/quick-start.md) for local development setup.
+Not hosted yet — local only. The target (Cloud Run API + Cloudflare Workers web) and the release pipeline are documented in [Deployment](./deployment/README.md), [docs/ops/](./ops/) and [RELEASING.md](/RELEASING.md).
 
 ## Related Documentation
 
 - [End-User Help](/help/README.md) - User guides and tutorials
 - [Training Materials](/training/README.md) - Onboarding and reference guides
 - [Contributing Guide](/CONTRIBUTING.md) - How to contribute to ServicePro
-- [Changelog](/CHANGELOG.md) - Release history
+- [Releasing](/RELEASING.md) - Versioning and the release pipeline
+- [Changelog](/CHANGELOG.md) - Release history up to v0.7.0 (later: GitHub Releases)
 
 ## Service URLs (Development)
 
