@@ -371,7 +371,7 @@ func (h *PaymentTermsHandler) CalculateDueDate(c *gin.Context) {
 
 	timezone := req.Timezone
 	if timezone == "" {
-		timezone = "UTC"
+		timezone = h.service.TenantTimezone(ctx) // tenant setting, else UTC (T127)
 	}
 
 	dueDate, err := h.service.CalculateDueDate(ctx, req.IssueDate, req.PaymentTermID, timezone)
@@ -457,7 +457,7 @@ func (h *PaymentTermsHandler) CalculateLateFee(c *gin.Context) {
 
 	timezone := req.Timezone
 	if timezone == "" {
-		timezone = "UTC"
+		timezone = h.service.TenantTimezone(ctx) // tenant setting, else UTC (T127)
 	}
 
 	lateFee, applicable, err := h.service.CalculateLateFee(
@@ -504,7 +504,7 @@ func (h *PaymentTermsHandler) GetPaymentStatus(c *gin.Context) {
 
 	timezone := req.Timezone
 	if timezone == "" {
-		timezone = "UTC"
+		timezone = h.service.TenantTimezone(ctx) // tenant setting, else UTC (T127)
 	}
 
 	currentDate := time.Now()
@@ -551,7 +551,7 @@ func (h *PaymentTermsHandler) CalculatePaymentDetails(c *gin.Context) {
 
 	timezone := req.Timezone
 	if timezone == "" {
-		timezone = "UTC"
+		timezone = h.service.TenantTimezone(ctx) // tenant setting, else UTC (T127)
 	}
 
 	details, err := h.service.CalculatePaymentDetails(

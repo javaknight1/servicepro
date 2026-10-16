@@ -13,6 +13,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/javaknight1/servicepro/backend/internal/models"
+	"github.com/javaknight1/servicepro/backend/internal/tenancy"
 )
 
 func setupPaymentTermsTestDB(t *testing.T) *gorm.DB {
@@ -143,19 +144,19 @@ func TestPaymentTermsService_CalculateDueDate(t *testing.T) {
 			name:      "UTC timezone",
 			issueDate: time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC),
 			timezone:  "UTC",
-			expected:  time.Date(2024, 2, 14, 10, 0, 0, 0, time.UTC),
+			expected:  time.Date(2024, 2, 14, 0, 0, 0, 0, time.UTC),
 		},
 		{
 			name:      "America/New_York timezone",
 			issueDate: time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC),
 			timezone:  "America/New_York",
-			expected:  time.Date(2024, 2, 14, 5, 0, 0, 0, getLocation(t, "America/New_York")),
+			expected:  time.Date(2024, 2, 14, 0, 0, 0, 0, time.UTC),
 		},
 		{
 			name:      "Asia/Tokyo timezone",
 			issueDate: time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC),
 			timezone:  "Asia/Tokyo",
-			expected:  time.Date(2024, 2, 14, 19, 0, 0, 0, getLocation(t, "Asia/Tokyo")),
+			expected:  time.Date(2024, 2, 14, 0, 0, 0, 0, time.UTC),
 		},
 	}
 
@@ -456,15 +457,8 @@ func TestPaymentTermsService_TimeZoneHandling(t *testing.T) {
 			dueDate, err := service.CalculateDueDate(ctx, issueDate, term.ID, tz)
 			require.NoError(t, err)
 
-			// Verify the due date is 30 days later
-			duration := dueDate.Sub(issueDate)
-			expectedDuration := time.Hour * 24 * 30
-			assert.Equal(t, expectedDuration, duration)
-
-			// Verify timezone is correct
-			loc, err := time.LoadLocation(tz)
-			require.NoError(t, err)
-			assert.Equal(t, loc.String(), dueDate.Location().String())
+			// A DATE issue date keeps its calendar day in every zone (T127).
+			assert.Equal(t, time.Date(2024, 2, 14, 0, 0, 0, 0, time.UTC), dueDate)
 		})
 	}
 }
@@ -570,4 +564,60 @@ func getLocation(t *testing.T, tz string) *time.Location {
 	loc, err := time.LoadLocation(tz)
 	require.NoError(t, err)
 	return loc
+}
+
+// T127: due dates are DATE values (midnight UTC). They used to be converted
+// with .In(loc), which moved them to the previous day in US time zones, and
+// day counts used Hours()/24, which is off by one across a DST change.
+func TestPaymentTerms_CalendarDayMath(t *testing.T) {
+	svc := NewPaymentTermsService(nil)
+	term := &models.PaymentTerm{
+		DaysUntilDue: 30, GracePeriodDays: 3,
+		LateFeePercentage: decimal.NewFromInt(5), LateFeeAmount: decimal.NewFromInt(25),
+	}
+	issue := time.Date(2024, 2, 15, 0, 0, 0, 0, time.UTC) // DATE value
+
+	for _, tz := range []string{"UTC", "America/New_York", "America/Los_Angeles", "Pacific/Auckland"} {
+		due := svc.CalculateDueDateFromTerm(issue, term, tz)
+		assert.Equal(t, time.Date(2024, 3, 16, 0, 0, 0, 0, time.UTC), due, tz)
+	}
+
+	ny := "America/New_York"
+	nyLoc, err := time.LoadLocation(ny)
+	require.NoError(t, err)
+	// US DST starts 2024-03-10. Due 2024-03-08; "now" is 2024-03-12 09:00
+	// New York time: exactly 4 calendar days overdue.
+	due := time.Date(2024, 3, 8, 0, 0, 0, 0, time.UTC)
+	now := time.Date(2024, 3, 12, 9, 0, 0, 0, nyLoc)
+	status, err := svc.GetPaymentStatusFromTerm(decimal.NewFromInt(100), issue, due, term, now, ny)
+	require.NoError(t, err)
+	assert.Equal(t, 4, status.DaysOverdue)
+	assert.Equal(t, due, status.DueDate, "due date must not shift to the previous day")
+	assert.Equal(t, "overdue", status.Status)
+
+	// 23:30 on the last grace day in New York (already the next day in UTC)
+	// is still within the grace period.
+	lastGraceEvening := time.Date(2024, 3, 11, 23, 30, 0, 0, nyLoc)
+	_, applicable, err := svc.CalculateLateFeeFromTerm(decimal.NewFromInt(100), lastGraceEvening, due, term, ny)
+	require.NoError(t, err)
+	assert.False(t, applicable, "no late fee before the grace period has ended locally")
+}
+
+// T127: when a calculation request omits the time zone, the tenant's
+// configured time zone is used instead of UTC.
+func TestPaymentTerms_TenantTimezoneDefault(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	require.NoError(t, err)
+	createSQLiteTableForModel(t, db, &models.Tenant{}, "")
+	tenantID := uuid.New()
+	settings := models.TenantSettings{Timezone: "America/Chicago"}
+	raw, err := settings.Value()
+	require.NoError(t, err)
+	require.NoError(t, db.Exec(`INSERT INTO tenants (id, name, slug, settings, created_at, updated_at) VALUES (?, 'Acme', 'acme', ?, ?, ?)`,
+		tenantID.String(), raw, time.Now(), time.Now()).Error)
+
+	svc := NewPaymentTermsService(db)
+	assert.Equal(t, "America/Chicago", svc.TenantTimezone(tenancy.WithTenant(context.Background(), tenantID)))
+	assert.Equal(t, "UTC", svc.TenantTimezone(context.Background()), "no tenant in context")
+	assert.Equal(t, "UTC", svc.TenantTimezone(tenancy.WithTenant(context.Background(), uuid.New())), "unknown tenant")
 }

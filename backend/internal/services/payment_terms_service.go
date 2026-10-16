@@ -161,21 +161,11 @@ func (s *PaymentTermsService) CalculateDueDate(ctx context.Context, issueDate ti
 	return s.CalculateDueDateFromTerm(issueDate, term, timezone), nil
 }
 
-// CalculateDueDateFromTerm calculates due date from a payment term object
+// CalculateDueDateFromTerm returns the due date (a calendar day, as midnight
+// UTC like a DATE column) DaysUntilDue days after the issue date. An issue
+// date that is not a DATE value is read as its calendar day in timezone.
 func (s *PaymentTermsService) CalculateDueDateFromTerm(issueDate time.Time, term *models.PaymentTerm, timezone string) time.Time {
-	// Load timezone
-	loc, err := time.LoadLocation(timezone)
-	if err != nil {
-		loc = time.UTC
-	}
-
-	// Convert issue date to specified timezone
-	issueDateInTz := issueDate.In(loc)
-
-	// Calculate due date by adding the number of days
-	dueDate := issueDateInTz.AddDate(0, 0, term.DaysUntilDue)
-
-	return dueDate
+	return calendarDay(issueDate, loadLocationOrUTC(timezone)).AddDate(0, 0, term.DaysUntilDue)
 }
 
 // CalculateEarlyPaymentDiscount calculates the discount for early payment
@@ -206,11 +196,9 @@ func (s *PaymentTermsService) CalculateEarlyPaymentDiscountFromTerm(
 		return decimal.Zero, false, nil
 	}
 
-	// Calculate the discount deadline
-	discountDeadline := issueDate.AddDate(0, 0, term.DiscountDays)
-
-	// Check if payment is within the discount period
-	if paymentDate.After(discountDeadline) {
+	// The discount applies through the end of the deadline day.
+	discountDeadline := calendarDay(issueDate, time.UTC).AddDate(0, 0, term.DiscountDays)
+	if calendarDay(paymentDate, time.UTC).After(discountDeadline) {
 		return decimal.Zero, false, nil
 	}
 
@@ -246,20 +234,12 @@ func (s *PaymentTermsService) CalculateLateFeeFromTerm(
 	term *models.PaymentTerm,
 	timezone string,
 ) (lateFee decimal.Decimal, applicable bool, err error) {
-	// Load timezone
-	loc, err := time.LoadLocation(timezone)
-	if err != nil {
-		loc = time.UTC
-	}
+	loc := loadLocationOrUTC(timezone)
+	today := calendarDay(currentDate, loc)
+	gracePeriodEnd := calendarDay(dueDate, loc).AddDate(0, 0, term.GracePeriodDays)
 
-	currentDateInTz := currentDate.In(loc)
-	dueDateInTz := dueDate.In(loc)
-
-	// Calculate grace period end date
-	gracePeriodEnd := dueDateInTz.AddDate(0, 0, term.GracePeriodDays)
-
-	// Check if we're past the grace period
-	if currentDateInTz.Before(gracePeriodEnd) || currentDateInTz.Equal(gracePeriodEnd) {
+	// Late only after the last day of the grace period.
+	if !today.After(gracePeriodEnd) {
 		return decimal.Zero, false, nil
 	}
 
@@ -304,22 +284,17 @@ func (s *PaymentTermsService) GetPaymentStatusFromTerm(
 	currentDate time.Time,
 	timezone string,
 ) (*PaymentStatus, error) {
-	// Load timezone
-	loc, err := time.LoadLocation(timezone)
-	if err != nil {
-		loc = time.UTC
-	}
-
-	currentDateInTz := currentDate.In(loc)
-	dueDateInTz := dueDate.In(loc)
-	issueDateInTz := issueDate.In(loc)
+	loc := loadLocationOrUTC(timezone)
+	currentDateInTz := calendarDay(currentDate, loc)
+	dueDateInTz := calendarDay(dueDate, loc)
+	issueDateInTz := calendarDay(issueDate, loc)
 
 	status := &PaymentStatus{
 		DueDate: dueDateInTz,
 	}
 
-	// Calculate days until/past due
-	daysDiff := int(dueDateInTz.Sub(currentDateInTz).Hours() / 24)
+	// Calculate days until/past due (whole calendar days)
+	daysDiff := calendarDaysBetween(currentDateInTz, dueDateInTz, loc)
 
 	if daysDiff > 0 {
 		status.DaysUntilDue = daysDiff
@@ -403,13 +378,8 @@ func (s *PaymentTermsService) CalculatePaymentDetails(
 		return nil, err
 	}
 
-	// Load timezone
-	loc, err := time.LoadLocation(timezone)
-	if err != nil {
-		loc = time.UTC
-	}
-
-	issueDateInTz := issueDate.In(loc)
+	loc := loadLocationOrUTC(timezone)
+	issueDateInTz := calendarDay(issueDate, loc)
 
 	result := &PaymentCalculationResult{
 		DueDate:        s.CalculateDueDateFromTerm(issueDateInTz, term, timezone),
@@ -436,8 +406,7 @@ func (s *PaymentTermsService) CalculatePaymentDetails(
 		} else {
 			// Show potential discount
 			result.DiscountAmount = invoiceAmount.Mul(term.DiscountPercentage).Div(decimal.NewFromInt(100)).Round(2)
-			currentTime := time.Now().In(loc)
-			result.IsEarlyPaymentEligible = currentTime.Before(discountDeadline) || currentTime.Equal(discountDeadline)
+			result.IsEarlyPaymentEligible = !calendarDay(time.Now(), loc).After(discountDeadline)
 		}
 	}
 
@@ -452,11 +421,11 @@ func (s *PaymentTermsService) CalculatePaymentDetails(
 		}
 
 		// Check if overdue
-		paymentDateInTz := paymentDate.In(loc)
+		paymentDay := calendarDay(*paymentDate, loc)
 		gracePeriodEnd := result.DueDate.AddDate(0, 0, term.GracePeriodDays)
-		if paymentDateInTz.After(gracePeriodEnd) {
+		if paymentDay.After(gracePeriodEnd) {
 			result.IsOverdue = true
-			result.DaysOverdue = int(paymentDateInTz.Sub(result.DueDate).Hours() / 24)
+			result.DaysOverdue = calendarDaysBetween(result.DueDate, paymentDay, loc)
 			result.GracePeriodEnds = &gracePeriodEnd
 		}
 	}
