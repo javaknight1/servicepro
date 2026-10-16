@@ -121,6 +121,8 @@ func SetupServices(
 			svc.StripeEvents = stripeService.NewEventProcessor()
 			svc.StripeEvents.RegisterDefaultHandlers()
 			svc.StripeWebhook = stripeService.NewWebhookHandler(cfg, svc.StripeEvents)
+			// Persistent dedupe across restarts/instances (F-10).
+			svc.StripeWebhook.SetEventStore(stripeService.NewGormEventStore(db))
 
 			// Invoice payment service (for Stripe checkout)
 			invoicePaymentSvc, err := services.NewInvoicePaymentService(&services.InvoicePaymentServiceConfig{

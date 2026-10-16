@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/utils"
@@ -694,39 +695,51 @@ func (s *InvoiceService) ValidatePaymentToken(ctx context.Context, token string)
 	return invoice, nil
 }
 
-// MarkInvoiceAsPaid marks an invoice as paid and stores Stripe payment information
+// MarkInvoiceAsPaid applies a Stripe Checkout payment to an invoice.
+//
+// It is idempotent per checkout session: the invoice row is locked
+// (SELECT ... FOR UPDATE) and a session that was already applied is not
+// credited again, so duplicate webhook deliveries — even to two instances at
+// once — can't double-count a partial payment (F-10). A unique index on
+// stripe_checkout_session_id (migration 000006) backs this up.
 func (s *InvoiceService) MarkInvoiceAsPaid(ctx context.Context, id uuid.UUID, amountPaid decimal.Decimal, stripeCheckoutSessionID, stripePaymentIntentID string) (*models.Invoice, error) {
-	invoice, err := s.GetInvoice(ctx, id)
+	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var invoice models.Invoice
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&invoice, "id = ?", id).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return ErrInvoiceNotFound
+			}
+			return err
+		}
+
+		if invoice.Status == models.InvoiceStatusPaid {
+			return nil
+		}
+		if stripeCheckoutSessionID != "" && invoice.StripeCheckoutSessionID != nil &&
+			*invoice.StripeCheckoutSessionID == stripeCheckoutSessionID {
+			return nil // this session was already applied
+		}
+
+		newAmountPaid := invoice.AmountPaid.Add(amountPaid)
+		newStatus := models.InvoiceStatusPartiallyPaid
+		if newAmountPaid.GreaterThanOrEqual(invoice.TotalAmount) {
+			newStatus = models.InvoiceStatusPaid
+		}
+
+		updates := map[string]interface{}{
+			"status":                     newStatus,
+			"amount_paid":                newAmountPaid,
+			"paid_date":                  time.Now(),
+			"stripe_checkout_session_id": stripeCheckoutSessionID,
+			"stripe_payment_intent_id":   stripePaymentIntentID,
+		}
+		if err := tx.Model(&models.Invoice{}).Where("id = ?", id).Updates(updates).Error; err != nil {
+			return fmt.Errorf("failed to mark invoice as paid: %w", err)
+		}
+		return nil
+	})
 	if err != nil {
 		return nil, err
-	}
-
-	// Check if already paid
-	if invoice.Status == models.InvoiceStatusPaid {
-		return invoice, nil // Idempotent
-	}
-
-	now := time.Now()
-
-	// Determine new status based on amount paid
-	newAmountPaid := invoice.AmountPaid.Add(amountPaid)
-	var newStatus models.InvoiceStatus
-	if newAmountPaid.GreaterThanOrEqual(invoice.TotalAmount) {
-		newStatus = models.InvoiceStatusPaid
-	} else {
-		newStatus = models.InvoiceStatusPartiallyPaid
-	}
-
-	updates := map[string]interface{}{
-		"status":                     newStatus,
-		"amount_paid":                newAmountPaid,
-		"paid_date":                  now,
-		"stripe_checkout_session_id": stripeCheckoutSessionID,
-		"stripe_payment_intent_id":   stripePaymentIntentID,
-	}
-
-	if err := s.db.WithContext(ctx).Model(&models.Invoice{}).Where("id = ?", id).Updates(updates).Error; err != nil {
-		return nil, fmt.Errorf("failed to mark invoice as paid: %w", err)
 	}
 
 	return s.GetInvoice(ctx, id)
