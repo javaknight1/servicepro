@@ -1,0 +1,86 @@
+#!/usr/bin/env bash
+# Pre-commit hook: lint, test, build and OpenAPI-drift check on what is staged.
+#
+# Versioned here so every clone runs the same checks: `make install-hooks`
+# symlinks .git/hooks/pre-commit -> scripts/git-hooks/pre-commit. Do NOT edit
+# .git/hooks/pre-commit directly — the install target overwrites it.
+#
+# Mirrors the CI gates in .github/workflows/ci.yml, scoped to the staged files
+# so a docs-only commit costs nothing:
+#   backend/**/*.go       -> golangci-lint, go test (unit), go build
+#   handlers/models/main  -> OpenAPI drift (backend/docs + api.generated.ts)
+#   frontend/**/*.{ts,tsx} -> eslint, tsc --noEmit
+#
+# Skip in an emergency with `git commit --no-verify` (CI still runs everything).
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+cd "$REPO_ROOT"
+
+STAGED=$(git diff --cached --name-only --diff-filter=ACMR)
+GO_CHANGED=$(grep -E '^backend/.*\.go$' <<<"$STAGED" || true)
+WEB_CHANGED=$(grep -E '^frontend/.*\.(ts|tsx)$' <<<"$STAGED" | grep -v '^frontend/src/types/api.generated.ts$' || true)
+
+if [ -z "$GO_CHANGED" ] && [ -z "$WEB_CHANGED" ]; then
+    exit 0
+fi
+
+echo "=== Pre-commit checks ==="
+
+if [ -n "$GO_CHANGED" ]; then
+    echo "> Go lint (golangci-lint)..."
+    (cd backend && golangci-lint run --config .golangci.yml ./...)
+    echo "  ok"
+
+    echo "> Go unit tests..."
+    (cd backend && go test -timeout 5m ./... -skip Integration)
+    echo "  ok"
+
+    echo "> Go build..."
+    (cd backend && go build ./...)
+    echo "  ok"
+
+    # OpenAPI drift. swag reads annotations from the handlers, the models and
+    # cmd/main.go (general API info), so only those paths can change the spec.
+    # Regenerate into a temp dir with the swag version pinned in go.mod (the
+    # same one `make swagger` and CI use) and compare with what's committed.
+    SWAG_CHANGED=$(grep -E '^backend/(internal/api/handlers/|internal/models/|cmd/main\.go)' <<<"$GO_CHANGED" || true)
+    if [ -n "$SWAG_CHANGED" ]; then
+        echo "> OpenAPI drift..."
+        SWAG_VERSION=$(awk '$1 == "github.com/swaggo/swag" { print $2 }' backend/go.mod)
+        TMP_DOCS=$(mktemp -d)
+        trap 'rm -rf "$TMP_DOCS"' EXIT
+        (cd backend && go run "github.com/swaggo/swag/cmd/swag@${SWAG_VERSION}" init \
+            -g cmd/main.go --output "$TMP_DOCS" \
+            --parseDependency --parseInternal >/dev/null 2>&1)
+        if ! cmp -s "$TMP_DOCS/swagger.json" backend/docs/swagger.json \
+           || ! cmp -s "$TMP_DOCS/swagger.yaml" backend/docs/swagger.yaml; then
+            echo "x OpenAPI spec is out of date."
+            echo "  Swag annotations in your staged handler/model changes don't match"
+            echo "  the committed backend/docs artifacts. Fix with:"
+            echo ""
+            echo "      make docs"
+            echo "      git add backend/docs frontend/src/types/api.generated.ts"
+            echo ""
+            exit 1
+        fi
+        echo "  ok"
+    fi
+fi
+
+if [ -n "$WEB_CHANGED" ]; then
+    if [ ! -d frontend/node_modules ]; then
+        echo "x frontend/node_modules missing — run: cd frontend && npm ci"
+        exit 1
+    fi
+
+    echo "> Frontend lint (eslint)..."
+    (cd frontend && npm run --silent lint)
+    echo "  ok"
+
+    echo "> Frontend typecheck (tsc)..."
+    (cd frontend && npm run --silent type-check)
+    echo "  ok"
+fi
+
+echo "=== All pre-commit checks passed ==="

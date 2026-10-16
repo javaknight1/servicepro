@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+# commit-msg hook: enforce the commit-subject contract that drives releases.
+#
+# The subject's type prefix is the changelog (RELEASING.md):
+#   user-facing (in release notes):  feat  fix
+#   filtered from release notes:     deps chore docs ci build test style refactor perf release
+#   also allowed:                    revert, Revert "...", Merge ..., fixup!/squash!/amend!
+#
+# Format: <type>[(scope)][!]: <subject>
+#   feat: add recurring job templates
+#   fix(invoices): round tax per line, not per invoice
+#   deps(npm): bump vite from 7.3.0 to 7.3.1
+#   feat!: drop legacy /api/v1/version route      (! = breaking change)
+#
+# The legacy `minor:` / `major:` prefixes from before v0.8.0 are still
+# understood by scripts/bump-version.sh when reading history, but new commits
+# must use feat: (or feat!: for a breaking change).
+#
+# Installed by `make install-hooks`.
+set -euo pipefail
+
+MSG_FILE="$1"
+# First non-comment, non-blank line is the subject.
+SUBJECT=$(grep -v '^#' "$MSG_FILE" | sed '/^[[:space:]]*$/d' | head -n1 || true)
+
+if [ -z "$SUBJECT" ]; then
+    echo "x Empty commit message." >&2
+    exit 1
+fi
+
+# Git-generated subjects pass through untouched.
+case "$SUBJECT" in
+    "Merge "* | "Revert \""* | "fixup! "* | "squash! "* | "amend! "*) exit 0 ;;
+esac
+
+TYPES='feat|fix|deps|chore|docs|ci|build|test|style|refactor|perf|release|revert'
+if [[ "$SUBJECT" =~ ^(${TYPES})(\([a-zA-Z0-9._/-]+\))?!?:\ .+ ]]; then
+    exit 0
+fi
+
+{
+    echo "x Commit subject does not follow the prefix contract:"
+    echo ""
+    echo "    $SUBJECT"
+    echo ""
+    if [[ "$SUBJECT" =~ ^(minor|major)(\(.*\))?!?: ]]; then
+        echo "  'minor:' and 'major:' are retired. Use 'feat:' for a feature, or"
+        echo "  'feat!:' for a breaking change — bump-version.sh picks the version."
+        echo ""
+    fi
+    echo "  Expected: <type>[(scope)][!]: <subject>"
+    echo "  Types:    feat fix                      (shown in release notes)"
+    echo "            deps chore docs ci build test style refactor perf release revert"
+    echo "                                          (filtered from release notes)"
+    echo "  See RELEASING.md."
+} >&2
+exit 1

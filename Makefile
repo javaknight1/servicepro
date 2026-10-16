@@ -1,505 +1,377 @@
-.PHONY: help lint lint-fix lint-check test format format-check dev up down migrate seed
-.PHONY: test-unit test-integration test-e2e test-all
-.PHONY: coverage ci ci-local ci-lint ci-backend ci-frontend
-.PHONY: docker-dev docker-down docker-clean docker-logs docker-ps
-.PHONY: db-fresh db-fresh-seed db-reset hash-password
-.PHONY: swagger generate-api docs
-.PHONY: dead-code dead-code-update frontend-bundle-check
-
 # =============================================================================
-# Centralized Tool Versions (used by CI and pre-commit)
-# =============================================================================
-GOLANGCI_LINT_VERSION ?= v2.1.6
-PRETTIER_VERSION ?= 3.1.0
-NODE_VERSION ?= 20
-GO_VERSION ?= 1.21
-
-help:
-	@echo "Available targets:"
-	@echo ""
-	@echo "Development (without Docker):"
-	@echo "  dev          - Instructions for local dev setup"
-	@echo "  dev-db       - Start only database services (PostgreSQL, Redis)"
-	@echo "  dev-backend  - Start backend server (requires dev-db)"
-	@echo "  dev-frontend - Start frontend dev server"
-	@echo "  migrate      - Run database migrations"
-	@echo "  seed         - Load dev test data (user, orgs, customers, jobs, quotes)"
-	@echo "  db-reset     - Reset database (WARNING: deletes all data)"
-	@echo "  db-fresh-seed - Reset database AND load test data (recommended for dev)"
-	@echo ""
-	@echo "Setup:"
-	@echo "  setup        - Complete setup (install deps, start db)"
-	@echo "  install-deps - Install all dependencies"
-	@echo ""
-	@echo "Quality:"
-	@echo "  lint            - Run all linters"
-	@echo "  lint-check      - Run all linters in check-only mode (for CI)"
-	@echo "  lint-fix        - Run linters with auto-fix"
-	@echo "  format          - Format all code"
-	@echo "  format-check    - Check formatting without modifying (for CI)"
-	@echo "  dead-code       - Check for unused exports (dead code)"
-	@echo "  dead-code-update - Update dead code baseline"
-	@echo "  test            - Run all tests"
-	@echo ""
-	@echo "Testing:"
-	@echo "  test-unit        - Run unit tests only"
-	@echo "  test-integration - Run integration tests"
-	@echo "  test-e2e         - Run E2E tests (Cypress)"
-	@echo "  test-all         - Run all test suites"
-	@echo "  coverage         - Generate coverage reports"
-	@echo ""
-	@echo "CI/CD:"
-	@echo "  ci-local     - Run exactly what CI runs (lint + backend + frontend)"
-	@echo "  ci-lint      - Run lint checks only (matches CI)"
-	@echo "  ci-backend   - Run backend tests + build (matches CI)"
-	@echo "  ci-frontend  - Run frontend tests + build (matches CI)"
-	@echo "  ci           - Run full CI pipeline (legacy)"
-	@echo "  ci-quick     - Run quick CI (lint + unit tests)"
-	@echo ""
-	@echo "Docker:"
-	@echo "  docker-dev   - Start dev environment (hot reload)"
-	@echo "  docker-down  - Stop all containers"
-	@echo "  docker-clean - Remove all Docker data and images"
-	@echo "  docker-logs  - Follow logs from all containers"
-	@echo "  docker-ps    - Show running containers"
-	@echo ""
-	@echo "API Documentation:"
-	@echo "  swagger      - Generate Swagger docs from Go annotations"
-	@echo "  generate-api - Generate TypeScript types from Swagger"
-	@echo "  docs         - Run full API documentation pipeline"
-	@echo ""
-	@echo "Specific:"
-	@echo "  frontend-*   - Frontend-specific targets"
-	@echo "  backend-*    - Backend-specific targets"
-
-# =============================================================================
-# Linting (centralized rules - used by pre-commit and CI)
+# ServicePro — the ONE Makefile (CLAUDE.md: no Makefiles in subdirectories)
+#
+# `make` or `make help` lists every documented target (lines with `## `).
+# CI (.github/workflows/ci.yml) runs the same commands these targets wrap.
 # =============================================================================
 
-# Run all linters (allows auto-fix where applicable)
-lint: frontend-lint backend-lint
+SHELL := /bin/bash
+.DEFAULT_GOAL := help
 
-# Run all linters with auto-fix
-lint-fix: frontend-lint-fix backend-lint-fix format
+# -----------------------------------------------------------------------------
+# Tool versions — single source of truth for local + CI
+# -----------------------------------------------------------------------------
+# Go and Node come from files CI also reads (setup-go go-version-file,
+# setup-node node-version-file), so these are informational.
+GO_VERSION           := $(shell awk '$$1 == "go" { print $$2; exit }' backend/go.mod)
+NODE_VERSION         := $(shell cat frontend/.nvmrc 2>/dev/null)
+# Keep in sync with golangci/golangci-lint-action `version:` in ci.yml.
+GOLANGCI_LINT_VERSION ?= v2.11.4
+# swag must match the github.com/swaggo/swag version in backend/go.mod, or the
+# generated spec drifts from what CI regenerates.
+SWAG_VERSION         := $(shell awk '$$1 == "github.com/swaggo/swag" { print $$2 }' backend/go.mod)
+GOIMPORTS_VERSION    := $(shell awk '$$1 == "golang.org/x/tools" { print $$2 }' backend/go.mod)
+PRETTIER             := frontend/node_modules/.bin/prettier
 
-# Run all linters in check-only mode (for CI - no modifications)
-lint-check: frontend-lint-check backend-lint-check format-check
-	@echo "✓ All lint checks passed"
+# Local docker-compose database (see docker-compose.yml)
+LOCAL_DATABASE_URL   ?= postgresql://postgres:password@localhost:5432/servicepro?sslmode=disable
+PG_CONTAINER         := servicepro-postgres
+SEED_FILE            := backend/seeds/dev_seed.sql
+
+.PHONY: help versions \
+	setup install-deps install-golangci-lint install-hooks \
+	dev dev-db dev-backend dev-frontend up down \
+	migrate migrate-version migrate-down migrate-create seed db-wait db-fresh db-fresh-seed db-reset hash-password \
+	lint lint-check lint-fix format format-check \
+	backend-lint backend-lint-fix backend-format backend-test backend-build backend-vuln backend-docker \
+	frontend-lint frontend-lint-fix frontend-format frontend-typecheck frontend-test frontend-build \
+	frontend-bundle-check frontend-dead-code frontend-dead-code-update frontend-audit frontend-worker-dev \
+	dead-code dead-code-update \
+	test test-unit test-integration test-integration-api test-integration-db test-e2e test-e2e-open test-all \
+	coverage coverage-view \
+	ci-local ci-backend ci-frontend \
+	swagger generate-api docs openapi-check \
+	docker-dev docker-dev-d docker-down docker-clean docker-logs docker-logs-backend docker-logs-frontend \
+	docker-logs-db docker-ps docker-shell-backend docker-shell-frontend docker-shell-db \
+	docker-rebuild-backend docker-rebuild-frontend logs ps \
+	bump release-check clean
+
+help: ## Show this help
+	@grep -hE '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-26s\033[0m %s\n", $$1, $$2}'
+
+versions: ## Print the pinned tool versions
+	@echo "go:            $(GO_VERSION) (backend/go.mod)"
+	@echo "node:          $(NODE_VERSION) (frontend/.nvmrc)"
+	@echo "golangci-lint: $(GOLANGCI_LINT_VERSION)"
+	@echo "swag:          $(SWAG_VERSION) (backend/go.mod)"
+	@echo "VERSION:       $$(tr -d '[:space:]' < VERSION)"
 
 # =============================================================================
-# Formatting (centralized rules - used by pre-commit and CI)
+# Setup
 # =============================================================================
 
-# Format all files
-format:
-	@echo "Formatting all files with Prettier..."
-	@npx prettier --write .
+setup: install-deps install-hooks dev-db db-wait migrate seed ## Complete local setup (deps, hooks, db, migrations, seed)
+	@echo ""
+	@echo "Setup complete. Login: dev@servicepro.local / password123"
+	@echo "Next: make dev-backend  (terminal 1)  and  make dev-frontend  (terminal 2)"
 
-# Check formatting without modifying (for CI)
-format-check:
-	@echo "Checking formatting with Prettier..."
-	@npx prettier --check .
-
-# Combined testing
-test: frontend-test backend-test
-
-# Frontend targets
-frontend-lint:
-	@echo "Running ESLint on frontend..."
-	@if [ -n "$$(find frontend/src -name '*.js' -o -name '*.jsx' -o -name '*.ts' -o -name '*.tsx' 2>/dev/null)" ]; then \
-		cd frontend && ESLINT_USE_FLAT_CONFIG=true npx eslint . --max-warnings 0; \
-	else \
-		echo "No JavaScript/TypeScript files found in frontend/src"; \
-	fi
-
-frontend-lint-check: frontend-lint
-
-frontend-lint-fix:
-	@echo "Running ESLint with auto-fix on frontend..."
-	@if [ -n "$$(find frontend/src -name '*.js' -o -name '*.jsx' -o -name '*.ts' -o -name '*.tsx' 2>/dev/null)" ]; then \
-		cd frontend && ESLINT_USE_FLAT_CONFIG=true npx eslint . --fix --max-warnings 0; \
-	else \
-		echo "No JavaScript/TypeScript files found in frontend/src"; \
-	fi
-
-frontend-format:
-	@echo "Formatting frontend code..."
-	@npx prettier --write "frontend/**/*.{js,jsx,ts,tsx,json,css,scss,md}"
-
-frontend-test:
-	@echo "Running frontend tests..."
-	@cd frontend && npm test -- --run --passWithNoTests
-
-frontend-build:
-	@echo "Building frontend..."
-	@cd frontend && npm run build
-
-frontend-bundle-check:
-	@echo "Checking bundle size..."
-	@cd frontend && npm run analyze:bundle -- --ci
-
-frontend-dead-code:
-	@echo "Checking for dead code in frontend..."
-	@cd frontend && npm run dead-code
-
-frontend-dead-code-update:
-	@echo "Updating dead code baseline..."
-	@cd frontend && npm run dead-code:update
-
-# Dead code detection (alias)
-dead-code: frontend-dead-code
-
-dead-code-update: frontend-dead-code-update
-
-# Backend targets
-backend-lint:
-	@echo "Running golangci-lint $(GOLANGCI_LINT_VERSION) on backend..."
-	@if [ -n "$$(find backend -name '*.go' 2>/dev/null)" ]; then \
-		cd backend && golangci-lint run --config .golangci.yml; \
-	else \
-		echo "No Go files found in backend"; \
-	fi
-
-backend-lint-check: backend-lint
-
-backend-lint-fix:
-	@echo "Running go fmt and go imports on backend..."
-	@cd backend && gofmt -w . && goimports -w -local github.com/javaknight1/servicepro .
-
-backend-format:
-	@echo "Formatting backend code..."
-	@cd backend && gofmt -w .
-
-backend-test:
-	@echo "Running backend tests..."
-	@cd backend && go test -v -race -timeout 5m ./... -skip "Integration"
-
-backend-build:
-	@echo "Building backend..."
-	@cd backend && go build -o /dev/null ./cmd
-
-# Install dependencies
-install-deps: install-golangci-lint
-	@echo "Installing frontend dependencies..."
-	@cd frontend && npm install
-	@echo "Installing backend dependencies..."
+install-deps: ## Install frontend (npm ci) and backend (go mod download) dependencies
+	@cd frontend && npm ci
 	@cd backend && go mod download
 
-# Install golangci-lint at centralized version
-install-golangci-lint:
-	@echo "Installing golangci-lint $(GOLANGCI_LINT_VERSION)..."
-	@curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $$(go env GOPATH)/bin $(GOLANGCI_LINT_VERSION)
+install-golangci-lint: ## Install golangci-lint at the pinned version
+	@curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/$(GOLANGCI_LINT_VERSION)/install.sh \
+		| sh -s -- -b $$(go env GOPATH)/bin $(GOLANGCI_LINT_VERSION)
 
-# Development targets
-dev: dev-db
-	@echo "Starting backend and frontend..."
-	@echo "Backend will run on http://localhost:8080"
-	@echo "Frontend will run on http://localhost:3000"
-	@echo ""
+install-hooks: ## Symlink the versioned git hooks (scripts/git-hooks) into .git/hooks
+	@hooks_dir="$$(git rev-parse --git-path hooks)"; mkdir -p "$$hooks_dir"; \
+	for h in pre-commit commit-msg; do \
+		chmod +x "scripts/git-hooks/$$h"; \
+		ln -sf "$(CURDIR)/scripts/git-hooks/$$h" "$$hooks_dir/$$h"; \
+		echo "installed $$hooks_dir/$$h -> scripts/git-hooks/$$h"; \
+	done
+
+# =============================================================================
+# Local development
+# =============================================================================
+
+dev: dev-db ## Start db services and print how to run backend + frontend
 	@echo "Run in separate terminals:"
-	@echo "  Terminal 1: make dev-backend"
-	@echo "  Terminal 2: make dev-frontend"
+	@echo "  make dev-backend   # http://localhost:8080"
+	@echo "  make dev-frontend  # http://localhost:3000"
 
-dev-db:
-	@echo "Starting PostgreSQL, Redis, and MinIO..."
-	@docker compose up -d postgres redis minio
-	@echo "Waiting for services to be ready..."
-	@sleep 3
+dev-db: ## Start PostgreSQL, Redis, MinIO and Mailpit containers
+	@docker compose up -d postgres redis minio minio-init mailpit
 	@docker compose ps
 
-dev-backend:
-	@echo "Starting backend server..."
-	@cd backend && go run cmd/main.go
+dev-backend: ## Run the API on the host (go run ./cmd)
+	@cd backend && go run ./cmd
 
-dev-frontend:
-	@echo "Starting frontend dev server..."
+dev-frontend: ## Run the Vite dev server on the host
 	@cd frontend && npm run dev
 
-# Legacy alias for docker-dev
-up: docker-dev
+up: docker-dev ## Alias for docker-dev
+down: docker-down ## Alias for docker-down
 
-down: docker-down
+# =============================================================================
+# Database
+# =============================================================================
 
-migrate:
-	@echo "Running database migrations..."
-	@cat backend/migrations/001_schema.sql | docker exec -i servicepro-postgres psql -U postgres -d servicepro
-	@echo "Migrations complete!"
+migrate: ## Apply pending migrations to the local db (go run ./cmd/migrate up)
+	@cd backend && DATABASE_URL="$(LOCAL_DATABASE_URL)" MIGRATION_DATABASE_URL="$(LOCAL_DATABASE_URL)" go run ./cmd/migrate up
 
-seed:
-	@echo "Running development seed data..."
-	@cat backend/migrations/002_seed_dev.sql | docker exec -i servicepro-postgres psql -U postgres -d servicepro
-	@echo ""
-	@echo "Seed data loaded!"
-	@echo "  Login: dev@servicepro.local"
-	@echo "  Password: password123"
+migrate-version: ## Print the applied schema version + dirty flag (local db)
+	@cd backend && DATABASE_URL="$(LOCAL_DATABASE_URL)" MIGRATION_DATABASE_URL="$(LOCAL_DATABASE_URL)" go run ./cmd/migrate version
 
-db-reset:
-	@echo "WARNING: This will delete all data!"
-	@read -p "Are you sure? [y/N] " -n 1 -r; \
-	echo; \
-	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
-		make db-fresh; \
-	else \
-		echo "Cancelled."; \
-	fi
+migrate-down: ## Roll back migrations on the LOCAL db only
+	@cd backend && DATABASE_URL="$(LOCAL_DATABASE_URL)" MIGRATION_DATABASE_URL="$(LOCAL_DATABASE_URL)" go run ./cmd/migrate down
 
-# Wait for postgres to be ready (used by other targets)
-db-wait:
-	@echo "Waiting for PostgreSQL to be ready..."
-	@until docker exec servicepro-postgres pg_isready -U postgres -d servicepro > /dev/null 2>&1; do \
-		echo "  PostgreSQL not ready, waiting..."; \
-		sleep 2; \
+migrate-create: ## Create the next migration pair (make migrate-create NAME=add_foo)
+	@if [ -z "$(NAME)" ]; then echo "Usage: make migrate-create NAME=add_foo"; exit 1; fi
+	@last=$$(ls backend/migrations/[0-9]*_*.up.sql 2>/dev/null | sed -E 's#.*/0*([0-9]+)_.*#\1#' | sort -n | tail -1); \
+	next=$$(printf "%06d" $$(( $${last:-0} + 1 ))); \
+	touch "backend/migrations/$${next}_$(NAME).up.sql" "backend/migrations/$${next}_$(NAME).down.sql"; \
+	echo "Created backend/migrations/$${next}_$(NAME).up.sql"; \
+	echo "Created backend/migrations/$${next}_$(NAME).down.sql"
+
+seed: ## Load dev seed data (backend/seeds/dev_seed.sql) into the local db
+	@test -f "$(SEED_FILE)" || { echo "error: $(SEED_FILE) not found"; exit 1; }
+	@docker exec -i $(PG_CONTAINER) psql -v ON_ERROR_STOP=1 -U postgres -d servicepro < "$(SEED_FILE)"
+	@echo "Seed loaded. Login: dev@servicepro.local / password123"
+
+db-wait: ## Wait until the local PostgreSQL container accepts connections
+	@until docker exec $(PG_CONTAINER) pg_isready -U postgres -d servicepro >/dev/null 2>&1; do \
+		echo "  waiting for PostgreSQL..."; sleep 2; \
 	done
-	@echo "PostgreSQL is ready!"
 
-# Quick database fresh start (no confirmation - use for dev)
-db-fresh:
-	@echo "Resetting database..."
+db-fresh: ## Recreate the local db volumes and migrate (no confirmation)
 	@docker compose down -v 2>/dev/null || true
-	@docker compose up -d postgres redis minio mailpit
-	@make db-wait
-	@make migrate
-	@echo ""
-	@echo "Database reset complete!"
-	@echo "Run 'make seed' to add dev test data"
+	@docker compose up -d postgres redis minio minio-init mailpit
+	@$(MAKE) --no-print-directory db-wait migrate
 
-# Fresh database with seed data (one command for dev)
-db-fresh-seed: db-fresh seed
-	@echo ""
-	@echo "============================================"
-	@echo "Database ready with test data!"
-	@echo ""
-	@echo "Test credentials:"
-	@echo "  Email:    dev@servicepro.local"
-	@echo "  Password: password123"
-	@echo ""
-	@echo "Next: Run 'docker compose up' to start all services"
-	@echo "============================================"
+db-fresh-seed: db-fresh seed ## Recreate, migrate and seed the local db
 
-# Generate bcrypt hash for a password (useful for updating seed data)
-# Usage: make hash-password or make hash-password PASSWORD=mysecretpass
-hash-password:
+db-reset: ## Recreate the local db after confirmation (deletes all data)
+	@read -p "Delete ALL local data? [y/N] " -n 1 -r; echo; \
+	if [[ $$REPLY =~ ^[Yy]$$ ]]; then $(MAKE) --no-print-directory db-fresh; else echo "Cancelled."; fi
+
+hash-password: ## Print a bcrypt hash (make hash-password PASSWORD=secret)
 	@cd backend && go run ../scripts/hash-password.go $(PASSWORD)
 
-setup: install-deps dev-db migrate seed
-	@echo ""
-	@echo "✅ Setup complete!"
-	@echo ""
-	@echo "Test credentials:"
-	@echo "  Email:    dev@servicepro.local"
-	@echo "  Password: password123"
-	@echo ""
-	@echo "Next steps:"
-	@echo "  1. Start backend:  make dev-backend"
-	@echo "  2. Start frontend: make dev-frontend"
-	@echo "  3. Open http://localhost:3000"
-
 # =============================================================================
-# Docker Environments
+# Lint + format
 # =============================================================================
 
-# Development environment (hot reload, volume mounts)
-docker-dev:
-	@echo "Starting development environment..."
-	@docker compose up
-	@echo ""
-	@echo "Services:"
-	@echo "  Frontend: http://localhost:3000"
-	@echo "  Backend:  http://localhost:8080"
+lint: frontend-lint backend-lint ## Run all linters
 
-# Development environment (detached)
-docker-dev-d:
-	@echo "Starting development environment (detached)..."
-	@docker compose up -d
-	@echo ""
-	@echo "Services started!"
-	@echo "  Frontend: http://localhost:3000"
-	@echo "  Backend:  http://localhost:8080"
-	@echo ""
-	@echo "View logs: make docker-logs"
-	@docker compose ps
+lint-check: frontend-lint backend-lint frontend-typecheck format-check ## All lint checks, no modifications
 
-# Stop all Docker environments
-docker-down:
-	@echo "Stopping Docker containers..."
-	@docker compose down 2>/dev/null || true
-	@echo "All containers stopped."
+lint-fix: frontend-lint-fix backend-lint-fix format ## Lint with auto-fix, then format
 
-# Clean all Docker data
-docker-clean:
-	@echo "Cleaning all Docker data..."
-	@docker compose down -v --rmi local 2>/dev/null || true
-	@docker system prune -f
-	@echo "Docker cleanup complete."
+format: ## Format all files with Prettier
+	@$(PRETTIER) --write .
 
-# Docker logs
-docker-logs:
-	@docker compose logs -f
+format-check: ## Check Prettier formatting without modifying
+	@$(PRETTIER) --check .
 
-docker-logs-backend:
-	@docker compose logs -f backend
+backend-lint: ## golangci-lint the backend
+	@cd backend && golangci-lint run --config .golangci.yml ./...
 
-docker-logs-frontend:
-	@docker compose logs -f frontend
+backend-lint-fix: ## gofmt + goimports the backend
+	@cd backend && gofmt -w . && go run golang.org/x/tools/cmd/goimports@$(GOIMPORTS_VERSION) -w -local github.com/javaknight1/servicepro .
 
-docker-logs-db:
-	@docker compose logs -f postgres
+backend-format: ## gofmt the backend
+	@cd backend && gofmt -w .
 
-# Docker status
-docker-ps:
-	@docker compose ps
+frontend-lint: ## ESLint the frontend (zero warnings)
+	@cd frontend && npm run lint
 
-# Shell into containers
-docker-shell-backend:
-	@docker exec -it servicepro-backend sh
+frontend-lint-fix: ## ESLint the frontend with --fix
+	@cd frontend && npx eslint . --fix --max-warnings 0
 
-docker-shell-frontend:
-	@docker exec -it servicepro-frontend sh
+frontend-format: ## Prettier the frontend
+	@$(PRETTIER) --write "frontend/**/*.{js,jsx,ts,tsx,json,css,scss,md}"
 
-docker-shell-db:
-	@docker exec -it servicepro-postgres psql -U postgres -d servicepro
-
-# Rebuild specific services
-docker-rebuild-backend:
-	@docker compose up -d --build backend
-
-docker-rebuild-frontend:
-	@docker compose up -d --build frontend
-
-# Legacy aliases
-logs: docker-logs
-logs-backend: docker-logs-backend
-logs-frontend: docker-logs-frontend
-logs-db: docker-logs-db
-ps: docker-ps
+frontend-typecheck: ## tsc --noEmit
+	@cd frontend && npm run type-check
 
 # =============================================================================
-# Test Automation
+# Tests + builds
 # =============================================================================
 
-# Unit tests only
-test-unit:
-	@echo "Running unit tests..."
-	@./scripts/run-tests.sh -t unit
+test: backend-test frontend-test ## Run backend + frontend unit tests
 
-# Integration tests
-test-integration:
-	@echo "Running integration tests..."
-	@./scripts/run-tests.sh -t integration
+test-unit: test ## Alias for test
 
-# E2E tests
-test-e2e:
-	@echo "Running E2E tests..."
-	@./scripts/run-tests.sh -t e2e
+backend-test: ## Backend unit tests (race, integration skipped)
+	@cd backend && go test -race -timeout 5m ./... -skip Integration
 
-# E2E tests in headed mode (for debugging)
-test-e2e-headed:
-	@echo "Opening Cypress..."
+backend-build: ## Compile every backend package
+	@cd backend && go build ./...
+
+backend-vuln: ## govulncheck the backend
+	@cd backend && go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+
+backend-docker: ## Build backend/Dockerfile locally (tag servicepro-api:local)
+	docker build -f backend/Dockerfile \
+		--build-arg GIT_SHA="$$(git rev-parse HEAD)" \
+		--build-arg APP_VERSION="$$(tr -d '[:space:]' < VERSION)-dev" \
+		-t servicepro-api:local backend
+
+frontend-test: ## Frontend unit tests (vitest run)
+	@cd frontend && npx vitest run --passWithNoTests
+
+frontend-build: ## Production build of the frontend
+	@cd frontend && npm run build
+
+frontend-bundle-check: ## Check bundle size budget (after frontend-build)
+	@cd frontend && npm run analyze:bundle -- --ci
+
+frontend-dead-code: ## Check for new unused exports
+	@cd frontend && npm run dead-code
+
+frontend-dead-code-update: ## Update the dead-code baseline
+	@cd frontend && npm run dead-code:update
+
+frontend-audit: ## npm audit, high+ on production deps (matches CI)
+	@cd frontend && npm audit --audit-level=high --omit=dev
+
+frontend-worker-dev: ## Run the Cloudflare Worker (static assets + /api proxy) locally after a build
+	@cd frontend && npx wrangler dev
+
+dead-code: frontend-dead-code ## Alias for frontend-dead-code
+dead-code-update: frontend-dead-code-update ## Alias for frontend-dead-code-update
+
+# Integration tests (backend/tests/integration, build tag `integration`).
+# They expect Postgres + Redis + Mailpit (the docker-compose stack) and, for
+# the api/ suite, a running API on API_BASE_URL. NOTE: the suite does not
+# compile today (SetupTest lives in a _test.go file other packages import) —
+# see the TODO on the db-integration job in ci.yml.
+INTEGRATION_ENV := TEST_DATABASE_URL="$(LOCAL_DATABASE_URL)" REDIS_URL=redis://localhost:6379 \
+	MAILHOG_API=http://localhost:8025 API_BASE_URL=http://localhost:8080
+
+test-integration: ## Backend integration tests against the compose stack
+	@cd backend && $(INTEGRATION_ENV) go test -tags=integration -count=1 -timeout=10m ./tests/integration/...
+
+test-integration-api: ## API integration tests only
+	@cd backend && $(INTEGRATION_ENV) go test -tags=integration -count=1 -timeout=5m ./tests/integration/api/...
+
+test-integration-db: ## Database integration tests only
+	@cd backend && $(INTEGRATION_ENV) go test -tags=integration -count=1 -timeout=5m ./tests/integration/database/...
+
+test-e2e: ## Cypress E2E tests (headless; needs the app running)
+	@cd frontend && npx cypress run
+
+test-e2e-open: ## Open the Cypress runner
 	@cd frontend && npx cypress open
 
-# All tests
-test-all:
-	@echo "Running all tests..."
-	@./scripts/run-tests.sh --ci -p
+test-all: test test-integration test-e2e ## Unit + integration + E2E
 
-# Generate coverage reports
-coverage:
-	@echo "Generating coverage reports..."
-	@./scripts/run-tests.sh -t unit -c
-	@echo "Coverage reports generated"
+coverage: ## Coverage reports (backend/coverage.html, frontend/coverage/)
+	@cd backend && go test -coverprofile=coverage.out -covermode=atomic ./... -skip Integration && go tool cover -html=coverage.out -o coverage.html
+	@cd frontend && npm run test:coverage
 
-coverage-view:
-	@echo "Opening coverage reports..."
-	@open backend/coverage.html || xdg-open backend/coverage.html 2>/dev/null || true
-	@open frontend/coverage/index.html || xdg-open frontend/coverage/index.html 2>/dev/null || true
+coverage-view: ## Open the coverage reports
+	@open backend/coverage.html 2>/dev/null || xdg-open backend/coverage.html 2>/dev/null || true
+	@open frontend/coverage/index.html 2>/dev/null || xdg-open frontend/coverage/index.html 2>/dev/null || true
 
 # =============================================================================
-# CI/CD
+# CI parity
 # =============================================================================
 
-# Run exactly what CI runs (matches checks.yml)
-ci-local: ci-lint ci-backend ci-frontend
-	@echo ""
-	@echo "✅ All CI checks passed locally!"
+ci-local: ci-backend ci-frontend openapi-check ## Run the core CI gates locally
+	@echo "All local CI checks passed."
 
-# Lint check (matches CI lint job)
-ci-lint:
-	@echo "═══════════════════════════════════════════════════════════════"
-	@echo "Running lint checks (matches CI)..."
-	@echo "═══════════════════════════════════════════════════════════════"
-	@pre-commit run --all-files --show-diff-on-failure
+ci-backend: backend-lint backend-test backend-build ## Backend CI gates (lint, test, build)
 
-# Backend checks (matches CI backend-tests job)
-ci-backend:
-	@echo ""
-	@echo "═══════════════════════════════════════════════════════════════"
-	@echo "Running backend tests (matches CI)..."
-	@echo "═══════════════════════════════════════════════════════════════"
-	@cd backend && go test -v -race -timeout 5m ./... -skip "Integration"
-	@echo "Verifying backend build..."
-	@cd backend && go build -o /dev/null ./cmd
-	@echo "✓ Backend checks passed"
+ci-frontend: ## Frontend CI gates (typecheck, lint, test, dead-code, build, bundle)
+	@cd frontend && npm run type-check && npm run lint && npx vitest run --passWithNoTests
+	@cd frontend && npm run dead-code && npm run build && npm run analyze:bundle -- --ci
 
-# Frontend checks (matches CI frontend-tests job)
-ci-frontend:
-	@echo ""
-	@echo "═══════════════════════════════════════════════════════════════"
-	@echo "Running frontend tests (matches CI)..."
-	@echo "═══════════════════════════════════════════════════════════════"
-	@cd frontend && npm test -- --run --passWithNoTests
-	@echo "Verifying frontend build..."
-	@cd frontend && npm run build
-	@echo "Checking bundle size..."
-	@cd frontend && npm run analyze:bundle -- --ci
-	@echo "✓ Frontend checks passed"
+# =============================================================================
+# API documentation (OpenAPI)
+# =============================================================================
+# backend/docs/{swagger.json,swagger.yaml,docs.go} and
+# frontend/src/types/api.generated.ts are COMMITTED; ci.yml's openapi-drift job
+# reruns `make docs` and fails on any diff.
 
-# Full CI pipeline (legacy - uses scripts)
-ci:
-	@echo "Running CI pipeline..."
-	@./scripts/run-tests.sh --ci -p
+swagger: ## Generate backend/docs from swag annotations (pinned swag)
+	@cd backend && go run github.com/swaggo/swag/cmd/swag@$(SWAG_VERSION) init \
+		-g cmd/main.go -o docs --parseDependency --parseInternal --quiet
+	@echo "Swagger docs generated in backend/docs/"
 
-# Quick CI (for pre-commit)
-ci-quick:
-	@echo "Running quick CI..."
-	@./scripts/run-tests.sh -t unit
+generate-api: ## Generate frontend/src/types/api.generated.ts from the spec
+	@cd frontend && npm run --silent generate:api
+	@echo "TypeScript API types generated in frontend/src/types/api.generated.ts"
+
+docs: swagger generate-api ## Full API doc pipeline (swagger + generate-api)
+
+openapi-check: docs ## Regenerate and fail if the committed API artifacts drift
+	@git diff --exit-code -- backend/docs frontend/src/types/api.generated.ts \
+		|| { echo "OpenAPI artifacts are stale: commit the regenerated files."; exit 1; }
+
+# =============================================================================
+# Docker (local stack)
+# =============================================================================
+
+docker-dev: ## Start the full compose stack in the foreground
+	@APP_VERSION="$$(tr -d '[:space:]' < VERSION)-dev" docker compose up
+
+docker-dev-d: ## Start the full compose stack detached
+	@APP_VERSION="$$(tr -d '[:space:]' < VERSION)-dev" docker compose up -d
+	@docker compose ps
+
+docker-down: ## Stop all containers
+	@docker compose down
+
+docker-clean: ## Remove containers, volumes and local images
+	@docker compose down -v --rmi local
+	@docker system prune -f
+
+docker-logs: ## Follow logs from all containers
+	@docker compose logs -f
+
+docker-logs-backend: ## Follow backend logs
+	@docker compose logs -f backend
+
+docker-logs-frontend: ## Follow frontend logs
+	@docker compose logs -f frontend
+
+docker-logs-db: ## Follow PostgreSQL logs
+	@docker compose logs -f postgres
+
+docker-ps: ## Show running containers
+	@docker compose ps
+
+docker-shell-backend: ## Shell into the backend container
+	@docker exec -it servicepro-backend sh
+
+docker-shell-frontend: ## Shell into the frontend container
+	@docker exec -it servicepro-frontend sh
+
+docker-shell-db: ## psql into the local database
+	@docker exec -it $(PG_CONTAINER) psql -U postgres -d servicepro
+
+docker-rebuild-backend: ## Recreate the backend container
+	@docker compose up -d --force-recreate backend
+
+docker-rebuild-frontend: ## Recreate the frontend container
+	@docker compose up -d --force-recreate frontend
+
+logs: docker-logs ## Alias for docker-logs
+ps: docker-ps ## Alias for docker-ps
+
+# =============================================================================
+# Release — production ships from a v* tag only (RELEASING.md)
+# =============================================================================
+# `make bump` edits VERSION and stops; committing and tagging stay explicit,
+# because pushing a tag is what starts the release pipeline.
+
+bump: ## Bump VERSION for the next release (ARGS="--dry-run" / ARGS="--set X.Y.Z")
+	@./scripts/bump-version.sh $(ARGS)
+
+release-check: ## Verify the working tree is ready to tag a release
+	@test -z "$$(git status --porcelain)" || { echo "error: working tree is dirty"; exit 1; }
+	@echo "VERSION:      $$(tr -d '[:space:]' < VERSION)"
+	@echo "branch:       $$(git rev-parse --abbrev-ref HEAD)"
+	@echo "last release: $$(git tag --list 'v*' --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$$' | head -1 || echo '<none>')"
+	@echo "-> git tag v$$(tr -d '[:space:]' < VERSION) && git push origin v$$(tr -d '[:space:]' < VERSION)"
 
 # =============================================================================
 # Clean
 # =============================================================================
 
-clean:
-	@echo "Cleaning build artifacts..."
-	@rm -rf backend/bin
-	@rm -rf backend/*.out
-	@rm -rf frontend/dist
-	@rm -rf frontend/coverage
-	@rm -rf frontend/cypress/screenshots
-	@rm -rf frontend/cypress/videos
-	@rm -rf frontend/cypress/reports
-	@rm -rf coverage
-	@echo "Clean complete"
-
-clean-docker: docker-clean
-
-# =============================================================================
-# API Documentation
-# =============================================================================
-
-# Generate Swagger documentation from Go annotations
-swagger:
-	@echo "Generating Swagger documentation..."
-	@cd backend && swag init -g cmd/main.go -o docs --parseDependency --parseInternal
-	@echo "✓ Swagger docs generated in backend/docs/"
-
-# Generate TypeScript API types from Swagger (requires swagger docs to exist)
-generate-api:
-	@echo "Generating TypeScript API types..."
-	@cd frontend && npm run generate:api
-	@echo "✓ TypeScript API types generated in frontend/src/types/api.generated.ts"
-
-# Generate all API documentation and types
-docs: swagger generate-api
-	@echo ""
-	@echo "✓ API documentation pipeline complete!"
-	@echo "  - Swagger UI: http://localhost:8080/api/docs (when backend running)"
-	@echo "  - TypeScript types: frontend/src/types/api.generated.ts"
+clean: ## Remove build artifacts and coverage output
+	@rm -rf backend/bin backend/*.out backend/coverage.html backend/main backend/server
+	@rm -rf frontend/dist frontend/coverage frontend/bundle-report.html
+	@rm -rf frontend/cypress/screenshots frontend/cypress/videos frontend/cypress/reports
