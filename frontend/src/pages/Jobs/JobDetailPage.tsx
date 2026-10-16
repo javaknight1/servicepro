@@ -325,7 +325,8 @@ export function JobDetailPage() {
           title: formData.title,
           description: formData.description || undefined,
           job_type: formData.job_type,
-          status: formData.status,
+          // Status changes only through the status actions above (the API
+          // rejects a status change on update).
           priority: formData.priority,
           scheduled_start_at:
             datetimeLocalToEpoch(formData.scheduled_start_at, timeZone) ??
@@ -528,33 +529,6 @@ export function JobDetailPage() {
                 </select>
               </div>
 
-              {!isNew && (
-                <div>
-                  <label
-                    htmlFor="status"
-                    className="block text-sm font-medium text-neutral-700 mb-1"
-                  >
-                    Status
-                  </label>
-                  <select
-                    id="status"
-                    name="status"
-                    value={formData.status}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                  >
-                    <option value={JobStatus.NEW}>New</option>
-                    <option value={JobStatus.SCHEDULED}>Scheduled</option>
-                    <option value={JobStatus.EN_ROUTE}>En Route</option>
-                    <option value={JobStatus.IN_PROGRESS}>In Progress</option>
-                    <option value={JobStatus.ON_HOLD}>On Hold</option>
-                    <option value={JobStatus.COMPLETED}>Completed</option>
-                    <option value={JobStatus.INVOICED}>Invoiced</option>
-                    <option value={JobStatus.PAID}>Paid</option>
-                    <option value={JobStatus.CANCELLED}>Cancelled</option>
-                  </select>
-                </div>
-              )}
             </div>
           </div>
 

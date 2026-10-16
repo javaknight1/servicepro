@@ -33,14 +33,14 @@ var (
 	// ErrInvalidCost indicates an invalid cost
 	ErrInvalidCost = errors.New("cost must be non-negative")
 
-	// ErrInvalidStatusTransition indicates an invalid status change
-	ErrInvalidStatusTransition = errors.New("invalid status transition")
+	// ErrStatusNotUpdatable is returned when a job update tries to change the
+	// status: status changes go through the job state machine
+	// (models.ValidateTransition) via the start/complete/cancel/hold/resume
+	// and transition endpoints, which also record history (T124).
+	ErrStatusNotUpdatable = errors.New("job status can't be changed by an update; use the status actions")
 
 	// ErrJobNotScheduled indicates job is not scheduled
 	ErrJobNotScheduled = errors.New("job must be scheduled before starting")
-
-	// ErrJobNotInProgress indicates job is not in progress
-	ErrJobNotInProgress = errors.New("job must be in progress to complete")
 
 	// ErrMissingCustomerID indicates missing customer ID
 	ErrMissingCustomerID = errors.New("customer ID is required")
@@ -104,10 +104,8 @@ func (v *JobValidator) ValidateCreateRequest(req *models.CreateJobRequest) error
 
 // ValidateUpdateRequest validates an update job request
 func (v *JobValidator) ValidateUpdateRequest(req *models.UpdateJobRequest, currentJob *models.Job) error {
-	if req.Status != nil {
-		if err := v.ValidateStatusTransition(currentJob.Status, *req.Status); err != nil {
-			return err
-		}
+	if req.Status != nil && *req.Status != currentJob.Status {
+		return ErrStatusNotUpdatable
 	}
 
 	if req.JobType != nil {
@@ -243,49 +241,6 @@ func (v *JobValidator) ValidateSchedule(startAt, endAt *int64) error {
 	return nil
 }
 
-// ValidateStatusTransition validates if a status transition is allowed
-func (v *JobValidator) ValidateStatusTransition(from, to models.JobStatus) error {
-	// If status is not changing, allow it
-	if from == to {
-		return nil
-	}
-
-	// Define valid transitions
-	validTransitions := map[models.JobStatus]map[models.JobStatus]bool{
-		models.JobStatusScheduled: {
-			models.JobStatusInProgress: true,
-			models.JobStatusOnHold:     true,
-			models.JobStatusCancelled:  true,
-		},
-		models.JobStatusInProgress: {
-			models.JobStatusOnHold:    true,
-			models.JobStatusCompleted: true,
-			models.JobStatusCancelled: true,
-		},
-		models.JobStatusOnHold: {
-			models.JobStatusScheduled:  true,
-			models.JobStatusInProgress: true,
-			models.JobStatusCancelled:  true,
-		},
-		models.JobStatusCompleted: {
-			// Completed jobs can be reopened
-			models.JobStatusInProgress: true,
-		},
-		models.JobStatusCancelled: {
-			// Cancelled jobs can be rescheduled
-			models.JobStatusScheduled: true,
-		},
-	}
-
-	if allowed, exists := validTransitions[from]; exists {
-		if allowed[to] {
-			return nil
-		}
-	}
-
-	return fmt.Errorf("%w: cannot transition from '%s' to '%s'", ErrInvalidStatusTransition, from, to)
-}
-
 // ValidateServiceAddress validates a service address
 func (v *JobValidator) ValidateServiceAddress(addr *models.ServiceAddress) error {
 	if addr == nil {
@@ -311,28 +266,6 @@ func (v *JobValidator) ValidateServiceAddress(addr *models.ServiceAddress) error
 		if len(addr.State) != 2 {
 			return fmt.Errorf("%w: state must be 2-letter code", ErrInvalidServiceAddress)
 		}
-	}
-
-	return nil
-}
-
-// ValidateJobStart validates if a job can be started
-func (v *JobValidator) ValidateJobStart(job *models.Job) error {
-	if job.Status != models.JobStatusScheduled && job.Status != models.JobStatusOnHold {
-		return fmt.Errorf("cannot start job with status '%s'", job.Status)
-	}
-
-	return nil
-}
-
-// ValidateJobCompletion validates if a job can be completed
-func (v *JobValidator) ValidateJobCompletion(job *models.Job) error {
-	if job.Status != models.JobStatusInProgress {
-		return ErrJobNotInProgress
-	}
-
-	if job.ActualStartAt == nil {
-		return errors.New("job must have an actual start time to be completed")
 	}
 
 	return nil

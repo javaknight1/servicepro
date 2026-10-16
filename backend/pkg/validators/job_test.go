@@ -142,24 +142,26 @@ func TestValidateUpdateRequest(t *testing.T) {
 		Priority: models.JobPriorityNormal,
 	}
 
-	t.Run("Valid update request", func(t *testing.T) {
-		newStatus := models.JobStatusInProgress
+	t.Run("Unchanged status is accepted", func(t *testing.T) {
+		same := currentJob.Status
 		req := &models.UpdateJobRequest{
-			Status: &newStatus,
+			Status: &same,
 		}
 
 		err := validator.ValidateUpdateRequest(req, currentJob)
 		assert.NoError(t, err)
 	})
 
-	t.Run("Invalid status transition", func(t *testing.T) {
-		newStatus := models.JobStatusCompleted
+	// T124 / audit 7.H7: an update changed status with no history and no
+	// ActualStartAt, so a later CompleteJob failed.
+	t.Run("Status change via update is rejected", func(t *testing.T) {
+		newStatus := models.JobStatusInProgress
 		req := &models.UpdateJobRequest{
 			Status: &newStatus,
 		}
 
 		err := validator.ValidateUpdateRequest(req, currentJob)
-		assert.ErrorIs(t, err, ErrInvalidStatusTransition)
+		assert.ErrorIs(t, err, ErrStatusNotUpdatable)
 	})
 
 	t.Run("Invalid job type in update", func(t *testing.T) {
@@ -326,58 +328,6 @@ func TestValidateSchedule(t *testing.T) {
 		err := validator.ValidateSchedule(nil, &end)
 		assert.NoError(t, err)
 	})
-}
-
-func TestValidateStatusTransition(t *testing.T) {
-	validator := NewJobValidator()
-
-	tests := []struct {
-		name     string
-		from     models.JobStatus
-		to       models.JobStatus
-		hasError bool
-	}{
-		// Same status transitions (always allowed)
-		{"Same status - scheduled", models.JobStatusScheduled, models.JobStatusScheduled, false},
-
-		// Valid transitions from Scheduled
-		{"Scheduled to In Progress", models.JobStatusScheduled, models.JobStatusInProgress, false},
-		{"Scheduled to On Hold", models.JobStatusScheduled, models.JobStatusOnHold, false},
-		{"Scheduled to Cancelled", models.JobStatusScheduled, models.JobStatusCancelled, false},
-		{"Scheduled to Completed - invalid", models.JobStatusScheduled, models.JobStatusCompleted, true},
-
-		// Valid transitions from In Progress
-		{"In Progress to On Hold", models.JobStatusInProgress, models.JobStatusOnHold, false},
-		{"In Progress to Completed", models.JobStatusInProgress, models.JobStatusCompleted, false},
-		{"In Progress to Cancelled", models.JobStatusInProgress, models.JobStatusCancelled, false},
-		{"In Progress to Scheduled - invalid", models.JobStatusInProgress, models.JobStatusScheduled, true},
-
-		// Valid transitions from On Hold
-		{"On Hold to Scheduled", models.JobStatusOnHold, models.JobStatusScheduled, false},
-		{"On Hold to In Progress", models.JobStatusOnHold, models.JobStatusInProgress, false},
-		{"On Hold to Cancelled", models.JobStatusOnHold, models.JobStatusCancelled, false},
-		{"On Hold to Completed - invalid", models.JobStatusOnHold, models.JobStatusCompleted, true},
-
-		// Valid transitions from Completed
-		{"Completed to In Progress (reopen)", models.JobStatusCompleted, models.JobStatusInProgress, false},
-		{"Completed to Scheduled - invalid", models.JobStatusCompleted, models.JobStatusScheduled, true},
-		{"Completed to On Hold - invalid", models.JobStatusCompleted, models.JobStatusOnHold, true},
-
-		// Valid transitions from Cancelled
-		{"Cancelled to Scheduled (reschedule)", models.JobStatusCancelled, models.JobStatusScheduled, false},
-		{"Cancelled to In Progress - invalid", models.JobStatusCancelled, models.JobStatusInProgress, true},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := validator.ValidateStatusTransition(tt.from, tt.to)
-			if tt.hasError {
-				assert.ErrorIs(t, err, ErrInvalidStatusTransition)
-			} else {
-				assert.NoError(t, err)
-			}
-		})
-	}
 }
 
 func TestValidateServiceAddress(t *testing.T) {
@@ -810,85 +760,5 @@ func TestValidateBusinessRules(t *testing.T) {
 		}
 		warnings := validator.ValidateBusinessRules(job)
 		assert.GreaterOrEqual(t, len(warnings), 2, "Should have multiple warnings")
-	})
-}
-
-func TestValidateJobStart(t *testing.T) {
-	validator := NewJobValidator()
-
-	t.Run("Can start scheduled job", func(t *testing.T) {
-		job := &models.Job{
-			Status: models.JobStatusScheduled,
-		}
-		err := validator.ValidateJobStart(job)
-		assert.NoError(t, err)
-	})
-
-	t.Run("Can start on-hold job", func(t *testing.T) {
-		job := &models.Job{
-			Status: models.JobStatusOnHold,
-		}
-		err := validator.ValidateJobStart(job)
-		assert.NoError(t, err)
-	})
-
-	t.Run("Cannot start in-progress job", func(t *testing.T) {
-		job := &models.Job{
-			Status: models.JobStatusInProgress,
-		}
-		err := validator.ValidateJobStart(job)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "cannot start job")
-	})
-
-	t.Run("Cannot start completed job", func(t *testing.T) {
-		job := &models.Job{
-			Status: models.JobStatusCompleted,
-		}
-		err := validator.ValidateJobStart(job)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "cannot start job")
-	})
-
-	t.Run("Cannot start cancelled job", func(t *testing.T) {
-		job := &models.Job{
-			Status: models.JobStatusCancelled,
-		}
-		err := validator.ValidateJobStart(job)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "cannot start job")
-	})
-}
-
-func TestValidateJobCompletion(t *testing.T) {
-	validator := NewJobValidator()
-	nowEpoch := time.Now().Unix()
-
-	t.Run("Can complete in-progress job with start time", func(t *testing.T) {
-		job := &models.Job{
-			Status:        models.JobStatusInProgress,
-			ActualStartAt: &nowEpoch,
-		}
-		err := validator.ValidateJobCompletion(job)
-		assert.NoError(t, err)
-	})
-
-	t.Run("Cannot complete scheduled job", func(t *testing.T) {
-		job := &models.Job{
-			Status:        models.JobStatusScheduled,
-			ActualStartAt: &nowEpoch,
-		}
-		err := validator.ValidateJobCompletion(job)
-		assert.ErrorIs(t, err, ErrJobNotInProgress)
-	})
-
-	t.Run("Cannot complete job without start time", func(t *testing.T) {
-		job := &models.Job{
-			Status:        models.JobStatusInProgress,
-			ActualStartAt: nil,
-		}
-		err := validator.ValidateJobCompletion(job)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "actual start time")
 	})
 }
