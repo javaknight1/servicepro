@@ -649,5 +649,3 @@ export function ConfirmMembershipPage() {
     </DashboardLayout>
   );
 }
-
-export default ConfirmMembershipPage;

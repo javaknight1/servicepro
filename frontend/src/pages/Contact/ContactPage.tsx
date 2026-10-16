@@ -199,5 +199,3 @@ function ContactInfo({ icon, title, content, href }: ContactInfoProps) {
     </div>
   );
 }
-
-export default ContactPage;

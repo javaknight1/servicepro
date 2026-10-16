@@ -130,5 +130,3 @@ function ValueCard({ title, description }: ValueCardProps) {
     </div>
   );
 }
-
-export default AboutPage;

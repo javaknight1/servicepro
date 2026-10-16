@@ -190,5 +190,3 @@ export const useBillingStore = create<BillingState>((set, get) => ({
     set({ methodsError: null, historyError: null });
   },
 }));
-
-export default useBillingStore;

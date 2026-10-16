@@ -399,5 +399,3 @@ export function ChangeMembershipPage() {
     </DashboardLayout>
   );
 }
-
-export default ChangeMembershipPage;

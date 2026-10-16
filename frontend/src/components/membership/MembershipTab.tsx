@@ -208,5 +208,3 @@ export function MembershipTab() {
     </div>
   );
 }
-
-export default MembershipTab;

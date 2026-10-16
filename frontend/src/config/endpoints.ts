@@ -29,42 +29,4 @@ export function resolveApiBaseUrl(value: string | undefined): string {
   return withoutVersion || DEFAULT_API_BASE_URL;
 }
 
-/** Default WebSocket URL used only in local development. */
-export const DEV_WS_URL = 'ws://localhost:8080/api/v1/ws';
-
-interface LocationLike {
-  protocol: string;
-  host: string;
-}
-
-/**
- * Resolve the WebSocket URL from VITE_WS_URL.
- *
- * - absolute ws:// or wss:// URL -> used as-is
- * - relative path ("/api/v1/ws") -> same-origin, wss: on https pages
- * - unset, dev build             -> ws://localhost:8080/api/v1/ws
- * - unset, production build      -> null: real-time updates are disabled
- *   rather than pointing a production page at localhost.
- */
-export function resolveWebSocketUrl(
-  value: string | undefined,
-  isDev: boolean,
-  location: LocationLike | null = typeof window !== 'undefined'
-    ? window.location
-    : null
-): string | null {
-  const trimmed = (value ?? '').trim();
-  if (!trimmed) {
-    return isDev ? DEV_WS_URL : null;
-  }
-  if (trimmed.startsWith('/')) {
-    if (!location) {
-      return null;
-    }
-    const scheme = location.protocol === 'https:' ? 'wss:' : 'ws:';
-    return `${scheme}//${location.host}${trimmed}`;
-  }
-  return trimmed;
-}
-
 export const API_BASE_URL = resolveApiBaseUrl(import.meta.env.VITE_API_URL);
