@@ -1,10 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '@components/layout';
+import { getErrorMessage } from '@/utils/error';
 import {
   DataTable,
   Badge,
   EmptyState,
+  ErrorState,
   Button,
   getStatusBadgeVariant,
 } from '@components/shared';
@@ -15,14 +17,18 @@ import {
   InvoiceFilters,
 } from '@services/invoiceService';
 import { Receipt, Plus, Search } from 'lucide-react';
-import { getInvoiceStatusLabel, formatCurrency } from '@app-types';
+import { getInvoiceStatusLabel } from '@app-types';
 import { InvoiceActionsMenu } from '@components/invoices';
+import { formatDollars } from '@/utils/money';
 
 export function InvoicesPage() {
   const navigate = useNavigate();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  // Ignore responses from superseded requests (fast paging/searching)
+  const requestIdRef = useRef(0);
   const [filters, setFilters] = useState<InvoiceFilters>({
     page: 1,
     page_size: 10,
@@ -37,25 +43,30 @@ export function InvoicesPage() {
   }, [filters]);
 
   const loadInvoices = async () => {
+    const requestId = ++requestIdRef.current;
     setIsLoading(true);
+    setLoadError(null);
     try {
       const response = await invoiceService.getInvoices({
         ...filters,
         search: searchQuery || undefined,
       });
+      if (requestId !== requestIdRef.current) return;
       setInvoices(response.invoices);
       setTotal(response.total);
     } catch (error) {
+      if (requestId !== requestIdRef.current) return;
       console.error('Failed to load invoices:', error);
+      setLoadError(getErrorMessage(error, 'Failed to load invoices'));
     } finally {
-      setIsLoading(false);
+      if (requestId === requestIdRef.current) setIsLoading(false);
     }
   };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
+    // New filters object re-triggers the load effect (no double request)
     setFilters({ ...filters, page: 1 });
-    loadInvoices();
   };
 
   const columns: Column<Invoice>[] = [
@@ -108,7 +119,7 @@ export function InvoicesPage() {
       className: 'text-right',
       render: (value) => (
         <span className="font-medium text-neutral-900">
-          {formatCurrency(value as number)}
+          {formatDollars(value as number)}
         </span>
       ),
     },
@@ -125,7 +136,7 @@ export function InvoicesPage() {
               : 'text-neutral-600'
           }
         >
-          {formatCurrency(value as number)}
+          {formatDollars(value as number)}
         </span>
       ),
     },
@@ -189,7 +200,13 @@ export function InvoicesPage() {
           </div>
         </form>
 
-        {!isLoading && invoices.length === 0 && !searchQuery ? (
+        {loadError ? (
+          <ErrorState
+            title="Couldn't load invoices"
+            message={loadError}
+            onRetry={loadInvoices}
+          />
+        ) : !isLoading && invoices.length === 0 && !searchQuery ? (
           <EmptyState
             icon={<Receipt className="h-12 w-12" />}
             title="No invoices yet"

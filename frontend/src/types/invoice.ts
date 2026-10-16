@@ -93,10 +93,3 @@ export const getInvoiceStatusLabel = (status: InvoiceStatus): string => {
   };
   return labels[status] || status;
 };
-
-export const formatCurrency = (amount: number): string => {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-  }).format(amount);
-};

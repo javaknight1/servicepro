@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import axios from 'axios';
 import { authApi, userApi } from '../api';
 
@@ -136,9 +136,9 @@ describe('api service', () => {
 
         await authApi.verifyEmail(verifyData);
 
-        expect(mockAxios.get).toHaveBeenCalledWith(
-          '/v1/auth/verify?token=verify-token'
-        );
+        expect(mockAxios.get).toHaveBeenCalledWith('/v1/auth/verify', {
+          params: { token: 'verify-token' },
+        });
       });
     });
 

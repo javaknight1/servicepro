@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Calendar } from '../../../src/components/calendar/Calendar';
 import {
@@ -12,6 +12,9 @@ import {
  * Integration tests for Calendar component
  * These tests verify the interaction between calendar components and user workflows
  */
+// Fixtures live in January 2024; render the calendar on that month.
+const DEFAULT_DATE = new Date(2024, 0, 15);
+
 describe('Calendar Integration Tests', () => {
   const mockEvents: JobEvent[] = [
     {
@@ -69,6 +72,7 @@ describe('Calendar Integration Tests', () => {
       const user = userEvent.setup();
       render(
         <Calendar
+          defaultDate={DEFAULT_DATE}
           events={mockEvents}
           onViewChange={mockHandlers.onViewChange}
         />
@@ -97,7 +101,11 @@ describe('Calendar Integration Tests', () => {
     it('should handle complete navigation workflow', async () => {
       const user = userEvent.setup();
       render(
-        <Calendar events={mockEvents} onNavigate={mockHandlers.onNavigate} />
+        <Calendar
+          defaultDate={DEFAULT_DATE}
+          events={mockEvents}
+          onNavigate={mockHandlers.onNavigate}
+        />
       );
 
       // Navigate forward
@@ -120,6 +128,7 @@ describe('Calendar Integration Tests', () => {
       const user = userEvent.setup();
       render(
         <Calendar
+          defaultDate={DEFAULT_DATE}
           events={mockEvents}
           onEventClick={mockHandlers.onEventClick}
         />
@@ -131,180 +140,27 @@ describe('Calendar Integration Tests', () => {
 
       expect(mockHandlers.onEventClick).toHaveBeenCalledWith(
         expect.objectContaining({
-          id: mockEvents[0].id,
-          title: mockEvents[0].title,
-          jobNumber: mockEvents[0].jobNumber,
+          event: expect.objectContaining({
+            id: mockEvents[0].id,
+            title: mockEvents[0].title,
+            jobNumber: mockEvents[0].jobNumber,
+          }),
+          position: expect.any(Object),
         })
       );
     });
   });
 
-  describe('Drag and Drop Workflows', () => {
-    it('should complete drag and drop workflow for rescheduling', async () => {
-      render(
-        <Calendar events={mockEvents} onEventDrop={mockHandlers.onEventDrop} />
-      );
-
-      const event = screen.getByText(mockEvents[0].title);
-
-      // Simulate drag start
-      await userEvent.pointer([
-        {
-          target: event,
-          keys: '[MouseLeft>]',
-          coords: { clientX: 0, clientY: 0 },
-        },
-        { coords: { clientX: 100, clientY: 100 } },
-        { keys: '[/MouseLeft]' },
-      ]);
-
-      await waitFor(() => {
-        expect(mockHandlers.onEventDrop).toHaveBeenCalledWith(
-          expect.objectContaining({
-            event: expect.objectContaining({ id: mockEvents[0].id }),
-            start: expect.any(Date),
-            end: expect.any(Date),
-          })
-        );
-      });
-    });
-
-    it('should handle drag and drop failure gracefully', async () => {
-      const failingHandler = vi
-        .fn()
-        .mockRejectedValue(new Error('Network error'));
-      const consoleError = vi
-        .spyOn(console, 'error')
-        .mockImplementation(() => {});
-
-      render(<Calendar events={mockEvents} onEventDrop={failingHandler} />);
-
-      const event = screen.getByText(mockEvents[0].title);
-
-      // Simulate drag and drop
-      await userEvent.pointer([
-        {
-          target: event,
-          keys: '[MouseLeft>]',
-          coords: { clientX: 0, clientY: 0 },
-        },
-        { coords: { clientX: 100, clientY: 100 } },
-        { keys: '[/MouseLeft]' },
-      ]);
-
-      await waitFor(() => {
-        expect(failingHandler).toHaveBeenCalled();
-        expect(consoleError).toHaveBeenCalledWith(
-          'Failed to update event:',
-          expect.any(Error)
-        );
-      });
-
-      consoleError.mockRestore();
-    });
-  });
-
-  describe('Resize Workflows', () => {
-    it('should complete resize workflow for adjusting duration', async () => {
-      render(
-        <Calendar
-          events={mockEvents}
-          onEventResize={mockHandlers.onEventResize}
-        />
-      );
-
-      const event = screen.getByText(mockEvents[0].title);
-      const resizeHandle = event.parentElement?.querySelector(
-        '.rbc-addons-dnd-resize-anchor'
-      );
-
-      if (resizeHandle) {
-        await userEvent.pointer([
-          {
-            target: resizeHandle,
-            keys: '[MouseLeft>]',
-            coords: { clientX: 0, clientY: 0 },
-          },
-          { coords: { clientX: 0, clientY: 50 } },
-          { keys: '[/MouseLeft]' },
-        ]);
-
-        await waitFor(() => {
-          expect(mockHandlers.onEventResize).toHaveBeenCalledWith(
-            expect.objectContaining({
-              event: expect.objectContaining({ id: mockEvents[0].id }),
-              start: expect.any(Date),
-              end: expect.any(Date),
-            })
-          );
-        });
-      }
-    });
-  });
-
-  describe('Slot Selection Workflows', () => {
-    it('should handle slot selection for creating new event', async () => {
-      const user = userEvent.setup();
-      render(
-        <Calendar
-          events={mockEvents}
-          onSelectSlot={mockHandlers.onSelectSlot}
-        />
-      );
-
-      // Find and select an empty slot
-      const cells = screen.getAllByRole('cell');
-      const emptyCell = cells.find(
-        (cell) => !within(cell).queryByText(/Install|Fix|Electrical/)
-      );
-
-      if (emptyCell) {
-        await user.click(emptyCell);
-
-        expect(mockHandlers.onSelectSlot).toHaveBeenCalledWith(
-          expect.objectContaining({
-            start: expect.any(Date),
-            end: expect.any(Date),
-            slots: expect.any(Array),
-          })
-        );
-      }
-    });
-
-    it('should handle multi-slot selection via drag', async () => {
-      render(
-        <Calendar
-          events={mockEvents}
-          onSelectSlot={mockHandlers.onSelectSlot}
-        />
-      );
-
-      const cells = screen.getAllByRole('cell');
-      const startCell = cells[10];
-      const endCell = cells[12];
-
-      // Simulate drag selection
-      await userEvent.pointer([
-        {
-          target: startCell,
-          keys: '[MouseLeft>]',
-          coords: { clientX: 0, clientY: 0 },
-        },
-        { target: endCell, coords: { clientX: 100, clientY: 100 } },
-        { keys: '[/MouseLeft]' },
-      ]);
-
-      await waitFor(() => {
-        expect(mockHandlers.onSelectSlot).toHaveBeenCalled();
-      });
-    });
-  });
+  // Drag-and-drop rescheduling, resizing and slot selection are disabled in
+  // the Calendar until conflict detection lands (TODO T027), so there are no
+  // DnD/resize/slot-selection workflows to exercise here.
 
   describe('Combined Workflows', () => {
     it('should handle view change and navigation together', async () => {
       const user = userEvent.setup();
       render(
         <Calendar
+          defaultDate={DEFAULT_DATE}
           events={mockEvents}
           onViewChange={mockHandlers.onViewChange}
           onNavigate={mockHandlers.onNavigate}
@@ -326,62 +182,66 @@ describe('Calendar Integration Tests', () => {
 
     it('should handle loading state during interactions', async () => {
       const { rerender } = render(
-        <Calendar events={mockEvents} isLoading={false} />
+        <Calendar
+          defaultDate={DEFAULT_DATE}
+          events={mockEvents}
+          isLoading={false}
+        />
       );
 
       // Verify calendar is visible
-      expect(screen.getByRole('application')).toBeInTheDocument();
+      expect(document.querySelector('.rbc-calendar')).toBeInTheDocument();
 
       // Set loading state
-      rerender(<Calendar events={mockEvents} isLoading={true} />);
+      rerender(
+        <Calendar
+          defaultDate={DEFAULT_DATE}
+          events={mockEvents}
+          isLoading={true}
+        />
+      );
 
       // Verify loading skeleton is shown
       expect(screen.getByTestId('calendar-skeleton')).toBeInTheDocument();
 
       // Remove loading state
-      rerender(<Calendar events={mockEvents} isLoading={false} />);
+      rerender(
+        <Calendar
+          defaultDate={DEFAULT_DATE}
+          events={mockEvents}
+          isLoading={false}
+        />
+      );
 
       // Verify calendar is visible again
-      expect(screen.getByRole('application')).toBeInTheDocument();
+      expect(document.querySelector('.rbc-calendar')).toBeInTheDocument();
     });
   });
 
   describe('Real-world Scenarios', () => {
-    it('should handle technician rescheduling a job', async () => {
+    it('should let a technician open a job from the calendar', async () => {
       const user = userEvent.setup();
       render(
         <Calendar
+          defaultDate={DEFAULT_DATE}
           events={mockEvents}
           onEventClick={mockHandlers.onEventClick}
-          onEventDrop={mockHandlers.onEventDrop}
         />
       );
 
-      // 1. View job details
-      const job = screen.getByText(mockEvents[0].title);
-      await user.click(job);
-      expect(mockHandlers.onEventClick).toHaveBeenCalled();
-
-      // 2. Drag to reschedule
-      await userEvent.pointer([
-        {
-          target: job,
-          keys: '[MouseLeft>]',
-          coords: { clientX: 0, clientY: 0 },
-        },
-        { coords: { clientX: 100, clientY: 100 } },
-        { keys: '[/MouseLeft]' },
-      ]);
-
-      await waitFor(() => {
-        expect(mockHandlers.onEventDrop).toHaveBeenCalled();
-      });
+      await user.click(screen.getByText(mockEvents[0].title));
+      expect(mockHandlers.onEventClick).toHaveBeenCalledWith(
+        expect.objectContaining({
+          event: expect.objectContaining({ id: mockEvents[0].id }),
+        })
+      );
     });
 
     it('should handle manager viewing weekly schedule', async () => {
       const user = userEvent.setup();
       render(
         <Calendar
+          defaultDate={DEFAULT_DATE}
           events={mockEvents}
           defaultView="week"
           onViewChange={mockHandlers.onViewChange}
@@ -401,36 +261,8 @@ describe('Calendar Integration Tests', () => {
       expect(mockHandlers.onNavigate).toHaveBeenCalled();
     });
 
-    it('should handle dispatcher creating new job from empty slot', async () => {
-      const user = userEvent.setup();
-      render(
-        <Calendar
-          events={mockEvents}
-          onSelectSlot={mockHandlers.onSelectSlot}
-        />
-      );
-
-      // Find empty slot
-      const cells = screen.getAllByRole('cell');
-      const emptyCell = cells.find(
-        (cell) => !within(cell).queryByText(/Install|Fix|Electrical/)
-      );
-
-      if (emptyCell) {
-        // Click to select slot
-        await user.click(emptyCell);
-
-        expect(mockHandlers.onSelectSlot).toHaveBeenCalledWith(
-          expect.objectContaining({
-            start: expect.any(Date),
-            end: expect.any(Date),
-          })
-        );
-      }
-    });
-
     it('should handle viewing different job statuses', async () => {
-      render(<Calendar events={mockEvents} />);
+      render(<Calendar defaultDate={DEFAULT_DATE} events={mockEvents} />);
 
       // Verify all job statuses are visible
       expect(screen.getByText('Install HVAC System')).toBeInTheDocument(); // Scheduled
@@ -444,6 +276,7 @@ describe('Calendar Integration Tests', () => {
       const user = userEvent.setup();
       render(
         <Calendar
+          defaultDate={DEFAULT_DATE}
           events={mockEvents}
           onViewChange={mockHandlers.onViewChange}
         />
@@ -468,18 +301,20 @@ describe('Calendar Integration Tests', () => {
         status: JobStatus.SCHEDULED,
       }));
 
-      const { container } = render(<Calendar events={manyEvents} />);
+      const { container } = render(
+        <Calendar defaultDate={DEFAULT_DATE} events={manyEvents} />
+      );
       expect(container).toBeInTheDocument();
 
       // Calendar should render without performance issues
-      expect(screen.getByRole('application')).toBeInTheDocument();
+      expect(document.querySelector('.rbc-calendar')).toBeInTheDocument();
     });
   });
 
   describe('Edge Cases', () => {
     it('should handle empty events array', () => {
-      render(<Calendar events={[]} />);
-      expect(screen.getByRole('application')).toBeInTheDocument();
+      render(<Calendar defaultDate={DEFAULT_DATE} events={[]} />);
+      expect(document.querySelector('.rbc-calendar')).toBeInTheDocument();
     });
 
     it('should handle events with missing optional fields', () => {
@@ -492,7 +327,7 @@ describe('Calendar Integration Tests', () => {
         status: JobStatus.SCHEDULED,
       };
 
-      render(<Calendar events={[minimalEvent]} />);
+      render(<Calendar defaultDate={DEFAULT_DATE} events={[minimalEvent]} />);
       expect(screen.getByText('Minimal Job')).toBeInTheDocument();
     });
 
@@ -516,7 +351,9 @@ describe('Calendar Integration Tests', () => {
         },
       ];
 
-      render(<Calendar events={overlappingEvents} />);
+      render(
+        <Calendar defaultDate={DEFAULT_DATE} events={overlappingEvents} />
+      );
       expect(screen.getByText('Event 1')).toBeInTheDocument();
       expect(screen.getByText('Event 2')).toBeInTheDocument();
     });

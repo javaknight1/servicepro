@@ -1,10 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '@components/layout';
+import { getErrorMessage } from '@/utils/error';
 import {
   DataTable,
   Badge,
   EmptyState,
+  ErrorState,
   Button,
   getStatusBadgeVariant,
 } from '@components/shared';
@@ -13,13 +15,18 @@ import { jobService, Job, JobFilters } from '@services/jobService';
 import { JobActionsMenu, JobFlowModal } from '@components/jobs';
 import { Briefcase, Plus, Search, Info, CalendarDays } from 'lucide-react';
 import { getJobStatusLabel, getJobPriorityLabel } from '@app-types';
-import { formatEpochDateTimeUTC } from '@/utils/epoch';
+import { formatEpochDateTime } from '@/utils/epoch';
+import { useTenantTimezone } from '@/hooks/useTenantTimezone';
 
 export function JobsPage() {
   const navigate = useNavigate();
+  const timeZone = useTenantTimezone();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  // Ignore responses from superseded requests (fast paging/searching)
+  const requestIdRef = useRef(0);
   const [filters, setFilters] = useState<JobFilters>({
     page: 1,
     page_size: 10,
@@ -35,25 +42,30 @@ export function JobsPage() {
   }, [filters]);
 
   const loadJobs = async () => {
+    const requestId = ++requestIdRef.current;
     setIsLoading(true);
+    setLoadError(null);
     try {
       const response = await jobService.getJobs({
         ...filters,
         search: searchQuery || undefined,
       });
+      if (requestId !== requestIdRef.current) return;
       setJobs(response.jobs);
       setTotal(response.total);
     } catch (error) {
+      if (requestId !== requestIdRef.current) return;
       console.error('Failed to load jobs:', error);
+      setLoadError(getErrorMessage(error, 'Failed to load jobs'));
     } finally {
-      setIsLoading(false);
+      if (requestId === requestIdRef.current) setIsLoading(false);
     }
   };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
+    // New filters object re-triggers the load effect (no double request)
     setFilters({ ...filters, page: 1 });
-    loadJobs();
   };
 
   const columns: Column<Job>[] = [
@@ -123,7 +135,7 @@ export function JobsPage() {
       sortable: true,
       render: (value) => (
         <span className="text-neutral-600">
-          {value ? formatEpochDateTimeUTC(value as number) : '-'}
+          {value ? formatEpochDateTime(value as number, timeZone) : '-'}
         </span>
       ),
     },
@@ -204,7 +216,13 @@ export function JobsPage() {
           </div>
         </form>
 
-        {!isLoading && jobs.length === 0 && !searchQuery ? (
+        {loadError ? (
+          <ErrorState
+            title="Couldn't load jobs"
+            message={loadError}
+            onRetry={loadJobs}
+          />
+        ) : !isLoading && jobs.length === 0 && !searchQuery ? (
           <EmptyState
             icon={<Briefcase className="h-12 w-12" />}
             title="No jobs yet"

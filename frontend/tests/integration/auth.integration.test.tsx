@@ -42,6 +42,7 @@ vi.mock('@/services/api', () => ({
 
 // Import after mocking
 import { useAuthStore, useTenantStore } from '@store';
+import { authApi } from '@/services/api';
 import { LoginPage } from '../../src/pages/Login/LoginPage';
 import { RegisterPage } from '../../src/pages/Register/RegisterPage';
 import { ForgotPasswordPage } from '../../src/pages/ForgotPassword/ForgotPasswordPage';
@@ -58,16 +59,6 @@ vi.mock('react-router-dom', async () => {
     useNavigate: () => mockNavigate,
   };
 });
-
-// Mock user data
-const mockUser = {
-  id: 'user-123',
-  email: 'test@example.com',
-  first_name: 'Test',
-  last_name: 'User',
-  is_active: true,
-  email_verified: true,
-};
 
 const mockTenant = {
   id: 'tenant-123',
@@ -87,7 +78,7 @@ describe('Authentication Flow Integration', () => {
 
   describe('Login → Dashboard Flow', () => {
     it('should complete full login flow and navigate to dashboard', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       const mockLogin = vi.fn().mockResolvedValue(undefined);
 
       vi.mocked(useAuthStore).mockImplementation((selector) => {
@@ -151,7 +142,7 @@ describe('Authentication Flow Integration', () => {
     });
 
     it('should display error and stay on login page on failed login', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       const mockLogin = vi.fn().mockRejectedValue({
         response: { data: { message: 'Invalid credentials' } },
       });
@@ -208,7 +199,7 @@ describe('Authentication Flow Integration', () => {
     });
 
     it('should navigate to register page from login', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
 
       vi.mocked(useAuthStore).mockImplementation((selector) => {
         const state = {
@@ -264,7 +255,7 @@ describe('Authentication Flow Integration', () => {
     });
 
     it('should navigate to forgot password from login', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
 
       vi.mocked(useAuthStore).mockImplementation((selector) => {
         const state = {
@@ -325,7 +316,7 @@ describe('Authentication Flow Integration', () => {
 
   describe('Registration Flow', () => {
     it('should complete registration and show success message', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       const mockRegister = vi.fn().mockResolvedValue(undefined);
 
       vi.mocked(useAuthStore).mockImplementation((selector) => {
@@ -368,8 +359,6 @@ describe('Authentication Flow Integration', () => {
       );
 
       // Fill registration form
-      await user.type(screen.getByLabelText(/first name/i), 'Test');
-      await user.type(screen.getByLabelText(/last name/i), 'User');
       await user.type(screen.getByLabelText(/email/i), 'newuser@example.com');
       await user.type(screen.getByLabelText(/^password$/i), 'SecurePass123!');
       await user.type(
@@ -394,7 +383,7 @@ describe('Authentication Flow Integration', () => {
     });
 
     it('should show validation errors for invalid registration data', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
 
       vi.mocked(useAuthStore).mockImplementation((selector) => {
         const state = {
@@ -449,7 +438,7 @@ describe('Authentication Flow Integration', () => {
     });
 
     it('should show error when passwords do not match', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
 
       vi.mocked(useAuthStore).mockImplementation((selector) => {
         const state = {
@@ -490,8 +479,6 @@ describe('Authentication Flow Integration', () => {
         </MemoryRouter>
       );
 
-      await user.type(screen.getByLabelText(/first name/i), 'Test');
-      await user.type(screen.getByLabelText(/last name/i), 'User');
       await user.type(screen.getByLabelText(/email/i), 'test@example.com');
       await user.type(screen.getByLabelText(/^password$/i), 'SecurePass123!');
       await user.type(
@@ -513,7 +500,7 @@ describe('Authentication Flow Integration', () => {
 
   describe('Password Reset Flow', () => {
     it('should send password reset request successfully', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       const mockRequestReset = vi.fn().mockResolvedValue(undefined);
 
       vi.mocked(useAuthStore).mockImplementation((selector) => {
@@ -560,13 +547,16 @@ describe('Authentication Flow Integration', () => {
         screen.getByRole('button', { name: /send|reset|submit/i })
       );
 
+      // The page calls the API directly (not via the auth store)
       await waitFor(() => {
-        expect(mockRequestReset).toHaveBeenCalledWith('test@example.com');
+        expect(authApi.requestPasswordReset).toHaveBeenCalledWith({
+          email: 'test@example.com',
+        });
       });
     });
 
     it('should show success message after password reset request', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       const mockRequestReset = vi.fn().mockResolvedValue(undefined);
 
       vi.mocked(useAuthStore).mockImplementation((selector) => {
@@ -614,18 +604,11 @@ describe('Authentication Flow Integration', () => {
       );
 
       // Should show success message about email being sent
-      await waitFor(() => {
-        const successMessage = screen.queryByText(
+      expect(
+        await screen.findByText(
           /check your email|email sent|instructions sent/i
-        );
-        // Only assert if the component shows success message
-        if (successMessage) {
-          expect(successMessage).toBeInTheDocument();
-        } else {
-          // If no success message, at least verify the request was made
-          expect(mockRequestReset).toHaveBeenCalled();
-        }
-      });
+        )
+      ).toBeInTheDocument();
     });
   });
 

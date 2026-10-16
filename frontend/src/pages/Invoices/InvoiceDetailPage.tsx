@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { DashboardLayout } from '@components/layout';
 import { Button, Badge } from '@components/shared';
@@ -12,8 +12,16 @@ import {
   type PaymentReminderResponse,
 } from '@services/paymentReminderService';
 import { getErrorMessage } from '@/utils/error';
+import {
+  formatDollars,
+  lineTotal,
+  percentToTaxRate,
+  roundToCents,
+  taxRateToPercent,
+} from '@/utils/money';
 import { trackEvent, AnalyticsEvents } from '@services/analytics';
-import { customerService, Customer } from '@services/customerService';
+import type { Customer } from '@services/customerService';
+import { fetchAllCustomers } from '@services/customerLookup';
 import {
   ArrowLeft,
   Save,
@@ -89,10 +97,92 @@ export function InvoiceDetailPage() {
     useState(false);
   const [customerName, setCustomerName] = useState<string>('');
 
+  const loadCustomers = async () => {
+    setIsLoadingCustomers(true);
+    try {
+      // Page through all customers (API caps page_size at 100)
+      setCustomers(await fetchAllCustomers());
+    } catch (err) {
+      console.error('Failed to load customers:', err);
+    } finally {
+      setIsLoadingCustomers(false);
+    }
+  };
+
+  const loadReminders = useCallback(async (invoiceId: string) => {
+    setRemindersLoading(true);
+    try {
+      const data = await paymentReminderService.getReminderHistory(invoiceId);
+      setReminders(data);
+    } catch (err) {
+      console.error('Failed to load reminders:', err);
+    } finally {
+      setRemindersLoading(false);
+    }
+  }, []);
+
+  const loadInvoice = useCallback(
+    async (invoiceId: string, isStale: () => boolean = () => false) => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const invoice = await invoiceService.getInvoice(invoiceId);
+        if (isStale()) return;
+        // Convert tax_rate from decimal (0.07) back to percentage (7) for display
+        const taxRatePercent = taxRateToPercent(invoice.tax_rate);
+        setFormData({
+          customer_id: invoice.customer_id || '',
+          issue_date: invoice.issue_date
+            ? invoice.issue_date.split('T')[0]
+            : '',
+          due_date: invoice.due_date ? invoice.due_date.split('T')[0] : '',
+          tax_rate: taxRatePercent,
+          notes: invoice.notes || '',
+          terms: invoice.terms || '',
+        });
+        if (invoice.lines && invoice.lines.length > 0) {
+          setLineItems(
+            invoice.lines.map((line) => ({
+              description: line.description,
+              quantity: line.quantity,
+              unit_price: line.unit_price,
+            }))
+          );
+        }
+        // Set invoice status and number
+        setInvoiceStatus(invoice.status || InvoiceStatus.DRAFT);
+        setInvoiceNumber(invoice.invoice_number || '');
+        // Set customer email and name if available
+        if (invoice.customer?.email) {
+          setCustomerEmail(invoice.customer.email);
+        }
+        if (invoice.customer) {
+          const name = invoice.customer.company_name
+            ? `${invoice.customer.company_name} (${invoice.customer.first_name} ${invoice.customer.last_name})`
+            : `${invoice.customer.first_name} ${invoice.customer.last_name}`;
+          setCustomerName(name);
+        }
+
+        // Load reminders for non-draft invoices
+        if (invoice.status && invoice.status !== InvoiceStatus.DRAFT) {
+          loadReminders(invoiceId);
+        }
+      } catch (err) {
+        if (isStale()) return;
+        console.error('Failed to load invoice:', err);
+        setError('Failed to load invoice details');
+      } finally {
+        if (!isStale()) setIsLoading(false);
+      }
+    },
+    [loadReminders]
+  );
+
   useEffect(() => {
+    let cancelled = false;
     loadCustomers();
     if (!isNew && id) {
-      loadInvoice(id);
+      loadInvoice(id, () => cancelled);
     } else {
       // Set default dates
       const today = new Date();
@@ -104,83 +194,10 @@ export function InvoiceDetailPage() {
         due_date: dueDate.toISOString().split('T')[0],
       }));
     }
-  }, [id, isNew]);
-
-  const loadCustomers = async () => {
-    setIsLoadingCustomers(true);
-    try {
-      const response = await customerService.getCustomers({ page_size: 100 });
-      setCustomers(response.customers);
-    } catch (err) {
-      console.error('Failed to load customers:', err);
-    } finally {
-      setIsLoadingCustomers(false);
-    }
-  };
-
-  const loadInvoice = async (invoiceId: string) => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const invoice = await invoiceService.getInvoice(invoiceId);
-      // Convert tax_rate from decimal (0.07) back to percentage (7) for display
-      const taxRatePercent = invoice.tax_rate
-        ? (invoice.tax_rate * 100).toString()
-        : '0';
-      setFormData({
-        customer_id: invoice.customer_id || '',
-        issue_date: invoice.issue_date ? invoice.issue_date.split('T')[0] : '',
-        due_date: invoice.due_date ? invoice.due_date.split('T')[0] : '',
-        tax_rate: taxRatePercent,
-        notes: invoice.notes || '',
-        terms: invoice.terms || '',
-      });
-      if (invoice.lines && invoice.lines.length > 0) {
-        setLineItems(
-          invoice.lines.map((line) => ({
-            description: line.description,
-            quantity: line.quantity,
-            unit_price: line.unit_price,
-          }))
-        );
-      }
-      // Set invoice status and number
-      setInvoiceStatus(invoice.status || InvoiceStatus.DRAFT);
-      setInvoiceNumber(invoice.invoice_number || '');
-      // Set customer email and name if available
-      if (invoice.customer?.email) {
-        setCustomerEmail(invoice.customer.email);
-      }
-      if (invoice.customer) {
-        const name = invoice.customer.company_name
-          ? `${invoice.customer.company_name} (${invoice.customer.first_name} ${invoice.customer.last_name})`
-          : `${invoice.customer.first_name} ${invoice.customer.last_name}`;
-        setCustomerName(name);
-      }
-
-      // Load reminders for non-draft invoices
-      if (invoice.status && invoice.status !== InvoiceStatus.DRAFT) {
-        loadReminders(invoiceId);
-      }
-    } catch (err) {
-      console.error('Failed to load invoice:', err);
-      setError('Failed to load invoice details');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const loadReminders = async (invoiceId: string) => {
-    setRemindersLoading(true);
-    try {
-      const data = await paymentReminderService.getReminderHistory(invoiceId);
-      setReminders(data);
-    } catch (err) {
-      console.error('Failed to load reminders:', err);
-    } finally {
-      setRemindersLoading(false);
-    }
-  };
+    return () => {
+      cancelled = true;
+    };
+  }, [id, isNew, loadInvoice]);
 
   const handleSendReminder = async () => {
     if (!id || isNew) return;
@@ -233,26 +250,23 @@ export function InvoiceDetailPage() {
   };
 
   const calculateSubtotal = () => {
-    return lineItems.reduce((sum, item) => {
-      const qty =
-        typeof item.quantity === 'string'
-          ? parseFloat(item.quantity) || 0
-          : item.quantity;
-      const price =
-        typeof item.unit_price === 'string'
-          ? parseFloat(item.unit_price) || 0
-          : item.unit_price;
-      return sum + qty * price;
-    }, 0);
+    // Sum per-line totals rounded to cents, matching the server's math
+    return roundToCents(
+      lineItems.reduce(
+        (sum, item) => sum + lineTotal(item.quantity, item.unit_price),
+        0
+      )
+    );
   };
 
   const calculateTax = () => {
-    const taxRate = parseFloat(formData.tax_rate) || 0;
-    return calculateSubtotal() * (taxRate / 100);
+    return roundToCents(
+      calculateSubtotal() * percentToTaxRate(formData.tax_rate)
+    );
   };
 
   const calculateTotal = () => {
-    return calculateSubtotal() + calculateTax();
+    return roundToCents(calculateSubtotal() + calculateTax());
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -269,7 +283,7 @@ export function InvoiceDetailPage() {
       : undefined;
 
     // Convert tax rate from percentage (e.g., 7) to decimal (e.g., 0.07)
-    const taxRateDecimal = (parseFloat(formData.tax_rate) || 0) / 100;
+    const taxRateDecimal = percentToTaxRate(formData.tax_rate);
 
     const submitData = {
       customer_id: formData.customer_id,
@@ -676,15 +690,7 @@ export function InvoiceDetailPage() {
                     />
                   </div>
                   <div className="w-24 text-right py-2 font-medium">
-                    $
-                    {(
-                      (typeof item.quantity === 'string'
-                        ? parseFloat(item.quantity) || 0
-                        : item.quantity) *
-                      (typeof item.unit_price === 'string'
-                        ? parseFloat(item.unit_price) || 0
-                        : item.unit_price)
-                    ).toFixed(2)}
+                    {formatDollars(lineTotal(item.quantity, item.unit_price))}
                   </div>
                   <Button
                     type="button"
@@ -705,7 +711,7 @@ export function InvoiceDetailPage() {
                   <div className="flex justify-between">
                     <span className="text-neutral-600">Subtotal:</span>
                     <span className="font-medium">
-                      ${calculateSubtotal().toFixed(2)}
+                      {formatDollars(calculateSubtotal())}
                     </span>
                   </div>
                   <div className="flex justify-between">
@@ -713,12 +719,12 @@ export function InvoiceDetailPage() {
                       Tax ({formData.tax_rate}%):
                     </span>
                     <span className="font-medium">
-                      ${calculateTax().toFixed(2)}
+                      {formatDollars(calculateTax())}
                     </span>
                   </div>
                   <div className="flex justify-between text-lg font-semibold pt-2 border-t">
                     <span>Total:</span>
-                    <span>${calculateTotal().toFixed(2)}</span>
+                    <span>{formatDollars(calculateTotal())}</span>
                   </div>
                 </div>
               </div>

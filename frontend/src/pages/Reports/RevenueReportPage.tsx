@@ -33,6 +33,9 @@ import {
   RevenueReportQuery,
   PeriodType,
 } from '../../types/revenue';
+import { formatDollars } from '@/utils/money';
+
+const formatMoney = (value: string | number): string => formatDollars(value);
 
 // Register Chart.js components
 ChartJS.register(
@@ -129,16 +132,6 @@ const RevenueReportPage: React.FC = () => {
     } finally {
       setIsExporting(false);
     }
-  };
-
-  // Format currency for display
-  const formatCurrency = (value: string | number): string => {
-    const num = typeof value === 'string' ? parseFloat(value) : value;
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-    }).format(num);
   };
 
   // Format percentage
@@ -249,7 +242,7 @@ const RevenueReportPage: React.FC = () => {
             dataset: { label?: string };
             parsed: { y: number | null };
           }) => {
-            return `${context.dataset.label}: ${formatCurrency(
+            return `${context.dataset.label}: ${formatMoney(
               context.parsed.y ?? 0
             )}`;
           },
@@ -260,7 +253,7 @@ const RevenueReportPage: React.FC = () => {
       y: {
         beginAtZero: true,
         ticks: {
-          callback: (value: number | string) => formatCurrency(value),
+          callback: (value: number | string) => formatMoney(value),
         },
       },
     },
@@ -387,7 +380,7 @@ const RevenueReportPage: React.FC = () => {
                   <div>
                     <p className="text-sm text-gray-600">Total Revenue</p>
                     <p className="text-2xl font-bold text-gray-900">
-                      {formatCurrency(report.summary.total_gross_revenue)}
+                      {formatMoney(report.summary.total_gross_revenue)}
                     </p>
                   </div>
                   <div className="p-3 bg-blue-100 rounded-full">
@@ -421,7 +414,7 @@ const RevenueReportPage: React.FC = () => {
                   <div>
                     <p className="text-sm text-gray-600">Net Revenue</p>
                     <p className="text-2xl font-bold text-gray-900">
-                      {formatCurrency(report.summary.total_net_revenue)}
+                      {formatMoney(report.summary.total_net_revenue)}
                     </p>
                   </div>
                   <div className="p-3 bg-green-100 rounded-full">
@@ -429,7 +422,7 @@ const RevenueReportPage: React.FC = () => {
                   </div>
                 </div>
                 <p className="mt-4 text-sm text-gray-500">
-                  After fees: {formatCurrency(report.summary.total_fees)}
+                  After fees: {formatMoney(report.summary.total_fees)}
                 </p>
               </div>
 
@@ -447,8 +440,7 @@ const RevenueReportPage: React.FC = () => {
                   </div>
                 </div>
                 <p className="mt-4 text-sm text-gray-500">
-                  Avg:{' '}
-                  {formatCurrency(report.summary.average_transaction_value)}
+                  Avg: {formatMoney(report.summary.average_transaction_value)}
                 </p>
               </div>
 
@@ -566,14 +558,14 @@ const RevenueReportPage: React.FC = () => {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <span className="text-sm font-medium text-gray-900">
-                              {formatCurrency(customer.total_revenue)}
+                              {formatMoney(customer.total_revenue)}
                             </span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {customer.transaction_count}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {formatCurrency(customer.average_transaction_value)}
+                            {formatMoney(customer.average_transaction_value)}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {format(

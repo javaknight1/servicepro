@@ -5,7 +5,8 @@ import type {
   TierFeatures,
   BillingCycle,
 } from '@/types/membership';
-import { formatPrice, isUnlimited } from '@/types/membership';
+import { isUnlimited } from '@/types/membership';
+import { formatCents } from '@/utils/money';
 
 interface TierCardProps {
   tier: MembershipTier;
@@ -79,12 +80,12 @@ export function TierCard({
 
         <div className="text-center mb-6">
           <span className="text-4xl font-bold text-neutral-900">
-            {isFree ? 'Free' : formatPrice(displayPrice)}
+            {isFree ? 'Free' : formatCents(displayPrice)}
           </span>
           {!isFree && <span className="text-neutral-500 text-sm">/month</span>}
           {!isFree && isAnnual && (
             <p className="text-xs text-green-600 mt-1">
-              {formatPrice(tier.annual_price_cents)} billed annually
+              {formatCents(tier.annual_price_cents)} billed annually
             </p>
           )}
         </div>

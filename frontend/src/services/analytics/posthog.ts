@@ -1,4 +1,5 @@
-import posthog from 'posthog-js';
+import posthog, { type CaptureResult } from 'posthog-js';
+import { sanitizeUrlProperties } from '@/utils/urlSanitizer';
 
 export interface AnalyticsConfig {
   apiKey: string;
@@ -12,6 +13,24 @@ interface UserIdentity {
 }
 
 let initialized = false;
+
+/**
+ * Strip secrets (reset/verify/invite tokens, emails, Stripe session ids…)
+ * from URL-bearing properties before any event leaves the browser.
+ */
+export function sanitizeCaptureResult(
+  result: CaptureResult | null
+): CaptureResult | null {
+  if (!result) return result;
+  return {
+    ...result,
+    properties: sanitizeUrlProperties(result.properties ?? {}),
+    ...(result.$set ? { $set: sanitizeUrlProperties(result.$set) } : {}),
+    ...(result.$set_once
+      ? { $set_once: sanitizeUrlProperties(result.$set_once) }
+      : {}),
+  };
+}
 
 /**
  * Initialize PostHog analytics.
@@ -32,6 +51,7 @@ export function initAnalytics(config: AnalyticsConfig): void {
     capture_pageleave: false,
     disable_session_recording: true,
     persistence: 'localStorage',
+    before_send: sanitizeCaptureResult,
   });
 
   initialized = true;

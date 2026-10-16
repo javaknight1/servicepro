@@ -11,8 +11,8 @@ import {
   Badge,
 } from '@components/shared';
 import { useMembershipStore, useTenantStore } from '@store';
-import { formatPrice } from '@/types/membership';
 import { BillingSection } from './BillingSection';
+import { formatCents } from '@/utils/money';
 
 export function MembershipTab() {
   const navigate = useNavigate();
@@ -118,8 +118,8 @@ export function MembershipTab() {
                       {subscription?.price_cents === 0
                         ? 'Free'
                         : subscription?.billing_cycle === 'annual'
-                          ? `${formatPrice(subscription?.price_cents || 0)}/year`
-                          : `${formatPrice(subscription?.price_cents || 0)}/month`}
+                          ? `${formatCents(subscription?.price_cents || 0)}/year`
+                          : `${formatCents(subscription?.price_cents || 0)}/month`}
                     </p>
                   </div>
                   {subscription && (
@@ -164,7 +164,7 @@ export function MembershipTab() {
                       <p className="text-sm text-green-600">
                         💡 Switch to annual billing and save{' '}
                         <span className="font-semibold">
-                          {formatPrice(
+                          {formatCents(
                             tier.monthly_price_cents * 12 -
                               tier.annual_price_cents
                           )}

@@ -6,6 +6,8 @@ import {
   identifyUser as identifyAnalyticsUser,
   resetUser as resetAnalyticsUser,
 } from '@services/analytics';
+import { clearSessionState } from '@services/session';
+import { clearQueryCaches } from '@services/queryCacheRegistry';
 import type { AuthState, User } from '@app-types';
 
 export const useAuthStore = create<AuthState>()(
@@ -30,6 +32,13 @@ export const useAuthStore = create<AuthState>()(
           // Fetch user profile after login
           try {
             const userResponse = await userApi.getCurrentUser();
+            const previousUserId = get().user?.id;
+            if (previousUserId && previousUserId !== userResponse.data.id) {
+              // A different user than the one whose data may still be cached
+              clearSessionState();
+            } else {
+              clearQueryCaches();
+            }
             set({ user: userResponse.data });
             setErrorTrackingUser({
               id: userResponse.data.id,
@@ -77,7 +86,9 @@ export const useAuthStore = create<AuthState>()(
           console.error('Logout API call failed:', error);
         }
 
-        // Clear local state
+        // Clear local state, including cached server data and tenant context,
+        // so the next user on this browser cannot see this user's data.
+        clearSessionState();
         set({
           user: null,
           isAuthenticated: false,
@@ -130,6 +141,11 @@ export const useAuthStore = create<AuthState>()(
         // Try to fetch current user to verify authentication
         try {
           const response = await userApi.getCurrentUser();
+          const previousUserId = get().user?.id;
+          if (previousUserId && previousUserId !== response.data.id) {
+            // Cookie session belongs to a different user than the persisted one
+            clearSessionState();
+          }
           set({ user: response.data, isAuthenticated: true });
           setErrorTrackingUser({
             id: response.data.id,

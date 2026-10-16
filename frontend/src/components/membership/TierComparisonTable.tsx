@@ -1,11 +1,8 @@
 import { Check, X } from 'lucide-react';
 import { Button, Badge } from '@components/shared';
 import type { MembershipTier, BillingCycle } from '@/types/membership';
-import {
-  formatPrice,
-  isUnlimited,
-  featureDisplayConfig,
-} from '@/types/membership';
+import { isUnlimited, featureDisplayConfig } from '@/types/membership';
+import { formatCents } from '@/utils/money';
 
 interface TierComparisonTableProps {
   tiers: MembershipTier[];
@@ -66,7 +63,7 @@ export function TierComparisonTable({
                       {tier.display_name}
                     </div>
                     <div className="text-2xl font-bold text-neutral-900">
-                      {isFree ? 'Free' : formatPrice(displayPrice)}
+                      {isFree ? 'Free' : formatCents(displayPrice)}
                       {!isFree && (
                         <span className="text-sm font-normal text-neutral-500">
                           /mo
@@ -75,7 +72,7 @@ export function TierComparisonTable({
                     </div>
                     {!isFree && isAnnual && (
                       <div className="text-xs text-green-600">
-                        {formatPrice(tier.annual_price_cents)}/yr
+                        {formatCents(tier.annual_price_cents)}/yr
                       </div>
                     )}
                   </div>

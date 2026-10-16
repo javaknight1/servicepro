@@ -84,7 +84,7 @@ describe('LoginPage', () => {
   // ==========================================================================
   describe('Form Validation', () => {
     it('shows error for empty email', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       renderWithRouter(<LoginPage />);
 
       await user.click(screen.getByRole('button', { name: /sign in/i }));
@@ -97,7 +97,7 @@ describe('LoginPage', () => {
     // Note: HTML5 type="email" validation blocks invalid formats before form submission,
     // so custom validation errors cannot be tested for these cases in browser tests.
     it.skip('shows error for invalid email format', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       renderWithRouter(<LoginPage />);
 
       await user.type(screen.getByLabelText(/email/i), 'notanemail');
@@ -109,7 +109,7 @@ describe('LoginPage', () => {
     });
 
     it('shows error for short password', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       renderWithRouter(<LoginPage />);
 
       await user.type(screen.getByLabelText(/email/i), 'test@example.com');
@@ -124,7 +124,7 @@ describe('LoginPage', () => {
     });
 
     it('shows error for empty password', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       renderWithRouter(<LoginPage />);
 
       await user.type(screen.getByLabelText(/email/i), 'test@example.com');
@@ -138,7 +138,7 @@ describe('LoginPage', () => {
     });
 
     it('does not show errors for valid inputs', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       mockLogin.mockResolvedValueOnce({});
       renderWithRouter(<LoginPage />);
 
@@ -175,7 +175,7 @@ describe('LoginPage', () => {
 
     invalidEmails.forEach(({ email, error }) => {
       it(`shows error for invalid email: "${email || '(empty)'}"`, async () => {
-        const user = userEvent.setup();
+        const user = userEvent.setup({ delay: null });
         renderWithRouter(<LoginPage />);
 
         if (email) {
@@ -197,7 +197,7 @@ describe('LoginPage', () => {
 
     validEmails.forEach((email) => {
       it(`accepts valid email: "${email}"`, async () => {
-        const user = userEvent.setup();
+        const user = userEvent.setup({ delay: null });
         mockLogin.mockResolvedValueOnce({});
         renderWithRouter(<LoginPage />);
 
@@ -224,7 +224,7 @@ describe('LoginPage', () => {
 
     invalidPasswords.forEach(({ password, length }) => {
       it(`shows error for password with ${length} characters`, async () => {
-        const user = userEvent.setup();
+        const user = userEvent.setup({ delay: null });
         renderWithRouter(<LoginPage />);
 
         await user.type(screen.getByLabelText(/email/i), 'test@example.com');
@@ -245,7 +245,7 @@ describe('LoginPage', () => {
 
     validPasswords.forEach((password) => {
       it(`accepts valid password with ${password.length} characters`, async () => {
-        const user = userEvent.setup();
+        const user = userEvent.setup({ delay: null });
         mockLogin.mockResolvedValueOnce({});
         renderWithRouter(<LoginPage />);
 
@@ -267,7 +267,7 @@ describe('LoginPage', () => {
   // ==========================================================================
   describe('Form Submission', () => {
     it('calls login with correct credentials', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       mockLogin.mockResolvedValueOnce({});
       renderWithRouter(<LoginPage />);
 
@@ -284,7 +284,7 @@ describe('LoginPage', () => {
     });
 
     it('navigates to dashboard on successful login', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       mockLogin.mockResolvedValueOnce({});
       renderWithRouter(<LoginPage />);
 
@@ -298,7 +298,7 @@ describe('LoginPage', () => {
     });
 
     it('does not call login when form is invalid', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       renderWithRouter(<LoginPage />);
 
       await user.type(screen.getByLabelText(/email/i), 'invalid');
@@ -315,7 +315,7 @@ describe('LoginPage', () => {
   // ==========================================================================
   describe('Error Handling', () => {
     it('displays error message on login failure', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       mockLogin.mockRejectedValueOnce({
         response: {
           data: {
@@ -335,7 +335,7 @@ describe('LoginPage', () => {
     });
 
     it('displays default error message when no message in response', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       mockLogin.mockRejectedValueOnce({});
       renderWithRouter(<LoginPage />);
 
@@ -349,7 +349,7 @@ describe('LoginPage', () => {
     });
 
     it('clears error on new submission attempt', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       mockLogin.mockRejectedValueOnce({
         response: { data: { message: 'First error' } },
       });
@@ -379,7 +379,7 @@ describe('LoginPage', () => {
   // ==========================================================================
   describe('Loading State', () => {
     it('shows loading state during submission', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       mockLogin.mockImplementation(
         () => new Promise((resolve) => setTimeout(resolve, 100))
       );
@@ -394,7 +394,7 @@ describe('LoginPage', () => {
     });
 
     it('enables button after submission completes', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       mockLogin.mockResolvedValueOnce({});
       renderWithRouter(<LoginPage />);
 
@@ -445,7 +445,7 @@ describe('LoginPage', () => {
     });
 
     it('error messages are displayed near inputs', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       renderWithRouter(<LoginPage />);
 
       await user.click(screen.getByRole('button', { name: /sign in/i }));
@@ -465,7 +465,7 @@ describe('LoginPage', () => {
   // ==========================================================================
   describe('Keyboard Navigation', () => {
     it('supports tab navigation through form', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       renderWithRouter(<LoginPage />);
 
       // Focus the email input directly and then test tab navigation
@@ -478,7 +478,7 @@ describe('LoginPage', () => {
     });
 
     it('submits form on Enter in password field', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       mockLogin.mockResolvedValueOnce({});
       renderWithRouter(<LoginPage />);
 

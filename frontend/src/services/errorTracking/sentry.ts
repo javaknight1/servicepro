@@ -1,4 +1,5 @@
 import * as Sentry from '@sentry/react';
+import { sanitizeSearch, sanitizeUrl } from '@/utils/urlSanitizer';
 
 // Error tracking configuration
 export interface ErrorTrackingConfig {
@@ -90,11 +91,9 @@ export function initErrorTracking(config: ErrorTrackingConfig): void {
       }),
     ],
 
-    tracePropagationTargets: [
-      'localhost',
-      /^https:\/\/api\.servicepro\.com/,
-      /^https:\/\/.*\.servicepro\.com/,
-    ],
+    // The API is same-origin (axios baseURL '/api'), so only propagate
+    // trace headers to our own /api routes (and localhost in dev).
+    tracePropagationTargets: [/^\/api(\/|$)/, /^https?:\/\/localhost(:\d+)?\//],
 
     replaysSessionSampleRate: 0.1,
     replaysOnErrorSampleRate: 1.0,
@@ -120,15 +119,19 @@ export function initErrorTracking(config: ErrorTrackingConfig): void {
       return sanitizeEvent(event) as Sentry.ErrorEvent;
     },
 
+    beforeSendTransaction: (event) => {
+      return sanitizeEvent(event) as typeof event;
+    },
+
     beforeBreadcrumb: (breadcrumb) => {
       // Filter out noisy breadcrumbs
       if (breadcrumb.category === 'console' && breadcrumb.level === 'debug') {
         return null;
       }
 
-      // Sanitize breadcrumb data
+      // Sanitize breadcrumb data (and strip secrets from URLs)
       if (breadcrumb.data) {
-        breadcrumb.data = sanitizeData(breadcrumb.data);
+        breadcrumb.data = sanitizeBreadcrumbUrls(sanitizeData(breadcrumb.data));
       }
 
       return breadcrumb;
@@ -169,7 +172,34 @@ function shouldIgnoreError(
 /**
  * Sanitize event data to remove sensitive information
  */
-function sanitizeEvent(event: Sentry.Event): Sentry.Event {
+export function sanitizeBreadcrumbUrls(
+  data: Record<string, unknown>
+): Record<string, unknown> {
+  const out = { ...data };
+  for (const key of ['url', 'from', 'to']) {
+    const value = out[key];
+    if (typeof value === 'string') {
+      out[key] = sanitizeUrl(value);
+    }
+  }
+  return out;
+}
+
+export function sanitizeEvent(event: Sentry.Event): Sentry.Event {
+  // Strip secrets from the page URL and query string
+  if (event.request?.url) {
+    event.request.url = sanitizeUrl(event.request.url);
+  }
+  if (event.request?.query_string) {
+    event.request.query_string = sanitizeSearch(
+      typeof event.request.query_string === 'string'
+        ? event.request.query_string
+        : new URLSearchParams(
+            event.request.query_string as [string, string][]
+          ).toString()
+    ).replace(/^\?/, '');
+  }
+
   // Sanitize request headers
   if (event.request?.headers) {
     const sensitiveHeaders = [

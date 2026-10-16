@@ -1,10 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '@components/layout';
+import { getErrorMessage } from '@/utils/error';
 import {
   DataTable,
   Badge,
   EmptyState,
+  ErrorState,
   Button,
   getStatusBadgeVariant,
 } from '@components/shared';
@@ -12,8 +14,8 @@ import type { Column } from '@components/shared';
 import { quoteService, QuoteFilters } from '@services/quoteService';
 import type { Quote } from '@app-types/quote';
 import { FileText, Plus, Search } from 'lucide-react';
-import { formatCurrency } from '@app-types';
 import { QuoteActionsMenu } from '@components/quotes';
+import { formatDollars } from '@/utils/money';
 
 const getQuoteStatusLabel = (status: string): string => {
   const labels: Record<string, string> = {
@@ -32,6 +34,9 @@ export function QuotesPage() {
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  // Ignore responses from superseded requests (fast paging/searching)
+  const requestIdRef = useRef(0);
   const [filters, setFilters] = useState<QuoteFilters>({
     page: 1,
     page_size: 10,
@@ -46,22 +51,27 @@ export function QuotesPage() {
   }, [filters]);
 
   const loadQuotes = async () => {
+    const requestId = ++requestIdRef.current;
     setIsLoading(true);
+    setLoadError(null);
     try {
       const response = await quoteService.getQuotes(filters);
+      if (requestId !== requestIdRef.current) return;
       setQuotes(response.quotes);
       setTotal(response.total);
     } catch (error) {
+      if (requestId !== requestIdRef.current) return;
       console.error('Failed to load quotes:', error);
+      setLoadError(getErrorMessage(error, 'Failed to load quotes'));
     } finally {
-      setIsLoading(false);
+      if (requestId === requestIdRef.current) setIsLoading(false);
     }
   };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
+    // New filters object re-triggers the load effect (no double request)
     setFilters({ ...filters, page: 1 });
-    loadQuotes();
   };
 
   const columns: Column<Quote>[] = [
@@ -109,7 +119,7 @@ export function QuotesPage() {
       className: 'text-right',
       render: (value) => (
         <span className="font-medium text-neutral-900">
-          {formatCurrency(value as number)}
+          {formatDollars(value as number)}
         </span>
       ),
     },
@@ -173,7 +183,13 @@ export function QuotesPage() {
           </div>
         </form>
 
-        {!isLoading && quotes.length === 0 && !searchQuery ? (
+        {loadError ? (
+          <ErrorState
+            title="Couldn't load quotes"
+            message={loadError}
+            onRetry={loadQuotes}
+          />
+        ) : !isLoading && quotes.length === 0 && !searchQuery ? (
           <EmptyState
             icon={<FileText className="h-12 w-12" />}
             title="No quotes yet"

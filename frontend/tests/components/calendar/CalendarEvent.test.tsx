@@ -116,18 +116,18 @@ describe('CalendarEvent Component', () => {
       expect(badge).toHaveClass('bg-gray-200');
     });
 
-    it('should apply correct color for medium priority', () => {
-      const mediumPriorityEvent: JobEvent = {
+    it('should apply correct color for normal priority', () => {
+      const normalPriorityEvent: JobEvent = {
         ...mockEvent,
-        priority: JobPriority.MEDIUM,
+        priority: JobPriority.NORMAL,
       };
       const { container } = render(
         <CalendarEvent
-          event={mediumPriorityEvent}
-          title={mediumPriorityEvent.title}
+          event={normalPriorityEvent}
+          title={normalPriorityEvent.title}
         />
       );
-      const badge = container.querySelector('[title="Priority: medium"]');
+      const badge = container.querySelector('[title="Priority: normal"]');
       expect(badge).toHaveClass('bg-blue-200');
     });
 

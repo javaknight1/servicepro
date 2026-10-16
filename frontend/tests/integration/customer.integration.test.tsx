@@ -10,10 +10,11 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import React from 'react';
+import { AxiosError, AxiosHeaders } from 'axios';
 
 // Mock modules
 vi.mock('@store', () => ({
@@ -145,6 +146,27 @@ vi.mock('react-router-dom', async () => {
     useNavigate: () => mockNavigate,
   };
 });
+
+type TestUser = ReturnType<typeof userEvent.setup>;
+
+/** Fill every required field of the customer form (labels end in " *"). */
+async function fillRequiredCustomerFields(
+  user: TestUser,
+  values: { first: string; last: string; email: string }
+): Promise<void> {
+  await user.type(screen.getByLabelText(/^first name/i), values.first);
+  await user.type(screen.getByLabelText(/^last name/i), values.last);
+  await user.type(screen.getByLabelText(/^email \*/i), values.email);
+  await user.type(screen.getByLabelText(/^primary phone/i), '555-000-0000');
+  // Billing address comes first; the service address reuses the labels
+  await user.type(
+    screen.getAllByLabelText(/^street address/i)[0],
+    '999 New St'
+  );
+  await user.type(screen.getAllByLabelText(/^city/i)[0], 'New City');
+  await user.type(screen.getAllByLabelText(/^state/i)[0], 'NC');
+  await user.type(screen.getAllByLabelText(/^zip code/i)[0], '28000');
+}
 
 const setupMocks = () => {
   vi.mocked(useAuthStore).mockImplementation((selector) => {
@@ -297,7 +319,7 @@ describe('Customer CRUD Integration', () => {
     });
 
     it('should navigate to new customer page when clicking add button', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       const { CustomersPage } =
         await import('../../src/pages/Customers/CustomersPage');
 
@@ -319,7 +341,7 @@ describe('Customer CRUD Integration', () => {
     });
 
     it('should navigate to customer detail when clicking a customer row', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       const { CustomersPage } =
         await import('../../src/pages/Customers/CustomersPage');
 
@@ -344,7 +366,7 @@ describe('Customer CRUD Integration', () => {
 
   describe('Customer Search and Filter', () => {
     it('should search customers by query', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       const { CustomersPage } =
         await import('../../src/pages/Customers/CustomersPage');
 
@@ -375,7 +397,7 @@ describe('Customer CRUD Integration', () => {
     });
 
     it('should reset to first page on search', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       const { CustomersPage } =
         await import('../../src/pages/Customers/CustomersPage');
 
@@ -405,7 +427,7 @@ describe('Customer CRUD Integration', () => {
 
   describe('Customer Creation', () => {
     it('should create a new customer successfully', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       const newCustomer = {
         id: 'customer-new',
         email: 'newcustomer@example.com',
@@ -449,17 +471,11 @@ describe('Customer CRUD Integration', () => {
       });
 
       // Fill in required fields
-      await user.type(screen.getByLabelText(/first name/i), 'New');
-      await user.type(screen.getByLabelText(/last name/i), 'Customer');
-      await user.type(
-        screen.getByLabelText(/email/i),
-        'newcustomer@example.com'
-      );
-      await user.type(screen.getByLabelText(/phone/i), '555-000-0000');
-
-      // Fill address fields
-      const streetInput = screen.getByLabelText(/street|address/i);
-      await user.type(streetInput, '999 New St');
+      await fillRequiredCustomerFields(user, {
+        first: 'New',
+        last: 'Customer',
+        email: 'newcustomer@example.com',
+      });
 
       // Submit form
       const saveButton = screen.getByRole('button', {
@@ -479,7 +495,7 @@ describe('Customer CRUD Integration', () => {
     });
 
     it('should show validation errors for missing required fields', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
 
       const { CustomerDetailPage } =
         await import('../../src/pages/Customers/CustomerDetailPage');
@@ -500,11 +516,9 @@ describe('Customer CRUD Integration', () => {
       });
       await user.click(saveButton);
 
-      // Should show validation errors
-      await waitFor(() => {
-        const errorMessages = screen.getAllByText(/required|invalid|must be/i);
-        expect(errorMessages.length).toBeGreaterThan(0);
-      });
+      // Required fields use native constraint validation
+      expect(screen.getByLabelText(/^first name/i)).toBeInvalid();
+      expect(screen.getByLabelText(/^email \*/i)).toBeInvalid();
 
       // Should not call create
       expect(customerService.createCustomer).not.toHaveBeenCalled();
@@ -542,7 +556,7 @@ describe('Customer CRUD Integration', () => {
     });
 
     it('should update customer successfully', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       vi.mocked(customerService.getCustomer).mockResolvedValue(
         mockCustomers[0]
       );
@@ -593,7 +607,7 @@ describe('Customer CRUD Integration', () => {
 
   describe('Customer Deletion', () => {
     it('should delete customer after confirmation', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       vi.mocked(customerService.getCustomer).mockResolvedValue(
         mockCustomers[0]
       );
@@ -615,25 +629,20 @@ describe('Customer CRUD Integration', () => {
         expect(customerService.getCustomer).toHaveBeenCalled();
       });
 
-      // Find and click delete button
-      const deleteButton = screen.queryByRole('button', { name: /delete/i });
-      if (deleteButton) {
-        await user.click(deleteButton);
+      // Deletion is confirmed via window.confirm
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
 
-        // Confirm deletion if there's a confirmation dialog
-        const confirmButton = screen.queryByRole('button', {
-          name: /confirm|yes|delete/i,
-        });
-        if (confirmButton) {
-          await user.click(confirmButton);
-        }
+      await user.click(
+        await screen.findByRole('button', { name: /delete customer/i })
+      );
 
-        await waitFor(() => {
-          expect(customerService.deleteCustomer).toHaveBeenCalledWith(
-            'customer-1'
-          );
-        });
-      }
+      expect(confirmSpy).toHaveBeenCalled();
+      await waitFor(() => {
+        expect(customerService.deleteCustomer).toHaveBeenCalledWith(
+          'customer-1'
+        );
+      });
+      confirmSpy.mockRestore();
     });
   });
 
@@ -656,15 +665,36 @@ describe('Customer CRUD Integration', () => {
         expect(customerService.getCustomers).toHaveBeenCalled();
       });
 
-      // Error should be handled gracefully (logged, displayed, etc.)
-      // The exact behavior depends on the component implementation
+      // An API failure must show an error state with retry, not "No customers yet"
+      expect(
+        await screen.findByText(/couldn't load customers/i)
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/no customers yet/i)).not.toBeInTheDocument();
+
+      vi.mocked(customerService.getCustomers).mockClear();
+      await userEvent
+        .setup()
+        .click(screen.getByRole('button', { name: /try again/i }));
+      expect(customerService.getCustomers).toHaveBeenCalledTimes(1);
     });
 
     it('should display error when customer creation fails', async () => {
-      const user = userEvent.setup();
-      vi.mocked(customerService.createCustomer).mockRejectedValue({
-        response: { data: { message: 'Email already exists' } },
-      });
+      const user = userEvent.setup({ delay: null });
+      vi.mocked(customerService.createCustomer).mockRejectedValue(
+        new AxiosError(
+          'Request failed with status code 409',
+          'ERR_BAD_REQUEST',
+          undefined,
+          undefined,
+          {
+            data: { message: 'Email already exists' },
+            status: 409,
+            statusText: 'Conflict',
+            headers: {},
+            config: { headers: new AxiosHeaders() },
+          }
+        )
+      );
 
       const { CustomerDetailPage } =
         await import('../../src/pages/Customers/CustomerDetailPage');
@@ -680,24 +710,21 @@ describe('Customer CRUD Integration', () => {
       });
 
       // Fill in required fields
-      await user.type(screen.getByLabelText(/first name/i), 'Test');
-      await user.type(screen.getByLabelText(/last name/i), 'User');
-      await user.type(screen.getByLabelText(/email/i), 'existing@example.com');
+      await fillRequiredCustomerFields(user, {
+        first: 'Test',
+        last: 'User',
+        email: 'existing@example.com',
+      });
 
       const saveButton = screen.getByRole('button', {
         name: /save|create|submit/i,
       });
       await user.click(saveButton);
 
-      // Should show error message
-      await waitFor(() => {
-        const errorMessage = screen.queryByText(
-          /email already exists|error|failed/i
-        );
-        if (errorMessage) {
-          expect(errorMessage).toBeInTheDocument();
-        }
-      });
+      // Should show the API error message
+      expect(
+        await screen.findByText(/email already exists/i)
+      ).toBeInTheDocument();
     });
   });
 });

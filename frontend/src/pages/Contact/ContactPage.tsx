@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Mail, Phone, MapPin } from 'lucide-react';
+import { ArrowLeft, Mail } from 'lucide-react';
 import { Button, Input } from '@components/shared';
 import { Footer } from '@components/layout';
+import { SUPPORT_EMAIL, buildMailto } from '@/config/support';
 
 export function ContactPage() {
   const [formData, setFormData] = useState({
@@ -11,27 +12,18 @@ export function ContactPage() {
     subject: '',
     message: '',
   });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitStatus, setSubmitStatus] = useState<
-    'idle' | 'success' | 'error'
-  >('idle');
+  const [opened, setOpened] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // There is no contact API yet: compose the message in the visitor's own
+  // email app instead of pretending it was sent from this page.
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
-    setSubmitStatus('idle');
-
-    // TODO: Implement contact form API submission
-    // For now, simulate a successful submission
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      setSubmitStatus('success');
-      setFormData({ name: '', email: '', subject: '', message: '' });
-    } catch {
-      setSubmitStatus('error');
-    } finally {
-      setIsSubmitting(false);
-    }
+    const body = `${formData.message}\n\n— ${formData.name} <${formData.email}>`;
+    window.location.href = buildMailto(SUPPORT_EMAIL, {
+      subject: formData.subject,
+      body,
+    });
+    setOpened(true);
   };
 
   const handleChange = (
@@ -85,18 +77,25 @@ export function ContactPage() {
               Send us a message
             </h2>
 
-            {submitStatus === 'success' && (
-              <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-                <p className="text-green-800">
-                  Thank you for your message! We'll get back to you soon.
-                </p>
-              </div>
-            )}
+            <p className="mb-6 text-sm text-neutral-600">
+              Submitting opens your email app with this message addressed to{' '}
+              <a
+                href={`mailto:${SUPPORT_EMAIL}`}
+                className="text-primary-600 hover:underline"
+              >
+                {SUPPORT_EMAIL}
+              </a>
+              . Nothing is sent until you press send there.
+            </p>
 
-            {submitStatus === 'error' && (
-              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-red-800">
-                  Something went wrong. Please try again later.
+            {opened && (
+              <div
+                role="status"
+                className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg"
+              >
+                <p className="text-blue-800">
+                  Your email app should have opened. If it didn't, email us at{' '}
+                  {SUPPORT_EMAIL}.
                 </p>
               </div>
             )}
@@ -145,13 +144,8 @@ export function ContactPage() {
                   className="w-full px-3 py-2 border border-neutral-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                 />
               </div>
-              <Button
-                type="submit"
-                variant="primary"
-                className="w-full"
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? 'Sending...' : 'Send Message'}
+              <Button type="submit" variant="primary" className="w-full">
+                Open in email app
               </Button>
             </form>
           </div>
@@ -166,30 +160,9 @@ export function ContactPage() {
                 <ContactInfo
                   icon={<Mail className="h-6 w-6 text-primary-600" />}
                   title="Email"
-                  content="support@servicepro.com"
-                  href="mailto:support@servicepro.com"
+                  content={SUPPORT_EMAIL}
+                  href={`mailto:${SUPPORT_EMAIL}`}
                 />
-                <ContactInfo
-                  icon={<Phone className="h-6 w-6 text-primary-600" />}
-                  title="Phone"
-                  content="(555) 123-4567"
-                  href="tel:+15551234567"
-                />
-                <ContactInfo
-                  icon={<MapPin className="h-6 w-6 text-primary-600" />}
-                  title="Address"
-                  content="123 Business Ave, Suite 100, San Francisco, CA 94102"
-                />
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-8">
-              <h2 className="text-2xl font-bold text-neutral-900 mb-4">
-                Office Hours
-              </h2>
-              <div className="space-y-2 text-neutral-600">
-                <p>Monday - Friday: 9:00 AM - 6:00 PM (PST)</p>
-                <p>Saturday - Sunday: Closed</p>
               </div>
             </div>
           </div>

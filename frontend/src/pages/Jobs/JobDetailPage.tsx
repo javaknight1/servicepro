@@ -22,10 +22,12 @@ import {
   CreateJobAssignment,
   Job,
 } from '@services/jobService';
-import { customerService, Customer } from '@services/customerService';
+import type { Customer } from '@services/customerService';
+import { fetchAllCustomers } from '@services/customerLookup';
 import { getErrorMessage } from '@/utils/error';
 import { trackEvent, AnalyticsEvents } from '@services/analytics';
 import { datetimeLocalToEpoch, epochToDatetimeLocal } from '@/utils/epoch';
+import { useTenantTimezone } from '@/hooks/useTenantTimezone';
 import { ArrowLeft, Save, Trash2, Loader2 } from 'lucide-react';
 
 interface PendingAssignment extends CreateJobAssignment {
@@ -72,6 +74,9 @@ export function JobDetailPage() {
   const prefillCustomerId = (location.state as { prefillCustomerId?: string })
     ?.prefillCustomerId;
 
+  // Scheduling inputs are wall-clock time in the tenant's timezone
+  // (browser local if the tenant has none configured).
+  const timeZone = useTenantTimezone();
   const [formData, setFormData] = useState<JobFormData>(initialFormData);
   const [currentJob, setCurrentJob] = useState<Job | null>(null);
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -91,19 +96,19 @@ export function JobDetailPage() {
   const scheduleMinDatetime = useMemo(() => {
     const now = new Date();
     now.setSeconds(0, 0);
-    return now.toISOString().slice(0, 16);
-  }, []);
+    return epochToDatetimeLocal(Math.floor(now.getTime() / 1000), timeZone);
+  }, [timeZone]);
 
   const scheduleMaxDatetime = useMemo(() => {
     const oneYear = new Date();
     oneYear.setFullYear(oneYear.getFullYear() + 1);
     oneYear.setSeconds(0, 0);
-    return oneYear.toISOString().slice(0, 16);
-  }, []);
+    return epochToDatetimeLocal(Math.floor(oneYear.getTime() / 1000), timeZone);
+  }, [timeZone]);
 
   const startTime = useMemo(
-    () => datetimeLocalToEpoch(formData.scheduled_start_at),
-    [formData.scheduled_start_at]
+    () => datetimeLocalToEpoch(formData.scheduled_start_at, timeZone),
+    [formData.scheduled_start_at, timeZone]
   );
 
   const endTime = useMemo(() => {
@@ -145,6 +150,52 @@ export function JobDetailPage() {
     }
   }, [startTime, endTime, assignedTechIds, canCheckConflicts]);
 
+  const loadCustomers = async () => {
+    setIsLoadingCustomers(true);
+    try {
+      // Page through all customers (API caps page_size at 100)
+      setCustomers(await fetchAllCustomers());
+    } catch (err) {
+      console.error('Failed to load customers:', err);
+    } finally {
+      setIsLoadingCustomers(false);
+    }
+  };
+
+  const loadJob = useCallback(
+    async (jobId: string) => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const job = await jobService.getJob(jobId);
+        setCurrentJob(job);
+        setFormData({
+          customer_id: job.customer_id || '',
+          title: job.title || '',
+          description: job.description || '',
+          job_type: job.job_type || JobType.MAINTENANCE,
+          status: job.status || JobStatus.NEW,
+          priority: job.priority || JobPriority.NORMAL,
+          scheduled_start_at: job.scheduled_start_at
+            ? epochToDatetimeLocal(job.scheduled_start_at, timeZone)
+            : '',
+          estimated_duration: job.estimated_duration?.toString() || '',
+          internal_notes: job.internal_notes || '',
+          customer_notes: job.customer_notes || '',
+          special_instructions: job.special_instructions || '',
+          required_materials: job.required_materials || '',
+        });
+        setAssignments(job.assignments || []);
+      } catch (err) {
+        console.error('Failed to load job:', err);
+        setError('Failed to load job details');
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [timeZone]
+  );
+
   useEffect(() => {
     loadCustomers();
     if (!isNew && id) {
@@ -154,50 +205,7 @@ export function JobDetailPage() {
     } else if (isNew && prefillCustomerId) {
       setFormData((prev) => ({ ...prev, customer_id: prefillCustomerId }));
     }
-  }, [id, isNew, cloneFromId, prefillCustomerId]);
-
-  const loadCustomers = async () => {
-    setIsLoadingCustomers(true);
-    try {
-      const response = await customerService.getCustomers({ page_size: 100 });
-      setCustomers(response.customers);
-    } catch (err) {
-      console.error('Failed to load customers:', err);
-    } finally {
-      setIsLoadingCustomers(false);
-    }
-  };
-
-  const loadJob = async (jobId: string) => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const job = await jobService.getJob(jobId);
-      setCurrentJob(job);
-      setFormData({
-        customer_id: job.customer_id || '',
-        title: job.title || '',
-        description: job.description || '',
-        job_type: job.job_type || JobType.MAINTENANCE,
-        status: job.status || JobStatus.NEW,
-        priority: job.priority || JobPriority.NORMAL,
-        scheduled_start_at: job.scheduled_start_at
-          ? epochToDatetimeLocal(job.scheduled_start_at)
-          : '',
-        estimated_duration: job.estimated_duration?.toString() || '',
-        internal_notes: job.internal_notes || '',
-        customer_notes: job.customer_notes || '',
-        special_instructions: job.special_instructions || '',
-        required_materials: job.required_materials || '',
-      });
-      setAssignments(job.assignments || []);
-    } catch (err) {
-      console.error('Failed to load job:', err);
-      setError('Failed to load job details');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  }, [id, isNew, cloneFromId, prefillCustomerId, loadJob]);
 
   const loadJobForCloning = async (sourceJobId: string) => {
     setIsLoading(true);
@@ -253,7 +261,10 @@ export function JobDetailPage() {
 
     // Validate scheduling date range
     if (formData.scheduled_start_at) {
-      const scheduledEpoch = datetimeLocalToEpoch(formData.scheduled_start_at);
+      const scheduledEpoch = datetimeLocalToEpoch(
+        formData.scheduled_start_at,
+        timeZone
+      );
       if (scheduledEpoch !== null) {
         const nowEpoch = Math.floor(Date.now() / 1000);
         if (scheduledEpoch < nowEpoch) {
@@ -287,7 +298,8 @@ export function JobDetailPage() {
           job_type: formData.job_type,
           priority: formData.priority,
           scheduled_start_at:
-            datetimeLocalToEpoch(formData.scheduled_start_at) ?? undefined,
+            datetimeLocalToEpoch(formData.scheduled_start_at, timeZone) ??
+            undefined,
           estimated_duration: formData.estimated_duration
             ? parseInt(formData.estimated_duration)
             : undefined,
@@ -316,7 +328,8 @@ export function JobDetailPage() {
           status: formData.status,
           priority: formData.priority,
           scheduled_start_at:
-            datetimeLocalToEpoch(formData.scheduled_start_at) ?? undefined,
+            datetimeLocalToEpoch(formData.scheduled_start_at, timeZone) ??
+            undefined,
           estimated_duration: formData.estimated_duration
             ? parseInt(formData.estimated_duration)
             : undefined,

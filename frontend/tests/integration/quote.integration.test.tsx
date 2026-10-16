@@ -86,9 +86,9 @@ const mockQuotes = [
     subtotal: 1000,
     tax_rate: 0.08,
     tax_amount: 80,
-    total_amount: 1080,
+    total: 1080,
     valid_until: '2024-12-31T00:00:00Z',
-    lines: [
+    items: [
       {
         id: 'line-1',
         description: 'HVAC Installation Service',
@@ -116,9 +116,9 @@ const mockQuotes = [
     subtotal: 500,
     tax_rate: 0.08,
     tax_amount: 40,
-    total_amount: 540,
+    total: 540,
     valid_until: '2024-12-31T00:00:00Z',
-    lines: [
+    items: [
       {
         id: 'line-3',
         description: 'Plumbing Repair',
@@ -140,9 +140,9 @@ const mockQuotes = [
     subtotal: 1500,
     tax_rate: 0.08,
     tax_amount: 120,
-    total_amount: 1620,
+    total: 1620,
     valid_until: '2024-12-31T00:00:00Z',
-    lines: [
+    items: [
       {
         id: 'line-4',
         description: 'Electrical Work',
@@ -310,7 +310,7 @@ describe('Quote Workflow Integration', () => {
     });
 
     it('should navigate to quote detail when clicking a quote', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       const { QuotesPage } = await import('../../src/pages/Quotes/QuotesPage');
 
       render(
@@ -331,7 +331,7 @@ describe('Quote Workflow Integration', () => {
     });
 
     it('should navigate to new quote page when clicking add button', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       const { QuotesPage } = await import('../../src/pages/Quotes/QuotesPage');
 
       render(
@@ -353,7 +353,7 @@ describe('Quote Workflow Integration', () => {
 
   describe('Quote Creation', () => {
     it('should create a new quote with line items', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       const newQuote = {
         ...mockQuotes[0],
         id: 'quote-new',
@@ -375,52 +375,22 @@ describe('Quote Workflow Integration', () => {
         </MemoryRouter>
       );
 
-      // Wait for form to render
-      await waitFor(() => {
-        const customerInput = screen.queryByLabelText(/customer/i);
-        expect(
-          customerInput || screen.getByRole('combobox')
-        ).toBeInTheDocument();
-      });
+      // Customer is a native <select>
+      const customerSelect = await screen.findByLabelText(/customer/i);
+      await screen.findByRole('option', { name: /John Doe/i });
+      await user.selectOptions(customerSelect, 'customer-1');
 
-      // Select customer
-      const customerSelect =
-        screen.queryByLabelText(/customer/i) || screen.getByRole('combobox');
-      if (customerSelect) {
-        await user.click(customerSelect);
-        const option = screen.queryByText(/John Doe/i);
-        if (option) {
-          await user.click(option);
-        }
-      }
-
-      // Add line item if button exists
-      const addLineButton = screen.queryByRole('button', {
-        name: /add line|add item/i,
-      });
-      if (addLineButton) {
-        await user.click(addLineButton);
-
-        // Fill line item
-        const descInput =
-          screen.queryByLabelText(/description/i) ||
-          screen.queryByPlaceholderText(/description/i);
-        if (descInput) {
-          await user.type(descInput, 'Test Service');
-        }
-
-        const qtyInput = screen.queryByLabelText(/quantity|qty/i);
-        if (qtyInput) {
-          await user.clear(qtyInput);
-          await user.type(qtyInput, '1');
-        }
-
-        const priceInput = screen.queryByLabelText(/price|rate|amount/i);
-        if (priceInput) {
-          await user.clear(priceInput);
-          await user.type(priceInput, '500');
-        }
-      }
+      // Fill the default (first) line item
+      await user.type(
+        screen.getAllByPlaceholderText(/description/i)[0],
+        'Test Service'
+      );
+      const qty = screen.getAllByPlaceholderText(/qty/i)[0];
+      await user.clear(qty);
+      await user.type(qty, '2');
+      const price = screen.getAllByPlaceholderText(/price/i)[0];
+      await user.clear(price);
+      await user.type(price, '250');
 
       // Submit form
       const saveButton = screen.getByRole('button', {
@@ -429,14 +399,25 @@ describe('Quote Workflow Integration', () => {
       await user.click(saveButton);
 
       await waitFor(() => {
-        expect(quoteService.createQuote).toHaveBeenCalled();
+        expect(quoteService.createQuote).toHaveBeenCalledWith(
+          expect.objectContaining({
+            customer_id: 'customer-1',
+            items: [
+              expect.objectContaining({
+                description: 'Test Service',
+                quantity: 2,
+                unit_price: 250,
+              }),
+            ],
+          })
+        );
       });
     });
   });
 
   describe('Quote Status Transitions', () => {
     it('should send a draft quote to customer', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       vi.mocked(quoteService.getQuote).mockResolvedValue(mockQuotes[0]); // Draft quote
       vi.mocked(quoteService.sendQuote).mockResolvedValue({
         ...mockQuotes[0],
@@ -471,7 +452,7 @@ describe('Quote Workflow Integration', () => {
     });
 
     it('should accept a sent quote', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       vi.mocked(quoteService.getQuote).mockResolvedValue(mockQuotes[1]); // Sent quote
       vi.mocked(quoteService.acceptQuote).mockResolvedValue({
         ...mockQuotes[1],
@@ -506,7 +487,7 @@ describe('Quote Workflow Integration', () => {
     });
 
     it('should reject a sent quote', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       vi.mocked(quoteService.getQuote).mockResolvedValue(mockQuotes[1]); // Sent quote
       vi.mocked(quoteService.rejectQuote).mockResolvedValue({
         ...mockQuotes[1],
@@ -552,7 +533,7 @@ describe('Quote Workflow Integration', () => {
 
   describe('Quote PDF', () => {
     it('should download quote PDF', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       vi.mocked(quoteService.getQuote).mockResolvedValue(mockQuotes[0]);
       vi.mocked(quoteService.downloadQuotePDF).mockResolvedValue();
 
@@ -571,24 +552,19 @@ describe('Quote Workflow Integration', () => {
         expect(quoteService.getQuote).toHaveBeenCalled();
       });
 
-      // Find and click download/PDF button
-      const pdfButton = screen.queryByRole('button', { name: /pdf|download/i });
-      if (pdfButton) {
-        await user.click(pdfButton);
+      await user.click(
+        await screen.findByRole('button', { name: /pdf|download/i })
+      );
 
-        await waitFor(() => {
-          expect(quoteService.downloadQuotePDF).toHaveBeenCalledWith(
-            'quote-1',
-            expect.anything()
-          );
-        });
-      }
+      await waitFor(() => {
+        expect(quoteService.downloadQuotePDF).toHaveBeenCalledWith('quote-1');
+      });
     });
   });
 
   describe('Quote Filtering', () => {
     it('should filter quotes by status', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       const { QuotesPage } = await import('../../src/pages/Quotes/QuotesPage');
 
       render(
@@ -640,10 +616,22 @@ describe('Quote Workflow Integration', () => {
       await waitFor(() => {
         expect(quoteService.getQuotes).toHaveBeenCalled();
       });
+
+      // An API failure must show an error state with retry, not "No quotes yet"
+      expect(
+        await screen.findByText(/couldn't load quotes/i)
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/no quotes yet/i)).not.toBeInTheDocument();
+
+      vi.mocked(quoteService.getQuotes).mockClear();
+      await userEvent
+        .setup()
+        .click(screen.getByRole('button', { name: /try again/i }));
+      expect(quoteService.getQuotes).toHaveBeenCalledTimes(1);
     });
 
     it('should handle send quote error', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       vi.mocked(quoteService.getQuote).mockResolvedValue(mockQuotes[0]);
       vi.mocked(quoteService.sendQuote).mockRejectedValue({
         response: { data: { message: 'Customer email not available' } },

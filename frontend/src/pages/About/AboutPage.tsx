@@ -59,7 +59,6 @@ export function AboutPage() {
               Our Story
             </h2>
             <p className="text-neutral-600 leading-relaxed mb-4">
-              {/* TODO: Add your company story here */}
               We started ServicePro after experiencing firsthand the challenges
               of managing a growing service business. Juggling customer
               information, scheduling jobs, tracking invoices, and managing a
@@ -67,8 +66,8 @@ export function AboutPage() {
             </p>
             <p className="text-neutral-600 leading-relaxed">
               That's why we built ServicePro - an all-in-one platform that
-              brings everything together in one place. Today, we're proud to
-              serve businesses of all sizes, from solo operators to large teams.
+              brings everything together in one place. ServicePro is currently
+              in an invite-only preview while we work with early customers.
             </p>
           </section>
 
