@@ -69,7 +69,7 @@ func (h *JobHandler) getUserContext(c *gin.Context) (uuid.UUID, models.UserRole,
 // @Success 201 {object} models.JobResponse
 // @Failure 400 {object} models.ErrorResponse "Invalid request"
 // @Failure 401 {object} models.ErrorResponse "Unauthorized"
-// @Failure 404 {object} models.ErrorResponse "Customer not found"
+// @Failure 404 {object} models.ErrorResponse "Customer not found, or an assignee is not an active member of this account"
 // @Failure 500 {object} models.ErrorResponse "Internal server error"
 // @Router /api/v1/jobs [post]
 func (h *JobHandler) CreateJob(c *gin.Context) {
@@ -682,7 +682,7 @@ func (h *JobHandler) ResumeJob(c *gin.Context) {
 // @Failure 400 {object} models.ErrorResponse "Invalid request"
 // @Failure 401 {object} models.ErrorResponse "Unauthorized"
 // @Failure 403 {object} models.ErrorResponse "Forbidden"
-// @Failure 404 {object} models.ErrorResponse "Job not found"
+// @Failure 404 {object} models.ErrorResponse "Job not found, or technician not an active member of this account"
 // @Failure 500 {object} models.ErrorResponse "Internal server error"
 // @Router /api/v1/jobs/{id}/assign [post]
 func (h *JobHandler) AssignTechnician(c *gin.Context) {

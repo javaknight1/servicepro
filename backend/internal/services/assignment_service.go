@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 
+	apperrors "github.com/javaknight1/servicepro/backend/internal/errors"
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/repository"
 	"github.com/javaknight1/servicepro/backend/internal/utils/epoch"
@@ -26,8 +27,9 @@ var (
 	// ErrScheduleConflict indicates scheduling conflict exists
 	ErrScheduleConflict = errors.New("schedule conflict detected")
 
-	// ErrTechnicianNotFound indicates technician was not found
-	ErrTechnicianNotFound = errors.New("technician not found")
+	// ErrTechnicianNotFound indicates technician was not found, or is not an
+	// active member of the job's tenant (T238: the two look the same)
+	ErrTechnicianNotFound = apperrors.NotFound("technician_not_found", "The specified technician does not exist")
 
 	// ErrAssignmentNotFound indicates assignment was not found
 	ErrAssignmentNotFound = errors.New("assignment not found")
@@ -142,6 +144,18 @@ func (s *AssignmentService) CreateAssignment(ctx context.Context, req *Assignmen
 		return nil, err
 	}
 
+	// The technician must be an active member of the job's tenant (T238).
+	// Checked before the user lookup so another tenant's user is
+	// indistinguishable from an unknown one.
+	isMember, err := s.jobRepo.WithContext(ctx).IsActiveTenantMember(job.TenantID, req.TechnicianID)
+	if err != nil {
+		s.logger.Printf("Error checking technician membership: %v", err)
+		return nil, err
+	}
+	if !isMember {
+		return nil, ErrTechnicianNotFound
+	}
+
 	// Validate technician exists
 	technician, err := s.userRepo.GetByID(req.TechnicianID)
 	if err != nil {
@@ -196,6 +210,12 @@ func (s *AssignmentService) CreateAssignment(ctx context.Context, req *Assignmen
 	}
 
 	if err := s.jobRepo.WithContext(ctx).AddAssignment(assignment); err != nil {
+		switch {
+		case errors.Is(err, repository.ErrAssigneeNotInTenant):
+			return nil, ErrTechnicianNotFound
+		case errors.Is(err, gorm.ErrRecordNotFound):
+			return nil, ErrJobNotFound
+		}
 		s.logger.Printf("Error creating assignment: %v", err)
 		return nil, err
 	}

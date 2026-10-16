@@ -38,7 +38,36 @@ var (
 
 	// ErrMaterialNotFound: no such material on the job
 	ErrMaterialNotFound = apperrors.NotFound("material_not_found", "Material not found")
+
+	// ErrAssigneeNotFound: the user to assign is unknown or not an active
+	// member of the job's tenant (T238; other tenants' users look unknown)
+	ErrAssigneeNotFound = apperrors.NotFound("assignee_not_found", "The specified user is not an active member of this account")
 )
+
+// requireAssignee returns ErrAssigneeNotFound unless userID is an active
+// member of tenantID (T238).
+func requireAssignee(repo repository.JobRepositoryInterface, tenantID, userID uuid.UUID) error {
+	ok, err := repo.IsActiveTenantMember(tenantID, userID)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return ErrAssigneeNotFound
+	}
+	return nil
+}
+
+// assignmentError maps the repository's AddAssignment membership/visibility
+// failures onto the job domain errors.
+func assignmentError(err error) error {
+	switch {
+	case errors.Is(err, repository.ErrAssigneeNotInTenant):
+		return ErrAssigneeNotFound
+	case errors.Is(err, gorm.ErrRecordNotFound):
+		return ErrJobNotFound
+	}
+	return err
+}
 
 // invalidJobData turns a validator error (fixed, user-safe text such as
 // "job title is required") into a 400 that keeps the reason.
@@ -192,6 +221,15 @@ func (s *JobService) CreateJob(req *models.CreateJobRequest, createdBy uuid.UUID
 		job.Priority = models.JobPriorityNormal
 	}
 
+	// Every assignee must be an active member of the job's tenant (the
+	// customer lookup above is tenant-scoped, so its tenant is the caller's).
+	// Checked before anything is written (T238).
+	for _, a := range req.Assignments {
+		if err := requireAssignee(s.jobRepo, customer.TenantID, a.UserID); err != nil {
+			return nil, err
+		}
+	}
+
 	// The job and its first history row are written together. from_status is
 	// NOT NULL, so creation is recorded as new -> new (it used to pass "",
 	// which always failed and the error was swallowed — audit 7.M1).
@@ -213,8 +251,9 @@ func (s *JobService) CreateJob(req *models.CreateJobRequest, createdBy uuid.UUID
 				assignment.Role = "technician"
 			}
 			if err := s.jobRepo.AddAssignment(assignment); err != nil {
-				// Log but don't fail the job creation
-				// The job was created successfully, assignments can be added later
+				// Assignees were validated above; a failure here (e.g. a
+				// membership deactivated meanwhile) doesn't undo the job —
+				// assignments can be added later.
 				continue
 			}
 		}
@@ -658,7 +697,7 @@ func (s *JobService) ResumeJob(id uuid.UUID, userID uuid.UUID, userRole models.U
 // AssignTechnician assigns a technician to a job
 func (s *JobService) AssignTechnician(jobID, technicianID uuid.UUID, role string, userID uuid.UUID, userRole models.UserRole) error {
 	// Get job to check permissions
-	_, err := s.jobRepo.GetByID(jobID)
+	job, err := s.jobRepo.GetByID(jobID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return ErrJobNotFound
@@ -669,6 +708,11 @@ func (s *JobService) AssignTechnician(jobID, technicianID uuid.UUID, role string
 	// Only admin and manager can assign technicians
 	if userRole != models.UserRoleAdmin && userRole != models.UserRoleManager {
 		return ErrUnauthorized
+	}
+
+	// The technician must be an active member of the job's tenant (T238)
+	if err := requireAssignee(s.jobRepo, job.TenantID, technicianID); err != nil {
+		return err
 	}
 
 	assignment := &models.JobAssignment{
@@ -683,7 +727,7 @@ func (s *JobService) AssignTechnician(jobID, technicianID uuid.UUID, role string
 		return invalidJobData(err)
 	}
 
-	return s.jobRepo.AddAssignment(assignment)
+	return assignmentError(s.jobRepo.AddAssignment(assignment))
 }
 
 // UnassignTechnician removes a technician from a job
