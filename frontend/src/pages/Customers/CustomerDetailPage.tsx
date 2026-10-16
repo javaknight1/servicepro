@@ -6,7 +6,8 @@ import { customerService } from '@services/customerService';
 import { jobService, Job } from '@services/jobService';
 import { getErrorMessage } from '@/utils/error';
 import { getJobStatusLabel, getJobTypeLabel } from '@app-types';
-import { formatEpochDateTimeUTC } from '@/utils/epoch';
+import { formatEpochDateTime } from '@/utils/epoch';
+import { useTenantTimezone } from '@/hooks/useTenantTimezone';
 import type {
   CustomerType,
   CustomerStatus,
@@ -80,6 +81,7 @@ const initialFormData: CustomerFormData = {
 
 export function CustomerDetailPage() {
   const navigate = useNavigate();
+  const timeZone = useTenantTimezone();
   const { id } = useParams<{ id: string }>();
   const isNew = !id || id === 'new';
 
@@ -865,7 +867,10 @@ export function CustomerDetailPage() {
                         </span>
                         {job.scheduled_start_at && (
                           <span className="text-xs text-neutral-500">
-                            {formatEpochDateTimeUTC(job.scheduled_start_at)}
+                            {formatEpochDateTime(
+                              job.scheduled_start_at,
+                              timeZone
+                            )}
                           </span>
                         )}
                       </div>

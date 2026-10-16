@@ -9,7 +9,8 @@ import {
   StatusHistoryResponse,
 } from '@services/jobService';
 import { getJobStatusLabel } from '@app-types';
-import { formatEpochDateTimeUTC } from '@/utils/epoch';
+import { formatEpochDateTime } from '@/utils/epoch';
+import { useTenantTimezone } from '@/hooks/useTenantTimezone';
 import {
   ArrowLeft,
   ArrowRight,
@@ -20,6 +21,7 @@ import {
 
 export function JobStatusHistoryPage() {
   const navigate = useNavigate();
+  const timeZone = useTenantTimezone();
   const { id } = useParams<{ id: string }>();
   const [job, setJob] = useState<Job | null>(null);
   const [history, setHistory] = useState<StatusHistoryResponse | null>(null);
@@ -59,7 +61,7 @@ export function JobStatusHistoryPage() {
   };
 
   const formatDate = (epoch: number) => {
-    return formatEpochDateTimeUTC(epoch);
+    return formatEpochDateTime(epoch, timeZone);
   };
 
   if (isLoading) {

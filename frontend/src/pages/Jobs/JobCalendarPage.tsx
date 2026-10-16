@@ -18,23 +18,28 @@ import {
   mapToCalendarStatus,
 } from '@components/calendar/types';
 import { jobService, Job } from '@services/jobService';
-import { epochToDate } from '@/utils/epoch';
+import { epochToZonedDate } from '@/utils/epoch';
+import { useTenantTimezone } from '@/hooks/useTenantTimezone';
 import { CalendarDays, List, AlertCircle } from 'lucide-react';
 import { Button } from '@components/shared';
 
 /**
- * Converts a Job from the API to a JobEvent for the calendar
+ * Converts a Job from the API to a JobEvent for the calendar.
+ *
+ * react-big-calendar renders Dates in browser-local time, so start/end are
+ * "zoned" Dates whose local fields equal the wall-clock time in the tenant
+ * timezone. This keeps the calendar consistent with the job form.
  */
-function jobToCalendarEvent(job: Job): JobEvent | null {
+function jobToCalendarEvent(job: Job, timeZone?: string): JobEvent | null {
   // Skip jobs without scheduled times
   if (!job.scheduled_start_at) {
     return null;
   }
 
-  const start = epochToDate(job.scheduled_start_at);
+  const start = epochToZonedDate(job.scheduled_start_at, timeZone);
   // Default to 1 hour if no end time
   const end = job.scheduled_end_at
-    ? epochToDate(job.scheduled_end_at)
+    ? epochToZonedDate(job.scheduled_end_at, timeZone)
     : new Date(start.getTime() + 60 * 60 * 1000);
 
   return {
@@ -75,6 +80,7 @@ function getDateRange(date: Date): { start: Date; end: Date } {
 
 export function JobCalendarPage() {
   const navigate = useNavigate();
+  const timeZone = useTenantTimezone();
   const [events, setEvents] = useState<JobEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -85,26 +91,29 @@ export function JobCalendarPage() {
     position: { x: number; y: number };
   } | null>(null);
 
-  const loadJobs = useCallback(async (date: Date) => {
-    setIsLoading(true);
-    setError(null);
+  const loadJobs = useCallback(
+    async (date: Date) => {
+      setIsLoading(true);
+      setError(null);
 
-    try {
-      const { start, end } = getDateRange(date);
-      const jobs = await jobService.getScheduledJobs(start, end);
+      try {
+        const { start, end } = getDateRange(date);
+        const jobs = await jobService.getScheduledJobs(start, end);
 
-      const calendarEvents = jobs
-        .map(jobToCalendarEvent)
-        .filter((event): event is JobEvent => event !== null);
+        const calendarEvents = jobs
+          .map((job) => jobToCalendarEvent(job, timeZone))
+          .filter((event): event is JobEvent => event !== null);
 
-      setEvents(calendarEvents);
-    } catch (err) {
-      console.error('Failed to load scheduled jobs:', err);
-      setError('Failed to load scheduled jobs. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+        setEvents(calendarEvents);
+      } catch (err) {
+        console.error('Failed to load scheduled jobs:', err);
+        setError('Failed to load scheduled jobs. Please try again.');
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [timeZone]
+  );
 
   useEffect(() => {
     loadJobs(currentDate);

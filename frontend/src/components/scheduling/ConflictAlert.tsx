@@ -6,7 +6,8 @@ import {
   ConflictType,
   ResolutionSuggestion,
 } from './types';
-import { formatEpochTimeUTC } from '@/utils/epoch';
+import { formatEpochTime } from '@/utils/epoch';
+import { useTenantTimezone } from '@/hooks/useTenantTimezone';
 
 /**
  * Get severity color classes
@@ -101,8 +102,8 @@ const getConflictTypeIcon = (type: ConflictType): JSX.Element => {
 /**
  * Format time for display (epoch seconds → "9:00 AM")
  */
-const formatTime = (epoch: number): string => {
-  return formatEpochTimeUTC(epoch);
+const formatTime = (epoch: number, timeZone?: string): string => {
+  return formatEpochTime(epoch, timeZone);
 };
 
 /**
@@ -112,6 +113,7 @@ const ConflictDetailCard: React.FC<{ conflict: ConflictDetail }> = ({
   conflict,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const timeZone = useTenantTimezone();
 
   return (
     <div
@@ -173,8 +175,8 @@ const ConflictDetailCard: React.FC<{ conflict: ConflictDetail }> = ({
                   )}
                   <div>
                     <span className="font-medium">Time:</span>{' '}
-                    {formatTime(conflict.conflicting_with.start_time)} -{' '}
-                    {formatTime(conflict.conflicting_with.end_time)}
+                    {formatTime(conflict.conflicting_with.start_time, timeZone)}{' '}
+                    - {formatTime(conflict.conflicting_with.end_time, timeZone)}
                   </div>
                   {conflict.conflicting_with.location && (
                     <div>

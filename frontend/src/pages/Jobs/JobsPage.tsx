@@ -13,10 +13,12 @@ import { jobService, Job, JobFilters } from '@services/jobService';
 import { JobActionsMenu, JobFlowModal } from '@components/jobs';
 import { Briefcase, Plus, Search, Info, CalendarDays } from 'lucide-react';
 import { getJobStatusLabel, getJobPriorityLabel } from '@app-types';
-import { formatEpochDateTimeUTC } from '@/utils/epoch';
+import { formatEpochDateTime } from '@/utils/epoch';
+import { useTenantTimezone } from '@/hooks/useTenantTimezone';
 
 export function JobsPage() {
   const navigate = useNavigate();
+  const timeZone = useTenantTimezone();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -123,7 +125,7 @@ export function JobsPage() {
       sortable: true,
       render: (value) => (
         <span className="text-neutral-600">
-          {value ? formatEpochDateTimeUTC(value as number) : '-'}
+          {value ? formatEpochDateTime(value as number, timeZone) : '-'}
         </span>
       ),
     },

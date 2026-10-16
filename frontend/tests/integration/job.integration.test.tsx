@@ -10,7 +10,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import React from 'react';
@@ -425,6 +425,120 @@ describe('Job Lifecycle Integration', () => {
           expect.objectContaining({
             title: 'New Installation',
           })
+        );
+      });
+    });
+
+    it('should interpret the scheduled start in the tenant timezone (HST)', async () => {
+      const user = userEvent.setup();
+      const hstTenant = {
+        ...mockTenant,
+        settings: { timezone: 'Pacific/Honolulu' },
+      };
+      vi.mocked(useTenantStore).mockImplementation((selector) => {
+        const state = {
+          currentTenant: hstTenant,
+          tenants: [hstTenant],
+          isLoading: false,
+          error: null,
+          loadTenants: vi.fn(),
+          setCurrentTenant: vi.fn(),
+        };
+        return typeof selector === 'function' ? selector(state) : state;
+      });
+      vi.mocked(jobService.createJob).mockResolvedValue({
+        ...mockJobs[0],
+        id: 'job-hst',
+      });
+
+      // A date ~30 days ahead, typed as 09:00 wall-clock in Honolulu.
+      // HST is a fixed UTC-10 (no DST), so 09:00 HST == 19:00 UTC.
+      const target = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+      const y = target.getUTCFullYear();
+      const m = target.getUTCMonth();
+      const d = target.getUTCDate();
+      const pad = (n: number) => String(n).padStart(2, '0');
+      const typed = `${y}-${pad(m + 1)}-${pad(d)}T09:00`;
+      const expectedEpoch = Date.UTC(y, m, d, 19, 0) / 1000;
+
+      const { JobDetailPage } =
+        await import('../../src/pages/Jobs/JobDetailPage');
+
+      render(
+        <MemoryRouter initialEntries={['/jobs/new']}>
+          <Routes>
+            <Route path="/jobs/new" element={<JobDetailPage />} />
+            <Route path="/jobs/:id" element={<div>Job Detail</div>} />
+          </Routes>
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(/title/i)).toBeInTheDocument();
+      });
+
+      await user.type(screen.getByLabelText(/title/i), 'HST Job');
+      const customerSelect = await screen.findByLabelText(/customer/i);
+      await waitFor(() => {
+        expect(
+          screen.getByRole('option', { name: /John Doe/i })
+        ).toBeInTheDocument();
+      });
+      await user.selectOptions(customerSelect, 'customer-1');
+      fireEvent.change(screen.getByLabelText(/scheduled start/i), {
+        target: { value: typed },
+      });
+
+      await user.click(
+        screen.getByRole('button', { name: /save|create|submit/i })
+      );
+
+      await waitFor(() => {
+        expect(jobService.createJob).toHaveBeenCalledWith(
+          expect.objectContaining({
+            title: 'HST Job',
+            scheduled_start_at: expectedEpoch,
+          })
+        );
+      });
+    });
+
+    it('should show an existing job start in the tenant timezone (EDT)', async () => {
+      const edtTenant = {
+        ...mockTenant,
+        settings: { timezone: 'America/New_York' },
+      };
+      vi.mocked(useTenantStore).mockImplementation((selector) => {
+        const state = {
+          currentTenant: edtTenant,
+          tenants: [edtTenant],
+          isLoading: false,
+          error: null,
+          loadTenants: vi.fn(),
+          setCurrentTenant: vi.fn(),
+        };
+        return typeof selector === 'function' ? selector(state) : state;
+      });
+      // 13:00 UTC on 15 Jul 2026 == 09:00 EDT
+      vi.mocked(jobService.getJob).mockResolvedValue({
+        ...mockJobs[0],
+        scheduled_start_at: Date.UTC(2026, 6, 15, 13, 0) / 1000,
+      } as unknown as Awaited<ReturnType<typeof jobService.getJob>>);
+
+      const { JobDetailPage } =
+        await import('../../src/pages/Jobs/JobDetailPage');
+
+      render(
+        <MemoryRouter initialEntries={['/jobs/job-1']}>
+          <Routes>
+            <Route path="/jobs/:id" element={<JobDetailPage />} />
+          </Routes>
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(/scheduled start/i)).toHaveValue(
+          '2026-07-15T09:00'
         );
       });
     });
