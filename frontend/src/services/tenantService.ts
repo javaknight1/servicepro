@@ -1,6 +1,7 @@
 import api from './api';
 import type {
   Tenant,
+  TenantAccess,
   TenantMember,
   CreateTenantRequest,
   UpdateTenantRequest,
@@ -24,6 +25,9 @@ export const tenantApi = {
     api.put<Tenant>(`/v1/tenants/${id}`, data),
 
   delete: (id: string) => api.delete(`/v1/tenants/${id}`),
+
+  /** The caller's role and effective permissions in this tenant. */
+  getMyAccess: (id: string) => api.get<TenantAccess>(`/v1/tenants/${id}/me`),
 
   // Member management
   getMembers: (tenantId: string) =>
