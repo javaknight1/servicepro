@@ -76,6 +76,15 @@ func ExtractTraceInfo(ctx context.Context) (traceID, spanID string) {
 	return
 }
 
+// ExtractRequestID returns the request ID stored by WithRequestID ("" if none).
+func ExtractRequestID(ctx context.Context) string {
+	if ctx == nil {
+		return ""
+	}
+	id, _ := ctx.Value(ContextKeyRequestID).(string)
+	return id
+}
+
 // ExtractUserInfo extracts user information from context
 func ExtractUserInfo(ctx context.Context) *UserInfo {
 	info := &UserInfo{}

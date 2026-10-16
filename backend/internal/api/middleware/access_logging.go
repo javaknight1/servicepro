@@ -179,9 +179,12 @@ func (al *AccessLogger) AccessLogging() gin.HandlerFunc {
 
 		start := time.Now()
 
-		// Generate request ID
-		requestID := uuid.New().String()
-		c.Set("request_id", requestID)
+		// Reuse the RequestID middleware's ID when it ran; otherwise generate one.
+		requestID := RequestIDFrom(c)
+		if requestID == "" {
+			requestID = uuid.New().String()
+			c.Set(requestIDKey, requestID)
+		}
 
 		// Capture request body if enabled
 		var requestBody string

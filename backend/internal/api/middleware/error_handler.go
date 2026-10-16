@@ -127,6 +127,9 @@ func RecoveryMiddleware(errorTracker errortracking.Client) gin.HandlerFunc {
 					// Configure scope with request context
 					errorTracker.ConfigureScope(c.Request.Context(), func(scope errortracking.Scope) {
 						scope.SetTag("panic", "true")
+						if requestID := RequestIDFrom(c); requestID != "" {
+							scope.SetTag("request_id", requestID)
+						}
 						scope.SetExtra("stack_trace", stack)
 						scope.SetExtra("request_method", c.Request.Method)
 						scope.SetExtra("request_path", c.Request.URL.Path)
