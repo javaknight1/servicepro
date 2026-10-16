@@ -690,7 +690,12 @@ func invoiceErrorStatus(err error) int {
 		errors.Is(err, services.ErrInvalidLineItem),
 		errors.Is(err, services.ErrInvalidDiscount),
 		errors.Is(err, services.ErrInvalidTaxRate),
-		errors.Is(err, services.ErrTaxRateNotFound):
+		errors.Is(err, services.ErrTaxRateNotFound),
+		errors.Is(err, services.ErrAlreadyInvoiced),
+		errors.Is(err, services.ErrInvoiceSourceNotFound),
+		errors.Is(err, services.ErrInvoiceSourceCustomer),
+		errors.Is(err, services.ErrInvoiceSourceStatus),
+		errors.Is(err, services.ErrQuoteNotAccepted):
 		return http.StatusBadRequest
 	}
 	var rule *services.InvoiceRuleError
