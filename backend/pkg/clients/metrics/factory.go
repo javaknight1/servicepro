@@ -83,13 +83,3 @@ func detectProvider(cfg *config.Config) Provider {
 	// 3. Fallback to mock
 	return ProviderMock
 }
-
-// MustNewClient creates a new metrics client or panics on error.
-// This is useful for application initialization.
-func MustNewClient(ctx context.Context, cfg *config.Config) Client {
-	client, err := NewClient(ctx, cfg)
-	if err != nil {
-		panic(fmt.Sprintf("failed to create metrics client: %v", err))
-	}
-	return client
-}

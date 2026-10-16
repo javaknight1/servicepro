@@ -98,13 +98,3 @@ func detectProvider(cfg *config.Config) Provider {
 	// 4. Fallback to mock (unit tests, CI without Docker)
 	return ProviderMock
 }
-
-// MustNewClient creates a new email client or panics on error.
-// This is useful for application initialization.
-func MustNewClient(ctx context.Context, cfg *config.Config) Client {
-	client, err := NewClient(ctx, cfg)
-	if err != nil {
-		panic(fmt.Sprintf("failed to create email client: %v", err))
-	}
-	return client
-}

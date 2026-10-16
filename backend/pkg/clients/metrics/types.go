@@ -208,35 +208,9 @@ type Summary interface {
 	WithLabels(labels map[string]string) Summary
 }
 
-// Timer is a helper for measuring durations
-type Timer struct {
-	observer Histogram
-	start    time.Time
-}
-
-// NewTimer creates a new timer that will observe duration to the given histogram
-func NewTimer(h Histogram) *Timer {
-	return &Timer{
-		observer: h,
-		start:    time.Now(),
-	}
-}
-
-// ObserveDuration records the duration since the timer was created
-func (t *Timer) ObserveDuration() time.Duration {
-	d := time.Since(t.start)
-	t.observer.Observe(d.Seconds())
-	return d
-}
-
 // DefaultHistogramBuckets returns default bucket boundaries
 func DefaultHistogramBuckets() []float64 {
 	return []float64{.005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10}
-}
-
-// HTTPHistogramBuckets returns bucket boundaries suitable for HTTP latencies
-func HTTPHistogramBuckets() []float64 {
-	return []float64{.001, .005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10}
 }
 
 // BatchOptions configures batch metrics behavior
@@ -246,12 +220,4 @@ type BatchOptions struct {
 
 	// FlushInterval is the maximum time between flushes
 	FlushInterval time.Duration
-}
-
-// DefaultBatchOptions returns sensible default batch options
-func DefaultBatchOptions() *BatchOptions {
-	return &BatchOptions{
-		MaxSize:       100,
-		FlushInterval: 60 * time.Second,
-	}
 }

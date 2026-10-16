@@ -44,18 +44,3 @@ const (
 	// ContextKeyRequestStart is the context key for request start time
 	ContextKeyRequestStart ContextKey = "metrics_request_start"
 )
-
-// WithRequestStart adds request start time to context
-func WithRequestStart(ctx context.Context, start int64) context.Context {
-	return context.WithValue(ctx, ContextKeyRequestStart, start)
-}
-
-// GetRequestStart retrieves request start time from context
-func GetRequestStart(ctx context.Context) (int64, bool) {
-	if v := ctx.Value(ContextKeyRequestStart); v != nil {
-		if start, ok := v.(int64); ok {
-			return start, true
-		}
-	}
-	return 0, false
-}
