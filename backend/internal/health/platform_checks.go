@@ -8,9 +8,9 @@ import (
 
 // Redis modes reported by the "redis" check.
 const (
-	RedisModeConnected        = "connected"          // real Redis reachable at boot
-	RedisModeInMemoryFallback = "in_memory_fallback" // configured but unreachable at boot; using in-process store
-	RedisModeNotConfigured    = "not_configured"     // REDIS_URL unset; using in-process store
+	RedisModeConnected        = database.RedisModeConnected        // real Redis reachable at boot
+	RedisModeInMemoryFallback = database.RedisModeInMemoryFallback // configured but unreachable at boot; using in-process store
+	RedisModeNotConfigured    = database.RedisModeNotConfigured    // REDIS_URL unset; using in-process store
 )
 
 // SchemaStateProvider reports the migration state of the database
