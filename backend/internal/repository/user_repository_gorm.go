@@ -192,3 +192,18 @@ func (r *UserRepositoryGorm) UpdateProfile(userID uuid.UUID, firstName, lastName
 			"updated_at": time.Now(),
 		}).Error
 }
+
+// IncrementTokenVersion revokes every outstanding JWT of the user.
+func (r *UserRepositoryGorm) IncrementTokenVersion(userID uuid.UUID) error {
+	return r.db.Exec("UPDATE users SET token_version = token_version + 1, updated_at = ? WHERE id = ?", time.Now(), userID).Error
+}
+
+// GetTokenVersion returns the user's current token version.
+func (r *UserRepositoryGorm) GetTokenVersion(userID uuid.UUID) (int, error) {
+	var version int
+	err := r.db.Raw("SELECT token_version FROM users WHERE id = ? AND deleted_at IS NULL", userID).Row().Scan(&version)
+	if err != nil {
+		return 0, err
+	}
+	return version, nil
+}

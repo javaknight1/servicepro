@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 
 	"github.com/javaknight1/servicepro/backend/config"
 )
@@ -29,6 +30,9 @@ type Claims struct {
 	Email    string    `json:"email"`
 	TenantID string    `json:"tenant_id,omitempty"` // Current active tenant
 	Type     TokenType `json:"type"`
+	// TokenVersion must equal users.token_version for the token to be
+	// accepted (see RequireAuth / AuthService.RefreshToken).
+	TokenVersion int `json:"tv"`
 	jwt.RegisteredClaims
 }
 
@@ -50,34 +54,50 @@ func NewJWTManager(cfg *config.JWTConfig) *JWTManager {
 
 // GenerateAccessToken generates an access token for a user
 func (m *JWTManager) GenerateAccessToken(userID string, email string) (string, error) {
-	return m.generateToken(userID, email, "", AccessToken, m.accessTokenDuration)
+	return m.generateToken(userID, email, "", AccessToken, m.accessTokenDuration, 0)
+}
+
+// GenerateTokenPairForVersion generates an access + refresh token pair bound
+// to the user's current token version.
+func (m *JWTManager) GenerateTokenPairForVersion(userID, email string, version int) (accessToken, refreshToken string, err error) {
+	accessToken, err = m.generateToken(userID, email, "", AccessToken, m.accessTokenDuration, version)
+	if err != nil {
+		return "", "", err
+	}
+	refreshToken, err = m.generateToken(userID, email, "", RefreshToken, m.refreshTokenDuration, version)
+	if err != nil {
+		return "", "", err
+	}
+	return accessToken, refreshToken, nil
 }
 
 // GenerateAccessTokenWithTenant generates an access token with tenant context
 func (m *JWTManager) GenerateAccessTokenWithTenant(userID string, email string, tenantID string) (string, error) {
-	return m.generateToken(userID, email, tenantID, AccessToken, m.accessTokenDuration)
+	return m.generateToken(userID, email, tenantID, AccessToken, m.accessTokenDuration, 0)
 }
 
 // GenerateRefreshToken generates a refresh token for a user
 func (m *JWTManager) GenerateRefreshToken(userID string, email string) (string, error) {
-	return m.generateToken(userID, email, "", RefreshToken, m.refreshTokenDuration)
+	return m.generateToken(userID, email, "", RefreshToken, m.refreshTokenDuration, 0)
 }
 
 // GenerateRefreshTokenWithTenant generates a refresh token with tenant context
 func (m *JWTManager) GenerateRefreshTokenWithTenant(userID string, email string, tenantID string) (string, error) {
-	return m.generateToken(userID, email, tenantID, RefreshToken, m.refreshTokenDuration)
+	return m.generateToken(userID, email, tenantID, RefreshToken, m.refreshTokenDuration, 0)
 }
 
 // generateToken generates a JWT token
-func (m *JWTManager) generateToken(userID string, email string, tenantID string, tokenType TokenType, duration time.Duration) (string, error) {
+func (m *JWTManager) generateToken(userID string, email string, tenantID string, tokenType TokenType, duration time.Duration, version int) (string, error) {
 	now := time.Now()
 
 	claims := &Claims{
-		UserID:   userID,
-		Email:    email,
-		TenantID: tenantID,
-		Type:     tokenType,
+		UserID:       userID,
+		Email:        email,
+		TenantID:     tenantID,
+		Type:         tokenType,
+		TokenVersion: version,
 		RegisteredClaims: jwt.RegisteredClaims{
+			ID:        uuid.NewString(),
 			ExpiresAt: jwt.NewNumericDate(now.Add(duration)),
 			IssuedAt:  jwt.NewNumericDate(now),
 			NotBefore: jwt.NewNumericDate(now),

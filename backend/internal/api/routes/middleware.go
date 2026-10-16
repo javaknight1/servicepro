@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 
 	"github.com/javaknight1/servicepro/backend/config"
@@ -26,6 +27,12 @@ func SetupMiddleware(
 
 	// Permission middleware (with cookie support)
 	permMiddleware := middleware.NewPermissionMiddleware(permChecker, jwtManager, cookieManager, cfg.Cookie.AccessTokenName)
+	// Revocation: reject tokens issued before a logout / password reset.
+	if versions, ok := repos.User.(interface {
+		GetTokenVersion(uuid.UUID) (int, error)
+	}); ok {
+		permMiddleware.SetTokenVersionLookup(versions.GetTokenVersion)
+	}
 
 	// Tenant middleware
 	tenantMW := middleware.NewTenantMiddleware(repos.Tenant)

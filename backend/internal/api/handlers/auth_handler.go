@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"errors"
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -186,6 +187,17 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 // @Success 200 {object} object{message=string}
 // @Router /api/v1/auth/logout [post]
 func (h *AuthHandler) Logout(c *gin.Context) {
+	// Revoke the session server-side (bumps the user's token version, which
+	// invalidates every access and refresh token issued so far), then clear
+	// the cookies.
+	token, _ := h.cookieManager.GetRefreshToken(c)
+	if token == "" {
+		token, _ = h.cookieManager.GetAccessToken(c)
+	}
+	if err := h.authService.Logout(token); err != nil {
+		log.Printf("[AUTH] Failed to revoke tokens on logout: %v", err)
+	}
+
 	// Clear both access and refresh token cookies
 	h.cookieManager.ClearTokens(c)
 

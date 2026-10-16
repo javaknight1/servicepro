@@ -145,6 +145,13 @@ func (s *PasswordResetService) ResetPassword(token, newPassword string) error {
 		return errors.New("password update not supported by this repository")
 	}
 
+	// Revoke every session issued before the reset (F-11).
+	if b, ok := s.userRepo.(tokenVersionBumper); ok {
+		if err := b.IncrementTokenVersion(user.ID); err != nil {
+			return fmt.Errorf("failed to revoke existing sessions: %w", err)
+		}
+	}
+
 	// Delete the used token from Redis
 	s.redisClient.Del(ctx, key)
 

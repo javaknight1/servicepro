@@ -262,3 +262,8 @@ func TestLogin_InternalError(t *testing.T) {
 
 	mockAuthService.AssertExpectations(t)
 }
+
+// Logout implements services.AuthServiceInterface.
+func (m *MockAuthService) Logout(token string) error {
+	return nil
+}

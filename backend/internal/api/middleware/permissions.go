@@ -25,10 +25,21 @@ const (
 
 // PermissionMiddleware handles permission checking for routes
 type PermissionMiddleware struct {
+	tokenVersions   TokenVersionLookup
 	checker         *permissions.PermissionChecker
 	jwtManager      *auth.JWTManager
 	cookieManager   *auth.CookieManager
 	accessTokenName string
+}
+
+// TokenVersionLookup returns a user's current token version (users.token_version).
+type TokenVersionLookup func(userID uuid.UUID) (int, error)
+
+// SetTokenVersionLookup enables revocation checks: access tokens whose
+// version differs from the user's current one (after logout or a password
+// reset) are rejected.
+func (pm *PermissionMiddleware) SetTokenVersionLookup(lookup TokenVersionLookup) {
+	pm.tokenVersions = lookup
 }
 
 // NewPermissionMiddleware creates a new permission middleware
@@ -86,7 +97,18 @@ func (pm *PermissionMiddleware) RequireAuth() gin.HandlerFunc {
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, models.ErrorResponse{
 				Error:   "unauthorized",
-				Message: fmt.Sprintf("Invalid or expired token: %v", err),
+				Message: "Invalid or expired token",
+			})
+			c.Abort()
+			return
+		}
+
+		// Only access tokens authenticate API calls; a (long-lived) refresh
+		// token must never work as a bearer token (F-11).
+		if claims.Type != auth.AccessToken {
+			c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+				Error:   "unauthorized",
+				Message: "Invalid or expired token",
 			})
 			c.Abort()
 			return
@@ -101,6 +123,19 @@ func (pm *PermissionMiddleware) RequireAuth() gin.HandlerFunc {
 			})
 			c.Abort()
 			return
+		}
+
+		// Reject tokens revoked by logout / password reset.
+		if pm.tokenVersions != nil {
+			current, err := pm.tokenVersions(userID)
+			if err != nil || current != claims.TokenVersion {
+				c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+					Error:   "unauthorized",
+					Message: "Session has expired, please sign in again",
+				})
+				c.Abort()
+				return
+			}
 		}
 
 		// Set user information in context

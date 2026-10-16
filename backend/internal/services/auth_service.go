@@ -4,6 +4,8 @@ import (
 	"errors"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/javaknight1/servicepro/backend/config"
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/repository"
@@ -74,13 +76,8 @@ func (s *AuthService) Login(email, password string) (*models.LoginResponse, erro
 		}
 	}
 
-	// Generate tokens
-	accessToken, err := s.jwtManager.GenerateAccessToken(user.ID.String(), user.Email)
-	if err != nil {
-		return nil, err
-	}
-
-	refreshToken, err := s.jwtManager.GenerateRefreshToken(user.ID.String(), user.Email)
+	// Generate tokens bound to the user's current token version
+	accessToken, refreshToken, err := s.jwtManager.GenerateTokenPairForVersion(user.ID.String(), user.Email, user.TokenVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -134,6 +131,11 @@ func (s *AuthService) RefreshToken(refreshToken string) (*models.LoginResponse, 
 		return nil, ErrInvalidRefreshToken
 	}
 
+	// Tokens issued before a logout or password reset are revoked.
+	if user.ID.String() != claims.UserID || user.TokenVersion != claims.TokenVersion {
+		return nil, ErrInvalidRefreshToken
+	}
+
 	if user.IsLocked() {
 		return nil, ErrAccountLocked
 	}
@@ -144,12 +146,7 @@ func (s *AuthService) RefreshToken(refreshToken string) (*models.LoginResponse, 
 	}
 
 	// Generate new tokens
-	accessToken, err := s.jwtManager.GenerateAccessToken(user.ID.String(), user.Email)
-	if err != nil {
-		return nil, err
-	}
-
-	newRefreshToken, err := s.jwtManager.GenerateRefreshToken(user.ID.String(), user.Email)
+	accessToken, newRefreshToken, err := s.jwtManager.GenerateTokenPairForVersion(user.ID.String(), user.Email, user.TokenVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -159,4 +156,31 @@ func (s *AuthService) RefreshToken(refreshToken string) (*models.LoginResponse, 
 		RefreshToken: newRefreshToken,
 		ExpiresIn:    s.jwtManager.GetAccessTokenDuration(),
 	}, nil
+}
+
+// tokenVersionBumper is implemented by repositories that can revoke all of a
+// user's tokens.
+type tokenVersionBumper interface {
+	IncrementTokenVersion(userID uuid.UUID) error
+}
+
+// Logout revokes every outstanding access and refresh token of the user who
+// owns token (refresh or access). Invalid or expired tokens are ignored: there
+// is nothing left to revoke.
+func (s *AuthService) Logout(token string) error {
+	if token == "" {
+		return nil
+	}
+	claims, err := s.jwtManager.ValidateToken(token)
+	if err != nil {
+		return nil
+	}
+	userID, err := uuid.Parse(claims.UserID)
+	if err != nil {
+		return nil
+	}
+	if b, ok := s.userRepo.(tokenVersionBumper); ok {
+		return b.IncrementTokenVersion(userID)
+	}
+	return nil
 }

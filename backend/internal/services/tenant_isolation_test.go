@@ -224,6 +224,12 @@ func TestTenantIsolation_Exports(t *testing.T) {
 	_, err = svc.GetExportStatus(f.ctxA, job.ID)
 	assert.NoError(t, err)
 
+	// Let the async export finish writing into the temp dir before cleanup.
+	assert.Eventually(t, func() bool {
+		st, err := svc.GetExportStatus(f.ctxA, job.ID)
+		return err == nil && st.Status != models.ExportJobStatusPending && st.Status != models.ExportJobStatusProcessing
+	}, 5*time.Second, 20*time.Millisecond)
+
 	// The export itself only contains the caller's tenant's rows.
 	data, n, err := svc.(*unifiedExportService).fetchData(f.ctxB, &models.ExportConfig{Format: models.ExportFormatCSV, ExportType: models.ExportTypeCustomers})
 	require.NoError(t, err)
