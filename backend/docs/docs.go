@@ -874,7 +874,7 @@ const docTemplate = `{
                         }
                     },
                     "403": {
-                        "description": "Registration requires an invite code or invitation",
+                        "description": "registration_closed (no invite code or invitation), invalid_invite_code or invalid_invitation",
                         "schema": {
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }

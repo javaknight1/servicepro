@@ -45,7 +45,7 @@ func (h *RegistrationHandler) SetInvitationService(invitationService *services.I
 // @Param request body models.RegisterRequest true "Registration details"
 // @Success 201 {object} models.RegisterResponse
 // @Failure 400 {object} models.ErrorResponse "Invalid request or validation error"
-// @Failure 403 {object} models.ErrorResponse "Registration requires an invite code or invitation"
+// @Failure 403 {object} models.ErrorResponse "registration_closed (no invite code or invitation), invalid_invite_code or invalid_invitation"
 // @Failure 409 {object} models.ErrorResponse "Email already exists"
 // @Failure 500 {object} models.ErrorResponse "Internal server error"
 // @Router /api/v1/auth/register [post]
@@ -64,10 +64,23 @@ func (h *RegistrationHandler) Register(c *gin.Context) {
 	// Invite-only registration is enforced here, server-side (F-6).
 	release, err := h.gate.Admit(c.Request.Context(), req.Email, req.InviteCode, req.InvitationToken)
 	if err != nil {
-		if errors.Is(err, services.ErrRegistrationClosed) {
+		switch {
+		case errors.Is(err, services.ErrRegistrationClosed):
 			c.JSON(http.StatusForbidden, models.ErrorResponse{
 				Error:   "registration_closed",
 				Message: "Registration is by invitation only. A valid invite code or invitation is required.",
+			})
+			return
+		case errors.Is(err, services.ErrInvalidInviteCode):
+			c.JSON(http.StatusForbidden, models.ErrorResponse{
+				Error:   "invalid_invite_code",
+				Message: "That invite code is not valid. It may have expired, been used up or been revoked.",
+			})
+			return
+		case errors.Is(err, services.ErrInvalidInvitation):
+			c.JSON(http.StatusForbidden, models.ErrorResponse{
+				Error:   "invalid_invitation",
+				Message: "This invitation is no longer valid for this email address.",
 			})
 			return
 		}

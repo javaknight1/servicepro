@@ -297,3 +297,51 @@ func TestRegisterHandler_PasswordValidationErrors(t *testing.T) {
 		})
 	}
 }
+
+// T229: invite-only rejections carry distinct codes so the UI need not guess.
+func TestRegisterHandler_InviteOnlyErrorCodes(t *testing.T) {
+	code := "NOPE-NOPE-NOPE-NOPE"
+	token := "tok-unknown"
+	blank := ""
+	cases := []struct {
+		name            string
+		inviteCode      *string
+		invitationToken *string
+		wantError       string
+	}{
+		{"no code or invitation", nil, nil, "registration_closed"},
+		{"blank code", &blank, nil, "registration_closed"},
+		{"rejected invite code", &code, nil, "invalid_invite_code"},
+		{"rejected invitation", nil, &token, "invalid_invitation"},
+		{"rejected code and invitation", &code, &token, "invalid_invite_code"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			mockService := new(MockRegistrationService)
+			handler := NewRegistrationHandler(mockService, nil)
+			// No invite-code or invitation store: every supplied value is rejected.
+			handler.SetRegistrationGate(&services.RegistrationGate{Mode: services.RegistrationModeInviteOnly})
+
+			router := setupTestRouter()
+			router.POST("/register", handler.Register)
+
+			body, _ := json.Marshal(models.RegisterRequest{
+				Email:           "newuser@example.com",
+				Password:        "SecurePass123!",
+				InviteCode:      tc.inviteCode,
+				InvitationToken: tc.invitationToken,
+			})
+			req, _ := http.NewRequest("POST", "/register", bytes.NewBuffer(body))
+			req.Header.Set("Content-Type", "application/json")
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+
+			assert.Equal(t, http.StatusForbidden, w.Code)
+			var resp models.ErrorResponse
+			assert.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+			assert.Equal(t, tc.wantError, resp.Error)
+			assert.NotEmpty(t, resp.Message)
+			mockService.AssertNotCalled(t, "Register", mock.Anything, mock.Anything)
+		})
+	}
+}

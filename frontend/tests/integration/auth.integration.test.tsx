@@ -649,7 +649,17 @@ describe('Authentication Flow Integration', () => {
 
     it('says the invite code is invalid when the API rejects it', async () => {
       const user = userEvent.setup({ delay: null });
-      mockRegisterStores(vi.fn().mockRejectedValue(registrationClosed));
+      mockRegisterStores(
+        vi.fn().mockRejectedValue({
+          response: {
+            status: 403,
+            data: {
+              error: 'invalid_invite_code',
+              message: 'That invite code is not valid.',
+            },
+          },
+        })
+      );
 
       render(
         <MemoryRouter initialEntries={['/register']}>
@@ -753,7 +763,18 @@ describe('Authentication Flow Integration', () => {
 
     it('explains a rejected tenant invitation', async () => {
       const user = userEvent.setup({ delay: null });
-      mockRegisterStores(vi.fn().mockRejectedValue(registrationClosed));
+      mockRegisterStores(
+        vi.fn().mockRejectedValue({
+          response: {
+            status: 403,
+            data: {
+              error: 'invalid_invitation',
+              message:
+                'This invitation is no longer valid for this email address.',
+            },
+          },
+        })
+      );
       vi.mocked(invitationApi.getByToken).mockResolvedValue({
         data: {
           id: 'inv-1',
