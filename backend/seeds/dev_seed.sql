@@ -109,7 +109,7 @@ INSERT INTO tenants (
     TRUE,
     CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
-) ON CONFLICT (slug) DO UPDATE SET
+) ON CONFLICT (slug) WHERE deleted_at IS NULL DO UPDATE SET
     name = EXCLUDED.name,
     owner_id = EXCLUDED.owner_id,
     email = EXCLUDED.email,
@@ -137,7 +137,7 @@ INSERT INTO tenants (
     TRUE,
     CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
-) ON CONFLICT (slug) DO UPDATE SET
+) ON CONFLICT (slug) WHERE deleted_at IS NULL DO UPDATE SET
     name = EXCLUDED.name,
     owner_id = EXCLUDED.owner_id,
     email = EXCLUDED.email,
