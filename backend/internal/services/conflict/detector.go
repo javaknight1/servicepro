@@ -250,39 +250,6 @@ func (d *ConflictDetector) checkTechnicianConflicts(ctx context.Context, req *Co
 	return conflicts, nil
 }
 
-// checkBusinessHours validates that schedule is within business hours
-func (d *ConflictDetector) checkBusinessHours(req *ConflictCheckRequest) []ConflictDetail {
-	conflicts := []ConflictDetail{}
-
-	// Define business hours (8 AM - 6 PM, Monday-Friday)
-	businessHourStart := 8
-	businessHourEnd := 18
-
-	startHour := epoch.EpochHour(req.StartTime)
-	endHour := epoch.EpochHour(req.EndTime)
-	weekday := epoch.EpochWeekday(req.StartTime)
-
-	// Check weekend
-	if weekday == time.Saturday || weekday == time.Sunday {
-		conflicts = append(conflicts, ConflictDetail{
-			ConflictType: models.ConflictTypeBusinessHours,
-			Severity:     models.ConflictSeverityLow,
-			Description:  "Schedule is on a weekend - may require overtime approval",
-		})
-	}
-
-	// Check hours
-	if startHour < businessHourStart || endHour > businessHourEnd {
-		conflicts = append(conflicts, ConflictDetail{
-			ConflictType: models.ConflictTypeBusinessHours,
-			Severity:     models.ConflictSeverityMedium,
-			Description:  fmt.Sprintf("Schedule is outside business hours (%d:00 - %d:00) - may require overtime approval", businessHourStart, businessHourEnd),
-		})
-	}
-
-	return conflicts
-}
-
 // checkTechnicianWorkload checks if technician has excessive workload
 func (d *ConflictDetector) checkTechnicianWorkload(ctx context.Context, req *ConflictCheckRequest) ([]ConflictDetail, error) {
 	conflicts := []ConflictDetail{}
@@ -474,14 +441,4 @@ func (d *ConflictDetector) validateRequest(req *ConflictCheckRequest) error {
 		return fmt.Errorf("end_time must be after start_time")
 	}
 	return nil
-}
-
-// GetConflictsBySchedule retrieves existing conflicts for a schedule
-func (d *ConflictDetector) GetConflictsBySchedule(ctx context.Context, scheduleID uuid.UUID) ([]models.ScheduleConflict, error) {
-	return d.scheduleRepo.WithContext(ctx).GetConflicts(scheduleID)
-}
-
-// ResolveConflict marks a conflict as resolved
-func (d *ConflictDetector) ResolveConflict(ctx context.Context, conflictID uuid.UUID, resolvedBy uuid.UUID, notes string) error {
-	return d.scheduleRepo.WithContext(ctx).ResolveConflict(conflictID, resolvedBy, &notes)
 }

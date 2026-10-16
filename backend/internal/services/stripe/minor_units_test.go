@@ -40,7 +40,4 @@ func TestFromMinorUnits(t *testing.T) {
 	if got := FromMinorUnits(1235, "kwd"); !got.Equal(decimal.RequireFromString("1.235")) {
 		t.Errorf("kwd: %s", got)
 	}
-	if got := ConvertDecimalToCents(decimal.RequireFromString("0.295")); got != 30 {
-		t.Errorf("ConvertDecimalToCents rounds: %d", got)
-	}
 }

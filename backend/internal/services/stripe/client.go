@@ -83,12 +83,6 @@ func NewClient(cfg *config.Config) (*Client, error) {
 	return client, nil
 }
 
-// ConvertDecimalToCents converts a USD-style (2-decimal) amount to cents,
-// rounding half away from zero. Prefer ToMinorUnits with the real currency.
-func ConvertDecimalToCents(amount decimal.Decimal) int64 {
-	return ToMinorUnits(amount, "usd")
-}
-
 // Stripe's zero- and three-decimal currencies
 // (https://docs.stripe.com/currencies#minor-units). Everything else uses 2.
 var (

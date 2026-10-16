@@ -175,11 +175,6 @@ func (s *TenantService) GetTenant(ctx context.Context, id uuid.UUID) (*models.Te
 	return s.tenantRepo.GetByID(ctx, id)
 }
 
-// GetTenantBySlug retrieves a tenant by slug
-func (s *TenantService) GetTenantBySlug(ctx context.Context, slug string) (*models.Tenant, error) {
-	return s.tenantRepo.GetBySlug(ctx, strings.ToLower(slug))
-}
-
 // UpdateTenant updates a tenant
 func (s *TenantService) UpdateTenant(ctx context.Context, id uuid.UUID, req *models.UpdateTenantRequest) (*models.Tenant, error) {
 	tenant, err := s.tenantRepo.GetByID(ctx, id)
@@ -236,39 +231,6 @@ func (s *TenantService) UpdateTenant(ctx context.Context, id uuid.UUID, req *mod
 // DeleteTenant deletes a tenant
 func (s *TenantService) DeleteTenant(ctx context.Context, id uuid.UUID) error {
 	return s.tenantRepo.Delete(ctx, id)
-}
-
-// ListTenants lists all tenants with pagination
-func (s *TenantService) ListTenants(ctx context.Context, page, pageSize int) (*models.ListTenantsResponse, error) {
-	if page < 1 {
-		page = 1
-	}
-	if pageSize < 1 || pageSize > 100 {
-		pageSize = 20
-	}
-
-	tenants, total, err := s.tenantRepo.List(ctx, page, pageSize)
-	if err != nil {
-		return nil, err
-	}
-
-	responses := make([]models.TenantResponse, len(tenants))
-	for i, t := range tenants {
-		responses[i] = t.ToResponse()
-	}
-
-	totalPages := int(total) / pageSize
-	if int(total)%pageSize > 0 {
-		totalPages++
-	}
-
-	return &models.ListTenantsResponse{
-		Tenants:    responses,
-		Total:      total,
-		Page:       page,
-		PageSize:   pageSize,
-		TotalPages: totalPages,
-	}, nil
 }
 
 // GetUserTenants gets all tenants a user belongs to
@@ -408,9 +370,4 @@ func (s *TenantService) GetTenantMembers(ctx context.Context, tenantID uuid.UUID
 	}
 
 	return responses, nil
-}
-
-// UserBelongsToTenant checks if a user is a member of a tenant
-func (s *TenantService) UserBelongsToTenant(ctx context.Context, userID, tenantID uuid.UUID) (bool, error) {
-	return s.tenantRepo.UserBelongsToTenant(ctx, userID, tenantID)
 }

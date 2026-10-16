@@ -57,18 +57,6 @@ func (s *MembershipService) GetAllTiers(ctx context.Context) (*models.ListTiersR
 	}, nil
 }
 
-// GetTierByID retrieves a membership tier by ID
-func (s *MembershipService) GetTierByID(ctx context.Context, tierID uuid.UUID) (*models.MembershipTier, error) {
-	tier, err := s.membershipRepo.GetTierByID(ctx, tierID)
-	if err != nil {
-		if errors.Is(err, repository.ErrTierNotFound) {
-			return nil, ErrMembershipTierNotFound
-		}
-		return nil, fmt.Errorf("failed to get tier: %w", err)
-	}
-	return tier, nil
-}
-
 // GetTenantMembership retrieves the current membership for a tenant
 func (s *MembershipService) GetTenantMembership(ctx context.Context, tenantID uuid.UUID) (*models.GetMembershipResponse, error) {
 	subscription, err := s.membershipRepo.GetTenantSubscription(ctx, tenantID)
@@ -183,45 +171,6 @@ func (s *MembershipService) UpdateTenantMembership(ctx context.Context, tenantID
 
 	// Return the updated membership
 	return s.GetTenantMembership(ctx, tenantID)
-}
-
-// AssignDefaultTier assigns the default (free) tier to a new tenant
-func (s *MembershipService) AssignDefaultTier(ctx context.Context, tenantID uuid.UUID) error {
-	// Get the free tier
-	freeTier, err := s.membershipRepo.GetTierByName(ctx, DefaultTierName)
-	if err != nil {
-		if errors.Is(err, repository.ErrTierNotFound) {
-			logging.Warn(ctx, "[MEMBERSHIP] Default tier not found, skipping assignment", map[string]any{"tier_name": DefaultTierName})
-			return nil
-		}
-		return fmt.Errorf("failed to get default tier: %w", err)
-	}
-
-	// Create subscription with free tier (price = 0)
-	now := time.Now()
-	periodEnd := now.AddDate(0, 1, 0) // 1 month period even for free tier
-	subscription := &models.TenantSubscription{
-		ID:                 uuid.New(),
-		TenantID:           tenantID,
-		TierID:             freeTier.ID,
-		Status:             models.MembershipStatusActive,
-		BillingCycle:       models.BillingCycleMonthly,
-		PriceCents:         freeTier.MonthlyPriceCents, // 0 for free tier
-		StartedAt:          now,
-		CurrentPeriodStart: now,
-		CurrentPeriodEnd:   &periodEnd,
-	}
-
-	if err := s.membershipRepo.CreateSubscription(ctx, subscription); err != nil {
-		if errors.Is(err, repository.ErrActiveSubscription) {
-			logging.Info(ctx, "[MEMBERSHIP] Tenant already has an active subscription", map[string]any{"tenant_id": tenantID})
-			return nil
-		}
-		return fmt.Errorf("failed to create subscription: %w", err)
-	}
-
-	logging.Info(ctx, "[MEMBERSHIP] Assigned default tier to tenant", map[string]any{"tier_name": DefaultTierName, "tenant_id": tenantID})
-	return nil
 }
 
 // PreviewSubscriptionChange previews what will happen when changing subscriptions
