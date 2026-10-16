@@ -16,7 +16,7 @@ SHELL := /bin/bash
 GO_VERSION           := $(shell awk '$$1 == "go" { print $$2; exit }' backend/go.mod)
 NODE_VERSION         := $(shell cat frontend/.nvmrc 2>/dev/null)
 # Keep in sync with golangci/golangci-lint-action `version:` in ci.yml.
-GOLANGCI_LINT_VERSION ?= v2.11.4
+GOLANGCI_LINT_VERSION ?= v2.14.0
 # swag must match the github.com/swaggo/swag version in backend/go.mod, or the
 # generated spec drifts from what CI regenerates.
 SWAG_VERSION         := $(shell awk '$$1 == "github.com/swaggo/swag" { print $$2 }' backend/go.mod)

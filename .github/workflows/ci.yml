@@ -45,7 +45,7 @@ jobs:
         with:
           working-directory: backend
           # Keep in sync with GOLANGCI_LINT_VERSION in the root Makefile.
-          version: v2.11.4
+          version: v2.14.0
           args: --config .golangci.yml
 
   go-test:
