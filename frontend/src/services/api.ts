@@ -15,10 +15,12 @@ import type {
   ApiError,
   User,
 } from '@app-types';
+import { API_BASE_URL } from '@config/endpoints';
 
-// Create axios instance
+// Create axios instance. Defaults to same-origin "/api" (Workers proxy in
+// production, Vite dev proxy locally); see src/config/endpoints.ts.
 const api: AxiosInstance = axios.create({
-  baseURL: '/api',
+  baseURL: API_BASE_URL,
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -62,7 +64,11 @@ api.interceptors.response.use(
       try {
         // Attempt to refresh the token via cookie
         // The refresh token cookie is automatically sent with this request
-        await axios.post('/api/v1/auth/refresh', {}, { withCredentials: true });
+        await axios.post(
+          `${API_BASE_URL}/v1/auth/refresh`,
+          {},
+          { withCredentials: true }
+        );
 
         // Retry the original request (new access token cookie is automatically set)
         return api(originalRequest);

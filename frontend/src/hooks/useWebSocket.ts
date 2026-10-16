@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { resolveWebSocketUrl } from '@config/endpoints';
 
 export interface WebSocketMessage {
   type: string;
@@ -11,8 +12,8 @@ export interface WebSocketMessage {
 }
 
 export interface WebSocketOptions {
-  /** WebSocket URL */
-  url?: string;
+  /** WebSocket URL. null disables the connection. */
+  url?: string | null;
   /** Auto-reconnect on disconnect */
   autoReconnect?: boolean;
   /** Reconnect delay in milliseconds */
@@ -46,8 +47,12 @@ export interface WebSocketState {
   reconnect: () => void;
 }
 
-const WS_BASE_URL =
-  import.meta.env.VITE_WS_URL || 'ws://localhost:8080/api/v1/ws';
+// null in production builds without VITE_WS_URL: real-time updates are
+// disabled instead of connecting to localhost (see src/config/endpoints.ts).
+const WS_BASE_URL = resolveWebSocketUrl(
+  import.meta.env.VITE_WS_URL,
+  import.meta.env.DEV
+);
 
 /**
  * Hook for WebSocket connection with auto-reconnect
@@ -67,13 +72,18 @@ export const useWebSocket = (
   } = options;
 
   const [ws, setWs] = useState<WebSocket | null>(null);
-  const [readyState, setReadyState] = useState<number>(WebSocket.CONNECTING);
+  const [readyState, setReadyState] = useState<number>(
+    url ? WebSocket.CONNECTING : WebSocket.CLOSED
+  );
   const [error, setError] = useState<Event | null>(null);
   const reconnectAttempts = useRef(0);
   const reconnectTimeout = useRef<NodeJS.Timeout | null>(null);
   const queryClient = useQueryClient();
 
   const connect = useCallback(() => {
+    if (!url) {
+      return;
+    }
     try {
       const socket = new WebSocket(url);
 

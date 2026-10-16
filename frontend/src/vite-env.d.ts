@@ -18,7 +18,10 @@ declare module 'virtual:pwa-register' {
 }
 
 interface ImportMetaEnv {
-  readonly VITE_API_URL: string;
+  /** API root, default "/api" (same-origin). See src/config/endpoints.ts. */
+  readonly VITE_API_URL?: string;
+  /** WebSocket URL; unset disables real-time updates in production. */
+  readonly VITE_WS_URL?: string;
   readonly VITE_APP_VERSION: string;
   readonly VITE_ENABLE_SW: string;
 }
