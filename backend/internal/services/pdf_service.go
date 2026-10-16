@@ -57,7 +57,7 @@ func NewPDFService(wkhtmltopdfPath, tempDir, outputDir string) *PDFService {
 
 	// Ensure directories exist
 	for _, dir := range []string{tempDir, outputDir} {
-		if err := os.MkdirAll(dir, 0755); err != nil {
+		if err := os.MkdirAll(dir, 0750); err != nil {
 			logging.Warn(context.Background(), "[PDF-SERVICE] could not create directory", map[string]any{"dir": dir, "error": err.Error()})
 		}
 	}
@@ -274,7 +274,7 @@ func (s *PDFService) BuildFooter(tmpl *models.InvoiceTemplate) string {
 func (s *PDFService) GeneratePDF(ctx context.Context, htmlContent, outputPath string, options *PDFGenerationOptions) (int64, error) {
 	// Create temporary HTML file
 	tempHTML := filepath.Join(s.tempDir, fmt.Sprintf("temp_%s.html", uuid.New().String()))
-	if err := os.WriteFile(tempHTML, []byte(htmlContent), 0644); err != nil {
+	if err := os.WriteFile(tempHTML, []byte(htmlContent), 0600); err != nil {
 		return 0, fmt.Errorf("failed to write temporary HTML file: %w", err)
 	}
 	defer os.Remove(tempHTML)
@@ -283,7 +283,7 @@ func (s *PDFService) GeneratePDF(ctx context.Context, htmlContent, outputPath st
 	args := s.buildWkhtmltopdfArgs(tempHTML, outputPath, options)
 
 	// Execute wkhtmltopdf
-	cmd := exec.CommandContext(ctx, s.wkhtmltopdfPath, args...)
+	cmd := exec.CommandContext(ctx, s.wkhtmltopdfPath, args...) //nolint:gosec // G204: binary path is server config; args are built from fixed flags and server temp paths
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 
@@ -334,7 +334,7 @@ func (s *PDFService) buildWkhtmltopdfArgs(inputPath, outputPath string, options 
 	// Header/Footer HTML
 	if options.HeaderHTML != "" {
 		headerFile := filepath.Join(s.tempDir, fmt.Sprintf("header_%s.html", uuid.New().String()))
-		if err := os.WriteFile(headerFile, []byte(options.HeaderHTML), 0644); err != nil {
+		if err := os.WriteFile(headerFile, []byte(options.HeaderHTML), 0600); err != nil {
 			logging.Warn(context.Background(), "[PDF-SERVICE] could not write header HTML", map[string]any{"error": err.Error()})
 		}
 		args = append(args, "--header-html", headerFile)
@@ -343,7 +343,7 @@ func (s *PDFService) buildWkhtmltopdfArgs(inputPath, outputPath string, options 
 
 	if options.FooterHTML != "" {
 		footerFile := filepath.Join(s.tempDir, fmt.Sprintf("footer_%s.html", uuid.New().String()))
-		if err := os.WriteFile(footerFile, []byte(options.FooterHTML), 0644); err != nil {
+		if err := os.WriteFile(footerFile, []byte(options.FooterHTML), 0600); err != nil {
 			logging.Warn(context.Background(), "[PDF-SERVICE] could not write footer HTML", map[string]any{"error": err.Error()})
 		}
 		args = append(args, "--footer-html", footerFile)
@@ -437,7 +437,7 @@ func (s *PDFService) CleanupOldFiles(olderThan time.Duration) error {
 
 		if !info.IsDir() && strings.HasSuffix(info.Name(), ".pdf") {
 			if info.ModTime().Before(cutoffTime) {
-				if err := os.Remove(path); err != nil {
+				if err := os.Remove(path); err != nil { //nolint:gosec // G122: walks the server-owned PDF output dir, not user-controlled paths
 					return fmt.Errorf("failed to remove old file %s: %w", path, err)
 				}
 			}
@@ -500,7 +500,7 @@ func (s *PDFService) GetDefaultSampleData() map[string]interface{} {
 
 // CheckWkhtmltopdfInstalled checks if wkhtmltopdf is installed and accessible
 func (s *PDFService) CheckWkhtmltopdfInstalled() error {
-	cmd := exec.CommandContext(context.Background(), s.wkhtmltopdfPath, "--version")
+	cmd := exec.CommandContext(context.Background(), s.wkhtmltopdfPath, "--version") //nolint:gosec // G204: binary path is server config
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("wkhtmltopdf not found or not executable: %w", err)
 	}

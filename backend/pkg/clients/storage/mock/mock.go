@@ -281,7 +281,7 @@ func (c *Client) List(ctx context.Context, input *storage.ListInput) (*storage.L
 
 	// Apply max keys limit
 	isTruncated := false
-	if input.MaxKeys > 0 && int32(len(objects)) > input.MaxKeys {
+	if input.MaxKeys > 0 && int64(len(objects)) > int64(input.MaxKeys) {
 		objects = objects[:input.MaxKeys]
 		isTruncated = true
 	}

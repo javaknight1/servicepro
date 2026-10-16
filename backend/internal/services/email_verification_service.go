@@ -20,7 +20,7 @@ const (
 	VerificationTokenExpiry = 24 * time.Hour
 
 	// Redis key prefix for verification tokens
-	VerificationTokenPrefix = "email_verification:"
+	VerificationTokenPrefix = "email_verification:" //nolint:gosec // G101: a Redis key prefix, not a credential
 
 	// Reminder threshold (24 hours after sending)
 	ReminderThreshold = 24 * time.Hour

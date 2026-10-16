@@ -17,7 +17,7 @@ import (
 // rate-limit bucket). The Worker forwards the visitor address in
 // EdgeClientIPHeader together with the shared secret in EdgeSecretHeader.
 const (
-	EdgeSecretHeader   = "X-SP-Edge-Secret"
+	EdgeSecretHeader   = "X-SP-Edge-Secret" //nolint:gosec // G101: a header name, not a credential
 	EdgeClientIPHeader = "X-SP-Client-IP"
 )
 
