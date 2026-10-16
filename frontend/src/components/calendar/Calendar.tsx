@@ -117,7 +117,7 @@ class CalendarErrorBoundary extends Component<
  * Loading Skeleton Component
  */
 const CalendarSkeleton: React.FC = () => (
-  <div className="animate-pulse space-y-4 p-4">
+  <div className="animate-pulse space-y-4 p-4" data-testid="calendar-skeleton">
     <div className="h-12 bg-gray-200 rounded" />
     <div className="grid grid-cols-7 gap-2">
       {Array.from({ length: 35 }).map((_, i) => (

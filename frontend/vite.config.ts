@@ -83,9 +83,6 @@ export default defineConfig(({ mode }) => ({
       'src/**/*.{test,spec}.{ts,tsx}',
       'tests/**/*.{test,spec}.{ts,tsx}',
     ],
-    deps: {
-      inline: ['@sentry/tracing'],
-    },
     coverage: {
       provider: 'v8',
       reporter: ['text', 'text-summary', 'json', 'html', 'lcov'],
@@ -107,15 +104,8 @@ export default defineConfig(({ mode }) => ({
     },
     // Test timeout
     testTimeout: 10000,
-    // Retry failed tests
-    retry: 1,
-    // Pool configuration for parallel testing
+    // No retries: flaky tests must surface rather than be masked
     pool: 'forks',
-    poolOptions: {
-      forks: {
-        singleFork: false,
-      },
-    },
   },
 
   // Build configuration from optimization config
