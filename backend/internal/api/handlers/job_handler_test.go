@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -15,6 +17,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/javaknight1/servicepro/backend/internal/api/middleware"
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/services"
 )
@@ -562,6 +565,49 @@ func TestJobHandler_StartJob_Success(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, models.JobStatusInProgress, respBody.Status)
 	mockService.AssertExpectations(t)
+}
+
+// T223: an invalid status transition reaches the client as a 409 with its
+// own message (publicError used to reduce "invalid status transition: …" to
+// a generic 400), and an unexpected error is a 500 that leaks nothing.
+func TestJobHandler_StartJob_DomainAndInfraErrors(t *testing.T) {
+	for _, tc := range []struct {
+		serviceErr error
+		status     int
+		code       string
+		message    string
+	}{
+		{fmt.Errorf("start: %w", models.ErrInvalidStatusTransition.WithMessage("A job can't move from completed to in_progress")),
+			http.StatusConflict, "invalid_status_transition", "A job can't move from completed to in_progress"},
+		{services.ErrJobNotFound, http.StatusNotFound, "job_not_found", "Job not found"},
+		{services.ErrUnauthorized, http.StatusForbidden, "forbidden", ""},
+		{errors.New("pq: deadlock detected"), http.StatusInternalServerError, "internal_error", "Failed to start job"},
+	} {
+		mockService := new(MockJobService)
+		handler := NewJobHandler(mockService)
+		router := setupJobTestRouter()
+		router.Use(middleware.RequestID())
+		userID, jobID := uuid.New(), uuid.New()
+		router.POST("/jobs/:id/start", func(c *gin.Context) {
+			c.Set("user_id", userID)
+			c.Set("userRole", models.RoleUser)
+			handler.StartJob(c)
+		})
+		mockService.On("StartJob", jobID, userID, models.RoleUser).Return(nil, tc.serviceErr)
+
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, httptest.NewRequest(http.MethodPost, "/jobs/"+jobID.String()+"/start", nil))
+
+		var body models.ErrorResponse
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+		assert.Equal(t, tc.status, w.Code, tc.serviceErr.Error())
+		assert.Equal(t, tc.code, body.Error)
+		if tc.message != "" {
+			assert.Equal(t, tc.message, body.Message)
+		}
+		assert.NotContains(t, body.Message, "pq:")
+		assert.NotEmpty(t, body.RequestID)
+	}
 }
 
 // Tests for CompleteJob

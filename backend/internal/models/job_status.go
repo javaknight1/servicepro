@@ -1,23 +1,31 @@
 package models
 
 import (
-	"errors"
 	"fmt"
 	"time"
 
 	"github.com/google/uuid"
+
+	apperrors "github.com/javaknight1/servicepro/backend/internal/errors"
 )
 
+// Job status domain errors (T223): the API returns their status, code and
+// message as-is instead of a generic "request could not be processed".
 var (
-	// ErrInvalidStatusTransition indicates an invalid status transition
-	ErrInvalidStatusTransition = errors.New("invalid status transition")
+	// ErrInvalidStatusTransition indicates an invalid status transition (409)
+	ErrInvalidStatusTransition = apperrors.Conflict("invalid_status_transition", "This job can't move to that status")
 
-	// ErrStatusValidation indicates a status validation error
-	ErrStatusValidation = errors.New("status validation error")
+	// ErrStatusValidation indicates a status validation error (400)
+	ErrStatusValidation = apperrors.BadRequest("status_validation_failed", "The status change is invalid")
 
-	// ErrMissingRequiredField indicates a required field is missing
-	ErrMissingRequiredField = errors.New("missing required field")
+	// ErrMissingRequiredField indicates a required field is missing (400)
+	ErrMissingRequiredField = apperrors.BadRequest("missing_required_field", "A required field is missing")
 )
+
+// invalidTransition is ErrInvalidStatusTransition naming both statuses.
+func invalidTransition(from, to JobStatus) error {
+	return ErrInvalidStatusTransition.WithMessage(fmt.Sprintf("A job can't move from %s to %s", from, to))
+}
 
 // StatusTransitionReason represents the reason for status change
 type StatusTransitionReason string
@@ -287,19 +295,19 @@ func GetTransitionRule(from, to JobStatus) (*StatusTransitionRule, error) {
 			return &rule, nil
 		}
 	}
-	return nil, fmt.Errorf("%w: cannot transition from %s to %s", ErrInvalidStatusTransition, from, to)
+	return nil, invalidTransition(from, to)
 }
 
 // ValidateTransition validates a status transition with job context
 func ValidateTransition(job *Job, toStatus JobStatus, notes *string) error {
 	// Check if status is valid
 	if !IsValidStatus(toStatus) {
-		return fmt.Errorf("%w: invalid status '%s'", ErrStatusValidation, toStatus)
+		return ErrStatusValidation.WithMessage(fmt.Sprintf("%q is not a job status", toStatus))
 	}
 
 	// Check if transition is allowed
 	if !CanTransition(job.Status, toStatus) {
-		return fmt.Errorf("%w: cannot transition from %s to %s", ErrInvalidStatusTransition, job.Status, toStatus)
+		return invalidTransition(job.Status, toStatus)
 	}
 
 	// No-op transitions are always valid
@@ -315,7 +323,7 @@ func ValidateTransition(job *Job, toStatus JobStatus, notes *string) error {
 
 	// Check if notes are required
 	if rule.RequiresNote && (notes == nil || *notes == "") {
-		return fmt.Errorf("%w: notes are required for this transition", ErrStatusValidation)
+		return ErrStatusValidation.WithMessage("Notes are required for this status change")
 	}
 
 	// Execute custom validation function

@@ -10,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
+	"github.com/javaknight1/servicepro/backend/internal/api/apierror"
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/services"
 	"github.com/javaknight1/servicepro/backend/pkg/notifications"
@@ -54,7 +55,7 @@ func (h *AssignmentHandler) CreateAssignment(c *gin.Context) {
 	// Get authenticated user
 	userID, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusUnauthorized, models.ErrorResponse{
 			Error:   "unauthorized",
 			Message: "User not authenticated",
 		})
@@ -65,7 +66,7 @@ func (h *AssignmentHandler) CreateAssignment(c *gin.Context) {
 
 	// Only admins and managers can create assignments
 	if userRole != models.UserRoleAdmin && userRole != models.UserRoleManager {
-		c.JSON(http.StatusForbidden, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusForbidden, models.ErrorResponse{
 			Error:   "forbidden",
 			Message: "Only administrators and managers can create assignments",
 		})
@@ -74,10 +75,7 @@ func (h *AssignmentHandler) CreateAssignment(c *gin.Context) {
 
 	var req services.AssignmentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
-			Error:   "invalid_request",
-			Message: "Invalid request data: " + publicError(err),
-		})
+		apierror.BindError(c, err)
 		return
 	}
 
@@ -89,30 +87,27 @@ func (h *AssignmentHandler) CreateAssignment(c *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrJobNotFound):
-			c.JSON(http.StatusNotFound, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusNotFound, models.ErrorResponse{
 				Error:   "job_not_found",
 				Message: "The specified job does not exist",
 			})
 		case errors.Is(err, services.ErrTechnicianNotFound):
-			c.JSON(http.StatusNotFound, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusNotFound, models.ErrorResponse{
 				Error:   "technician_not_found",
 				Message: "The specified technician does not exist",
 			})
 		case errors.Is(err, services.ErrTechnicianNotAvailable):
-			c.JSON(http.StatusConflict, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusConflict, models.ErrorResponse{
 				Error:   "technician_not_available",
 				Message: "Technician is not available for the requested time slot",
 			})
 		case errors.Is(err, services.ErrSkillMismatch):
-			c.JSON(http.StatusConflict, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusConflict, models.ErrorResponse{
 				Error:   "skill_mismatch",
 				Message: "Technician does not have sufficient skills for this job",
 			})
 		default:
-			c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-				Error:   "internal_error",
-				Message: "Failed to create assignment",
-			})
+			apierror.Internal(c, err, "Failed to create assignment")
 		}
 		return
 	}
@@ -139,7 +134,7 @@ func (h *AssignmentHandler) CreateAssignment(c *gin.Context) {
 func (h *AssignmentHandler) BulkCreateAssignments(c *gin.Context) {
 	userID, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusUnauthorized, models.ErrorResponse{
 			Error:   "unauthorized",
 			Message: "User not authenticated",
 		})
@@ -148,7 +143,7 @@ func (h *AssignmentHandler) BulkCreateAssignments(c *gin.Context) {
 
 	userRole, _ := c.Get("userRole")
 	if userRole != models.UserRoleAdmin && userRole != models.UserRoleManager {
-		c.JSON(http.StatusForbidden, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusForbidden, models.ErrorResponse{
 			Error:   "forbidden",
 			Message: "Only administrators and managers can create assignments",
 		})
@@ -157,10 +152,7 @@ func (h *AssignmentHandler) BulkCreateAssignments(c *gin.Context) {
 
 	var req services.BulkAssignmentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
-			Error:   "invalid_request",
-			Message: "Invalid request data: " + publicError(err),
-		})
+		apierror.BindError(c, err)
 		return
 	}
 
@@ -205,7 +197,7 @@ func (h *AssignmentHandler) BulkCreateAssignments(c *gin.Context) {
 func (h *AssignmentHandler) RemoveAssignment(c *gin.Context) {
 	userID, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusUnauthorized, models.ErrorResponse{
 			Error:   "unauthorized",
 			Message: "User not authenticated",
 		})
@@ -214,7 +206,7 @@ func (h *AssignmentHandler) RemoveAssignment(c *gin.Context) {
 
 	userRole, _ := c.Get("userRole")
 	if userRole != models.UserRoleAdmin && userRole != models.UserRoleManager {
-		c.JSON(http.StatusForbidden, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusForbidden, models.ErrorResponse{
 			Error:   "forbidden",
 			Message: "Only administrators and managers can remove assignments",
 		})
@@ -223,7 +215,7 @@ func (h *AssignmentHandler) RemoveAssignment(c *gin.Context) {
 
 	assignmentID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_id",
 			Message: "Invalid assignment ID format",
 		})
@@ -235,17 +227,14 @@ func (h *AssignmentHandler) RemoveAssignment(c *gin.Context) {
 
 	if err := h.assignmentService.RemoveAssignment(ctx, assignmentID, userID.(uuid.UUID)); err != nil {
 		if errors.Is(err, services.ErrAssignmentNotFound) {
-			c.JSON(http.StatusNotFound, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusNotFound, models.ErrorResponse{
 				Error:   "assignment_not_found",
 				Message: "Assignment not found",
 			})
 			return
 		}
 
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "internal_error",
-			Message: "Failed to remove assignment",
-		})
+		apierror.Internal(c, err, "Failed to remove assignment")
 		return
 	}
 
@@ -270,7 +259,7 @@ func (h *AssignmentHandler) RemoveAssignment(c *gin.Context) {
 func (h *AssignmentHandler) UpdateAssignment(c *gin.Context) {
 	userID, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusUnauthorized, models.ErrorResponse{
 			Error:   "unauthorized",
 			Message: "User not authenticated",
 		})
@@ -279,7 +268,7 @@ func (h *AssignmentHandler) UpdateAssignment(c *gin.Context) {
 
 	userRole, _ := c.Get("userRole")
 	if userRole != models.UserRoleAdmin && userRole != models.UserRoleManager {
-		c.JSON(http.StatusForbidden, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusForbidden, models.ErrorResponse{
 			Error:   "forbidden",
 			Message: "Only administrators and managers can update assignments",
 		})
@@ -288,7 +277,7 @@ func (h *AssignmentHandler) UpdateAssignment(c *gin.Context) {
 
 	assignmentID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_id",
 			Message: "Invalid assignment ID format",
 		})
@@ -300,10 +289,7 @@ func (h *AssignmentHandler) UpdateAssignment(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
-			Error:   "invalid_request",
-			Message: "Invalid request data: " + publicError(err),
-		})
+		apierror.BindError(c, err)
 		return
 	}
 
@@ -312,17 +298,14 @@ func (h *AssignmentHandler) UpdateAssignment(c *gin.Context) {
 
 	if err := h.assignmentService.UpdateAssignment(ctx, assignmentID, req.Role, userID.(uuid.UUID)); err != nil {
 		if errors.Is(err, services.ErrAssignmentNotFound) {
-			c.JSON(http.StatusNotFound, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusNotFound, models.ErrorResponse{
 				Error:   "assignment_not_found",
 				Message: "Assignment not found",
 			})
 			return
 		}
 
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "internal_error",
-			Message: "Failed to update assignment",
-		})
+		apierror.Internal(c, err, "Failed to update assignment")
 		return
 	}
 
@@ -346,7 +329,7 @@ func (h *AssignmentHandler) UpdateAssignment(c *gin.Context) {
 func (h *AssignmentHandler) CheckAvailability(c *gin.Context) {
 	_, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusUnauthorized, models.ErrorResponse{
 			Error:   "unauthorized",
 			Message: "User not authenticated",
 		})
@@ -360,10 +343,7 @@ func (h *AssignmentHandler) CheckAvailability(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
-			Error:   "invalid_request",
-			Message: "Invalid request data: " + publicError(err),
-		})
+		apierror.BindError(c, err)
 		return
 	}
 
@@ -372,10 +352,7 @@ func (h *AssignmentHandler) CheckAvailability(c *gin.Context) {
 
 	availability, err := h.assignmentService.CheckTechnicianAvailability(ctx, req.TechnicianID, req.StartTime, req.EndTime)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "internal_error",
-			Message: "Failed to check availability: " + publicError(err),
-		})
+		apierror.Internal(c, err, "Failed to check availability")
 		return
 	}
 
@@ -397,7 +374,7 @@ func (h *AssignmentHandler) CheckAvailability(c *gin.Context) {
 func (h *AssignmentHandler) GetAvailableTechnicians(c *gin.Context) {
 	_, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusUnauthorized, models.ErrorResponse{
 			Error:   "unauthorized",
 			Message: "User not authenticated",
 		})
@@ -406,10 +383,7 @@ func (h *AssignmentHandler) GetAvailableTechnicians(c *gin.Context) {
 
 	var req services.AvailabilityCheckRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
-			Error:   "invalid_request",
-			Message: "Invalid request data: " + publicError(err),
-		})
+		apierror.BindError(c, err)
 		return
 	}
 
@@ -418,10 +392,7 @@ func (h *AssignmentHandler) GetAvailableTechnicians(c *gin.Context) {
 
 	technicians, err := h.assignmentService.GetAvailableTechnicians(ctx, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "internal_error",
-			Message: "Failed to get available technicians: " + publicError(err),
-		})
+		apierror.Internal(c, err, "Failed to get available technicians")
 		return
 	}
 
@@ -443,7 +414,7 @@ func (h *AssignmentHandler) GetAvailableTechnicians(c *gin.Context) {
 func (h *AssignmentHandler) OptimizeAssignments(c *gin.Context) {
 	_, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusUnauthorized, models.ErrorResponse{
 			Error:   "unauthorized",
 			Message: "User not authenticated",
 		})
@@ -458,10 +429,7 @@ func (h *AssignmentHandler) OptimizeAssignments(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
-			Error:   "invalid_request",
-			Message: "Invalid request data: " + publicError(err),
-		})
+		apierror.BindError(c, err)
 		return
 	}
 
@@ -470,10 +438,7 @@ func (h *AssignmentHandler) OptimizeAssignments(c *gin.Context) {
 
 	technicians, err := h.assignmentService.OptimizeAssignments(ctx, req.JobID, req.RequiredSkills, req.StartTime, req.EndTime)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "internal_error",
-			Message: "Failed to optimize assignments: " + publicError(err),
-		})
+		apierror.Internal(c, err, "Failed to optimize assignments")
 		return
 	}
 
@@ -499,7 +464,7 @@ func (h *AssignmentHandler) OptimizeAssignments(c *gin.Context) {
 func (h *AssignmentHandler) GetTechnicianWorkload(c *gin.Context) {
 	_, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusUnauthorized, models.ErrorResponse{
 			Error:   "unauthorized",
 			Message: "User not authenticated",
 		})
@@ -508,7 +473,7 @@ func (h *AssignmentHandler) GetTechnicianWorkload(c *gin.Context) {
 
 	technicianID, err := uuid.Parse(c.Param("technician_id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_id",
 			Message: "Invalid technician ID format",
 		})
@@ -536,10 +501,7 @@ func (h *AssignmentHandler) GetTechnicianWorkload(c *gin.Context) {
 
 	workload, err := h.assignmentService.GetTechnicianWorkload(ctx, technicianID, startDate, endDate)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "internal_error",
-			Message: "Failed to get workload: " + publicError(err),
-		})
+		apierror.Internal(c, err, "Failed to get workload")
 		return
 	}
 

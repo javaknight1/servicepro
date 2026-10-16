@@ -2850,7 +2850,7 @@ const docTemplate = `{
                         "description": "No Content"
                     },
                     "400": {
-                        "description": "Invalid request or job cannot be deleted",
+                        "description": "Invalid request",
                         "schema": {
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
@@ -2869,6 +2869,12 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Job not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Only scheduled or cancelled jobs can be deleted",
                         "schema": {
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
@@ -3182,6 +3188,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     },
+                    "409": {
+                        "description": "Invalid status transition",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
@@ -3239,7 +3251,7 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Invalid request or job cannot be completed",
+                        "description": "Invalid request",
                         "schema": {
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
@@ -3258,6 +3270,12 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Job not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Job cannot be completed in its current status",
                         "schema": {
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
@@ -3338,6 +3356,12 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Job not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Invalid status transition",
                         "schema": {
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
@@ -3570,6 +3594,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     },
+                    "409": {
+                        "description": "Invalid status transition",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
@@ -3611,7 +3641,7 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Invalid request or job cannot be started",
+                        "description": "Invalid request",
                         "schema": {
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
@@ -3630,6 +3660,12 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Job not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Job cannot be started in its current status",
                         "schema": {
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
@@ -3757,7 +3793,7 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Invalid request or invalid transition",
+                        "description": "Invalid request",
                         "schema": {
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
@@ -3776,6 +3812,12 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Job not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Invalid status transition",
                         "schema": {
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }

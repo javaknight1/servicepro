@@ -3,29 +3,52 @@ package services
 import (
 	"context"
 	"errors"
+	"strings"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 
+	apperrors "github.com/javaknight1/servicepro/backend/internal/errors"
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/repository"
 	"github.com/javaknight1/servicepro/backend/internal/utils/epoch"
 	"github.com/javaknight1/servicepro/backend/pkg/validators"
 )
 
+// Job domain errors (T223): typed, so the API returns their status, code
+// and message as-is; anything else from the job service is a 500.
 var (
-	// ErrJobNotFound indicates job was not found
-	ErrJobNotFound = errors.New("job not found")
+	// ErrJobNotFound indicates job was not found (or belongs to another tenant)
+	ErrJobNotFound = apperrors.NotFound("job_not_found", "Job not found")
 
 	// ErrCustomerNotFound indicates customer was not found
-	ErrCustomerNotFound = errors.New("customer not found")
+	ErrCustomerNotFound = apperrors.NotFound("customer_not_found", "The specified customer does not exist")
 
 	// ErrUnauthorized indicates user is not authorized for this operation
-	ErrUnauthorized = errors.New("unauthorized to perform this operation")
+	ErrUnauthorized = apperrors.Forbidden("forbidden", "You do not have permission to access or change this job")
 
-	// ErrInvalidJobData indicates invalid job data
-	ErrInvalidJobData = errors.New("invalid job data")
+	// ErrInvalidJobData indicates invalid job data; WithMessage carries the reason
+	ErrInvalidJobData = apperrors.BadRequest("invalid_job_data", "Invalid job data")
+
+	// ErrJobCannotBeDeleted: only scheduled or cancelled jobs can be deleted
+	ErrJobCannotBeDeleted = apperrors.Conflict("cannot_delete", "Only scheduled or cancelled jobs can be deleted")
+
+	// ErrJobAssignmentNotFound: the technician isn't assigned to the job
+	ErrJobAssignmentNotFound = apperrors.NotFound("assignment_not_found", "That technician isn't assigned to this job")
+
+	// ErrMaterialNotFound: no such material on the job
+	ErrMaterialNotFound = apperrors.NotFound("material_not_found", "Material not found")
 )
+
+// invalidJobData turns a validator error (fixed, user-safe text such as
+// "job title is required") into a 400 that keeps the reason.
+func invalidJobData(err error) error {
+	msg := err.Error()
+	if msg == "" {
+		return ErrInvalidJobData
+	}
+	return ErrInvalidJobData.WithMessage(strings.ToUpper(msg[:1]) + msg[1:]).WithCause(err)
+}
 
 // JobServiceInterface defines the interface for job service
 type JobServiceInterface interface {
@@ -114,7 +137,7 @@ func (s *JobService) WithContext(ctx context.Context) JobServiceInterface {
 func (s *JobService) CreateJob(req *models.CreateJobRequest, createdBy uuid.UUID) (*models.JobResponse, error) {
 	// Validate request
 	if err := s.validator.ValidateCreateRequest(req); err != nil {
-		return nil, err
+		return nil, invalidJobData(err)
 	}
 
 	// Verify customer exists
@@ -270,7 +293,7 @@ func (s *JobService) UpdateJob(id uuid.UUID, req *models.UpdateJobRequest, userI
 
 	// Validate update request
 	if err := s.validator.ValidateUpdateRequest(req, job); err != nil {
-		return nil, err
+		return nil, invalidJobData(err)
 	}
 
 	// Apply updates
@@ -376,7 +399,7 @@ func (s *JobService) DeleteJob(id uuid.UUID, userID uuid.UUID, userRole models.U
 
 	// Only allow deletion of scheduled or cancelled jobs
 	if job.Status != models.JobStatusScheduled && job.Status != models.JobStatusCancelled {
-		return errors.New("can only delete scheduled or cancelled jobs")
+		return ErrJobCannotBeDeleted
 	}
 
 	return s.jobRepo.Delete(id)
@@ -616,7 +639,7 @@ func (s *JobService) ResumeJob(id uuid.UUID, userID uuid.UUID, userRole models.U
 
 	// Must be on hold to resume
 	if job.Status != models.JobStatusOnHold {
-		return nil, errors.New("can only resume jobs that are on hold")
+		return nil, models.ErrInvalidStatusTransition.WithMessage("Only jobs that are on hold can be resumed")
 	}
 
 	if err := s.applyTransition(job, models.JobStatusInProgress, models.ReasonResume, nil, userID); err != nil {
@@ -657,7 +680,7 @@ func (s *JobService) AssignTechnician(jobID, technicianID uuid.UUID, role string
 
 	// Validate assignment
 	if err := s.validator.ValidateAssignment(assignment); err != nil {
-		return err
+		return invalidJobData(err)
 	}
 
 	return s.jobRepo.AddAssignment(assignment)
@@ -688,7 +711,7 @@ func (s *JobService) UnassignTechnician(jobID, technicianID uuid.UUID, userID uu
 		}
 	}
 
-	return errors.New("assignment not found")
+	return ErrJobAssignmentNotFound
 }
 
 // AddMaterial adds a material to a job
@@ -711,7 +734,7 @@ func (s *JobService) AddMaterial(jobID uuid.UUID, material *models.JobMaterial, 
 
 	// Validate material
 	if err := s.validator.ValidateMaterial(material); err != nil {
-		return err
+		return invalidJobData(err)
 	}
 
 	return s.jobRepo.AddMaterial(material)
@@ -734,7 +757,7 @@ func (s *JobService) UpdateMaterial(materialID uuid.UUID, material *models.JobMa
 	}
 
 	if existingMaterial == nil {
-		return errors.New("material not found")
+		return ErrMaterialNotFound
 	}
 
 	// Get job to check permissions
@@ -759,7 +782,7 @@ func (s *JobService) UpdateMaterial(materialID uuid.UUID, material *models.JobMa
 
 	// Validate material
 	if err := s.validator.ValidateMaterial(existingMaterial); err != nil {
-		return err
+		return invalidJobData(err)
 	}
 
 	return s.jobRepo.UpdateMaterial(existingMaterial)
@@ -791,7 +814,7 @@ func (s *JobService) DeleteMaterial(materialID uuid.UUID, jobID uuid.UUID, userI
 			return s.jobRepo.DeleteMaterial(materialID)
 		}
 	}
-	return errors.New("material not found")
+	return ErrMaterialNotFound
 }
 
 // AddNote adds a note to a job
@@ -814,7 +837,7 @@ func (s *JobService) AddNote(jobID, userID uuid.UUID, note string, isInternal bo
 
 	// Validate note
 	if err := s.validator.ValidateNote(jobNote); err != nil {
-		return err
+		return invalidJobData(err)
 	}
 
 	return s.jobRepo.AddNote(jobNote)
