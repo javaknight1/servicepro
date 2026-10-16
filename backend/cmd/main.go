@@ -78,6 +78,17 @@ import (
 )
 
 func main() {
+	if err := run(); err != nil {
+		// run's deferred cleanups (Sentry/PostHog flush, DB close) have
+		// already executed by the time we exit (T126).
+		logging.Error(context.Background(), "Server failed", map[string]any{"error": err.Error()})
+		os.Exit(1)
+	}
+}
+
+// run starts the server and blocks until shutdown. It returns errors instead
+// of exiting so deferred flushes and closes always run.
+func run() error {
 	// Load configuration
 	cfg := config.Load()
 
@@ -122,22 +133,19 @@ func main() {
 	// Connect to PostgreSQL using GORM
 	db, queryLogger, err := database.NewGormDB(&cfg.Database)
 	if err != nil {
-		logging.Fatal(ctx, "Failed to connect to database", map[string]any{"error": err.Error()})
-		os.Exit(1)
+		return fmt.Errorf("failed to connect to database: %w", err)
 	}
 	logging.Info(ctx, "Database connected", nil)
 
 	// Scope every query on tenant-owned tables to the caller's tenant (F-3).
 	if err := tenancy.Register(db); err != nil {
-		logging.Fatal(ctx, "Failed to register tenancy plugin", map[string]any{"error": err.Error()})
-		os.Exit(1)
+		return fmt.Errorf("failed to register tenancy plugin: %w", err)
 	}
 
 	// Get underlying SQL DB for cleanup
 	sqlDB, err := db.DB()
 	if err != nil {
-		logging.Fatal(ctx, "Failed to get database instance", map[string]any{"error": err.Error()})
-		os.Exit(1)
+		return fmt.Errorf("failed to get database instance: %w", err)
 	}
 	defer sqlDB.Close()
 
@@ -145,8 +153,7 @@ func main() {
 	// migrate from the release pipeline (`cmd/migrate up`) before deploying.
 	if cfg.Database.RunMigrationsOnStartup {
 		if err := database.RunMigrations(cfg.Database.URL); err != nil {
-			logging.Fatal(ctx, "[MIGRATE] Failed to apply migrations at startup", map[string]any{"error": err.Error()})
-			os.Exit(1)
+			return fmt.Errorf("apply migrations at startup: %w", err)
 		}
 	}
 
@@ -163,8 +170,7 @@ func main() {
 	// when REDIS_URL is unset or Redis is unreachable at boot.
 	redisConn, err := database.ConnectRedisOrFallback(&cfg.Redis)
 	if err != nil {
-		logging.Fatal(ctx, "Failed to initialize Redis or its in-memory fallback", map[string]any{"error": err.Error()})
-		os.Exit(1)
+		return fmt.Errorf("failed to initialize Redis or its in-memory fallback: %w", err)
 	}
 	defer redisConn.Close()
 	redisClient := redisConn.Client
@@ -172,8 +178,7 @@ func main() {
 
 	emailClient, err := emailclient.NewClient(ctx, cfg)
 	if err != nil {
-		logging.Fatal(ctx, "Failed to initialize email client", map[string]any{"error": err.Error()})
-		os.Exit(1)
+		return fmt.Errorf("failed to initialize email client: %w", err)
 	}
 	logging.Info(ctx, "Email client initialized", nil)
 
@@ -269,18 +274,22 @@ func main() {
 	}
 
 	// Start server in a goroutine
+	serverErr := make(chan error, 1)
 	go func() {
 		logging.Info(ctx, "Starting server", map[string]any{"addr": addr})
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			logging.Fatal(ctx, "Failed to start server", map[string]any{"error": err.Error()})
-			os.Exit(1)
+			serverErr <- err
 		}
 	}()
 
 	// Set up signal handling for graceful shutdown
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
+	select {
+	case err := <-serverErr:
+		return fmt.Errorf("failed to start server: %w", err)
+	case <-quit:
+	}
 	logging.Info(ctx, "Shutting down server...", nil)
 
 	// Create shutdown context with timeout
@@ -293,4 +302,5 @@ func main() {
 	}
 
 	logging.Info(ctx, "Server exited gracefully", nil)
+	return nil
 }
