@@ -7,6 +7,10 @@
 # -----------------------------------------------------------------------------
 node_modules/
 vendor/
+# Stray npm install in the Go module dir
+backend/node_modules/
+# npm cache created under a literal "~" dir by a HOME=~ mishap
+/frontend/~/
 
 # -----------------------------------------------------------------------------
 # Build Artifacts
@@ -27,6 +31,7 @@ build/
 
 # Backend compiled binaries
 backend/main
+backend/server
 backend/api
 backend/cmd/api
 /backend/cmd/*/main
@@ -35,6 +40,8 @@ backend/cmd/api
 /frontend/build
 /frontend/.cache
 /frontend/dist
+# rollup-plugin-visualizer output (npm run build:analyze)
+bundle-report.html
 
 # -----------------------------------------------------------------------------
 # Environment Variables
@@ -132,14 +139,9 @@ temp/
 *.backup
 
 # -----------------------------------------------------------------------------
-# Fly.io
+# Cloudflare Wrangler (local state for the frontend Worker)
 # -----------------------------------------------------------------------------
-.fly/
-fly.toml.local
-*.fly.toml.local
-
-# Fly.io secrets (if using fly secrets import)
-fly-secrets.env
+.wrangler/
 
 # -----------------------------------------------------------------------------
 # Secrets & Credentials
@@ -195,13 +197,10 @@ storybook-static/
 # -----------------------------------------------------------------------------
 # Generated Documentation
 # -----------------------------------------------------------------------------
-/backend/docs/swagger.json
-/backend/docs/swagger.yaml
-/backend/docs/docs.go
-
-# Frontend generated API types
+# backend/docs/{swagger.json,swagger.yaml,docs.go} and
+# frontend/src/types/api.generated.ts ARE committed: CI's openapi-drift job
+# regenerates them and fails on any diff. Only the intermediate is ignored.
 /frontend/src/types/openapi.json
-/frontend/src/types/api.generated.ts
 
 # -----------------------------------------------------------------------------
 # Exports & Generated Files
@@ -221,7 +220,18 @@ docker-compose.local.yml
 # Local Development
 # -----------------------------------------------------------------------------
 .local/
-.claude/
+
+# Claude Code — share .claude/commands/ and .claude/agents/, but never ship
+# runtime state or local-only overrides. No blanket .claude/ rule.
+# NB: a trailing comment on a pattern line is part of the pattern, so keep
+# comments on their own lines.
+# per-agent isolated checkouts
+.claude/worktrees/
+# held while a scheduled task is running
+.claude/scheduled_tasks.lock
+# settings.local.json + any future *.local.json
+.claude/*.local.json
+.claude/settings.local.json
 *.local.yaml
 *.local.yml
 
