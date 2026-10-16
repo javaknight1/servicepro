@@ -89,6 +89,17 @@ var (
 		"amount_due",
 	}
 
+	// QuoteAllowedSortColumns contains valid sort columns for quotes (keep in
+	// sync with the sort_by oneof on models.QuoteQueryParams)
+	QuoteAllowedSortColumns = []string{
+		"created_at",
+		"updated_at",
+		"quote_number",
+		"status",
+		"total",
+		"valid_until",
+	}
+
 	// PaymentHistoryAllowedSortColumns contains valid sort columns for payment history
 	PaymentHistoryAllowedSortColumns = []string{
 		"created_at",

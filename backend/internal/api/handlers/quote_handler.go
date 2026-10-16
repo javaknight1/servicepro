@@ -88,10 +88,13 @@ func (h *QuoteHandler) CreateQuote(c *gin.Context) {
 // @Produce json
 // @Param customer_id query string false "Filter by customer ID"
 // @Param status query string false "Filter by status (draft, sent, accepted, rejected, expired)"
+// @Param q query string false "Search quote number and customer first/last/company name (case-insensitive, max 100 chars)"
+// @Param sort_by query string false "Sort column" Enums(created_at, updated_at, quote_number, status, total, valid_until) default(created_at)
+// @Param sort_order query string false "Sort direction" Enums(asc, desc) default(desc)
 // @Param page query int false "Page number" default(1)
 // @Param page_size query int false "Page size" default(50)
 // @Success 200 {object} models.QuoteListResponse
-// @Failure 400 {object} models.ErrorResponse "Invalid request"
+// @Failure 400 {object} models.ErrorResponse "Invalid request (including an unknown sort_by/sort_order)"
 // @Failure 401 {object} models.ErrorResponse "Unauthorized"
 // @Failure 500 {object} models.ErrorResponse "Internal server error"
 // @Router /api/v1/quotes [get]

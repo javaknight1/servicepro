@@ -6502,6 +6502,31 @@ paths:
         in: query
         name: status
         type: string
+      - description: Search quote number and customer first/last/company name (case-insensitive,
+          max 100 chars)
+        in: query
+        name: q
+        type: string
+      - default: created_at
+        description: Sort column
+        enum:
+        - created_at
+        - updated_at
+        - quote_number
+        - status
+        - total
+        - valid_until
+        in: query
+        name: sort_by
+        type: string
+      - default: desc
+        description: Sort direction
+        enum:
+        - asc
+        - desc
+        in: query
+        name: sort_order
+        type: string
       - default: 1
         description: Page number
         in: query
@@ -6520,7 +6545,7 @@ paths:
           schema:
             $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.QuoteListResponse'
         "400":
-          description: Invalid request
+          description: Invalid request (including an unknown sort_by/sort_order)
           schema:
             $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
         "401":

@@ -356,6 +356,47 @@ func TestListQuotes_Success(t *testing.T) {
 	mockQuoteService.AssertExpectations(t)
 }
 
+func TestListQuotes_BindsSearchAndSort(t *testing.T) {
+	mockQuoteService := new(MockQuoteService)
+	handler := NewQuoteHandler(mockQuoteService)
+
+	mockQuoteService.On("ListQuotes", mock.MatchedBy(func(p *models.QuoteQueryParams) bool {
+		return p.Q == "acme" && p.SortBy == "total" && p.SortOrder == "asc"
+	})).Return(&models.QuoteListResponse{Page: 1, PageSize: 10}, nil)
+
+	router := setupQuoteTestRouter()
+	router.GET("/quotes", handler.ListQuotes)
+
+	req, _ := http.NewRequest("GET", "/quotes?page=1&page_size=10&q=acme&sort_by=total&sort_order=asc", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	mockQuoteService.AssertExpectations(t)
+}
+
+func TestListQuotes_RejectsUnknownSort(t *testing.T) {
+	for _, query := range []string{
+		"sort_by=customer_id",
+		"sort_by=created_at%3BDROP%20TABLE%20quotes",
+		"sort_by=total&sort_order=sideways",
+	} {
+		t.Run(query, func(t *testing.T) {
+			mockQuoteService := new(MockQuoteService)
+			handler := NewQuoteHandler(mockQuoteService)
+			router := setupQuoteTestRouter()
+			router.GET("/quotes", handler.ListQuotes)
+
+			req, _ := http.NewRequest("GET", "/quotes?page=1&page_size=10&"+query, nil)
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+
+			assert.Equal(t, http.StatusBadRequest, w.Code)
+			mockQuoteService.AssertNotCalled(t, "ListQuotes", mock.Anything)
+		})
+	}
+}
+
 func TestUpdateQuote_Success(t *testing.T) {
 	mockQuoteService := new(MockQuoteService)
 	handler := NewQuoteHandler(mockQuoteService)

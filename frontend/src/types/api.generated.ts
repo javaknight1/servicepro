@@ -4569,6 +4569,12 @@ export interface paths {
                     customer_id?: string;
                     /** @description Filter by status (draft, sent, accepted, rejected, expired) */
                     status?: string;
+                    /** @description Search quote number and customer first/last/company name (case-insensitive, max 100 chars) */
+                    q?: string;
+                    /** @description Sort column */
+                    sort_by?: "created_at" | "updated_at" | "quote_number" | "status" | "total" | "valid_until";
+                    /** @description Sort direction */
+                    sort_order?: "asc" | "desc";
                     /** @description Page number */
                     page?: number;
                     /** @description Page size */
@@ -4589,7 +4595,7 @@ export interface paths {
                         "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.QuoteListResponse"];
                     };
                 };
-                /** @description Invalid request */
+                /** @description Invalid request (including an unknown sort_by/sort_order) */
                 400: {
                     headers: {
                         [name: string]: unknown;
