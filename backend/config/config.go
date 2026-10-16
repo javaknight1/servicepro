@@ -277,8 +277,6 @@ type RateLimitConfig struct {
 	BurstMultiplier float64
 	// Window is the time window for rate limiting
 	Window time.Duration
-	// TrustedProxies is a list of trusted proxy IPs (for X-Forwarded-For handling)
-	TrustedProxies []string
 	// ExcludedPaths are paths excluded from rate limiting (e.g., health checks)
 	ExcludedPaths []string
 }
@@ -508,7 +506,6 @@ func Load() *Config {
 			AdminLimit:         getEnvAsInt("RATE_LIMIT_ADMIN", 50),           // 50 req/min for admin endpoints
 			BurstMultiplier:    getEnvAsFloat("RATE_LIMIT_BURST", 1.2),        // 20% burst capacity
 			Window:             getEnvAsDuration("RATE_LIMIT_WINDOW", "1m"),   // 1 minute window
-			TrustedProxies:     getEnvAsStringSlice("RATE_LIMIT_TRUSTED_PROXIES", []string{}),
 			ExcludedPaths:      getEnvAsStringSlice("RATE_LIMIT_EXCLUDED_PATHS", []string{"/health", "/version"}),
 		},
 		AWS: AWSConfig{
