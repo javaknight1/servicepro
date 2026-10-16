@@ -20,6 +20,7 @@ func TestBoolFieldsHaveNoTrueDefault(t *testing.T) {
 		{&PaymentTerm{}, "IsActive"},
 		{&Schedule{}, "RemindersEnabled"},
 		{&TenantUser{}, "IsActive"},
+		{&JobMaterial{}, "Billable"},
 	}
 	for _, c := range cases {
 		s, err := schema.Parse(c.model, &sync.Map{}, schema.NamingStrategy{})

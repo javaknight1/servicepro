@@ -12249,6 +12249,7 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "billable": {
+                    "description": "defaults to true when omitted on create; no gorm default:true (it stored false as true)",
                     "type": "boolean"
                 },
                 "created_at": {

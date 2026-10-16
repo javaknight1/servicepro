@@ -144,7 +144,7 @@ type JobMaterial struct {
 	Unit        string         `json:"unit" gorm:"type:varchar(20)"` // e.g., "each", "ft", "gal"
 	UnitCost    float64        `json:"unit_cost" gorm:"type:decimal(10,2);not null"`
 	TotalCost   float64        `json:"total_cost" gorm:"type:decimal(10,2);not null"`
-	Billable    bool           `json:"billable" gorm:"default:true"`
+	Billable    bool           `json:"billable"` // defaults to true when omitted on create; no gorm default:true (it stored false as true)
 	CreatedAt   time.Time      `json:"created_at"`
 	UpdatedAt   time.Time      `json:"updated_at"`
 	DeletedAt   gorm.DeletedAt `json:"-" gorm:"index"`
