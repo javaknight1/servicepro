@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	"github.com/javaknight1/servicepro/backend/internal/models"
 )
@@ -93,8 +94,16 @@ func (r *QuoteRepository) GetByQuoteNumber(quoteNumber string) (*models.Quote, e
 // Update updates a quote
 func (r *QuoteRepository) Update(quote *models.Quote) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
-		// Update quote
-		if err := tx.Save(quote).Error; err != nil {
+		// A changed customer must belong to the caller's tenant too.
+		if err := requireCustomerInTenant(tx, quote.CustomerID); err != nil {
+			return err
+		}
+
+		// Omit associations: saving with the preloaded Customer /
+		// CreatedByUser / UpdatedByUser made GORM reset customer_id and
+		// updated_by from the stale structs, silently reverting a customer
+		// change (audit 7.H6). Items are saved explicitly below.
+		if err := tx.Omit(clause.Associations).Save(quote).Error; err != nil {
 			return fmt.Errorf("failed to update quote: %w", err)
 		}
 
