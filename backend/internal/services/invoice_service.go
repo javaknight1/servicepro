@@ -982,8 +982,9 @@ func (s *InvoiceService) ValidatePaymentToken(ctx context.Context, token string)
 		return nil, ErrPaymentTokenExpired
 	}
 
-	// Check if invoice is in a payable status
-	if invoice.Status != models.InvoiceStatusSent {
+	// Payable: issued, not closed, with money still owed. Partially paid
+	// invoices can be paid online for the remaining balance (T119).
+	if !invoice.Status.AcceptsPayments() || !invoice.BalanceDue().IsPositive() {
 		return nil, ErrInvoiceNotPayable
 	}
 
