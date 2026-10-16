@@ -64,21 +64,21 @@
 
 The minimum subset that must be done before real (paying) customers: **39 tasks, ~319h**. Everything else is post-launch growth or depth. The invite-gated preview (T205) needs only Phase 1 plus T106/T204/T206; the gate below is for opening to paying customers. Phase 4's gating subset is the parts of the stack that touch auth, tenancy, email and storage; the chi and pgx ports are not gating.
 
-| Phase                                                | Gating tasks                                                                                                                                                             |
-|------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Phase 1 — Security Remediation                       | **All** — ~~T102~~, ~~T103~~, ~~T104~~, ~~T105~~, ~~T106~~, ~~T107~~, ~~T108~~, ~~T109~~, ~~T110~~, ~~T111~~, ~~T112~~, ~~T113~~, ~~T114~~, ~~T115~~, ~~T116~~, ~~T117~~ |
-| Phase 2 — Correctness & Cleanup                      | ~~T118~~, ~~T119~~, ~~T120~~, ~~T121~~, ~~T122~~, ~~T123~~, ~~T124~~, ~~T126~~, ~~T130~~, ~~T131~~, ~~T132~~, ~~T133~~, ~~T136~~, ~~T224~~, ~~T225~~, ~~T227~~, T232     |
-| Phase 3 — Platform & Delivery                        | ~~T139~~, ~~T140~~, ~~T141~~, ~~T142~~, ~~T143~~, ~~T144~~, ~~T145~~, ~~T146~~, ~~T150~~, ~~T151~~                                                                       |
-| Phase 4 — Stack Convergence (LL parity; incremental) | T153, T154, T158, T159, T160                                                                                                                                             |
-| Phase 5 — Core Workflow & Quoting                    | T028, T029, T030, T035, T167                                                                                                                                             |
-| Phase 6 — Payments to the Business                   | T169, T170, T061, T063                                                                                                                                                   |
-| Phase 7 — Dispatch & Field                           | T173, T174, T176                                                                                                                                                         |
-| Phase 8 — Customer Communications                    | T048, T049, T050                                                                                                                                                         |
-| Phase 9 — Customer Self-Service                      | T183, T081                                                                                                                                                               |
-| Phase 10 — Commercial/B2B Wedge                      | T186                                                                                                                                                                     |
-| Phase 11 — Integrations & Migration                  | T192, T193                                                                                                                                                               |
-| Phase 14 — Hosting & Launch Readiness                | T202, T203, T204, T205, T206, T207, T208, T209, T210, T211, T212, T213                                                                                                   |
-| Phase 16 — Go-to-Market                              | T218                                                                                                                                                                     |
+| Phase                                                | Gating tasks                                                                                                                                                                   |
+|------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Phase 1 — Security Remediation                       | **All** — ~~T102~~, ~~T103~~, ~~T104~~, ~~T105~~, ~~T106~~, ~~T107~~, ~~T108~~, ~~T109~~, ~~T110~~, ~~T111~~, ~~T112~~, ~~T113~~, ~~T114~~, ~~T115~~, ~~T116~~, ~~T117~~       |
+| Phase 2 — Correctness & Cleanup                      | ~~T118~~, ~~T119~~, ~~T120~~, ~~T121~~, ~~T122~~, ~~T123~~, ~~T124~~, ~~T126~~, ~~T130~~, ~~T131~~, ~~T132~~, ~~T133~~, ~~T136~~, ~~T224~~, ~~T225~~, ~~T227~~, ~~T232~~, T234 |
+| Phase 3 — Platform & Delivery                        | ~~T139~~, ~~T140~~, ~~T141~~, ~~T142~~, ~~T143~~, ~~T144~~, ~~T145~~, ~~T146~~, ~~T150~~, ~~T151~~                                                                             |
+| Phase 4 — Stack Convergence (LL parity; incremental) | T153, T154, T158, T159, T160                                                                                                                                                   |
+| Phase 5 — Core Workflow & Quoting                    | T028, T029, T030, T035, T167                                                                                                                                                   |
+| Phase 6 — Payments to the Business                   | T169, T170, T061, T063                                                                                                                                                         |
+| Phase 7 — Dispatch & Field                           | T173, T174, T176                                                                                                                                                               |
+| Phase 8 — Customer Communications                    | T048, T049, T050                                                                                                                                                               |
+| Phase 9 — Customer Self-Service                      | T183, T081                                                                                                                                                                     |
+| Phase 10 — Commercial/B2B Wedge                      | T186                                                                                                                                                                           |
+| Phase 11 — Integrations & Migration                  | T192, T193                                                                                                                                                                     |
+| Phase 14 — Hosting & Launch Readiness                | T202, T203, T204, T205, T206, T207, T208, T209, T210, T211, T212, T213                                                                                                         |
+| Phase 16 — Go-to-Market                              | T218                                                                                                                                                                           |
 
 **Explicitly NOT in the launch gate** (ship without them):
 
@@ -157,6 +157,7 @@ The minimum subset that must be done before real (paying) customers: **39 tasks,
 | ~~T124~~ | ~~2~~  | ~~Bug~~        | ~~4~~  | ~~Enforce invoice status transitions; unify the two job state machines~~                              |
 | ~~T125~~ | ~~2~~  | ~~Payments~~   | ~~3~~  | ~~Handle refunds in the ledger~~                                                                      |
 | ~~T126~~ | ~~2~~  | ~~Monitoring~~ | ~~2~~  | ~~Backend Sentry actually initialised; wire or delete the Loki/BetterStack/OTel stubs~~               |
+| ~~T127~~ | ~~2~~  | ~~Backend~~    | ~~3~~  | ~~Backend reads tenant settings: currency, number prefixes, defaults~~                                |
 | ~~T128~~ | ~~2~~  | ~~Backend~~    | ~~4~~  | ~~Exports safe on multiple instances (object storage + persisted progress)~~                          |
 | ~~T130~~ | ~~2~~  | ~~Bug~~        | ~~1~~  | ~~Login error swallowed by the refresh interceptor~~                                                  |
 | ~~T131~~ | ~~2~~  | ~~Bug~~        | ~~1~~  | ~~Public payment result pages for the /pay/:token flow~~                                              |
@@ -188,11 +189,11 @@ The minimum subset that must be done before real (paying) customers: **39 tasks,
 | ~~T228~~ | ~~2~~  | ~~Bug~~        | ~~2~~  | ~~Quotes list: backend search (q) and sort params~~                                                   |
 | ~~T229~~ | ~~2~~  | ~~Bug~~        | ~~2~~  | ~~Invite and invitation API polish: distinct invalid-code error, encoded links, message field~~       |
 | ~~T230~~ | ~~13~~ | ~~Auth~~       | ~~3~~  | ~~Expose the caller's effective permissions per tenant; decide who can delete an organization~~       |
-| T127     | 2      | Backend        | 3      | Backend reads tenant settings: currency, number prefixes, defaults                                    |
+| ~~T232~~ | ~~2~~  | ~~Bug~~        | ~~2~~  | ~~Frontend money calls match the API: record payment URL, cancel reason, refunds, quote revise~~      |
+| ~~T233~~ | ~~2~~  | ~~Bug~~        | ~~1~~  | ~~JobMaterial.Billable default:true stores false as true~~                                            |
 | T129     | 2      | Cleanup        | 4      | Backend dead-code removal and a stricter linter                                                       |
 | T223     | 2      | Backend        | 4      | Request IDs and a standard API error envelope                                                         |
-| T232     | 2      | Bug            | 2      | Frontend money calls match the API: record payment URL, cancel reason, refunds, quote revise          |
-| T233     | 2      | Bug            | 1      | JobMaterial.Billable default:true stores false as true                                                |
+| T234     | 2      | Bug            | 2      | Invoice/quote forms use the API's fields: tax_rate_id, terms_and_conditions, default tax prefill      |
 | T101     | 3      | Monitoring     | 2      | Upload source maps to Sentry for production builds                                                    |
 | T153     | 4      | Backend        | 24     | Repositories take ctx + tenantID; services stop taking *gorm.DB; transaction manager                  |
 | T154     | 4      | Security       | 12     | Postgres RLS backstop keyed on a per-transaction tenant GUC + isolation tests                         |
@@ -225,6 +226,8 @@ The minimum subset that must be done before real (paying) customers: **39 tasks,
 | T082     | 5      | Feature        | 2      | Add "Create Quote from Job" button                                                                    |
 | T167     | 5      | Feature        | 12     | Recurring service agreements UI wired to the recurrence engine                                        |
 | T168     | 5      | Feature        | 12     | Price book (services and materials catalog with flat-rate pricing)                                    |
+| T235     | 5      | Feature        | 4      | Tenant settings UI for currency, number prefixes, default payment term and tax rate; validate on save |
+| T236     | 5      | Feature        | 3      | Currency-aware money display in the UI, emails and PDFs                                               |
 | T061     | 6      | Payments       | 6      | Add required deposit to accept quote                                                                  |
 | T063     | 6      | Payments       | 6      | Add deposit tracking and application                                                                  |
 | T083     | 6      | Payments       | 4      | Implement late fee calculation                                                                        |
@@ -397,9 +400,9 @@ Work completed under the old P0–P3/sprint TODO. Details are in Verified Comple
 - [x] T116 — Low-severity security sweep ✓ (2026-10-16)
 - [x] T117 — Remediate dependency vulnerabilities and bump the Go toolchain ✓ (2026-10-16)
 
-### Phase 2 — Correctness & Cleanup (T118, T119, T120, T121, T122, T123, T124, T125, T126, T127, T128, T129, T130, T131, T132, T133, T134, T135, T136, T137, T138, T223, T224, T225, T226, T227, T228, T229, T232, T233)
+### Phase 2 — Correctness & Cleanup (T118, T119, T120, T121, T122, T123, T124, T125, T126, T127, T128, T129, T130, T131, T132, T133, T134, T135, T136, T137, T138, T223, T224, T225, T226, T227, T228, T229, T232, T233, T234)
 
-Money flows that are wired but broken (payments don't update invoices, reminders never sent, numbering wedges, a panicking webhook), frontend bugs users would hit in the preview, and dead code. From `docs/audits/2026-10-16/backend-correctness.md` and `docs/audits/2026-10-16/frontend.md`. **5 open tasks, ~14h.** 25 done.
+Money flows that are wired but broken (payments don't update invoices, reminders never sent, numbering wedges, a panicking webhook), frontend bugs users would hit in the preview, and dead code. From `docs/audits/2026-10-16/backend-correctness.md` and `docs/audits/2026-10-16/frontend.md`. **3 open tasks, ~10h.** 28 done.
 
 - [x] T118 — Recording a payment updates the invoice balance and status ✓ (2026-10-16)
 - [x] T119 — Stripe Checkout charges the true balance due ✓ (2026-10-16)
@@ -410,6 +413,7 @@ Money flows that are wired but broken (payments don't update invoices, reminders
 - [x] T124 — Enforce invoice status transitions; unify the two job state machines ✓ (2026-10-16)
 - [x] T125 — Handle refunds in the ledger ✓ (2026-10-16)
 - [x] T126 — Backend Sentry actually initialised; wire or delete the Loki/BetterStack/OTel stubs ✓ (2026-10-16)
+- [x] T127 — Backend reads tenant settings: currency, number prefixes, defaults ✓ (2026-10-16)
 - [x] T128 — Exports safe on multiple instances (object storage + persisted progress) ✓ (2026-10-16)
 - [x] T130 — Login error swallowed by the refresh interceptor ✓ (2026-10-16)
 - [x] T131 — Public payment result pages for the /pay/:token flow ✓ (2026-10-16)
@@ -426,25 +430,11 @@ Money flows that are wired but broken (payments don't update invoices, reminders
 - [x] T227 — Frontend follow-through for the Phase 1 auth changes (invite codes, 429, logout-everywhere) ✓ (2026-10-16)
 - [x] T228 — Quotes list: backend search (q) and sort params ✓ (2026-10-16)
 - [x] T229 — Invite and invitation API polish: distinct invalid-code error, encoded links, message field ✓ (2026-10-16)
-- [ ] T127 — Backend reads tenant settings: currency, number prefixes, defaults
+- [x] T232 — Frontend money calls match the API: record payment URL, cancel reason, refunds, quote revise ✓ (2026-10-16)
+- [x] T233 — JobMaterial.Billable default:true stores false as true ✓ (2026-10-16)
 - [ ] T129 — Backend dead-code removal and a stricter linter
 - [ ] T223 — Request IDs and a standard API error envelope
-- [ ] T232 — Frontend money calls match the API: record payment URL, cancel reason, refunds, quote revise
-- [ ] T233 — JobMaterial.Billable default:true stores false as true
-
-#### T127 — Backend reads tenant settings: currency, number prefixes, defaults
-
-**Phase**: 2 · **Category**: Backend · **Hours**: 3 · **Status**: Open · **v1 Gate**: No · **Depends on**: T102
-
-**What it is** — The org settings the UI already lets admins edit — currency, invoice/quote/job prefixes, default payment term and tax rate, date format — actually change backend behaviour.
-
-**What it does** — Load `TenantSettings` (`internal/models/tenant.go:48-67`) once per request or job; use `Currency` for invoices, quotes and Stripe (T119); prefixes in the T120 counters; `DefaultPaymentTermID`/`DefaultTaxRateID` on create. Hide any setting that still has no effect. Fix date-only handling while here: due dates are DATE values read as UTC midnight then `.In(loc)`, which shifts them a day early in US zones, and `Hours()/24` is off by one across DST (`payment_terms_service.go:255-264,313-360`).
-
-**Why we need it** — None of these settings is read anywhere in backend code (0 references outside the model), so admins change them and nothing happens.
-
-**Notes** — correctness audit 3.5, 7.M9 (date-only part). Timezone and business hours are T099 (T100 stored them). **Progress 2026-10-16:** done — whole-calendar-day due dates/grace/discount/days-overdue (`calendar_dates.go`), payment-terms calculate endpoints and reminder days-overdue use the tenant timezone (`loadTenantSettings` in `services/tenant_settings.go`, commits b4c2d6f, a4c3bbe). Remaining: currency on invoices/quotes/Stripe, number prefixes in the T120 counters, `DefaultPaymentTermID`/`DefaultTaxRateID` on invoice/quote create, then hide no-effect settings in the UI.
-
----
+- [ ] T234 — Invoice/quote forms use the API's fields: tax_rate_id, terms_and_conditions, default tax prefill
 
 #### T129 — Backend dead-code removal and a stricter linter
 
@@ -470,35 +460,21 @@ Money flows that are wired but broken (payments don't update invoices, reminders
 
 **Why we need it** — Without correlation IDs, a user's "it broke" can't be matched to a log line; inconsistent error shapes make client handling and T116's "no raw `err.Error()`" rule hard to keep.
 
-**Notes** — Folds in three old untagged items: "Request Correlation IDs" (P1), "Standardize API Error Responses" (P2) and "Comprehensive Input Validation" (P1). correctness audit 5.1 (`internal/errors` unused), 5.2 (`RequestIDMiddleware` not installed). Pairs with T116 (F-17). Also: `publicError` (T116) reduces domain errors containing ": " (e.g. "invalid status transition: …") to a generic message — the envelope must carry typed domain errors (code + safe message) instead.
+**Notes** — Folds in three old untagged items: "Request Correlation IDs" (P1), "Standardize API Error Responses" (P2) and "Comprehensive Input Validation" (P1). correctness audit 5.1 (`internal/errors` unused), 5.2 (`RequestIDMiddleware` not installed). Pairs with T116 (F-17). Also: `publicError` (T116) reduces domain errors containing ": " (e.g. "invalid status transition: …") to a generic message — the envelope must carry typed domain errors (code + safe message) instead. Also: quote send/accept/reject return 403 for a status conflict while revise returns 409, and accept/reject report database failures as "cannot accept/reject" instead of 500 — make conflicts 409 and infrastructure errors 500 across these handlers.
 
 ---
 
-#### T232 — Frontend money calls match the API: record payment URL, cancel reason, refunds, quote revise
+#### T234 — Invoice/quote forms use the API's fields: tax_rate_id, terms_and_conditions, default tax prefill
 
-**Phase**: 2 · **Category**: Bug · **Hours**: 2 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T118, T124, T125
+**Phase**: 2 · **Category**: Bug · **Hours**: 2 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T127, T232
 
-**What it is** — Recording a payment, cancelling an invoice and refunding work from the UI against the Phase 2 API.
+**What it is** — Editing an invoice or quote sends and shows the fields the API actually stores.
 
-**What it does** — `invoiceService.recordPayment` posts to `/invoices/{id}/payment` but the route is `/invoices/{id}/payments` — fix it and handle the new 400 (overpayment / closed invoice) and 409 errors; `cancelInvoice` must send the required reason (prompt for it); add a refund action calling `POST /invoices/{id}/refunds` (permission `payments.refund`) and show `refunds` on the invoice; manual check of the quote send/accept/decline/revise flow (it never worked before e04a7c3). Update the invoice + quote integration tests.
+**What it does** — The frontend reads/sends `tax_rate` and `terms` on invoices, but `models.Invoice` has `tax_rate_id` and `terms_and_conditions` (no `tax_rate`) — tax and terms edits are silently dropped. Switch the invoice form to a tax-rate picker (`tax_rate_id`) and `terms_and_conditions`; prefill the quote/invoice forms with the tenant's default tax rate and payment term (T127 applies them only when omitted); pass `onError` from QuotesPage to `QuoteActionsMenu` so list actions show errors inline instead of `window.alert`. Update invoice + quote integration tests.
 
-**Why we need it** — Office staff can't record a cheque or cash payment from the UI today — the request 404s.
+**Why we need it** — An invoice's tax rate or terms can't actually be changed from the UI today.
 
-**Notes** — Follow-up from the Phase 2 money-path report (2026-10-16).
-
----
-
-#### T233 — JobMaterial.Billable default:true stores false as true
-
-**Phase**: 2 · **Category**: Bug · **Hours**: 1 · **Status**: Open · **v1 Gate**: No · **Depends on**: T225
-
-**What it is** — A material marked non-billable stays non-billable.
-
-**What it does** — Same GORM `default:true` bug fixed for five models in T225 (46b6211): drop the tag on `JobMaterial.Billable` (use `*bool` or explicit default in the create path); regression test.
-
-**Why we need it** — Non-billable materials get billed.
-
-**Notes** — Found during T225 (2026-10-16).
+**Notes** — Follow-up from the T232 and T127 reports (2026-10-16).
 
 ---
 
@@ -751,9 +727,9 @@ D2: move to League Looper's stack one strangler step at a time while the app kee
 
 ---
 
-### Phase 5 — Core Workflow & Quoting (T028, T029, T030, T033, T035, T041, T042, T051, T052, T058, T060, T062, T076, T080, T082, T167, T168)
+### Phase 5 — Core Workflow & Quoting (T028, T029, T030, T033, T035, T041, T042, T051, T052, T058, T060, T062, T076, T080, T082, T167, T168, T235, T236)
 
-The quote → job → invoice loop, roles for field and office staff, recurring agreements and the price book. **17 open tasks, ~76h.**
+The quote → job → invoice loop, roles for field and office staff, recurring agreements and the price book. **19 open tasks, ~83h.**
 
 - [ ] T028 — Add "Convert Quote to Job" button
 - [ ] T029 — Add "Generate Invoice from Job" button
@@ -772,6 +748,8 @@ The quote → job → invoice loop, roles for field and office staff, recurring 
 - [ ] T082 — Add "Create Quote from Job" button
 - [ ] T167 — Recurring service agreements UI wired to the recurrence engine
 - [ ] T168 — Price book (services and materials catalog with flat-rate pricing)
+- [ ] T235 — Tenant settings UI for currency, number prefixes, default payment term and tax rate; validate on save
+- [ ] T236 — Currency-aware money display in the UI, emails and PDFs
 
 #### T028 — Add "Convert Quote to Job" button
 
@@ -1008,6 +986,34 @@ The quote → job → invoice loop, roles for field and office staff, recurring 
 **Why we need it** — Consistent pricing across staff, faster quoting, and the substrate for good/better/best (T060) and AI quote drafting (T215).
 
 **Notes** — `docs/product/competitive-research-2026-10.md` §3 "Price book / flat-rate pricing".
+
+---
+
+#### T235 — Tenant settings UI for currency, number prefixes, default payment term and tax rate; validate on save
+
+**Phase**: 5 · **Category**: Feature · **Hours**: 4 · **Status**: Open · **v1 Gate**: No · **Depends on**: T127
+
+**What it is** — Owners can set the business settings the backend now honours, and invalid values are rejected when saved.
+
+**What it does** — Add controls to Org Settings for currency (ISO 4217 list), invoice/quote/job prefixes (≤20 chars, no control characters), default payment term and default tax rate (tenant-scoped pickers), and date format (or remove it — nothing reads it). Backend: validate the tenant settings payload on save with field errors (today it stores anything and sanitises on read). Tests both sides.
+
+**Why we need it** — T127 made the backend read these settings, but there is no UI to set them, so every tenant is stuck on USD / INV- / no defaults.
+
+**Notes** — Follow-up from the T127 report (2026-10-16).
+
+---
+
+#### T236 — Currency-aware money display in the UI, emails and PDFs
+
+**Phase**: 5 · **Category**: Feature · **Hours**: 3 · **Status**: Open · **v1 Gate**: No · **Depends on**: T127
+
+**What it is** — Amounts show in the document's currency everywhere, not a hard-coded "$".
+
+**What it does** — Use the invoice/quote `currency` field (T127) in `frontend/src/utils/money.ts` formatting (Intl.NumberFormat with the currency; respect zero/three-decimal currencies), email templates and the invoice/quote PDFs.
+
+**Why we need it** — A non-USD tenant's customers would see dollar signs on their invoices.
+
+**Notes** — Follow-up from the T127 report (2026-10-16). Low priority while the beachhead is US contractors.
 
 ---
 
@@ -2858,6 +2864,7 @@ Dated history from the original "Completed Items" list:
 - **T124** — Enforce invoice status transitions; unify the two job state machines. Invoice transition table (paid/cancelled/refunded read-only → 409; cancel voids the pay link; changes audited); one job state machine via `JobService.applyTransition` + `models.ValidateTransition` (duplicate `pkg/validators/job.go` rules deleted); status + history written in one transaction; `GET /jobs/{id}/allowed-transitions`; jobs follow their invoice completed→invoiced→paid and back (8cc6579, f3ca03a, 104f4ea, 9a5d692, a0fea72). Frontend: JobDetailPage status dropdown removed; cancel/hold need a reason.
 - **T125** — Handle refunds in the ledger. `invoice_refunds` table (migration `000009`) + `POST /invoices/{id}/refunds` (`payments.refund`): refund lowers amount paid under the invoice lock → partially paid / refunded, paid job back to invoiced; Stripe `charge.refunded` applied once per payment intent on the deduplicated processor (c9c4e8e, c66d173). UI action: T232.
 - **T126** — Backend Sentry actually initialised; wire or delete the Loki/BetterStack/OTel stubs. Sentry provider linked into the binary (blank imports + test); outside development logs are JSON lines on stdout with Cloud Logging keys; Better Stack/Loki/CloudWatch log shippers, CloudWatch metrics and OTel tracing stubs deleted with their modules/config; `main` → `run() error` so Sentry/PostHog flush on startup failure (9c49364, 40bf2c2, bede549, 4f43fa4).
+- **T127** — Backend reads tenant settings: currency, number prefixes, defaults. Tenant prefixes drive INV-/QUO-/JOB- numbering (sanitised, fallback defaults); migration `000013` adds `currency` to invoices/quotes (set from the tenant at create, quote→invoice inherits; Stripe Checkout and the public invoice use it); invoice/quote create apply the tenant's default payment term and tax rate (tenant-scoped, active rows only; quote `tax_rate` now optional); calendar-day dates + tenant timezone (earlier); business hours labelled 'Coming soon' (b4c2d6f, a4c3bbe, 2a6f3ab, 432935d, 6039d8f, cbf9d94). Settings UI → T235; currency display → T236.
 - **T128** — Exports safe on multiple instances (object storage + persisted progress). Exports run in the request (2-min limit) with progress/status persisted on `export_jobs` (cancel sticks; `/progress` + SSE read the row); files stored via `ExportFileStore` in object storage at `exports/<tenant>/<job>/<file>` (local `./exports` only without a storage client), download streams the stored file, cleanup deletes it; tenant context required (da7d052, ff8c0c8). Very large exports may hit `SERVER_WRITE_TIMEOUT` — revisit with a job runner.
 - **T130** — Login error swallowed by the refresh interceptor. The 401 refresh/redirect interceptor skips auth endpoints (login, register, refresh, logout, reset, verify) so login errors show; concurrent 401s share one refresh; tests (`src/services/__tests__/api.interceptor.test.ts`).
 - **T131** — Public payment result pages for the /pay/:token flow. `/invoices/payment-success` and `/invoices/payment-cancelled` (the URLs the backend already sends to Stripe) moved outside the auth guard; test.
@@ -2889,3 +2896,5 @@ Dated history from the original "Completed Items" list:
 - **T228** — Quotes list: backend search (q) and sort params. `GET /api/v1/quotes` takes `q` (case-insensitive quote number / customer first, last, company or full name; `%`/`_` escaped; customer subquery tied to `quotes.tenant_id`), allowlisted `sort_by` (created_at, updated_at, quote_number, status, total, valid_until) and `sort_order` (bad values → 400); QuotesPage sends a debounced `q` and only API sort columns; tenant-isolation tests (f24876c, 05fc0e4). Verified on SQLite only — Postgres run pending.
 - **T229** — Invite and invitation API polish: distinct invalid-code error, encoded links, message field. Invite-only registration returns distinct 403 codes `registration_closed` (nothing supplied) / `invalid_invite_code` / `invalid_invitation`, and RegisterPage maps them directly; invitation links built with `url.Values` (`inviteAcceptURL`/`inviteRegisterURL`) so emails with `+`/`&` survive; invitation handler errors are `{error: <code>, message: <text>}` (43ba167, 302f8e4, e9cf6fc).
 - **T230** — Expose the caller's effective permissions per tenant; decide who can delete an organization. `GET /api/v1/tenants/{id}/me` → `{tenant_id, role_id, role, role_level, permissions[]}` from `PermissionChecker.EffectivePermissionNames` (membership-gated, cross-tenant test); frontend `useTenantPermissions` (React Query) gates Team Members, Org Settings and Membership/Billing on specific permissions, delete button only with `tenants.delete` (6e0b27c, e159e51). Owner decision on org deletion split to T231.
+- **T232** — Frontend money calls match the API: record payment URL, cancel reason, refunds, quote revise. Record Payment / Cancel Invoice (reason required) / Record Refund dialogs and a Payments + Refunds section on the invoice page against `/invoices/{id}/payments`, `/cancel`, `/refunds` (refund gated on `payments.refund`); API 400/409 reasons shown; Refunded badge; quote detail shows number + status and the API's refusal reason, QuoteActionsMenu reports errors; integration tests assert every step (6ddd208, 8aac090, 74ec760). Field mismatches → T234.
+- **T233** — JobMaterial.Billable default:true stores false as true. `JobMaterial.Billable` `default:true` removed; `AddMaterial` defaults omitted `billable` to true explicitly; regression tests (ced0464).
