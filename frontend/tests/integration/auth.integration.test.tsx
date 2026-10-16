@@ -78,7 +78,7 @@ describe('Authentication Flow Integration', () => {
 
   describe('Login → Dashboard Flow', () => {
     it('should complete full login flow and navigate to dashboard', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       const mockLogin = vi.fn().mockResolvedValue(undefined);
 
       vi.mocked(useAuthStore).mockImplementation((selector) => {
@@ -142,7 +142,7 @@ describe('Authentication Flow Integration', () => {
     });
 
     it('should display error and stay on login page on failed login', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       const mockLogin = vi.fn().mockRejectedValue({
         response: { data: { message: 'Invalid credentials' } },
       });
@@ -199,7 +199,7 @@ describe('Authentication Flow Integration', () => {
     });
 
     it('should navigate to register page from login', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
 
       vi.mocked(useAuthStore).mockImplementation((selector) => {
         const state = {
@@ -255,7 +255,7 @@ describe('Authentication Flow Integration', () => {
     });
 
     it('should navigate to forgot password from login', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
 
       vi.mocked(useAuthStore).mockImplementation((selector) => {
         const state = {
@@ -316,7 +316,7 @@ describe('Authentication Flow Integration', () => {
 
   describe('Registration Flow', () => {
     it('should complete registration and show success message', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       const mockRegister = vi.fn().mockResolvedValue(undefined);
 
       vi.mocked(useAuthStore).mockImplementation((selector) => {
@@ -383,7 +383,7 @@ describe('Authentication Flow Integration', () => {
     });
 
     it('should show validation errors for invalid registration data', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
 
       vi.mocked(useAuthStore).mockImplementation((selector) => {
         const state = {
@@ -438,7 +438,7 @@ describe('Authentication Flow Integration', () => {
     });
 
     it('should show error when passwords do not match', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
 
       vi.mocked(useAuthStore).mockImplementation((selector) => {
         const state = {
@@ -500,7 +500,7 @@ describe('Authentication Flow Integration', () => {
 
   describe('Password Reset Flow', () => {
     it('should send password reset request successfully', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       const mockRequestReset = vi.fn().mockResolvedValue(undefined);
 
       vi.mocked(useAuthStore).mockImplementation((selector) => {
@@ -556,7 +556,7 @@ describe('Authentication Flow Integration', () => {
     });
 
     it('should show success message after password reset request', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       const mockRequestReset = vi.fn().mockResolvedValue(undefined);
 
       vi.mocked(useAuthStore).mockImplementation((selector) => {

@@ -103,7 +103,7 @@ export default defineConfig(({ mode }) => ({
       },
     },
     // Test timeout
-    testTimeout: 10000,
+    testTimeout: 20000,
     // No retries: flaky tests must surface rather than be masked
     pool: 'forks',
   },

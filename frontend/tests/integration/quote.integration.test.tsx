@@ -310,7 +310,7 @@ describe('Quote Workflow Integration', () => {
     });
 
     it('should navigate to quote detail when clicking a quote', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       const { QuotesPage } = await import('../../src/pages/Quotes/QuotesPage');
 
       render(
@@ -331,7 +331,7 @@ describe('Quote Workflow Integration', () => {
     });
 
     it('should navigate to new quote page when clicking add button', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       const { QuotesPage } = await import('../../src/pages/Quotes/QuotesPage');
 
       render(
@@ -353,7 +353,7 @@ describe('Quote Workflow Integration', () => {
 
   describe('Quote Creation', () => {
     it('should create a new quote with line items', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       const newQuote = {
         ...mockQuotes[0],
         id: 'quote-new',
@@ -417,7 +417,7 @@ describe('Quote Workflow Integration', () => {
 
   describe('Quote Status Transitions', () => {
     it('should send a draft quote to customer', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       vi.mocked(quoteService.getQuote).mockResolvedValue(mockQuotes[0]); // Draft quote
       vi.mocked(quoteService.sendQuote).mockResolvedValue({
         ...mockQuotes[0],
@@ -452,7 +452,7 @@ describe('Quote Workflow Integration', () => {
     });
 
     it('should accept a sent quote', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       vi.mocked(quoteService.getQuote).mockResolvedValue(mockQuotes[1]); // Sent quote
       vi.mocked(quoteService.acceptQuote).mockResolvedValue({
         ...mockQuotes[1],
@@ -487,7 +487,7 @@ describe('Quote Workflow Integration', () => {
     });
 
     it('should reject a sent quote', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       vi.mocked(quoteService.getQuote).mockResolvedValue(mockQuotes[1]); // Sent quote
       vi.mocked(quoteService.rejectQuote).mockResolvedValue({
         ...mockQuotes[1],
@@ -533,7 +533,7 @@ describe('Quote Workflow Integration', () => {
 
   describe('Quote PDF', () => {
     it('should download quote PDF', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       vi.mocked(quoteService.getQuote).mockResolvedValue(mockQuotes[0]);
       vi.mocked(quoteService.downloadQuotePDF).mockResolvedValue();
 
@@ -564,7 +564,7 @@ describe('Quote Workflow Integration', () => {
 
   describe('Quote Filtering', () => {
     it('should filter quotes by status', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       const { QuotesPage } = await import('../../src/pages/Quotes/QuotesPage');
 
       render(
@@ -631,7 +631,7 @@ describe('Quote Workflow Integration', () => {
     });
 
     it('should handle send quote error', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       vi.mocked(quoteService.getQuote).mockResolvedValue(mockQuotes[0]);
       vi.mocked(quoteService.sendQuote).mockRejectedValue({
         response: { data: { message: 'Customer email not available' } },

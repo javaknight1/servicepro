@@ -386,7 +386,7 @@ describe('Invoice & Payment Integration', () => {
     });
 
     it('should navigate to invoice detail when clicking an invoice', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       const { InvoicesPage } =
         await import('../../src/pages/Invoices/InvoicesPage');
 
@@ -408,7 +408,7 @@ describe('Invoice & Payment Integration', () => {
     });
 
     it('should navigate to new invoice page when clicking add button', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       const { InvoicesPage } =
         await import('../../src/pages/Invoices/InvoicesPage');
 
@@ -431,7 +431,7 @@ describe('Invoice & Payment Integration', () => {
 
   describe('Invoice Creation', () => {
     it('should create a new invoice with line items', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       const newInvoice = {
         ...mockInvoices[0],
         id: 'invoice-new',
@@ -495,7 +495,7 @@ describe('Invoice & Payment Integration', () => {
 
   describe('Invoice Status Transitions', () => {
     it('should send a draft invoice to customer', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       vi.mocked(invoiceService.getInvoice).mockResolvedValue(mockInvoices[0]); // Draft invoice
       vi.mocked(invoiceService.sendInvoice).mockResolvedValue({
         ...mockInvoices[0],
@@ -534,7 +534,7 @@ describe('Invoice & Payment Integration', () => {
 
   describe('Payment Recording', () => {
     it('should record a full payment', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       vi.mocked(invoiceService.getInvoice).mockResolvedValue(mockInvoices[1]); // Sent invoice
       vi.mocked(invoiceService.recordPayment).mockResolvedValue({
         ...mockInvoices[1],
@@ -601,7 +601,7 @@ describe('Invoice & Payment Integration', () => {
     });
 
     it('should record a partial payment', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       vi.mocked(invoiceService.getInvoice).mockResolvedValue(mockInvoices[1]); // Sent invoice
       vi.mocked(invoiceService.recordPayment).mockResolvedValue({
         ...mockInvoices[1],
@@ -658,7 +658,7 @@ describe('Invoice & Payment Integration', () => {
 
   describe('Invoice PDF', () => {
     it('should download invoice PDF', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       vi.mocked(invoiceService.getInvoice).mockResolvedValue(mockInvoices[0]);
       vi.mocked(invoiceService.downloadInvoicePDF).mockResolvedValue();
 
@@ -689,7 +689,7 @@ describe('Invoice & Payment Integration', () => {
     });
 
     it('should download receipt PDF for paid invoice', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       vi.mocked(invoiceService.getInvoice).mockResolvedValue(mockInvoices[2]); // Paid invoice
       vi.mocked(invoiceService.downloadReceiptPDF).mockResolvedValue();
 
@@ -722,7 +722,7 @@ describe('Invoice & Payment Integration', () => {
 
   describe('Invoice Filtering', () => {
     it('should filter invoices by status', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       const { InvoicesPage } =
         await import('../../src/pages/Invoices/InvoicesPage');
 
@@ -758,7 +758,7 @@ describe('Invoice & Payment Integration', () => {
     });
 
     it('should filter overdue invoices only', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       const { InvoicesPage } =
         await import('../../src/pages/Invoices/InvoicesPage');
 
@@ -882,7 +882,7 @@ describe('Invoice & Payment Integration', () => {
     });
 
     it('should handle payment recording error', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       vi.mocked(invoiceService.getInvoice).mockResolvedValue(mockInvoices[1]);
       vi.mocked(invoiceService.recordPayment).mockRejectedValue({
         response: { data: { message: 'Payment processing failed' } },

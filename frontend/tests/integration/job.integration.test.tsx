@@ -306,7 +306,7 @@ describe('Job Lifecycle Integration', () => {
     });
 
     it('should navigate to job detail when clicking a job', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       const { JobsPage } = await import('../../src/pages/Jobs/JobsPage');
 
       render(
@@ -328,7 +328,7 @@ describe('Job Lifecycle Integration', () => {
     });
 
     it('should navigate to new job page when clicking add button', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       const { JobsPage } = await import('../../src/pages/Jobs/JobsPage');
 
       render(
@@ -350,7 +350,7 @@ describe('Job Lifecycle Integration', () => {
 
   describe('Job Creation', () => {
     it('should create a new job successfully', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       const newJob = {
         id: 'job-new',
         job_number: 'JOB-004',
@@ -421,7 +421,7 @@ describe('Job Lifecycle Integration', () => {
     });
 
     it('should interpret the scheduled start in the tenant timezone (HST)', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       const hstTenant = {
         ...mockTenant,
         settings: { timezone: 'Pacific/Honolulu' },
@@ -535,7 +535,7 @@ describe('Job Lifecycle Integration', () => {
     });
 
     it('should show validation errors for missing required fields', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       const { JobDetailPage } =
         await import('../../src/pages/Jobs/JobDetailPage');
 
@@ -569,7 +569,7 @@ describe('Job Lifecycle Integration', () => {
 
   describe('Job Status Transitions', () => {
     it('should transition job from new to scheduled', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       vi.mocked(jobService.getJob).mockResolvedValue(mockJobs[0]); // New job
       vi.mocked(jobService.transitionStatus).mockResolvedValue({
         ...mockJobs[0],
@@ -604,7 +604,7 @@ describe('Job Lifecycle Integration', () => {
     });
 
     it('should transition job from in_progress to completed', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       vi.mocked(jobService.getJob).mockResolvedValue(mockJobs[1]); // In progress job
       vi.mocked(jobService.transitionStatus).mockResolvedValue({
         ...mockJobs[1],
@@ -640,7 +640,7 @@ describe('Job Lifecycle Integration', () => {
     });
 
     it('should allow cancelling a job with reason', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       vi.mocked(jobService.getJob).mockResolvedValue(mockJobs[0]);
       vi.mocked(jobService.transitionStatus).mockResolvedValue({
         ...mockJobs[0],
@@ -756,7 +756,7 @@ describe('Job Lifecycle Integration', () => {
 
   describe('Job Filtering', () => {
     it('should filter jobs by status', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       const { JobsPage } = await import('../../src/pages/Jobs/JobsPage');
 
       render(
@@ -791,7 +791,7 @@ describe('Job Lifecycle Integration', () => {
     });
 
     it('should filter jobs by priority', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       const { JobsPage } = await import('../../src/pages/Jobs/JobsPage');
 
       render(
@@ -826,7 +826,7 @@ describe('Job Lifecycle Integration', () => {
     });
 
     it('should search jobs by query', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       const { JobsPage } = await import('../../src/pages/Jobs/JobsPage');
 
       render(
@@ -886,7 +886,7 @@ describe('Job Lifecycle Integration', () => {
     });
 
     it('should handle job creation error', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       vi.mocked(jobService.createJob).mockRejectedValue({
         response: { data: { message: 'Customer not found' } },
       });
@@ -923,7 +923,7 @@ describe('Job Lifecycle Integration', () => {
     });
 
     it('should handle status transition error', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       vi.mocked(jobService.getJob).mockResolvedValue(mockJobs[1]);
       vi.mocked(jobService.completeJob).mockRejectedValue({
         response: {

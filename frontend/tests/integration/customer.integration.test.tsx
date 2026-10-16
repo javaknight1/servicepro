@@ -319,7 +319,7 @@ describe('Customer CRUD Integration', () => {
     });
 
     it('should navigate to new customer page when clicking add button', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       const { CustomersPage } =
         await import('../../src/pages/Customers/CustomersPage');
 
@@ -341,7 +341,7 @@ describe('Customer CRUD Integration', () => {
     });
 
     it('should navigate to customer detail when clicking a customer row', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       const { CustomersPage } =
         await import('../../src/pages/Customers/CustomersPage');
 
@@ -366,7 +366,7 @@ describe('Customer CRUD Integration', () => {
 
   describe('Customer Search and Filter', () => {
     it('should search customers by query', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       const { CustomersPage } =
         await import('../../src/pages/Customers/CustomersPage');
 
@@ -397,7 +397,7 @@ describe('Customer CRUD Integration', () => {
     });
 
     it('should reset to first page on search', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       const { CustomersPage } =
         await import('../../src/pages/Customers/CustomersPage');
 
@@ -427,7 +427,7 @@ describe('Customer CRUD Integration', () => {
 
   describe('Customer Creation', () => {
     it('should create a new customer successfully', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       const newCustomer = {
         id: 'customer-new',
         email: 'newcustomer@example.com',
@@ -495,7 +495,7 @@ describe('Customer CRUD Integration', () => {
     });
 
     it('should show validation errors for missing required fields', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
 
       const { CustomerDetailPage } =
         await import('../../src/pages/Customers/CustomerDetailPage');
@@ -556,7 +556,7 @@ describe('Customer CRUD Integration', () => {
     });
 
     it('should update customer successfully', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       vi.mocked(customerService.getCustomer).mockResolvedValue(
         mockCustomers[0]
       );
@@ -607,7 +607,7 @@ describe('Customer CRUD Integration', () => {
 
   describe('Customer Deletion', () => {
     it('should delete customer after confirmation', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       vi.mocked(customerService.getCustomer).mockResolvedValue(
         mockCustomers[0]
       );
@@ -679,7 +679,7 @@ describe('Customer CRUD Integration', () => {
     });
 
     it('should display error when customer creation fails', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       vi.mocked(customerService.createCustomer).mockRejectedValue(
         new AxiosError(
           'Request failed with status code 409',
