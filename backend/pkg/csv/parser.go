@@ -95,18 +95,6 @@ var requiredHeaders = map[string]bool{
 	"customer_type":          true,
 }
 
-// Optional CSV headers
-var optionalHeaders = map[string]bool{
-	"company_name":           true,
-	"phone_secondary":        true,
-	"service_address_street": true,
-	"service_address_city":   true,
-	"service_address_state":  true,
-	"service_address_zip":    true,
-	"status":                 true,
-	"notes":                  true,
-}
-
 // validateHeader validates the CSV header row
 func validateHeader(header []string) (map[string]int, []ParseError) {
 	var errors []ParseError
