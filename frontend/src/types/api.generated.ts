@@ -10167,6 +10167,84 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/tenants/{id}/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get my access in a tenant
+         * @description Returns the caller's membership role and the exact permission names the API grants them in this tenant. Any active member may call it; non-members get 403.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Tenant ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.TenantAccessResponse"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Internal Server Error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/tenants/{id}/members": {
         parameters: {
             query?: never;
@@ -12656,6 +12734,13 @@ export interface components {
         };
         /** @enum {string} */
         "github_com_javaknight1_servicepro_backend_internal_models.TaxType": "sales_tax" | "vat" | "gst" | "hst" | "exempt";
+        "github_com_javaknight1_servicepro_backend_internal_models.TenantAccessResponse": {
+            permissions?: string[];
+            role?: string;
+            role_id?: string;
+            role_level?: number;
+            tenant_id?: string;
+        };
         "github_com_javaknight1_servicepro_backend_internal_models.TenantMemberResponse": {
             accepted_at?: string;
             email?: string;

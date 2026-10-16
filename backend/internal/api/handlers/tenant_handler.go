@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"errors"
 	"net/http"
 
@@ -13,9 +14,16 @@ import (
 	"github.com/javaknight1/servicepro/backend/internal/services"
 )
 
+// EffectivePermissions computes the permission names a user holds in one
+// tenant (implemented by the per-tenant permissions.PermissionChecker).
+type EffectivePermissions interface {
+	EffectivePermissionNames(ctx context.Context, userID, tenantID uuid.UUID) ([]string, error)
+}
+
 // TenantHandler handles tenant-related HTTP requests
 type TenantHandler struct {
 	tenantService *services.TenantService
+	permissions   EffectivePermissions
 }
 
 // NewTenantHandler creates a new tenant handler
@@ -23,6 +31,76 @@ func NewTenantHandler(tenantService *services.TenantService) *TenantHandler {
 	return &TenantHandler{
 		tenantService: tenantService,
 	}
+}
+
+// SetPermissions wires the per-tenant permission checker used by GetMyAccess.
+func (h *TenantHandler) SetPermissions(p EffectivePermissions) {
+	h.permissions = p
+}
+
+// GetMyAccess returns the caller's role and effective permissions in a tenant
+// @Summary		Get my access in a tenant
+// @Description	Returns the caller's membership role and the exact permission names the API grants them in this tenant. Any active member may call it; non-members get 403.
+// @Tags			Tenants
+// @Produce		json
+// @Security		BearerAuth
+// @Param			id	path		string	true	"Tenant ID"
+// @Success		200	{object}	models.TenantAccessResponse
+// @Failure		400	{object}	models.ErrorResponse
+// @Failure		401	{object}	models.ErrorResponse
+// @Failure		403	{object}	models.ErrorResponse
+// @Failure		500	{object}	models.ErrorResponse
+// @Router			/tenants/{id}/me [get]
+func (h *TenantHandler) GetMyAccess(c *gin.Context) {
+	userID, err := middleware.GetUserID(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+			Error:   "unauthorized",
+			Message: "User not authenticated",
+		})
+		return
+	}
+	// The tenant comes from RequireTenantFromPath, which verified membership.
+	tenantID, err := middleware.GetTenantID(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Error:   "invalid_tenant_id",
+			Message: "Invalid tenant ID",
+		})
+		return
+	}
+	if h.permissions == nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
+			Error:   "internal_error",
+			Message: "An error occurred while processing your request",
+		})
+		return
+	}
+
+	names, err := h.permissions.EffectivePermissionNames(c.Request.Context(), userID, tenantID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
+			Error:   "fetch_failed",
+			Message: "Failed to load permissions",
+		})
+		return
+	}
+	if names == nil {
+		names = []string{} // always a JSON array
+	}
+
+	resp := models.TenantAccessResponse{
+		TenantID:    tenantID,
+		Role:        c.GetString(middleware.TenantRoleKey),
+		RoleLevel:   middleware.GetTenantRoleLevel(c),
+		Permissions: names,
+	}
+	if roleID, ok := c.Get(middleware.TenantRoleIDKey); ok {
+		if id, ok := roleID.(uuid.UUID); ok {
+			resp.RoleID = id
+		}
+	}
+	c.JSON(http.StatusOK, resp)
 }
 
 // CreateTenant creates a new tenant

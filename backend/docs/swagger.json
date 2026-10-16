@@ -8545,6 +8545,64 @@
                 ]
             }
         },
+        "/tenants/{id}/me": {
+            "get": {
+                "description": "Returns the caller's membership role and the exact permission names the API grants them in this tenant. Any active member may call it; non-members get 403.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Tenants"
+                ],
+                "summary": "Get my access in a tenant",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Tenant ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.TenantAccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
         "/tenants/{id}/members": {
             "get": {
                 "description": "Retrieves all members of an organization",
@@ -13661,6 +13719,29 @@
                 "TaxTypeHST",
                 "TaxTypeExempt"
             ]
+        },
+        "github_com_javaknight1_servicepro_backend_internal_models.TenantAccessResponse": {
+            "type": "object",
+            "properties": {
+                "permissions": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "role": {
+                    "type": "string"
+                },
+                "role_id": {
+                    "type": "string"
+                },
+                "role_level": {
+                    "type": "integer"
+                },
+                "tenant_id": {
+                    "type": "string"
+                }
+            }
         },
         "github_com_javaknight1_servicepro_backend_internal_models.TenantMemberResponse": {
             "type": "object",

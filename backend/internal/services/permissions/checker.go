@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/google/uuid"
@@ -108,6 +109,28 @@ func (pc *PermissionChecker) CheckAllPermissions(ctx context.Context, userID, te
 // GetUserPermissions retrieves all permissions for a user in a tenant (from cache or DB)
 func (pc *PermissionChecker) GetUserPermissions(ctx context.Context, userID, tenantID uuid.UUID) ([]models.Permission, error) {
 	return pc.getUserPermissions(ctx, userID, tenantID)
+}
+
+// EffectivePermissionNames returns the sorted, de-duplicated names of every
+// permission the user holds in the tenant: exactly the names CheckPermission
+// (and so RequirePermission) would grant there. Roles held in other tenants
+// never contribute.
+func (pc *PermissionChecker) EffectivePermissionNames(ctx context.Context, userID, tenantID uuid.UUID) ([]string, error) {
+	perms, err := pc.getUserPermissions(ctx, userID, tenantID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user permissions: %w", err)
+	}
+	seen := make(map[string]struct{}, len(perms))
+	names := make([]string, 0, len(perms))
+	for _, p := range perms {
+		if _, dup := seen[p.Name]; dup || p.Name == "" {
+			continue
+		}
+		seen[p.Name] = struct{}{}
+		names = append(names, p.Name)
+	}
+	sort.Strings(names)
+	return names, nil
 }
 
 // GetUserRoles retrieves the user's platform roles plus their role in the tenant

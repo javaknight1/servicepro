@@ -30,6 +30,9 @@ func SetupTenantRoutes(router *gin.RouterGroup, cfg *routeconfigs.RouteConfig) {
 		tenant.Use(cfg.Middleware.TenantMW.RequireTenantFromPath("id"))
 		{
 			tenant.GET("", perm.RequirePermission(permissions.TenantsRead), cfg.Handlers.Tenant.GetTenant)
+			// The caller's own role + effective permissions here. Membership
+			// (RequireTenantFromPath) is the only gate: any member may ask.
+			tenant.GET("/me", cfg.Handlers.Tenant.GetMyAccess)
 			tenant.PUT("", perm.RequirePermission(permissions.TenantsUpdate), cfg.Handlers.Tenant.UpdateTenant)
 			tenant.DELETE("", perm.RequirePermission(permissions.TenantsDelete), cfg.Handlers.Tenant.DeleteTenant)
 

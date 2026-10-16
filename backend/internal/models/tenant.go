@@ -275,6 +275,18 @@ type UpdateMemberRoleRequest struct {
 	RoleID uuid.UUID `json:"role_id" binding:"required"`
 }
 
+// TenantAccessResponse is the caller's own access in one tenant
+// (GET /tenants/:id/me): their membership role and the exact permission names
+// the API grants them there. The UI gates actions on Permissions, not on the
+// role name.
+type TenantAccessResponse struct {
+	TenantID    uuid.UUID `json:"tenant_id"`
+	RoleID      uuid.UUID `json:"role_id"`
+	Role        string    `json:"role"`
+	RoleLevel   int       `json:"role_level"`
+	Permissions []string  `json:"permissions"`
+}
+
 // TenantMemberResponse represents a member in the tenant
 type TenantMemberResponse struct {
 	ID                uuid.UUID  `json:"id"`
