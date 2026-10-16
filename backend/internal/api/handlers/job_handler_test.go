@@ -678,3 +678,43 @@ func TestJobHandler_GetJobStats_Success(t *testing.T) {
 
 // WithContext implements the interface; the mock ignores the context.
 func (m *MockJobService) WithContext(_ context.Context) services.JobServiceInterface { return m }
+
+// T233: an explicit billable=false must reach the service as false; an absent
+// billable field still defaults to billable.
+func TestJobHandler_AddMaterial_Billable(t *testing.T) {
+	cases := []struct {
+		name string
+		body string
+		want bool
+	}{
+		{"explicit false", `{"name":"Pipe","quantity":1,"unit_cost":5,"billable":false}`, false},
+		{"explicit true", `{"name":"Pipe","quantity":1,"unit_cost":5,"billable":true}`, true},
+		{"absent defaults to true", `{"name":"Pipe","quantity":1,"unit_cost":5}`, true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			mockService := new(MockJobService)
+			handler := NewJobHandler(mockService)
+			router := setupJobTestRouter()
+			userID := uuid.New()
+			jobID := uuid.New()
+			router.POST("/jobs/:id/materials", func(c *gin.Context) {
+				c.Set("user_id", userID)
+				handler.AddMaterial(c)
+			})
+
+			var got *models.JobMaterial
+			mockService.On("AddMaterial", jobID, mock.AnythingOfType("*models.JobMaterial"), userID, mock.Anything).
+				Run(func(args mock.Arguments) { got = args.Get(1).(*models.JobMaterial) }).
+				Return(nil)
+
+			req := httptest.NewRequest(http.MethodPost, "/jobs/"+jobID.String()+"/materials", bytes.NewBufferString(tc.body))
+			req.Header.Set("Content-Type", "application/json")
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+
+			require.NotNil(t, got, "service not called (status %d: %s)", w.Code, w.Body.String())
+			assert.Equal(t, tc.want, got.Billable)
+		})
+	}
+}

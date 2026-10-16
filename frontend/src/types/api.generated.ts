@@ -12467,6 +12467,7 @@ export interface components {
             total_pages?: number;
         };
         "github_com_javaknight1_servicepro_backend_internal_models.JobMaterial": {
+            /** @description defaults to true when omitted on create; no gorm default:true (it stored false as true) */
             billable?: boolean;
             created_at?: string;
             description?: string;

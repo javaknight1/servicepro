@@ -1049,7 +1049,9 @@ func (h *JobHandler) AddMaterial(c *gin.Context) {
 		return
 	}
 
-	var material models.JobMaterial
+	// A material is billable unless the request says otherwise (decoding
+	// leaves an absent field at this value).
+	material := models.JobMaterial{Billable: true}
 	if err := c.ShouldBindJSON(&material); err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
