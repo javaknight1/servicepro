@@ -48,3 +48,67 @@ export function isAxiosErrorWithStatus(
 ): error is AxiosError {
   return isAxiosError(error) && error.response?.status === status;
 }
+
+/**
+ * Status, machine code and message of an API error response.
+ * Read structurally so it works for AxiosError and for plain
+ * `{ response: { status, data } }` shapes (e.g. test mocks).
+ */
+export interface ApiErrorInfo {
+  status?: number;
+  code?: string;
+  message?: string;
+}
+
+export function getApiErrorInfo(error: unknown): ApiErrorInfo {
+  if (typeof error !== 'object' || error === null || !('response' in error)) {
+    return {};
+  }
+  const response: unknown = error.response;
+  if (typeof response !== 'object' || response === null) return {};
+
+  const info: ApiErrorInfo = {};
+  if ('status' in response && typeof response.status === 'number') {
+    info.status = response.status;
+  }
+  const data: unknown = 'data' in response ? response.data : undefined;
+  if (typeof data === 'object' && data !== null) {
+    if ('error' in data && typeof data.error === 'string') {
+      info.code = data.error;
+    }
+    if ('message' in data && typeof data.message === 'string') {
+      info.message = data.message;
+    }
+  }
+  return info;
+}
+
+/** Shown for throttled requests (HTTP 429); the API's own wording is generic. */
+export const TOO_MANY_ATTEMPTS_MESSAGE =
+  'Too many attempts, try again shortly.';
+
+/** Shown when the API refuses an organization action (HTTP 403). */
+export const TENANT_PERMISSION_MESSAGE =
+  "You don't have permission to do this in this organization. Ask an organization admin if you need access.";
+
+/** Shown when the caller is not a member of the organization (HTTP 403). */
+export const TENANT_ACCESS_DENIED_MESSAGE =
+  "You don't have access to this organization.";
+
+/**
+ * Error message for organization (`/tenants/:id/*`) calls: a 403 becomes a
+ * clear permission message instead of a generic failure.
+ */
+export function getTenantErrorMessage(
+  error: unknown,
+  fallback = 'An error occurred'
+): string {
+  const { status, code, message } = getApiErrorInfo(error);
+  if (status === 403) {
+    return code === 'tenant_access_denied'
+      ? TENANT_ACCESS_DENIED_MESSAGE
+      : TENANT_PERMISSION_MESSAGE;
+  }
+  if (status === 429) return TOO_MANY_ATTEMPTS_MESSAGE;
+  return message || getErrorMessage(error, fallback);
+}

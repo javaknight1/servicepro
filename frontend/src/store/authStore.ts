@@ -8,7 +8,7 @@ import {
 } from '@services/analytics';
 import { clearSessionState } from '@services/session';
 import { clearQueryCaches } from '@services/queryCacheRegistry';
-import type { AuthState, User } from '@app-types';
+import type { AuthState, RegisterOptions, User } from '@app-types';
 
 export const useAuthStore = create<AuthState>()(
   persist(
@@ -60,14 +60,15 @@ export const useAuthStore = create<AuthState>()(
       register: async (
         email: string,
         password: string,
-        invitationToken?: string
+        options: RegisterOptions = {}
       ) => {
         try {
           set({ isLoading: true });
           await authApi.register({
             email,
             password,
-            invitation_token: invitationToken,
+            invitation_token: options.invitationToken || undefined,
+            invite_code: options.inviteCode || undefined,
           });
           set({ isLoading: false });
           // Registration successful - user needs to verify email

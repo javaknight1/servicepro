@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { AxiosError } from 'axios';
 import { membershipApi } from '@/services/membershipService';
+import { getTenantErrorMessage } from '@/utils/error';
 import type { MembershipState, BillingCycle } from '@/types/membership';
 
 interface ApiErrorResponse {
@@ -43,8 +44,7 @@ export const useMembershipStore = create<MembershipState>((set) => ({
         return;
       }
       set({
-        error:
-          axiosError.response?.data?.message || 'Failed to load membership',
+        error: getTenantErrorMessage(error, 'Failed to load membership'),
         isLoading: false,
       });
       throw error;
@@ -64,10 +64,8 @@ export const useMembershipStore = create<MembershipState>((set) => ({
       });
       set({ currentMembership: response.data, isLoading: false });
     } catch (error) {
-      const axiosError = error as AxiosError<ApiErrorResponse>;
       set({
-        error:
-          axiosError.response?.data?.message || 'Failed to update membership',
+        error: getTenantErrorMessage(error, 'Failed to update membership'),
         isLoading: false,
       });
       throw error;

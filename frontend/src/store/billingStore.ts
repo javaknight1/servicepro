@@ -5,6 +5,7 @@ import type {
   BillingEvent,
   BillingConfig,
 } from '@/types/payment';
+import { getTenantErrorMessage } from '@/utils/error';
 
 interface BillingState {
   // Config
@@ -83,10 +84,10 @@ export const useBillingStore = create<BillingState>((set, get) => ({
         isLoadingMethods: false,
       });
     } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : 'Failed to load payment methods';
+      const message = getTenantErrorMessage(
+        error,
+        'Failed to load payment methods'
+      );
       set({ methodsError: message, isLoadingMethods: false });
     }
   },
@@ -107,8 +108,10 @@ export const useBillingStore = create<BillingState>((set, get) => ({
 
       return response.data;
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : 'Failed to add payment method';
+      const message = getTenantErrorMessage(
+        error,
+        'Failed to add payment method'
+      );
       set({ methodsError: message });
       throw error;
     }
@@ -129,10 +132,10 @@ export const useBillingStore = create<BillingState>((set, get) => ({
         })),
       }));
     } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : 'Failed to set default payment method';
+      const message = getTenantErrorMessage(
+        error,
+        'Failed to set default payment method'
+      );
       set({ methodsError: message });
       throw error;
     }
@@ -149,10 +152,10 @@ export const useBillingStore = create<BillingState>((set, get) => ({
         ),
       }));
     } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : 'Failed to delete payment method';
+      const message = getTenantErrorMessage(
+        error,
+        'Failed to delete payment method'
+      );
       set({ methodsError: message });
       throw error;
     }
@@ -175,10 +178,10 @@ export const useBillingStore = create<BillingState>((set, get) => ({
         isLoadingHistory: false,
       });
     } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : 'Failed to load billing history';
+      const message = getTenantErrorMessage(
+        error,
+        'Failed to load billing history'
+      );
       set({ historyError: message, isLoadingHistory: false });
     }
   },

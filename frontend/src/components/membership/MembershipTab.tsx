@@ -13,12 +13,15 @@ import {
 import { useMembershipStore, useTenantStore } from '@store';
 import { BillingSection } from './BillingSection';
 import { formatCents } from '@/utils/money';
+import { canManageTenant } from '@/utils/tenantPermissions';
 
 export function MembershipTab() {
   const navigate = useNavigate();
   const { currentTenant } = useTenantStore();
   const { currentMembership, isLoading, error, loadMembership } =
     useMembershipStore();
+  // Plan changes and billing need membership.update / membership.billing.
+  const canManage = canManageTenant(currentTenant?.role);
 
   useEffect(() => {
     if (currentTenant?.id) {
@@ -66,23 +69,27 @@ export function MembershipTab() {
         </CardHeader>
         <CardContent>
           {error ? (
-            <div className="text-red-600 py-4">
-              Failed to load membership information. Please try again later.
-            </div>
+            <div className="text-red-600 py-4">{error}</div>
           ) : !tier ? (
             <div className="text-center py-8">
               <Crown className="h-12 w-12 text-neutral-400 mx-auto mb-4" />
               <p className="text-neutral-600 mb-4">
                 No active membership found
               </p>
-              <Button
-                variant="primary"
-                onClick={() =>
-                  navigate('/settings/organization/membership/change')
-                }
-              >
-                Choose a Plan
-              </Button>
+              {canManage ? (
+                <Button
+                  variant="primary"
+                  onClick={() =>
+                    navigate('/settings/organization/membership/change')
+                  }
+                >
+                  Choose a Plan
+                </Button>
+              ) : (
+                <p className="text-sm text-neutral-500">
+                  Ask an organization admin to choose a plan.
+                </p>
+              )}
             </div>
           ) : (
             <div className="space-y-6">
@@ -176,14 +183,16 @@ export function MembershipTab() {
               </div>
 
               <div className="flex space-x-3">
-                <Button
-                  variant="primary"
-                  onClick={() =>
-                    navigate('/settings/organization/membership/change')
-                  }
-                >
-                  Change Plan
-                </Button>
+                {canManage && (
+                  <Button
+                    variant="primary"
+                    onClick={() =>
+                      navigate('/settings/organization/membership/change')
+                    }
+                  >
+                    Change Plan
+                  </Button>
+                )}
                 <Button variant="outline" onClick={() => navigate('/pricing')}>
                   <ExternalLink className="h-4 w-4 mr-2" />
                   View All Plans
@@ -194,8 +203,8 @@ export function MembershipTab() {
         </CardContent>
       </Card>
 
-      {/* Billing Section */}
-      <BillingSection />
+      {/* Billing Section (membership.billing) */}
+      {canManage && <BillingSection />}
     </div>
   );
 }

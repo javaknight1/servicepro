@@ -14,16 +14,56 @@ import {
 } from '@components/shared';
 import { useAuthStore } from '@store';
 import { invitationApi } from '@services/tenantService';
-import { AxiosError } from 'axios';
-import type { ErrorResponse } from '@app-types';
+import {
+  getApiErrorInfo,
+  getErrorMessage,
+  TOO_MANY_ATTEMPTS_MESSAGE,
+} from '@/utils/error';
 import type { Invitation } from '@/types/tenant';
 import { CheckCircle, Building2, AlertCircle } from 'lucide-react';
+
+/** Query params an invite-code link may use (`/register?invite=CODE`). */
+const INVITE_CODE_PARAMS = ['invite', 'code', 'invite_code'] as const;
+
+const INVITE_ONLY_MESSAGE =
+  'ServicePro is invite-only right now. Enter your invite code to create an account.';
+const INVALID_INVITE_CODE_MESSAGE =
+  "That invite code isn't valid. It may have expired, been used up or been revoked. Check the code or ask the person who invited you for a new one.";
+const INVALID_INVITATION_MESSAGE =
+  'This invitation is no longer valid for this email address. Ask the person who invited you to send a new invitation.';
+
+/**
+ * Map a failed registration to a user-facing message. The API answers
+ * 403 `registration_closed` both when no code was sent and when the code or
+ * invitation was rejected, so which one we show depends on what was sent.
+ */
+function getRegisterErrorMessage(
+  err: unknown,
+  sent: { inviteCode?: string; invitationToken?: string }
+): string {
+  const { status, code, message } = getApiErrorInfo(err);
+  if (status === 403 && code === 'registration_closed') {
+    if (sent.inviteCode) return INVALID_INVITE_CODE_MESSAGE;
+    if (sent.invitationToken) return INVALID_INVITATION_MESSAGE;
+    return INVITE_ONLY_MESSAGE;
+  }
+  if (status === 429) return TOO_MANY_ATTEMPTS_MESSAGE;
+  return (
+    message ||
+    getErrorMessage(err, 'Failed to create account. Please try again.')
+  );
+}
 
 const registerSchema = z
   .object({
     email: z.string().email('Invalid email address'),
     password: z.string().min(8, 'Password must be at least 8 characters'),
     confirmPassword: z.string(),
+    inviteCode: z
+      .string()
+      .trim()
+      .max(128, 'Invite code is too long')
+      .optional(),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords don't match",
@@ -44,6 +84,10 @@ export function RegisterPage() {
   const [invitationError, setInvitationError] = useState<string | null>(null);
 
   const invitationToken = searchParams.get('invitation');
+  const inviteCodeFromUrl =
+    INVITE_CODE_PARAMS.map((key) => searchParams.get(key)).find(
+      (value): value is string => !!value
+    ) ?? '';
 
   const {
     register,
@@ -52,6 +96,7 @@ export function RegisterPage() {
     formState: { errors, isSubmitting },
   } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
+    defaultValues: { inviteCode: inviteCodeFromUrl },
   });
 
   // Fetch invitation details if token is present
@@ -64,11 +109,10 @@ export function RegisterPage() {
           setInvitation(response.data);
           setValue('email', response.data.email);
         })
-        .catch((err) => {
+        .catch((err: unknown) => {
           console.error('Failed to fetch invitation:', err);
-          const axiosError = err as AxiosError<{ error: string }>;
           setInvitationError(
-            axiosError.response?.data?.error || 'Invalid or expired invitation'
+            getApiErrorInfo(err).message || 'Invalid or expired invitation'
           );
         })
         .finally(() => {
@@ -78,20 +122,16 @@ export function RegisterPage() {
   }, [invitationToken, setValue]);
 
   const onSubmit = async (data: RegisterFormData) => {
+    const sent = {
+      invitationToken: invitationToken || undefined,
+      inviteCode: data.inviteCode || undefined,
+    };
     try {
       setError('');
-      await register_action(
-        data.email,
-        data.password,
-        invitationToken || undefined
-      );
+      await register_action(data.email, data.password, sent);
       setSuccess(true);
-    } catch (err) {
-      const axiosError = err as AxiosError<ErrorResponse>;
-      setError(
-        axiosError.response?.data?.message ||
-          'Failed to create account. Please try again.'
-      );
+    } catch (err: unknown) {
+      setError(getRegisterErrorMessage(err, sent));
     }
   };
 
@@ -249,6 +289,19 @@ export function RegisterPage() {
                     This email is linked to your invitation and cannot be
                     changed.
                   </p>
+                )}
+
+                {!invitation && (
+                  <Input
+                    label="Invite code"
+                    type="text"
+                    autoComplete="off"
+                    spellCheck={false}
+                    fullWidth
+                    helperText="ServicePro is invite-only right now. Enter the code from your invite."
+                    error={errors.inviteCode?.message}
+                    {...register('inviteCode')}
+                  />
                 )}
 
                 <Input

@@ -87,10 +87,17 @@ function ProfileDropdown() {
 
           <button
             onClick={handleLogout}
-            className="w-full flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+            className="w-full flex items-start px-4 py-2 text-sm text-red-600 hover:bg-red-50 text-left"
+            title="Signs you out on every device"
           >
-            <LogOut className="h-4 w-4 mr-3" />
-            Log out
+            <LogOut className="h-4 w-4 mr-3 mt-0.5 flex-shrink-0" />
+            <span>
+              Log out
+              {/* The API revokes every session (token version bump), not just this browser's. */}
+              <span className="block text-xs text-neutral-500">
+                Signs you out on all devices
+              </span>
+            </span>
           </button>
         </div>
       )}

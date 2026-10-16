@@ -31,6 +31,7 @@ import {
   TrendingDown,
 } from 'lucide-react';
 import { formatCents } from '@/utils/money';
+import { getTenantErrorMessage } from '@/utils/error';
 
 // Component for adding a new card
 function AddCardForm({
@@ -79,7 +80,7 @@ function AddCardForm({
       cardElement.clear();
       onSuccess();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to add card');
+      setError(getTenantErrorMessage(err, 'Failed to add card'));
     } finally {
       setIsProcessing(false);
     }
@@ -275,12 +276,7 @@ export function ConfirmMembershipPage() {
         state: { membershipUpdated: true, newPlan: tierDisplayName },
       });
     } catch (err: unknown) {
-      const errorMessage =
-        err instanceof Error
-          ? err.message
-          : (err as { response?: { data?: { message?: string } } })?.response
-              ?.data?.message || 'Failed to update membership';
-      setError(errorMessage);
+      setError(getTenantErrorMessage(err, 'Failed to update membership'));
     } finally {
       setIsConfirming(false);
     }

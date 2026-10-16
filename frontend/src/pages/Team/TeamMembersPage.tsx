@@ -15,7 +15,8 @@ import {
 import { useTenantStore } from '@store';
 import { roleApi } from '@services/roleApi';
 import { tenantApi } from '@services/tenantService';
-import { getErrorMessage } from '@/utils/error';
+import { getTenantErrorMessage } from '@/utils/error';
+import { canManageTenant } from '@/utils/tenantPermissions';
 import {
   UserPlus,
   Trash2,
@@ -42,6 +43,12 @@ export function TeamMembersPage() {
   const [roles, setRoles] = useState<Role[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+
+  // Hint from the caller's role in this tenant; the API still enforces
+  // tenants.manage on every member/invitation change and answers 403.
+  const canManage = canManageTenant(currentTenant?.role);
 
   // Invite member modal
   const [showAddModal, setShowAddModal] = useState(false);
@@ -66,32 +73,41 @@ export function TeamMembersPage() {
     if (!currentTenant) return;
 
     setIsLoading(true);
+    setLoadError(null);
+    setActionError(null);
     try {
       // Load members first (primary data)
       const memberList = await getMembers(currentTenant.id);
       setMembers(memberList);
 
-      // Load pending invitations
-      try {
-        const invitationsResponse = await tenantApi.getPendingInvitations(
-          currentTenant.id
-        );
-        setPendingInvitations(invitationsResponse.data || []);
-      } catch (invErr) {
-        console.error('Failed to load invitations:', invErr);
+      // Invitations and roles are management data (tenants.manage)
+      if (canManage) {
+        try {
+          const invitationsResponse = await tenantApi.getPendingInvitations(
+            currentTenant.id
+          );
+          setPendingInvitations(invitationsResponse.data || []);
+        } catch (invErr) {
+          console.error('Failed to load invitations:', invErr);
+          setPendingInvitations([]);
+        }
+
+        // Load roles separately (for the add member dropdown)
+        try {
+          const roleList = await roleApi.getRoles().then((res) => res.data);
+          setRoles(roleList);
+        } catch (roleErr) {
+          console.error('Failed to load roles:', roleErr);
+          // Continue without roles - members are still shown
+        }
+      } else {
         setPendingInvitations([]);
       }
-
-      // Load roles separately (for the add member dropdown)
-      try {
-        const roleList = await roleApi.getRoles().then((res) => res.data);
-        setRoles(roleList);
-      } catch (roleErr) {
-        console.error('Failed to load roles:', roleErr);
-        // Continue without roles - members are still shown
-      }
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Failed to load members:', err);
+      setMembers([]);
+      setPendingInvitations([]);
+      setLoadError(getTenantErrorMessage(err, 'Failed to load members'));
     } finally {
       setIsLoading(false);
     }
@@ -114,7 +130,7 @@ export function TeamMembersPage() {
       loadData();
     } catch (err) {
       console.error('Failed to invite member:', err);
-      setInviteError(getErrorMessage(err, 'Failed to send invitation'));
+      setInviteError(getTenantErrorMessage(err, 'Failed to send invitation'));
     } finally {
       setIsAdding(false);
     }
@@ -132,8 +148,9 @@ export function TeamMembersPage() {
     try {
       await tenantApi.cancelInvitation(currentTenant.id, invitation.id);
       loadData();
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Failed to cancel invitation:', err);
+      setActionError(getTenantErrorMessage(err, 'Failed to cancel invitation'));
     }
   };
 
@@ -143,8 +160,9 @@ export function TeamMembersPage() {
     try {
       await tenantApi.resendInvitation(currentTenant.id, invitation.id);
       alert('Invitation resent successfully');
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Failed to resend invitation:', err);
+      setActionError(getTenantErrorMessage(err, 'Failed to resend invitation'));
     }
   };
 
@@ -160,8 +178,9 @@ export function TeamMembersPage() {
     try {
       await removeMember(currentTenant.id, member.user_id);
       loadData();
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Failed to remove member:', err);
+      setActionError(getTenantErrorMessage(err, 'Failed to remove member'));
     }
   };
 
@@ -178,8 +197,10 @@ export function TeamMembersPage() {
       setSelectedMember(null);
       setSelectedRoleId('');
       loadData();
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Failed to update role:', err);
+      setShowRoleModal(false);
+      setActionError(getTenantErrorMessage(err, 'Failed to update role'));
     }
   };
 
@@ -246,10 +267,12 @@ export function TeamMembersPage() {
               <span className="font-medium">{currentTenant.name}</span>
             </p>
           </div>
-          <Button variant="primary" onClick={() => setShowAddModal(true)}>
-            <UserPlus className="h-4 w-4 mr-2" />
-            Invite Member
-          </Button>
+          {canManage && !loadError && (
+            <Button variant="primary" onClick={() => setShowAddModal(true)}>
+              <UserPlus className="h-4 w-4 mr-2" />
+              Invite Member
+            </Button>
+          )}
         </div>
 
         <Card variant="elevated" padding="lg">
@@ -275,9 +298,21 @@ export function TeamMembersPage() {
             </div>
           </CardHeader>
           <CardContent>
+            {actionError && (
+              <div
+                role="alert"
+                className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm"
+              >
+                {actionError}
+              </div>
+            )}
             {isLoading ? (
               <div className="py-8 text-center text-neutral-500">
                 Loading members...
+              </div>
+            ) : loadError ? (
+              <div role="alert" className="py-8 text-center text-neutral-600">
+                {loadError}
               </div>
             ) : filteredMembers.length === 0 &&
               filteredInvitations.length === 0 ? (
@@ -328,25 +363,27 @@ export function TeamMembersPage() {
                               </div>
                             </div>
                           </div>
-                          <div className="flex items-center space-x-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => openChangeRoleModal(member)}
-                              title="Change role"
-                            >
-                              <Shield className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleRemoveMember(member)}
-                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                              title="Remove member"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
+                          {canManage && (
+                            <div className="flex items-center space-x-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => openChangeRoleModal(member)}
+                                title="Change role"
+                              >
+                                <Shield className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleRemoveMember(member)}
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                title="Remove member"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          )}
                         </div>
                       );
                     })}

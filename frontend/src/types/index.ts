@@ -4,6 +4,7 @@ export type {
   LoginResponse,
   RegisterRequest,
   RegisterResponse,
+  RegisterOptions,
   PasswordResetRequestRequest,
   PasswordResetConfirmRequest,
   VerifyEmailRequest,

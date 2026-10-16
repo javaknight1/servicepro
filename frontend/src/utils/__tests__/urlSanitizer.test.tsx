@@ -3,6 +3,7 @@ import { render } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import type { CaptureResult } from 'posthog-js';
 import {
+  getSafeReturnUrl,
   sanitizeSearch,
   sanitizeUrl,
   sanitizeUrlProperties,
@@ -112,5 +113,27 @@ describe('PageViewTracker', () => {
       expect.any(String),
       expect.objectContaining({ path: '/invoices', search: '?page=3' })
     );
+  });
+});
+
+describe('getSafeReturnUrl', () => {
+  it('keeps same-origin absolute paths with their query', () => {
+    expect(getSafeReturnUrl('/invitations/accept?token=abc')).toBe(
+      '/invitations/accept?token=abc'
+    );
+    expect(getSafeReturnUrl('/jobs/123')).toBe('/jobs/123');
+  });
+
+  it.each([
+    null,
+    '',
+    'https://evil.example/',
+    '//evil.example/x',
+    '/\\evil.example/x',
+    'javascript:alert(1)',
+    'jobs/123',
+    '/jobs\n/123',
+  ])('rejects %j', (value) => {
+    expect(getSafeReturnUrl(value)).toBeNull();
   });
 });

@@ -23,6 +23,7 @@ import { useStripeContext } from '@/providers/StripeProvider';
 import { billingApi } from '@/services';
 import { formatCardBrand } from '@/types/payment';
 import { formatCents } from '@/utils/money';
+import { getTenantErrorMessage } from '@/utils/error';
 
 // Separate component for the card input form that uses Stripe hooks
 // This component only renders when Elements provider is available
@@ -91,10 +92,8 @@ function AddCardForm({
 
       cardElement.clear();
       onSuccess();
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : 'Failed to add card';
-      setAddError(message);
+    } catch (error: unknown) {
+      setAddError(getTenantErrorMessage(error, 'Failed to add card'));
     } finally {
       setIsProcessing(false);
     }

@@ -302,6 +302,56 @@ describe('tenantStore', () => {
       expect(state.error).toBe('Update failed');
       expect(state.isLoading).toBe(false);
     });
+
+    it('keeps the caller role from the tenant list after an update', async () => {
+      act(() => {
+        const withRole = { ...mockTenant1, role: 'admin' };
+        useTenantStore.setState({
+          tenants: [withRole, mockTenant2],
+          currentTenant: withRole,
+        });
+      });
+      // PUT /tenants/:id returns the tenant without the caller's role
+      vi.mocked(tenantApi.update).mockResolvedValue({
+        data: { ...mockTenant1, name: 'Renamed' },
+      });
+
+      await act(async () => {
+        await useTenantStore
+          .getState()
+          .updateTenant('tenant-1', { name: 'Renamed' });
+      });
+
+      const state = useTenantStore.getState();
+      expect(state.currentTenant?.role).toBe('admin');
+      expect(state.currentTenant?.name).toBe('Renamed');
+      expect(state.tenants[0].role).toBe('admin');
+    });
+
+    it('shows a permission message when the update is forbidden (403)', async () => {
+      vi.mocked(tenantApi.update).mockRejectedValue({
+        response: {
+          status: 403,
+          data: {
+            error: 'forbidden',
+            message:
+              'You do not have permission to perform this action (required: tenants.update)',
+          },
+        },
+      });
+
+      await expect(
+        act(async () => {
+          await useTenantStore
+            .getState()
+            .updateTenant('tenant-1', { name: 'Nope' });
+        })
+      ).rejects.toBeDefined();
+
+      expect(useTenantStore.getState().error).toMatch(
+        /don't have permission to do this in this organization/i
+      );
+    });
   });
 
   describe('deleteTenant', () => {
