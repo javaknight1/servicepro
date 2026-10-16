@@ -93,6 +93,11 @@ func SetupJobRoutes(router *gin.RouterGroup, cfg *routeconfigs.RouteConfig) {
 			cfg.Middleware.PermMiddleware.RequirePermission(permissions.JobsUpdate),
 			cfg.Handlers.Job.TransitionStatus)
 
+		// Allowed next statuses (job state machine) for the status actions
+		jobs.GET("/:id/allowed-transitions",
+			cfg.Middleware.PermMiddleware.RequirePermission(permissions.JobsRead),
+			cfg.Handlers.Job.GetAllowedTransitions)
+
 		// Status history endpoint
 		jobs.GET("/:id/status-history",
 			cfg.Middleware.PermMiddleware.RequirePermission(permissions.JobsRead),

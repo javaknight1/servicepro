@@ -82,3 +82,22 @@ func TestJobTransitions_InvalidMovesRejected(t *testing.T) {
 	_, err = svc.TransitionStatus(job.ID, models.JobStatusScheduled, "other", nil, job.CreatedBy, models.UserRoleAdmin)
 	assert.ErrorIs(t, err, models.ErrInvalidStatusTransition)
 }
+
+// The UI's allowed-transitions endpoint comes from the same state machine.
+func TestGetAllowedTransitions(t *testing.T) {
+	job := createTestJob()
+	job.Status = models.JobStatusNew
+	svc, _ := jobServiceWith(job)
+
+	resp, err := svc.GetAllowedTransitions(job.ID, job.CreatedBy, models.UserRoleAdmin)
+	require.NoError(t, err)
+	assert.Equal(t, models.JobStatusNew, resp.CurrentStatus)
+	assert.ElementsMatch(t, []models.JobStatus{models.JobStatusScheduled, models.JobStatusCancelled}, resp.AllowedTransitions)
+	assert.False(t, resp.IsTerminal)
+
+	job.Status = models.JobStatusCancelled
+	resp, err = svc.GetAllowedTransitions(job.ID, job.CreatedBy, models.UserRoleAdmin)
+	require.NoError(t, err)
+	assert.Empty(t, resp.AllowedTransitions)
+	assert.True(t, resp.IsTerminal)
+}

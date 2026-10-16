@@ -263,6 +263,19 @@ definitions:
     - AgingBucket31To60
     - AgingBucket61To90
     - AgingBucket90Plus
+  github_com_javaknight1_servicepro_backend_internal_models.AllowedTransitionsResponse:
+    properties:
+      allowed_transitions:
+        items:
+          $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.JobStatus'
+        type: array
+      current_status:
+        $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.JobStatus'
+      is_terminal:
+        type: boolean
+      job_id:
+        type: string
+    type: object
   github_com_javaknight1_servicepro_backend_internal_models.BillingCycle:
     enum:
     - monthly
@@ -5627,6 +5640,48 @@ paths:
       security:
       - BearerAuth: []
       summary: Update a job
+      tags:
+      - jobs
+  /api/v1/jobs/{id}/allowed-transitions:
+    get:
+      description: The statuses the job can move to next (job state machine), for
+        the UI's status actions
+      parameters:
+      - description: Job ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.AllowedTransitionsResponse'
+        "400":
+          description: Invalid request
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "404":
+          description: Job not found
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get allowed job status transitions
       tags:
       - jobs
   /api/v1/jobs/{id}/assign:

@@ -2881,6 +2881,70 @@
                 ]
             }
         },
+        "/api/v1/jobs/{id}/allowed-transitions": {
+            "get": {
+                "description": "The statuses the job can move to next (job state machine), for the UI's status actions",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "jobs"
+                ],
+                "summary": "Get allowed job status transitions",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Job ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.AllowedTransitionsResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Job not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/v1/jobs/{id}/assign": {
             "post": {
                 "description": "Assign a user to a job (admin/manager only)",
@@ -9904,6 +9968,26 @@
                 "AgingBucket61To90",
                 "AgingBucket90Plus"
             ]
+        },
+        "github_com_javaknight1_servicepro_backend_internal_models.AllowedTransitionsResponse": {
+            "type": "object",
+            "properties": {
+                "allowed_transitions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.JobStatus"
+                    }
+                },
+                "current_status": {
+                    "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.JobStatus"
+                },
+                "is_terminal": {
+                    "type": "boolean"
+                },
+                "job_id": {
+                    "type": "string"
+                }
+            }
         },
         "github_com_javaknight1_servicepro_backend_internal_models.BillingCycle": {
             "type": "string",

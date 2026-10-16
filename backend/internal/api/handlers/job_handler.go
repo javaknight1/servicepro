@@ -1385,3 +1385,44 @@ func (h *JobHandler) GetStatusHistory(c *gin.Context) {
 
 	c.JSON(http.StatusOK, history)
 }
+
+// GetAllowedTransitions handles GET /api/v1/jobs/:id/allowed-transitions
+// @Summary Get allowed job status transitions
+// @Description The statuses the job can move to next (job state machine), for the UI's status actions
+// @Tags jobs
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Job ID (UUID)"
+// @Success 200 {object} models.AllowedTransitionsResponse
+// @Failure 400 {object} models.ErrorResponse "Invalid request"
+// @Failure 401 {object} models.ErrorResponse "Unauthorized"
+// @Failure 403 {object} models.ErrorResponse "Forbidden"
+// @Failure 404 {object} models.ErrorResponse "Job not found"
+// @Failure 500 {object} models.ErrorResponse "Internal server error"
+// @Router /api/v1/jobs/{id}/allowed-transitions [get]
+func (h *JobHandler) GetAllowedTransitions(c *gin.Context) {
+	userID, userRole, err := h.getUserContext(c)
+	if err != nil {
+		return // response already sent
+	}
+	jobID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: "invalid_id", Message: "Invalid job ID format"})
+		return
+	}
+
+	resp, err := h.jobService.WithContext(c.Request.Context()).GetAllowedTransitions(jobID, userID, userRole)
+	if err != nil {
+		switch {
+		case errors.Is(err, services.ErrJobNotFound):
+			c.JSON(http.StatusNotFound, models.ErrorResponse{Error: "job_not_found", Message: "Job not found"})
+		case errors.Is(err, services.ErrUnauthorized):
+			c.JSON(http.StatusForbidden, models.ErrorResponse{Error: "forbidden", Message: "You do not have permission to view this job"})
+		default:
+			log.Printf("Error getting allowed transitions: %v", err)
+			c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "internal_error", Message: "Failed to retrieve allowed transitions"})
+		}
+		return
+	}
+	c.JSON(http.StatusOK, resp)
+}
