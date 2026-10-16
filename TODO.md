@@ -62,23 +62,23 @@
 
 ## v1 Launch Gate
 
-The minimum subset that must be done before real (paying) customers: **39 tasks, ~319h**. Everything else is post-launch growth or depth. The invite-gated preview (T205) needs only Phase 1 plus T106/T204/T206; the gate below is for opening to paying customers. Phase 4's gating subset is the parts of the stack that touch auth, tenancy, email and storage; the chi and pgx ports are not gating.
+The minimum subset that must be done before real (paying) customers: **38 tasks, ~317h**. Everything else is post-launch growth or depth. The invite-gated preview (T205) needs only Phase 1 plus T106/T204/T206; the gate below is for opening to paying customers. Phase 4's gating subset is the parts of the stack that touch auth, tenancy, email and storage; the chi and pgx ports are not gating.
 
-| Phase                                                | Gating tasks                                                                                                                                                                   |
-|------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Phase 1 — Security Remediation                       | **All** — ~~T102~~, ~~T103~~, ~~T104~~, ~~T105~~, ~~T106~~, ~~T107~~, ~~T108~~, ~~T109~~, ~~T110~~, ~~T111~~, ~~T112~~, ~~T113~~, ~~T114~~, ~~T115~~, ~~T116~~, ~~T117~~       |
-| Phase 2 — Correctness & Cleanup                      | ~~T118~~, ~~T119~~, ~~T120~~, ~~T121~~, ~~T122~~, ~~T123~~, ~~T124~~, ~~T126~~, ~~T130~~, ~~T131~~, ~~T132~~, ~~T133~~, ~~T136~~, ~~T224~~, ~~T225~~, ~~T227~~, ~~T232~~, T234 |
-| Phase 3 — Platform & Delivery                        | ~~T139~~, ~~T140~~, ~~T141~~, ~~T142~~, ~~T143~~, ~~T144~~, ~~T145~~, ~~T146~~, ~~T150~~, ~~T151~~                                                                             |
-| Phase 4 — Stack Convergence (LL parity; incremental) | T153, T154, T158, T159, T160                                                                                                                                                   |
-| Phase 5 — Core Workflow & Quoting                    | T028, T029, T030, T035, T167                                                                                                                                                   |
-| Phase 6 — Payments to the Business                   | T169, T170, T061, T063                                                                                                                                                         |
-| Phase 7 — Dispatch & Field                           | T173, T174, T176                                                                                                                                                               |
-| Phase 8 — Customer Communications                    | T048, T049, T050                                                                                                                                                               |
-| Phase 9 — Customer Self-Service                      | T183, T081                                                                                                                                                                     |
-| Phase 10 — Commercial/B2B Wedge                      | T186                                                                                                                                                                           |
-| Phase 11 — Integrations & Migration                  | T192, T193                                                                                                                                                                     |
-| Phase 14 — Hosting & Launch Readiness                | T202, T203, T204, T205, T206, T207, T208, T209, T210, T211, T212, T213                                                                                                         |
-| Phase 16 — Go-to-Market                              | T218                                                                                                                                                                           |
+| Phase                                                | Gating tasks                                                                                                                                                                       |
+|------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Phase 1 — Security Remediation                       | **All** — ~~T102~~, ~~T103~~, ~~T104~~, ~~T105~~, ~~T106~~, ~~T107~~, ~~T108~~, ~~T109~~, ~~T110~~, ~~T111~~, ~~T112~~, ~~T113~~, ~~T114~~, ~~T115~~, ~~T116~~, ~~T117~~           |
+| Phase 2 — Correctness & Cleanup                      | ~~T118~~, ~~T119~~, ~~T120~~, ~~T121~~, ~~T122~~, ~~T123~~, ~~T124~~, ~~T126~~, ~~T130~~, ~~T131~~, ~~T132~~, ~~T133~~, ~~T136~~, ~~T224~~, ~~T225~~, ~~T227~~, ~~T232~~, ~~T234~~ |
+| Phase 3 — Platform & Delivery                        | ~~T139~~, ~~T140~~, ~~T141~~, ~~T142~~, ~~T143~~, ~~T144~~, ~~T145~~, ~~T146~~, ~~T150~~, ~~T151~~                                                                                 |
+| Phase 4 — Stack Convergence (LL parity; incremental) | T153, T154, T158, T159, T160                                                                                                                                                       |
+| Phase 5 — Core Workflow & Quoting                    | T028, T029, T030, T035, T167                                                                                                                                                       |
+| Phase 6 — Payments to the Business                   | T169, T170, T061, T063                                                                                                                                                             |
+| Phase 7 — Dispatch & Field                           | T173, T174, T176                                                                                                                                                                   |
+| Phase 8 — Customer Communications                    | T048, T049, T050                                                                                                                                                                   |
+| Phase 9 — Customer Self-Service                      | T183, T081                                                                                                                                                                         |
+| Phase 10 — Commercial/B2B Wedge                      | T186                                                                                                                                                                               |
+| Phase 11 — Integrations & Migration                  | T192, T193                                                                                                                                                                         |
+| Phase 14 — Hosting & Launch Readiness                | T202, T203, T204, T205, T206, T207, T208, T209, T210, T211, T212, T213                                                                                                             |
+| Phase 16 — Go-to-Market                              | T218                                                                                                                                                                               |
 
 **Explicitly NOT in the launch gate** (ship without them):
 
@@ -191,9 +191,10 @@ The minimum subset that must be done before real (paying) customers: **39 tasks,
 | ~~T230~~ | ~~13~~ | ~~Auth~~       | ~~3~~  | ~~Expose the caller's effective permissions per tenant; decide who can delete an organization~~       |
 | ~~T232~~ | ~~2~~  | ~~Bug~~        | ~~2~~  | ~~Frontend money calls match the API: record payment URL, cancel reason, refunds, quote revise~~      |
 | ~~T233~~ | ~~2~~  | ~~Bug~~        | ~~1~~  | ~~JobMaterial.Billable default:true stores false as true~~                                            |
+| ~~T234~~ | ~~2~~  | ~~Bug~~        | ~~2~~  | ~~Invoice/quote forms use the API's fields: tax_rate_id, terms_and_conditions, default tax prefill~~  |
 | T129     | 2      | Cleanup        | 4      | Backend dead-code removal and a stricter linter                                                       |
 | T223     | 2      | Backend        | 4      | Request IDs and a standard API error envelope                                                         |
-| T234     | 2      | Bug            | 2      | Invoice/quote forms use the API's fields: tax_rate_id, terms_and_conditions, default tax prefill      |
+| T237     | 2      | Backend        | 3      | Tax rates API + tax-rate picker; terms on invoice create; keep line discounts on edit                 |
 | T101     | 3      | Monitoring     | 2      | Upload source maps to Sentry for production builds                                                    |
 | T153     | 4      | Backend        | 24     | Repositories take ctx + tenantID; services stop taking *gorm.DB; transaction manager                  |
 | T154     | 4      | Security       | 12     | Postgres RLS backstop keyed on a per-transaction tenant GUC + isolation tests                         |
@@ -400,9 +401,9 @@ Work completed under the old P0–P3/sprint TODO. Details are in Verified Comple
 - [x] T116 — Low-severity security sweep ✓ (2026-10-16)
 - [x] T117 — Remediate dependency vulnerabilities and bump the Go toolchain ✓ (2026-10-16)
 
-### Phase 2 — Correctness & Cleanup (T118, T119, T120, T121, T122, T123, T124, T125, T126, T127, T128, T129, T130, T131, T132, T133, T134, T135, T136, T137, T138, T223, T224, T225, T226, T227, T228, T229, T232, T233, T234)
+### Phase 2 — Correctness & Cleanup (T118, T119, T120, T121, T122, T123, T124, T125, T126, T127, T128, T129, T130, T131, T132, T133, T134, T135, T136, T137, T138, T223, T224, T225, T226, T227, T228, T229, T232, T233, T234, T237)
 
-Money flows that are wired but broken (payments don't update invoices, reminders never sent, numbering wedges, a panicking webhook), frontend bugs users would hit in the preview, and dead code. From `docs/audits/2026-10-16/backend-correctness.md` and `docs/audits/2026-10-16/frontend.md`. **3 open tasks, ~10h.** 28 done.
+Money flows that are wired but broken (payments don't update invoices, reminders never sent, numbering wedges, a panicking webhook), frontend bugs users would hit in the preview, and dead code. From `docs/audits/2026-10-16/backend-correctness.md` and `docs/audits/2026-10-16/frontend.md`. **3 open tasks, ~11h.** 29 done.
 
 - [x] T118 — Recording a payment updates the invoice balance and status ✓ (2026-10-16)
 - [x] T119 — Stripe Checkout charges the true balance due ✓ (2026-10-16)
@@ -432,9 +433,10 @@ Money flows that are wired but broken (payments don't update invoices, reminders
 - [x] T229 — Invite and invitation API polish: distinct invalid-code error, encoded links, message field ✓ (2026-10-16)
 - [x] T232 — Frontend money calls match the API: record payment URL, cancel reason, refunds, quote revise ✓ (2026-10-16)
 - [x] T233 — JobMaterial.Billable default:true stores false as true ✓ (2026-10-16)
+- [x] T234 — Invoice/quote forms use the API's fields: tax_rate_id, terms_and_conditions, default tax prefill ✓ (2026-10-16)
 - [ ] T129 — Backend dead-code removal and a stricter linter
 - [ ] T223 — Request IDs and a standard API error envelope
-- [ ] T234 — Invoice/quote forms use the API's fields: tax_rate_id, terms_and_conditions, default tax prefill
+- [ ] T237 — Tax rates API + tax-rate picker; terms on invoice create; keep line discounts on edit
 
 #### T129 — Backend dead-code removal and a stricter linter
 
@@ -464,17 +466,17 @@ Money flows that are wired but broken (payments don't update invoices, reminders
 
 ---
 
-#### T234 — Invoice/quote forms use the API's fields: tax_rate_id, terms_and_conditions, default tax prefill
+#### T237 — Tax rates API + tax-rate picker; terms on invoice create; keep line discounts on edit
 
-**Phase**: 2 · **Category**: Bug · **Hours**: 2 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T127, T232
+**Phase**: 2 · **Category**: Backend · **Hours**: 3 · **Status**: Open · **v1 Gate**: No · **Depends on**: T234
 
-**What it is** — Editing an invoice or quote sends and shows the fields the API actually stores.
+**What it is** — Tax rates can be listed and picked in the UI, a new invoice's terms save in one call, and editing lines keeps their discounts.
 
-**What it does** — The frontend reads/sends `tax_rate` and `terms` on invoices, but `models.Invoice` has `tax_rate_id` and `terms_and_conditions` (no `tax_rate`) — tax and terms edits are silently dropped. Switch the invoice form to a tax-rate picker (`tax_rate_id`) and `terms_and_conditions`; prefill the quote/invoice forms with the tenant's default tax rate and payment term (T127 applies them only when omitted); pass `onError` from QuotesPage to `QuoteActionsMenu` so list actions show errors inline instead of `window.alert`. Update invoice + quote integration tests.
+**What it does** — Add tenant-scoped `GET /tax-rates` (list, include global rows) and CRUD (`tax_rates.manage` permission, new migration for the grant) with swag + cross-tenant tests; frontend invoice/quote forms use a `tax_rate_id` picker and show the default rate's value; add `terms_and_conditions` to `CreateInvoiceRequest` and drop the frontend's follow-up `PUT` workaround; the invoice form round-trips per-line `discount_percentage`/`discount_amount` instead of dropping them; refresh the stale Cypress invoice selectors.
 
-**Why we need it** — An invoice's tax rate or terms can't actually be changed from the UI today.
+**Why we need it** — There's no way to manage or pick configured tax rates, so every invoice uses a hand-typed rate; line discounts set via the API are silently lost when the invoice is edited in the UI.
 
-**Notes** — Follow-up from the T232 and T127 reports (2026-10-16).
+**Notes** — Follow-up from the T234 report (2026-10-16). T235's default-tax-rate picker needs this list endpoint.
 
 ---
 
@@ -991,7 +993,7 @@ The quote → job → invoice loop, roles for field and office staff, recurring 
 
 #### T235 — Tenant settings UI for currency, number prefixes, default payment term and tax rate; validate on save
 
-**Phase**: 5 · **Category**: Feature · **Hours**: 4 · **Status**: Open · **v1 Gate**: No · **Depends on**: T127
+**Phase**: 5 · **Category**: Feature · **Hours**: 4 · **Status**: Open · **v1 Gate**: No · **Depends on**: T127, T237
 
 **What it is** — Owners can set the business settings the backend now honours, and invalid values are rejected when saved.
 
@@ -2898,3 +2900,4 @@ Dated history from the original "Completed Items" list:
 - **T230** — Expose the caller's effective permissions per tenant; decide who can delete an organization. `GET /api/v1/tenants/{id}/me` → `{tenant_id, role_id, role, role_level, permissions[]}` from `PermissionChecker.EffectivePermissionNames` (membership-gated, cross-tenant test); frontend `useTenantPermissions` (React Query) gates Team Members, Org Settings and Membership/Billing on specific permissions, delete button only with `tenants.delete` (6e0b27c, e159e51). Owner decision on org deletion split to T231.
 - **T232** — Frontend money calls match the API: record payment URL, cancel reason, refunds, quote revise. Record Payment / Cancel Invoice (reason required) / Record Refund dialogs and a Payments + Refunds section on the invoice page against `/invoices/{id}/payments`, `/cancel`, `/refunds` (refund gated on `payments.refund`); API 400/409 reasons shown; Refunded badge; quote detail shows number + status and the API's refusal reason, QuoteActionsMenu reports errors; integration tests assert every step (6ddd208, 8aac090, 74ec760). Field mismatches → T234.
 - **T233** — JobMaterial.Billable default:true stores false as true. `JobMaterial.Billable` `default:true` removed; `AddMaterial` defaults omitted `billable` to true explicitly; regression tests (ced0464).
+- **T234** — Invoice/quote forms use the API's fields: tax_rate_id, terms_and_conditions, default tax prefill. Invoice form shows the stored tax rate (API returns the rate object, so edits used to zero the tax) and keeps per-line taxable flags; `terms_and_conditions` read/sent; typed create/update request bodies; new invoices/quotes prefill the tenant's default tax rate (left to the server) and payment term (due date from `days_until_due`); QuotesPage shows refused list actions in an inline banner (3cf699c, 9df0441, 228fd35). Tax-rate picker + create terms field → T237.
