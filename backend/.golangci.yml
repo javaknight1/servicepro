@@ -59,4 +59,6 @@ formatters:
 
 output:
   formats:
-    colored-line-number: {}
+    text:
+      path: stdout
+      colors: true
