@@ -47,7 +47,8 @@ export function AcceptInvitationPage() {
         setStatus('success');
       } catch (err: unknown) {
         console.error('Failed to accept invitation:', err);
-        // The invitation handler puts its human message in `error`
+        // Invitation errors carry a human `message`; auth-middleware 401s
+        // still send only `error`, so fall back to it.
         const info = getApiErrorInfo(err);
         setError(info.message || info.code || 'Failed to accept invitation');
         setStatus('error');

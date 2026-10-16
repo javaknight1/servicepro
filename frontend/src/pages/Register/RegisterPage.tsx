@@ -109,10 +109,9 @@ export function RegisterPage() {
         })
         .catch((err: unknown) => {
           console.error('Failed to fetch invitation:', err);
-          // The invitation handler puts its human message in `error`
-          const info = getApiErrorInfo(err);
+          // Invitation errors carry a human `message` (code in `error`).
           setInvitationError(
-            info.message || info.code || 'Invalid or expired invitation'
+            getApiErrorInfo(err).message || 'Invalid or expired invitation'
           );
         })
         .finally(() => {

@@ -98,9 +98,9 @@ export const TENANT_ACCESS_DENIED_MESSAGE =
 /**
  * Error message for organization (`/tenants/:id/*`) calls: a 403 from the
  * membership or permission middleware becomes a clear permission message
- * instead of a generic failure. Other 403s carry a specific human message
- * in `error` (e.g. "You cannot invite someone with a role above your own"
- * from the invitation handler), which is kept.
+ * instead of a generic failure. Other 403s carry a specific code and human
+ * `message` (e.g. `insufficient_role` from the invitation handler), and the
+ * message is kept.
  */
 export function getTenantErrorMessage(
   error: unknown,
