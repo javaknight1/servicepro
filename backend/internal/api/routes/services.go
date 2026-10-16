@@ -155,6 +155,11 @@ func SetupServices(
 					stripeService.EventCheckoutSessionCompleted,
 					invoicePaymentHandler.CreateCheckoutCompletedHandler(),
 				)
+				// Refunds lower the invoice's amount_paid (T125)
+				svc.StripeEvents.RegisterHandler(
+					stripeService.EventChargeRefunded,
+					invoicePaymentHandler.CreateChargeRefundedHandler(),
+				)
 			}
 		}
 	}

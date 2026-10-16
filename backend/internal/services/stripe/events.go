@@ -212,6 +212,7 @@ type ChargeData struct {
 	Metadata        map[string]string
 	Paid            bool
 	Refunded        bool
+	AmountRefunded  int64 // cumulative, in minor units
 	FailureCode     string
 	FailureMessage  string
 }
@@ -274,14 +275,15 @@ func ParseCharge(event *stripe.Event) (*ChargeData, error) {
 	}
 
 	data := &ChargeData{
-		ID:          ch.ID,
-		Amount:      ch.Amount,
-		Currency:    string(ch.Currency),
-		Status:      string(ch.Status),
-		Description: ch.Description,
-		Metadata:    ch.Metadata,
-		Paid:        ch.Paid,
-		Refunded:    ch.Refunded,
+		ID:             ch.ID,
+		Amount:         ch.Amount,
+		Currency:       string(ch.Currency),
+		Status:         string(ch.Status),
+		Description:    ch.Description,
+		Metadata:       ch.Metadata,
+		Paid:           ch.Paid,
+		Refunded:       ch.Refunded,
+		AmountRefunded: ch.AmountRefunded,
 	}
 
 	if ch.Customer != nil {
