@@ -689,6 +689,21 @@ ON CONFLICT (id) DO UPDATE SET
     unit_price = EXCLUDED.unit_price,
     total = EXCLUDED.total;
 
+-- ============================================================================
+-- 9. TAX RATES (for Tenant 1; T237)
+-- ============================================================================
+INSERT INTO tax_rates (id, tenant_id, name, description, rate, tax_type, region, is_compound, is_active)
+VALUES
+    ('99999999-0000-0000-0000-000000000001', '22222222-2222-2222-2222-222222222222',
+     'Springfield Sales Tax', 'State + city sales tax', 0.0825, 'sales_tax', 'Springfield, IL', FALSE, TRUE),
+    ('99999999-0000-0000-0000-000000000002', '22222222-2222-2222-2222-222222222222',
+     'Tax Exempt', 'Exempt customers (resale, non-profit)', 0, 'exempt', NULL, FALSE, TRUE)
+ON CONFLICT (id) DO UPDATE SET
+    name = EXCLUDED.name,
+    rate = EXCLUDED.rate,
+    is_active = EXCLUDED.is_active,
+    updated_at = CURRENT_TIMESTAMP;
+
 COMMIT;
 
 -- ============================================================================
@@ -716,5 +731,6 @@ COMMIT;
 --   - 5 jobs in Acme Services (various statuses)
 --   - 4 quotes in Acme Services (various statuses)
 --   - Quote line items for each quote
+--   - 2 tax rates in Acme Services
 --
 -- ============================================================================

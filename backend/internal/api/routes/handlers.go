@@ -85,6 +85,7 @@ func SetupHandlers(
 
 	// Payment terms handler
 	h.PaymentTerms = handlers.NewPaymentTermsHandler(svc.PaymentTerms)
+	h.TaxRate = handlers.NewTaxRateHandler(svc.TaxRates)
 
 	// Conflict handler
 	h.Conflict = handlers.NewConflictHandler(svc.Conflict)

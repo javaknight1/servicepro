@@ -110,6 +110,7 @@ func SetupServices(
 
 	// Payment terms service
 	svc.PaymentTerms = services.NewPaymentTermsService(db)
+	svc.TaxRates = services.NewTaxRateService(db)
 
 	// Conflict detection service
 	svc.Conflict = conflict.NewConflictDetector(repos.Schedule, repos.Job)

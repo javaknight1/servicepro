@@ -8,6 +8,7 @@ const (
 	ResourceInvoices     = "invoices"
 	ResourcePayments     = "payments"
 	ResourcePaymentTerms = "payment_terms"
+	ResourceTaxRates     = "tax_rates"
 	ResourceReports      = "reports"
 	ResourceExports      = "exports"
 	ResourceTenants      = "tenants"
@@ -87,6 +88,13 @@ const (
 	PaymentTermsUpdate = "payment_terms.update"
 	PaymentTermsDelete = "payment_terms.delete"
 	PaymentTermsList   = "payment_terms.list"
+)
+
+// Tax rate permissions (T237): read covers list/get; manage covers
+// create/update/delete of the tenant's own rates.
+const (
+	TaxRatesRead   = "tax_rates.read"
+	TaxRatesManage = "tax_rates.manage"
 )
 
 // Report permissions
@@ -198,6 +206,10 @@ func AllPermissions() []PermissionDefinition {
 		{PaymentTermsDelete, "Delete payment terms", ResourcePaymentTerms, ActionDelete},
 		{PaymentTermsList, "List payment terms", ResourcePaymentTerms, ActionList},
 
+		// Tax Rates
+		{TaxRatesRead, "View tax rates", ResourceTaxRates, ActionRead},
+		{TaxRatesManage, "Create, update and delete tax rates", ResourceTaxRates, ActionManage},
+
 		// Reports
 		{ReportsView, "View reports", ResourceReports, ActionView},
 		{ReportsExport, "Export reports", ResourceReports, ActionExport},
@@ -259,6 +271,7 @@ func DefaultRolePermissions() []RolePermissions {
 				InvoicesCreate, InvoicesRead, InvoicesUpdate, InvoicesDelete, InvoicesList, InvoicesExecute,
 				PaymentsCreate, PaymentsRead, PaymentsList, PaymentsRefund,
 				PaymentTermsCreate, PaymentTermsRead, PaymentTermsUpdate, PaymentTermsDelete, PaymentTermsList,
+				TaxRatesRead, TaxRatesManage,
 				ReportsView, ReportsExport, ReportsAdmin,
 				ExportsCreate, ExportsRead, ExportsList,
 				TenantsCreate, TenantsRead, TenantsUpdate, TenantsDelete, TenantsList, TenantsManage,
@@ -278,6 +291,7 @@ func DefaultRolePermissions() []RolePermissions {
 				InvoicesCreate, InvoicesRead, InvoicesUpdate, InvoicesDelete, InvoicesList, InvoicesExecute,
 				PaymentsCreate, PaymentsRead, PaymentsList, PaymentsRefund,
 				PaymentTermsCreate, PaymentTermsRead, PaymentTermsUpdate, PaymentTermsDelete, PaymentTermsList,
+				TaxRatesRead, TaxRatesManage,
 				ReportsView, ReportsExport, ReportsAdmin,
 				ExportsCreate, ExportsRead, ExportsList,
 				TenantsCreate, TenantsRead, TenantsUpdate, TenantsList, TenantsManage,
@@ -297,6 +311,7 @@ func DefaultRolePermissions() []RolePermissions {
 				InvoicesCreate, InvoicesRead, InvoicesUpdate, InvoicesList, InvoicesExecute,
 				PaymentsCreate, PaymentsRead, PaymentsList,
 				PaymentTermsRead, PaymentTermsList,
+				TaxRatesRead,
 				ReportsView, ReportsExport,
 				ExportsCreate, ExportsRead, ExportsList,
 				TenantsRead,
@@ -315,6 +330,7 @@ func DefaultRolePermissions() []RolePermissions {
 				InvoicesRead, InvoicesList,
 				PaymentsRead, PaymentsList,
 				PaymentTermsRead, PaymentTermsList,
+				TaxRatesRead,
 				ReportsView,
 				ExportsRead,
 				TenantsRead,
@@ -332,6 +348,7 @@ func DefaultRolePermissions() []RolePermissions {
 				QuotesRead,
 				InvoicesRead,
 				PaymentTermsRead,
+				TaxRatesRead,
 				TenantsRead,
 				SettingsRead,
 			},
@@ -348,6 +365,7 @@ func PermissionsByResource() map[string][]string {
 		ResourceInvoices:     {InvoicesCreate, InvoicesRead, InvoicesUpdate, InvoicesDelete, InvoicesList, InvoicesExecute},
 		ResourcePayments:     {PaymentsCreate, PaymentsRead, PaymentsList, PaymentsRefund},
 		ResourcePaymentTerms: {PaymentTermsCreate, PaymentTermsRead, PaymentTermsUpdate, PaymentTermsDelete, PaymentTermsList},
+		ResourceTaxRates:     {TaxRatesRead, TaxRatesManage},
 		ResourceReports:      {ReportsView, ReportsExport, ReportsAdmin},
 		ResourceExports:      {ExportsCreate, ExportsRead, ExportsList},
 		ResourceTenants:      {TenantsCreate, TenantsRead, TenantsUpdate, TenantsDelete, TenantsList, TenantsManage},
