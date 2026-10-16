@@ -171,8 +171,7 @@ func (p *Plugin) scopeWrite(db *gorm.DB) {
 
 // checkNoTenantChange rejects updates that would move a row to another tenant.
 func checkNoTenantChange(db *gorm.DB, tid uuid.UUID) error {
-	switch dest := db.Statement.Dest.(type) {
-	case map[string]interface{}:
+	if dest, ok := db.Statement.Dest.(map[string]interface{}); ok {
 		if v, ok := dest[column]; ok && !sameTenant(v, tid) {
 			return ErrTenantMismatch
 		}

@@ -55,11 +55,12 @@ func NewWebhookHandler(cfg *config.Config, eventProcessor *EventProcessor) *Webh
 	}
 
 	// Log webhook configuration status
-	if cfg.Stripe.WebhookSecret != "" {
+	switch {
+	case cfg.Stripe.WebhookSecret != "":
 		logging.Info(context.Background(), "[Stripe] Webhook handler initialized with secret", map[string]any{"secret_length": len(cfg.Stripe.WebhookSecret)})
-	} else if webhookSecretFile != "" {
+	case webhookSecretFile != "":
 		logging.Info(context.Background(), "[Stripe] Webhook handler will read secret from file", map[string]any{"file": webhookSecretFile})
-	} else {
+	default:
 		logging.Warn(context.Background(), "[Stripe] Webhook secret is empty - webhooks will fail signature verification", nil)
 	}
 
