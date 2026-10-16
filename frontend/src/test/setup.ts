@@ -2,6 +2,64 @@ import '@testing-library/jest-dom';
 import { cleanup } from '@testing-library/react';
 import { afterEach, vi } from 'vitest';
 
+/**
+ * In-memory Web Storage implementation.
+ *
+ * Node >= 25 ships an experimental global `localStorage`/`sessionStorage` that
+ * shadows jsdom's implementation (and throws/returns undefined without
+ * `--localstorage-file`). Install a spec-compliant in-memory Storage on both
+ * globalThis and window so tests behave identically on Node 20/22 and 25+.
+ */
+class MemoryStorage implements Storage {
+  private store = new Map<string, string>();
+
+  get length(): number {
+    return this.store.size;
+  }
+
+  clear(): void {
+    this.store.clear();
+  }
+
+  getItem(key: string): string | null {
+    return this.store.has(key) ? (this.store.get(key) as string) : null;
+  }
+
+  key(index: number): string | null {
+    return Array.from(this.store.keys())[index] ?? null;
+  }
+
+  removeItem(key: string): void {
+    this.store.delete(key);
+  }
+
+  setItem(key: string, value: string): void {
+    this.store.set(key, String(value));
+  }
+}
+
+function installStorage(name: 'localStorage' | 'sessionStorage'): void {
+  const storage = new MemoryStorage();
+  const descriptor: PropertyDescriptor = {
+    configurable: true,
+    enumerable: true,
+    get: () => storage,
+  };
+  Object.defineProperty(globalThis, name, descriptor);
+  if (typeof window !== 'undefined' && window !== globalThis) {
+    Object.defineProperty(window, name, descriptor);
+  }
+}
+
+installStorage('localStorage');
+installStorage('sessionStorage');
+
+// jsdom does not implement elementFromPoint; react-big-calendar's drag-and-drop
+// Selection handler calls it on mousedown.
+if (typeof document !== 'undefined' && !document.elementFromPoint) {
+  document.elementFromPoint = () => null;
+}
+
 // Mock @sentry/react globally (not installed as a dependency)
 vi.mock('@sentry/react', () => ({
   init: vi.fn(),
@@ -64,6 +122,8 @@ vi.mock('@tanstack/react-table', () => ({
 // Cleanup after each test
 afterEach(() => {
   cleanup();
+  localStorage.clear();
+  sessionStorage.clear();
 });
 
 // Mock window.matchMedia
