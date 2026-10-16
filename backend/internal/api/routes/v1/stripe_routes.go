@@ -35,6 +35,7 @@ func SetupStripeRoutes(router *gin.RouterGroup, cfg *routeconfigs.RouteConfig) {
 		// Apply authentication to all other Stripe routes
 		authenticated := stripe.Group("")
 		authenticated.Use(cfg.Middleware.PermMiddleware.RequireAuth())
+		authenticated.Use(cfg.Middleware.TenantMW.RequireTenant())
 		{
 			// Payment Intent endpoints - require payments permissions
 			paymentIntents := authenticated.Group("/payment-intents")

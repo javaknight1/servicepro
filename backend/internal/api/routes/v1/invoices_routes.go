@@ -20,6 +20,7 @@ func SetupInvoiceRoutes(router *gin.RouterGroup, cfg *routeconfigs.RouteConfig) 
 	// Invoice routes group with authentication
 	invoices := router.Group("/invoices")
 	invoices.Use(cfg.Middleware.PermMiddleware.RequireAuth())
+	invoices.Use(cfg.Middleware.TenantMW.RequireTenant())
 	{
 		// List invoices - requires "invoices.list" permission
 		invoices.GET("",
@@ -73,14 +74,6 @@ func SetupInvoiceRoutes(router *gin.RouterGroup, cfg *routeconfigs.RouteConfig) 
 		invoices.GET("/:id/receipt/pdf",
 			cfg.Middleware.PermMiddleware.RequirePermission(permissions.InvoicesRead),
 			cfg.Handlers.Invoice.GetReceiptPDF)
-	}
-
-	// Public invoice routes (e.g., for customer portal)
-	publicRateLimiter := middleware.NewSimpleRateLimiter(10, time.Minute)
-	public := router.Group("/public/invoices")
-	{
-		public.Use(publicRateLimiter.RateLimit())
-		public.GET("/:invoice_number", cfg.Handlers.Invoice.GetInvoice)
 	}
 
 	// Public invoice payment routes (no auth required, rate limited)

@@ -17,16 +17,35 @@ func NewPermissionRepository(db *gorm.DB) *PermissionRepository {
 	return &PermissionRepository{db: db}
 }
 
-// GetUserPermissions retrieves all permissions for a user (including role hierarchy)
-// This method checks both:
-// 1. user_roles table - for system-wide role assignments
-// 2. tenant_users table - for tenant-specific role assignments
-// Returns unique list of all permissions from both sources
-func (r *PermissionRepository) GetUserPermissions(userID uuid.UUID) ([]models.Permission, error) {
+// userRoleIDsCondition selects the role IDs that apply to a user in ONE tenant:
+//   - platform roles from user_roles (explicit, operator-assigned; the API
+//     never writes this table), and
+//   - the user's active membership role in the given tenant only.
+//
+// Roles the user holds in other tenants are never included (F-2). When the
+// tenant ID is uuid.Nil only platform roles apply.
+//
+// Bind order: userID, userID, tenantID.
+const userRoleIDsCondition = `
+		r.id IN (
+			SELECT ur.role_id FROM user_roles ur
+			WHERE ur.user_id = ?
+			AND (ur.expires_at IS NULL OR ur.expires_at > CURRENT_TIMESTAMP)
+		)
+		OR
+		r.id IN (
+			SELECT tu.role_id FROM tenant_users tu
+			WHERE tu.user_id = ?
+			AND tu.tenant_id = ?
+			AND tu.is_active = true
+		)`
+
+// GetUserPermissions retrieves the permissions a user holds in a tenant: the
+// union of the user's platform roles (user_roles) and their membership role
+// in tenant_users for that tenant only.
+func (r *PermissionRepository) GetUserPermissions(userID, tenantID uuid.UUID) ([]models.Permission, error) {
 	var permissions []models.Permission
 
-	// Use raw SQL with UNION to get permissions from both user_roles and tenant_users
-	// This ensures users get permissions from both system roles AND tenant memberships
 	query := `
 		SELECT DISTINCT p.*
 		FROM permissions p
@@ -34,55 +53,30 @@ func (r *PermissionRepository) GetUserPermissions(userID uuid.UUID) ([]models.Pe
 		INNER JOIN roles r ON r.id = rp.role_id
 		WHERE p.deleted_at IS NULL
 		AND r.deleted_at IS NULL
-		AND (
-			-- Check user_roles table (system-wide roles)
-			r.id IN (
-				SELECT ur.role_id FROM user_roles ur
-				WHERE ur.user_id = ?
-				AND (ur.expires_at IS NULL OR ur.expires_at > CURRENT_TIMESTAMP)
-			)
-			OR
-			-- Check tenant_users table (tenant-specific roles)
-			r.id IN (
-				SELECT tu.role_id FROM tenant_users tu
-				WHERE tu.user_id = ?
-				AND tu.is_active = true
-			)
+		AND (` + userRoleIDsCondition + `
 		)
 	`
 
-	if err := r.db.Raw(query, userID, userID).Scan(&permissions).Error; err != nil {
+	if err := r.db.Raw(query, userID, userID, tenantID).Scan(&permissions).Error; err != nil {
 		return nil, err
 	}
 
 	return permissions, nil
 }
 
-// GetUserRoles retrieves all active roles for a user from both user_roles and tenant_users
-func (r *PermissionRepository) GetUserRoles(userID uuid.UUID) ([]models.Role, error) {
+// GetUserRoles retrieves the user's platform roles plus their role in the given tenant.
+func (r *PermissionRepository) GetUserRoles(userID, tenantID uuid.UUID) ([]models.Role, error) {
 	var roles []models.Role
 
-	// Get roles from both user_roles (system) and tenant_users (tenant-specific)
 	query := `
 		SELECT DISTINCT r.*
 		FROM roles r
 		WHERE r.deleted_at IS NULL
-		AND (
-			r.id IN (
-				SELECT ur.role_id FROM user_roles ur
-				WHERE ur.user_id = ?
-				AND (ur.expires_at IS NULL OR ur.expires_at > CURRENT_TIMESTAMP)
-			)
-			OR
-			r.id IN (
-				SELECT tu.role_id FROM tenant_users tu
-				WHERE tu.user_id = ?
-				AND tu.is_active = true
-			)
+		AND (` + userRoleIDsCondition + `
 		)
 	`
 
-	if err := r.db.Raw(query, userID, userID).Scan(&roles).Error; err != nil {
+	if err := r.db.Raw(query, userID, userID, tenantID).Scan(&roles).Error; err != nil {
 		return nil, err
 	}
 
@@ -140,33 +134,22 @@ func (r *PermissionRepository) GetPermissionByResourceAction(resource, action st
 	return &permission, nil
 }
 
-// GetUserHighestRole retrieves the user's highest role by hierarchy level from both user_roles and tenant_users
-func (r *PermissionRepository) GetUserHighestRole(userID uuid.UUID) (*models.Role, error) {
+// GetUserHighestRole retrieves the user's highest role (by hierarchy level)
+// among their platform roles and their membership role in the given tenant.
+func (r *PermissionRepository) GetUserHighestRole(userID, tenantID uuid.UUID) (*models.Role, error) {
 	var role models.Role
 
-	// Get highest role from both user_roles and tenant_users
 	query := `
 		SELECT r.*
 		FROM roles r
 		WHERE r.deleted_at IS NULL
-		AND (
-			r.id IN (
-				SELECT ur.role_id FROM user_roles ur
-				WHERE ur.user_id = ?
-				AND (ur.expires_at IS NULL OR ur.expires_at > CURRENT_TIMESTAMP)
-			)
-			OR
-			r.id IN (
-				SELECT tu.role_id FROM tenant_users tu
-				WHERE tu.user_id = ?
-				AND tu.is_active = true
-			)
+		AND (` + userRoleIDsCondition + `
 		)
 		ORDER BY r.hierarchy_level DESC
 		LIMIT 1
 	`
 
-	if err := r.db.Raw(query, userID, userID).Scan(&role).Error; err != nil {
+	if err := r.db.Raw(query, userID, userID, tenantID).Scan(&role).Error; err != nil {
 		return nil, err
 	}
 

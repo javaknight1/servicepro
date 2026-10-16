@@ -130,7 +130,7 @@ func (pm *PermissionMiddleware) RequirePermission(permissionName string) gin.Han
 
 		// Check permission
 		ctx := context.Background()
-		hasPermission, err := pm.checker.CheckPermission(ctx, userID, permissionName)
+		hasPermission, err := pm.checker.CheckPermission(ctx, userID, tenantIDFromContext(c), permissionName)
 		if err != nil {
 			log.Printf("[ERROR] Permission check failed for user %s: %v", userID, err)
 			c.JSON(http.StatusInternalServerError, models.ErrorResponse{
@@ -183,7 +183,7 @@ func (pm *PermissionMiddleware) RequireResourceAction(resource, action string) g
 
 		// Check resource action permission
 		ctx := context.Background()
-		hasPermission, err := pm.checker.CheckResourceAction(ctx, userID, resource, action)
+		hasPermission, err := pm.checker.CheckResourceAction(ctx, userID, tenantIDFromContext(c), resource, action)
 		if err != nil {
 			log.Printf("[ERROR] Resource action check failed for user %s: %v", userID, err)
 			c.JSON(http.StatusInternalServerError, models.ErrorResponse{
@@ -232,7 +232,7 @@ func (pm *PermissionMiddleware) RequireAnyPermission(permissionNames ...string) 
 		}
 
 		ctx := context.Background()
-		hasPermission, err := pm.checker.CheckAnyPermission(ctx, userID, permissionNames...)
+		hasPermission, err := pm.checker.CheckAnyPermission(ctx, userID, tenantIDFromContext(c), permissionNames...)
 		if err != nil {
 			log.Printf("[ERROR] Any permission check failed for user %s: %v", userID, err)
 			c.JSON(http.StatusInternalServerError, models.ErrorResponse{
@@ -274,7 +274,7 @@ func (pm *PermissionMiddleware) RequireAllPermissions(permissionNames ...string)
 		}
 
 		ctx := context.Background()
-		hasPermission, err := pm.checker.CheckAllPermissions(ctx, userID, permissionNames...)
+		hasPermission, err := pm.checker.CheckAllPermissions(ctx, userID, tenantIDFromContext(c), permissionNames...)
 		if err != nil {
 			log.Printf("[ERROR] All permissions check failed for user %s: %v", userID, err)
 			c.JSON(http.StatusInternalServerError, models.ErrorResponse{
@@ -302,6 +302,7 @@ func (pm *PermissionMiddleware) RequireAllPermissions(permissionNames ...string)
 }
 
 // RequireAdmin creates middleware that checks if user is an admin (hierarchy >= 80)
+// in the current tenant (see tenantIDFromContext).
 // Usage: router.GET("/admin/dashboard", middleware.RequireAdmin(), handler)
 func (pm *PermissionMiddleware) RequireAdmin() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -316,7 +317,7 @@ func (pm *PermissionMiddleware) RequireAdmin() gin.HandlerFunc {
 		}
 
 		ctx := context.Background()
-		isAdmin, err := pm.checker.IsAdmin(ctx, userID)
+		isAdmin, err := pm.checker.IsAdmin(ctx, userID, tenantIDFromContext(c))
 		if err != nil {
 			log.Printf("[ERROR] Admin check failed for user %s: %v", userID, err)
 			c.JSON(http.StatusInternalServerError, models.ErrorResponse{
@@ -383,6 +384,20 @@ func (pm *PermissionMiddleware) RequireSuperAdmin() gin.HandlerFunc {
 
 		c.Next()
 	}
+}
+
+// tenantIDFromContext returns the tenant resolved by RequireTenant (or
+// RequireTenantFromPath). Permission checks are evaluated for that tenant
+// only. Without a tenant in context only platform roles (user_roles) apply,
+// so every tenant-scoped route MUST run a tenant middleware before any
+// permission middleware.
+func tenantIDFromContext(c *gin.Context) uuid.UUID {
+	if v, ok := c.Get(TenantIDKey); ok {
+		if id, ok := v.(uuid.UUID); ok {
+			return id
+		}
+	}
+	return uuid.Nil
 }
 
 // getUserID extracts the user ID from gin context

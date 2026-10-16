@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/javaknight1/servicepro/backend/internal/models"
+	"github.com/javaknight1/servicepro/backend/internal/tenancy"
 )
 
 const (
@@ -21,8 +22,14 @@ const (
 	TenantHeader = "X-Tenant-ID"
 )
 
-// TenantRoleKey is the context key for the user's role within the current tenant
-const TenantRoleKey = "tenant_role"
+const (
+	// TenantRoleKey is the context key for the user's role name within the current tenant
+	TenantRoleKey = "tenant_role"
+	// TenantRoleIDKey is the context key for the user's role ID within the current tenant
+	TenantRoleIDKey = "tenant_role_id"
+	// TenantRoleLevelKey is the context key for the user's role hierarchy level within the current tenant
+	TenantRoleLevelKey = "tenant_role_level"
+)
 
 // TenantRepository interface for tenant data access
 type TenantRepository interface {
@@ -45,201 +52,152 @@ func NewTenantMiddleware(tenantRepo TenantRepository) *TenantMiddleware {
 	}
 }
 
-// RequireTenant is middleware that validates and sets the tenant context
-// It expects either X-Tenant-ID header or tenant_id from JWT claims
+// RequireTenant resolves the caller's tenant and verifies membership.
+//
+// The tenant is taken from the X-Tenant-ID header; when absent, the user's
+// first active tenant is used. Either way the user MUST be an active member
+// of the tenant and the tenant must be active — the header is only a
+// selector, never a grant.
 func (tm *TenantMiddleware) RequireTenant() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Get user ID from context (set by RequireAuth)
-		userID, exists := c.Get(userIDKey)
-		if !exists {
-			c.JSON(http.StatusUnauthorized, models.ErrorResponse{
-				Error:   "unauthorized",
-				Message: "User not authenticated",
-			})
-			c.Abort()
-			return
-		}
-
-		userUUID, ok := userID.(uuid.UUID)
+		userUUID, ok := authenticatedUserID(c)
 		if !ok {
-			c.JSON(http.StatusUnauthorized, models.ErrorResponse{
-				Error:   "unauthorized",
-				Message: "Invalid user ID format",
-			})
-			c.Abort()
 			return
 		}
 
-		// Try to get tenant ID from header first
-		tenantIDStr := c.GetHeader(TenantHeader)
 		var tenantID uuid.UUID
-		var err error
-
-		if tenantIDStr != "" {
-			tenantID, err = uuid.Parse(tenantIDStr)
+		if tenantIDStr := c.GetHeader(TenantHeader); tenantIDStr != "" {
+			parsed, err := uuid.Parse(tenantIDStr)
 			if err != nil {
-				c.JSON(http.StatusBadRequest, models.ErrorResponse{
+				c.AbortWithStatusJSON(http.StatusBadRequest, models.ErrorResponse{
 					Error:   "invalid_tenant_id",
 					Message: "Invalid tenant ID format",
 				})
-				c.Abort()
 				return
 			}
+			tenantID = parsed
 		} else {
-			// Try to get from JWT claims (set during token generation with tenant context)
-			tenantIDFromClaims, exists := c.Get("jwt_tenant_id")
-			if exists {
-				tenantID, ok = tenantIDFromClaims.(uuid.UUID)
-				if !ok {
-					// Try string format
-					if tidStr, ok := tenantIDFromClaims.(string); ok {
-						tenantID, err = uuid.Parse(tidStr)
-						if err != nil {
-							c.JSON(http.StatusBadRequest, models.ErrorResponse{
-								Error:   "invalid_tenant_id",
-								Message: "Invalid tenant ID in token",
-							})
-							c.Abort()
-							return
-						}
-					}
-				}
-			}
-		}
-
-		// If no tenant ID provided, try to get user's default tenant
-		if tenantID == uuid.Nil {
 			tenants, err := tm.tenantRepo.GetUserTenants(c.Request.Context(), userUUID)
 			if err != nil {
-				log.Printf("[ERROR] Failed to get user tenants: %v", err)
-				c.JSON(http.StatusInternalServerError, models.ErrorResponse{
+				log.Printf("[TENANT] Failed to get user tenants: %v", err)
+				c.AbortWithStatusJSON(http.StatusInternalServerError, models.ErrorResponse{
 					Error:   "tenant_lookup_failed",
 					Message: "Failed to determine tenant context",
 				})
-				c.Abort()
 				return
 			}
-
 			if len(tenants) == 0 {
-				c.JSON(http.StatusForbidden, models.ErrorResponse{
+				c.AbortWithStatusJSON(http.StatusForbidden, models.ErrorResponse{
 					Error:   "no_tenant_access",
 					Message: "User does not belong to any organization",
 				})
-				c.Abort()
 				return
 			}
-
-			// Use first tenant as default (could be enhanced to use user preferences)
 			tenantID = tenants[0].ID
 		}
 
-		// Verify user has access to this tenant and get their role
-		membership, err := tm.tenantRepo.GetUserTenantMembership(c.Request.Context(), userUUID, tenantID)
-		if err != nil {
-			if membership == nil {
-				log.Printf("[SECURITY] User %s attempted to access tenant %s without membership",
-					userUUID, tenantID)
-				c.JSON(http.StatusForbidden, models.ErrorResponse{
-					Error:   "tenant_access_denied",
-					Message: "You do not have access to this organization",
-				})
-				c.Abort()
-				return
-			}
-			log.Printf("[ERROR] Failed to verify tenant membership: %v", err)
-			c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-				Error:   "tenant_verification_failed",
-				Message: "Failed to verify tenant access",
-			})
-			c.Abort()
+		if !tm.bindTenant(c, userUUID, tenantID) {
 			return
 		}
-
-		// Get tenant details
-		tenant, err := tm.tenantRepo.GetByID(c.Request.Context(), tenantID)
-		if err != nil {
-			log.Printf("[ERROR] Failed to get tenant: %v", err)
-			c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-				Error:   "tenant_lookup_failed",
-				Message: "Failed to load organization",
-			})
-			c.Abort()
-			return
-		}
-
-		if tenant == nil || !tenant.IsActive {
-			c.JSON(http.StatusForbidden, models.ErrorResponse{
-				Error:   "tenant_inactive",
-				Message: "This organization is not active",
-			})
-			c.Abort()
-			return
-		}
-
-		// Set tenant context
-		c.Set(TenantIDKey, tenantID)
-		c.Set(TenantKey, tenant)
-
-		// Set user's tenant role in context
-		if membership.Role.Name != "" {
-			log.Printf("[DEBUG] RequireTenant: setting tenant_role=%s for user=%s in tenant=%s",
-				membership.Role.Name, userUUID, tenantID)
-			c.Set(TenantRoleKey, membership.Role.Name)
-		} else {
-			log.Printf("[DEBUG] RequireTenant: membership.Role.Name is empty for user=%s in tenant=%s (role_id=%s)",
-				userUUID, tenantID, membership.RoleID)
-		}
-
 		c.Next()
 	}
 }
 
-// OptionalTenant is middleware that sets tenant context if available, but doesn't require it
-func (tm *TenantMiddleware) OptionalTenant() gin.HandlerFunc {
+// RequireTenantFromPath binds the tenant named by a path parameter (e.g. the
+// :id in /tenants/:id/members) after verifying that the caller is an active
+// member of it. The path is authoritative for these routes; an X-Tenant-ID
+// header is ignored. Non-members get 404 so tenant IDs can't be probed.
+func (tm *TenantMiddleware) RequireTenantFromPath(param string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Try to get tenant ID from header
-		tenantIDStr := c.GetHeader(TenantHeader)
-		if tenantIDStr == "" {
-			c.Next()
-			return
-		}
-
-		tenantID, err := uuid.Parse(tenantIDStr)
-		if err != nil {
-			// Invalid format, just continue without tenant context
-			c.Next()
-			return
-		}
-
-		// Get user ID if available
-		userID, exists := c.Get(userIDKey)
-		if !exists {
-			c.Next()
-			return
-		}
-
-		userUUID, ok := userID.(uuid.UUID)
+		userUUID, ok := authenticatedUserID(c)
 		if !ok {
-			c.Next()
 			return
 		}
 
-		// Verify membership (silently fail if not)
-		belongsTo, _ := tm.tenantRepo.UserBelongsToTenant(c.Request.Context(), userUUID, tenantID)
-		if !belongsTo {
-			c.Next()
+		tenantID, err := uuid.Parse(c.Param(param))
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusBadRequest, models.ErrorResponse{
+				Error:   "invalid_tenant_id",
+				Message: "Invalid tenant ID format",
+			})
 			return
 		}
 
-		// Set tenant context
-		tenant, err := tm.tenantRepo.GetByID(c.Request.Context(), tenantID)
-		if err == nil && tenant != nil && tenant.IsActive {
-			c.Set(TenantIDKey, tenantID)
-			c.Set(TenantKey, tenant)
+		if !tm.bindTenant(c, userUUID, tenantID) {
+			return
 		}
-
 		c.Next()
 	}
+}
+
+// bindTenant verifies membership and stores the tenant in both the gin
+// context and the request context (for repositories). Returns false (and
+// aborts) on failure.
+func (tm *TenantMiddleware) bindTenant(c *gin.Context, userID, tenantID uuid.UUID) bool {
+	ctx := c.Request.Context()
+
+	membership, err := tm.tenantRepo.GetUserTenantMembership(ctx, userID, tenantID)
+	if err != nil || membership == nil {
+		if membership == nil {
+			log.Printf("[SECURITY] User %s attempted to access tenant %s without membership", userID, tenantID)
+			c.AbortWithStatusJSON(http.StatusForbidden, models.ErrorResponse{
+				Error:   "tenant_access_denied",
+				Message: "You do not have access to this organization",
+			})
+			return false
+		}
+		log.Printf("[TENANT] Failed to verify tenant membership: %v", err)
+		c.AbortWithStatusJSON(http.StatusInternalServerError, models.ErrorResponse{
+			Error:   "tenant_verification_failed",
+			Message: "Failed to verify tenant access",
+		})
+		return false
+	}
+
+	tenant, err := tm.tenantRepo.GetByID(ctx, tenantID)
+	if err != nil || tenant == nil || !tenant.IsActive {
+		if err != nil {
+			log.Printf("[TENANT] Failed to load tenant %s: %v", tenantID, err)
+		}
+		c.AbortWithStatusJSON(http.StatusForbidden, models.ErrorResponse{
+			Error:   "tenant_inactive",
+			Message: "This organization is not active",
+		})
+		return false
+	}
+
+	c.Set(TenantIDKey, tenantID)
+	c.Set(TenantKey, tenant)
+	c.Set(TenantRoleIDKey, membership.RoleID)
+	if membership.Role != nil {
+		c.Set(TenantRoleKey, membership.Role.Name)
+		c.Set(TenantRoleLevelKey, membership.Role.HierarchyLevel)
+	} else {
+		c.Set(TenantRoleLevelKey, 0)
+	}
+	c.Request = c.Request.WithContext(tenancy.WithTenant(ctx, tenantID))
+	return true
+}
+
+// authenticatedUserID returns the user set by RequireAuth or aborts with 401.
+func authenticatedUserID(c *gin.Context) (uuid.UUID, bool) {
+	userID, exists := c.Get(userIDKey)
+	if !exists {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, models.ErrorResponse{
+			Error:   "unauthorized",
+			Message: "User not authenticated",
+		})
+		return uuid.Nil, false
+	}
+	userUUID, ok := userID.(uuid.UUID)
+	if !ok {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, models.ErrorResponse{
+			Error:   "unauthorized",
+			Message: "Invalid user ID format",
+		})
+		return uuid.Nil, false
+	}
+	return userUUID, true
 }
 
 // GetTenantID is a helper to get the current tenant ID from context
@@ -255,6 +213,17 @@ func GetTenantID(c *gin.Context) (uuid.UUID, error) {
 	}
 
 	return tenantID, nil
+}
+
+// GetTenantRoleLevel returns the caller's role hierarchy level in the current
+// tenant (0 when unknown).
+func GetTenantRoleLevel(c *gin.Context) int {
+	if v, ok := c.Get(TenantRoleLevelKey); ok {
+		if level, ok := v.(int); ok {
+			return level
+		}
+	}
+	return 0
 }
 
 // GetTenant is a helper to get the current tenant from context

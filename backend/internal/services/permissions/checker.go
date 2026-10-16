@@ -3,11 +3,13 @@ package permissions
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
+	"gorm.io/gorm"
 
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/repository"
@@ -15,15 +17,20 @@ import (
 )
 
 const (
-	// Cache key prefix for user permissions
+	// Cache key prefix for user permissions. Full key:
+	//   permissions:user:<userID>:tenant:<tenantID>
+	// Permissions are evaluated per tenant (F-2), so the cache must be too.
 	permissionsCachePrefix = "permissions:user:"
 	// Cache TTL for permissions (5 minutes)
 	permissionsCacheTTL = 5 * time.Minute
-	// Maximum cache refresh attempts
-	maxCacheRefreshAttempts = 3
 )
 
-// PermissionChecker provides permission checking with Redis caching
+// PermissionChecker provides permission checking with Redis caching.
+//
+// Every check is evaluated for ONE tenant: the user's platform roles
+// (user_roles) plus their membership role in that tenant. Roles held in other
+// tenants never apply. Pass uuid.Nil as the tenant to evaluate platform roles
+// only.
 type PermissionChecker struct {
 	repo  *repository.PermissionRepository
 	redis *redis.Client
@@ -37,10 +44,8 @@ func NewPermissionChecker(repo *repository.PermissionRepository, redisClient *re
 	}
 }
 
-// CheckPermission checks if a user has a specific permission
-// Returns true if the user has the permission, false otherwise
-// Uses Redis caching for performance
-func (pc *PermissionChecker) CheckPermission(ctx context.Context, userID uuid.UUID, permissionName string) (bool, error) {
+// CheckPermission checks if a user has a specific permission in a tenant.
+func (pc *PermissionChecker) CheckPermission(ctx context.Context, userID, tenantID uuid.UUID, permissionName string) (bool, error) {
 	start := time.Now()
 	defer func() {
 		duration := time.Since(start)
@@ -49,20 +54,18 @@ func (pc *PermissionChecker) CheckPermission(ctx context.Context, userID uuid.UU
 		}
 	}()
 
-	// Get user permissions from cache or DB
-	permissions, err := pc.getUserPermissions(ctx, userID)
+	permissions, err := pc.getUserPermissions(ctx, userID, tenantID)
 	if err != nil {
 		return false, fmt.Errorf("failed to get user permissions: %w", err)
 	}
 
-	// Check if user has the permission
 	checker := models.NewPermissionChecker(permissions)
 	return checker.Has(permissionName), nil
 }
 
-// CheckResourceAction checks if a user can perform an action on a resource
+// CheckResourceAction checks if a user can perform an action on a resource in a tenant.
 // Supports wildcard permissions (e.g., "users.*" or "*.*")
-func (pc *PermissionChecker) CheckResourceAction(ctx context.Context, userID uuid.UUID, resource, action string) (bool, error) {
+func (pc *PermissionChecker) CheckResourceAction(ctx context.Context, userID, tenantID uuid.UUID, resource, action string) (bool, error) {
 	start := time.Now()
 	defer func() {
 		duration := time.Since(start)
@@ -71,20 +74,18 @@ func (pc *PermissionChecker) CheckResourceAction(ctx context.Context, userID uui
 		}
 	}()
 
-	// Get user permissions from cache or DB
-	permissions, err := pc.getUserPermissions(ctx, userID)
+	permissions, err := pc.getUserPermissions(ctx, userID, tenantID)
 	if err != nil {
 		return false, fmt.Errorf("failed to get user permissions: %w", err)
 	}
 
-	// Check if user can perform action on resource
 	checker := models.NewPermissionChecker(permissions)
 	return checker.Can(resource, action), nil
 }
 
-// CheckAnyPermission checks if a user has any of the specified permissions
-func (pc *PermissionChecker) CheckAnyPermission(ctx context.Context, userID uuid.UUID, permissionNames ...string) (bool, error) {
-	permissions, err := pc.getUserPermissions(ctx, userID)
+// CheckAnyPermission checks if a user has any of the specified permissions in a tenant
+func (pc *PermissionChecker) CheckAnyPermission(ctx context.Context, userID, tenantID uuid.UUID, permissionNames ...string) (bool, error) {
+	permissions, err := pc.getUserPermissions(ctx, userID, tenantID)
 	if err != nil {
 		return false, fmt.Errorf("failed to get user permissions: %w", err)
 	}
@@ -93,9 +94,9 @@ func (pc *PermissionChecker) CheckAnyPermission(ctx context.Context, userID uuid
 	return checker.CanAny(permissionNames...), nil
 }
 
-// CheckAllPermissions checks if a user has all of the specified permissions
-func (pc *PermissionChecker) CheckAllPermissions(ctx context.Context, userID uuid.UUID, permissionNames ...string) (bool, error) {
-	permissions, err := pc.getUserPermissions(ctx, userID)
+// CheckAllPermissions checks if a user has all of the specified permissions in a tenant
+func (pc *PermissionChecker) CheckAllPermissions(ctx context.Context, userID, tenantID uuid.UUID, permissionNames ...string) (bool, error) {
+	permissions, err := pc.getUserPermissions(ctx, userID, tenantID)
 	if err != nil {
 		return false, fmt.Errorf("failed to get user permissions: %w", err)
 	}
@@ -104,83 +105,81 @@ func (pc *PermissionChecker) CheckAllPermissions(ctx context.Context, userID uui
 	return checker.CanAll(permissionNames...), nil
 }
 
-// GetUserPermissions retrieves all permissions for a user (from cache or DB)
-func (pc *PermissionChecker) GetUserPermissions(ctx context.Context, userID uuid.UUID) ([]models.Permission, error) {
-	return pc.getUserPermissions(ctx, userID)
+// GetUserPermissions retrieves all permissions for a user in a tenant (from cache or DB)
+func (pc *PermissionChecker) GetUserPermissions(ctx context.Context, userID, tenantID uuid.UUID) ([]models.Permission, error) {
+	return pc.getUserPermissions(ctx, userID, tenantID)
 }
 
-// GetUserRoles retrieves all active roles for a user
-func (pc *PermissionChecker) GetUserRoles(ctx context.Context, userID uuid.UUID) ([]models.Role, error) {
-	roles, err := pc.repo.GetUserRoles(userID)
+// GetUserRoles retrieves the user's platform roles plus their role in the tenant
+func (pc *PermissionChecker) GetUserRoles(ctx context.Context, userID, tenantID uuid.UUID) ([]models.Role, error) {
+	roles, err := pc.repo.GetUserRoles(userID, tenantID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user roles: %w", err)
 	}
 	return roles, nil
 }
 
-// GetUserHighestRole retrieves the user's highest role by hierarchy level
-func (pc *PermissionChecker) GetUserHighestRole(ctx context.Context, userID uuid.UUID) (*models.Role, error) {
-	role, err := pc.repo.GetUserHighestRole(userID)
+// GetUserHighestRole retrieves the user's highest role in a tenant by hierarchy level
+func (pc *PermissionChecker) GetUserHighestRole(ctx context.Context, userID, tenantID uuid.UUID) (*models.Role, error) {
+	role, err := pc.repo.GetUserHighestRole(userID, tenantID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user highest role: %w", err)
 	}
 	return role, nil
 }
 
-// InvalidateUserPermissions invalidates the cached permissions for a user
-// Call this when user roles or permissions are modified
+// InvalidateUserPermissions invalidates the cached permissions for a user in
+// EVERY tenant. Call this when user roles or memberships are modified.
 func (pc *PermissionChecker) InvalidateUserPermissions(ctx context.Context, userID uuid.UUID) error {
-	cacheKey := pc.getCacheKey(userID)
-	err := pc.redis.Del(ctx, cacheKey).Err()
-	if err != nil {
-		logging.Warn(ctx, "[PERMISSIONS] Failed to invalidate permissions cache for user", map[string]any{"user_id": userID, "error": err})
+	pattern := fmt.Sprintf("%s%s:*", permissionsCachePrefix, userID.String())
+	var keys []string
+	iter := pc.redis.Scan(ctx, 0, pattern, 100).Iterator()
+	for iter.Next(ctx) {
+		keys = append(keys, iter.Val())
+	}
+	if err := iter.Err(); err != nil {
+		logging.Warn(ctx, "[PERMISSIONS] Failed to scan permissions cache for user", map[string]any{"user_id": userID, "error": err})
 		return err
 	}
-	logging.Info(ctx, "[PERMISSIONS] Invalidated permissions cache for user", map[string]any{"user_id": userID})
+	if len(keys) > 0 {
+		if err := pc.redis.Del(ctx, keys...).Err(); err != nil {
+			logging.Warn(ctx, "[PERMISSIONS] Failed to invalidate permissions cache for user", map[string]any{"user_id": userID, "error": err})
+			return err
+		}
+	}
+	logging.Info(ctx, "[PERMISSIONS] Invalidated permissions cache for user", map[string]any{"user_id": userID, "keys": len(keys)})
 	return nil
 }
 
-// RefreshUserPermissions forces a refresh of cached permissions for a user
-func (pc *PermissionChecker) RefreshUserPermissions(ctx context.Context, userID uuid.UUID) error {
-	// First invalidate existing cache
+// RefreshUserPermissions forces a refresh of cached permissions for a user in a tenant
+func (pc *PermissionChecker) RefreshUserPermissions(ctx context.Context, userID, tenantID uuid.UUID) error {
 	if err := pc.InvalidateUserPermissions(ctx, userID); err != nil {
 		return err
 	}
-
-	// Then fetch fresh permissions (which will cache them)
-	_, err := pc.getUserPermissions(ctx, userID)
+	_, err := pc.getUserPermissions(ctx, userID, tenantID)
 	return err
 }
 
 // getUserPermissions retrieves permissions from cache or DB
-// This is the core caching logic
-func (pc *PermissionChecker) getUserPermissions(ctx context.Context, userID uuid.UUID) ([]models.Permission, error) {
-	cacheKey := pc.getCacheKey(userID)
+func (pc *PermissionChecker) getUserPermissions(ctx context.Context, userID, tenantID uuid.UUID) ([]models.Permission, error) {
+	cacheKey := pc.getCacheKey(userID, tenantID)
 
-	// Try to get from cache first
 	cached, err := pc.redis.Get(ctx, cacheKey).Result()
 	if err == nil {
-		// Cache hit - deserialize and return
 		var permissions []models.Permission
 		if err := json.Unmarshal([]byte(cached), &permissions); err != nil {
 			logging.Warn(ctx, "[PERMISSIONS] Failed to unmarshal cached permissions for user", map[string]any{"user_id": userID, "error": err})
-			// Fall through to fetch from DB
 		} else {
-			logging.Info(ctx, "[PERMISSIONS] Cache hit for user permissions", map[string]any{"user_id": userID})
 			return permissions, nil
 		}
 	}
 
-	// Cache miss or error - fetch from database
-	logging.Info(ctx, "[PERMISSIONS] Cache miss for user permissions", map[string]any{"user_id": userID})
-	permissions, err := pc.repo.GetUserPermissions(userID)
+	permissions, err := pc.repo.GetUserPermissions(userID, tenantID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch permissions from database: %w", err)
 	}
 
-	// Cache the permissions
-	if err := pc.cachePermissions(ctx, userID, permissions); err != nil {
-		// Log error but don't fail the request
+	if err := pc.cachePermissions(ctx, cacheKey, permissions); err != nil {
 		logging.Warn(ctx, "[PERMISSIONS] Failed to cache permissions for user", map[string]any{"user_id": userID, "error": err})
 	}
 
@@ -188,51 +187,52 @@ func (pc *PermissionChecker) getUserPermissions(ctx context.Context, userID uuid
 }
 
 // cachePermissions stores permissions in Redis cache
-func (pc *PermissionChecker) cachePermissions(ctx context.Context, userID uuid.UUID, permissions []models.Permission) error {
-	cacheKey := pc.getCacheKey(userID)
-
-	// Serialize permissions to JSON
+func (pc *PermissionChecker) cachePermissions(ctx context.Context, cacheKey string, permissions []models.Permission) error {
 	data, err := json.Marshal(permissions)
 	if err != nil {
 		return fmt.Errorf("failed to marshal permissions: %w", err)
 	}
 
-	// Store in Redis with TTL
-	err = pc.redis.Set(ctx, cacheKey, data, permissionsCacheTTL).Err()
-	if err != nil {
+	if err := pc.redis.Set(ctx, cacheKey, data, permissionsCacheTTL).Err(); err != nil {
 		return fmt.Errorf("failed to set cache: %w", err)
 	}
-
-	logging.Info(ctx, "[PERMISSIONS] Cached permissions for user", map[string]any{"user_id": userID, "ttl": permissionsCacheTTL})
 	return nil
 }
 
-// getCacheKey generates the Redis cache key for a user's permissions
-func (pc *PermissionChecker) getCacheKey(userID uuid.UUID) string {
-	return fmt.Sprintf("%s%s", permissionsCachePrefix, userID.String())
+// getCacheKey generates the Redis cache key for a user's permissions in a tenant
+func (pc *PermissionChecker) getCacheKey(userID, tenantID uuid.UUID) string {
+	return fmt.Sprintf("%s%s:tenant:%s", permissionsCachePrefix, userID.String(), tenantID.String())
 }
 
-// IsAdmin checks if a user has admin privileges (hierarchy level >= 80)
-func (pc *PermissionChecker) IsAdmin(ctx context.Context, userID uuid.UUID) (bool, error) {
-	role, err := pc.repo.GetUserHighestRole(userID)
+// IsAdmin checks if a user has admin privileges (hierarchy level >= 80) in a tenant
+func (pc *PermissionChecker) IsAdmin(ctx context.Context, userID, tenantID uuid.UUID) (bool, error) {
+	role, err := pc.repo.GetUserHighestRole(userID, tenantID)
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return false, nil
+	}
 	if err != nil {
 		return false, fmt.Errorf("failed to get user highest role: %w", err)
 	}
 	return role.IsAdmin(), nil
 }
 
-// IsSuperAdmin checks if a user has super admin privileges (hierarchy level = 100)
+// IsSuperAdmin checks if a user has super admin privileges (hierarchy level = 100).
+// Super admin is a PLATFORM role: only user_roles is considered, never a
+// tenant membership role (super_admin must not be obtainable via a tenant).
 func (pc *PermissionChecker) IsSuperAdmin(ctx context.Context, userID uuid.UUID) (bool, error) {
-	role, err := pc.repo.GetUserHighestRole(userID)
+	role, err := pc.repo.GetUserHighestRole(userID, uuid.Nil)
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return false, nil
+	}
 	if err != nil {
 		return false, fmt.Errorf("failed to get user highest role: %w", err)
 	}
 	return role.IsSuperAdmin(), nil
 }
 
-// GetPermissionsByResource returns all permissions for a specific resource
-func (pc *PermissionChecker) GetPermissionsByResource(ctx context.Context, userID uuid.UUID, resource string) ([]models.Permission, error) {
-	permissions, err := pc.getUserPermissions(ctx, userID)
+// GetPermissionsByResource returns all permissions for a specific resource in a tenant
+func (pc *PermissionChecker) GetPermissionsByResource(ctx context.Context, userID, tenantID uuid.UUID, resource string) ([]models.Permission, error) {
+	permissions, err := pc.getUserPermissions(ctx, userID, tenantID)
 	if err != nil {
 		return nil, err
 	}

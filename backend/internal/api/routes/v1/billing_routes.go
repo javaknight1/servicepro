@@ -27,11 +27,11 @@ func SetupBillingRoutes(router *gin.RouterGroup, cfg *routeconfigs.RouteConfig) 
 	}
 
 	// Billing routes under tenants (protected)
-	tenants := router.Group("/tenants")
+	tenants := router.Group("/tenants/:id")
 	tenants.Use(cfg.Middleware.PermMiddleware.RequireAuth())
-	tenants.Use(cfg.Middleware.TenantMW.RequireTenant())
+	tenants.Use(cfg.Middleware.TenantMW.RequireTenantFromPath("id"))
 	{
-		billing := tenants.Group("/:id/billing")
+		billing := tenants.Group("/billing")
 		{
 			// Setup intent for adding payment methods - requires membership.billing permission
 			billing.POST("/setup-intent",

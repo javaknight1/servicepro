@@ -11,6 +11,7 @@ import (
 func SetupQuoteRoutes(router *gin.RouterGroup, cfg *routeconfigs.RouteConfig) {
 	quotes := router.Group("/quotes")
 	quotes.Use(cfg.Middleware.PermMiddleware.RequireAuth())
+	quotes.Use(cfg.Middleware.TenantMW.RequireTenant())
 	{
 		// Create quote - requires "quotes.create" permission
 		quotes.POST("",

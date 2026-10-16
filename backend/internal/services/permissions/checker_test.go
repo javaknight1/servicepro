@@ -192,38 +192,38 @@ func TestPermissionChecker_CheckPermission(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("User has permission", func(t *testing.T) {
-		hasPermission, err := checker.CheckPermission(ctx, user.ID, "users.create")
+		hasPermission, err := checker.CheckPermission(ctx, user.ID, uuid.Nil, "users.create")
 		assert.NoError(t, err)
 		assert.True(t, hasPermission)
 	})
 
 	t.Run("User does not have permission", func(t *testing.T) {
-		hasPermission, err := checker.CheckPermission(ctx, user.ID, "users.delete")
+		hasPermission, err := checker.CheckPermission(ctx, user.ID, uuid.Nil, "users.delete")
 		assert.NoError(t, err)
 		assert.False(t, hasPermission)
 	})
 
 	t.Run("Cache is used on second call", func(t *testing.T) {
 		// First call - populates cache
-		hasPermission, err := checker.CheckPermission(ctx, user.ID, "users.create")
+		hasPermission, err := checker.CheckPermission(ctx, user.ID, uuid.Nil, "users.create")
 		assert.NoError(t, err)
 		assert.True(t, hasPermission)
 
 		// Verify cache was populated
-		cacheKey := checker.getCacheKey(user.ID)
+		cacheKey := checker.getCacheKey(user.ID, uuid.Nil)
 		cached, err := redisClient.Get(ctx, cacheKey).Result()
 		assert.NoError(t, err)
 		assert.NotEmpty(t, cached)
 
 		// Second call - should use cache
-		hasPermission, err = checker.CheckPermission(ctx, user.ID, "users.create")
+		hasPermission, err = checker.CheckPermission(ctx, user.ID, uuid.Nil, "users.create")
 		assert.NoError(t, err)
 		assert.True(t, hasPermission)
 	})
 
 	t.Run("Non-existent user", func(t *testing.T) {
 		nonExistentID := uuid.New()
-		hasPermission, err := checker.CheckPermission(ctx, nonExistentID, "users.create")
+		hasPermission, err := checker.CheckPermission(ctx, nonExistentID, uuid.Nil, "users.create")
 		assert.NoError(t, err)
 		assert.False(t, hasPermission)
 	})
@@ -253,13 +253,13 @@ func TestPermissionChecker_CheckResourceAction(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("User can perform action on resource", func(t *testing.T) {
-		canPerform, err := checker.CheckResourceAction(ctx, user.ID, "users", "update")
+		canPerform, err := checker.CheckResourceAction(ctx, user.ID, uuid.Nil, "users", "update")
 		assert.NoError(t, err)
 		assert.True(t, canPerform)
 	})
 
 	t.Run("User cannot perform action on resource", func(t *testing.T) {
-		canPerform, err := checker.CheckResourceAction(ctx, user.ID, "users", "delete")
+		canPerform, err := checker.CheckResourceAction(ctx, user.ID, uuid.Nil, "users", "delete")
 		assert.NoError(t, err)
 		assert.False(t, canPerform)
 	})
@@ -289,13 +289,13 @@ func TestPermissionChecker_CheckAnyPermission(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("User has one of the permissions", func(t *testing.T) {
-		hasAny, err := checker.CheckAnyPermission(ctx, user.ID, "users.read", "users.delete")
+		hasAny, err := checker.CheckAnyPermission(ctx, user.ID, uuid.Nil, "users.read", "users.delete")
 		assert.NoError(t, err)
 		assert.True(t, hasAny)
 	})
 
 	t.Run("User has none of the permissions", func(t *testing.T) {
-		hasAny, err := checker.CheckAnyPermission(ctx, user.ID, "users.delete", "users.create")
+		hasAny, err := checker.CheckAnyPermission(ctx, user.ID, uuid.Nil, "users.delete", "users.create")
 		assert.NoError(t, err)
 		assert.False(t, hasAny)
 	})
@@ -328,13 +328,13 @@ func TestPermissionChecker_CheckAllPermissions(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("User has all permissions", func(t *testing.T) {
-		hasAll, err := checker.CheckAllPermissions(ctx, user.ID, "users.read", "users.create")
+		hasAll, err := checker.CheckAllPermissions(ctx, user.ID, uuid.Nil, "users.read", "users.create")
 		assert.NoError(t, err)
 		assert.True(t, hasAll)
 	})
 
 	t.Run("User missing one permission", func(t *testing.T) {
-		hasAll, err := checker.CheckAllPermissions(ctx, user.ID, "users.read", "users.delete")
+		hasAll, err := checker.CheckAllPermissions(ctx, user.ID, uuid.Nil, "users.read", "users.delete")
 		assert.NoError(t, err)
 		assert.False(t, hasAll)
 	})
@@ -356,7 +356,7 @@ func TestPermissionChecker_IsAdmin(t *testing.T) {
 		err := db.Exec("INSERT INTO user_roles (user_id, role_id) VALUES (?, ?)", user.ID, adminRole.ID).Error
 		require.NoError(t, err)
 
-		isAdmin, err := checker.IsAdmin(ctx, user.ID)
+		isAdmin, err := checker.IsAdmin(ctx, user.ID, uuid.Nil)
 		assert.NoError(t, err)
 		assert.True(t, isAdmin)
 	})
@@ -367,7 +367,7 @@ func TestPermissionChecker_IsAdmin(t *testing.T) {
 		err := db.Exec("INSERT INTO user_roles (user_id, role_id) VALUES (?, ?)", user.ID, userRole.ID).Error
 		require.NoError(t, err)
 
-		isAdmin, err := checker.IsAdmin(ctx, user.ID)
+		isAdmin, err := checker.IsAdmin(ctx, user.ID, uuid.Nil)
 		assert.NoError(t, err)
 		assert.False(t, isAdmin)
 	})
@@ -430,12 +430,12 @@ func TestPermissionChecker_InvalidateCache(t *testing.T) {
 	ctx := context.Background()
 
 	// Populate cache
-	hasPermission, err := checker.CheckPermission(ctx, user.ID, "users.read")
+	hasPermission, err := checker.CheckPermission(ctx, user.ID, uuid.Nil, "users.read")
 	assert.NoError(t, err)
 	assert.True(t, hasPermission)
 
 	// Verify cache exists
-	cacheKey := checker.getCacheKey(user.ID)
+	cacheKey := checker.getCacheKey(user.ID, uuid.Nil)
 	cached, err := redisClient.Get(ctx, cacheKey).Result()
 	assert.NoError(t, err)
 	assert.NotEmpty(t, cached)
@@ -473,11 +473,11 @@ func TestPermissionChecker_RefreshPermissions(t *testing.T) {
 	ctx := context.Background()
 
 	// Refresh permissions (should populate cache)
-	err = checker.RefreshUserPermissions(ctx, user.ID)
+	err = checker.RefreshUserPermissions(ctx, user.ID, uuid.Nil)
 	assert.NoError(t, err)
 
 	// Verify cache exists
-	cacheKey := checker.getCacheKey(user.ID)
+	cacheKey := checker.getCacheKey(user.ID, uuid.Nil)
 	cached, err := redisClient.Get(ctx, cacheKey).Result()
 	assert.NoError(t, err)
 	assert.NotEmpty(t, cached)
@@ -514,11 +514,11 @@ func TestPermissionChecker_CacheTTL(t *testing.T) {
 	ctx := context.Background()
 
 	// Populate cache
-	_, err = checker.CheckPermission(ctx, user.ID, "users.read")
+	_, err = checker.CheckPermission(ctx, user.ID, uuid.Nil, "users.read")
 	assert.NoError(t, err)
 
 	// Check TTL
-	cacheKey := checker.getCacheKey(user.ID)
+	cacheKey := checker.getCacheKey(user.ID, uuid.Nil)
 	ttl, err := redisClient.TTL(ctx, cacheKey).Result()
 	assert.NoError(t, err)
 	assert.Greater(t, ttl, time.Duration(0))
@@ -550,7 +550,58 @@ func TestPermissionChecker_ExpiredRoleAssignment(t *testing.T) {
 	ctx := context.Background()
 
 	// User should not have permission because role assignment is expired
-	hasPermission, err := checker.CheckPermission(ctx, user.ID, "users.read")
+	hasPermission, err := checker.CheckPermission(ctx, user.ID, uuid.Nil, "users.read")
 	assert.NoError(t, err)
 	assert.False(t, hasPermission)
+}
+
+// TestPermissionChecker_TenantScoped verifies F-2: a role held in tenant B
+// never grants permissions in tenant A, and the cache is keyed per tenant.
+func TestPermissionChecker_TenantScoped(t *testing.T) {
+	db := setupTestDB(t)
+	redisClient, mr := setupTestRedis(t)
+	defer mr.Close()
+
+	checker := NewPermissionChecker(repository.NewPermissionRepository(db), redisClient)
+	ctx := context.Background()
+
+	user := createTestUser(t, db, "member@example.com")
+	perm := createTestPermission(t, db, "customers.delete", "customers", "delete")
+	admin := createTestRole(t, db, "admin", 80)
+	guest := createTestRole(t, db, "guest", 20)
+	require.NoError(t, db.Exec("INSERT INTO role_permissions (role_id, permission_id) VALUES (?, ?)", admin.ID, perm.ID).Error)
+
+	tenantA, tenantB := uuid.New(), uuid.New()
+	require.NoError(t, db.Exec("INSERT INTO tenant_users (id, tenant_id, user_id, role_id, is_active) VALUES (?, ?, ?, ?, 1)", uuid.New(), tenantA, user.ID, guest.ID).Error)
+	require.NoError(t, db.Exec("INSERT INTO tenant_users (id, tenant_id, user_id, role_id, is_active) VALUES (?, ?, ?, ?, 1)", uuid.New(), tenantB, user.ID, admin.ID).Error)
+
+	ok, err := checker.CheckPermission(ctx, user.ID, tenantB, "customers.delete")
+	require.NoError(t, err)
+	assert.True(t, ok, "admin in tenant B")
+
+	ok, err = checker.CheckPermission(ctx, user.ID, tenantA, "customers.delete")
+	require.NoError(t, err)
+	assert.False(t, ok, "admin role in tenant B must not apply in tenant A")
+
+	ok, err = checker.CheckPermission(ctx, user.ID, uuid.Nil, "customers.delete")
+	require.NoError(t, err)
+	assert.False(t, ok, "tenant memberships must not apply without a tenant")
+
+	isAdmin, err := checker.IsAdmin(ctx, user.ID, tenantA)
+	require.NoError(t, err)
+	assert.False(t, isAdmin)
+	isAdmin, err = checker.IsAdmin(ctx, user.ID, tenantB)
+	require.NoError(t, err)
+	assert.True(t, isAdmin)
+
+	isSuper, err := checker.IsSuperAdmin(ctx, user.ID)
+	require.NoError(t, err)
+	assert.False(t, isSuper)
+
+	// Separate cache entries per tenant, and invalidation clears all of them.
+	assert.True(t, mr.Exists(checker.getCacheKey(user.ID, tenantA)))
+	assert.True(t, mr.Exists(checker.getCacheKey(user.ID, tenantB)))
+	require.NoError(t, checker.InvalidateUserPermissions(ctx, user.ID))
+	assert.False(t, mr.Exists(checker.getCacheKey(user.ID, tenantA)))
+	assert.False(t, mr.Exists(checker.getCacheKey(user.ID, tenantB)))
 }
