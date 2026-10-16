@@ -190,6 +190,22 @@ changes. commit-msg enforces the prefix list. Don't bypass with `--no-verify`.
 Legacy `minor:`/`major:` subjects (≤ v0.7.0) are still understood by the bump script; don't use them.
 Format: `type: short description (T0XX)`. One logical change per commit; commit after every task.
 
+## Commit size, worktrees & pushing (standard since 2026-10-16)
+
+- **Small items, one commit each.** Split work into the smallest item that still leaves the app
+  working (one bug, one endpoint, one migration + its code, one test fix). Finish the item, then
+  commit it as a single commit, so each commit is one complete, passing item. Don't batch several
+  items into one commit or leave an item spread across several "WIP" commits. A large TODO task is
+  several commits that share its ID (`fix: … (T118)`, `test: … (T118)`).
+- **Parallel agents work in git worktrees.** When more than one agent (or session) changes code at
+  the same time, each one works in its own worktree and branch (`isolation: "worktree"`, or
+  `git worktree add`), never in the main checkout. Give parallel agents disjoint areas and, for
+  schema changes, disjoint migration-number ranges. Agents commit on their branch and never push
+  `master`; the coordinator merges.
+- **Push often.** The coordinator merges finished commits into `master` as they land (not only when
+  a whole batch is done), runs the gates, and pushes `master` right away. Nothing finished should
+  sit unpushed for long. Remove a worktree and its branch once it is merged.
+
 ## Releases & hosting
 
 Tag-driven: `make bump` → commit `VERSION` → `git tag vX.Y.Z && git push origin vX.Y.Z`. Full process
