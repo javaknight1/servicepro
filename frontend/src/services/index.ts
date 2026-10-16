@@ -21,6 +21,7 @@ export type {
   InvoiceListResponse,
   InvoiceStats,
   InvoiceLineItem,
+  InvoicePayment,
   PaymentRequest,
 } from './invoiceService';
 export { InvoiceStatus } from './invoiceService';

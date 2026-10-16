@@ -10,7 +10,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import React from 'react';
@@ -44,6 +44,7 @@ vi.mock('@services/invoiceService', () => ({
     PARTIALLY_PAID: 'partially_paid',
     OVERDUE: 'overdue',
     CANCELLED: 'cancelled',
+    REFUNDED: 'refunded',
   },
 }));
 
@@ -533,86 +534,211 @@ describe('Invoice & Payment Integration', () => {
   });
 
   describe('Payment Recording', () => {
-    it('should record a full payment', async () => {
-      const user = userEvent.setup({ delay: null });
-      vi.mocked(invoiceService.getInvoice).mockResolvedValue(mockInvoices[1]); // Sent invoice
-      vi.mocked(invoiceService.recordPayment).mockResolvedValue({
-        ...mockInvoices[1],
-        status: 'paid' as const,
-        amount_paid: 540,
-        amount_due: 0,
-      });
-
+    const renderInvoice = async (invoiceId: string) => {
       const { InvoiceDetailPage } =
         await import('../../src/pages/Invoices/InvoiceDetailPage');
-
       render(
-        <MemoryRouter initialEntries={['/invoices/invoice-2']}>
+        <MemoryRouter initialEntries={[`/invoices/${invoiceId}`]}>
           <Routes>
             <Route path="/invoices/:id" element={<InvoiceDetailPage />} />
           </Routes>
         </MemoryRouter>
       );
+      await waitFor(() => {
+        expect(invoiceService.getInvoice).toHaveBeenCalledWith(invoiceId);
+      });
+    };
+
+    const openPaymentDialog = async (
+      user: ReturnType<typeof userEvent.setup>
+    ) => {
+      await user.click(
+        await screen.findByRole('button', { name: /record payment/i })
+      );
+      return screen.findByRole('dialog');
+    };
+
+    it('records a full payment against /payments and reloads the invoice', async () => {
+      const user = userEvent.setup({ delay: null });
+      vi.mocked(invoiceService.getInvoice).mockResolvedValue(mockInvoices[1]); // Sent, $540 due
+      vi.mocked(invoiceService.recordPayment).mockResolvedValue({
+        id: 'payment-1',
+        invoice_id: 'invoice-2',
+        amount: '540.00',
+        payment_date: '2024-01-05T00:00:00Z',
+        payment_method: 'cash',
+        created_at: '2024-01-05T00:00:00Z',
+      });
+
+      await renderInvoice('invoice-2');
+      const dialog = await openPaymentDialog(user);
+
+      // The amount defaults to the balance due
+      expect(within(dialog).getByLabelText(/amount/i)).toHaveValue(540);
+      await user.selectOptions(
+        within(dialog).getByLabelText(/payment method/i),
+        'cash'
+      );
+      await user.type(within(dialog).getByLabelText(/reference/i), 'R-77');
+      await user.click(
+        within(dialog).getByRole('button', { name: /record payment/i })
+      );
 
       await waitFor(() => {
-        expect(invoiceService.getInvoice).toHaveBeenCalledWith('invoice-2');
+        expect(invoiceService.recordPayment).toHaveBeenCalledWith(
+          'invoice-2',
+          expect.objectContaining({
+            amount: 540,
+            payment_method: 'cash',
+            reference_number: 'R-77',
+          })
+        );
       });
-
-      // Find and click record payment button
-      const paymentButton = screen.queryByRole('button', {
-        name: /record payment|add payment|pay/i,
+      // The invoice is reloaded for its new status and balance
+      await waitFor(() => {
+        expect(invoiceService.getInvoice).toHaveBeenCalledTimes(2);
       });
-      if (paymentButton) {
-        await user.click(paymentButton);
-
-        // Fill payment details if dialog appears
-        const amountInput = screen.queryByLabelText(/amount/i);
-        if (amountInput) {
-          await user.clear(amountInput);
-          await user.type(amountInput, '540');
-        }
-
-        const methodSelect = screen.queryByLabelText(/method/i);
-        if (methodSelect) {
-          await user.click(methodSelect);
-          const cashOption = screen.queryByText(/cash|check|credit/i);
-          if (cashOption) {
-            await user.click(cashOption);
-          }
-        }
-
-        // Submit payment
-        const submitButton = screen.queryByRole('button', {
-          name: /submit|confirm|record/i,
-        });
-        if (submitButton) {
-          await user.click(submitButton);
-        }
-
-        await waitFor(() => {
-          expect(invoiceService.recordPayment).toHaveBeenCalledWith(
-            'invoice-2',
-            expect.objectContaining({
-              amount: 540,
-            })
-          );
-        });
-      }
     });
 
-    it('should record a partial payment', async () => {
+    it('records a partial payment', async () => {
       const user = userEvent.setup({ delay: null });
-      vi.mocked(invoiceService.getInvoice).mockResolvedValue(mockInvoices[1]); // Sent invoice
+      vi.mocked(invoiceService.getInvoice).mockResolvedValue(mockInvoices[1]);
       vi.mocked(invoiceService.recordPayment).mockResolvedValue({
+        id: 'payment-2',
+        invoice_id: 'invoice-2',
+        amount: '200.00',
+        payment_date: '2024-01-05T00:00:00Z',
+        created_at: '2024-01-05T00:00:00Z',
+      });
+
+      await renderInvoice('invoice-2');
+      const dialog = await openPaymentDialog(user);
+      const amount = within(dialog).getByLabelText(/amount/i);
+      await user.clear(amount);
+      await user.type(amount, '200');
+      await user.click(
+        within(dialog).getByRole('button', { name: /record payment/i })
+      );
+
+      await waitFor(() => {
+        expect(invoiceService.recordPayment).toHaveBeenCalledWith(
+          'invoice-2',
+          expect.objectContaining({ amount: 200 })
+        );
+      });
+    });
+
+    it('stops an amount over the balance before calling the API', async () => {
+      const user = userEvent.setup({ delay: null });
+      vi.mocked(invoiceService.getInvoice).mockResolvedValue(mockInvoices[1]);
+
+      await renderInvoice('invoice-2');
+      const dialog = await openPaymentDialog(user);
+      const amount = within(dialog).getByLabelText(/amount/i);
+      await user.clear(amount);
+      await user.type(amount, '600');
+      await user.click(
+        within(dialog).getByRole('button', { name: /record payment/i })
+      );
+
+      expect(
+        await within(dialog).findByText(/more than the balance due/i)
+      ).toBeInTheDocument();
+      expect(invoiceService.recordPayment).not.toHaveBeenCalled();
+    });
+
+    it('shows the API reason for a rejected payment (400)', async () => {
+      const user = userEvent.setup({ delay: null });
+      vi.mocked(invoiceService.getInvoice).mockResolvedValue(mockInvoices[1]);
+      vi.mocked(invoiceService.recordPayment).mockRejectedValue({
+        response: {
+          status: 400,
+          data: { error: 'payment amount exceeds outstanding balance' },
+        },
+      });
+
+      await renderInvoice('invoice-2');
+      const dialog = await openPaymentDialog(user);
+      await user.click(
+        within(dialog).getByRole('button', { name: /record payment/i })
+      );
+
+      expect(
+        await within(dialog).findByText(
+          'Payment amount exceeds outstanding balance.'
+        )
+      ).toBeInTheDocument();
+    });
+
+    it('tells the user to reload when the invoice changed (409)', async () => {
+      const user = userEvent.setup({ delay: null });
+      vi.mocked(invoiceService.getInvoice).mockResolvedValue(mockInvoices[1]);
+      vi.mocked(invoiceService.recordPayment).mockRejectedValue({
+        response: {
+          status: 409,
+          data: {
+            error: "paid, cancelled and refunded invoices can't be edited",
+          },
+        },
+      });
+
+      await renderInvoice('invoice-2');
+      const dialog = await openPaymentDialog(user);
+      await user.click(
+        within(dialog).getByRole('button', { name: /record payment/i })
+      );
+
+      expect(
+        await within(dialog).findByText(/reload the invoice/i)
+      ).toBeInTheDocument();
+    });
+
+    it('offers no payment or cancel action on a paid invoice', async () => {
+      vi.mocked(invoiceService.getInvoice).mockResolvedValue(mockInvoices[2]);
+
+      await renderInvoice('invoice-3');
+      await screen.findByRole('heading', { name: /^payments$/i });
+      expect(
+        screen.queryByRole('button', { name: /record payment/i })
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: /cancel invoice/i })
+      ).not.toBeInTheDocument();
+    });
+
+    it('lists the payments recorded on the invoice', async () => {
+      vi.mocked(invoiceService.getInvoice).mockResolvedValue({
+        ...mockInvoices[2],
+        payments: [
+          {
+            id: 'payment-9',
+            invoice_id: 'invoice-3',
+            amount: '1620.00',
+            payment_date: '2024-01-10T00:00:00Z',
+            payment_method: 'check',
+            reference_number: 'CHK-1001',
+            created_at: '2024-01-10T00:00:00Z',
+          },
+        ],
+      });
+
+      await renderInvoice('invoice-3');
+      expect(await screen.findByText('CHK-1001')).toBeInTheDocument();
+      expect(screen.getByText('Check')).toBeInTheDocument();
+    });
+  });
+
+  describe('Invoice Cancellation', () => {
+    it('requires a reason and sends it to the API', async () => {
+      const user = userEvent.setup({ delay: null });
+      vi.mocked(invoiceService.getInvoice).mockResolvedValue(mockInvoices[1]);
+      vi.mocked(invoiceService.cancelInvoice).mockResolvedValue({
         ...mockInvoices[1],
-        status: 'partially_paid' as const,
-        amount_paid: 200,
-        amount_due: 340,
+        status: 'cancelled' as const,
       });
 
       const { InvoiceDetailPage } =
         await import('../../src/pages/Invoices/InvoiceDetailPage');
-
       render(
         <MemoryRouter initialEntries={['/invoices/invoice-2']}>
           <Routes>
@@ -621,38 +747,32 @@ describe('Invoice & Payment Integration', () => {
         </MemoryRouter>
       );
 
+      await user.click(
+        await screen.findByRole('button', { name: /cancel invoice/i })
+      );
+      const dialog = await screen.findByRole('dialog');
+      const submit = within(dialog).getByRole('button', {
+        name: /cancel invoice/i,
+      });
+
+      await user.click(submit);
+      expect(
+        await within(dialog).findByText(/enter a reason/i)
+      ).toBeInTheDocument();
+      expect(invoiceService.cancelInvoice).not.toHaveBeenCalled();
+
+      await user.type(
+        within(dialog).getByLabelText(/reason/i),
+        'Customer went with another quote'
+      );
+      await user.click(submit);
+
       await waitFor(() => {
-        expect(invoiceService.getInvoice).toHaveBeenCalled();
+        expect(invoiceService.cancelInvoice).toHaveBeenCalledWith(
+          'invoice-2',
+          'Customer went with another quote'
+        );
       });
-
-      const paymentButton = screen.queryByRole('button', {
-        name: /record payment|add payment|pay/i,
-      });
-      if (paymentButton) {
-        await user.click(paymentButton);
-
-        const amountInput = screen.queryByLabelText(/amount/i);
-        if (amountInput) {
-          await user.clear(amountInput);
-          await user.type(amountInput, '200'); // Partial payment
-        }
-
-        const submitButton = screen.queryByRole('button', {
-          name: /submit|confirm|record/i,
-        });
-        if (submitButton) {
-          await user.click(submitButton);
-        }
-
-        await waitFor(() => {
-          expect(invoiceService.recordPayment).toHaveBeenCalledWith(
-            'invoice-2',
-            expect.objectContaining({
-              amount: 200,
-            })
-          );
-        });
-      }
     });
   });
 
@@ -879,55 +999,6 @@ describe('Invoice & Payment Integration', () => {
         .setup()
         .click(screen.getByRole('button', { name: /try again/i }));
       expect(invoiceService.getInvoices).toHaveBeenCalledTimes(1);
-    });
-
-    it('should handle payment recording error', async () => {
-      const user = userEvent.setup({ delay: null });
-      vi.mocked(invoiceService.getInvoice).mockResolvedValue(mockInvoices[1]);
-      vi.mocked(invoiceService.recordPayment).mockRejectedValue({
-        response: { data: { message: 'Payment processing failed' } },
-      });
-
-      const { InvoiceDetailPage } =
-        await import('../../src/pages/Invoices/InvoiceDetailPage');
-
-      render(
-        <MemoryRouter initialEntries={['/invoices/invoice-2']}>
-          <Routes>
-            <Route path="/invoices/:id" element={<InvoiceDetailPage />} />
-          </Routes>
-        </MemoryRouter>
-      );
-
-      await waitFor(() => {
-        expect(invoiceService.getInvoice).toHaveBeenCalled();
-      });
-
-      const paymentButton = screen.queryByRole('button', {
-        name: /record payment|add payment|pay/i,
-      });
-      if (paymentButton) {
-        await user.click(paymentButton);
-
-        const amountInput = screen.queryByLabelText(/amount/i);
-        if (amountInput) {
-          await user.type(amountInput, '540');
-        }
-
-        const submitButton = screen.queryByRole('button', {
-          name: /submit|confirm|record/i,
-        });
-        if (submitButton) {
-          await user.click(submitButton);
-        }
-
-        await waitFor(() => {
-          const errorMessage = screen.queryByText(/error|failed|processing/i);
-          if (errorMessage) {
-            expect(errorMessage).toBeInTheDocument();
-          }
-        });
-      }
     });
   });
 });

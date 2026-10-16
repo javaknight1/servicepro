@@ -13,8 +13,14 @@ import {
 } from '@services/paymentReminderService';
 import { getErrorMessage } from '@/utils/error';
 import {
+  CancelInvoiceModal,
+  InvoicePaymentHistory,
+  RecordPaymentModal,
+} from '@components/invoices';
+import {
   formatDollars,
   lineTotal,
+  toAmount,
   percentToTaxRate,
   roundToCents,
   taxRateToPercent,
@@ -34,6 +40,8 @@ import {
   Download,
   FileText,
   Bell,
+  DollarSign,
+  Ban,
 } from 'lucide-react';
 
 interface InvoiceFormData {
@@ -96,6 +104,9 @@ export function InvoiceDetailPage() {
   const [showReminderConfirmation, setShowReminderConfirmation] =
     useState(false);
   const [customerName, setCustomerName] = useState<string>('');
+  const [invoice, setInvoice] = useState<Invoice | null>(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
 
   const loadCustomers = async () => {
     setIsLoadingCustomers(true);
@@ -128,6 +139,7 @@ export function InvoiceDetailPage() {
       try {
         const invoice = await invoiceService.getInvoice(invoiceId);
         if (isStale()) return;
+        setInvoice(invoice);
         // Convert tax_rate from decimal (0.07) back to percentage (7) for display
         const taxRatePercent = taxRateToPercent(invoice.tax_rate);
         setFormData({
@@ -396,6 +408,35 @@ export function InvoiceDetailPage() {
       setIsDownloadingReceipt(false);
     }
   };
+
+  const handlePaymentRecorded = () => {
+    setShowPaymentModal(false);
+    if (id) loadInvoice(id);
+  };
+
+  const handleInvoiceCancelled = () => {
+    setShowCancelModal(false);
+    if (id) loadInvoice(id);
+  };
+
+  const amountDue = toAmount(invoice?.amount_due);
+  const amountPaid = toAmount(invoice?.amount_paid);
+  // Mirrors the API: payments only on open invoices with a balance; only
+  // unpaid invoices can be cancelled (paid ones are refunded instead).
+  const canRecordPayment =
+    [
+      InvoiceStatus.SENT,
+      InvoiceStatus.VIEWED,
+      InvoiceStatus.OVERDUE,
+      InvoiceStatus.PARTIALLY_PAID,
+    ].includes(invoiceStatus) && amountDue > 0;
+  const canCancel =
+    [
+      InvoiceStatus.DRAFT,
+      InvoiceStatus.SENT,
+      InvoiceStatus.VIEWED,
+      InvoiceStatus.OVERDUE,
+    ].includes(invoiceStatus) && amountPaid === 0;
 
   // Update customer email when customer selection changes
   const handleCustomerChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -773,6 +814,38 @@ export function InvoiceDetailPage() {
             </div>
           </div>
 
+          {!isNew && invoice && (
+            <InvoicePaymentHistory
+              invoice={invoice}
+              actions={
+                <>
+                  {canRecordPayment && (
+                    <Button
+                      type="button"
+                      variant="primary"
+                      onClick={() => setShowPaymentModal(true)}
+                      className="flex items-center gap-2"
+                    >
+                      <DollarSign className="h-4 w-4" />
+                      Record Payment
+                    </Button>
+                  )}
+                  {canCancel && (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => setShowCancelModal(true)}
+                      className="flex items-center gap-2"
+                    >
+                      <Ban className="h-4 w-4" />
+                      Cancel Invoice
+                    </Button>
+                  )}
+                </>
+              }
+            />
+          )}
+
           {/* Payment Reminders Section - only for non-draft invoices */}
           {!isNew && invoiceStatus !== InvoiceStatus.DRAFT && (
             <div className="bg-white rounded-lg border border-neutral-200 p-6">
@@ -934,6 +1007,25 @@ export function InvoiceDetailPage() {
             </div>
           </div>
         </form>
+
+        {!isNew && id && (
+          <>
+            <RecordPaymentModal
+              isOpen={showPaymentModal}
+              invoiceId={id}
+              amountDue={amountDue}
+              onClose={() => setShowPaymentModal(false)}
+              onRecorded={handlePaymentRecorded}
+            />
+            <CancelInvoiceModal
+              isOpen={showCancelModal}
+              invoiceId={id}
+              invoiceNumber={invoiceNumber}
+              onClose={() => setShowCancelModal(false)}
+              onCancelled={handleInvoiceCancelled}
+            />
+          </>
+        )}
 
         {/* Send Reminder Confirmation Modal */}
         {showReminderConfirmation && (

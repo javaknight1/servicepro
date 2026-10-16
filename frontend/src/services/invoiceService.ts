@@ -48,8 +48,23 @@ export interface Invoice {
   notes?: string;
   terms?: string;
   lines: InvoiceLineItem[];
+  /** Payments recorded against the invoice (manual and Stripe). */
+  payments?: InvoicePayment[];
   created_at: string;
   updated_at: string;
+}
+
+/** A payment on an invoice. Amounts are API decimals (strings, e.g. "12.50"). */
+export interface InvoicePayment {
+  id: string;
+  invoice_id: string;
+  amount: string | number;
+  payment_date: string;
+  payment_method?: string;
+  reference_number?: string;
+  notes?: string;
+  stripe_payment_intent_id?: string;
+  created_at: string;
 }
 
 export interface InvoiceFilters {
@@ -81,11 +96,14 @@ export interface InvoiceStats {
   total_revenue: number;
 }
 
+/** Body of POST /invoices/{id}/payments (a manually recorded payment). */
 export interface PaymentRequest {
   amount: number;
-  payment_method: string;
-  reference?: string;
+  payment_method?: string;
+  reference_number?: string;
   notes?: string;
+  /** RFC 3339; the API defaults to now. */
+  payment_date?: string;
 }
 
 export interface PDFDownloadResponse {
@@ -149,16 +167,27 @@ class InvoiceService {
     return response.data;
   }
 
-  async recordPayment(id: string, payment: PaymentRequest): Promise<Invoice> {
-    const response = await api.post<Invoice>(
-      `${this.basePath}/${id}/payment`,
+  /**
+   * Record a cash/check/other payment. 400 = overpayment, invoice not open
+   * for payments or invalid amount; 409 = invoice closed or status changed.
+   * Returns the payment; reload the invoice for its new status and balance.
+   */
+  async recordPayment(
+    id: string,
+    payment: PaymentRequest
+  ): Promise<InvoicePayment> {
+    const response = await api.post<InvoicePayment>(
+      `${this.basePath}/${id}/payments`,
       payment
     );
     return response.data;
   }
 
-  async cancelInvoice(id: string): Promise<Invoice> {
-    const response = await api.post<Invoice>(`${this.basePath}/${id}/cancel`);
+  /** Cancel an invoice; the API requires a reason. */
+  async cancelInvoice(id: string, reason: string): Promise<Invoice> {
+    const response = await api.post<Invoice>(`${this.basePath}/${id}/cancel`, {
+      reason,
+    });
     return response.data;
   }
 
