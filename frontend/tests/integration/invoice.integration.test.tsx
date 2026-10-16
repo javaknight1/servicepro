@@ -31,6 +31,7 @@ vi.mock('@services/invoiceService', () => ({
     deleteInvoice: vi.fn(),
     sendInvoice: vi.fn(),
     recordPayment: vi.fn(),
+    recordRefund: vi.fn(),
     cancelInvoice: vi.fn(),
     getStats: vi.fn(),
     downloadInvoicePDF: vi.fn(),
@@ -48,6 +49,11 @@ vi.mock('@services/invoiceService', () => ({
   },
 }));
 
+// Tenant permissions come from GET /tenants/:id/me; the tests set them.
+vi.mock('@/utils/tenantPermissions', () => ({
+  useTenantPermissions: vi.fn(),
+}));
+
 vi.mock('@services/customerService', () => ({
   customerService: {
     getCustomers: vi.fn(),
@@ -59,6 +65,9 @@ vi.mock('@services/customerService', () => ({
 import { useAuthStore, useTenantStore, useSidebarStore } from '@store';
 import { invoiceService } from '@services/invoiceService';
 import { customerService } from '@services/customerService';
+import { useTenantPermissions } from '@/utils/tenantPermissions';
+
+let grantedPermissions = new Set<string>();
 
 // =============================================================================
 // Test Data
@@ -294,6 +303,20 @@ const setupMocks = () => {
   });
 
   vi.mocked(invoiceService.getStats).mockResolvedValue(mockInvoiceStats);
+
+  grantedPermissions = new Set(['payments.create', 'payments.refund']);
+  vi.mocked(useTenantPermissions).mockImplementation(() => {
+    const can = (permission: string) => grantedPermissions.has(permission);
+    return {
+      can,
+      canManageMembers: false,
+      canUpdateTenant: false,
+      canChangePlan: false,
+      canManageBilling: false,
+      canDeleteTenant: false,
+      isLoading: false,
+    };
+  });
 
   vi.mocked(customerService.getCustomers).mockResolvedValue({
     customers: [mockCustomer],
@@ -773,6 +796,140 @@ describe('Invoice & Payment Integration', () => {
           'Customer went with another quote'
         );
       });
+    });
+  });
+
+  describe('Refunds', () => {
+    const renderInvoice = async (invoiceId: string) => {
+      const { InvoiceDetailPage } =
+        await import('../../src/pages/Invoices/InvoiceDetailPage');
+      render(
+        <MemoryRouter initialEntries={[`/invoices/${invoiceId}`]}>
+          <Routes>
+            <Route path="/invoices/:id" element={<InvoiceDetailPage />} />
+          </Routes>
+        </MemoryRouter>
+      );
+      await waitFor(() => {
+        expect(invoiceService.getInvoice).toHaveBeenCalledWith(invoiceId);
+      });
+    };
+
+    it('records a refund at POST /refunds and reloads the invoice', async () => {
+      const user = userEvent.setup({ delay: null });
+      vi.mocked(invoiceService.getInvoice).mockResolvedValue(mockInvoices[2]); // Paid $1,620
+      vi.mocked(invoiceService.recordRefund).mockResolvedValue({
+        id: 'refund-1',
+        invoice_id: 'invoice-3',
+        amount: '1620.00',
+        refund_date: '2024-01-12T00:00:00Z',
+        method: 'check',
+        created_at: '2024-01-12T00:00:00Z',
+      });
+
+      await renderInvoice('invoice-3');
+      await user.click(
+        await screen.findByRole('button', { name: /record refund/i })
+      );
+      const dialog = await screen.findByRole('dialog');
+      expect(within(dialog).getByLabelText(/refund amount/i)).toHaveValue(1620);
+      await user.type(
+        within(dialog).getByLabelText(/reason/i),
+        'Warranty callback'
+      );
+      await user.click(
+        within(dialog).getByRole('button', { name: /record refund/i })
+      );
+
+      await waitFor(() => {
+        expect(invoiceService.recordRefund).toHaveBeenCalledWith(
+          'invoice-3',
+          expect.objectContaining({
+            amount: 1620,
+            method: 'check',
+            reason: 'Warranty callback',
+          })
+        );
+      });
+      await waitFor(() => {
+        expect(invoiceService.getInvoice).toHaveBeenCalledTimes(2);
+      });
+    });
+
+    it('stops a refund larger than the amount paid', async () => {
+      const user = userEvent.setup({ delay: null });
+      vi.mocked(invoiceService.getInvoice).mockResolvedValue(mockInvoices[2]);
+
+      await renderInvoice('invoice-3');
+      await user.click(
+        await screen.findByRole('button', { name: /record refund/i })
+      );
+      const dialog = await screen.findByRole('dialog');
+      const amount = within(dialog).getByLabelText(/refund amount/i);
+      await user.clear(amount);
+      await user.type(amount, '2000');
+      await user.click(
+        within(dialog).getByRole('button', { name: /record refund/i })
+      );
+
+      expect(
+        await within(dialog).findByText(/more than the amount paid/i)
+      ).toBeInTheDocument();
+      expect(invoiceService.recordRefund).not.toHaveBeenCalled();
+    });
+
+    it('hides the refund action without payments.refund', async () => {
+      grantedPermissions = new Set(['payments.create']);
+      vi.mocked(invoiceService.getInvoice).mockResolvedValue(mockInvoices[2]);
+
+      await renderInvoice('invoice-3');
+      await screen.findByRole('heading', { name: /^payments$/i });
+      expect(
+        screen.queryByRole('button', { name: /record refund/i })
+      ).not.toBeInTheDocument();
+    });
+
+    it('hides the refund action when nothing was paid', async () => {
+      vi.mocked(invoiceService.getInvoice).mockResolvedValue(mockInvoices[1]);
+
+      await renderInvoice('invoice-2');
+      await screen.findByRole('heading', { name: /^payments$/i });
+      expect(
+        screen.queryByRole('button', { name: /record refund/i })
+      ).not.toBeInTheDocument();
+    });
+
+    it('shows a refunded invoice with its refunds', async () => {
+      vi.mocked(invoiceService.getInvoice).mockResolvedValue({
+        ...mockInvoices[2],
+        status: 'refunded' as const,
+        amount_paid: 0,
+        amount_due: 1620,
+        refunds: [
+          {
+            id: 'refund-7',
+            invoice_id: 'invoice-3',
+            amount: '1620.00',
+            refund_date: '2024-01-12T00:00:00Z',
+            method: 'cash',
+            reason: 'Job cancelled after payment',
+            created_at: '2024-01-12T00:00:00Z',
+          },
+        ],
+      });
+
+      await renderInvoice('invoice-3');
+      expect(await screen.findByText('Refunded')).toBeInTheDocument();
+      expect(
+        screen.getByText('Job cancelled after payment')
+      ).toBeInTheDocument();
+      expect(screen.getByText('-$1,620.00')).toBeInTheDocument();
+      // Nothing left to refund, pay or cancel
+      expect(
+        screen.queryByRole('button', {
+          name: /record refund|record payment|cancel invoice/i,
+        })
+      ).not.toBeInTheDocument();
     });
   });
 

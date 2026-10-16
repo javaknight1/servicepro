@@ -27,6 +27,19 @@ describe('invoiceService money calls', () => {
     });
   });
 
+  it('records a refund at POST /invoices/{id}/refunds', async () => {
+    await invoiceService.recordRefund('inv-1', {
+      amount: 10,
+      method: 'cash',
+      reason: 'Overcharged',
+    });
+    expect(api.post).toHaveBeenCalledWith('/v1/invoices/inv-1/refunds', {
+      amount: 10,
+      method: 'cash',
+      reason: 'Overcharged',
+    });
+  });
+
   it('sends the required reason when cancelling', async () => {
     await invoiceService.cancelInvoice('inv-1', 'Duplicate invoice');
     expect(api.post).toHaveBeenCalledWith('/v1/invoices/inv-1/cancel', {
