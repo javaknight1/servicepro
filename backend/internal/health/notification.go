@@ -396,40 +396,6 @@ func (l *LogChannel) Send(ctx context.Context, notification Notification) error 
 	return nil
 }
 
-// EmailChannel sends notifications via email (placeholder)
-type EmailChannel struct {
-	SMTPHost string
-	SMTPPort int
-	From     string
-	To       []string
-	Username string
-	Password string
-}
-
-// NewEmailChannel creates a new email notification channel
-func NewEmailChannel(host string, port int, from string, to []string) *EmailChannel {
-	return &EmailChannel{
-		SMTPHost: host,
-		SMTPPort: port,
-		From:     from,
-		To:       to,
-	}
-}
-
-func (e *EmailChannel) Name() string {
-	return "email"
-}
-
-func (e *EmailChannel) Send(ctx context.Context, notification Notification) error {
-	// Placeholder - actual implementation would use net/smtp
-	logging.Info(ctx, "Would send email", map[string]any{
-		"to":     e.To,
-		"title":  notification.Title,
-		"source": "email",
-	})
-	return nil
-}
-
 // PagerDutyChannel sends notifications to PagerDuty
 type PagerDutyChannel struct {
 	RoutingKey string

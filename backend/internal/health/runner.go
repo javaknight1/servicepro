@@ -171,13 +171,6 @@ func (r *Runner) getInterval(name string, defaultInterval time.Duration) time.Du
 	return r.defaultInt
 }
 
-// SetInterval sets the interval for a specific check
-func (r *Runner) SetInterval(name string, interval time.Duration) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	r.intervals[name] = interval
-}
-
 // UptimeTracker tracks service uptime and availability
 type UptimeTracker struct {
 	mu            sync.RWMutex

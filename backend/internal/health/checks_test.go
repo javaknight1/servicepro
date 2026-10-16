@@ -3,9 +3,6 @@ package health
 import (
 	"context"
 	"database/sql"
-	"errors"
-	"net/http"
-	"net/http/httptest"
 	"sync"
 	"testing"
 	"time"
@@ -58,23 +55,6 @@ func TestCheckerRegister(t *testing.T) {
 
 	if _, exists := checker.checks["test-check"]; !exists {
 		t.Error("Check not registered")
-	}
-}
-
-func TestCheckerUnregister(t *testing.T) {
-	checker := NewChecker("1.0.0", "test")
-
-	checker.Register(CheckConfig{
-		Name: "test-check",
-		Check: func(ctx context.Context) CheckResult {
-			return CheckResult{Status: StatusHealthy}
-		},
-	})
-
-	checker.Unregister("test-check")
-
-	if _, exists := checker.checks["test-check"]; exists {
-		t.Error("Check should be unregistered")
 	}
 }
 
@@ -228,40 +208,6 @@ func TestCheckerGetReportUnhealthy(t *testing.T) {
 	}
 }
 
-func TestCheckerIsHealthy(t *testing.T) {
-	checker := NewChecker("1.0.0", "test")
-
-	checker.Register(CheckConfig{
-		Name:     "check",
-		Critical: true,
-		Check: func(ctx context.Context) CheckResult {
-			return CheckResult{Status: StatusHealthy}
-		},
-	})
-
-	ctx := context.Background()
-	if !checker.IsHealthy(ctx) {
-		t.Error("Expected IsHealthy to return true")
-	}
-}
-
-func TestCheckerIsReady(t *testing.T) {
-	checker := NewChecker("1.0.0", "test")
-
-	checker.Register(CheckConfig{
-		Name:     "check",
-		Critical: false,
-		Check: func(ctx context.Context) CheckResult {
-			return CheckResult{Status: StatusDegraded}
-		},
-	})
-
-	ctx := context.Background()
-	if !checker.IsReady(ctx) {
-		t.Error("Expected IsReady to return true for degraded status")
-	}
-}
-
 func TestCheckerStatusChangeCallback(t *testing.T) {
 	t.Skip("Skipping: flaky test with async callback ordering issues")
 	checker := NewChecker("1.0.0", "test")
@@ -331,74 +277,6 @@ func TestCheckerStatusChangeCallback(t *testing.T) {
 	}
 }
 
-func TestHTTPCheck(t *testing.T) {
-	// Create test server
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer server.Close()
-
-	check := HTTPCheck("test-service", server.URL, http.StatusOK)
-
-	ctx := context.Background()
-	result := check(ctx)
-
-	if result.Status != StatusHealthy {
-		t.Errorf("Status = %s, want healthy", result.Status)
-	}
-}
-
-func TestHTTPCheckFailure(t *testing.T) {
-	// Create test server that returns 500
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusInternalServerError)
-	}))
-	defer server.Close()
-
-	check := HTTPCheck("test-service", server.URL, http.StatusOK)
-
-	ctx := context.Background()
-	result := check(ctx)
-
-	if result.Status != StatusUnhealthy {
-		t.Errorf("Status = %s, want unhealthy", result.Status)
-	}
-}
-
-func TestHTTPCheckUnreachable(t *testing.T) {
-	check := HTTPCheck("test-service", "http://localhost:99999", http.StatusOK)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
-	defer cancel()
-
-	result := check(ctx)
-
-	if result.Status != StatusUnhealthy {
-		t.Errorf("Status = %s, want unhealthy", result.Status)
-	}
-}
-
-func TestTCPCheck(t *testing.T) {
-	// Create a test TCP server
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
-	defer server.Close()
-
-	// Extract host and port from server URL
-	// Note: This is a simplified test using HTTP server as TCP endpoint
-
-	check := TCPCheck("test-tcp", "localhost", 80) // Using port 80 which may or may not work
-
-	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
-	defer cancel()
-
-	result := check(ctx)
-
-	// We just verify the check runs without panic
-	if result.Name != "test-tcp" {
-		t.Errorf("Name = %s, want test-tcp", result.Name)
-	}
-}
-
 func TestMemoryCheck(t *testing.T) {
 	check := MemoryCheck(80.0, 95.0)
 
@@ -420,36 +298,6 @@ func TestMemoryCheck(t *testing.T) {
 
 	if _, ok := result.Details["goroutines"]; !ok {
 		t.Error("Expected goroutines in details")
-	}
-}
-
-func TestCustomCheck(t *testing.T) {
-	check := CustomCheck("custom", func(ctx context.Context) error {
-		return nil
-	})
-
-	ctx := context.Background()
-	result := check(ctx)
-
-	if result.Status != StatusHealthy {
-		t.Errorf("Status = %s, want healthy", result.Status)
-	}
-}
-
-func TestCustomCheckError(t *testing.T) {
-	check := CustomCheck("custom", func(ctx context.Context) error {
-		return errors.New("custom error")
-	})
-
-	ctx := context.Background()
-	result := check(ctx)
-
-	if result.Status != StatusUnhealthy {
-		t.Errorf("Status = %s, want unhealthy", result.Status)
-	}
-
-	if result.Error != "custom error" {
-		t.Errorf("Error = %s, want 'custom error'", result.Error)
 	}
 }
 

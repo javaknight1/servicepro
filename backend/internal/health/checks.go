@@ -5,8 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"net"
-	"net/http"
 	"runtime"
 	"sync"
 	"time"
@@ -130,14 +128,6 @@ func (c *Checker) Register(config CheckConfig) {
 		Status:    StatusUnknown,
 		Timestamp: time.Now(),
 	}
-}
-
-// Unregister removes a health check
-func (c *Checker) Unregister(name string) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	delete(c.checks, name)
-	delete(c.results, name)
 }
 
 // OnStatusChange registers a callback for status changes
@@ -264,30 +254,6 @@ func (c *Checker) GetReport(ctx context.Context) HealthReport {
 	}
 }
 
-// GetCachedResults returns the most recent cached results
-func (c *Checker) GetCachedResults() map[string]CheckResult {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
-	results := make(map[string]CheckResult, len(c.results))
-	for k, v := range c.results {
-		results[k] = v
-	}
-	return results
-}
-
-// IsHealthy returns true if all critical checks are healthy
-func (c *Checker) IsHealthy(ctx context.Context) bool {
-	report := c.GetReport(ctx)
-	return report.Status == StatusHealthy
-}
-
-// IsReady returns true if the service is ready to accept traffic
-func (c *Checker) IsReady(ctx context.Context) bool {
-	report := c.GetReport(ctx)
-	return report.Status != StatusUnhealthy
-}
-
 // Standard health checks
 
 // DatabaseCheck creates a database connectivity check
@@ -373,103 +339,6 @@ func RedisCheck(client *redis.Client) Check {
 	}
 }
 
-// HTTPCheck creates an HTTP endpoint check
-func HTTPCheck(name, url string, expectedStatus int) Check {
-	return func(ctx context.Context) CheckResult {
-		result := CheckResult{
-			Name:   name,
-			Status: StatusHealthy,
-		}
-
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-		if err != nil {
-			result.Status = StatusUnhealthy
-			result.Error = err.Error()
-			result.Message = "Failed to create request"
-			return result
-		}
-
-		client := &http.Client{
-			Timeout: 10 * time.Second,
-		}
-
-		resp, err := client.Do(req)
-		if err != nil {
-			result.Status = StatusUnhealthy
-			result.Error = err.Error()
-			result.Message = "HTTP request failed"
-			return result
-		}
-		defer resp.Body.Close()
-
-		result.Details = map[string]interface{}{
-			"url":         url,
-			"status_code": resp.StatusCode,
-		}
-
-		if resp.StatusCode != expectedStatus {
-			result.Status = StatusUnhealthy
-			result.Message = fmt.Sprintf("Expected status %d, got %d", expectedStatus, resp.StatusCode)
-			return result
-		}
-
-		result.Message = "HTTP endpoint healthy"
-		return result
-	}
-}
-
-// TCPCheck creates a TCP connectivity check
-func TCPCheck(name, host string, port int) Check {
-	return func(ctx context.Context) CheckResult {
-		result := CheckResult{
-			Name:   name,
-			Status: StatusHealthy,
-		}
-
-		address := fmt.Sprintf("%s:%d", host, port)
-
-		var d net.Dialer
-		conn, err := d.DialContext(ctx, "tcp", address)
-		if err != nil {
-			result.Status = StatusUnhealthy
-			result.Error = err.Error()
-			result.Message = fmt.Sprintf("TCP connection to %s failed", address)
-			return result
-		}
-		defer conn.Close()
-
-		result.Details = map[string]interface{}{
-			"address": address,
-		}
-		result.Message = fmt.Sprintf("TCP connection to %s successful", address)
-
-		return result
-	}
-}
-
-// DiskSpaceCheck creates a disk space check
-func DiskSpaceCheck(path string, warningThreshold, criticalThreshold float64) Check {
-	return func(ctx context.Context) CheckResult {
-		result := CheckResult{
-			Name:   "disk_space",
-			Status: StatusHealthy,
-		}
-
-		// Note: This is a simplified version. In production, you'd use
-		// syscall.Statfs on Unix or similar for Windows
-		result.Details = map[string]interface{}{
-			"path":               path,
-			"warning_threshold":  warningThreshold,
-			"critical_threshold": criticalThreshold,
-		}
-
-		// Placeholder - actual implementation would check disk space
-		result.Message = "Disk space check placeholder"
-
-		return result
-	}
-}
-
 // MemoryCheck creates a memory usage check
 func MemoryCheck(warningThreshold, criticalThreshold float64) Check {
 	return func(ctx context.Context) CheckResult {
@@ -514,26 +383,6 @@ func MemoryCheck(warningThreshold, criticalThreshold float64) Check {
 			result.Message = "Memory usage healthy"
 		}
 
-		return result
-	}
-}
-
-// CustomCheck creates a custom health check from a function
-func CustomCheck(name string, checkFn func(ctx context.Context) error) Check {
-	return func(ctx context.Context) CheckResult {
-		result := CheckResult{
-			Name:   name,
-			Status: StatusHealthy,
-		}
-
-		if err := checkFn(ctx); err != nil {
-			result.Status = StatusUnhealthy
-			result.Error = err.Error()
-			result.Message = "Check failed"
-			return result
-		}
-
-		result.Message = "Check passed"
 		return result
 	}
 }

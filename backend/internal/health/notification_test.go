@@ -340,23 +340,6 @@ func TestPagerDutyChannelMapSeverity(t *testing.T) {
 	}
 }
 
-func TestEmailChannel(t *testing.T) {
-	channel := NewEmailChannel("smtp.example.com", 587, "from@example.com", []string{"to@example.com"})
-
-	if channel.Name() != "email" {
-		t.Errorf("Name() = %s, want 'email'", channel.Name())
-	}
-
-	// Email channel is a placeholder, just test it doesn't error
-	err := channel.Send(context.Background(), Notification{
-		Title: "Test",
-	})
-
-	if err != nil {
-		t.Errorf("Send() error = %v, want nil (placeholder)", err)
-	}
-}
-
 // Mock channel for testing
 type mockChannel struct {
 	name   string
