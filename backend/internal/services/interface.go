@@ -8,4 +8,6 @@ import (
 type AuthServiceInterface interface {
 	Login(email, password string) (*models.LoginResponse, error)
 	RefreshToken(refreshToken string) (*models.LoginResponse, error)
+	// Logout revokes all of the token owner's sessions.
+	Logout(token string) error
 }

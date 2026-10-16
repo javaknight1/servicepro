@@ -1,8 +1,11 @@
 package services
 
 import (
+	"context"
 	"testing"
 	"time"
+
+	"github.com/javaknight1/servicepro/backend/internal/repository"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -651,4 +654,14 @@ func TestJobService_AssignTechnician_TechnicianUnauthorized(t *testing.T) {
 	assert.Error(t, err)
 	assert.ErrorIs(t, err, ErrUnauthorized)
 	mockJobRepo.AssertExpectations(t)
+}
+
+// WithContext implements the interface; the mock ignores the context.
+func (m *MockJobRepository) WithContext(_ context.Context) repository.JobRepositoryInterface {
+	return m
+}
+
+// WithContext implements the interface; the mock ignores the context.
+func (m *MockCustomerRepository) WithContext(_ context.Context) repository.CustomerRepositoryInterface {
+	return m
 }

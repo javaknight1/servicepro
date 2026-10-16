@@ -50,7 +50,7 @@ func (h *ImportExportHandler) ImportCustomers(c *gin.Context) {
 	if err := c.ShouldBind(&req); err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
-			Message: err.Error(),
+			Message: publicError(err),
 		})
 		return
 	}

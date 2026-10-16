@@ -36,6 +36,7 @@ func setupExportTestDB(t *testing.T) *gorm.DB {
 	// Create customers table
 	err = db.Exec(`
 		CREATE TABLE customers (
+			tenant_id TEXT,
 			id TEXT PRIMARY KEY,
 			first_name TEXT NOT NULL,
 			last_name TEXT NOT NULL,
@@ -72,6 +73,7 @@ func setupExportTestDB(t *testing.T) *gorm.DB {
 	// Create export_jobs table
 	err = db.Exec(`
 		CREATE TABLE export_jobs (
+			tenant_id TEXT,
 			id TEXT PRIMARY KEY,
 			user_id TEXT NOT NULL,
 			export_type TEXT NOT NULL,
@@ -682,6 +684,7 @@ func setupExportBenchmarkDB(b *testing.B, count int) *gorm.DB {
 
 	db.Exec(`
 		CREATE TABLE customers (
+			tenant_id TEXT,
 			id TEXT PRIMARY KEY,
 			first_name TEXT NOT NULL,
 			last_name TEXT NOT NULL,

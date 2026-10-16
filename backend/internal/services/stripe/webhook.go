@@ -10,7 +10,6 @@ import (
 	"os"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/stripe/stripe-go/v76"
 	"github.com/stripe/stripe-go/v76/webhook"
@@ -19,20 +18,28 @@ import (
 	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"
 )
 
-// Default webhook tolerance for timestamp validation
-const defaultWebhookTolerance = 5 * time.Minute
+// MaxWebhookBodyBytes caps the (unauthenticated) webhook body before it is
+// read. Stripe events are far smaller.
+const MaxWebhookBodyBytes = 1 << 20 // 1 MiB
 
-// WebhookHandler handles incoming Stripe webhooks
+// ErrWebhookRetryLater marks failures Stripe should retry (non-400 response).
+var ErrWebhookRetryLater = errors.New("webhook should be retried")
+
+// WebhookHandler handles incoming Stripe webhooks.
+//
+// Replay protection is the signature timestamp tolerance enforced by
+// webhook.ConstructEvent (5 minutes on the Stripe-Signature t=, which Stripe
+// refreshes on every retry). There is deliberately NO check on the event's
+// creation time: Stripe retries for days with the original Created value,
+// and rejecting those would drop payments after one failed delivery (F-10).
+// Duplicate deliveries are filtered by a persistent EventStore.
 type WebhookHandler struct {
 	webhookSecret     string
 	webhookSecretFile string // Optional: path to file containing webhook secret (for dynamic loading)
-	webhookTolerance  time.Duration
 	eventProcessor    *EventProcessor
 	mu                sync.RWMutex
 
-	// Event tracking for idempotency
-	processedEvents map[string]time.Time
-	eventMu         sync.RWMutex
+	store EventStore
 }
 
 // NewWebhookHandler creates a new webhook handler
@@ -43,9 +50,8 @@ func NewWebhookHandler(cfg *config.Config, eventProcessor *EventProcessor) *Webh
 	handler := &WebhookHandler{
 		webhookSecret:     cfg.Stripe.WebhookSecret,
 		webhookSecretFile: webhookSecretFile,
-		webhookTolerance:  defaultWebhookTolerance,
 		eventProcessor:    eventProcessor,
-		processedEvents:   make(map[string]time.Time),
+		store:             newMemoryEventStore(),
 	}
 
 	// Log webhook configuration status
@@ -57,10 +63,15 @@ func NewWebhookHandler(cfg *config.Config, eventProcessor *EventProcessor) *Webh
 		logging.Warn(context.Background(), "[Stripe] Webhook secret is empty - webhooks will fail signature verification", nil)
 	}
 
-	// Start cleanup goroutine for processed events
-	go handler.cleanupProcessedEvents()
-
 	return handler
+}
+
+// SetEventStore installs the persistent dedupe store (stripe_webhook_events).
+// Without it deduplication is per process only.
+func (h *WebhookHandler) SetEventStore(store EventStore) {
+	if store != nil {
+		h.store = store
+	}
 }
 
 // WebhookRequest represents an incoming webhook request
@@ -102,29 +113,38 @@ func (h *WebhookHandler) HandleWebhook(ctx context.Context, req *WebhookRequest)
 
 	logging.Info(ctx, "[Stripe] Webhook received", map[string]any{"event_id": event.ID, "event_type": event.Type})
 
-	// Check if event was already processed (idempotency)
-	if h.wasEventProcessed(event.ID) {
+	// Claim the event ID before processing (INSERT ... ON CONFLICT DO
+	// NOTHING): duplicates are acknowledged, concurrent deliveries retried.
+	claim, err := h.store.Claim(ctx, event.ID, string(event.Type))
+	if err != nil {
+		return &WebhookResponse{Received: false, EventID: event.ID, Error: "event store unavailable"},
+			fmt.Errorf("%w: %v", ErrWebhookRetryLater, err)
+	}
+	switch claim {
+	case ClaimDuplicate:
 		logging.Info(ctx, "[Stripe] Event already processed", map[string]any{"event_id": event.ID})
-		return &WebhookResponse{
-			Received: true,
-			EventID:  event.ID,
-		}, nil
+		return &WebhookResponse{Received: true, EventID: event.ID}, nil
+	case ClaimInProgress:
+		return &WebhookResponse{Received: false, EventID: event.ID, Error: "event is being processed"}, ErrWebhookRetryLater
 	}
 
 	// Process the event
 	if h.eventProcessor != nil {
 		if err := h.eventProcessor.ProcessEvent(ctx, event); err != nil {
 			logging.Error(ctx, "[Stripe] Failed to process event", map[string]any{"event_id": event.ID, "event_type": event.Type, "error": err})
+			_ = h.store.Release(context.WithoutCancel(ctx), event.ID)
 			return &WebhookResponse{
 				Received: false,
 				EventID:  event.ID,
 				Error:    "event processing failed",
-			}, fmt.Errorf("event processing failed: %w", err)
+			}, fmt.Errorf("%w: event processing failed: %v", ErrWebhookRetryLater, err)
 		}
 	}
 
 	// Mark event as processed
-	h.markEventProcessed(event.ID)
+	if err := h.store.MarkProcessed(context.WithoutCancel(ctx), event.ID); err != nil {
+		logging.Error(ctx, "[Stripe] Failed to mark event processed", map[string]any{"event_id": event.ID, "error": err})
+	}
 
 	logging.Info(ctx, "[Stripe] Event processed successfully", map[string]any{"event_id": event.ID, "event_type": event.Type})
 
@@ -140,9 +160,15 @@ func (h *WebhookHandler) HandleHTTPWebhook(w http.ResponseWriter, r *http.Reques
 
 	logging.Info(ctx, "[Stripe] Webhook HTTP request received", map[string]any{"remote_addr": r.RemoteAddr})
 
-	// Read body
-	body, err := io.ReadAll(r.Body)
+	// Read body (capped: the endpoint is unauthenticated until the
+	// signature is checked).
+	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, MaxWebhookBodyBytes))
 	if err != nil {
+		var tooLarge *http.MaxBytesError
+		if errors.As(err, &tooLarge) {
+			h.sendErrorResponse(w, http.StatusRequestEntityTooLarge, "request body too large")
+			return
+		}
 		logging.Error(ctx, "[Stripe] Failed to read webhook body", map[string]any{"error": err})
 		h.sendErrorResponse(w, http.StatusBadRequest, "failed to read request body")
 		return
@@ -168,9 +194,14 @@ func (h *WebhookHandler) HandleHTTPWebhook(w http.ResponseWriter, r *http.Reques
 	response, err := h.HandleWebhook(ctx, req)
 	if err != nil {
 		// Determine status code based on error
+		// Signature/format problems are permanent (400); processing
+		// failures and in-flight duplicates ask Stripe to retry (503).
 		statusCode := http.StatusBadRequest
-		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+		switch {
+		case errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled):
 			statusCode = http.StatusRequestTimeout
+		case errors.Is(err, ErrWebhookRetryLater):
+			statusCode = http.StatusServiceUnavailable
 		}
 
 		h.sendJSONResponse(w, statusCode, response)
@@ -234,52 +265,7 @@ func (h *WebhookHandler) verifySignature(payload []byte, signature string) (*str
 		return nil, fmt.Errorf("signature verification failed: %w", err)
 	}
 
-	// Additional timestamp check for replay attacks
-	if time.Since(time.Unix(event.Created, 0)) > h.webhookTolerance {
-		return nil, fmt.Errorf("webhook timestamp too old: event created at %v",
-			time.Unix(event.Created, 0))
-	}
-
 	return &event, nil
-}
-
-// wasEventProcessed checks if an event was already processed
-func (h *WebhookHandler) wasEventProcessed(eventID string) bool {
-	h.eventMu.RLock()
-	defer h.eventMu.RUnlock()
-
-	_, exists := h.processedEvents[eventID]
-	return exists
-}
-
-// markEventProcessed marks an event as processed
-func (h *WebhookHandler) markEventProcessed(eventID string) {
-	h.eventMu.Lock()
-	defer h.eventMu.Unlock()
-
-	h.processedEvents[eventID] = time.Now()
-}
-
-// cleanupProcessedEvents removes old processed events (runs every hour)
-func (h *WebhookHandler) cleanupProcessedEvents() {
-	ticker := time.NewTicker(1 * time.Hour)
-	defer ticker.Stop()
-
-	for range ticker.C {
-		h.eventMu.Lock()
-
-		// Remove events older than 24 hours
-		cutoff := time.Now().Add(-24 * time.Hour)
-		for eventID, processedAt := range h.processedEvents {
-			if processedAt.Before(cutoff) {
-				delete(h.processedEvents, eventID)
-			}
-		}
-
-		h.eventMu.Unlock()
-
-		logging.Info(context.Background(), "[Stripe] Cleaned up old processed events", map[string]any{"count": len(h.processedEvents)})
-	}
 }
 
 // sendJSONResponse sends a JSON response
@@ -306,16 +292,18 @@ func (h *WebhookHandler) TestWebhookSignature(payload []byte, signature string) 
 	return err
 }
 
-// GetProcessedEventsCount returns the number of processed events in memory
+// GetProcessedEventsCount returns the number of events tracked by the
+// in-memory store (0 when a persistent store is installed).
 func (h *WebhookHandler) GetProcessedEventsCount() int {
-	h.eventMu.RLock()
-	defer h.eventMu.RUnlock()
-	return len(h.processedEvents)
+	if m, ok := h.store.(*memoryEventStore); ok {
+		return m.count()
+	}
+	return 0
 }
 
-// ClearProcessedEvents clears all processed events (for testing)
+// ClearProcessedEvents resets the in-memory store (for testing)
 func (h *WebhookHandler) ClearProcessedEvents() {
-	h.eventMu.Lock()
-	defer h.eventMu.Unlock()
-	h.processedEvents = make(map[string]time.Time)
+	if _, ok := h.store.(*memoryEventStore); ok {
+		h.store = newMemoryEventStore()
+	}
 }

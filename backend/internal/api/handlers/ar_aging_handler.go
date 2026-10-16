@@ -53,14 +53,14 @@ func (h *ARAgingHandler) GetARAgingReport(c *gin.Context) {
 	if err := c.ShouldBindQuery(&query); err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
-			Message: "Invalid query parameters: " + err.Error(),
+			Message: "Invalid query parameters: " + publicError(err),
 		})
 		return
 	}
 	if err := query.ParseCustomerID(); err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
-			Message: "Invalid customer_id: " + err.Error(),
+			Message: "Invalid customer_id: " + publicError(err),
 		})
 		return
 	}
@@ -72,7 +72,7 @@ func (h *ARAgingHandler) GetARAgingReport(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
 			Error:   "internal_error",
-			Message: "Failed to generate A/R aging report: " + err.Error(),
+			Message: "Failed to generate A/R aging report: " + publicError(err),
 		})
 		return
 	}
@@ -106,14 +106,14 @@ func (h *ARAgingHandler) GetBucketSummary(c *gin.Context) {
 	if err := c.ShouldBindQuery(&query); err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
-			Message: "Invalid query parameters: " + err.Error(),
+			Message: "Invalid query parameters: " + publicError(err),
 		})
 		return
 	}
 	if err := query.ParseCustomerID(); err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
-			Message: "Invalid customer_id: " + err.Error(),
+			Message: "Invalid customer_id: " + publicError(err),
 		})
 		return
 	}
@@ -124,7 +124,7 @@ func (h *ARAgingHandler) GetBucketSummary(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
 			Error:   "internal_error",
-			Message: "Failed to get bucket summary: " + err.Error(),
+			Message: "Failed to get bucket summary: " + publicError(err),
 		})
 		return
 	}
@@ -181,14 +181,14 @@ func (h *ARAgingHandler) GetInvoicesByBucket(c *gin.Context) {
 	if err := c.ShouldBindQuery(&query); err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
-			Message: "Invalid query parameters: " + err.Error(),
+			Message: "Invalid query parameters: " + publicError(err),
 		})
 		return
 	}
 	if err := query.ParseCustomerID(); err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
-			Message: "Invalid customer_id: " + err.Error(),
+			Message: "Invalid customer_id: " + publicError(err),
 		})
 		return
 	}
@@ -199,7 +199,7 @@ func (h *ARAgingHandler) GetInvoicesByBucket(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
 			Error:   "internal_error",
-			Message: "Failed to get invoices: " + err.Error(),
+			Message: "Failed to get invoices: " + publicError(err),
 		})
 		return
 	}
@@ -237,14 +237,14 @@ func (h *ARAgingHandler) GetCustomerSummary(c *gin.Context) {
 	if err := c.ShouldBindQuery(&query); err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
-			Message: "Invalid query parameters: " + err.Error(),
+			Message: "Invalid query parameters: " + publicError(err),
 		})
 		return
 	}
 	if err := query.ParseCustomerID(); err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
-			Message: "Invalid customer_id: " + err.Error(),
+			Message: "Invalid customer_id: " + publicError(err),
 		})
 		return
 	}
@@ -255,7 +255,7 @@ func (h *ARAgingHandler) GetCustomerSummary(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
 			Error:   "internal_error",
-			Message: "Failed to get customer summary: " + err.Error(),
+			Message: "Failed to get customer summary: " + publicError(err),
 		})
 		return
 	}
@@ -292,7 +292,7 @@ func (h *ARAgingHandler) ExportARAgingReport(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
-			Message: "Invalid request body: " + err.Error(),
+			Message: "Invalid request body: " + publicError(err),
 		})
 		return
 	}
@@ -302,7 +302,7 @@ func (h *ARAgingHandler) ExportARAgingReport(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
 			Error:   "internal_error",
-			Message: "Failed to generate report: " + err.Error(),
+			Message: "Failed to generate report: " + publicError(err),
 		})
 		return
 	}
@@ -314,7 +314,7 @@ func (h *ARAgingHandler) ExportARAgingReport(c *gin.Context) {
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, models.ErrorResponse{
 				Error:   "internal_error",
-				Message: "Failed to get invoices: " + err.Error(),
+				Message: "Failed to get invoices: " + publicError(err),
 			})
 			return
 		}

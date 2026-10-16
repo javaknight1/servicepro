@@ -221,7 +221,7 @@ func (r *ConflictResolver) findSlotsOnDay(ctx context.Context, req *ConflictChec
 		// Check if all technicians are available
 		allAvailable := true
 		for _, techID := range req.AssignedTechIDs {
-			schedules, _ := r.scheduleRepo.GetByTechnicianAndDateRange(req.TenantID, techID, slotStart, slotEnd)
+			schedules, _ := r.scheduleRepo.WithContext(ctx).GetByTechnicianAndDateRange(req.TenantID, techID, slotStart, slotEnd)
 			for _, schedule := range schedules {
 				if !schedule.IsCancelled && r.hasOverlap(slotStart, slotEnd, schedule.StartTime, schedule.EndTime) {
 					allAvailable = false
@@ -259,7 +259,7 @@ func (r *ConflictResolver) findAlternativeTechnicians(ctx context.Context, req *
 	// Get conflicting technicians
 	conflictingTechs := make(map[uuid.UUID]bool)
 	for _, techID := range req.AssignedTechIDs {
-		schedules, _ := r.scheduleRepo.GetByTechnicianAndDateRange(req.TenantID, techID, req.StartTime, req.EndTime)
+		schedules, _ := r.scheduleRepo.WithContext(ctx).GetByTechnicianAndDateRange(req.TenantID, techID, req.StartTime, req.EndTime)
 		for _, schedule := range schedules {
 			if !schedule.IsCancelled && r.hasOverlap(req.StartTime, req.EndTime, schedule.StartTime, schedule.EndTime) {
 				conflictingTechs[techID] = true
@@ -322,7 +322,7 @@ func (r *ConflictResolver) suggestDelayConflicts(ctx context.Context, req *Confl
 
 	for _, conflict := range conflicts {
 		if conflict.ConflictingWith != nil {
-			schedule, err := r.scheduleRepo.GetByID(conflict.ConflictingWith.ID)
+			schedule, err := r.scheduleRepo.WithContext(ctx).GetByID(conflict.ConflictingWith.ID)
 			if err == nil && !schedule.IsConfirmed {
 				unconfirmedConflicts = append(unconfirmedConflicts, schedule.ID)
 			}
@@ -377,5 +377,5 @@ func (r *ConflictResolver) ApplyResolutionStrategy(ctx context.Context, strategy
 
 // GetResolutionHistory retrieves the history of conflict resolutions
 func (r *ConflictResolver) GetResolutionHistory(ctx context.Context, scheduleID uuid.UUID) ([]models.ScheduleConflict, error) {
-	return r.scheduleRepo.GetConflicts(scheduleID)
+	return r.scheduleRepo.WithContext(ctx).GetConflicts(scheduleID)
 }

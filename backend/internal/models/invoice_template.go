@@ -38,9 +38,10 @@ const (
 
 // InvoiceTemplate represents an invoice template
 type InvoiceTemplate struct {
-	ID          uuid.UUID `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
-	Name        string    `gorm:"type:varchar(200);not null" json:"name"`
-	Description string    `gorm:"type:text" json:"description,omitempty"`
+	ID          uuid.UUID  `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
+	TenantID    *uuid.UUID `json:"tenant_id,omitempty" gorm:"type:uuid;index"` // nil = global default (internal/tenancy SharedRead)
+	Name        string     `gorm:"type:varchar(200);not null" json:"name"`
+	Description string     `gorm:"type:text" json:"description,omitempty"`
 
 	// Template content
 	HTMLContent string `gorm:"type:text;not null" json:"html_content"`

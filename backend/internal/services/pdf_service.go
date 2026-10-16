@@ -3,15 +3,11 @@ package services
 import (
 	"bytes"
 	"context"
-	"encoding/base64"
 	"fmt"
 	"html/template"
-	"image"
 	_ "image/gif"
 	_ "image/jpeg"
 	_ "image/png"
-	"io"
-	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -346,11 +342,11 @@ func (s *PDFService) buildWkhtmltopdfArgs(inputPath, outputPath string, options 
 		defer os.Remove(footerFile)
 	}
 
-	// JavaScript
+	// JavaScript is off unless a caller explicitly needs it.
 	if options.EnableJavascript {
 		args = append(args, "--enable-javascript")
 	} else {
-		args = append(args, "--no-stop-slow-scripts")
+		args = append(args, "--disable-javascript")
 	}
 
 	// DPI
@@ -363,8 +359,9 @@ func (s *PDFService) buildWkhtmltopdfArgs(inputPath, outputPath string, options 
 		args = append(args, "--image-quality", fmt.Sprintf("%d", options.ImageQuality))
 	}
 
-	// Enable local file access
-	args = append(args, "--enable-local-file-access")
+	// Never let rendered HTML read local files (file:///proc/self/environ
+	// would leak secrets into the PDF, F-8).
+	args = append(args, "--disable-local-file-access")
 
 	// Input and output files
 	args = append(args, inputPath, outputPath)
@@ -403,49 +400,6 @@ func (s *PDFService) GeneratePreview(ctx context.Context, htmlContent, cssConten
 	}
 
 	return previewPath, nil
-}
-
-// ProcessImage downloads and processes an image, returning a data URL
-func (s *PDFService) ProcessImage(imageURL string, maxWidth, maxHeight int) (string, error) {
-	// Download image
-	resp, err := http.Get(imageURL)
-	if err != nil {
-		return "", fmt.Errorf("failed to download image: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("failed to download image: HTTP %d", resp.StatusCode)
-	}
-
-	// Read image
-	imgData, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("failed to read image data: %w", err)
-	}
-
-	// Decode image to get dimensions
-	img, format, err := image.Decode(bytes.NewReader(imgData))
-	if err != nil {
-		return "", fmt.Errorf("failed to decode image: %w", err)
-	}
-
-	bounds := img.Bounds()
-	width := bounds.Dx()
-	height := bounds.Dy()
-
-	// Calculate resize if needed
-	if (maxWidth > 0 && width > maxWidth) || (maxHeight > 0 && height > maxHeight) {
-		// Image needs resizing - for now, just use original
-		// In production, you'd use an image processing library like imaging
-	}
-
-	// Convert to base64 data URL
-	mimeType := "image/" + format
-	base64Data := base64.StdEncoding.EncodeToString(imgData)
-	dataURL := fmt.Sprintf("data:%s;base64,%s", mimeType, base64Data)
-
-	return dataURL, nil
 }
 
 // ValidateTemplate validates that a template can be rendered

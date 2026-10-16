@@ -34,6 +34,7 @@ import (
 	"github.com/javaknight1/servicepro/backend/config"
 	"github.com/javaknight1/servicepro/backend/internal/api/middleware"
 	"github.com/javaknight1/servicepro/backend/internal/api/routes"
+	"github.com/javaknight1/servicepro/backend/internal/tenancy"
 	analyticsclient "github.com/javaknight1/servicepro/backend/pkg/clients/analytics"
 	emailclient "github.com/javaknight1/servicepro/backend/pkg/clients/email"
 	errortracking "github.com/javaknight1/servicepro/backend/pkg/clients/errortracking"
@@ -106,8 +107,9 @@ func main() {
 		logging.Info(ctx, "Analytics client initialized", nil)
 	}
 
-	// Set Gin mode based on environment
-	if cfg.Server.Env == "production" {
+	// Gin debug mode only for local development (any deployed env, including
+	// preview/staging, runs in release mode).
+	if cfg.Server.Env != "development" {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
@@ -118,6 +120,12 @@ func main() {
 		os.Exit(1)
 	}
 	logging.Info(ctx, "Database connected", nil)
+
+	// Scope every query on tenant-owned tables to the caller's tenant (F-3).
+	if err := tenancy.Register(db); err != nil {
+		logging.Fatal(ctx, "Failed to register tenancy plugin", map[string]any{"error": err.Error()})
+		os.Exit(1)
+	}
 
 	// Get underlying SQL DB for cleanup
 	sqlDB, err := db.DB()
@@ -213,6 +221,11 @@ func main() {
 	// Resolve the real visitor IP from the edge proxy headers before anything
 	// (logger, rate limiters) reads c.ClientIP().
 	router.Use(middleware.EdgeClientIP(cfg.Server.EdgeProxySecret))
+	// In production, /api/* is only reachable through the Cloudflare Worker
+	// (it adds the edge secret); direct *.run.app calls are refused (F-6).
+	if cfg.Server.Env == "production" && cfg.Server.EdgeProxySecret != "" {
+		router.Use(middleware.RequireEdgeProxy())
+	}
 	router.Use(gin.Logger()) // Add Gin's logger middleware
 
 	// Apply Gin-specific configuration
@@ -221,10 +234,11 @@ func main() {
 		if err := router.SetTrustedProxies(cfg.Server.TrustedProxies); err != nil {
 			logging.Warn(ctx, "Failed to set trusted proxies", map[string]any{"error": err.Error()})
 		}
-	} else if cfg.Server.EdgeProxySecret != "" {
-		// Behind the edge proxy the visitor IP comes only from the verified
-		// X-SP-Client-IP header; never trust caller-supplied X-Forwarded-For
-		// (Gin trusts every proxy by default).
+	} else {
+		// No trusted proxies configured: never trust caller-supplied
+		// X-Forwarded-For (Gin trusts every proxy by default, which let any
+		// client pick its rate-limit IP, F-7). Behind the edge proxy the
+		// visitor IP comes from the verified X-SP-Client-IP header instead.
 		if err := router.SetTrustedProxies(nil); err != nil {
 			logging.Warn(ctx, "Failed to disable trusted proxies", map[string]any{"error": err.Error()})
 		}

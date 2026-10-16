@@ -85,7 +85,7 @@ func (e *Exporter) ExportCustomersCSV(customers []models.Customer, includeNotes 
 
 		record = append(record, row.CreatedAt, row.UpdatedAt)
 
-		if err := writer.Write(record); err != nil {
+		if err := writer.Write(SafeRow(record)); err != nil {
 			return err
 		}
 	}

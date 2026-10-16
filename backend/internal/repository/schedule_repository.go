@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"errors"
 
 	"github.com/javaknight1/servicepro/backend/internal/utils/epoch"
@@ -20,6 +21,12 @@ type ScheduleRepository struct {
 // NewScheduleRepository creates a new schedule repository
 func NewScheduleRepository(db *gorm.DB) *ScheduleRepository {
 	return &ScheduleRepository{db: db}
+}
+
+// WithContext returns a copy of the repository bound to ctx (tenant scoping
+// via internal/tenancy reads the tenant from it).
+func (r *ScheduleRepository) WithContext(ctx context.Context) ScheduleRepositoryInterface {
+	return &ScheduleRepository{db: r.db.WithContext(ctx)}
 }
 
 // Create creates a new schedule

@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/javaknight1/servicepro/backend/internal/repository"
+
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -474,4 +476,9 @@ func TestGenerateSchedules_MaxOccurrences(t *testing.T) {
 	assert.Equal(t, 0, result.SkippedCount)
 
 	scheduleRepo.AssertExpectations(t)
+}
+
+// WithContext implements the interface; the mock ignores the context.
+func (m *MockScheduleRepo) WithContext(_ context.Context) repository.ScheduleRepositoryInterface {
+	return m
 }

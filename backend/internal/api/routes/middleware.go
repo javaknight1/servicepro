@@ -1,6 +1,10 @@
 package routes
 
 import (
+	"strings"
+
+	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 
 	"github.com/javaknight1/servicepro/backend/config"
@@ -26,6 +30,12 @@ func SetupMiddleware(
 
 	// Permission middleware (with cookie support)
 	permMiddleware := middleware.NewPermissionMiddleware(permChecker, jwtManager, cookieManager, cfg.Cookie.AccessTokenName)
+	// Revocation: reject tokens issued before a logout / password reset.
+	if versions, ok := repos.User.(interface {
+		GetTokenVersion(uuid.UUID) (int, error)
+	}); ok {
+		permMiddleware.SetTokenVersionLookup(versions.GetTokenVersion)
+	}
 
 	// Tenant middleware
 	tenantMW := middleware.NewTenantMiddleware(repos.Tenant)
@@ -33,6 +43,24 @@ func SetupMiddleware(
 	// Rate limiters
 	rateLimiter := middleware.NewRateLimiter(redisClient, &cfg.Auth)
 	apiRateLimiter := middleware.NewAPIRateLimiter(redisClient, &cfg.RateLimit)
+	// Key authenticated traffic per user (F-22): the limiter runs before
+	// RequireAuth, so it validates the access token itself.
+	apiRateLimiter.SetIdentityResolver(func(c *gin.Context) (string, bool) {
+		token, _ := cookieManager.GetAccessToken(c)
+		if token == "" {
+			if h := c.GetHeader("Authorization"); strings.HasPrefix(h, "Bearer ") {
+				token = strings.TrimPrefix(h, "Bearer ")
+			}
+		}
+		if token == "" {
+			return "", false
+		}
+		claims, err := jwtManager.ValidateToken(token)
+		if err != nil || claims.Type != auth.AccessToken {
+			return "", false
+		}
+		return claims.UserID, true
+	})
 
 	return &Middleware{
 		JWTManager:     jwtManager,

@@ -268,7 +268,7 @@ func (h *InvoiceHandler) CreateInvoice(c *gin.Context) {
 
 	var req CreateInvoiceRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: publicError(err)})
 		return
 	}
 
@@ -367,7 +367,7 @@ func (h *InvoiceHandler) CreateInvoice(c *gin.Context) {
 	// Create invoice
 	created, err := h.service.CreateInvoice(ctx, invoice, userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: publicError(err)})
 		return
 	}
 
@@ -399,7 +399,7 @@ func (h *InvoiceHandler) UpdateInvoice(c *gin.Context) {
 
 	var req UpdateInvoiceRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: publicError(err)})
 		return
 	}
 
@@ -512,10 +512,10 @@ func (h *InvoiceHandler) UpdateInvoice(c *gin.Context) {
 			return
 		}
 		if err == services.ErrInvoiceAlreadyPaid {
-			c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
+			c.JSON(http.StatusBadRequest, ErrorResponse{Error: publicError(err)})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: publicError(err)})
 		return
 	}
 
@@ -549,7 +549,7 @@ func (h *InvoiceHandler) DeleteInvoice(c *gin.Context) {
 			c.JSON(http.StatusNotFound, ErrorResponse{Error: "Invoice not found"})
 			return
 		}
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: publicError(err)})
 		return
 	}
 
@@ -584,7 +584,7 @@ func (h *InvoiceHandler) SendInvoice(c *gin.Context) {
 			c.JSON(http.StatusNotFound, ErrorResponse{Error: "Invoice not found"})
 			return
 		}
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: publicError(err)})
 		return
 	}
 
@@ -616,7 +616,7 @@ func (h *InvoiceHandler) RecordPayment(c *gin.Context) {
 
 	var req RecordPaymentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: publicError(err)})
 		return
 	}
 
@@ -654,7 +654,7 @@ func (h *InvoiceHandler) RecordPayment(c *gin.Context) {
 			c.JSON(http.StatusNotFound, ErrorResponse{Error: "Invoice not found"})
 			return
 		}
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: publicError(err)})
 		return
 	}
 
@@ -689,7 +689,7 @@ func (h *InvoiceHandler) CancelInvoice(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: publicError(err)})
 		return
 	}
 
@@ -699,7 +699,7 @@ func (h *InvoiceHandler) CancelInvoice(c *gin.Context) {
 			c.JSON(http.StatusNotFound, ErrorResponse{Error: "Invoice not found"})
 			return
 		}
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: publicError(err)})
 		return
 	}
 
@@ -734,7 +734,7 @@ func (h *InvoiceHandler) GetInvoicePDF(c *gin.Context) {
 			c.JSON(http.StatusNotFound, ErrorResponse{Error: "Invoice not found"})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to get invoice PDF: " + err.Error()})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to get invoice PDF: " + publicError(err)})
 		return
 	}
 
@@ -773,7 +773,7 @@ func (h *InvoiceHandler) GetReceiptPDF(c *gin.Context) {
 			c.JSON(http.StatusNotFound, ErrorResponse{Error: "Invoice not found"})
 			return
 		}
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: publicError(err)})
 		return
 	}
 

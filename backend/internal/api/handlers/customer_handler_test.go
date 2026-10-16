@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -809,4 +810,9 @@ func TestGetSearchStats_RepositoryError(t *testing.T) {
 
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 	mockRepo.AssertExpectations(t)
+}
+
+// WithContext implements the interface; the mock ignores the context.
+func (m *MockCustomerRepository) WithContext(_ context.Context) repository.CustomerRepositoryInterface {
+	return m
 }

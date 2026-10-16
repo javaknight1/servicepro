@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"errors"
 	"math"
 	"strings"
@@ -26,6 +27,12 @@ type CustomerRepository struct {
 // NewCustomerRepository creates a new customer repository
 func NewCustomerRepository(db *gorm.DB) *CustomerRepository {
 	return &CustomerRepository{db: db}
+}
+
+// WithContext returns a copy of the repository bound to ctx (tenant scoping
+// via internal/tenancy reads the tenant from it).
+func (r *CustomerRepository) WithContext(ctx context.Context) CustomerRepositoryInterface {
+	return &CustomerRepository{db: r.db.WithContext(ctx)}
 }
 
 // Create creates a new customer
@@ -245,7 +252,12 @@ func GetTotalPages(total int64, pageSize int) int {
 	return int(math.Ceil(float64(total) / float64(pageSize)))
 }
 
-// FullTextSearch performs PostgreSQL full-text search with ranking
+// FullTextSearch searches customers with filters and pagination.
+//
+// It previously called search_customers()/autocomplete_customers() SQL
+// functions that were never created by any migration, and raw SQL bypasses
+// tenant scoping (internal/tenancy). It is now a plain GORM query, so the
+// caller's tenant filter is applied automatically.
 func (r *CustomerRepository) FullTextSearch(
 	query string,
 	customerType models.CustomerType,
@@ -257,90 +269,102 @@ func (r *CustomerRepository) FullTextSearch(
 	var customers []models.Customer
 	var total int64
 
-	// Build base query using the PostgreSQL search function
-	baseQuery := `
-		SELECT
-			id, first_name, last_name, company_name, email,
-			phone_primary, phone_secondary,
-			billing_address_street, billing_address_city, billing_address_state, billing_address_zip,
-			service_address_street, service_address_city, service_address_state, service_address_zip,
-			customer_type, status, notes, created_at, updated_at
-		FROM search_customers($1, $2, $3, $4, $5, $6, $7, $8, $9)
-	`
+	q := r.db.Model(&models.Customer{}).Where("deleted_at IS NULL")
+	if term := strings.TrimSpace(query); term != "" {
+		like := "%" + strings.ToLower(term) + "%"
+		q = q.Where(
+			"LOWER(first_name) LIKE ? OR LOWER(last_name) LIKE ? OR LOWER(email) LIKE ? OR LOWER(company_name) LIKE ? OR LOWER(COALESCE(notes, '')) LIKE ?",
+			like, like, like, like, like,
+		)
+	}
+	if customerType != "" {
+		q = q.Where("customer_type = ?", customerType)
+	}
+	if status != "" {
+		q = q.Where("status = ?", status)
+	}
+	if city != "" {
+		q = q.Where("LOWER(billing_address_city) = LOWER(?)", city)
+	}
+	if state != "" {
+		q = q.Where("billing_address_state = ?", strings.ToUpper(state))
+	}
 
-	// Execute search
-	err := r.db.Raw(baseQuery,
-		query,
-		nullString(string(customerType)),
-		nullString(string(status)),
-		nullString(city),
-		nullString(state),
-		limit,
-		offset,
-		sortBy,
-		sortOrder,
-	).Scan(&customers).Error
-
-	if err != nil {
+	if err := q.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
-	// Get total count for pagination
-	countQuery := `
-		SELECT COUNT(*)
-		FROM search_customers($1, $2, $3, $4, $5, 999999, 0, 'rank', 'DESC')
-	`
-
-	err = r.db.Raw(countQuery,
-		query,
-		nullString(string(customerType)),
-		nullString(string(status)),
-		nullString(city),
-		nullString(state),
-	).Scan(&total).Error
-
-	if err != nil {
+	if limit <= 0 || limit > 100 {
+		limit = 20
+	}
+	if offset < 0 {
+		offset = 0
+	}
+	order := utils.SafeOrderClause(sortBy, sortOrder, utils.CustomerAllowedSortColumns, "last_name")
+	if err := q.Order(order).Limit(limit).Offset(offset).Find(&customers).Error; err != nil {
 		return nil, 0, err
 	}
-
 	return customers, total, nil
 }
 
 // Autocomplete performs prefix-based autocomplete search
 func (r *CustomerRepository) Autocomplete(prefix string, limit int) ([]map[string]interface{}, error) {
-	var results []map[string]interface{}
+	if limit <= 0 || limit > 50 {
+		limit = 10
+	}
+	like := strings.ToLower(strings.TrimSpace(prefix)) + "%"
 
-	query := `
-		SELECT id, display_name, email, customer_type, status
-		FROM autocomplete_customers($1, $2)
-	`
-
-	err := r.db.Raw(query, prefix, limit).Scan(&results).Error
+	var customers []models.Customer
+	err := r.db.Model(&models.Customer{}).
+		Where("deleted_at IS NULL").
+		Where("LOWER(first_name) LIKE ? OR LOWER(last_name) LIKE ? OR LOWER(email) LIKE ? OR LOWER(company_name) LIKE ?", like, like, like, like).
+		Order("last_name ASC, first_name ASC").
+		Limit(limit).
+		Find(&customers).Error
 	if err != nil {
 		return nil, err
 	}
 
+	results := make([]map[string]interface{}, 0, len(customers))
+	for _, c := range customers {
+		display := strings.TrimSpace(c.FirstName + " " + c.LastName)
+		if c.CompanyName != nil && *c.CompanyName != "" {
+			display = display + " (" + *c.CompanyName + ")"
+		}
+		results = append(results, map[string]interface{}{
+			"id":            c.ID,
+			"display_name":  display,
+			"email":         c.Email,
+			"customer_type": c.CustomerType,
+			"status":        c.Status,
+		})
+	}
 	return results, nil
 }
 
-// GetSearchStats retrieves search statistics
+// GetSearchStats retrieves customer counts for the caller's tenant
 func (r *CustomerRepository) GetSearchStats() (map[string]interface{}, error) {
-	var stats map[string]interface{}
-
-	query := `SELECT * FROM customer_search_stats`
-
-	err := r.db.Raw(query).Scan(&stats).Error
-	if err != nil {
+	type row struct {
+		Status string
+		Count  int64
+	}
+	var rows []row
+	if err := r.db.Model(&models.Customer{}).
+		Select("status, COUNT(*) AS count").
+		Where("deleted_at IS NULL").
+		Group("status").
+		Scan(&rows).Error; err != nil {
 		return nil, err
 	}
 
-	return stats, nil
-}
-
-// Helper function to convert string to nullable string for PostgreSQL
-func nullString(s string) interface{} {
-	if s == "" {
-		return nil
+	var total int64
+	byStatus := make(map[string]int64, len(rows))
+	for _, rw := range rows {
+		byStatus[rw.Status] = rw.Count
+		total += rw.Count
 	}
-	return s
+	return map[string]interface{}{
+		"total_customers": total,
+		"by_status":       byStatus,
+	}, nil
 }

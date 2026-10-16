@@ -34,6 +34,7 @@ type APIRateLimiter struct {
 	config   *config.RateLimitConfig
 	fallback *inMemoryRateLimiter
 	mu       sync.RWMutex
+	identify IdentityResolver
 }
 
 // inMemoryRateLimiter is a fallback when Redis is unavailable
@@ -158,7 +159,13 @@ func (rl *APIRateLimiter) DynamicRateLimit() gin.HandlerFunc {
 			}
 		}
 
-		// Auto-detect tier based on authentication status
+		// Auto-detect tier based on authentication status. This runs before
+		// RequireAuth, so resolve the caller from a valid access token.
+		if rl.identify != nil {
+			if uid, ok := rl.identify(c); ok {
+				c.Set("userID", uid)
+			}
+		}
 		tier := TierAnonymous
 		if userID, exists := c.Get("userID"); exists && userID != nil {
 			tier = TierAuthenticated
@@ -339,4 +346,14 @@ func (rl *APIRateLimiter) GetRateLimitStats() map[string]interface{} {
 		"window":                 rl.config.Window.String(),
 		"in_memory_bucket_count": len(rl.fallback.buckets),
 	}
+}
+
+// IdentityResolver returns the authenticated user's ID for a request (from a
+// valid access token), or false for anonymous requests.
+type IdentityResolver func(c *gin.Context) (string, bool)
+
+// SetIdentityResolver lets DynamicRateLimit key authenticated traffic per
+// user (higher limit) instead of per IP.
+func (rl *APIRateLimiter) SetIdentityResolver(resolve IdentityResolver) {
+	rl.identify = resolve
 }

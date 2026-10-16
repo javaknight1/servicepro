@@ -556,7 +556,7 @@ INSERT INTO jobs (
         CURRENT_TIMESTAMP,
         CURRENT_TIMESTAMP
     )
-ON CONFLICT (job_number) DO UPDATE SET
+ON CONFLICT (tenant_id, job_number) DO UPDATE SET
     title = EXCLUDED.title,
     status = EXCLUDED.status,
     updated_at = CURRENT_TIMESTAMP;
@@ -645,7 +645,7 @@ INSERT INTO quotes (
         CURRENT_TIMESTAMP - INTERVAL '1 day',
         CURRENT_TIMESTAMP - INTERVAL '1 day'
     )
-ON CONFLICT (quote_number) DO UPDATE SET
+ON CONFLICT (tenant_id, quote_number) DO UPDATE SET
     status = EXCLUDED.status,
     subtotal = EXCLUDED.subtotal,
     total = EXCLUDED.total,

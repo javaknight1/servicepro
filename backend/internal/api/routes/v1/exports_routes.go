@@ -18,6 +18,7 @@ func SetupExportRoutes(router *gin.RouterGroup, cfg *routeconfigs.RouteConfig) {
 	// Protected routes (require authentication and permissions)
 	protected := router.Group("/exports")
 	protected.Use(cfg.Middleware.PermMiddleware.RequireAuth())
+	protected.Use(cfg.Middleware.TenantMW.RequireTenant())
 	{
 		// List exports - requires "exports.list" permission
 		protected.GET("",

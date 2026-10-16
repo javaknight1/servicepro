@@ -12,6 +12,7 @@ func SetupPaymentTermsRoutes(router *gin.RouterGroup, cfg *routeconfigs.RouteCon
 	// Payment terms routes group with authentication
 	paymentTerms := router.Group("/payment-terms")
 	paymentTerms.Use(cfg.Middleware.PermMiddleware.RequireAuth())
+	paymentTerms.Use(cfg.Middleware.TenantMW.RequireTenant())
 	{
 		// Get default payment term - requires "payment_terms.read" permission
 		paymentTerms.GET("/default",

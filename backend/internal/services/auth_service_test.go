@@ -147,7 +147,6 @@ func TestLogin_Success(t *testing.T) {
 	}
 
 	mockRepo.On("GetByEmail", "test@example.com").Return(user, nil)
-	mockRepo.On("ResetFailedLoginCountByUUID", userID).Return(nil)
 
 	response, err := authService.Login("test@example.com", password)
 
@@ -194,7 +193,6 @@ func TestLogin_InvalidCredentials_WrongPassword(t *testing.T) {
 	}
 
 	mockRepo.On("GetByEmail", "test@example.com").Return(user, nil)
-	mockRepo.On("IncrementFailedLoginCountByUUID", userID).Return(nil)
 
 	response, err := authService.Login("test@example.com", "WrongPassword")
 
@@ -205,7 +203,9 @@ func TestLogin_InvalidCredentials_WrongPassword(t *testing.T) {
 	mockRepo.AssertExpectations(t)
 }
 
-func TestLogin_AccountLocked(t *testing.T) {
+// A legacy DB lock no longer blocks a correct password: throttling is per
+// (account, IP) in the HTTP layer so attackers can't lock victims out.
+func TestLogin_LegacyLockDoesNotBlock(t *testing.T) {
 	mockRepo := new(MockUserRepository)
 	jwtManager := auth.NewJWTManager(getTestJWTConfig())
 	authService := NewAuthService(mockRepo, jwtManager, getTestAuthConfig())
@@ -221,15 +221,16 @@ func TestLogin_AccountLocked(t *testing.T) {
 		PasswordHash:     passwordHash,
 		FailedLoginCount: 5,
 		LockedUntil:      &lockedUntil,
+		EmailVerified:    true,
 	}
 
 	mockRepo.On("GetByEmail", "test@example.com").Return(user, nil)
+	mockRepo.On("ResetFailedLoginCountByUUID", userID).Return(nil)
 
 	response, err := authService.Login("test@example.com", password)
 
-	assert.Error(t, err)
-	assert.Nil(t, response)
-	assert.Equal(t, ErrAccountLocked, err)
+	assert.NoError(t, err)
+	assert.NotNil(t, response)
 
 	mockRepo.AssertExpectations(t)
 }
@@ -252,8 +253,6 @@ func TestLogin_AccountLockout_AfterMaxAttempts(t *testing.T) {
 	}
 
 	mockRepo.On("GetByEmail", "test@example.com").Return(user, nil)
-	mockRepo.On("IncrementFailedLoginCountByUUID", userID).Return(nil)
-	mockRepo.On("LockAccountByUUID", userID, mock.AnythingOfType("time.Time")).Return(nil)
 
 	response, err := authService.Login("test@example.com", "WrongPassword")
 
@@ -262,4 +261,31 @@ func TestLogin_AccountLockout_AfterMaxAttempts(t *testing.T) {
 	assert.Equal(t, ErrInvalidCredentials, err)
 
 	mockRepo.AssertExpectations(t)
+}
+
+func TestLogin_UnverifiedOnlyRevealedWithCorrectPassword(t *testing.T) {
+	mockRepo := new(MockUserRepository)
+	authService := NewAuthService(mockRepo, auth.NewJWTManager(getTestJWTConfig()), getTestAuthConfig())
+
+	passwordHash, _ := auth.HashPassword("CorrectPassword123!")
+	user := &models.User{ID: uuid.New(), Email: "u@example.com", PasswordHash: passwordHash, EmailVerified: false}
+	mockRepo.On("GetByEmail", "u@example.com").Return(user, nil)
+
+	_, err := authService.Login("u@example.com", "WrongPassword")
+	assert.Equal(t, ErrInvalidCredentials, err, "wrong password never reveals verification state")
+
+	_, err = authService.Login("u@example.com", "CorrectPassword123!")
+	assert.Equal(t, ErrEmailNotVerified, err)
+}
+
+func TestLogin_UnknownEmailDoesBcryptWork(t *testing.T) {
+	mockRepo := new(MockUserRepository)
+	authService := NewAuthService(mockRepo, auth.NewJWTManager(getTestJWTConfig()), getTestAuthConfig())
+	mockRepo.On("GetByEmail", "nobody@example.com").Return(nil, repository.ErrUserNotFound)
+
+	start := time.Now()
+	_, err := authService.Login("nobody@example.com", "whatever")
+	assert.Equal(t, ErrInvalidCredentials, err)
+	// bcrypt cost 12 takes well over a few milliseconds; an early return doesn't.
+	assert.Greater(t, time.Since(start), 20*time.Millisecond)
 }

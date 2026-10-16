@@ -13,8 +13,11 @@
 # copied from the source tree.
 
 # ---- Build stage -------------------------------------------------------------
-# Keep in sync with the `go` directive in go.mod.
-FROM golang:1.26-alpine AS builder
+# Keep in sync with the `toolchain` directive in go.mod: the binary must be
+# built with a Go release that has the current stdlib security fixes
+# (govulncheck reports stdlib CVEs against the build toolchain). Official
+# images set GOTOOLCHAIN=local, so the image tag is what counts.
+FROM golang:1.27-alpine AS builder
 
 WORKDIR /src
 

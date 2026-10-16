@@ -9,6 +9,8 @@ import (
 	"sort"
 	"time"
 
+	"github.com/javaknight1/servicepro/backend/internal/tenancy"
+
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -85,7 +87,8 @@ func (s *PaymentReminderService) ProcessAllTenants(ctx context.Context) (Reminde
 
 	for i := range tenants {
 		if tenants[i].Settings.PaymentRemindersEnabled {
-			result.add(s.ProcessTenantReminders(ctx, &tenants[i]))
+			// Scope each tenant's run to that tenant (internal/tenancy).
+			result.add(s.ProcessTenantReminders(tenancy.WithTenant(ctx, tenants[i].ID), &tenants[i]))
 		}
 	}
 

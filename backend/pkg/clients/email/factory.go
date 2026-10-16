@@ -59,6 +59,13 @@ func NewClient(ctx context.Context, cfg *config.Config) (Client, error) {
 	provider := detectProvider(cfg)
 	logging.Info(ctx, "[EMAIL] Using provider", map[string]any{"provider": provider})
 
+	// In production a missing email configuration must not silently fall
+	// back to the mock: users would never get reset/verification/invite
+	// emails (F-14). Fail startup instead.
+	if provider == ProviderMock && cfg.Server.Env == "production" {
+		return nil, fmt.Errorf("no email provider configured in production: set RESEND_API_KEY (or SMTP_HOST / AWS SES settings)")
+	}
+
 	constructorsMu.RLock()
 	constructor, ok := constructors[provider]
 	constructorsMu.RUnlock()

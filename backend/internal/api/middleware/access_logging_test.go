@@ -17,6 +17,15 @@ import (
 	"github.com/javaknight1/servicepro/backend/config"
 )
 
+func setupTestRouter() *gin.Engine {
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	// Trust all proxies for testing so X-Forwarded-For is used
+	_ = router.SetTrustedProxies([]string{"0.0.0.0/0", "::/0"})
+	router.ForwardedByClientIP = true
+	return router
+}
+
 func setupTestAccessLogger(t *testing.T) (*AccessLogger, func()) {
 	// Create temp directory for logs
 	tmpDir := t.TempDir()

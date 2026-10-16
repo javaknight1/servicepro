@@ -245,6 +245,15 @@ func (r *TenantRepository) GetUserTenantMembership(ctx context.Context, userID, 
 	return &membership, nil
 }
 
+// GetRoleByID retrieves a role by ID
+func (r *TenantRepository) GetRoleByID(ctx context.Context, roleID uuid.UUID) (*models.Role, error) {
+	var role models.Role
+	if err := r.db.WithContext(ctx).Where("id = ?", roleID).First(&role).Error; err != nil {
+		return nil, err
+	}
+	return &role, nil
+}
+
 // SetMemberActive activates or deactivates a tenant membership
 func (r *TenantRepository) SetMemberActive(ctx context.Context, tenantID, userID uuid.UUID, isActive bool) error {
 	return r.db.WithContext(ctx).Model(&models.TenantUser{}).

@@ -5,6 +5,10 @@ import (
 	"fmt"
 	"time"
 
+	csvsafe "github.com/javaknight1/servicepro/backend/pkg/csv"
+
+	"github.com/javaknight1/servicepro/backend/internal/tenancy"
+
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
@@ -140,7 +144,13 @@ func (s *revenueReportService) calculateSummary(ctx context.Context, query *mode
 		GrowthRate:              growthRate,
 	}
 
-	go s.updateCache(context.Background(), query, summary)
+	// Refresh the (per-tenant) cache asynchronously with a context that
+	// carries only the caller's tenant.
+	bg := context.Background()
+	if tenantID, ok := tenancy.TenantID(ctx); ok {
+		bg = tenancy.WithTenant(bg, tenantID)
+	}
+	go s.updateCache(bg, query, summary)
 
 	return summary, nil
 }
@@ -410,7 +420,7 @@ func (s *revenueReportService) exportToCSV(report *models.RevenueReportResponse,
 		csvContent += "Category,Revenue,Transaction Count,Average Value,Percentage\n"
 		for _, cat := range report.ByCategory {
 			csvContent += fmt.Sprintf("%s,%s,%d,%s,%s%%\n",
-				cat.Category,
+				csvsafe.Field(cat.Category),
 				cat.Revenue.String(),
 				cat.TransactionCount,
 				cat.AverageValue.String(),

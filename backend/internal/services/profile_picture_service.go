@@ -26,6 +26,12 @@ const (
 	JPEGQuality   = 85
 )
 
+// MaxImageDimension bounds the width/height of uploaded profile pictures.
+const MaxImageDimension = 4000
+
+// ErrImageTooLarge is returned for images whose dimensions exceed MaxImageDimension.
+var ErrImageTooLarge = errors.New("image dimensions too large (max 4000x4000)")
+
 var (
 	ErrFileTooLarge       = errors.New("file size exceeds maximum allowed (2MB)")
 	ErrInvalidImageFormat = errors.New("invalid image format, only JPEG and PNG are supported")
@@ -66,6 +72,16 @@ func (s *ProfilePictureService) UploadProfilePicture(ctx context.Context, userID
 
 	if int64(len(data)) > MaxUploadSize {
 		return "", ErrFileTooLarge
+	}
+
+	// Check the declared dimensions BEFORE decoding: a tiny PNG can declare
+	// 50k x 50k pixels and exhaust memory when decoded (F-19).
+	cfg, _, err := image.DecodeConfig(bytes.NewReader(data))
+	if err != nil {
+		return "", ErrInvalidImageFormat
+	}
+	if cfg.Width <= 0 || cfg.Height <= 0 || cfg.Width > MaxImageDimension || cfg.Height > MaxImageDimension {
+		return "", ErrImageTooLarge
 	}
 
 	// Decode image

@@ -6,12 +6,17 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
 	"time"
+
+	csvsafe "github.com/javaknight1/servicepro/backend/pkg/csv"
+
+	"github.com/javaknight1/servicepro/backend/internal/tenancy"
 
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
@@ -108,7 +113,7 @@ func (s *unifiedExportService) StartExport(ctx context.Context, userID uuid.UUID
 	job.MimeType = config.Format.GetMimeType()
 
 	// Save job to database
-	if err := s.db.Create(job).Error; err != nil {
+	if err := s.db.WithContext(ctx).Create(job).Error; err != nil {
 		return nil, fmt.Errorf("failed to create export job: %w", err)
 	}
 
@@ -118,8 +123,13 @@ func (s *unifiedExportService) StartExport(ctx context.Context, userID uuid.UUID
 	// Capture job ID before starting goroutine to avoid race
 	jobID := job.ID
 
-	// Start async export in goroutine
-	go s.processExport(context.Background(), jobID, config)
+	// Start async export in goroutine. It outlives the request, so it gets a
+	// fresh context carrying only the caller's tenant.
+	bg := context.Background()
+	if tenantID, ok := tenancy.TenantID(ctx); ok {
+		bg = tenancy.WithTenant(bg, tenantID)
+	}
+	go s.processExport(bg, jobID, config)
 
 	return job, nil
 }
@@ -130,7 +140,7 @@ func (s *unifiedExportService) processExport(ctx context.Context, jobID uuid.UUI
 
 	// Fetch fresh job from database to avoid race with caller
 	var job models.ExportJob
-	if err := s.db.First(&job, "id = ?", jobID).Error; err != nil {
+	if err := s.db.WithContext(ctx).First(&job, "id = ?", jobID).Error; err != nil {
 		return
 	}
 
@@ -138,7 +148,7 @@ func (s *unifiedExportService) processExport(ctx context.Context, jobID uuid.UUI
 	now := time.Now()
 	job.Status = models.ExportJobStatusProcessing
 	job.StartedAt = &now
-	s.db.Save(&job)
+	s.db.WithContext(ctx).Save(&job)
 
 	s.updateProgress(job.ID, models.ExportProgress{
 		JobID:        job.ID,
@@ -150,12 +160,12 @@ func (s *unifiedExportService) processExport(ctx context.Context, jobID uuid.UUI
 	// Fetch data based on export type
 	data, totalRecords, err := s.fetchData(ctx, config)
 	if err != nil {
-		s.failJob(&job, fmt.Sprintf("Failed to fetch data: %v", err))
+		s.failJob(ctx, &job, fmt.Sprintf("Failed to fetch data: %v", err))
 		return
 	}
 
 	job.TotalRecords = totalRecords
-	s.db.Save(&job)
+	s.db.WithContext(ctx).Save(&job)
 
 	s.updateProgress(job.ID, models.ExportProgress{
 		JobID:        job.ID,
@@ -184,7 +194,7 @@ func (s *unifiedExportService) processExport(ctx context.Context, jobID uuid.UUI
 	}
 
 	if err != nil {
-		s.failJob(&job, fmt.Sprintf("Failed to generate export: %v", err))
+		s.failJob(ctx, &job, fmt.Sprintf("Failed to generate export: %v", err))
 		return
 	}
 
@@ -200,14 +210,14 @@ func (s *unifiedExportService) processExport(ctx context.Context, jobID uuid.UUI
 
 	// Write to file
 	if err := os.WriteFile(job.FilePath, exportData, 0644); err != nil {
-		s.failJob(&job, fmt.Sprintf("Failed to write file: %v", err))
+		s.failJob(ctx, &job, fmt.Sprintf("Failed to write file: %v", err))
 		return
 	}
 
 	// Get file info
 	fileInfo, err := os.Stat(job.FilePath)
 	if err != nil {
-		s.failJob(&job, fmt.Sprintf("Failed to get file info: %v", err))
+		s.failJob(ctx, &job, fmt.Sprintf("Failed to get file info: %v", err))
 		return
 	}
 
@@ -222,7 +232,7 @@ func (s *unifiedExportService) processExport(ctx context.Context, jobID uuid.UUI
 	job.CompletedAt = &completedAt
 	job.ExpiresAt = &expiresAt
 	job.UpdatedAt = completedAt
-	s.db.Save(&job)
+	s.db.WithContext(ctx).Save(&job)
 
 	s.updateProgress(job.ID, models.ExportProgress{
 		JobID:            job.ID,
@@ -442,7 +452,7 @@ func (s *unifiedExportService) writeCustomersCSV(writer *csv.Writer, customers [
 	// Write data rows
 	for _, customer := range customers {
 		row := s.customerToRow(customer, selectedFields)
-		if err := writer.Write(row); err != nil {
+		if err := writer.Write(csvsafe.SafeRow(row)); err != nil {
 			return err
 		}
 	}
@@ -499,7 +509,7 @@ func (s *unifiedExportService) writeJobsCSV(writer *csv.Writer, jobs []models.Jo
 			formatEpochPtr(job.ScheduledStartAt),
 			job.CreatedAt.Format(time.RFC3339),
 		}
-		if err := writer.Write(row); err != nil {
+		if err := writer.Write(csvsafe.SafeRow(row)); err != nil {
 			return err
 		}
 	}
@@ -526,7 +536,7 @@ func (s *unifiedExportService) writeInvoicesCSV(writer *csv.Writer, invoices []m
 			inv.DueDate.Format(time.RFC3339),
 			inv.CreatedAt.Format(time.RFC3339),
 		}
-		if err := writer.Write(row); err != nil {
+		if err := writer.Write(csvsafe.SafeRow(row)); err != nil {
 			return err
 		}
 	}
@@ -551,7 +561,7 @@ func (s *unifiedExportService) writeQuotesCSV(writer *csv.Writer, quotes []model
 			quote.ValidUntil.Format(time.RFC3339),
 			quote.CreatedAt.Format(time.RFC3339),
 		}
-		if err := writer.Write(row); err != nil {
+		if err := writer.Write(csvsafe.SafeRow(row)); err != nil {
 			return err
 		}
 	}
@@ -642,17 +652,17 @@ func (s *unifiedExportService) writeCustomersExcel(f *excelize.File, sheet strin
 	// Write data
 	for i, customer := range customers {
 		row := i + 2
-		f.SetCellValue(sheet, fmt.Sprintf("A%d", row), customer.ID.String())
-		f.SetCellValue(sheet, fmt.Sprintf("B%d", row), customer.FirstName)
-		f.SetCellValue(sheet, fmt.Sprintf("C%d", row), customer.LastName)
-		f.SetCellValue(sheet, fmt.Sprintf("D%d", row), ptrToStr(customer.CompanyName))
-		f.SetCellValue(sheet, fmt.Sprintf("E%d", row), customer.Email)
-		f.SetCellValue(sheet, fmt.Sprintf("F%d", row), customer.PhonePrimary)
-		f.SetCellValue(sheet, fmt.Sprintf("G%d", row), string(customer.CustomerType))
-		f.SetCellValue(sheet, fmt.Sprintf("H%d", row), string(customer.Status))
-		f.SetCellValue(sheet, fmt.Sprintf("I%d", row), customer.BillingAddressCity)
-		f.SetCellValue(sheet, fmt.Sprintf("J%d", row), customer.BillingAddressState)
-		f.SetCellValue(sheet, fmt.Sprintf("K%d", row), customer.CreatedAt.Format("2006-01-02"))
+		f.SetCellValue(sheet, fmt.Sprintf("A%d", row), csvsafe.SafeCell(customer.ID.String()))
+		f.SetCellValue(sheet, fmt.Sprintf("B%d", row), csvsafe.SafeCell(customer.FirstName))
+		f.SetCellValue(sheet, fmt.Sprintf("C%d", row), csvsafe.SafeCell(customer.LastName))
+		f.SetCellValue(sheet, fmt.Sprintf("D%d", row), csvsafe.SafeCell(ptrToStr(customer.CompanyName)))
+		f.SetCellValue(sheet, fmt.Sprintf("E%d", row), csvsafe.SafeCell(customer.Email))
+		f.SetCellValue(sheet, fmt.Sprintf("F%d", row), csvsafe.SafeCell(customer.PhonePrimary))
+		f.SetCellValue(sheet, fmt.Sprintf("G%d", row), csvsafe.SafeCell(string(customer.CustomerType)))
+		f.SetCellValue(sheet, fmt.Sprintf("H%d", row), csvsafe.SafeCell(string(customer.Status)))
+		f.SetCellValue(sheet, fmt.Sprintf("I%d", row), csvsafe.SafeCell(customer.BillingAddressCity))
+		f.SetCellValue(sheet, fmt.Sprintf("J%d", row), csvsafe.SafeCell(customer.BillingAddressState))
+		f.SetCellValue(sheet, fmt.Sprintf("K%d", row), csvsafe.SafeCell(customer.CreatedAt.Format("2006-01-02")))
 	}
 
 	// Freeze header row
@@ -686,12 +696,12 @@ func (s *unifiedExportService) writeJobsExcel(f *excelize.File, sheet string, jo
 
 	for i, job := range jobs {
 		row := i + 2
-		f.SetCellValue(sheet, fmt.Sprintf("A%d", row), job.ID.String())
-		f.SetCellValue(sheet, fmt.Sprintf("B%d", row), job.CustomerID.String())
-		f.SetCellValue(sheet, fmt.Sprintf("C%d", row), job.Title)
-		f.SetCellValue(sheet, fmt.Sprintf("D%d", row), string(job.Status))
-		f.SetCellValue(sheet, fmt.Sprintf("E%d", row), formatEpochPtr(job.ScheduledStartAt))
-		f.SetCellValue(sheet, fmt.Sprintf("F%d", row), job.CreatedAt.Format("2006-01-02"))
+		f.SetCellValue(sheet, fmt.Sprintf("A%d", row), csvsafe.SafeCell(job.ID.String()))
+		f.SetCellValue(sheet, fmt.Sprintf("B%d", row), csvsafe.SafeCell(job.CustomerID.String()))
+		f.SetCellValue(sheet, fmt.Sprintf("C%d", row), csvsafe.SafeCell(job.Title))
+		f.SetCellValue(sheet, fmt.Sprintf("D%d", row), csvsafe.SafeCell(string(job.Status)))
+		f.SetCellValue(sheet, fmt.Sprintf("E%d", row), csvsafe.SafeCell(formatEpochPtr(job.ScheduledStartAt)))
+		f.SetCellValue(sheet, fmt.Sprintf("F%d", row), csvsafe.SafeCell(job.CreatedAt.Format("2006-01-02")))
 	}
 
 	return nil
@@ -707,18 +717,18 @@ func (s *unifiedExportService) writeInvoicesExcel(f *excelize.File, sheet string
 
 	for i, inv := range invoices {
 		row := i + 2
-		f.SetCellValue(sheet, fmt.Sprintf("A%d", row), inv.ID.String())
-		f.SetCellValue(sheet, fmt.Sprintf("B%d", row), inv.InvoiceNumber)
-		f.SetCellValue(sheet, fmt.Sprintf("C%d", row), inv.CustomerID.String())
-		f.SetCellValue(sheet, fmt.Sprintf("D%d", row), string(inv.Status))
+		f.SetCellValue(sheet, fmt.Sprintf("A%d", row), csvsafe.SafeCell(inv.ID.String()))
+		f.SetCellValue(sheet, fmt.Sprintf("B%d", row), csvsafe.SafeCell(inv.InvoiceNumber))
+		f.SetCellValue(sheet, fmt.Sprintf("C%d", row), csvsafe.SafeCell(inv.CustomerID.String()))
+		f.SetCellValue(sheet, fmt.Sprintf("D%d", row), csvsafe.SafeCell(string(inv.Status)))
 		subtotal, _ := inv.Subtotal.Float64()
 		f.SetCellValue(sheet, fmt.Sprintf("E%d", row), subtotal)
 		tax, _ := inv.TaxAmount.Float64()
 		f.SetCellValue(sheet, fmt.Sprintf("F%d", row), tax)
 		total, _ := inv.TotalAmount.Float64()
 		f.SetCellValue(sheet, fmt.Sprintf("G%d", row), total)
-		f.SetCellValue(sheet, fmt.Sprintf("H%d", row), inv.DueDate.Format("2006-01-02"))
-		f.SetCellValue(sheet, fmt.Sprintf("I%d", row), inv.CreatedAt.Format("2006-01-02"))
+		f.SetCellValue(sheet, fmt.Sprintf("H%d", row), csvsafe.SafeCell(inv.DueDate.Format("2006-01-02")))
+		f.SetCellValue(sheet, fmt.Sprintf("I%d", row), csvsafe.SafeCell(inv.CreatedAt.Format("2006-01-02")))
 	}
 
 	return nil
@@ -734,14 +744,14 @@ func (s *unifiedExportService) writeQuotesExcel(f *excelize.File, sheet string, 
 
 	for i, quote := range quotes {
 		row := i + 2
-		f.SetCellValue(sheet, fmt.Sprintf("A%d", row), quote.ID.String())
-		f.SetCellValue(sheet, fmt.Sprintf("B%d", row), quote.QuoteNumber)
-		f.SetCellValue(sheet, fmt.Sprintf("C%d", row), quote.CustomerID.String())
-		f.SetCellValue(sheet, fmt.Sprintf("D%d", row), string(quote.Status))
+		f.SetCellValue(sheet, fmt.Sprintf("A%d", row), csvsafe.SafeCell(quote.ID.String()))
+		f.SetCellValue(sheet, fmt.Sprintf("B%d", row), csvsafe.SafeCell(quote.QuoteNumber))
+		f.SetCellValue(sheet, fmt.Sprintf("C%d", row), csvsafe.SafeCell(quote.CustomerID.String()))
+		f.SetCellValue(sheet, fmt.Sprintf("D%d", row), csvsafe.SafeCell(string(quote.Status)))
 		total, _ := quote.Total.Float64()
 		f.SetCellValue(sheet, fmt.Sprintf("E%d", row), total)
-		f.SetCellValue(sheet, fmt.Sprintf("F%d", row), quote.ValidUntil.Format("2006-01-02"))
-		f.SetCellValue(sheet, fmt.Sprintf("G%d", row), quote.CreatedAt.Format("2006-01-02"))
+		f.SetCellValue(sheet, fmt.Sprintf("F%d", row), csvsafe.SafeCell(quote.ValidUntil.Format("2006-01-02")))
+		f.SetCellValue(sheet, fmt.Sprintf("G%d", row), csvsafe.SafeCell(quote.CreatedAt.Format("2006-01-02")))
 	}
 
 	return nil
@@ -784,10 +794,10 @@ func (s *unifiedExportService) ExportToPDF(ctx context.Context, data interface{}
 	return os.ReadFile(tempFile)
 }
 
-func (s *unifiedExportService) buildPDFHTML(data interface{}, config *models.ExportConfig, opts *models.PDFExportOptions) string {
-	var html strings.Builder
-
-	html.WriteString(`<!DOCTYPE html>
+// pdfExportTemplate renders export PDFs. html/template escapes every value
+// (titles, header text, customer/job fields), so user content can't inject
+// markup such as <iframe src=file://...> into the wkhtmltopdf input (F-8).
+var pdfExportTemplate = template.Must(template.New("export").Parse(`<!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
@@ -803,104 +813,76 @@ func (s *unifiedExportService) buildPDFHTML(data interface{}, config *models.Exp
         .footer { margin-top: 30px; text-align: center; color: #666; font-size: 10px; }
     </style>
 </head>
-<body>`)
+<body>
+<h1>{{.Title}}</h1>
+{{if .HeaderText}}<p>{{.HeaderText}}</p>{{end}}
+{{if .Headers}}<div class="summary"><span class="summary-item"><strong>{{.SummaryLabel}}:</strong> {{len .Rows}}</span></div>
+<table><thead><tr>{{range .Headers}}<th>{{.}}</th>{{end}}</tr></thead><tbody>
+{{range .Rows}}<tr>{{range .}}<td>{{.}}</td>{{end}}</tr>
+{{end}}</tbody></table>{{else}}<pre>{{.Raw}}</pre>{{end}}
+<div class="footer">Generated on {{.GeneratedAt}}</div>
+</body></html>`))
 
-	// Add title
-	title := opts.Title
-	if title == "" {
-		title = fmt.Sprintf("%s Export", strings.Title(string(config.ExportType)))
+type pdfExportView struct {
+	Title, HeaderText, SummaryLabel, Raw, GeneratedAt string
+	Headers                                           []string
+	Rows                                              [][]string
+}
+
+func (s *unifiedExportService) buildPDFHTML(data interface{}, config *models.ExportConfig, opts *models.PDFExportOptions) string {
+	view := pdfExportView{
+		Title:       opts.Title,
+		HeaderText:  opts.HeaderText,
+		GeneratedAt: time.Now().Format("January 2, 2006 3:04 PM"),
 	}
-	html.WriteString(fmt.Sprintf("<h1>%s</h1>", title))
-
-	// Add header text if provided
-	if opts.HeaderText != "" {
-		html.WriteString(fmt.Sprintf("<p>%s</p>", opts.HeaderText))
+	if view.Title == "" {
+		view.Title = fmt.Sprintf("%s Export", strings.Title(string(config.ExportType))) //nolint:staticcheck // ASCII export type names
 	}
 
-	// Build table based on data type
 	switch d := data.(type) {
 	case []models.Customer:
-		html.WriteString(s.buildCustomersPDFTable(d))
+		view.SummaryLabel = "Total Customers"
+		view.Headers = []string{"Name", "Company", "Email", "Phone", "Type", "Status", "City", "State"}
+		for _, c := range d {
+			view.Rows = append(view.Rows, []string{c.FirstName + " " + c.LastName, ptrToStr(c.CompanyName), c.Email, c.PhonePrimary,
+				string(c.CustomerType), string(c.Status), c.BillingAddressCity, c.BillingAddressState})
+		}
 	case []models.Job:
-		html.WriteString(s.buildJobsPDFTable(d))
+		view.SummaryLabel = "Total Jobs"
+		view.Headers = []string{"Title", "Status", "Scheduled", "Created"}
+		for _, j := range d {
+			view.Rows = append(view.Rows, []string{j.Title, string(j.Status), formatEpochPtr(j.ScheduledStartAt), j.CreatedAt.Format("2006-01-02")})
+		}
 	case []models.Invoice:
-		html.WriteString(s.buildInvoicesPDFTable(d))
+		view.SummaryLabel = "Total Invoices"
+		view.Headers = []string{"Invoice #", "Status", "Subtotal", "Tax", "Total", "Due Date"}
+		for _, inv := range d {
+			view.Rows = append(view.Rows, []string{inv.InvoiceNumber, string(inv.Status), "$" + inv.Subtotal.StringFixed(2),
+				"$" + inv.TaxAmount.StringFixed(2), "$" + inv.TotalAmount.StringFixed(2), inv.DueDate.Format("2006-01-02")})
+		}
 	case []models.Quote:
-		html.WriteString(s.buildQuotesPDFTable(d))
+		view.SummaryLabel = "Total Quotes"
+		view.Headers = []string{"Quote #", "Status", "Total", "Valid Until", "Created"}
+		for _, q := range d {
+			view.Rows = append(view.Rows, []string{q.QuoteNumber, string(q.Status), "$" + q.Total.StringFixed(2),
+				q.ValidUntil.Format("2006-01-02"), q.CreatedAt.Format("2006-01-02")})
+		}
 	default:
 		jsonData, _ := json.MarshalIndent(data, "", "  ")
-		html.WriteString(fmt.Sprintf("<pre>%s</pre>", string(jsonData)))
+		view.Raw = string(jsonData)
 	}
 
-	// Add footer
-	html.WriteString(fmt.Sprintf(`<div class="footer">Generated on %s</div>`, time.Now().Format("January 2, 2006 3:04 PM")))
-	html.WriteString("</body></html>")
-
-	return html.String()
-}
-
-func (s *unifiedExportService) buildCustomersPDFTable(customers []models.Customer) string {
-	var html strings.Builder
-	html.WriteString(fmt.Sprintf(`<div class="summary"><span class="summary-item"><strong>Total Customers:</strong> %d</span></div>`, len(customers)))
-	html.WriteString(`<table><thead><tr><th>Name</th><th>Company</th><th>Email</th><th>Phone</th><th>Type</th><th>Status</th><th>City</th><th>State</th></tr></thead><tbody>`)
-
-	for _, c := range customers {
-		html.WriteString(fmt.Sprintf("<tr><td>%s %s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>",
-			c.FirstName, c.LastName, ptrToStr(c.CompanyName), c.Email, c.PhonePrimary,
-			c.CustomerType, c.Status, c.BillingAddressCity, c.BillingAddressState))
+	var out strings.Builder
+	if err := pdfExportTemplate.Execute(&out, view); err != nil {
+		return "<!DOCTYPE html><html><body><p>Export could not be rendered.</p></body></html>"
 	}
-
-	html.WriteString("</tbody></table>")
-	return html.String()
-}
-
-func (s *unifiedExportService) buildJobsPDFTable(jobs []models.Job) string {
-	var html strings.Builder
-	html.WriteString(fmt.Sprintf(`<div class="summary"><span class="summary-item"><strong>Total Jobs:</strong> %d</span></div>`, len(jobs)))
-	html.WriteString(`<table><thead><tr><th>Title</th><th>Status</th><th>Scheduled</th><th>Created</th></tr></thead><tbody>`)
-
-	for _, j := range jobs {
-		html.WriteString(fmt.Sprintf("<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>",
-			j.Title, j.Status, formatEpochPtr(j.ScheduledStartAt), j.CreatedAt.Format("2006-01-02")))
-	}
-
-	html.WriteString("</tbody></table>")
-	return html.String()
-}
-
-func (s *unifiedExportService) buildInvoicesPDFTable(invoices []models.Invoice) string {
-	var html strings.Builder
-	html.WriteString(fmt.Sprintf(`<div class="summary"><span class="summary-item"><strong>Total Invoices:</strong> %d</span></div>`, len(invoices)))
-	html.WriteString(`<table><thead><tr><th>Invoice #</th><th>Status</th><th>Subtotal</th><th>Tax</th><th>Total</th><th>Due Date</th></tr></thead><tbody>`)
-
-	for _, inv := range invoices {
-		html.WriteString(fmt.Sprintf("<tr><td>%s</td><td>%s</td><td>$%s</td><td>$%s</td><td>$%s</td><td>%s</td></tr>",
-			inv.InvoiceNumber, inv.Status, inv.Subtotal.StringFixed(2), inv.TaxAmount.StringFixed(2),
-			inv.TotalAmount.StringFixed(2), inv.DueDate.Format("2006-01-02")))
-	}
-
-	html.WriteString("</tbody></table>")
-	return html.String()
-}
-
-func (s *unifiedExportService) buildQuotesPDFTable(quotes []models.Quote) string {
-	var html strings.Builder
-	html.WriteString(fmt.Sprintf(`<div class="summary"><span class="summary-item"><strong>Total Quotes:</strong> %d</span></div>`, len(quotes)))
-	html.WriteString(`<table><thead><tr><th>Quote #</th><th>Status</th><th>Total</th><th>Valid Until</th><th>Created</th></tr></thead><tbody>`)
-
-	for _, q := range quotes {
-		html.WriteString(fmt.Sprintf("<tr><td>%s</td><td>%s</td><td>$%s</td><td>%s</td><td>%s</td></tr>",
-			q.QuoteNumber, q.Status, q.Total.StringFixed(2), q.ValidUntil.Format("2006-01-02"), q.CreatedAt.Format("2006-01-02")))
-	}
-
-	html.WriteString("</tbody></table>")
-	return html.String()
+	return out.String()
 }
 
 // GetExportStatus returns the status of an export job
 func (s *unifiedExportService) GetExportStatus(ctx context.Context, jobID uuid.UUID) (*models.ExportJobResponse, error) {
 	var job models.ExportJob
-	if err := s.db.First(&job, "id = ?", jobID).Error; err != nil {
+	if err := s.db.WithContext(ctx).First(&job, "id = ?", jobID).Error; err != nil {
 		return nil, err
 	}
 
@@ -910,7 +892,7 @@ func (s *unifiedExportService) GetExportStatus(ctx context.Context, jobID uuid.U
 
 // CancelExport cancels an in-progress export job
 func (s *unifiedExportService) CancelExport(ctx context.Context, jobID uuid.UUID) error {
-	result := s.db.Model(&models.ExportJob{}).
+	result := s.db.WithContext(ctx).Model(&models.ExportJob{}).
 		Where("id = ? AND status IN ?", jobID, []string{string(models.ExportJobStatusPending), string(models.ExportJobStatusProcessing)}).
 		Update("status", models.ExportJobStatusCancelled)
 
@@ -933,7 +915,7 @@ func (s *unifiedExportService) CancelExport(ctx context.Context, jobID uuid.UUID
 // GetExportFile returns the file for download
 func (s *unifiedExportService) GetExportFile(ctx context.Context, jobID uuid.UUID) (io.ReadCloser, *models.ExportJob, error) {
 	var job models.ExportJob
-	if err := s.db.First(&job, "id = ?", jobID).Error; err != nil {
+	if err := s.db.WithContext(ctx).First(&job, "id = ?", jobID).Error; err != nil {
 		return nil, nil, err
 	}
 
@@ -952,7 +934,7 @@ func (s *unifiedExportService) GetExportFile(ctx context.Context, jobID uuid.UUI
 // ListExports lists recent exports for a user
 func (s *unifiedExportService) ListExports(ctx context.Context, userID uuid.UUID, limit int) ([]models.ExportJobResponse, error) {
 	var jobs []models.ExportJob
-	if err := s.db.Where("user_id = ?", userID).Order("created_at DESC").Limit(limit).Find(&jobs).Error; err != nil {
+	if err := s.db.WithContext(ctx).Where("user_id = ?", userID).Order("created_at DESC").Limit(limit).Find(&jobs).Error; err != nil {
 		return nil, err
 	}
 
@@ -967,7 +949,7 @@ func (s *unifiedExportService) ListExports(ctx context.Context, userID uuid.UUID
 // CleanupExpiredExports removes expired export files
 func (s *unifiedExportService) CleanupExpiredExports(ctx context.Context) error {
 	var jobs []models.ExportJob
-	if err := s.db.Where("expires_at < ? AND status = ?", time.Now(), models.ExportJobStatusCompleted).Find(&jobs).Error; err != nil {
+	if err := s.db.WithContext(ctx).Where("expires_at < ? AND status = ?", time.Now(), models.ExportJobStatusCompleted).Find(&jobs).Error; err != nil {
 		return err
 	}
 
@@ -978,7 +960,7 @@ func (s *unifiedExportService) CleanupExpiredExports(ctx context.Context) error 
 		}
 
 		// Delete job record
-		s.db.Delete(&job)
+		s.db.WithContext(ctx).Delete(&job)
 	}
 
 	return nil
@@ -1030,12 +1012,12 @@ func (s *unifiedExportService) SubscribeToProgress(jobID uuid.UUID) <-chan model
 	return ch
 }
 
-func (s *unifiedExportService) failJob(job *models.ExportJob, errorMsg string) {
+func (s *unifiedExportService) failJob(ctx context.Context, job *models.ExportJob, errorMsg string) {
 	job.Status = models.ExportJobStatusFailed
 	job.ErrorMessage = &errorMsg
 	completedAt := time.Now()
 	job.CompletedAt = &completedAt
-	s.db.Save(job)
+	s.db.WithContext(ctx).Save(job)
 
 	s.updateProgress(job.ID, models.ExportProgress{
 		JobID:   job.ID,

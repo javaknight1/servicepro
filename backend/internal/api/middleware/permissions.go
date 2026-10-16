@@ -25,10 +25,21 @@ const (
 
 // PermissionMiddleware handles permission checking for routes
 type PermissionMiddleware struct {
+	tokenVersions   TokenVersionLookup
 	checker         *permissions.PermissionChecker
 	jwtManager      *auth.JWTManager
 	cookieManager   *auth.CookieManager
 	accessTokenName string
+}
+
+// TokenVersionLookup returns a user's current token version (users.token_version).
+type TokenVersionLookup func(userID uuid.UUID) (int, error)
+
+// SetTokenVersionLookup enables revocation checks: access tokens whose
+// version differs from the user's current one (after logout or a password
+// reset) are rejected.
+func (pm *PermissionMiddleware) SetTokenVersionLookup(lookup TokenVersionLookup) {
+	pm.tokenVersions = lookup
 }
 
 // NewPermissionMiddleware creates a new permission middleware
@@ -86,7 +97,18 @@ func (pm *PermissionMiddleware) RequireAuth() gin.HandlerFunc {
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, models.ErrorResponse{
 				Error:   "unauthorized",
-				Message: fmt.Sprintf("Invalid or expired token: %v", err),
+				Message: "Invalid or expired token",
+			})
+			c.Abort()
+			return
+		}
+
+		// Only access tokens authenticate API calls; a (long-lived) refresh
+		// token must never work as a bearer token (F-11).
+		if claims.Type != auth.AccessToken {
+			c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+				Error:   "unauthorized",
+				Message: "Invalid or expired token",
 			})
 			c.Abort()
 			return
@@ -101,6 +123,19 @@ func (pm *PermissionMiddleware) RequireAuth() gin.HandlerFunc {
 			})
 			c.Abort()
 			return
+		}
+
+		// Reject tokens revoked by logout / password reset.
+		if pm.tokenVersions != nil {
+			current, err := pm.tokenVersions(userID)
+			if err != nil || current != claims.TokenVersion {
+				c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+					Error:   "unauthorized",
+					Message: "Session has expired, please sign in again",
+				})
+				c.Abort()
+				return
+			}
 		}
 
 		// Set user information in context
@@ -130,7 +165,7 @@ func (pm *PermissionMiddleware) RequirePermission(permissionName string) gin.Han
 
 		// Check permission
 		ctx := context.Background()
-		hasPermission, err := pm.checker.CheckPermission(ctx, userID, permissionName)
+		hasPermission, err := pm.checker.CheckPermission(ctx, userID, tenantIDFromContext(c), permissionName)
 		if err != nil {
 			log.Printf("[ERROR] Permission check failed for user %s: %v", userID, err)
 			c.JSON(http.StatusInternalServerError, models.ErrorResponse{
@@ -183,7 +218,7 @@ func (pm *PermissionMiddleware) RequireResourceAction(resource, action string) g
 
 		// Check resource action permission
 		ctx := context.Background()
-		hasPermission, err := pm.checker.CheckResourceAction(ctx, userID, resource, action)
+		hasPermission, err := pm.checker.CheckResourceAction(ctx, userID, tenantIDFromContext(c), resource, action)
 		if err != nil {
 			log.Printf("[ERROR] Resource action check failed for user %s: %v", userID, err)
 			c.JSON(http.StatusInternalServerError, models.ErrorResponse{
@@ -232,7 +267,7 @@ func (pm *PermissionMiddleware) RequireAnyPermission(permissionNames ...string) 
 		}
 
 		ctx := context.Background()
-		hasPermission, err := pm.checker.CheckAnyPermission(ctx, userID, permissionNames...)
+		hasPermission, err := pm.checker.CheckAnyPermission(ctx, userID, tenantIDFromContext(c), permissionNames...)
 		if err != nil {
 			log.Printf("[ERROR] Any permission check failed for user %s: %v", userID, err)
 			c.JSON(http.StatusInternalServerError, models.ErrorResponse{
@@ -274,7 +309,7 @@ func (pm *PermissionMiddleware) RequireAllPermissions(permissionNames ...string)
 		}
 
 		ctx := context.Background()
-		hasPermission, err := pm.checker.CheckAllPermissions(ctx, userID, permissionNames...)
+		hasPermission, err := pm.checker.CheckAllPermissions(ctx, userID, tenantIDFromContext(c), permissionNames...)
 		if err != nil {
 			log.Printf("[ERROR] All permissions check failed for user %s: %v", userID, err)
 			c.JSON(http.StatusInternalServerError, models.ErrorResponse{
@@ -302,6 +337,7 @@ func (pm *PermissionMiddleware) RequireAllPermissions(permissionNames ...string)
 }
 
 // RequireAdmin creates middleware that checks if user is an admin (hierarchy >= 80)
+// in the current tenant (see tenantIDFromContext).
 // Usage: router.GET("/admin/dashboard", middleware.RequireAdmin(), handler)
 func (pm *PermissionMiddleware) RequireAdmin() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -316,7 +352,7 @@ func (pm *PermissionMiddleware) RequireAdmin() gin.HandlerFunc {
 		}
 
 		ctx := context.Background()
-		isAdmin, err := pm.checker.IsAdmin(ctx, userID)
+		isAdmin, err := pm.checker.IsAdmin(ctx, userID, tenantIDFromContext(c))
 		if err != nil {
 			log.Printf("[ERROR] Admin check failed for user %s: %v", userID, err)
 			c.JSON(http.StatusInternalServerError, models.ErrorResponse{
@@ -383,6 +419,20 @@ func (pm *PermissionMiddleware) RequireSuperAdmin() gin.HandlerFunc {
 
 		c.Next()
 	}
+}
+
+// tenantIDFromContext returns the tenant resolved by RequireTenant (or
+// RequireTenantFromPath). Permission checks are evaluated for that tenant
+// only. Without a tenant in context only platform roles (user_roles) apply,
+// so every tenant-scoped route MUST run a tenant middleware before any
+// permission middleware.
+func tenantIDFromContext(c *gin.Context) uuid.UUID {
+	if v, ok := c.Get(TenantIDKey); ok {
+		if id, ok := v.(uuid.UUID); ok {
+			return id
+		}
+	}
+	return uuid.Nil
 }
 
 // getUserID extracts the user ID from gin context

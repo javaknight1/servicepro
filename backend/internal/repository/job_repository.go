@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"context"
+
 	"github.com/javaknight1/servicepro/backend/internal/utils/epoch"
 
 	"github.com/google/uuid"
@@ -19,6 +21,12 @@ type JobRepository struct {
 // NewJobRepository creates a new job repository
 func NewJobRepository(db *gorm.DB) *JobRepository {
 	return &JobRepository{db: db}
+}
+
+// WithContext returns a copy of the repository bound to ctx (tenant scoping
+// via internal/tenancy reads the tenant from it).
+func (r *JobRepository) WithContext(ctx context.Context) JobRepositoryInterface {
+	return &JobRepository{db: r.db.WithContext(ctx)}
 }
 
 // Create creates a new job

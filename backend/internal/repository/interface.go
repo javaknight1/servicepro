@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"time"
 
 	"github.com/google/uuid"
@@ -43,6 +44,10 @@ type UserRepositoryGormInterface interface {
 
 // CustomerRepositoryInterface defines the interface for customer repository
 type CustomerRepositoryInterface interface {
+	// WithContext returns a repository whose queries run with ctx. Pass the
+	// request context so tenant scoping (internal/tenancy) applies.
+	WithContext(ctx context.Context) CustomerRepositoryInterface
+
 	Create(customer *models.Customer) error
 	GetByID(id uuid.UUID) (*models.Customer, error)
 	GetByEmail(email string) (*models.Customer, error)
@@ -65,6 +70,10 @@ type CustomerRepositoryInterface interface {
 
 // JobRepositoryInterface defines the interface for job repository
 type JobRepositoryInterface interface {
+	// WithContext returns a repository whose queries run with ctx. Pass the
+	// request context so tenant scoping (internal/tenancy) applies.
+	WithContext(ctx context.Context) JobRepositoryInterface
+
 	// Basic CRUD operations
 	Create(job *models.Job) error
 	GetByID(id uuid.UUID) (*models.Job, error)
@@ -114,6 +123,10 @@ type JobRepositoryInterface interface {
 
 // QuoteRepositoryInterface defines the interface for quote repository
 type QuoteRepositoryInterface interface {
+	// WithContext returns a repository whose queries run with ctx. Pass the
+	// request context so tenant scoping (internal/tenancy) applies.
+	WithContext(ctx context.Context) QuoteRepositoryInterface
+
 	// Quote CRUD operations
 	Create(quote *models.Quote) error
 	GetByID(id uuid.UUID) (*models.Quote, error)
@@ -149,6 +162,10 @@ type QuoteRepositoryInterface interface {
 
 // ScheduleRepositoryInterface defines the interface for schedule repository
 type ScheduleRepositoryInterface interface {
+	// WithContext returns a repository whose queries run with ctx. Pass the
+	// request context so tenant scoping (internal/tenancy) applies.
+	WithContext(ctx context.Context) ScheduleRepositoryInterface
+
 	// CRUD operations
 	Create(schedule *models.Schedule) error
 	GetByID(id uuid.UUID) (*models.Schedule, error)
@@ -184,6 +201,10 @@ type ScheduleRepositoryInterface interface {
 
 // PaymentRepositoryInterface defines the interface for payment repository
 type PaymentRepositoryInterface interface {
+	// WithContext returns a repository whose queries run with ctx. Pass the
+	// request context so tenant scoping (internal/tenancy) applies.
+	WithContext(ctx context.Context) PaymentRepositoryInterface
+
 	CreatePayment(payment *models.Payment) error
 	GetPaymentByID(id uuid.UUID) (*models.Payment, error)
 	GetPaymentByStripeID(stripePaymentIntentID string) (*models.Payment, error)

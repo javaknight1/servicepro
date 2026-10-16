@@ -11,6 +11,7 @@ import (
 func SetupReportRoutes(router *gin.RouterGroup, cfg *routeconfigs.RouteConfig) {
 	reports := router.Group("/reports")
 	reports.Use(cfg.Middleware.PermMiddleware.RequireAuth())
+	reports.Use(cfg.Middleware.TenantMW.RequireTenant())
 	{
 		// Revenue report routes
 		setupRevenueReportRoutes(reports, cfg)
@@ -120,7 +121,6 @@ func setupCustomerReportRoutes(reports *gin.RouterGroup, cfg *routeconfigs.Route
 func setupARAgingReportRoutes(reports *gin.RouterGroup, cfg *routeconfigs.RouteConfig) {
 	// A/R aging routes require tenant context for multi-tenancy
 	arAging := reports.Group("/ar-aging")
-	arAging.Use(cfg.Middleware.TenantMW.RequireTenant())
 	{
 		// Main A/R aging report - requires "reports.view" permission
 		arAging.GET("",

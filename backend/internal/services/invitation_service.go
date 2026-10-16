@@ -24,6 +24,9 @@ var (
 	ErrInvitationAlreadyUsed   = errors.New("invitation has already been used")
 	ErrUserAlreadyMember       = errors.New("user is already a member of this organization")
 	ErrPendingInvitationExists = errors.New("a pending invitation already exists for this email")
+	// ErrInvitationEmailMismatch is returned when the accepting user's email
+	// is not the invited email.
+	ErrInvitationEmailMismatch = errors.New("invitation was issued to a different email address")
 )
 
 // InvitationService handles organization invitations
@@ -43,7 +46,9 @@ func NewInvitationService(db *gorm.DB, emailClient email.Client, appURL string) 
 }
 
 // InviteMember invites a user to join an organization
-func (s *InvitationService) InviteMember(ctx context.Context, tenantID uuid.UUID, email string, roleID uuid.UUID, invitedBy uuid.UUID) (*models.InvitationResponse, error) {
+func (s *InvitationService) InviteMember(ctx context.Context, tenantID uuid.UUID, email string, roleID uuid.UUID, actor MemberActor) (*models.InvitationResponse, error) {
+	invitedBy := actor.UserID
+
 	// Check if user already exists
 	var existingUser models.User
 	userExists := s.db.WithContext(ctx).Where("email = ?", email).First(&existingUser).Error == nil
@@ -63,7 +68,11 @@ func (s *InvitationService) InviteMember(ctx context.Context, tenantID uuid.UUID
 	// Get role details
 	var role models.Role
 	if err := s.db.WithContext(ctx).First(&role, roleID).Error; err != nil {
-		return nil, fmt.Errorf("failed to get role: %w", err)
+		return nil, ErrRoleNotAssignable
+	}
+	// Same grant rules as direct member management (F-1).
+	if err := ValidateAssignableRole(&role, actor); err != nil {
+		return nil, err
 	}
 
 	if userExists {
@@ -215,7 +224,11 @@ func (s *InvitationService) AcceptInvitation(ctx context.Context, token string, 
 	}
 
 	if !strings.EqualFold(user.Email, invitation.Email) {
-		return fmt.Errorf("email mismatch: user email %s does not match invitation email %s", user.Email, invitation.Email)
+		return ErrInvitationEmailMismatch
+	}
+
+	if err := s.rejectUnassignableInvitationRole(ctx, invitation.RoleID); err != nil {
+		return err
 	}
 
 	now := time.Now()
@@ -255,6 +268,33 @@ func (s *InvitationService) AcceptInvitation(ctx context.Context, token string, 
 	return nil
 }
 
+// rejectUnassignableInvitationRole refuses invitations that would grant
+// super_admin (defence in depth for invitations created before F-1 was fixed).
+func (s *InvitationService) rejectUnassignableInvitationRole(ctx context.Context, roleID uuid.UUID) error {
+	var role models.Role
+	if err := s.db.WithContext(ctx).First(&role, roleID).Error; err != nil {
+		return ErrRoleNotAssignable
+	}
+	if role.HierarchyLevel >= SuperAdminHierarchyLevel || role.Name == "super_admin" {
+		return ErrRoleNotAssignable
+	}
+	return nil
+}
+
+// IsPendingInvitationFor reports whether token is a pending, unexpired
+// invitation addressed to email (used by invite-only registration).
+func (s *InvitationService) IsPendingInvitationFor(ctx context.Context, token, email string) bool {
+	if token == "" {
+		return false
+	}
+	var invitation models.OrganizationInvitation
+	if err := s.db.WithContext(ctx).Where("token = ? AND status = ?", token, models.InvitationStatusPending).
+		First(&invitation).Error; err != nil {
+		return false
+	}
+	return !invitation.IsExpired() && strings.EqualFold(strings.TrimSpace(invitation.Email), strings.TrimSpace(email))
+}
+
 // GetInvitationByToken retrieves an invitation by token
 func (s *InvitationService) GetInvitationByToken(ctx context.Context, token string) (*models.OrganizationInvitation, error) {
 	var invitation models.OrganizationInvitation
@@ -285,6 +325,19 @@ func (s *InvitationService) AcceptInvitationOnRegistration(ctx context.Context, 
 		invitation.Status = models.InvitationStatusExpired
 		s.db.WithContext(ctx).Save(&invitation)
 		return ErrInvitationExpired
+	}
+
+	// The invitation must have been issued to the registering user's email;
+	// otherwise anyone holding a leaked link could join the tenant.
+	var user models.User
+	if err := s.db.WithContext(ctx).First(&user, "id = ?", userID).Error; err != nil {
+		return fmt.Errorf("user not found")
+	}
+	if !strings.EqualFold(strings.TrimSpace(user.Email), strings.TrimSpace(invitation.Email)) {
+		return ErrInvitationEmailMismatch
+	}
+	if err := s.rejectUnassignableInvitationRole(ctx, invitation.RoleID); err != nil {
+		return err
 	}
 
 	// Create TenantUser
@@ -336,10 +389,10 @@ func (s *InvitationService) GetPendingInvitationsForTenant(ctx context.Context, 
 }
 
 // CancelInvitation cancels a pending invitation
-func (s *InvitationService) CancelInvitation(ctx context.Context, invitationID uuid.UUID) error {
+func (s *InvitationService) CancelInvitation(ctx context.Context, tenantID, invitationID uuid.UUID) error {
 	result := s.db.WithContext(ctx).
 		Model(&models.OrganizationInvitation{}).
-		Where("id = ? AND status = ?", invitationID, models.InvitationStatusPending).
+		Where("id = ? AND tenant_id = ? AND status = ?", invitationID, tenantID, models.InvitationStatusPending).
 		Update("status", models.InvitationStatusCancelled)
 
 	if result.Error != nil {
@@ -354,13 +407,13 @@ func (s *InvitationService) CancelInvitation(ctx context.Context, invitationID u
 }
 
 // ResendInvitation resends an invitation email
-func (s *InvitationService) ResendInvitation(ctx context.Context, invitationID uuid.UUID) error {
+func (s *InvitationService) ResendInvitation(ctx context.Context, tenantID, invitationID uuid.UUID) error {
 	var invitation models.OrganizationInvitation
 	if err := s.db.WithContext(ctx).
 		Preload("Tenant").
 		Preload("Role").
 		Preload("Inviter").
-		Where("id = ? AND status = ?", invitationID, models.InvitationStatusPending).
+		Where("id = ? AND tenant_id = ? AND status = ?", invitationID, tenantID, models.InvitationStatusPending).
 		First(&invitation).Error; err != nil {
 		return ErrInvitationNotFound
 	}

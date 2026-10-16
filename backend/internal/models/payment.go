@@ -33,6 +33,7 @@ const (
 // Payment represents a payment record
 type Payment struct {
 	ID        uuid.UUID  `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
+	TenantID  uuid.UUID  `json:"tenant_id" gorm:"type:uuid;not null;index"` // set from the caller's tenant (internal/tenancy)
 	UserID    uuid.UUID  `gorm:"type:uuid;not null;index" json:"user_id"`
 	InvoiceID *uuid.UUID `gorm:"type:uuid;index" json:"invoice_id,omitempty"`
 	OrderID   *uuid.UUID `gorm:"type:uuid;index" json:"order_id,omitempty"`

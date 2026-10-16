@@ -25,6 +25,8 @@ const api: AxiosInstance = axios.create({
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
+    // CSRF: the backend rejects cookie-authenticated mutations without it.
+    'X-Requested-With': 'XMLHttpRequest',
   },
   withCredentials: true, // Required for httpOnly cookies to be sent with requests
 });
@@ -85,7 +87,14 @@ let refreshPromise: Promise<unknown> | null = null;
 function refreshSession(): Promise<unknown> {
   if (!refreshPromise) {
     refreshPromise = axios
-      .post(`${API_BASE_URL}/v1/auth/refresh`, {}, { withCredentials: true })
+      .post(
+        `${API_BASE_URL}/v1/auth/refresh`,
+        {},
+        {
+          withCredentials: true,
+          headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        }
+      )
       .finally(() => {
         refreshPromise = null;
       });

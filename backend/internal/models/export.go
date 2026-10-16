@@ -33,6 +33,7 @@ const (
 // ExportJob represents an export job with progress tracking
 type ExportJob struct {
 	ID         uuid.UUID       `json:"id" gorm:"type:uuid;primary_key;default:gen_random_uuid()"`
+	TenantID   uuid.UUID       `json:"tenant_id" gorm:"type:uuid;not null;index"` // set from the caller's tenant (internal/tenancy)
 	UserID     uuid.UUID       `json:"user_id" gorm:"type:uuid;not null"`
 	ExportType ExportType      `json:"export_type" gorm:"type:varchar(50);not null"`
 	Format     ExportFormat    `json:"format" gorm:"type:varchar(20);not null"`

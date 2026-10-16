@@ -49,7 +49,7 @@ func (h *CustomerReportHandler) GetCustomerReport(c *gin.Context) {
 	if err := c.ShouldBindQuery(&query); err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
-			Message: "Invalid query parameters: " + err.Error(),
+			Message: "Invalid query parameters: " + publicError(err),
 		})
 		return
 	}
@@ -62,7 +62,7 @@ func (h *CustomerReportHandler) GetCustomerReport(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
 			Error:   "internal_error",
-			Message: "Failed to generate customer report: " + err.Error(),
+			Message: "Failed to generate customer report: " + publicError(err),
 		})
 		return
 	}
@@ -90,7 +90,7 @@ func (h *CustomerReportHandler) GetSegmentBreakdown(c *gin.Context) {
 	if err := c.ShouldBindQuery(&query); err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
-			Message: "Invalid query parameters: " + err.Error(),
+			Message: "Invalid query parameters: " + publicError(err),
 		})
 		return
 	}
@@ -101,7 +101,7 @@ func (h *CustomerReportHandler) GetSegmentBreakdown(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
 			Error:   "internal_error",
-			Message: "Failed to get segment breakdown: " + err.Error(),
+			Message: "Failed to get segment breakdown: " + publicError(err),
 		})
 		return
 	}
@@ -126,7 +126,7 @@ func (h *CustomerReportHandler) GetTypeBreakdown(c *gin.Context) {
 	if err := c.ShouldBindQuery(&query); err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
-			Message: "Invalid query parameters: " + err.Error(),
+			Message: "Invalid query parameters: " + publicError(err),
 		})
 		return
 	}
@@ -137,7 +137,7 @@ func (h *CustomerReportHandler) GetTypeBreakdown(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
 			Error:   "internal_error",
-			Message: "Failed to get type breakdown: " + err.Error(),
+			Message: "Failed to get type breakdown: " + publicError(err),
 		})
 		return
 	}
@@ -162,7 +162,7 @@ func (h *CustomerReportHandler) GetGeographyBreakdown(c *gin.Context) {
 	if err := c.ShouldBindQuery(&query); err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
-			Message: "Invalid query parameters: " + err.Error(),
+			Message: "Invalid query parameters: " + publicError(err),
 		})
 		return
 	}
@@ -173,7 +173,7 @@ func (h *CustomerReportHandler) GetGeographyBreakdown(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
 			Error:   "internal_error",
-			Message: "Failed to get geography breakdown: " + err.Error(),
+			Message: "Failed to get geography breakdown: " + publicError(err),
 		})
 		return
 	}
@@ -200,7 +200,7 @@ func (h *CustomerReportHandler) GetAcquisitionTrend(c *gin.Context) {
 	if err := c.ShouldBindQuery(&query); err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
-			Message: "Invalid query parameters: " + err.Error(),
+			Message: "Invalid query parameters: " + publicError(err),
 		})
 		return
 	}
@@ -211,7 +211,7 @@ func (h *CustomerReportHandler) GetAcquisitionTrend(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
 			Error:   "internal_error",
-			Message: "Failed to get acquisition trend: " + err.Error(),
+			Message: "Failed to get acquisition trend: " + publicError(err),
 		})
 		return
 	}
@@ -239,7 +239,7 @@ func (h *CustomerReportHandler) GetTopCustomers(c *gin.Context) {
 	if err := c.ShouldBindQuery(&query); err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
-			Message: "Invalid query parameters: " + err.Error(),
+			Message: "Invalid query parameters: " + publicError(err),
 		})
 		return
 	}
@@ -257,7 +257,7 @@ func (h *CustomerReportHandler) GetTopCustomers(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
 			Error:   "internal_error",
-			Message: "Failed to get top customers: " + err.Error(),
+			Message: "Failed to get top customers: " + publicError(err),
 		})
 		return
 	}
@@ -291,7 +291,7 @@ func (h *CustomerReportHandler) GetAtRiskCustomers(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
 			Error:   "internal_error",
-			Message: "Failed to get at-risk customers: " + err.Error(),
+			Message: "Failed to get at-risk customers: " + publicError(err),
 		})
 		return
 	}
@@ -325,7 +325,7 @@ func (h *CustomerReportHandler) GetCohortData(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
 			Error:   "internal_error",
-			Message: "Failed to get cohort data: " + err.Error(),
+			Message: "Failed to get cohort data: " + publicError(err),
 		})
 		return
 	}
@@ -364,7 +364,7 @@ func (h *CustomerReportHandler) RefreshMetricsCache(c *gin.Context) {
 	if err := h.reportService.RefreshMetricsCache(c.Request.Context(), customerID); err != nil {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
 			Error:   "cache_refresh_failed",
-			Message: "Failed to refresh metrics cache: " + err.Error(),
+			Message: "Failed to refresh metrics cache: " + publicError(err),
 		})
 		return
 	}
@@ -391,7 +391,7 @@ func (h *CustomerReportHandler) ExportReport(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
-			Message: "Invalid export request: " + err.Error(),
+			Message: "Invalid export request: " + publicError(err),
 		})
 		return
 	}
@@ -414,7 +414,7 @@ func (h *CustomerReportHandler) ExportReport(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
 			Error:   "export_failed",
-			Message: "Failed to export report: " + err.Error(),
+			Message: "Failed to export report: " + publicError(err),
 		})
 		return
 	}
@@ -449,7 +449,7 @@ func (h *CustomerReportHandler) GetChartData(c *gin.Context) {
 	if err := c.ShouldBindQuery(&query); err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
-			Message: "Invalid query parameters: " + err.Error(),
+			Message: "Invalid query parameters: " + publicError(err),
 		})
 		return
 	}
@@ -466,7 +466,7 @@ func (h *CustomerReportHandler) GetChartData(c *gin.Context) {
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, models.ErrorResponse{
 				Error:   "internal_error",
-				Message: "Failed to get chart data: " + err.Error(),
+				Message: "Failed to get chart data: " + publicError(err),
 			})
 			return
 		}
@@ -477,7 +477,7 @@ func (h *CustomerReportHandler) GetChartData(c *gin.Context) {
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, models.ErrorResponse{
 				Error:   "internal_error",
-				Message: "Failed to get chart data: " + err.Error(),
+				Message: "Failed to get chart data: " + publicError(err),
 			})
 			return
 		}
@@ -488,7 +488,7 @@ func (h *CustomerReportHandler) GetChartData(c *gin.Context) {
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, models.ErrorResponse{
 				Error:   "internal_error",
-				Message: "Failed to get chart data: " + err.Error(),
+				Message: "Failed to get chart data: " + publicError(err),
 			})
 			return
 		}
@@ -499,7 +499,7 @@ func (h *CustomerReportHandler) GetChartData(c *gin.Context) {
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, models.ErrorResponse{
 				Error:   "internal_error",
-				Message: "Failed to get chart data: " + err.Error(),
+				Message: "Failed to get chart data: " + publicError(err),
 			})
 			return
 		}

@@ -38,6 +38,7 @@ const (
 // Customer represents a customer in the system
 type Customer struct {
 	ID                   uuid.UUID      `json:"id" gorm:"type:uuid;primary_key;default:uuid_generate_v4()"`
+	TenantID             uuid.UUID      `json:"tenant_id" gorm:"type:uuid;not null;index"` // set from the caller's tenant (internal/tenancy)
 	FirstName            string         `json:"first_name" gorm:"type:varchar(50);not null"`
 	LastName             string         `json:"last_name" gorm:"type:varchar(50);not null"`
 	CompanyName          *string        `json:"company_name" gorm:"type:varchar(100)"`

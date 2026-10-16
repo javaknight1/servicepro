@@ -91,7 +91,7 @@ func (h *PaymentReminderHandler) SendManualReminder(c *gin.Context) {
 			c.JSON(http.StatusNotFound, ErrorResponse{Error: "Invoice not found"})
 			return
 		}
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: publicError(err)})
 		return
 	}
 
@@ -149,7 +149,7 @@ func (h *PaymentReminderHandler) UpdateReminderSettings(c *gin.Context) {
 
 	var req models.PaymentReminderSettingsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: publicError(err)})
 		return
 	}
 

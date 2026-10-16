@@ -11,6 +11,7 @@ import (
 func SetupCustomerRoutes(router *gin.RouterGroup, cfg *routeconfigs.RouteConfig) {
 	customers := router.Group("/customers")
 	customers.Use(cfg.Middleware.PermMiddleware.RequireAuth())
+	customers.Use(cfg.Middleware.TenantMW.RequireTenant())
 	{
 		// Create customer - requires "customers.create" permission
 		customers.POST("",

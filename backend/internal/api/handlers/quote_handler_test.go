@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -675,3 +676,6 @@ func TestGetQuoteStats_Error(t *testing.T) {
 
 	mockQuoteService.AssertExpectations(t)
 }
+
+// WithContext implements the interface; the mock ignores the context.
+func (m *MockQuoteService) WithContext(_ context.Context) services.QuoteServiceInterface { return m }

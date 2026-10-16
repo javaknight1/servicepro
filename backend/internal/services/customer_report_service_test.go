@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/javaknight1/servicepro/backend/internal/tenancy"
+
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
@@ -15,6 +17,10 @@ import (
 	"github.com/javaknight1/servicepro/backend/internal/models"
 )
 
+// reportCtx is the tenant-scoped context the report queries run under; the
+// test customers table defaults tenant_id to the same tenant.
+var reportCtx = tenancy.WithTenant(context.Background(), uuid.MustParse("7e57a000-0000-4000-8000-000000000001"))
+
 func setupCustomerTestDB(t *testing.T) *gorm.DB {
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	require.NoError(t, err)
@@ -22,6 +28,7 @@ func setupCustomerTestDB(t *testing.T) *gorm.DB {
 	// Create the customers table
 	err = db.Exec(`
 		CREATE TABLE customers (
+			tenant_id TEXT DEFAULT '7e57a000-0000-4000-8000-000000000001',
 			id TEXT PRIMARY KEY,
 			first_name TEXT NOT NULL,
 			last_name TEXT NOT NULL,
@@ -461,18 +468,18 @@ func TestCustomerReportService_GenerateReport(t *testing.T) {
 	}
 
 	// Test calculateSummary directly
-	summary, err := service.calculateSummary(context.Background(), query)
+	summary, err := service.calculateSummary(reportCtx, query)
 	require.NoError(t, err)
 	assert.NotNil(t, summary)
 	assert.Equal(t, 5, summary.TotalCustomers)
 
 	// Test segment breakdown
-	segmentData, err := service.GetSegmentBreakdown(context.Background(), query)
+	segmentData, err := service.GetSegmentBreakdown(reportCtx, query)
 	require.NoError(t, err)
 	assert.NotEmpty(t, segmentData)
 
 	// Test type breakdown
-	typeData, err := service.GetTypeBreakdown(context.Background(), query)
+	typeData, err := service.GetTypeBreakdown(reportCtx, query)
 	require.NoError(t, err)
 	assert.NotEmpty(t, typeData)
 }
@@ -484,7 +491,7 @@ func TestCustomerReportService_GetSegmentBreakdown(t *testing.T) {
 
 	service := NewCustomerReportService(db)
 
-	breakdown, err := service.GetSegmentBreakdown(context.Background(), &models.CustomerReportQuery{})
+	breakdown, err := service.GetSegmentBreakdown(reportCtx, &models.CustomerReportQuery{})
 
 	require.NoError(t, err)
 	assert.NotEmpty(t, breakdown)
@@ -513,7 +520,7 @@ func TestCustomerReportService_GetTypeBreakdown(t *testing.T) {
 
 	service := NewCustomerReportService(db)
 
-	breakdown, err := service.GetTypeBreakdown(context.Background(), &models.CustomerReportQuery{})
+	breakdown, err := service.GetTypeBreakdown(reportCtx, &models.CustomerReportQuery{})
 
 	require.NoError(t, err)
 	assert.NotEmpty(t, breakdown)
@@ -542,7 +549,7 @@ func TestCustomerReportService_GetGeographyBreakdown(t *testing.T) {
 
 	service := NewCustomerReportService(db)
 
-	breakdown, err := service.GetGeographyBreakdown(context.Background(), &models.CustomerReportQuery{})
+	breakdown, err := service.GetGeographyBreakdown(reportCtx, &models.CustomerReportQuery{})
 
 	require.NoError(t, err)
 	assert.NotEmpty(t, breakdown)
@@ -565,7 +572,7 @@ func TestCustomerReportService_GetTopCustomers(t *testing.T) {
 
 	service := NewCustomerReportService(db)
 
-	topCustomers, err := service.GetTopCustomers(context.Background(), &models.CustomerReportQuery{}, 10)
+	topCustomers, err := service.GetTopCustomers(reportCtx, &models.CustomerReportQuery{}, 10)
 
 	require.NoError(t, err)
 	assert.NotEmpty(t, topCustomers)
@@ -586,7 +593,7 @@ func TestCustomerReportService_GetAtRiskCustomers(t *testing.T) {
 
 	service := NewCustomerReportService(db)
 
-	atRiskCustomers, err := service.GetAtRiskCustomers(context.Background(), 10)
+	atRiskCustomers, err := service.GetAtRiskCustomers(reportCtx, 10)
 
 	require.NoError(t, err)
 	assert.Len(t, atRiskCustomers, 1)
@@ -611,7 +618,7 @@ func TestCustomerReportService_QueryFilters(t *testing.T) {
 		}
 
 		// Test via GetTypeBreakdown which properly uses table aliasing
-		breakdown, err := service.GetTypeBreakdown(context.Background(), query)
+		breakdown, err := service.GetTypeBreakdown(reportCtx, query)
 
 		require.NoError(t, err)
 		assert.NotEmpty(t, breakdown)
@@ -629,7 +636,7 @@ func TestCustomerReportService_QueryFilters(t *testing.T) {
 			State:     "CA",
 		}
 
-		breakdown, err := service.GetGeographyBreakdown(context.Background(), query)
+		breakdown, err := service.GetGeographyBreakdown(reportCtx, query)
 
 		require.NoError(t, err)
 		assert.NotEmpty(t, breakdown)
@@ -647,7 +654,7 @@ func TestCustomerReportService_QueryFilters(t *testing.T) {
 			Segment:   models.CustomerSegmentHighValue,
 		}
 
-		breakdown, err := service.GetSegmentBreakdown(context.Background(), query)
+		breakdown, err := service.GetSegmentBreakdown(reportCtx, query)
 
 		require.NoError(t, err)
 		// Should only have high value segment
@@ -661,7 +668,7 @@ func TestCustomerReportService_QueryFilters(t *testing.T) {
 			EndDate:   &endDate,
 		}
 
-		topCustomers, err := service.GetTopCustomers(context.Background(), query, 3)
+		topCustomers, err := service.GetTopCustomers(reportCtx, query, 3)
 
 		require.NoError(t, err)
 		assert.Len(t, topCustomers, 3)
@@ -883,7 +890,7 @@ func TestCustomerReportService_CalculateSummary(t *testing.T) {
 		EndDate:   &endDate,
 	}
 
-	summary, err := service.calculateSummary(context.Background(), query)
+	summary, err := service.calculateSummary(reportCtx, query)
 
 	require.NoError(t, err)
 	assert.NotNil(t, summary)
@@ -917,7 +924,7 @@ func TestCustomerReportService_DataIntegrity(t *testing.T) {
 	service := NewCustomerReportService(db)
 
 	t.Run("segment breakdown percentages sum to 100", func(t *testing.T) {
-		breakdown, err := service.GetSegmentBreakdown(context.Background(), &models.CustomerReportQuery{})
+		breakdown, err := service.GetSegmentBreakdown(reportCtx, &models.CustomerReportQuery{})
 		require.NoError(t, err)
 
 		totalPercentage := decimal.Zero
@@ -931,7 +938,7 @@ func TestCustomerReportService_DataIntegrity(t *testing.T) {
 	})
 
 	t.Run("type breakdown counts match total customers", func(t *testing.T) {
-		breakdown, err := service.GetTypeBreakdown(context.Background(), &models.CustomerReportQuery{})
+		breakdown, err := service.GetTypeBreakdown(reportCtx, &models.CustomerReportQuery{})
 		require.NoError(t, err)
 
 		totalCount := 0
@@ -943,7 +950,7 @@ func TestCustomerReportService_DataIntegrity(t *testing.T) {
 	})
 
 	t.Run("geography breakdown counts match total customers", func(t *testing.T) {
-		breakdown, err := service.GetGeographyBreakdown(context.Background(), &models.CustomerReportQuery{})
+		breakdown, err := service.GetGeographyBreakdown(reportCtx, &models.CustomerReportQuery{})
 		require.NoError(t, err)
 
 		totalCount := 0
@@ -955,7 +962,7 @@ func TestCustomerReportService_DataIntegrity(t *testing.T) {
 	})
 
 	t.Run("top customers sorted by revenue descending", func(t *testing.T) {
-		topCustomers, err := service.GetTopCustomers(context.Background(), &models.CustomerReportQuery{}, 10)
+		topCustomers, err := service.GetTopCustomers(reportCtx, &models.CustomerReportQuery{}, 10)
 		require.NoError(t, err)
 
 		for i := 1; i < len(topCustomers); i++ {
@@ -971,6 +978,7 @@ func BenchmarkGenerateCustomerReport(b *testing.B) {
 
 	db.Exec(`
 		CREATE TABLE customers (
+			tenant_id TEXT DEFAULT '7e57a000-0000-4000-8000-000000000001',
 			id TEXT PRIMARY KEY,
 			first_name TEXT NOT NULL,
 			last_name TEXT NOT NULL,
@@ -1036,7 +1044,7 @@ func BenchmarkGenerateCustomerReport(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		service.GenerateReport(context.Background(), query)
+		service.GenerateReport(reportCtx, query)
 	}
 }
 
@@ -1045,6 +1053,7 @@ func BenchmarkGetSegmentBreakdown(b *testing.B) {
 
 	db.Exec(`
 		CREATE TABLE customers (
+			tenant_id TEXT DEFAULT '7e57a000-0000-4000-8000-000000000001',
 			id TEXT PRIMARY KEY,
 			first_name TEXT NOT NULL,
 			last_name TEXT NOT NULL,
@@ -1087,7 +1096,7 @@ func BenchmarkGetSegmentBreakdown(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		service.GetSegmentBreakdown(context.Background(), &models.CustomerReportQuery{})
+		service.GetSegmentBreakdown(reportCtx, &models.CustomerReportQuery{})
 	}
 }
 

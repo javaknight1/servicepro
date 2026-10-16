@@ -121,7 +121,7 @@ func (h *MembershipHandler) UpdateTenantMembership(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
-			Message: err.Error(),
+			Message: publicError(err),
 		})
 		return
 	}
@@ -194,7 +194,7 @@ func (h *MembershipHandler) PreviewSubscriptionChange(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
-			Message: err.Error(),
+			Message: publicError(err),
 		})
 		return
 	}

@@ -3,6 +3,7 @@ package routes
 import (
 	"github.com/javaknight1/servicepro/backend/config"
 	"github.com/javaknight1/servicepro/backend/internal/api/handlers"
+	"github.com/javaknight1/servicepro/backend/internal/services"
 )
 
 // SetupHandlers initializes all handler instances
@@ -19,6 +20,12 @@ func SetupHandlers(
 
 	// Registration handler
 	h.Registration = handlers.NewRegistrationHandler(svc.Registration, svc.Invitation)
+	h.Registration.SetRegistrationGate(&services.RegistrationGate{
+		Mode:        cfg.Auth.RegistrationMode,
+		InviteCodes: svc.InviteCodes,
+		Invitations: svc.Invitation,
+	})
+	h.InviteCode = handlers.NewInviteCodeHandler(svc.InviteCodes)
 
 	// Email verification handler
 	h.EmailVerification = handlers.NewEmailVerificationHandler(svc.EmailVerification)
@@ -83,7 +90,7 @@ func SetupHandlers(
 
 	// Stripe handlers (optional - depends on Stripe configuration)
 	if svc.StripeClient != nil && svc.StripeWebhook != nil {
-		h.Stripe = handlers.NewStripeHandler(svc.StripeClient, svc.StripeWebhook)
+		h.Stripe = handlers.NewStripeHandler(svc.StripeWebhook)
 	}
 
 	// Billing handler (optional - depends on Stripe service)

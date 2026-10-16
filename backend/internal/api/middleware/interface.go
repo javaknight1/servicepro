@@ -6,5 +6,6 @@ import "github.com/gin-gonic/gin"
 type RateLimiterInterface interface {
 	LoginRateLimit() gin.HandlerFunc
 	PasswordResetRateLimit() gin.HandlerFunc
-	ClearLoginAttempts(identifier string) error
+	RecordLoginFailure(email, ip string)
+	ClearLoginAttempts(email, ip string) error
 }

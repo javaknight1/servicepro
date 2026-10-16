@@ -53,7 +53,7 @@ type StartExportRequest struct {
 func (h *ExportHandler) StartExport(c *gin.Context) {
 	var req StartExportRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": publicError(err)})
 		return
 	}
 
@@ -78,7 +78,7 @@ func (h *ExportHandler) StartExport(c *gin.Context) {
 
 	job, err := h.exportService.StartExport(c.Request.Context(), userID.(uuid.UUID), config)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": publicError(err)})
 		return
 	}
 
@@ -130,14 +130,16 @@ func (h *ExportHandler) GetExportProgress(c *gin.Context) {
 		return
 	}
 
+	// The tenant-scoped DB lookup is the authority: in-memory progress is
+	// keyed by job ID only, so never serve it for another tenant's job.
+	response, err := h.exportService.GetExportStatus(c.Request.Context(), jobID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "export job not found"})
+		return
+	}
+
 	progress := h.exportService.GetProgress(jobID)
 	if progress == nil {
-		// Fall back to database status
-		response, err := h.exportService.GetExportStatus(c.Request.Context(), jobID)
-		if err != nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": "export job not found"})
-			return
-		}
 		c.JSON(http.StatusOK, models.ExportProgress{
 			JobID:            response.ID,
 			Status:           response.Status,
@@ -168,11 +170,16 @@ func (h *ExportHandler) StreamExportProgress(c *gin.Context) {
 		return
 	}
 
+	// Verify the job belongs to the caller's tenant before streaming.
+	if _, err := h.exportService.GetExportStatus(c.Request.Context(), jobID); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "export job not found"})
+		return
+	}
+
 	// Set headers for SSE
 	c.Header("Content-Type", "text/event-stream")
 	c.Header("Cache-Control", "no-cache")
 	c.Header("Connection", "keep-alive")
-	c.Header("Access-Control-Allow-Origin", "*")
 
 	progressChan := h.exportService.SubscribeToProgress(jobID)
 
@@ -219,14 +226,21 @@ func (h *ExportHandler) DownloadExport(c *gin.Context) {
 
 	file, job, err := h.exportService.GetExportFile(c.Request.Context(), jobID)
 	if err != nil {
-		if err.Error() == "export not ready for download" {
-			c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+		if publicError(err) == "export not ready for download" {
+			c.JSON(http.StatusConflict, gin.H{"error": publicError(err)})
 			return
 		}
 		c.JSON(http.StatusNotFound, gin.H{"error": "export not found"})
 		return
 	}
 	defer file.Close()
+
+	// Exports hold bulk tenant data: only the member who requested the
+	// export may download it (the lookup itself is tenant-scoped).
+	if uid, ok := c.Get("user_id"); !ok || uid != job.UserID {
+		c.JSON(http.StatusNotFound, gin.H{"error": "export not found"})
+		return
+	}
 
 	// Set headers for download
 	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", job.Filename))
@@ -257,7 +271,7 @@ func (h *ExportHandler) CancelExport(c *gin.Context) {
 	}
 
 	if err := h.exportService.CancelExport(c.Request.Context(), jobID); err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		c.JSON(http.StatusNotFound, gin.H{"error": "export job not found or not cancellable"})
 		return
 	}
 
@@ -291,7 +305,7 @@ func (h *ExportHandler) ListExports(c *gin.Context) {
 
 	exports, err := h.exportService.ListExports(c.Request.Context(), userID.(uuid.UUID), limit)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": publicError(err)})
 		return
 	}
 
@@ -312,7 +326,7 @@ func (h *ExportHandler) ListExports(c *gin.Context) {
 func (h *ExportHandler) QuickExport(c *gin.Context) {
 	var req StartExportRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": publicError(err)})
 		return
 	}
 
@@ -355,7 +369,7 @@ func (h *ExportHandler) QuickExport(c *gin.Context) {
 	}
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": publicError(err)})
 		return
 	}
 

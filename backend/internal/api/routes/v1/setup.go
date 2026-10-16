@@ -29,4 +29,5 @@ func Setup(router *gin.RouterGroup, cfg *routeconfigs.RouteConfig) {
 	SetupPaymentTermsRoutes(router, cfg)
 	SetupConflictRoutes(router, cfg)
 	SetupPaymentReminderRoutes(router, cfg)
+	SetupAdminRoutes(router, cfg)
 }

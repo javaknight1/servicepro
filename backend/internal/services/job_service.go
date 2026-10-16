@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"errors"
 
 	"github.com/google/uuid"
@@ -28,6 +29,10 @@ var (
 
 // JobServiceInterface defines the interface for job service
 type JobServiceInterface interface {
+	// WithContext returns a service bound to ctx (the request context), so
+	// every query is scoped to the caller's tenant.
+	WithContext(ctx context.Context) JobServiceInterface
+
 	// Basic CRUD operations
 	CreateJob(req *models.CreateJobRequest, createdBy uuid.UUID) (*models.JobResponse, error)
 	GetJobByID(id uuid.UUID, userID uuid.UUID, userRole models.UserRole) (*models.JobResponse, error)
@@ -90,6 +95,18 @@ func NewJobService(
 		validator:    validators.NewJobValidator(),
 		db:           db,
 	}
+}
+
+// WithContext returns a copy of the service whose repositories and DB handle
+// run with ctx.
+func (s *JobService) WithContext(ctx context.Context) JobServiceInterface {
+	cp := *s
+	cp.jobRepo = s.jobRepo.WithContext(ctx)
+	cp.customerRepo = s.customerRepo.WithContext(ctx)
+	if s.db != nil {
+		cp.db = s.db.WithContext(ctx)
+	}
+	return &cp
 }
 
 // CreateJob creates a new job with validation
@@ -840,7 +857,17 @@ func (s *JobService) DeleteMaterial(materialID uuid.UUID, jobID uuid.UUID, userI
 		return ErrUnauthorized
 	}
 
-	return s.jobRepo.DeleteMaterial(materialID)
+	// job_materials has no tenant_id: only delete a material of this job.
+	materials, err := s.jobRepo.GetJobMaterials(jobID)
+	if err != nil {
+		return err
+	}
+	for _, m := range materials {
+		if m.ID == materialID {
+			return s.jobRepo.DeleteMaterial(materialID)
+		}
+	}
+	return errors.New("material not found")
 }
 
 // AddNote adds a note to a job

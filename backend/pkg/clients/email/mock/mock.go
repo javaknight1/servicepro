@@ -99,7 +99,7 @@ func (c *Client) SendWelcomeEmail(ctx context.Context, to, name string) error {
 // SendPasswordResetEmail implements email.Client
 func (c *Client) SendPasswordResetEmail(ctx context.Context, to, resetToken, resetURL string) error {
 	fullResetURL := fmt.Sprintf("%s?token=%s", resetURL, resetToken)
-	logging.Info(ctx, "[EMAIL-MOCK] Sending password reset email", map[string]any{"to": to, "reset_link": fullResetURL})
+	logging.Info(ctx, "[EMAIL-MOCK] Sending password reset email", map[string]any{"to": to, "reset_link": "[redacted]"})
 
 	msg := email.NewEmailMessage(to, "Password Reset Request - ServicePro", fmt.Sprintf("Reset your password: %s", fullResetURL))
 	_, err := c.Send(ctx, msg)
@@ -118,7 +118,7 @@ func (c *Client) SendPasswordResetConfirmationEmail(ctx context.Context, to stri
 // SendEmailVerificationEmail implements email.Client
 func (c *Client) SendEmailVerificationEmail(ctx context.Context, to, verificationToken, verificationURL string) error {
 	fullURL := fmt.Sprintf("%s?token=%s", verificationURL, verificationToken)
-	logging.Info(ctx, "[EMAIL-MOCK] Sending email verification", map[string]any{"to": to, "verification_link": fullURL})
+	logging.Info(ctx, "[EMAIL-MOCK] Sending email verification", map[string]any{"to": to, "verification_link": "[redacted]"})
 
 	msg := email.NewEmailMessage(to, "Verify Your Email Address - ServicePro", fmt.Sprintf("Verify your email: %s", fullURL))
 	_, err := c.Send(ctx, msg)
@@ -128,7 +128,7 @@ func (c *Client) SendEmailVerificationEmail(ctx context.Context, to, verificatio
 // SendEmailVerificationReminderEmail implements email.Client
 func (c *Client) SendEmailVerificationReminderEmail(ctx context.Context, to, verificationToken, verificationURL string) error {
 	fullURL := fmt.Sprintf("%s?token=%s", verificationURL, verificationToken)
-	logging.Info(ctx, "[EMAIL-MOCK] Sending email verification reminder", map[string]any{"to": to, "verification_link": fullURL})
+	logging.Info(ctx, "[EMAIL-MOCK] Sending email verification reminder", map[string]any{"to": to, "verification_link": "[redacted]"})
 
 	msg := email.NewEmailMessage(to, "Reminder: Verify Your Email Address - ServicePro", fmt.Sprintf("Verify your email: %s", fullURL))
 	_, err := c.Send(ctx, msg)
@@ -149,10 +149,10 @@ func (c *Client) SendOrganizationInviteEmail(ctx context.Context, to, orgName, i
 	var subject string
 	if userExists {
 		subject = fmt.Sprintf("You've been invited to join %s on ServicePro", orgName)
-		logging.Info(ctx, "[EMAIL-MOCK] Sending organization invite to existing user", map[string]any{"to": to, "org_name": orgName, "role": roleName, "invitation_link": actionURL})
+		logging.Info(ctx, "[EMAIL-MOCK] Sending organization invite to existing user", map[string]any{"to": to, "org_name": orgName, "role": roleName, "invitation_link": "[redacted]"})
 	} else {
 		subject = fmt.Sprintf("You've been invited to join %s on ServicePro", orgName)
-		logging.Info(ctx, "[EMAIL-MOCK] Sending organization invite to new user", map[string]any{"to": to, "org_name": orgName, "role": roleName, "invitation_link": actionURL})
+		logging.Info(ctx, "[EMAIL-MOCK] Sending organization invite to new user", map[string]any{"to": to, "org_name": orgName, "role": roleName, "invitation_link": "[redacted]"})
 	}
 
 	msg := email.NewEmailMessage(to, subject, fmt.Sprintf("Invitation from %s to join %s. Action URL: %s", inviterName, orgName, actionURL))
@@ -162,7 +162,7 @@ func (c *Client) SendOrganizationInviteEmail(ctx context.Context, to, orgName, i
 
 // SendQuoteEmail implements email.Client
 func (c *Client) SendQuoteEmail(ctx context.Context, to string, quote *models.Quote, pdfAttachment *email.Attachment, downloadURL string) error {
-	logging.Info(ctx, "[EMAIL-MOCK] Sending quote email", map[string]any{"to": to, "quote_number": quote.QuoteNumber, "download_url": downloadURL})
+	logging.Info(ctx, "[EMAIL-MOCK] Sending quote email", map[string]any{"to": to, "quote_number": quote.QuoteNumber, "download_url": "[redacted]"})
 
 	subject := fmt.Sprintf("Quote %s from ServicePro", quote.QuoteNumber)
 	body := fmt.Sprintf("Quote #%s - Total: $%s. Valid until: %s",
@@ -178,7 +178,7 @@ func (c *Client) SendQuoteEmail(ctx context.Context, to string, quote *models.Qu
 
 // SendInvoiceEmail implements email.Client
 func (c *Client) SendInvoiceEmail(ctx context.Context, to string, invoice *models.Invoice, paymentURL string, pdfAttachment *email.Attachment, downloadURL string) error {
-	logging.Info(ctx, "[EMAIL-MOCK] Sending invoice email", map[string]any{"to": to, "invoice_number": invoice.InvoiceNumber, "payment_url": paymentURL, "download_url": downloadURL})
+	logging.Info(ctx, "[EMAIL-MOCK] Sending invoice email", map[string]any{"to": to, "invoice_number": invoice.InvoiceNumber, "payment_url": "[redacted]", "download_url": "[redacted]"})
 
 	subject := fmt.Sprintf("Invoice %s from ServicePro", invoice.InvoiceNumber)
 	body := fmt.Sprintf("Invoice #%s - Total: $%s. Pay here: %s",
@@ -194,7 +194,7 @@ func (c *Client) SendInvoiceEmail(ctx context.Context, to string, invoice *model
 
 // SendPaymentReceiptEmail implements email.Client
 func (c *Client) SendPaymentReceiptEmail(ctx context.Context, to string, invoice *models.Invoice, pdfAttachment *email.Attachment, downloadURL string) error {
-	logging.Info(ctx, "[EMAIL-MOCK] Sending payment receipt email", map[string]any{"to": to, "invoice_number": invoice.InvoiceNumber, "download_url": downloadURL})
+	logging.Info(ctx, "[EMAIL-MOCK] Sending payment receipt email", map[string]any{"to": to, "invoice_number": invoice.InvoiceNumber, "download_url": "[redacted]"})
 
 	subject := fmt.Sprintf("Payment Receipt for Invoice %s - ServicePro", invoice.InvoiceNumber)
 	body := fmt.Sprintf("Payment received for Invoice #%s - Amount Paid: $%s. Thank you!",

@@ -24,6 +24,7 @@ func setupTemplateTestDB(t *testing.T) *gorm.DB {
 	// Create tables manually for SQLite compatibility
 	err = db.Exec(`
 		CREATE TABLE IF NOT EXISTS invoice_templates (
+			tenant_id TEXT,
 			id TEXT PRIMARY KEY,
 			name TEXT NOT NULL,
 			description TEXT,

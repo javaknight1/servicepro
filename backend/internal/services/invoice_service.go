@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/utils"
@@ -110,6 +111,11 @@ func (s *InvoiceService) CreateInvoice(ctx context.Context, invoice *models.Invo
 		return nil, err
 	}
 
+	// The customer must belong to the caller's tenant (scoped lookup).
+	if err := s.requireCustomer(ctx, invoice.CustomerID); err != nil {
+		return nil, err
+	}
+
 	// Create invoice in transaction
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		// Create invoice
@@ -197,6 +203,11 @@ func (s *InvoiceService) UpdateInvoice(ctx context.Context, id uuid.UUID, update
 
 	// Set updated by
 	updates.UpdatedBy = &userID
+	if updates.CustomerID != uuid.Nil && updates.CustomerID != existing.CustomerID {
+		if err := s.requireCustomer(ctx, updates.CustomerID); err != nil {
+			return nil, err
+		}
+	}
 
 	// Validate updates
 	if err := s.validateInvoiceUpdates(existing, updates); err != nil {
@@ -364,13 +375,15 @@ func (s *InvoiceService) ListInvoices(ctx context.Context, filter *models.Invoic
 func (s *InvoiceService) AddLineItem(ctx context.Context, invoiceID uuid.UUID, lineItem *models.InvoiceLine) (*models.InvoiceLine, error) {
 	lineItem.InvoiceID = invoiceID
 
+	// invoice_lines has no tenant_id: the (tenant-scoped) invoice lookup is
+	// what authorises adding a line to it.
+	invoice, err := s.GetInvoice(ctx, invoiceID)
+	if err != nil {
+		return nil, err
+	}
+
 	// Calculate tax if applicable
 	if lineItem.Taxable {
-		invoice, err := s.GetInvoice(ctx, invoiceID)
-		if err != nil {
-			return nil, err
-		}
-
 		if invoice.TaxRate != nil {
 			lineItem.TaxRate = invoice.TaxRate.Rate
 			lineTotal := lineItem.Quantity.Mul(lineItem.UnitPrice).Sub(lineItem.DiscountAmount)
@@ -526,6 +539,20 @@ func (s *InvoiceService) calculateDueDate(ctx context.Context, issueDate time.Ti
 	return issueDate.AddDate(0, 0, paymentTerm.DaysUntilDue), nil
 }
 
+// requireCustomer returns ErrCustomerNotFound unless the customer is visible
+// to the caller (tenant scoping hides other tenants' customers).
+func (s *InvoiceService) requireCustomer(ctx context.Context, customerID uuid.UUID) error {
+	var count int64
+	if err := s.db.WithContext(ctx).Model(&models.Customer{}).
+		Where("id = ? AND deleted_at IS NULL", customerID).Count(&count).Error; err != nil {
+		return err
+	}
+	if count == 0 {
+		return ErrCustomerNotFound
+	}
+	return nil
+}
+
 // generateInvoiceNumber generates a unique invoice number
 func (s *InvoiceService) generateInvoiceNumber(ctx context.Context) (string, error) {
 	var maxNumber string
@@ -668,39 +695,51 @@ func (s *InvoiceService) ValidatePaymentToken(ctx context.Context, token string)
 	return invoice, nil
 }
 
-// MarkInvoiceAsPaid marks an invoice as paid and stores Stripe payment information
+// MarkInvoiceAsPaid applies a Stripe Checkout payment to an invoice.
+//
+// It is idempotent per checkout session: the invoice row is locked
+// (SELECT ... FOR UPDATE) and a session that was already applied is not
+// credited again, so duplicate webhook deliveries — even to two instances at
+// once — can't double-count a partial payment (F-10). A unique index on
+// stripe_checkout_session_id (migration 000006) backs this up.
 func (s *InvoiceService) MarkInvoiceAsPaid(ctx context.Context, id uuid.UUID, amountPaid decimal.Decimal, stripeCheckoutSessionID, stripePaymentIntentID string) (*models.Invoice, error) {
-	invoice, err := s.GetInvoice(ctx, id)
+	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var invoice models.Invoice
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&invoice, "id = ?", id).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return ErrInvoiceNotFound
+			}
+			return err
+		}
+
+		if invoice.Status == models.InvoiceStatusPaid {
+			return nil
+		}
+		if stripeCheckoutSessionID != "" && invoice.StripeCheckoutSessionID != nil &&
+			*invoice.StripeCheckoutSessionID == stripeCheckoutSessionID {
+			return nil // this session was already applied
+		}
+
+		newAmountPaid := invoice.AmountPaid.Add(amountPaid)
+		newStatus := models.InvoiceStatusPartiallyPaid
+		if newAmountPaid.GreaterThanOrEqual(invoice.TotalAmount) {
+			newStatus = models.InvoiceStatusPaid
+		}
+
+		updates := map[string]interface{}{
+			"status":                     newStatus,
+			"amount_paid":                newAmountPaid,
+			"paid_date":                  time.Now(),
+			"stripe_checkout_session_id": stripeCheckoutSessionID,
+			"stripe_payment_intent_id":   stripePaymentIntentID,
+		}
+		if err := tx.Model(&models.Invoice{}).Where("id = ?", id).Updates(updates).Error; err != nil {
+			return fmt.Errorf("failed to mark invoice as paid: %w", err)
+		}
+		return nil
+	})
 	if err != nil {
 		return nil, err
-	}
-
-	// Check if already paid
-	if invoice.Status == models.InvoiceStatusPaid {
-		return invoice, nil // Idempotent
-	}
-
-	now := time.Now()
-
-	// Determine new status based on amount paid
-	newAmountPaid := invoice.AmountPaid.Add(amountPaid)
-	var newStatus models.InvoiceStatus
-	if newAmountPaid.GreaterThanOrEqual(invoice.TotalAmount) {
-		newStatus = models.InvoiceStatusPaid
-	} else {
-		newStatus = models.InvoiceStatusPartiallyPaid
-	}
-
-	updates := map[string]interface{}{
-		"status":                     newStatus,
-		"amount_paid":                newAmountPaid,
-		"paid_date":                  now,
-		"stripe_checkout_session_id": stripeCheckoutSessionID,
-		"stripe_payment_intent_id":   stripePaymentIntentID,
-	}
-
-	if err := s.db.WithContext(ctx).Model(&models.Invoice{}).Where("id = ?", id).Updates(updates).Error; err != nil {
-		return nil, fmt.Errorf("failed to mark invoice as paid: %w", err)
 	}
 
 	return s.GetInvoice(ctx, id)

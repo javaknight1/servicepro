@@ -180,6 +180,10 @@ type ServerConfig struct {
 	// disables the edge headers entirely.
 	EdgeProxySecret string
 
+	// EnableSwagger serves Swagger UI at /api/docs (ENABLE_SWAGGER; default
+	// true only in development).
+	EnableSwagger bool
+
 	// InternalJobsSecret authorizes POST /internal/jobs/* via the
 	// X-Internal-Jobs-Token header. Empty disables the job endpoints (404).
 	InternalJobsSecret string
@@ -230,6 +234,9 @@ type JWTConfig struct {
 
 // AuthConfig holds authentication configuration
 type AuthConfig struct {
+	// RegistrationMode is "open" or "invite_only" (REGISTRATION_MODE).
+	// Default: open in development, invite_only everywhere else.
+	RegistrationMode  string
 	MaxLoginAttempts  int
 	LockoutDuration   time.Duration
 	RateLimitWindow   time.Duration
@@ -243,6 +250,8 @@ type CookieConfig struct {
 	// Secure indicates if cookies should only be sent over HTTPS
 	Secure bool
 	// SameSite controls cross-site cookie behavior ("Strict", "Lax", or "None")
+	// for the access token cookie. The refresh token cookie is always Strict:
+	// it is only ever sent by the app's own XHR to /api/v1/auth.
 	SameSite string
 	// AccessTokenName is the cookie name for the access token
 	AccessTokenName string
@@ -339,6 +348,9 @@ type PrometheusConfig struct {
 	Subsystem    string        // Metrics subsystem prefix
 	PushGateway  string        // Push gateway URL (for batch jobs)
 	PushInterval time.Duration // Interval for pushing metrics
+	// MetricsToken is required as "Authorization: Bearer <token>" on the
+	// metrics endpoint. Outside development an empty token disables /metrics.
+	MetricsToken string
 }
 
 // OpenTelemetryConfig holds OpenTelemetry tracing configuration
@@ -402,6 +414,15 @@ const DefaultDatabaseURL = "postgresql://postgres:password@localhost:5432/servic
 // In other environments an unset REDIS_URL means "Redis not configured".
 const defaultDevRedisURL = "redis://localhost:6379"
 
+// defaultRegistrationMode keeps self-registration open for local development
+// only; every deployed environment is invite-only unless configured.
+func defaultRegistrationMode(isDev bool) string {
+	if isDev {
+		return "open"
+	}
+	return "invite_only"
+}
+
 func Load() *Config {
 	// Load .env file if it exists (for local development)
 	_ = godotenv.Load()
@@ -437,6 +458,7 @@ func Load() *Config {
 			TrustedProxies:     getEnvAsStringSlice("SERVER_TRUSTED_PROXIES", []string{}),
 
 			EdgeProxySecret:      getEnv("EDGE_PROXY_SECRET", ""),
+			EnableSwagger:        getEnvAsBool("ENABLE_SWAGGER", isDev),
 			InternalJobsSecret:   getEnv("INTERNAL_JOBS_SECRET", ""),
 			RunBackgroundWorkers: getEnvAsBool("RUN_BACKGROUND_WORKERS", isDev),
 			AppVersion:           getEnv("APP_VERSION", "dev"),
@@ -464,15 +486,16 @@ func Load() *Config {
 			RefreshExpiration: time.Hour * 24 * 7, // 7 days as per requirements
 		},
 		Auth: AuthConfig{
+			RegistrationMode:  getEnv("REGISTRATION_MODE", defaultRegistrationMode(isDev)),
 			MaxLoginAttempts:  5,                // 5 failed attempts before lockout
 			LockoutDuration:   time.Minute * 30, // 30 minutes lockout
 			RateLimitWindow:   time.Minute * 15, // 15 minutes window
 			RateLimitAttempts: 5,                // 5 attempts per window
 		},
 		Cookie: CookieConfig{
-			Domain:           getEnv("COOKIE_DOMAIN", ""),          // Empty for development (localhost)
-			Secure:           getEnvAsBool("COOKIE_SECURE", false), // true in production (HTTPS only)
-			SameSite:         getEnv("COOKIE_SAMESITE", "Lax"),     // Lax provides CSRF protection
+			Domain:           getEnv("COOKIE_DOMAIN", ""),           // Empty for development (localhost)
+			Secure:           getEnvAsBool("COOKIE_SECURE", !isDev), // HTTPS-only everywhere but local development
+			SameSite:         getEnv("COOKIE_SAMESITE", "Lax"),      // Lax provides CSRF protection
 			AccessTokenName:  getEnv("COOKIE_ACCESS_TOKEN_NAME", "access_token"),
 			RefreshTokenName: getEnv("COOKIE_REFRESH_TOKEN_NAME", "refresh_token"),
 			RefreshTokenPath: getEnv("COOKIE_REFRESH_TOKEN_PATH", "/api/v1/auth"),
@@ -594,6 +617,7 @@ func Load() *Config {
 			Subsystem:    getEnv("PROMETHEUS_SUBSYSTEM", ""),
 			PushGateway:  getEnv("PROMETHEUS_PUSH_GATEWAY", ""),
 			PushInterval: getEnvAsDuration("PROMETHEUS_PUSH_INTERVAL", "15s"),
+			MetricsToken: getEnv("METRICS_TOKEN", ""),
 		},
 		OpenTelemetry: OpenTelemetryConfig{
 			Enabled:     getEnvAsBool("OTEL_ENABLED", false),
@@ -615,7 +639,7 @@ func Load() *Config {
 			Enabled:          getEnvAsBool("CORS_ENABLED", true),
 			AllowedOrigins:   getEnvAsStringSlice("CORS_ALLOWED_ORIGINS", []string{"http://localhost:3000", "http://localhost:5173"}),
 			AllowedMethods:   getEnvAsStringSlice("CORS_ALLOWED_METHODS", []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"}),
-			AllowedHeaders:   getEnvAsStringSlice("CORS_ALLOWED_HEADERS", []string{"Accept", "Authorization", "Content-Type", "X-Request-ID"}),
+			AllowedHeaders:   getEnvAsStringSlice("CORS_ALLOWED_HEADERS", []string{"Accept", "Authorization", "Content-Type", "X-Request-ID", "X-Requested-With", "X-Tenant-ID"}),
 			ExposedHeaders:   getEnvAsStringSlice("CORS_EXPOSED_HEADERS", []string{"X-Request-ID", "X-RateLimit-Remaining", "X-RateLimit-Reset"}),
 			AllowCredentials: getEnvAsBool("CORS_ALLOW_CREDENTIALS", true),
 			MaxAge:           getEnvAsInt("CORS_MAX_AGE", 86400), // 24 hours
@@ -655,6 +679,12 @@ func validateConfig(cfg *Config) {
 		errors = append(errors, "JWT_SECRET is using the insecure default value - please set a unique secret (hint: use 'openssl rand -base64 32' to generate one)")
 	} else if len(cfg.JWT.Secret) < 32 {
 		errors = append(errors, "JWT_SECRET must be at least 32 characters for security")
+	}
+
+	switch cfg.Auth.RegistrationMode {
+	case "open", "invite_only":
+	default:
+		errors = append(errors, "REGISTRATION_MODE must be \"open\" or \"invite_only\"")
 	}
 
 	// Check Stripe webhook secret (required if Stripe is configured)

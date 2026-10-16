@@ -112,7 +112,10 @@ describe('api 401 interceptor', () => {
     expect(refreshSpy).toHaveBeenCalledWith(
       `${API_BASE_URL}/v1/auth/refresh`,
       {},
-      { withCredentials: true }
+      {
+        withCredentials: true,
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+      }
     );
   });
 

@@ -24,21 +24,25 @@ const (
 
 // User represents a user in the system
 type User struct {
-	ID                 uuid.UUID      `json:"id" gorm:"type:uuid;primary_key;default:uuid_generate_v4()"`
-	Email              string         `json:"email" gorm:"uniqueIndex;not null"`
-	PasswordHash       string         `json:"-" gorm:"not null"`
-	Role               UserRole       `json:"role" gorm:"type:varchar(50);not null;default:'user'"`
-	FirstName          *string        `json:"first_name" gorm:"column:first_name;size:100"`
-	LastName           *string        `json:"last_name" gorm:"column:last_name;size:100"`
-	ProfilePictureURL  *string        `json:"profile_picture_url" gorm:"column:profile_picture_url"`
-	EmailVerified      bool           `json:"email_verified" gorm:"default:false"`
-	VerificationSentAt *time.Time     `json:"-"`
-	FailedLoginCount   int            `json:"-" gorm:"default:0"`
-	LastFailedLoginAt  *time.Time     `json:"-"`
-	LockedUntil        *time.Time     `json:"-"`
-	CreatedAt          time.Time      `json:"created_at"`
-	UpdatedAt          time.Time      `json:"updated_at"`
-	DeletedAt          gorm.DeletedAt `json:"-" gorm:"index"`
+	ID                 uuid.UUID  `json:"id" gorm:"type:uuid;primary_key;default:uuid_generate_v4()"`
+	Email              string     `json:"email" gorm:"uniqueIndex;not null"`
+	PasswordHash       string     `json:"-" gorm:"not null"`
+	Role               UserRole   `json:"role" gorm:"type:varchar(50);not null;default:'user'"`
+	FirstName          *string    `json:"first_name" gorm:"column:first_name;size:100"`
+	LastName           *string    `json:"last_name" gorm:"column:last_name;size:100"`
+	ProfilePictureURL  *string    `json:"profile_picture_url" gorm:"column:profile_picture_url"`
+	EmailVerified      bool       `json:"email_verified" gorm:"default:false"`
+	VerificationSentAt *time.Time `json:"-"`
+	FailedLoginCount   int        `json:"-" gorm:"default:0"`
+	LastFailedLoginAt  *time.Time `json:"-"`
+	LockedUntil        *time.Time `json:"-"`
+	// TokenVersion is embedded in every JWT; bumping it (logout, password
+	// reset) revokes all outstanding access and refresh tokens. Read-only
+	// for GORM writes: it is only changed by explicit UPDATEs.
+	TokenVersion int            `json:"-" gorm:"->;column:token_version"`
+	CreatedAt    time.Time      `json:"created_at"`
+	UpdatedAt    time.Time      `json:"updated_at"`
+	DeletedAt    gorm.DeletedAt `json:"-" gorm:"index"`
 }
 
 // IsLocked checks if the user account is currently locked
@@ -74,6 +78,9 @@ type RegisterRequest struct {
 	Email           string  `json:"email" binding:"required,email"`
 	Password        string  `json:"password" binding:"required,min=8"`
 	InvitationToken *string `json:"invitation_token,omitempty"` // Optional invitation token to auto-join organization
+	// InviteCode is required when REGISTRATION_MODE=invite_only and no
+	// invitation token for this email is supplied.
+	InviteCode *string `json:"invite_code,omitempty"`
 }
 
 // RegisterResponse represents the registration response payload

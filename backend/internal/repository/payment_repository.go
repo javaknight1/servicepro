@@ -25,6 +25,12 @@ func NewPaymentRepository(db *gorm.DB) *PaymentRepository {
 	return &PaymentRepository{db: db}
 }
 
+// WithContext returns a copy of the repository bound to ctx (tenant scoping
+// via internal/tenancy reads the tenant from it).
+func (r *PaymentRepository) WithContext(ctx context.Context) PaymentRepositoryInterface {
+	return &PaymentRepository{db: r.db.WithContext(ctx)}
+}
+
 // CreatePayment creates a new payment record
 func (r *PaymentRepository) CreatePayment(payment *models.Payment) error {
 	return r.db.Create(payment).Error

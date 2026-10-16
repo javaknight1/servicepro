@@ -13,6 +13,7 @@ import (
 // Quote represents a customer quote
 type Quote struct {
 	ID            uuid.UUID       `json:"id" gorm:"type:uuid;primary_key;default:uuid_generate_v4()"`
+	TenantID      uuid.UUID       `json:"tenant_id" gorm:"type:uuid;not null;index"` // set from the caller's tenant (internal/tenancy)
 	CustomerID    uuid.UUID       `json:"customer_id" gorm:"type:uuid;not null;index"`
 	Customer      *Customer       `json:"customer,omitempty" gorm:"foreignKey:CustomerID;constraint:OnDelete:CASCADE"`
 	QuoteNumber   string          `json:"quote_number" gorm:"type:varchar(50);uniqueIndex;not null"`

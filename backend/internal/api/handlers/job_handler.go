@@ -86,13 +86,13 @@ func (h *JobHandler) CreateJob(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
-			Message: "Invalid job data: " + err.Error(),
+			Message: "Invalid job data: " + publicError(err),
 		})
 		return
 	}
 
 	// Create job
-	job, err := h.jobService.CreateJob(&req, userID)
+	job, err := h.jobService.WithContext(c.Request.Context()).CreateJob(&req, userID)
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrCustomerNotFound):
@@ -103,13 +103,13 @@ func (h *JobHandler) CreateJob(c *gin.Context) {
 		case errors.Is(err, gorm.ErrRecordNotFound):
 			c.JSON(http.StatusNotFound, models.ErrorResponse{
 				Error:   "not_found",
-				Message: err.Error(),
+				Message: publicError(err),
 			})
 		default:
 			log.Printf("Error creating job: %v", err)
 			c.JSON(http.StatusBadRequest, models.ErrorResponse{
 				Error:   "creation_failed",
-				Message: err.Error(),
+				Message: publicError(err),
 			})
 		}
 		return
@@ -150,7 +150,7 @@ func (h *JobHandler) GetJob(c *gin.Context) {
 	}
 
 	// Get job
-	job, err := h.jobService.GetJobByID(jobID, userID, userRole)
+	job, err := h.jobService.WithContext(c.Request.Context()).GetJobByID(jobID, userID, userRole)
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrJobNotFound):
@@ -206,7 +206,7 @@ func (h *JobHandler) GetJobByNumber(c *gin.Context) {
 	}
 
 	// Get job
-	job, err := h.jobService.GetJobByJobNumber(jobNumber, userID, userRole)
+	job, err := h.jobService.WithContext(c.Request.Context()).GetJobByJobNumber(jobNumber, userID, userRole)
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrJobNotFound):
@@ -269,13 +269,13 @@ func (h *JobHandler) UpdateJob(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
-			Message: "Invalid job data: " + err.Error(),
+			Message: "Invalid job data: " + publicError(err),
 		})
 		return
 	}
 
 	// Update job
-	job, err := h.jobService.UpdateJob(jobID, &req, userID, userRole)
+	job, err := h.jobService.WithContext(c.Request.Context()).UpdateJob(jobID, &req, userID, userRole)
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrJobNotFound):
@@ -292,7 +292,7 @@ func (h *JobHandler) UpdateJob(c *gin.Context) {
 			log.Printf("Error updating job: %v", err)
 			c.JSON(http.StatusBadRequest, models.ErrorResponse{
 				Error:   "update_failed",
-				Message: err.Error(),
+				Message: publicError(err),
 			})
 		}
 		return
@@ -333,7 +333,7 @@ func (h *JobHandler) DeleteJob(c *gin.Context) {
 	}
 
 	// Delete job
-	err = h.jobService.DeleteJob(jobID, userID, userRole)
+	err = h.jobService.WithContext(c.Request.Context()).DeleteJob(jobID, userID, userRole)
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrJobNotFound):
@@ -350,7 +350,7 @@ func (h *JobHandler) DeleteJob(c *gin.Context) {
 			log.Printf("Error deleting job: %v", err)
 			c.JSON(http.StatusBadRequest, models.ErrorResponse{
 				Error:   "delete_failed",
-				Message: err.Error(),
+				Message: publicError(err),
 			})
 		}
 		return
@@ -394,7 +394,7 @@ func (h *JobHandler) ListJobs(c *gin.Context) {
 	if err := c.ShouldBindQuery(&filter); err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
-			Message: "Invalid query parameters: " + err.Error(),
+			Message: "Invalid query parameters: " + publicError(err),
 		})
 		return
 	}
@@ -410,7 +410,7 @@ func (h *JobHandler) ListJobs(c *gin.Context) {
 	}
 
 	// Get jobs
-	jobs, total, err := h.jobService.ListJobs(&filter, userID, userRole)
+	jobs, total, err := h.jobService.WithContext(c.Request.Context()).ListJobs(&filter, userID, userRole)
 	if err != nil {
 		log.Printf("Error listing jobs: %v", err)
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
@@ -454,7 +454,7 @@ func (h *JobHandler) GetMyJobs(c *gin.Context) {
 	}
 
 	// Get jobs
-	jobs, err := h.jobService.GetMyJobs(userID)
+	jobs, err := h.jobService.WithContext(c.Request.Context()).GetMyJobs(userID)
 	if err != nil {
 		log.Printf("Error getting user jobs: %v", err)
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
@@ -510,7 +510,7 @@ func (h *JobHandler) GetScheduledJobs(c *gin.Context) {
 		return
 	}
 
-	jobs, err := h.jobService.GetScheduledJobs(start, end)
+	jobs, err := h.jobService.WithContext(c.Request.Context()).GetScheduledJobs(start, end)
 	if err != nil {
 		log.Printf("Error getting scheduled jobs: %v", err)
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
@@ -534,7 +534,7 @@ func (h *JobHandler) GetScheduledJobs(c *gin.Context) {
 // @Failure 500 {object} models.ErrorResponse "Internal server error"
 // @Router /api/v1/jobs/overdue [get]
 func (h *JobHandler) GetOverdueJobs(c *gin.Context) {
-	jobs, err := h.jobService.GetOverdueJobs()
+	jobs, err := h.jobService.WithContext(c.Request.Context()).GetOverdueJobs()
 	if err != nil {
 		log.Printf("Error getting overdue jobs: %v", err)
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
@@ -579,7 +579,7 @@ func (h *JobHandler) StartJob(c *gin.Context) {
 	}
 
 	// Start job
-	job, err := h.jobService.StartJob(jobID, userID, userRole)
+	job, err := h.jobService.WithContext(c.Request.Context()).StartJob(jobID, userID, userRole)
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrJobNotFound):
@@ -596,7 +596,7 @@ func (h *JobHandler) StartJob(c *gin.Context) {
 			log.Printf("Error starting job: %v", err)
 			c.JSON(http.StatusBadRequest, models.ErrorResponse{
 				Error:   "start_failed",
-				Message: err.Error(),
+				Message: publicError(err),
 			})
 		}
 		return
@@ -645,7 +645,7 @@ func (h *JobHandler) CompleteJob(c *gin.Context) {
 	_ = c.ShouldBindJSON(&req)
 
 	// Complete job
-	job, err := h.jobService.CompleteJob(jobID, req.CompletionNotes, userID, userRole)
+	job, err := h.jobService.WithContext(c.Request.Context()).CompleteJob(jobID, req.CompletionNotes, userID, userRole)
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrJobNotFound):
@@ -662,7 +662,7 @@ func (h *JobHandler) CompleteJob(c *gin.Context) {
 			log.Printf("Error completing job: %v", err)
 			c.JSON(http.StatusBadRequest, models.ErrorResponse{
 				Error:   "complete_failed",
-				Message: err.Error(),
+				Message: publicError(err),
 			})
 		}
 		return
@@ -711,7 +711,7 @@ func (h *JobHandler) CancelJob(c *gin.Context) {
 	_ = c.ShouldBindJSON(&req)
 
 	// Cancel job
-	job, err := h.jobService.CancelJob(jobID, req.Reason, userID, userRole)
+	job, err := h.jobService.WithContext(c.Request.Context()).CancelJob(jobID, req.Reason, userID, userRole)
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrJobNotFound):
@@ -728,7 +728,7 @@ func (h *JobHandler) CancelJob(c *gin.Context) {
 			log.Printf("Error cancelling job: %v", err)
 			c.JSON(http.StatusBadRequest, models.ErrorResponse{
 				Error:   "cancel_failed",
-				Message: err.Error(),
+				Message: publicError(err),
 			})
 		}
 		return
@@ -777,7 +777,7 @@ func (h *JobHandler) PutOnHold(c *gin.Context) {
 	_ = c.ShouldBindJSON(&req)
 
 	// Put job on hold
-	job, err := h.jobService.PutOnHold(jobID, req.Reason, userID, userRole)
+	job, err := h.jobService.WithContext(c.Request.Context()).PutOnHold(jobID, req.Reason, userID, userRole)
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrJobNotFound):
@@ -794,7 +794,7 @@ func (h *JobHandler) PutOnHold(c *gin.Context) {
 			log.Printf("Error putting job on hold: %v", err)
 			c.JSON(http.StatusBadRequest, models.ErrorResponse{
 				Error:   "hold_failed",
-				Message: err.Error(),
+				Message: publicError(err),
 			})
 		}
 		return
@@ -835,7 +835,7 @@ func (h *JobHandler) ResumeJob(c *gin.Context) {
 	}
 
 	// Resume job
-	job, err := h.jobService.ResumeJob(jobID, userID, userRole)
+	job, err := h.jobService.WithContext(c.Request.Context()).ResumeJob(jobID, userID, userRole)
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrJobNotFound):
@@ -852,7 +852,7 @@ func (h *JobHandler) ResumeJob(c *gin.Context) {
 			log.Printf("Error resuming job: %v", err)
 			c.JSON(http.StatusBadRequest, models.ErrorResponse{
 				Error:   "resume_failed",
-				Message: err.Error(),
+				Message: publicError(err),
 			})
 		}
 		return
@@ -902,7 +902,7 @@ func (h *JobHandler) AssignTechnician(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
-			Message: "Invalid request: " + err.Error(),
+			Message: "Invalid request: " + publicError(err),
 		})
 		return
 	}
@@ -917,7 +917,7 @@ func (h *JobHandler) AssignTechnician(c *gin.Context) {
 	}
 
 	// Assign technician
-	err = h.jobService.AssignTechnician(jobID, technicianID, req.Role, userID, userRole)
+	err = h.jobService.WithContext(c.Request.Context()).AssignTechnician(jobID, technicianID, req.Role, userID, userRole)
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrJobNotFound):
@@ -934,7 +934,7 @@ func (h *JobHandler) AssignTechnician(c *gin.Context) {
 			log.Printf("Error assigning technician: %v", err)
 			c.JSON(http.StatusBadRequest, models.ErrorResponse{
 				Error:   "assignment_failed",
-				Message: err.Error(),
+				Message: publicError(err),
 			})
 		}
 		return
@@ -988,7 +988,7 @@ func (h *JobHandler) UnassignTechnician(c *gin.Context) {
 	}
 
 	// Unassign technician
-	err = h.jobService.UnassignTechnician(jobID, technicianID, userID, userRole)
+	err = h.jobService.WithContext(c.Request.Context()).UnassignTechnician(jobID, technicianID, userID, userRole)
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrJobNotFound):
@@ -1005,7 +1005,7 @@ func (h *JobHandler) UnassignTechnician(c *gin.Context) {
 			log.Printf("Error unassigning technician: %v", err)
 			c.JSON(http.StatusBadRequest, models.ErrorResponse{
 				Error:   "unassignment_failed",
-				Message: err.Error(),
+				Message: publicError(err),
 			})
 		}
 		return
@@ -1053,13 +1053,13 @@ func (h *JobHandler) AddMaterial(c *gin.Context) {
 	if err := c.ShouldBindJSON(&material); err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
-			Message: "Invalid material data: " + err.Error(),
+			Message: "Invalid material data: " + publicError(err),
 		})
 		return
 	}
 
 	// Add material
-	err = h.jobService.AddMaterial(jobID, &material, userID, userRole)
+	err = h.jobService.WithContext(c.Request.Context()).AddMaterial(jobID, &material, userID, userRole)
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrJobNotFound):
@@ -1076,7 +1076,7 @@ func (h *JobHandler) AddMaterial(c *gin.Context) {
 			log.Printf("Error adding material: %v", err)
 			c.JSON(http.StatusBadRequest, models.ErrorResponse{
 				Error:   "add_material_failed",
-				Message: err.Error(),
+				Message: publicError(err),
 			})
 		}
 		return
@@ -1126,13 +1126,13 @@ func (h *JobHandler) AddNote(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
-			Message: "Invalid note data: " + err.Error(),
+			Message: "Invalid note data: " + publicError(err),
 		})
 		return
 	}
 
 	// Add note
-	err = h.jobService.AddNote(jobID, userID, req.Note, req.IsInternal, userRole)
+	err = h.jobService.WithContext(c.Request.Context()).AddNote(jobID, userID, req.Note, req.IsInternal, userRole)
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrJobNotFound):
@@ -1144,7 +1144,7 @@ func (h *JobHandler) AddNote(c *gin.Context) {
 			log.Printf("Error adding note: %v", err)
 			c.JSON(http.StatusBadRequest, models.ErrorResponse{
 				Error:   "add_note_failed",
-				Message: err.Error(),
+				Message: publicError(err),
 			})
 		}
 		return
@@ -1166,7 +1166,7 @@ func (h *JobHandler) AddNote(c *gin.Context) {
 // @Failure 500 {object} models.ErrorResponse "Internal server error"
 // @Router /api/v1/jobs/stats [get]
 func (h *JobHandler) GetJobStats(c *gin.Context) {
-	stats, err := h.jobService.GetJobStats()
+	stats, err := h.jobService.WithContext(c.Request.Context()).GetJobStats()
 	if err != nil {
 		log.Printf("Error getting job stats: %v", err)
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
@@ -1202,7 +1202,7 @@ func (h *JobHandler) GetTechnicianWorkload(c *gin.Context) {
 		return
 	}
 
-	workload, err := h.jobService.GetTechnicianWorkload(technicianID)
+	workload, err := h.jobService.WithContext(c.Request.Context()).GetTechnicianWorkload(technicianID)
 	if err != nil {
 		log.Printf("Error getting technician workload: %v", err)
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
@@ -1245,7 +1245,7 @@ func (h *JobHandler) GetCustomerJobs(c *gin.Context) {
 	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
 
 	// Get jobs
-	jobs, total, err := h.jobService.GetCustomerJobs(customerID, limit, offset)
+	jobs, total, err := h.jobService.WithContext(c.Request.Context()).GetCustomerJobs(customerID, limit, offset)
 	if err != nil {
 		log.Printf("Error getting customer jobs: %v", err)
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
@@ -1309,13 +1309,13 @@ func (h *JobHandler) TransitionStatus(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
-			Message: "Invalid request: " + err.Error(),
+			Message: "Invalid request: " + publicError(err),
 		})
 		return
 	}
 
 	// Transition status
-	job, err := h.jobService.TransitionStatus(jobID, req.ToStatus, string(req.Reason), req.Notes, userID, userRole)
+	job, err := h.jobService.WithContext(c.Request.Context()).TransitionStatus(jobID, req.ToStatus, string(req.Reason), req.Notes, userID, userRole)
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrJobNotFound):
@@ -1332,7 +1332,7 @@ func (h *JobHandler) TransitionStatus(c *gin.Context) {
 			log.Printf("Error transitioning job status: %v", err)
 			c.JSON(http.StatusBadRequest, models.ErrorResponse{
 				Error:   "transition_failed",
-				Message: err.Error(),
+				Message: publicError(err),
 			})
 		}
 		return
@@ -1373,7 +1373,7 @@ func (h *JobHandler) GetStatusHistory(c *gin.Context) {
 	sortOrder := c.DefaultQuery("sort", "desc")
 
 	// Get status history
-	history, err := h.jobService.GetStatusHistory(jobID, limit, offset, sortOrder)
+	history, err := h.jobService.WithContext(c.Request.Context()).GetStatusHistory(jobID, limit, offset, sortOrder)
 	if err != nil {
 		log.Printf("Error getting status history: %v", err)
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
