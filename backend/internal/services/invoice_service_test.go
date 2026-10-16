@@ -139,6 +139,7 @@ func setupTestDB(t *testing.T) *gorm.DB {
 			discount_amount REAL DEFAULT 0,
 			total_amount REAL DEFAULT 0,
 			amount_paid REAL DEFAULT 0,
+			currency TEXT NOT NULL DEFAULT 'USD',
 			payment_term_id TEXT,
 			tax_rate_id TEXT,
 			po_number TEXT,

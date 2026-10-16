@@ -243,7 +243,7 @@ func (h *PublicInvoiceHandler) buildPublicInvoiceResponse(invoice *models.Invoic
 		TotalAmount:   invoice.TotalAmount.StringFixed(2),
 		AmountPaid:    invoice.AmountPaid.StringFixed(2),
 		AmountDue:     amountDue.StringFixed(2),
-		Currency:      "USD",
+		Currency:      models.NormalizeCurrency(invoice.Currency),
 		CustomerName:  customerName,
 		Lines:         lines,
 	}

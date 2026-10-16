@@ -117,6 +117,9 @@ type Invoice struct {
 	TotalAmount    decimal.Decimal `gorm:"type:decimal(12,2);not null;default:0.00" json:"total_amount"`
 	AmountPaid     decimal.Decimal `gorm:"type:decimal(12,2);default:0.00" json:"amount_paid"`
 	AmountDue      decimal.Decimal `gorm:"type:decimal(12,2);->" json:"amount_due"` // Computed column
+	// Currency is the ISO 4217 code the invoice is billed in, fixed at create
+	// time from the tenant's currency setting (or the source quote's).
+	Currency string `gorm:"type:varchar(3);not null;default:'USD'" json:"currency"`
 
 	// References
 	PaymentTermID *uuid.UUID `gorm:"type:uuid" json:"payment_term_id,omitempty"`
@@ -175,6 +178,9 @@ func (i *Invoice) BeforeCreate(tx *gorm.DB) error {
 			return err
 		}
 		i.InvoiceNumber = n
+	}
+	if i.Currency == "" {
+		i.Currency = documentCurrency(tx, i.TenantID)
 	}
 	return nil
 }

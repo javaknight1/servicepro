@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -105,10 +106,11 @@ func (s *InvoicePaymentService) CreateCheckoutSessionForInvoice(ctx context.Cont
 	}, nil
 }
 
-// invoiceCurrency is the ISO currency invoices are charged in. Today every
-// tenant bills in USD; T127 makes this the tenant's currency setting.
-func invoiceCurrency(_ *models.Invoice) string {
-	return "usd"
+// invoiceCurrency is the Stripe (lower-case ISO 4217) currency an invoice is
+// charged in: the currency stored on the invoice at create time from the
+// tenant's setting (T127), USD for anything unusable.
+func invoiceCurrency(invoice *models.Invoice) string {
+	return strings.ToLower(models.NormalizeCurrency(invoice.Currency))
 }
 
 // buildCheckoutParams builds a Checkout session with ONE line item for the
