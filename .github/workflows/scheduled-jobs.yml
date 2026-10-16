@@ -12,6 +12,7 @@
 #
 # Schedule (UTC):
 #   hourly at :15   payment-reminders    unpaid-invoice reminder emails
+#   hourly at :15   quote-expiry         sent quotes past valid_until -> expired
 # Add a job here only once the API exposes /internal/jobs/<name> for it.
 # GitHub may delay scheduled runs under load; the jobs must tolerate a late or
 # skipped tick (they select by due-time, not "exactly now").
@@ -31,6 +32,7 @@ on:
         options:
           - all
           - payment-reminders
+          - quote-expiry
 
 concurrency:
   group: scheduled-jobs
@@ -76,13 +78,13 @@ jobs:
 
           if [ "$EVENT" = "workflow_dispatch" ]; then
             if [ "$INPUT_JOB" = "all" ]; then
-              jobs="payment-reminders"
+              jobs="payment-reminders quote-expiry"
             else
               jobs="$INPUT_JOB"
             fi
           else
-            # Hourly tick: reminders every hour.
-            jobs="payment-reminders"
+            # Hourly tick: reminders and quote expiry every hour.
+            jobs="payment-reminders quote-expiry"
           fi
 
           echo "trigger=${EVENT} schedule=${SCHEDULE:-n/a} jobs=${jobs}"

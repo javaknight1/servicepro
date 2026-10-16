@@ -90,9 +90,17 @@ func setupInternalJobRoutes(router *gin.Engine, routeCfg *RouteConfig, cfg *conf
 
 	group := router.Group("/internal/jobs", jobs.Authorize)
 	group.POST("/payment-reminders", jobs.RunPaymentReminders)
+	endpoints := "/internal/jobs/payment-reminders"
+	if routeCfg.Clients != nil && routeCfg.Clients.DB != nil {
+		db := routeCfg.Clients.DB
+		group.POST("/quote-expiry", handlers.RunQuoteExpiry(func(ctx context.Context, now time.Time) (int64, error) {
+			return services.ExpireQuotes(ctx, db, now)
+		}))
+		endpoints += ", /internal/jobs/quote-expiry"
+	}
 
 	logging.Info(context.Background(), "Internal job endpoints registered", map[string]any{
-		"enabled": cfg.Server.InternalJobsSecret != "", "endpoints": "/internal/jobs/payment-reminders", "source": "jobs",
+		"enabled": cfg.Server.InternalJobsSecret != "", "endpoints": endpoints, "source": "jobs",
 	})
 }
 
