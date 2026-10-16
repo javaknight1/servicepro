@@ -106,7 +106,8 @@ func (tm *TenantMiddleware) RequireTenant() gin.HandlerFunc {
 // RequireTenantFromPath binds the tenant named by a path parameter (e.g. the
 // :id in /tenants/:id/members) after verifying that the caller is an active
 // member of it. The path is authoritative for these routes; an X-Tenant-ID
-// header is ignored. Non-members get 404 so tenant IDs can't be probed.
+// header is ignored. Non-members get 403 tenant_access_denied (the frontend
+// shows a permission message for it).
 func (tm *TenantMiddleware) RequireTenantFromPath(param string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userUUID, ok := authenticatedUserID(c)
