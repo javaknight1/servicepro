@@ -42,6 +42,7 @@ const (
 // RevenueTransaction represents a revenue transaction record
 type RevenueTransaction struct {
 	ID        uuid.UUID  `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
+	TenantID  uuid.UUID  `json:"tenant_id" gorm:"type:uuid;not null;index"` // set from the caller's tenant (internal/tenancy)
 	PaymentID uuid.UUID  `gorm:"type:uuid;not null" json:"payment_id"`
 	UserID    uuid.UUID  `gorm:"type:uuid;not null" json:"user_id"`
 	InvoiceID *uuid.UUID `gorm:"type:uuid" json:"invoice_id,omitempty"`
@@ -98,6 +99,7 @@ func (rt *RevenueTransaction) BeforeCreate(tx *gorm.DB) error {
 // RevenueSummaryCache represents cached revenue summary data
 type RevenueSummaryCache struct {
 	ID          uuid.UUID  `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
+	TenantID    uuid.UUID  `gorm:"type:uuid;not null;index" json:"tenant_id"` // cache is per tenant (internal/tenancy)
 	PeriodType  PeriodType `gorm:"type:varchar(20);not null" json:"period_type"`
 	PeriodStart time.Time  `gorm:"not null" json:"period_start"`
 	PeriodEnd   time.Time  `gorm:"not null" json:"period_end"`

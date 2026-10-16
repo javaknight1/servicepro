@@ -133,7 +133,7 @@ func (s *AssignmentService) CreateAssignment(ctx context.Context, req *Assignmen
 	s.logger.Printf("Creating assignment for job %s, technician %s", req.JobID, req.TechnicianID)
 
 	// Validate job exists
-	job, err := s.jobRepo.GetByID(req.JobID)
+	job, err := s.jobRepo.WithContext(ctx).GetByID(req.JobID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrJobNotFound
@@ -195,7 +195,7 @@ func (s *AssignmentService) CreateAssignment(ctx context.Context, req *Assignmen
 		AssignedAt: epoch.NowEpoch(),
 	}
 
-	if err := s.jobRepo.AddAssignment(assignment); err != nil {
+	if err := s.jobRepo.WithContext(ctx).AddAssignment(assignment); err != nil {
 		s.logger.Printf("Error creating assignment: %v", err)
 		return nil, err
 	}
@@ -247,7 +247,11 @@ func (s *AssignmentService) BulkAssignTechnicians(ctx context.Context, req *Bulk
 func (s *AssignmentService) RemoveAssignment(ctx context.Context, assignmentID uuid.UUID, removedBy uuid.UUID) error {
 	s.logger.Printf("Removing assignment %s by user %s", assignmentID, removedBy)
 
-	if err := s.jobRepo.RemoveAssignment(assignmentID); err != nil {
+	if err := s.assignmentInTenant(ctx, assignmentID, nil); err != nil {
+		return err
+	}
+
+	if err := s.jobRepo.WithContext(ctx).RemoveAssignment(assignmentID); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return ErrAssignmentNotFound
 		}
@@ -259,22 +263,46 @@ func (s *AssignmentService) RemoveAssignment(ctx context.Context, assignmentID u
 	return nil
 }
 
+// assignmentInTenant verifies that an assignment's job belongs to the caller's
+// tenant. job_assignments has no tenant_id, so the (tenant-scoped) parent job
+// is the authority; a miss is reported as not found.
+func (s *AssignmentService) assignmentInTenant(ctx context.Context, assignmentID uuid.UUID, loaded *models.JobAssignment) error {
+	assignment := loaded
+	if assignment == nil {
+		var a models.JobAssignment
+		if err := s.db.WithContext(ctx).First(&a, "id = ?", assignmentID).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return ErrAssignmentNotFound
+			}
+			return err
+		}
+		assignment = &a
+	}
+	if _, err := s.jobRepo.WithContext(ctx).GetByID(assignment.JobID); err != nil {
+		return ErrAssignmentNotFound
+	}
+	return nil
+}
+
 // UpdateAssignment updates an assignment role
 func (s *AssignmentService) UpdateAssignment(ctx context.Context, assignmentID uuid.UUID, role string, updatedBy uuid.UUID) error {
 	s.logger.Printf("Updating assignment %s role to %s", assignmentID, role)
 
 	// Get existing assignment
 	var assignment models.JobAssignment
-	if err := s.db.First(&assignment, assignmentID).Error; err != nil {
+	if err := s.db.WithContext(ctx).First(&assignment, assignmentID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return ErrAssignmentNotFound
 		}
 		return err
 	}
+	if err := s.assignmentInTenant(ctx, assignmentID, &assignment); err != nil {
+		return err
+	}
 
 	// Update role
 	assignment.Role = role
-	if err := s.db.Save(&assignment).Error; err != nil {
+	if err := s.db.WithContext(ctx).Save(&assignment).Error; err != nil {
 		s.logger.Printf("Error updating assignment: %v", err)
 		return err
 	}
@@ -396,7 +424,7 @@ func (s *AssignmentService) GetAvailableTechnicians(ctx context.Context, req *Av
 // DetectConflicts detects scheduling conflicts for a technician
 func (s *AssignmentService) DetectConflicts(ctx context.Context, technicianID uuid.UUID, startTime, endTime int64, excludeJobID *uuid.UUID) ([]models.Job, error) {
 	// Get all jobs assigned to this technician
-	jobs, err := s.jobRepo.GetByAssignedUser(technicianID)
+	jobs, err := s.jobRepo.WithContext(ctx).GetByAssignedUser(technicianID)
 	if err != nil {
 		return nil, err
 	}
@@ -468,7 +496,7 @@ func (s *AssignmentService) GetTechniciansBySkill(ctx context.Context, skill Tec
 
 // GetTechnicianWorkload gets the number of active assignments for a technician
 func (s *AssignmentService) GetTechnicianWorkload(ctx context.Context, technicianID uuid.UUID, startDate, endDate int64) (int, error) {
-	jobs, err := s.jobRepo.GetByAssignedUser(technicianID)
+	jobs, err := s.jobRepo.WithContext(ctx).GetByAssignedUser(technicianID)
 	if err != nil {
 		return 0, err
 	}

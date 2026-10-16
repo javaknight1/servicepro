@@ -77,7 +77,7 @@ func setupReminderFixture(t *testing.T) *reminderFixture {
 	require.NoError(t, err)
 	sqlDB.SetMaxOpenConns(1) // one shared in-memory database
 
-	createSQLiteTableForModel(t, db, &models.Customer{}, "tenant_id TEXT") // tenant_id exists in Postgres but not on the model
+	createSQLiteTableForModel(t, db, &models.Customer{}, "")
 	createSQLiteTableForModel(t, db, &models.Invoice{}, "")
 	createSQLiteTableForModel(t, db, &models.PaymentReminder{}, "UNIQUE (invoice_id, reminder_number)")
 

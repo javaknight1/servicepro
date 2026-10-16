@@ -111,7 +111,7 @@ func (v *ConflictValidator) ValidateScheduleUpdate(ctx context.Context, schedule
 	result := v.ValidateScheduleCreate(ctx, req)
 
 	// Get existing schedule
-	existingSchedule, err := v.scheduleRepo.GetByID(scheduleID)
+	existingSchedule, err := v.scheduleRepo.WithContext(ctx).GetByID(scheduleID)
 	if err != nil {
 		result.Errors = append(result.Errors, ValidationError{
 			Code:     "schedule_not_found",
@@ -321,7 +321,7 @@ func (v *ConflictValidator) validateConfirmedScheduleChange(existing *models.Sch
 // ValidateTechnicianAvailability validates technician availability based on their schedule
 func (v *ConflictValidator) ValidateTechnicianAvailability(ctx context.Context, tenantID uuid.UUID, techID uuid.UUID, startTime, endTime int64) (bool, string) {
 	// Get technician's schedules for the time range
-	schedules, err := v.scheduleRepo.GetByTechnicianAndDateRange(tenantID, techID, startTime, endTime)
+	schedules, err := v.scheduleRepo.WithContext(ctx).GetByTechnicianAndDateRange(tenantID, techID, startTime, endTime)
 	if err != nil {
 		return false, fmt.Sprintf("Failed to check availability: %v", err)
 	}
@@ -374,7 +374,7 @@ func (v *ConflictValidator) ValidateBusinessRules(ctx context.Context, req *Conf
 		dayStart := time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC).Unix()
 		dayEnd := dayStart + 86400
 
-		schedules, err := v.scheduleRepo.GetByTechnicianAndDateRange(req.TenantID, techID, dayStart, dayEnd)
+		schedules, err := v.scheduleRepo.WithContext(ctx).GetByTechnicianAndDateRange(req.TenantID, techID, dayStart, dayEnd)
 		if err == nil && len(schedules) >= 5 {
 			result.Warnings = append(result.Warnings, ValidationError{
 				Code:     "high_job_count",

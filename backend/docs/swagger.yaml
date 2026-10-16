@@ -631,6 +631,9 @@ definitions:
         type: string
       status:
         $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.CustomerStatus'
+      tenant_id:
+        description: set from the caller's tenant (internal/tenancy)
+        type: string
       updated_at:
         type: string
     type: object
@@ -1307,6 +1310,9 @@ definitions:
         $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.TaxRate'
       tax_rate_id:
         type: string
+      tenant_id:
+        description: set from the caller's tenant (internal/tenancy)
+        type: string
       terms_and_conditions:
         type: string
       total_amount:
@@ -1501,6 +1507,9 @@ definitions:
         $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.JobStatus'
       tax_amount:
         type: number
+      tenant_id:
+        description: set from the caller's tenant (internal/tenancy)
+        type: string
       title:
         type: string
       total_amount:
@@ -2028,6 +2037,9 @@ definitions:
       late_fee_percentage:
         type: number
       name:
+        type: string
+      tenant_id:
+        description: nil = global default (internal/tenancy SharedRead)
         type: string
       term_type:
         $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.PaymentTermType'
@@ -2734,6 +2746,9 @@ definitions:
         type: string
       tax_type:
         $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.TaxType'
+      tenant_id:
+        description: nil = global default (internal/tenancy SharedRead)
+        type: string
       updated_at:
         type: string
     type: object
@@ -4016,6 +4031,9 @@ definitions:
       tax_rate:
         $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.TaxRate'
       tax_rate_id:
+        type: string
+      tenant_id:
+        description: set from the caller's tenant (internal/tenancy)
         type: string
       terms_and_conditions:
         type: string

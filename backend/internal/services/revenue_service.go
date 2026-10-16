@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/javaknight1/servicepro/backend/internal/tenancy"
+
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
@@ -140,7 +142,13 @@ func (s *revenueReportService) calculateSummary(ctx context.Context, query *mode
 		GrowthRate:              growthRate,
 	}
 
-	go s.updateCache(context.Background(), query, summary)
+	// Refresh the (per-tenant) cache asynchronously with a context that
+	// carries only the caller's tenant.
+	bg := context.Background()
+	if tenantID, ok := tenancy.TenantID(ctx); ok {
+		bg = tenancy.WithTenant(bg, tenantID)
+	}
+	go s.updateCache(bg, query, summary)
 
 	return summary, nil
 }

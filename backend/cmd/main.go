@@ -34,6 +34,7 @@ import (
 	"github.com/javaknight1/servicepro/backend/config"
 	"github.com/javaknight1/servicepro/backend/internal/api/middleware"
 	"github.com/javaknight1/servicepro/backend/internal/api/routes"
+	"github.com/javaknight1/servicepro/backend/internal/tenancy"
 	analyticsclient "github.com/javaknight1/servicepro/backend/pkg/clients/analytics"
 	emailclient "github.com/javaknight1/servicepro/backend/pkg/clients/email"
 	errortracking "github.com/javaknight1/servicepro/backend/pkg/clients/errortracking"
@@ -118,6 +119,12 @@ func main() {
 		os.Exit(1)
 	}
 	logging.Info(ctx, "Database connected", nil)
+
+	// Scope every query on tenant-owned tables to the caller's tenant (F-3).
+	if err := tenancy.Register(db); err != nil {
+		logging.Fatal(ctx, "Failed to register tenancy plugin", map[string]any{"error": err.Error()})
+		os.Exit(1)
+	}
 
 	// Get underlying SQL DB for cleanup
 	sqlDB, err := db.DB()

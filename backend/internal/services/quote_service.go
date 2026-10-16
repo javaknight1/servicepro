@@ -33,6 +33,9 @@ var (
 
 // QuoteServiceInterface defines the interface for quote service
 type QuoteServiceInterface interface {
+	// WithContext returns a service bound to ctx (the request context), so
+	// every query is scoped to the caller's tenant.
+	WithContext(ctx context.Context) QuoteServiceInterface
 	// CreateQuote creates a new quote
 	CreateQuote(req *models.QuoteRequest, userID uuid.UUID) (*models.QuoteResponse, error)
 	// GetQuote retrieves a quote by ID
@@ -82,6 +85,13 @@ type QuoteService struct {
 type QuoteServiceConfig struct {
 	PDFService  *DocumentPDFService
 	EmailClient email.Client
+}
+
+// WithContext returns a copy of the service whose repository runs with ctx.
+func (s *QuoteService) WithContext(ctx context.Context) QuoteServiceInterface {
+	cp := *s
+	cp.quoteRepo = s.quoteRepo.WithContext(ctx)
+	return &cp
 }
 
 // NewQuoteService creates a new quote service

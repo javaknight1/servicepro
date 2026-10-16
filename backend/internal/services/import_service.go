@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/javaknight1/servicepro/backend/internal/tenancy"
+
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
@@ -51,7 +53,7 @@ func (s *ImportService) CreateImportJob(
 		TotalRows: totalRows,
 	}
 
-	if err := s.db.Create(job).Error; err != nil {
+	if err := s.db.WithContext(ctx).Create(job).Error; err != nil {
 		return nil, fmt.Errorf("failed to create import job: %w", err)
 	}
 
@@ -61,7 +63,7 @@ func (s *ImportService) CreateImportJob(
 // GetImportJob retrieves an import job by ID
 func (s *ImportService) GetImportJob(ctx context.Context, jobID uuid.UUID) (*models.ImportJob, error) {
 	var job models.ImportJob
-	if err := s.db.Where("id = ?", jobID).First(&job).Error; err != nil {
+	if err := s.db.WithContext(ctx).Where("id = ?", jobID).First(&job).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, fmt.Errorf("import job not found")
 		}
@@ -72,8 +74,12 @@ func (s *ImportService) GetImportJob(ctx context.Context, jobID uuid.UUID) (*mod
 
 // GetImportErrors retrieves errors for an import job
 func (s *ImportService) GetImportErrors(ctx context.Context, jobID uuid.UUID, limit int) ([]models.ImportError, error) {
+	// import_errors has no tenant_id: verify the (tenant-scoped) parent job first.
+	if _, err := s.GetImportJob(ctx, jobID); err != nil {
+		return nil, err
+	}
 	var errors []models.ImportError
-	query := s.db.Where("job_id = ?", jobID).Order("row_number ASC")
+	query := s.db.WithContext(ctx).Where("job_id = ?", jobID).Order("row_number ASC")
 
 	if limit > 0 {
 		query = query.Limit(limit)
@@ -111,7 +117,7 @@ func (s *ImportService) UpdateJobStatus(
 		updates["error_summary"] = errorSummary
 	}
 
-	return s.db.Model(&models.ImportJob{}).Where("id = ?", jobID).Updates(updates).Error
+	return s.db.WithContext(ctx).Model(&models.ImportJob{}).Where("id = ?", jobID).Updates(updates).Error
 }
 
 // UpdateJobProgress updates the progress of an import job
@@ -126,7 +132,7 @@ func (s *ImportService) UpdateJobProgress(
 		"failed_rows":     failedRows,
 	}
 
-	return s.db.Model(&models.ImportJob{}).Where("id = ?", jobID).Updates(updates).Error
+	return s.db.WithContext(ctx).Model(&models.ImportJob{}).Where("id = ?", jobID).Updates(updates).Error
 }
 
 // ProcessImport processes an import job
@@ -162,7 +168,7 @@ func (s *ImportService) ProcessImport(
 		}
 
 		// Check for duplicates
-		existingCustomer, err := s.customerRepo.GetByEmail(row.Email)
+		existingCustomer, err := s.customerRepo.WithContext(ctx).GetByEmail(row.Email)
 		if err == nil && existingCustomer != nil {
 			// Email already exists
 			switch duplicateHandling {
@@ -173,7 +179,7 @@ func (s *ImportService) ProcessImport(
 					// Update existing customer
 					customer := row.ToCustomer()
 					customer.ID = existingCustomer.ID
-					if err := s.customerRepo.Update(customer); err != nil {
+					if err := s.customerRepo.WithContext(ctx).Update(customer); err != nil {
 						importErrors = append(importErrors, models.ImportError{
 							JobID:     jobID,
 							RowNumber: i + 1,
@@ -208,7 +214,7 @@ func (s *ImportService) ProcessImport(
 			// Create new customer
 			if !dryRun {
 				customer := row.ToCustomer()
-				if err := s.customerRepo.Create(customer); err != nil {
+				if err := s.customerRepo.WithContext(ctx).Create(customer); err != nil {
 					importErrors = append(importErrors, models.ImportError{
 						JobID:     jobID,
 						RowNumber: i + 1,
@@ -236,7 +242,7 @@ func (s *ImportService) ProcessImport(
 
 	// Save all import errors
 	if len(importErrors) > 0 {
-		if err := s.db.Create(&importErrors).Error; err != nil {
+		if err := s.db.WithContext(ctx).Create(&importErrors).Error; err != nil {
 			logging.Error(ctx, "[IMPORT] Failed to save import errors", map[string]any{"error": err})
 		}
 	}
@@ -273,8 +279,16 @@ func (s *ImportService) EnqueueImportJob(
 	duplicateHandling string,
 	dryRun bool,
 ) error {
+	// The worker has no request context, so carry the caller's tenant with
+	// the job (taken from ctx, which the tenant middleware set).
+	tenantID, err := tenancy.MustTenantID(ctx)
+	if err != nil {
+		return err
+	}
+
 	// Serialize the job data
 	jobData := map[string]interface{}{
+		"tenant_id":          tenantID.String(),
 		"job_id":             jobID.String(),
 		"rows":               rows,
 		"duplicate_handling": duplicateHandling,
@@ -329,6 +343,13 @@ func (s *ImportService) ProcessNextJob(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("invalid job_id format: %w", err)
 	}
+
+	tenantStr, _ := jobData["tenant_id"].(string)
+	tenantID, err := uuid.Parse(tenantStr)
+	if err != nil {
+		return fmt.Errorf("import job %s has no tenant: %w", jobID, err)
+	}
+	ctx = tenancy.WithTenant(ctx, tenantID)
 
 	duplicateHandling, _ := jobData["duplicate_handling"].(string)
 	dryRun, _ := jobData["dry_run"].(bool)

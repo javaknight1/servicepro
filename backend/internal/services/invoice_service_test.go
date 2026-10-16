@@ -47,6 +47,7 @@ func setupTestDB(t *testing.T) *gorm.DB {
 
 	err = db.Exec(`
 		CREATE TABLE IF NOT EXISTS customers (
+			tenant_id TEXT,
 			id TEXT PRIMARY KEY,
 			first_name TEXT NOT NULL,
 			last_name TEXT NOT NULL,
@@ -82,6 +83,7 @@ func setupTestDB(t *testing.T) *gorm.DB {
 
 	err = db.Exec(`
 		CREATE TABLE IF NOT EXISTS payment_terms (
+			tenant_id TEXT,
 			id TEXT PRIMARY KEY,
 			name TEXT NOT NULL,
 			description TEXT,
@@ -102,6 +104,7 @@ func setupTestDB(t *testing.T) *gorm.DB {
 
 	err = db.Exec(`
 		CREATE TABLE IF NOT EXISTS tax_rates (
+			tenant_id TEXT,
 			id TEXT PRIMARY KEY,
 			name TEXT NOT NULL,
 			description TEXT,
@@ -120,6 +123,7 @@ func setupTestDB(t *testing.T) *gorm.DB {
 
 	err = db.Exec(`
 		CREATE TABLE IF NOT EXISTS invoices (
+			tenant_id TEXT,
 			id TEXT PRIMARY KEY,
 			invoice_number TEXT DEFAULT '',
 			customer_id TEXT NOT NULL,

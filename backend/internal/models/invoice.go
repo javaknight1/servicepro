@@ -50,6 +50,7 @@ const (
 // TaxRate represents a tax rate configuration
 type TaxRate struct {
 	ID            uuid.UUID       `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
+	TenantID      *uuid.UUID      `json:"tenant_id,omitempty" gorm:"type:uuid;index"` // nil = global default (internal/tenancy SharedRead)
 	Name          string          `gorm:"type:varchar(100);not null" json:"name"`
 	Description   string          `gorm:"type:text" json:"description,omitempty"`
 	Rate          decimal.Decimal `gorm:"type:decimal(10,4);not null" json:"rate"`
@@ -71,6 +72,7 @@ func (TaxRate) TableName() string {
 // PaymentTerm represents payment terms configuration
 type PaymentTerm struct {
 	ID                 uuid.UUID       `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
+	TenantID           *uuid.UUID      `json:"tenant_id,omitempty" gorm:"type:uuid;index"` // nil = global default (internal/tenancy SharedRead)
 	Name               string          `gorm:"type:varchar(100);not null" json:"name"`
 	Description        string          `gorm:"type:text" json:"description,omitempty"`
 	TermType           PaymentTermType `gorm:"type:payment_term_type;not null;default:net_30" json:"term_type"`
@@ -94,6 +96,7 @@ func (PaymentTerm) TableName() string {
 // Invoice represents an invoice
 type Invoice struct {
 	ID            uuid.UUID  `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
+	TenantID      uuid.UUID  `json:"tenant_id" gorm:"type:uuid;not null;index"` // set from the caller's tenant (internal/tenancy)
 	InvoiceNumber string     `gorm:"type:varchar(50);uniqueIndex;not null" json:"invoice_number"`
 	CustomerID    uuid.UUID  `gorm:"type:uuid;not null;index" json:"customer_id"`
 	JobID         *uuid.UUID `gorm:"type:uuid;index" json:"job_id,omitempty"`

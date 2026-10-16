@@ -4,6 +4,8 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/javaknight1/servicepro/backend/internal/tenancy"
+
 	"github.com/gin-gonic/gin"
 
 	"github.com/javaknight1/servicepro/backend/internal/models"
@@ -49,7 +51,9 @@ func (h *PublicInvoiceHandler) PayInvoice(c *gin.Context) {
 		return
 	}
 
-	ctx := c.Request.Context()
+	// Public, token-authenticated route: there is no tenant session. The
+	// unguessable payment token selects the invoice across tenants.
+	ctx := tenancy.WithSystem(c.Request.Context())
 
 	// Create checkout session (this also validates the token)
 	result, err := h.invoicePaymentService.CreateCheckoutSessionForInvoice(ctx, token)
@@ -102,7 +106,9 @@ func (h *PublicInvoiceHandler) GetInvoiceByToken(c *gin.Context) {
 		return
 	}
 
-	ctx := c.Request.Context()
+	// Public, token-authenticated route: there is no tenant session. The
+	// unguessable payment token selects the invoice across tenants.
+	ctx := tenancy.WithSystem(c.Request.Context())
 
 	// Get invoice by token
 	invoice, err := h.invoicePaymentService.GetInvoiceByToken(ctx, token)
@@ -142,7 +148,9 @@ func (h *PublicInvoiceHandler) ValidatePaymentToken(c *gin.Context) {
 		return
 	}
 
-	ctx := c.Request.Context()
+	// Public, token-authenticated route: there is no tenant session. The
+	// unguessable payment token selects the invoice across tenants.
+	ctx := tenancy.WithSystem(c.Request.Context())
 
 	// Validate the token
 	invoice, err := h.invoicePaymentService.ValidateToken(ctx, token)

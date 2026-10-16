@@ -138,7 +138,7 @@ func (d *ConflictDetector) checkTechnicianConflicts(ctx context.Context, req *Co
 	// Check each assigned technician for conflicts
 	for _, techID := range req.AssignedTechIDs {
 		// Get technician's schedules in the requested time range
-		schedules, err := d.scheduleRepo.GetByTechnicianAndDateRange(
+		schedules, err := d.scheduleRepo.WithContext(ctx).GetByTechnicianAndDateRange(
 			req.TenantID,
 			techID,
 			req.StartTime,
@@ -204,7 +204,7 @@ func (d *ConflictDetector) checkTechnicianConflicts(ctx context.Context, req *Co
 
 		// Also check jobs table for overlapping job assignments
 		if d.jobRepo != nil {
-			jobs, err := d.jobRepo.GetJobsByTechnicianAndDateRange(techID, req.StartTime, req.EndTime)
+			jobs, err := d.jobRepo.WithContext(ctx).GetJobsByTechnicianAndDateRange(techID, req.StartTime, req.EndTime)
 			if err != nil {
 				return nil, err
 			}
@@ -294,7 +294,7 @@ func (d *ConflictDetector) checkTechnicianWorkload(ctx context.Context, req *Con
 
 	for _, techID := range req.AssignedTechIDs {
 		// Get all schedules for the day
-		schedules, err := d.scheduleRepo.GetByTechnicianAndDateRange(req.TenantID, techID, dayStart, dayEnd)
+		schedules, err := d.scheduleRepo.WithContext(ctx).GetByTechnicianAndDateRange(req.TenantID, techID, dayStart, dayEnd)
 		if err != nil {
 			return nil, err
 		}
@@ -316,7 +316,7 @@ func (d *ConflictDetector) checkTechnicianWorkload(ctx context.Context, req *Con
 
 		// Also count hours from jobs table
 		if d.jobRepo != nil {
-			jobs, err := d.jobRepo.GetJobsByTechnicianAndDateRange(techID, dayStart, dayEnd)
+			jobs, err := d.jobRepo.WithContext(ctx).GetJobsByTechnicianAndDateRange(techID, dayStart, dayEnd)
 			if err != nil {
 				return nil, err
 			}
@@ -478,10 +478,10 @@ func (d *ConflictDetector) validateRequest(req *ConflictCheckRequest) error {
 
 // GetConflictsBySchedule retrieves existing conflicts for a schedule
 func (d *ConflictDetector) GetConflictsBySchedule(ctx context.Context, scheduleID uuid.UUID) ([]models.ScheduleConflict, error) {
-	return d.scheduleRepo.GetConflicts(scheduleID)
+	return d.scheduleRepo.WithContext(ctx).GetConflicts(scheduleID)
 }
 
 // ResolveConflict marks a conflict as resolved
 func (d *ConflictDetector) ResolveConflict(ctx context.Context, conflictID uuid.UUID, resolvedBy uuid.UUID, notes string) error {
-	return d.scheduleRepo.ResolveConflict(conflictID, resolvedBy, &notes)
+	return d.scheduleRepo.WithContext(ctx).ResolveConflict(conflictID, resolvedBy, &notes)
 }

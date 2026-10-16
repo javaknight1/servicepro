@@ -20,6 +20,7 @@ const (
 // ImportJob represents an import job
 type ImportJob struct {
 	ID             uuid.UUID       `json:"id" gorm:"type:uuid;primary_key;default:uuid_generate_v4()"`
+	TenantID       uuid.UUID       `json:"tenant_id" gorm:"type:uuid;not null;index"` // set from the caller's tenant (internal/tenancy)
 	UserID         uuid.UUID       `json:"user_id" gorm:"type:uuid;not null"`
 	Filename       string          `json:"filename" gorm:"type:varchar(255);not null"`
 	Status         ImportJobStatus `json:"status" gorm:"type:varchar(20);not null;default:'pending'"`

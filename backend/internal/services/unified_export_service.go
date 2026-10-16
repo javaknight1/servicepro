@@ -13,6 +13,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/javaknight1/servicepro/backend/internal/tenancy"
+
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 	"github.com/xuri/excelize/v2"
@@ -108,7 +110,7 @@ func (s *unifiedExportService) StartExport(ctx context.Context, userID uuid.UUID
 	job.MimeType = config.Format.GetMimeType()
 
 	// Save job to database
-	if err := s.db.Create(job).Error; err != nil {
+	if err := s.db.WithContext(ctx).Create(job).Error; err != nil {
 		return nil, fmt.Errorf("failed to create export job: %w", err)
 	}
 
@@ -118,8 +120,13 @@ func (s *unifiedExportService) StartExport(ctx context.Context, userID uuid.UUID
 	// Capture job ID before starting goroutine to avoid race
 	jobID := job.ID
 
-	// Start async export in goroutine
-	go s.processExport(context.Background(), jobID, config)
+	// Start async export in goroutine. It outlives the request, so it gets a
+	// fresh context carrying only the caller's tenant.
+	bg := context.Background()
+	if tenantID, ok := tenancy.TenantID(ctx); ok {
+		bg = tenancy.WithTenant(bg, tenantID)
+	}
+	go s.processExport(bg, jobID, config)
 
 	return job, nil
 }
@@ -130,7 +137,7 @@ func (s *unifiedExportService) processExport(ctx context.Context, jobID uuid.UUI
 
 	// Fetch fresh job from database to avoid race with caller
 	var job models.ExportJob
-	if err := s.db.First(&job, "id = ?", jobID).Error; err != nil {
+	if err := s.db.WithContext(ctx).First(&job, "id = ?", jobID).Error; err != nil {
 		return
 	}
 
@@ -138,7 +145,7 @@ func (s *unifiedExportService) processExport(ctx context.Context, jobID uuid.UUI
 	now := time.Now()
 	job.Status = models.ExportJobStatusProcessing
 	job.StartedAt = &now
-	s.db.Save(&job)
+	s.db.WithContext(ctx).Save(&job)
 
 	s.updateProgress(job.ID, models.ExportProgress{
 		JobID:        job.ID,
@@ -150,12 +157,12 @@ func (s *unifiedExportService) processExport(ctx context.Context, jobID uuid.UUI
 	// Fetch data based on export type
 	data, totalRecords, err := s.fetchData(ctx, config)
 	if err != nil {
-		s.failJob(&job, fmt.Sprintf("Failed to fetch data: %v", err))
+		s.failJob(ctx, &job, fmt.Sprintf("Failed to fetch data: %v", err))
 		return
 	}
 
 	job.TotalRecords = totalRecords
-	s.db.Save(&job)
+	s.db.WithContext(ctx).Save(&job)
 
 	s.updateProgress(job.ID, models.ExportProgress{
 		JobID:        job.ID,
@@ -184,7 +191,7 @@ func (s *unifiedExportService) processExport(ctx context.Context, jobID uuid.UUI
 	}
 
 	if err != nil {
-		s.failJob(&job, fmt.Sprintf("Failed to generate export: %v", err))
+		s.failJob(ctx, &job, fmt.Sprintf("Failed to generate export: %v", err))
 		return
 	}
 
@@ -200,14 +207,14 @@ func (s *unifiedExportService) processExport(ctx context.Context, jobID uuid.UUI
 
 	// Write to file
 	if err := os.WriteFile(job.FilePath, exportData, 0644); err != nil {
-		s.failJob(&job, fmt.Sprintf("Failed to write file: %v", err))
+		s.failJob(ctx, &job, fmt.Sprintf("Failed to write file: %v", err))
 		return
 	}
 
 	// Get file info
 	fileInfo, err := os.Stat(job.FilePath)
 	if err != nil {
-		s.failJob(&job, fmt.Sprintf("Failed to get file info: %v", err))
+		s.failJob(ctx, &job, fmt.Sprintf("Failed to get file info: %v", err))
 		return
 	}
 
@@ -222,7 +229,7 @@ func (s *unifiedExportService) processExport(ctx context.Context, jobID uuid.UUI
 	job.CompletedAt = &completedAt
 	job.ExpiresAt = &expiresAt
 	job.UpdatedAt = completedAt
-	s.db.Save(&job)
+	s.db.WithContext(ctx).Save(&job)
 
 	s.updateProgress(job.ID, models.ExportProgress{
 		JobID:            job.ID,
@@ -900,7 +907,7 @@ func (s *unifiedExportService) buildQuotesPDFTable(quotes []models.Quote) string
 // GetExportStatus returns the status of an export job
 func (s *unifiedExportService) GetExportStatus(ctx context.Context, jobID uuid.UUID) (*models.ExportJobResponse, error) {
 	var job models.ExportJob
-	if err := s.db.First(&job, "id = ?", jobID).Error; err != nil {
+	if err := s.db.WithContext(ctx).First(&job, "id = ?", jobID).Error; err != nil {
 		return nil, err
 	}
 
@@ -910,7 +917,7 @@ func (s *unifiedExportService) GetExportStatus(ctx context.Context, jobID uuid.U
 
 // CancelExport cancels an in-progress export job
 func (s *unifiedExportService) CancelExport(ctx context.Context, jobID uuid.UUID) error {
-	result := s.db.Model(&models.ExportJob{}).
+	result := s.db.WithContext(ctx).Model(&models.ExportJob{}).
 		Where("id = ? AND status IN ?", jobID, []string{string(models.ExportJobStatusPending), string(models.ExportJobStatusProcessing)}).
 		Update("status", models.ExportJobStatusCancelled)
 
@@ -933,7 +940,7 @@ func (s *unifiedExportService) CancelExport(ctx context.Context, jobID uuid.UUID
 // GetExportFile returns the file for download
 func (s *unifiedExportService) GetExportFile(ctx context.Context, jobID uuid.UUID) (io.ReadCloser, *models.ExportJob, error) {
 	var job models.ExportJob
-	if err := s.db.First(&job, "id = ?", jobID).Error; err != nil {
+	if err := s.db.WithContext(ctx).First(&job, "id = ?", jobID).Error; err != nil {
 		return nil, nil, err
 	}
 
@@ -952,7 +959,7 @@ func (s *unifiedExportService) GetExportFile(ctx context.Context, jobID uuid.UUI
 // ListExports lists recent exports for a user
 func (s *unifiedExportService) ListExports(ctx context.Context, userID uuid.UUID, limit int) ([]models.ExportJobResponse, error) {
 	var jobs []models.ExportJob
-	if err := s.db.Where("user_id = ?", userID).Order("created_at DESC").Limit(limit).Find(&jobs).Error; err != nil {
+	if err := s.db.WithContext(ctx).Where("user_id = ?", userID).Order("created_at DESC").Limit(limit).Find(&jobs).Error; err != nil {
 		return nil, err
 	}
 
@@ -967,7 +974,7 @@ func (s *unifiedExportService) ListExports(ctx context.Context, userID uuid.UUID
 // CleanupExpiredExports removes expired export files
 func (s *unifiedExportService) CleanupExpiredExports(ctx context.Context) error {
 	var jobs []models.ExportJob
-	if err := s.db.Where("expires_at < ? AND status = ?", time.Now(), models.ExportJobStatusCompleted).Find(&jobs).Error; err != nil {
+	if err := s.db.WithContext(ctx).Where("expires_at < ? AND status = ?", time.Now(), models.ExportJobStatusCompleted).Find(&jobs).Error; err != nil {
 		return err
 	}
 
@@ -978,7 +985,7 @@ func (s *unifiedExportService) CleanupExpiredExports(ctx context.Context) error 
 		}
 
 		// Delete job record
-		s.db.Delete(&job)
+		s.db.WithContext(ctx).Delete(&job)
 	}
 
 	return nil
@@ -1030,12 +1037,12 @@ func (s *unifiedExportService) SubscribeToProgress(jobID uuid.UUID) <-chan model
 	return ch
 }
 
-func (s *unifiedExportService) failJob(job *models.ExportJob, errorMsg string) {
+func (s *unifiedExportService) failJob(ctx context.Context, job *models.ExportJob, errorMsg string) {
 	job.Status = models.ExportJobStatusFailed
 	job.ErrorMessage = &errorMsg
 	completedAt := time.Now()
 	job.CompletedAt = &completedAt
-	s.db.Save(job)
+	s.db.WithContext(ctx).Save(job)
 
 	s.updateProgress(job.ID, models.ExportProgress{
 		JobID:   job.ID,

@@ -110,6 +110,11 @@ func (s *InvoiceService) CreateInvoice(ctx context.Context, invoice *models.Invo
 		return nil, err
 	}
 
+	// The customer must belong to the caller's tenant (scoped lookup).
+	if err := s.requireCustomer(ctx, invoice.CustomerID); err != nil {
+		return nil, err
+	}
+
 	// Create invoice in transaction
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		// Create invoice
@@ -197,6 +202,11 @@ func (s *InvoiceService) UpdateInvoice(ctx context.Context, id uuid.UUID, update
 
 	// Set updated by
 	updates.UpdatedBy = &userID
+	if updates.CustomerID != uuid.Nil && updates.CustomerID != existing.CustomerID {
+		if err := s.requireCustomer(ctx, updates.CustomerID); err != nil {
+			return nil, err
+		}
+	}
 
 	// Validate updates
 	if err := s.validateInvoiceUpdates(existing, updates); err != nil {
@@ -364,13 +374,15 @@ func (s *InvoiceService) ListInvoices(ctx context.Context, filter *models.Invoic
 func (s *InvoiceService) AddLineItem(ctx context.Context, invoiceID uuid.UUID, lineItem *models.InvoiceLine) (*models.InvoiceLine, error) {
 	lineItem.InvoiceID = invoiceID
 
+	// invoice_lines has no tenant_id: the (tenant-scoped) invoice lookup is
+	// what authorises adding a line to it.
+	invoice, err := s.GetInvoice(ctx, invoiceID)
+	if err != nil {
+		return nil, err
+	}
+
 	// Calculate tax if applicable
 	if lineItem.Taxable {
-		invoice, err := s.GetInvoice(ctx, invoiceID)
-		if err != nil {
-			return nil, err
-		}
-
 		if invoice.TaxRate != nil {
 			lineItem.TaxRate = invoice.TaxRate.Rate
 			lineTotal := lineItem.Quantity.Mul(lineItem.UnitPrice).Sub(lineItem.DiscountAmount)
@@ -524,6 +536,20 @@ func (s *InvoiceService) calculateDueDate(ctx context.Context, issueDate time.Ti
 	}
 
 	return issueDate.AddDate(0, 0, paymentTerm.DaysUntilDue), nil
+}
+
+// requireCustomer returns ErrCustomerNotFound unless the customer is visible
+// to the caller (tenant scoping hides other tenants' customers).
+func (s *InvoiceService) requireCustomer(ctx context.Context, customerID uuid.UUID) error {
+	var count int64
+	if err := s.db.WithContext(ctx).Model(&models.Customer{}).
+		Where("id = ? AND deleted_at IS NULL", customerID).Count(&count).Error; err != nil {
+		return err
+	}
+	if count == 0 {
+		return ErrCustomerNotFound
+	}
+	return nil
 }
 
 // generateInvoiceNumber generates a unique invoice number

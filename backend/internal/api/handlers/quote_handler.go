@@ -60,7 +60,7 @@ func (h *QuoteHandler) CreateQuote(c *gin.Context) {
 	}
 
 	// Create quote
-	quote, err := h.quoteService.CreateQuote(&req, userID)
+	quote, err := h.quoteService.WithContext(c.Request.Context()).CreateQuote(&req, userID)
 	if err != nil {
 		if errors.Is(err, services.ErrInvalidQuoteData) {
 			c.JSON(http.StatusBadRequest, models.ErrorResponse{
@@ -108,7 +108,7 @@ func (h *QuoteHandler) ListQuotes(c *gin.Context) {
 	}
 
 	// List quotes
-	quotes, err := h.quoteService.ListQuotes(&params)
+	quotes, err := h.quoteService.WithContext(c.Request.Context()).ListQuotes(&params)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
 			Error:   "internal_error",
@@ -145,7 +145,7 @@ func (h *QuoteHandler) GetQuote(c *gin.Context) {
 	}
 
 	// Get quote
-	quote, err := h.quoteService.GetQuote(id)
+	quote, err := h.quoteService.WithContext(c.Request.Context()).GetQuote(id)
 	if err != nil {
 		if errors.Is(err, services.ErrQuoteNotFound) {
 			c.JSON(http.StatusNotFound, models.ErrorResponse{
@@ -180,7 +180,7 @@ func (h *QuoteHandler) GetQuoteByNumber(c *gin.Context) {
 	quoteNumber := c.Param("quoteNumber")
 
 	// Get quote
-	quote, err := h.quoteService.GetQuoteByNumber(quoteNumber)
+	quote, err := h.quoteService.WithContext(c.Request.Context()).GetQuoteByNumber(quoteNumber)
 	if err != nil {
 		if errors.Is(err, services.ErrQuoteNotFound) {
 			c.JSON(http.StatusNotFound, models.ErrorResponse{
@@ -249,7 +249,7 @@ func (h *QuoteHandler) UpdateQuote(c *gin.Context) {
 	}
 
 	// Update quote
-	quote, err := h.quoteService.UpdateQuote(id, &req, userID)
+	quote, err := h.quoteService.WithContext(c.Request.Context()).UpdateQuote(id, &req, userID)
 	if err != nil {
 		if errors.Is(err, services.ErrQuoteNotFound) {
 			c.JSON(http.StatusNotFound, models.ErrorResponse{
@@ -311,7 +311,7 @@ func (h *QuoteHandler) DeleteQuote(c *gin.Context) {
 	}
 
 	// Delete quote
-	err = h.quoteService.DeleteQuote(id)
+	err = h.quoteService.WithContext(c.Request.Context()).DeleteQuote(id)
 	if err != nil {
 		if errors.Is(err, services.ErrQuoteNotFound) {
 			c.JSON(http.StatusNotFound, models.ErrorResponse{
@@ -365,7 +365,7 @@ func (h *QuoteHandler) SendQuote(c *gin.Context) {
 	}
 
 	// Send quote
-	err = h.quoteService.SendQuote(id)
+	err = h.quoteService.WithContext(c.Request.Context()).SendQuote(id)
 	if err != nil {
 		if errors.Is(err, services.ErrQuoteNotFound) {
 			c.JSON(http.StatusNotFound, models.ErrorResponse{
@@ -391,7 +391,7 @@ func (h *QuoteHandler) SendQuote(c *gin.Context) {
 	}
 
 	// Get updated quote
-	quote, err := h.quoteService.GetQuote(id)
+	quote, err := h.quoteService.WithContext(c.Request.Context()).GetQuote(id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
 			Error:   "internal_error",
@@ -429,7 +429,7 @@ func (h *QuoteHandler) AcceptQuote(c *gin.Context) {
 	}
 
 	// Accept quote
-	err = h.quoteService.AcceptQuote(id)
+	err = h.quoteService.WithContext(c.Request.Context()).AcceptQuote(id)
 	if err != nil {
 		if errors.Is(err, services.ErrQuoteNotFound) {
 			c.JSON(http.StatusNotFound, models.ErrorResponse{
@@ -455,7 +455,7 @@ func (h *QuoteHandler) AcceptQuote(c *gin.Context) {
 	}
 
 	// Get updated quote
-	quote, err := h.quoteService.GetQuote(id)
+	quote, err := h.quoteService.WithContext(c.Request.Context()).GetQuote(id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
 			Error:   "internal_error",
@@ -493,7 +493,7 @@ func (h *QuoteHandler) RejectQuote(c *gin.Context) {
 	}
 
 	// Reject quote
-	err = h.quoteService.RejectQuote(id)
+	err = h.quoteService.WithContext(c.Request.Context()).RejectQuote(id)
 	if err != nil {
 		if errors.Is(err, services.ErrQuoteNotFound) {
 			c.JSON(http.StatusNotFound, models.ErrorResponse{
@@ -519,7 +519,7 @@ func (h *QuoteHandler) RejectQuote(c *gin.Context) {
 	}
 
 	// Get updated quote
-	quote, err := h.quoteService.GetQuote(id)
+	quote, err := h.quoteService.WithContext(c.Request.Context()).GetQuote(id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
 			Error:   "internal_error",
@@ -555,7 +555,7 @@ func (h *QuoteHandler) GetCustomerQuotes(c *gin.Context) {
 	}
 
 	// Get customer quotes
-	quotes, err := h.quoteService.GetQuotesByCustomer(id)
+	quotes, err := h.quoteService.WithContext(c.Request.Context()).GetQuotesByCustomer(id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
 			Error:   "internal_error",
@@ -577,7 +577,7 @@ func (h *QuoteHandler) GetCustomerQuotes(c *gin.Context) {
 // @Failure 500 {object} models.ErrorResponse "Internal server error"
 // @Router /api/v1/quotes/stats [get]
 func (h *QuoteHandler) GetQuoteStats(c *gin.Context) {
-	stats, err := h.quoteService.GetQuoteStats()
+	stats, err := h.quoteService.WithContext(c.Request.Context()).GetQuoteStats()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
 			Error:   "internal_error",
@@ -614,7 +614,7 @@ func (h *QuoteHandler) GetQuotePDF(c *gin.Context) {
 	}
 
 	// Download PDF content directly
-	content, filename, err := h.quoteService.DownloadQuotePDF(id)
+	content, filename, err := h.quoteService.WithContext(c.Request.Context()).DownloadQuotePDF(id)
 	if err != nil {
 		if errors.Is(err, services.ErrQuoteNotFound) {
 			c.JSON(http.StatusNotFound, models.ErrorResponse{

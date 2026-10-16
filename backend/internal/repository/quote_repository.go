@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -21,9 +22,20 @@ func NewQuoteRepository(db *gorm.DB) *QuoteRepository {
 	return &QuoteRepository{db: db}
 }
 
+// WithContext returns a copy of the repository bound to ctx (tenant scoping
+// via internal/tenancy reads the tenant from it).
+func (r *QuoteRepository) WithContext(ctx context.Context) QuoteRepositoryInterface {
+	return &QuoteRepository{db: r.db.WithContext(ctx)}
+}
+
 // Create creates a new quote
 func (r *QuoteRepository) Create(quote *models.Quote) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
+		// The customer must belong to the caller's tenant (scoped lookup).
+		if err := requireCustomerInTenant(tx, quote.CustomerID); err != nil {
+			return err
+		}
+
 		// Set QuoteID on items before creation (GORM will auto-create associations)
 		for i := range quote.Items {
 			quote.Items[i].QuoteID = quote.ID
@@ -105,6 +117,11 @@ func (r *QuoteRepository) Update(quote *models.Quote) error {
 			for i := range quote.Items {
 				quote.Items[i].QuoteID = quote.ID
 
+				// Only items already on THIS quote may be updated by ID; an
+				// unknown ID (e.g. another quote's item) is created fresh.
+				if quote.Items[i].ID != uuid.Nil && !existingIDs[quote.Items[i].ID] {
+					quote.Items[i].ID = uuid.Nil
+				}
 				if quote.Items[i].ID != uuid.Nil {
 					// Update existing item
 					if err := tx.Save(&quote.Items[i]).Error; err != nil {
@@ -299,4 +316,18 @@ func (r *QuoteRepository) GetQuoteCountByStatus(status models.QuoteStatus) (int6
 		Where("status = ?", status).
 		Count(&count).Error
 	return count, err
+}
+
+// requireCustomerInTenant returns ErrCustomerNotFound unless the customer is
+// visible to the caller (tenant scoping makes other tenants' customers
+// invisible), so documents can't reference another tenant's customer.
+func requireCustomerInTenant(db *gorm.DB, customerID uuid.UUID) error {
+	var count int64
+	if err := db.Model(&models.Customer{}).Where("id = ? AND deleted_at IS NULL", customerID).Count(&count).Error; err != nil {
+		return err
+	}
+	if count == 0 {
+		return ErrCustomerNotFound
+	}
+	return nil
 }

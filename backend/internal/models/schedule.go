@@ -47,6 +47,7 @@ const (
 // Schedule represents a job schedule entry
 type Schedule struct {
 	ID                  uuid.UUID          `json:"id" gorm:"type:uuid;primary_key;default:uuid_generate_v4()"`
+	TenantID            uuid.UUID          `json:"tenant_id" gorm:"type:uuid;not null;index"` // set from the caller's tenant (internal/tenancy)
 	JobID               uuid.UUID          `json:"job_id" gorm:"type:uuid;not null;index"`
 	Job                 *Job               `json:"job,omitempty" gorm:"foreignKey:JobID;constraint:OnDelete:CASCADE"`
 	Title               string             `json:"title" gorm:"type:varchar(200);not null"`
@@ -112,6 +113,7 @@ func (s *Schedule) IsOverlapping(other *Schedule) bool {
 // RecurringSchedule represents a recurring schedule pattern
 type RecurringSchedule struct {
 	ID              uuid.UUID      `json:"id" gorm:"type:uuid;primary_key;default:uuid_generate_v4()"`
+	TenantID        uuid.UUID      `json:"tenant_id" gorm:"type:uuid;not null;index"` // set from the caller's tenant (internal/tenancy)
 	Title           string         `json:"title" gorm:"type:varchar(200);not null"`
 	Description     string         `json:"description" gorm:"type:text"`
 	RecurrenceType  RecurrenceType `json:"recurrence_type" gorm:"type:varchar(50);not null"`

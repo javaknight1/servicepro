@@ -47,6 +47,7 @@ const (
 // Job represents a service job/work order
 type Job struct {
 	ID                  uuid.UUID       `json:"id" gorm:"type:uuid;primary_key;default:uuid_generate_v4()"`
+	TenantID            uuid.UUID       `json:"tenant_id" gorm:"type:uuid;not null;index"` // set from the caller's tenant (internal/tenancy)
 	JobNumber           string          `json:"job_number" gorm:"type:varchar(50);uniqueIndex;not null"`
 	CustomerID          uuid.UUID       `json:"customer_id" gorm:"type:uuid;not null;index"`
 	Customer            *Customer       `json:"customer,omitempty" gorm:"foreignKey:CustomerID;constraint:OnDelete:RESTRICT"`

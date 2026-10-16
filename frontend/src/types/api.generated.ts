@@ -12849,6 +12849,8 @@ export interface components {
             service_address_street?: string;
             service_address_zip?: string;
             status?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.CustomerStatus"];
+            /** @description set from the caller's tenant (internal/tenancy) */
+            tenant_id?: string;
             updated_at?: string;
         };
         "github_com_javaknight1_servicepro_backend_internal_models.CustomerChartData": {
@@ -13157,6 +13159,8 @@ export interface components {
             tax_amount?: number;
             tax_rate?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.TaxRate"];
             tax_rate_id?: string;
+            /** @description set from the caller's tenant (internal/tenancy) */
+            tenant_id?: string;
             terms_and_conditions?: string;
             total_amount?: number;
             updated_at?: string;
@@ -13249,6 +13253,8 @@ export interface components {
             special_instructions?: string;
             status?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.JobStatus"];
             tax_amount?: number;
+            /** @description set from the caller's tenant (internal/tenancy) */
+            tenant_id?: string;
             title?: string;
             total_amount?: number;
             updated_at?: string;
@@ -13492,6 +13498,8 @@ export interface components {
             late_fee_amount?: number;
             late_fee_percentage?: number;
             name?: string;
+            /** @description nil = global default (internal/tenancy SharedRead) */
+            tenant_id?: string;
             term_type?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.PaymentTermType"];
             updated_at?: string;
         };
@@ -13802,6 +13810,8 @@ export interface components {
             rate?: number;
             region?: string;
             tax_type?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.TaxType"];
+            /** @description nil = global default (internal/tenancy SharedRead) */
+            tenant_id?: string;
             updated_at?: string;
         };
         /** @enum {string} */
@@ -14388,6 +14398,8 @@ export interface components {
             tax_amount?: number;
             tax_rate?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.TaxRate"];
             tax_rate_id?: string;
+            /** @description set from the caller's tenant (internal/tenancy) */
+            tenant_id?: string;
             terms_and_conditions?: string;
             total_amount?: number;
             updated_at?: string;

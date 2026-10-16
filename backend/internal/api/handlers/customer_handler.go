@@ -49,7 +49,7 @@ func (h *CustomerHandler) CreateCustomer(c *gin.Context) {
 	}
 
 	// Check if email already exists
-	exists, err := h.customerRepo.EmailExists(req.Email)
+	exists, err := h.customerRepo.WithContext(c.Request.Context()).EmailExists(req.Email)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
 			Error:   "internal_error",
@@ -116,7 +116,7 @@ func (h *CustomerHandler) CreateCustomer(c *gin.Context) {
 	}
 
 	// Create customer
-	if err := h.customerRepo.Create(customer); err != nil {
+	if err := h.customerRepo.WithContext(c.Request.Context()).Create(customer); err != nil {
 		if errors.Is(err, repository.ErrEmailAlreadyExists) {
 			c.JSON(http.StatusConflict, models.ErrorResponse{
 				Error:   "email_exists",
@@ -156,7 +156,7 @@ func (h *CustomerHandler) GetCustomer(c *gin.Context) {
 		return
 	}
 
-	customer, err := h.customerRepo.GetByID(id)
+	customer, err := h.customerRepo.WithContext(c.Request.Context()).GetByID(id)
 	if err != nil {
 		if errors.Is(err, repository.ErrCustomerNotFound) {
 			c.JSON(http.StatusNotFound, models.ErrorResponse{
@@ -210,7 +210,7 @@ func (h *CustomerHandler) UpdateCustomer(c *gin.Context) {
 	}
 
 	// Get existing customer
-	customer, err := h.customerRepo.GetByID(id)
+	customer, err := h.customerRepo.WithContext(c.Request.Context()).GetByID(id)
 	if err != nil {
 		if errors.Is(err, repository.ErrCustomerNotFound) {
 			c.JSON(http.StatusNotFound, models.ErrorResponse{
@@ -299,7 +299,7 @@ func (h *CustomerHandler) UpdateCustomer(c *gin.Context) {
 	}
 
 	// Update customer
-	if err := h.customerRepo.Update(customer); err != nil {
+	if err := h.customerRepo.WithContext(c.Request.Context()).Update(customer); err != nil {
 		if errors.Is(err, repository.ErrEmailAlreadyExists) {
 			c.JSON(http.StatusConflict, models.ErrorResponse{
 				Error:   "email_exists",
@@ -339,7 +339,7 @@ func (h *CustomerHandler) DeleteCustomer(c *gin.Context) {
 		return
 	}
 
-	if err := h.customerRepo.Delete(id); err != nil {
+	if err := h.customerRepo.WithContext(c.Request.Context()).Delete(id); err != nil {
 		if errors.Is(err, repository.ErrCustomerNotFound) {
 			c.JSON(http.StatusNotFound, models.ErrorResponse{
 				Error:   "customer_not_found",
@@ -386,7 +386,7 @@ func (h *CustomerHandler) ListCustomers(c *gin.Context) {
 		return
 	}
 
-	customers, total, err := h.customerRepo.List(&filter)
+	customers, total, err := h.customerRepo.WithContext(c.Request.Context()).List(&filter)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
 			Error:   "internal_error",
@@ -442,7 +442,7 @@ func (h *CustomerHandler) SearchCustomers(c *gin.Context) {
 		return
 	}
 
-	customers, err := h.customerRepo.Search(query)
+	customers, err := h.customerRepo.WithContext(c.Request.Context()).Search(query)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
 			Error:   "internal_error",
@@ -473,7 +473,7 @@ func (h *CustomerHandler) SearchCustomers(c *gin.Context) {
 func (h *CustomerHandler) GetCustomerByEmail(c *gin.Context) {
 	email := c.Param("email")
 
-	customer, err := h.customerRepo.GetByEmail(email)
+	customer, err := h.customerRepo.WithContext(c.Request.Context()).GetByEmail(email)
 	if err != nil {
 		if errors.Is(err, repository.ErrCustomerNotFound) {
 			c.JSON(http.StatusNotFound, models.ErrorResponse{
@@ -555,7 +555,7 @@ func (h *CustomerHandler) AdvancedSearch(c *gin.Context) {
 	offset := (page - 1) * limit
 
 	// Perform full-text search
-	customers, total, err := h.customerRepo.FullTextSearch(
+	customers, total, err := h.customerRepo.WithContext(c.Request.Context()).FullTextSearch(
 		query,
 		customerType,
 		status,
@@ -624,7 +624,7 @@ func (h *CustomerHandler) Autocomplete(c *gin.Context) {
 		}
 	}
 
-	results, err := h.customerRepo.Autocomplete(prefix, limit)
+	results, err := h.customerRepo.WithContext(c.Request.Context()).Autocomplete(prefix, limit)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
 			Error:   "internal_error",
@@ -645,7 +645,7 @@ func (h *CustomerHandler) Autocomplete(c *gin.Context) {
 // @Failure 500 {object} models.ErrorResponse "Internal server error"
 // @Router /api/v1/customers/stats [get]
 func (h *CustomerHandler) GetSearchStats(c *gin.Context) {
-	stats, err := h.customerRepo.GetSearchStats()
+	stats, err := h.customerRepo.WithContext(c.Request.Context()).GetSearchStats()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
 			Error:   "internal_error",

@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/javaknight1/servicepro/backend/internal/repository"
+
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -574,4 +576,14 @@ func TestCheckConflicts_MultipleTechnicians(t *testing.T) {
 	assert.True(t, hasConflict, "Should detect conflict for tech2")
 
 	mockRepo.AssertExpectations(t)
+}
+
+// WithContext implements the interface; the mock ignores the context.
+func (m *MockJobRepository) WithContext(_ context.Context) repository.JobRepositoryInterface {
+	return m
+}
+
+// WithContext implements the interface; the mock ignores the context.
+func (m *MockScheduleRepository) WithContext(_ context.Context) repository.ScheduleRepositoryInterface {
+	return m
 }

@@ -11494,6 +11494,10 @@ const docTemplate = `{
                 "status": {
                     "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.CustomerStatus"
                 },
+                "tenant_id": {
+                    "description": "set from the caller's tenant (internal/tenancy)",
+                    "type": "string"
+                },
                 "updated_at": {
                     "type": "string"
                 }
@@ -12492,6 +12496,10 @@ const docTemplate = `{
                 "tax_rate_id": {
                     "type": "string"
                 },
+                "tenant_id": {
+                    "description": "set from the caller's tenant (internal/tenancy)",
+                    "type": "string"
+                },
                 "terms_and_conditions": {
                     "type": "string"
                 },
@@ -12776,6 +12784,10 @@ const docTemplate = `{
                 },
                 "tax_amount": {
                     "type": "number"
+                },
+                "tenant_id": {
+                    "description": "set from the caller's tenant (internal/tenancy)",
+                    "type": "string"
                 },
                 "title": {
                     "type": "string"
@@ -13555,6 +13567,10 @@ const docTemplate = `{
                     "type": "number"
                 },
                 "name": {
+                    "type": "string"
+                },
+                "tenant_id": {
+                    "description": "nil = global default (internal/tenancy SharedRead)",
                     "type": "string"
                 },
                 "term_type": {
@@ -14591,6 +14607,10 @@ const docTemplate = `{
                 },
                 "tax_type": {
                     "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.TaxType"
+                },
+                "tenant_id": {
+                    "description": "nil = global default (internal/tenancy SharedRead)",
+                    "type": "string"
                 },
                 "updated_at": {
                     "type": "string"
@@ -16487,6 +16507,10 @@ const docTemplate = `{
                     "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.TaxRate"
                 },
                 "tax_rate_id": {
+                    "type": "string"
+                },
+                "tenant_id": {
+                    "description": "set from the caller's tenant (internal/tenancy)",
                     "type": "string"
                 },
                 "terms_and_conditions": {

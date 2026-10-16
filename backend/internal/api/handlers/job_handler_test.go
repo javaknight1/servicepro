@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -666,3 +667,6 @@ func TestJobHandler_GetJobStats_Success(t *testing.T) {
 	assert.Equal(t, float64(100), respBody["total"])
 	mockService.AssertExpectations(t)
 }
+
+// WithContext implements the interface; the mock ignores the context.
+func (m *MockJobService) WithContext(_ context.Context) services.JobServiceInterface { return m }

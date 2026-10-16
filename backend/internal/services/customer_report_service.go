@@ -2,8 +2,11 @@ package services
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
+
+	"github.com/javaknight1/servicepro/backend/internal/tenancy"
 
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
@@ -171,6 +174,9 @@ func (s *customerReportService) calculateSummary(ctx context.Context, query *mod
 			COUNT(CASE WHEN cmc.segment = 'churned' THEN 1 END) as churned_count
 		`).
 		Joins("JOIN customers c ON c.id = cmc.customer_id").
+		// Base table is customer_metrics_cache (no tenant_id), so the
+		// tenancy plugin can't scope it: filter on the joined customer.
+		Where("c.tenant_id = ?", tenantFilterValue(ctx)).
 		Where("c.deleted_at IS NULL")
 
 	metricsQuery = s.applyMetricsFilters(metricsQuery, query)
@@ -212,6 +218,9 @@ func (s *customerReportService) GetSegmentBreakdown(ctx context.Context, query *
 			COALESCE(SUM(cmc.total_revenue), 0) as total_revenue
 		`).
 		Joins("JOIN customers c ON c.id = cmc.customer_id").
+		// Base table is customer_metrics_cache (no tenant_id), so the
+		// tenancy plugin can't scope it: filter on the joined customer.
+		Where("c.tenant_id = ?", tenantFilterValue(ctx)).
 		Where("c.deleted_at IS NULL").
 		Group("cmc.segment")
 
@@ -489,51 +498,21 @@ func (s *customerReportService) GetAtRiskCustomers(ctx context.Context, limit in
 }
 
 func (s *customerReportService) GetCohortData(ctx context.Context, months int) ([]models.CohortData, error) {
-	var results []struct {
-		CohortMonth    time.Time
-		CohortSize     int64
-		Month1Retained int64
-		Month2Retained int64
-		Month3Retained int64
-		Month6Retained int64
-	}
+	// v_customer_cohorts was never created by a migration and a raw view
+	// query would not be tenant-scoped; report the feature as unavailable
+	// rather than risk a cross-tenant read.
+	return nil, ErrCohortsUnavailable
+}
 
-	cohortQuery := s.db.WithContext(ctx).Raw(`
-		SELECT * FROM v_customer_cohorts
-		ORDER BY cohort_month DESC
-		LIMIT ?
-	`, months)
+// ErrCohortsUnavailable is returned by GetCohortAnalysis until a tenant-aware
+// cohort query exists.
+var ErrCohortsUnavailable = errors.New("cohort analysis is not available")
 
-	if err := cohortQuery.Scan(&results).Error; err != nil {
-		return nil, fmt.Errorf("failed to get cohort data: %w", err)
-	}
-
-	var cohorts []models.CohortData
-	for _, r := range results {
-		retention1M := decimal.Zero
-		retention3M := decimal.Zero
-		retention6M := decimal.Zero
-
-		if r.CohortSize > 0 {
-			retention1M = decimal.NewFromInt(r.Month1Retained * 100).Div(decimal.NewFromInt(r.CohortSize))
-			retention3M = decimal.NewFromInt(r.Month3Retained * 100).Div(decimal.NewFromInt(r.CohortSize))
-			retention6M = decimal.NewFromInt(r.Month6Retained * 100).Div(decimal.NewFromInt(r.CohortSize))
-		}
-
-		cohorts = append(cohorts, models.CohortData{
-			CohortMonth:     r.CohortMonth,
-			CohortSize:      int(r.CohortSize),
-			Month1Retained:  int(r.Month1Retained),
-			Month2Retained:  int(r.Month2Retained),
-			Month3Retained:  int(r.Month3Retained),
-			Month6Retained:  int(r.Month6Retained),
-			RetentionRate1M: retention1M,
-			RetentionRate3M: retention3M,
-			RetentionRate6M: retention6M,
-		})
-	}
-
-	return cohorts, nil
+// tenantFilterValue returns the caller's tenant for explicit filters on
+// joined tables, or uuid.Nil (matches nothing) when there is none.
+func tenantFilterValue(ctx context.Context) uuid.UUID {
+	id, _ := tenancy.TenantID(ctx)
+	return id
 }
 
 func (s *customerReportService) RefreshMetricsCache(ctx context.Context, customerID *uuid.UUID) error {

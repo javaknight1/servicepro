@@ -23,6 +23,7 @@ func setupRevenueTestDB(t *testing.T) *gorm.DB {
 	// Create the revenue_transactions table
 	err = db.Exec(`
 		CREATE TABLE revenue_transactions (
+			tenant_id TEXT,
 			id TEXT PRIMARY KEY,
 			payment_id TEXT NOT NULL,
 			user_id TEXT NOT NULL,
@@ -55,6 +56,7 @@ func setupRevenueTestDB(t *testing.T) *gorm.DB {
 	// Create the revenue_summary_cache table
 	err = db.Exec(`
 		CREATE TABLE revenue_summary_cache (
+			tenant_id TEXT,
 			id TEXT PRIMARY KEY,
 			period_type TEXT NOT NULL,
 			period_start DATETIME NOT NULL,
@@ -527,6 +529,7 @@ func BenchmarkGenerateReport(b *testing.B) {
 
 	db.Exec(`
 		CREATE TABLE revenue_transactions (
+			tenant_id TEXT,
 			id TEXT PRIMARY KEY,
 			payment_id TEXT NOT NULL,
 			user_id TEXT NOT NULL,
@@ -586,6 +589,7 @@ func BenchmarkGetTimeSeries(b *testing.B) {
 
 	db.Exec(`
 		CREATE TABLE revenue_transactions (
+			tenant_id TEXT,
 			id TEXT PRIMARY KEY,
 			payment_id TEXT NOT NULL,
 			user_id TEXT NOT NULL,

@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/javaknight1/servicepro/backend/internal/tenancy"
+
 	"github.com/google/uuid"
 	"github.com/stripe/stripe-go/v76"
 
@@ -77,6 +79,9 @@ func (a *InvoicePaymentHandlerAdapter) SendInvoiceReceiptEmail(ctx context.Conte
 // CreateCheckoutCompletedHandler returns an EventHandler for checkout.session.completed events
 func (a *InvoicePaymentHandlerAdapter) CreateCheckoutCompletedHandler() stripeClient.EventHandler {
 	return func(ctx context.Context, event *stripe.Event) error {
+		// Signed Stripe event: no tenant session. The invoice is identified by
+		// our own invoice_id metadata set when we created the session.
+		ctx = tenancy.WithSystem(ctx)
 		// Parse the checkout session
 		session, err := stripeClient.ParseCheckoutSession(event)
 		if err != nil {
