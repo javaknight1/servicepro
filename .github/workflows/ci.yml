@@ -244,7 +244,7 @@ jobs:
       - name: Build
         working-directory: frontend
         env:
-          VITE_API_URL: /api/v1
+          VITE_API_URL: /api
           VITE_APP_VERSION: ci
           VITE_ENV: ci
         run: npm run build

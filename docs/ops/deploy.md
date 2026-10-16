@@ -13,7 +13,7 @@ ServicePro ships from a **`v*` tag**, never from a push to `master`. See
   deploys a new Cloud Run revision of `servicepro-api` with `--no-traffic`, then
   shifts 100% to it. The job polls `vars.API_URL/version` until `git_sha`
   matches the tagged commit.
-- **Web** — `frontend/` builds with `VITE_API_URL=/api/v1`, source maps go to
+- **Web** — `frontend/` builds with `VITE_API_URL=/api` (same-origin), source maps go to
   Sentry and are stripped, then `wrangler deploy` ships the `servicepro-web`
   Worker (static assets + `/api/*` proxy). The job then polls
   `https://servicepro.sharkfins.xyz/version` through the proxy.
