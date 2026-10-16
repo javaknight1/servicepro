@@ -917,13 +917,13 @@
                         }
                     },
                     "403": {
-                        "description": "Account locked",
+                        "description": "Email not verified (only after a correct password)",
                         "schema": {
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     },
                     "429": {
-                        "description": "Rate limit exceeded",
+                        "description": "Too many attempts (backoff)",
                         "schema": {
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }

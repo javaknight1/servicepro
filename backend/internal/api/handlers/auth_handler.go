@@ -39,8 +39,8 @@ func NewAuthHandler(authService services.AuthServiceInterface, rateLimiter middl
 // @Success 200 {object} models.LoginResponse
 // @Failure 400 {object} models.ErrorResponse "Invalid request"
 // @Failure 401 {object} models.ErrorResponse "Invalid credentials"
-// @Failure 403 {object} models.ErrorResponse "Account locked"
-// @Failure 429 {object} models.ErrorResponse "Rate limit exceeded"
+// @Failure 403 {object} models.ErrorResponse "Email not verified (only after a correct password)"
+// @Failure 429 {object} models.ErrorResponse "Too many attempts (backoff)"
 // @Failure 500 {object} models.ErrorResponse "Internal server error"
 // @Router /api/v1/auth/login [post]
 func (h *AuthHandler) Login(c *gin.Context) {
@@ -60,22 +60,20 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		}
 	}
 
+	ip := middleware.ClientIP(c)
+
 	// Attempt login
 	response, err := h.authService.Login(req.Email, req.Password)
 	if err != nil {
-		// Handle different error types
+		// Unknown email, wrong password and locked accounts all get the same
+		// response (F-12); "not verified" is only revealed after the correct
+		// password was supplied.
 		switch {
-		case errors.Is(err, services.ErrInvalidCredentials):
+		case errors.Is(err, services.ErrInvalidCredentials), errors.Is(err, services.ErrAccountLocked):
+			h.rateLimiter.RecordLoginFailure(req.Email, ip)
 			c.JSON(http.StatusUnauthorized, models.ErrorResponse{
 				Error:   "invalid_credentials",
 				Message: "Invalid email or password",
-			})
-			return
-
-		case errors.Is(err, services.ErrAccountLocked):
-			c.JSON(http.StatusForbidden, models.ErrorResponse{
-				Error:   "account_locked",
-				Message: "Account is locked due to too many failed login attempts. Please try again later.",
 			})
 			return
 
@@ -97,7 +95,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	}
 
 	// Clear rate limit on successful login
-	_ = h.rateLimiter.ClearLoginAttempts(req.Email)
+	_ = h.rateLimiter.ClearLoginAttempts(req.Email, ip)
 
 	// Set tokens as httpOnly cookies
 	h.cookieManager.SetTokens(c, response.Token, response.RefreshToken)

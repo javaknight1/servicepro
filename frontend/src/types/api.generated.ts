@@ -1058,7 +1058,7 @@ export interface paths {
                         "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
-                /** @description Account locked */
+                /** @description Email not verified (only after a correct password) */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -1067,7 +1067,7 @@ export interface paths {
                         "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
-                /** @description Rate limit exceeded */
+                /** @description Too many attempts (backoff) */
                 429: {
                     headers: {
                         [name: string]: unknown;

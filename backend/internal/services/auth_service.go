@@ -2,7 +2,6 @@ package services
 
 import (
 	"errors"
-	"time"
 
 	"github.com/google/uuid"
 
@@ -39,40 +38,49 @@ func NewAuthService(
 	}
 }
 
-// Login authenticates a user and returns tokens
+// dummyPasswordHash is compared against when the email is unknown, so an
+// unknown account costs the same bcrypt work as a wrong password (no timing
+// oracle). It is a valid cost-12 hash of a random string.
+var dummyPasswordHash = func() string {
+	h, err := auth.HashPassword(uuid.NewString() + "!Aa1")
+	if err != nil {
+		return "$2a$12$C6UzMDM.H6dfI/f/IKcEeO5Q7uVY8S1qQ9mC4yDvCw1l5u0Qe9g1e"
+	}
+	return h
+}()
+
+// Login authenticates a user and returns tokens.
+//
+// The password is always checked first (against a dummy hash for unknown
+// emails), and unknown email / wrong password both return
+// ErrInvalidCredentials. Throttling of repeated failures is per (account, IP)
+// with backoff in the HTTP layer (middleware.RateLimiter), not a hard
+// account lock an attacker could trigger for any victim (F-12).
+// ErrEmailNotVerified is only returned after the correct password.
 func (s *AuthService) Login(email, password string) (*models.LoginResponse, error) {
-	// Get user by email
 	user, err := s.userRepo.GetByEmail(email)
 	if err != nil {
 		if errors.Is(err, repository.ErrUserNotFound) {
+			_ = auth.ComparePassword(dummyPasswordHash, password)
 			return nil, ErrInvalidCredentials
 		}
 		return nil, err
 	}
 
-	// Check if account is locked
-	if user.IsLocked() {
-		return nil, ErrAccountLocked
+	if err := auth.ComparePassword(user.PasswordHash, password); err != nil {
+		return nil, ErrInvalidCredentials
 	}
 
-	// Check if email is verified
 	if !user.EmailVerified {
 		return nil, ErrEmailNotVerified
 	}
 
-	// Verify password
-	if err := auth.ComparePassword(user.PasswordHash, password); err != nil {
-		// Password is incorrect - increment failed login count
-		if err := s.handleFailedLogin(user); err != nil {
-			return nil, err
-		}
-		return nil, ErrInvalidCredentials
-	}
-
-	// Password is correct - reset failed login count
-	if gormRepo, ok := s.userRepo.(repository.UserRepositoryGormInterface); ok {
-		if err := gormRepo.ResetFailedLoginCountByUUID(user.ID); err != nil {
-			return nil, err
+	// Clear legacy lockout state left by the previous scheme.
+	if user.FailedLoginCount > 0 || user.LockedUntil != nil {
+		if gormRepo, ok := s.userRepo.(repository.UserRepositoryGormInterface); ok {
+			if err := gormRepo.ResetFailedLoginCountByUUID(user.ID); err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -87,29 +95,6 @@ func (s *AuthService) Login(email, password string) (*models.LoginResponse, erro
 		RefreshToken: refreshToken,
 		ExpiresIn:    s.jwtManager.GetAccessTokenDuration(),
 	}, nil
-}
-
-// handleFailedLogin handles failed login attempts and account lockout
-func (s *AuthService) handleFailedLogin(user *models.User) error {
-	// Use GORM repository if available
-	if gormRepo, ok := s.userRepo.(repository.UserRepositoryGormInterface); ok {
-		// Increment failed login count
-		if err := gormRepo.IncrementFailedLoginCountByUUID(user.ID); err != nil {
-			return err
-		}
-
-		// Check if we should lock the account
-		newFailedCount := user.FailedLoginCount + 1
-		if newFailedCount >= s.config.MaxLoginAttempts {
-			// Lock the account
-			lockUntil := time.Now().Add(s.config.LockoutDuration)
-			if err := gormRepo.LockAccountByUUID(user.ID, lockUntil); err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
 }
 
 // RefreshToken validates a refresh token and issues new tokens
@@ -134,10 +119,6 @@ func (s *AuthService) RefreshToken(refreshToken string) (*models.LoginResponse, 
 	// Tokens issued before a logout or password reset are revoked.
 	if user.ID.String() != claims.UserID || user.TokenVersion != claims.TokenVersion {
 		return nil, ErrInvalidRefreshToken
-	}
-
-	if user.IsLocked() {
-		return nil, ErrAccountLocked
 	}
 
 	// Check if email is verified

@@ -57,10 +57,13 @@ func (m *MockRateLimiter) PasswordResetRateLimit() gin.HandlerFunc {
 	}
 }
 
-func (m *MockRateLimiter) ClearLoginAttempts(identifier string) error {
-	args := m.Called(identifier)
+func (m *MockRateLimiter) ClearLoginAttempts(email, ip string) error {
+	args := m.Called(email, ip)
 	return args.Error(0)
 }
+
+// RecordLoginFailure is a no-op in tests.
+func (m *MockRateLimiter) RecordLoginFailure(email, ip string) {}
 
 func setupTestRouter() *gin.Engine {
 	gin.SetMode(gin.TestMode)
@@ -92,7 +95,7 @@ func TestLogin_Success(t *testing.T) {
 	}
 
 	mockAuthService.On("Login", "test@example.com", "SecurePassword123!").Return(expectedResponse, nil)
-	mockRateLimiter.On("ClearLoginAttempts", "test@example.com").Return(nil)
+	mockRateLimiter.On("ClearLoginAttempts", "test@example.com", mock.Anything).Return(nil)
 
 	router := setupTestRouter()
 	router.POST("/login", handler.Login)
@@ -220,12 +223,13 @@ func TestLogin_AccountLocked(t *testing.T) {
 
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusForbidden, w.Code)
+	// Locked looks exactly like a wrong password (no enumeration, F-12).
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
 
 	var response models.ErrorResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(t, err)
-	assert.Equal(t, "account_locked", response.Error)
+	assert.Equal(t, "invalid_credentials", response.Error)
 
 	mockAuthService.AssertExpectations(t)
 }
