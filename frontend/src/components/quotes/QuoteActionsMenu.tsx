@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Send, Download, Check, X, Copy } from 'lucide-react';
 import { quoteService } from '../../services/quoteService';
+import { getApiErrorInfo, getErrorMessage } from '../../utils/error';
 import {
   DropdownMenu,
   DropdownMenuItem,
@@ -14,6 +15,8 @@ interface QuoteActionsMenuProps {
   onSendQuote?: () => void;
   onQuoteSent?: () => void;
   onStatusChange?: () => void;
+  /** Shows a failed action's message; defaults to a browser alert. */
+  onError?: (message: string) => void;
 }
 
 export function QuoteActionsMenu({
@@ -22,12 +25,22 @@ export function QuoteActionsMenu({
   onSendQuote,
   onQuoteSent,
   onStatusChange,
+  onError,
 }: QuoteActionsMenuProps) {
   const navigate = useNavigate();
   const [isSending, setIsSending] = useState(false);
   const [isAccepting, setIsAccepting] = useState(false);
   const [isDeclining, setIsDeclining] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+
+  // The API explains a refused change (e.g. "Quote cannot be accepted in
+  // current status" after someone else declined it); show it.
+  const reportError = (error: unknown, fallback: string) => {
+    const message =
+      getApiErrorInfo(error).message || getErrorMessage(error, fallback);
+    if (onError) onError(message);
+    else window.alert(message);
+  };
 
   const handleSendQuote = async (e: React.MouseEvent, close: () => void) => {
     e.stopPropagation();
@@ -43,6 +56,7 @@ export function QuoteActionsMenu({
       }
     } catch (error) {
       console.error('Failed to send quote:', error);
+      reportError(error, 'Failed to send quote');
     } finally {
       setIsSending(false);
       close();
@@ -70,6 +84,7 @@ export function QuoteActionsMenu({
       onStatusChange?.();
     } catch (error) {
       console.error('Failed to accept quote:', error);
+      reportError(error, 'Failed to accept quote');
     } finally {
       setIsAccepting(false);
       close();
@@ -84,6 +99,7 @@ export function QuoteActionsMenu({
       onStatusChange?.();
     } catch (error) {
       console.error('Failed to decline quote:', error);
+      reportError(error, 'Failed to decline quote');
     } finally {
       setIsDeclining(false);
       close();
