@@ -155,6 +155,7 @@ type QuoteRepositoryInterface interface {
 	MarkAsSent(id uuid.UUID) error
 	MarkAsAccepted(id uuid.UUID) error
 	MarkAsRejected(id uuid.UUID) error
+	MarkAsRevised(id uuid.UUID) error
 
 	// Statistics
 	GetQuoteCount() (int64, error)

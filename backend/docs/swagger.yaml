@@ -6982,6 +6982,44 @@ paths:
       summary: Reject quote
       tags:
       - quotes
+  /api/v1/quotes/{id}/revise:
+    post:
+      consumes:
+      - application/json
+      description: Takes a sent, viewed, expired or declined quote back to draft so
+        it can be edited and sent again (only drafts are editable)
+      parameters:
+      - description: Quote ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.QuoteResponse'
+        "400":
+          description: Invalid ID
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "404":
+          description: Quote not found
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "409":
+          description: Quote cannot be revised in its status
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+      summary: Revise quote
+      tags:
+      - quotes
   /api/v1/quotes/{id}/send:
     post:
       consumes:

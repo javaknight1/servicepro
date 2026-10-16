@@ -467,6 +467,45 @@ func (h *QuoteHandler) AcceptQuote(c *gin.Context) {
 	c.JSON(http.StatusOK, quote)
 }
 
+// ReviseQuote handles POST /api/v1/quotes/:id/revise
+// @Summary Revise quote
+// @Description Takes a sent, viewed, expired or declined quote back to draft so it can be edited and sent again (only drafts are editable)
+// @Tags quotes
+// @Accept json
+// @Produce json
+// @Param id path string true "Quote ID"
+// @Success 200 {object} models.QuoteResponse
+// @Failure 400 {object} models.ErrorResponse "Invalid ID"
+// @Failure 404 {object} models.ErrorResponse "Quote not found"
+// @Failure 409 {object} models.ErrorResponse "Quote cannot be revised in its status"
+// @Failure 500 {object} models.ErrorResponse "Internal server error"
+// @Router /api/v1/quotes/{id}/revise [post]
+func (h *QuoteHandler) ReviseQuote(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: "invalid_id", Message: "Invalid quote ID format"})
+		return
+	}
+	svc := h.quoteService.WithContext(c.Request.Context())
+	if err := svc.ReviseQuote(id); err != nil {
+		switch {
+		case errors.Is(err, services.ErrQuoteNotFound):
+			c.JSON(http.StatusNotFound, models.ErrorResponse{Error: "not_found", Message: "Quote not found"})
+		case errors.Is(err, services.ErrQuoteCannotBeRevised):
+			c.JSON(http.StatusConflict, models.ErrorResponse{Error: "cannot_revise", Message: err.Error()})
+		default:
+			c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "internal_error", Message: "Failed to revise quote"})
+		}
+		return
+	}
+	quote, err := svc.GetQuote(id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "internal_error", Message: "Quote revised but failed to fetch updated quote"})
+		return
+	}
+	c.JSON(http.StatusOK, quote)
+}
+
 // RejectQuote handles POST /api/v1/quotes/:id/reject
 // @Summary Reject quote
 // @Description Marks a quote as rejected

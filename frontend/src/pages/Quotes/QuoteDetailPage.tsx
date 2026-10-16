@@ -26,6 +26,7 @@ import {
   Download,
   Check,
   XCircle,
+  Pencil,
 } from 'lucide-react';
 
 interface QuoteFormData {
@@ -70,6 +71,7 @@ export function QuoteDetailPage() {
   const [isSendingQuote, setIsSendingQuote] = useState(false);
   const [isAcceptingQuote, setIsAcceptingQuote] = useState(false);
   const [isDecliningQuote, setIsDecliningQuote] = useState(false);
+  const [isRevisingQuote, setIsRevisingQuote] = useState(false);
   const [isDownloadingPDF, setIsDownloadingPDF] = useState(false);
   const [quoteStatus, setQuoteStatus] = useState<string>('draft');
   const [error, setError] = useState<string | null>(null);
@@ -366,7 +368,29 @@ export function QuoteDetailPage() {
     }
   };
 
+  const handleReviseQuote = async () => {
+    if (!id || isNew) return;
+
+    setIsRevisingQuote(true);
+    setError(null);
+    try {
+      await quoteService.reviseQuote(id);
+      setQuoteStatus('draft');
+    } catch (err: unknown) {
+      console.error('Failed to revise quote:', err);
+      setError(getErrorMessage(err, 'Failed to revise quote'));
+    } finally {
+      setIsRevisingQuote(false);
+    }
+  };
+
   const canAcceptDecline = quoteStatus === 'sent' || quoteStatus === 'viewed';
+  // Only drafts can be edited; sent/viewed/expired/declined quotes are
+  // revised back to draft first (accepted quotes are final).
+  const isEditable = isNew || quoteStatus === 'draft';
+  const canRevise = ['sent', 'viewed', 'expired', 'declined'].includes(
+    quoteStatus
+  );
 
   if (isLoading) {
     return (
@@ -429,6 +453,22 @@ export function QuoteDetailPage() {
                 )}
                 Download PDF
               </Button>
+              {canRevise && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={handleReviseQuote}
+                  disabled={isRevisingQuote}
+                  className="flex items-center gap-2"
+                >
+                  {isRevisingQuote ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Pencil className="h-4 w-4" />
+                  )}
+                  Revise
+                </Button>
+              )}
               {canAcceptDecline && (
                 <>
                   <Button
@@ -730,7 +770,12 @@ export function QuoteDetailPage() {
               <Button
                 type="submit"
                 variant="primary"
-                disabled={isSaving}
+                disabled={isSaving || !isEditable}
+                title={
+                  isEditable
+                    ? undefined
+                    : 'Only draft quotes can be edited; use Revise first'
+                }
                 className="flex items-center gap-2"
               >
                 {isSaving ? (

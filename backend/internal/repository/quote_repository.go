@@ -314,6 +314,14 @@ func (r *QuoteRepository) MarkAsRejected(id uuid.UUID) error {
 	return r.transition(id, []models.QuoteStatus{models.QuoteStatusSent, models.QuoteStatusViewed}, models.QuoteStatusDeclined, false)
 }
 
+// MarkAsRevised takes a sent, viewed, expired or declined quote back to
+// draft so it can be edited and sent again.
+func (r *QuoteRepository) MarkAsRevised(id uuid.UUID) error {
+	return r.transition(id, []models.QuoteStatus{
+		models.QuoteStatusSent, models.QuoteStatusViewed, models.QuoteStatusExpired, models.QuoteStatusDeclined,
+	}, models.QuoteStatusDraft, false)
+}
+
 // GetQuoteCount returns the total number of quotes
 func (r *QuoteRepository) GetQuoteCount() (int64, error) {
 	var count int64
