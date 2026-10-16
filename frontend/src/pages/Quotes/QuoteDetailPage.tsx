@@ -1,7 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { DashboardLayout } from '@components/layout';
-import { Badge, Button, getStatusBadgeVariant } from '@components/shared';
+import {
+  Badge,
+  Button,
+  getStatusBadgeVariant,
+  TaxRatePicker,
+} from '@components/shared';
 import { quoteService } from '@services/quoteService';
 import { getApiErrorInfo, getErrorMessage } from '@/utils/error';
 import {
@@ -15,6 +20,7 @@ import { trackEvent, AnalyticsEvents } from '@services/analytics';
 import type { Customer } from '@services/customerService';
 import { fetchAllCustomers } from '@services/customerLookup';
 import { useTenantStore } from '@store';
+import { useTaxRates } from '@/hooks/useTaxRates';
 import type { Quote, LineItemFormData } from '@app-types/quote';
 import {
   ArrowLeft,
@@ -43,6 +49,10 @@ const quoteStatusLabel = (status: string): string =>
 interface QuoteFormData {
   customer_id: string;
   valid_until: string;
+  /** Configured tax rate picked ('' = custom). Quotes store only the rate,
+   * so this just fills tax_rate (T237). */
+  tax_rate_id: string;
+  /** Percent ("8.25"); sent as a rate fraction. */
   tax_rate: string;
   notes: string;
   terms: string;
@@ -51,6 +61,7 @@ interface QuoteFormData {
 const initialFormData: QuoteFormData = {
   customer_id: '',
   valid_until: '',
+  tax_rate_id: '',
   tax_rate: '0',
   notes: '',
   terms: '',
@@ -89,6 +100,11 @@ export function QuoteDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const { currentTenant } = useTenantStore();
   const defaultTaxRateId = currentTenant?.settings?.defaultTaxRateId;
+  const { taxRates, loaded: taxRatesLoaded } = useTaxRates();
+  // A loaded quote's rate percent, until it is matched to a configured rate
+  const [loadedRatePercent, setLoadedRatePercent] = useState<string | null>(
+    null
+  );
 
   useEffect(() => {
     loadCustomers();
@@ -109,16 +125,49 @@ export function QuoteDetailPage() {
   }, [id, isNew, isCloning, cloneFromId]);
 
   // New quote + tenant default tax rate (T127): leave the rate blank so the
-  // API applies the default (there is no tax-rate endpoint to show it).
+  // API applies the default, then pick it once the tax rates load (T237).
   useEffect(() => {
     if (isNew && !isCloning && defaultTaxRateId) {
       setFormData((prev) => ({ ...prev, tax_rate: '' }));
     }
   }, [isNew, isCloning, defaultTaxRateId]);
+  useEffect(() => {
+    if (!isNew || isCloning || !defaultTaxRateId || !taxRatesLoaded) return;
+    const rate = taxRates.find((r) => r.id === defaultTaxRateId);
+    if (!rate) return;
+    setFormData((prev) =>
+      prev.tax_rate_id || prev.tax_rate !== ''
+        ? prev
+        : {
+            ...prev,
+            tax_rate_id: rate.id,
+            tax_rate: taxRateToPercent(rate.rate),
+          }
+    );
+  }, [isNew, isCloning, defaultTaxRateId, taxRates, taxRatesLoaded]);
+
+  // A loaded (or cloned) quote shows the configured rate its rate matches
+  useEffect(() => {
+    if (loadedRatePercent === null || !taxRatesLoaded) return;
+    const rate = taxRates.find(
+      (r) => taxRateToPercent(r.rate) === loadedRatePercent
+    );
+    setLoadedRatePercent(null);
+    if (rate) {
+      setFormData((prev) =>
+        prev.tax_rate === loadedRatePercent
+          ? { ...prev, tax_rate_id: rate.id }
+          : prev
+      );
+    }
+  }, [loadedRatePercent, taxRates, taxRatesLoaded]);
 
   // Blank rate on a new quote: the tenant's default applies on save
   const taxFromDefault =
-    isNew && Boolean(defaultTaxRateId) && formData.tax_rate === '';
+    isNew &&
+    Boolean(defaultTaxRateId) &&
+    !formData.tax_rate_id &&
+    formData.tax_rate === '';
 
   const loadCustomers = async () => {
     setIsLoadingCustomers(true);
@@ -139,9 +188,11 @@ export function QuoteDetailPage() {
       const quote = await quoteService.getQuote(quoteId);
       // Convert tax_rate from decimal (0.07) back to percentage (7) for display
       const taxRatePercent = taxRateToPercent(quote.tax_rate);
+      setLoadedRatePercent(taxRatePercent);
       setFormData({
         customer_id: quote.customer_id || '',
         valid_until: quote.valid_until ? quote.valid_until.split('T')[0] : '',
+        tax_rate_id: '',
         tax_rate: taxRatePercent,
         notes: quote.notes || '',
         terms: quote.terms || '',
@@ -172,12 +223,14 @@ export function QuoteDetailPage() {
       const quote = await quoteService.getQuote(sourceQuoteId);
       // Convert tax_rate from decimal (0.07) back to percentage (7) for display
       const taxRatePercent = taxRateToPercent(quote.tax_rate);
+      setLoadedRatePercent(taxRatePercent);
       // Set default valid_until to 30 days from now for the cloned quote
       const defaultDate = new Date();
       defaultDate.setDate(defaultDate.getDate() + 30);
       setFormData({
         customer_id: quote.customer_id || '',
         valid_until: defaultDate.toISOString().split('T')[0],
+        tax_rate_id: '',
         tax_rate: taxRatePercent,
         notes: quote.notes || '',
         terms: quote.terms || '',
@@ -595,33 +648,27 @@ export function QuoteDetailPage() {
                 />
               </div>
 
-              <div>
-                <label
-                  htmlFor="tax_rate"
-                  className="block text-sm font-medium text-neutral-700 mb-1"
-                >
-                  Tax Rate (%)
-                </label>
-                <input
-                  type="number"
-                  id="tax_rate"
-                  name="tax_rate"
-                  value={formData.tax_rate}
-                  onChange={handleChange}
-                  min="0"
-                  max="100"
-                  step="0.01"
-                  placeholder={
-                    isNew && defaultTaxRateId ? 'Default rate' : undefined
-                  }
-                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                />
-                {taxFromDefault && (
-                  <p className="mt-1 text-xs text-neutral-500">
-                    Left blank, your default tax rate applies.
-                  </p>
-                )}
-              </div>
+              <TaxRatePicker
+                taxRates={taxRates}
+                taxRateId={formData.tax_rate_id}
+                percent={formData.tax_rate}
+                defaultTaxRateId={defaultTaxRateId}
+                placeholder={
+                  isNew && defaultTaxRateId ? 'Default rate' : undefined
+                }
+                hint={
+                  taxFromDefault
+                    ? 'Left blank, your default tax rate applies.'
+                    : undefined
+                }
+                onChange={({ taxRateId, percent }) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    tax_rate_id: taxRateId,
+                    tax_rate: percent,
+                  }))
+                }
+              />
             </div>
           </div>
 

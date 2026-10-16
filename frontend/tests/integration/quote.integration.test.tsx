@@ -44,10 +44,34 @@ vi.mock('@services/customerService', () => ({
   },
 }));
 
+vi.mock('@services/taxRateService', () => ({
+  taxRateService: {
+    listTaxRates: vi.fn(),
+  },
+}));
+
 // Import after mocking
 import { useAuthStore, useTenantStore, useSidebarStore } from '@store';
 import { quoteService } from '@services/quoteService';
 import { customerService } from '@services/customerService';
+import { taxRateService, type TaxRate } from '@services/taxRateService';
+
+const mockTaxRates: TaxRate[] = [
+  {
+    id: 'tax-rate-1',
+    name: 'City Sales Tax',
+    rate: '0.0825',
+    tax_type: 'sales_tax',
+    is_active: true,
+  },
+  {
+    id: 'tax-rate-2',
+    name: 'Reduced Rate',
+    rate: '0.08',
+    tax_type: 'sales_tax',
+    is_active: true,
+  },
+];
 
 // =============================================================================
 // Test Data
@@ -237,6 +261,9 @@ const setupMocks = () => {
   });
 
   vi.mocked(quoteService.getStats).mockResolvedValue(mockQuoteStats);
+
+  // No configured tax rates unless a test sets some (typed-rate input only)
+  vi.mocked(taxRateService.listTaxRates).mockResolvedValue([]);
 
   vi.mocked(customerService.getCustomers).mockResolvedValue({
     customers: [mockCustomer],
@@ -462,6 +489,87 @@ describe('Quote Workflow Integration', () => {
       });
       const [body] = vi.mocked(quoteService.createQuote).mock.calls[0];
       expect(body.tax_rate).toBeUndefined();
+    });
+  });
+
+  describe('Tax rate picker (T237)', () => {
+    beforeEach(() => {
+      vi.mocked(taxRateService.listTaxRates).mockResolvedValue(mockTaxRates);
+    });
+
+    it("picks the tenant's default rate on a new quote and sends its rate", async () => {
+      const user = userEvent.setup({ delay: null });
+      const tenantWithDefault = {
+        ...mockTenant,
+        settings: { defaultTaxRateId: 'tax-rate-1' },
+      };
+      vi.mocked(useTenantStore).mockImplementation((selector) => {
+        const state = {
+          currentTenant: tenantWithDefault,
+          tenants: [tenantWithDefault],
+        };
+        return typeof selector === 'function' ? selector(state) : state;
+      });
+      vi.mocked(quoteService.createQuote).mockResolvedValue(mockQuotes[0]);
+
+      const { QuoteDetailPage } =
+        await import('../../src/pages/Quotes/QuoteDetailPage');
+      render(
+        <MemoryRouter initialEntries={['/quotes/new']}>
+          <Routes>
+            <Route path="/quotes/new" element={<QuoteDetailPage />} />
+          </Routes>
+        </MemoryRouter>
+      );
+
+      const picker = await screen.findByLabelText(/^tax rate$/i);
+      await waitFor(() => expect(picker).toHaveValue('tax-rate-1'));
+      expect(screen.getByText('Tax (8.25%):')).toBeInTheDocument();
+
+      await user.selectOptions(
+        screen.getByLabelText(/customer/i),
+        await screen.findByRole('option', { name: /John Doe/i })
+      );
+      await user.type(
+        screen.getAllByPlaceholderText(/description/i)[0],
+        'Service Charge'
+      );
+      await user.click(screen.getByRole('button', { name: /create quote/i }));
+
+      await waitFor(() => {
+        expect(quoteService.createQuote).toHaveBeenCalled();
+      });
+      const [body] = vi.mocked(quoteService.createQuote).mock.calls[0];
+      expect(body.tax_rate).toBe(0.0825);
+    });
+
+    it("shows the configured rate matching a quote's rate and saves a newly picked one", async () => {
+      const user = userEvent.setup({ delay: null });
+      vi.mocked(quoteService.getQuote).mockResolvedValue(mockQuotes[0]); // 8%
+      vi.mocked(quoteService.updateQuote).mockResolvedValue(mockQuotes[0]);
+
+      const { QuoteDetailPage } =
+        await import('../../src/pages/Quotes/QuoteDetailPage');
+      render(
+        <MemoryRouter initialEntries={['/quotes/quote-1']}>
+          <Routes>
+            <Route path="/quotes/:id" element={<QuoteDetailPage />} />
+          </Routes>
+        </MemoryRouter>
+      );
+
+      const picker = await screen.findByLabelText(/^tax rate$/i);
+      await waitFor(() => expect(picker).toHaveValue('tax-rate-2'));
+
+      await user.selectOptions(picker, 'tax-rate-1');
+      await user.click(screen.getByRole('button', { name: /save changes/i }));
+
+      await waitFor(() => {
+        expect(quoteService.updateQuote).toHaveBeenCalledWith(
+          'quote-1',
+          expect.objectContaining({ tax_rate: 0.0825 })
+        );
+      });
     });
   });
 

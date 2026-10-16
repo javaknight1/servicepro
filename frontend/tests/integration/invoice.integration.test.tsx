@@ -67,11 +67,18 @@ vi.mock('@services/customerService', () => ({
   },
 }));
 
+vi.mock('@services/taxRateService', () => ({
+  taxRateService: {
+    listTaxRates: vi.fn(),
+  },
+}));
+
 // Import after mocking
 import { useAuthStore, useTenantStore, useSidebarStore } from '@store';
 import { invoiceService } from '@services/invoiceService';
 import { customerService } from '@services/customerService';
 import { paymentTermService } from '@services/paymentTermService';
+import { taxRateService, type TaxRate } from '@services/taxRateService';
 import { useTenantPermissions } from '@/utils/tenantPermissions';
 
 let grantedPermissions = new Set<string>();
@@ -233,6 +240,23 @@ const mockInvoices = [
   },
 ];
 
+const mockTaxRates: TaxRate[] = [
+  {
+    id: 'tax-rate-1',
+    name: 'City Sales Tax',
+    rate: '0.0825',
+    tax_type: 'sales_tax',
+    is_active: true,
+  },
+  {
+    id: 'tax-rate-2',
+    name: 'State Tax',
+    rate: '0.06',
+    tax_type: 'sales_tax',
+    is_active: true,
+  },
+];
+
 const mockInvoiceStats = {
   total_invoices: 4,
   draft_invoices: 1,
@@ -311,6 +335,9 @@ const setupMocks = () => {
   });
 
   vi.mocked(invoiceService.getStats).mockResolvedValue(mockInvoiceStats);
+
+  // No configured tax rates unless a test sets some (typed-rate input only)
+  vi.mocked(taxRateService.listTaxRates).mockResolvedValue([]);
 
   grantedPermissions = new Set(['payments.create', 'payments.refund']);
   vi.mocked(useTenantPermissions).mockImplementation(() => {
@@ -743,6 +770,124 @@ describe('Invoice & Payment Integration', () => {
           expect.objectContaining({ tax_rate: 0.0825 })
         );
       });
+    });
+  });
+
+  describe('Tax rate picker (T237)', () => {
+    const renderPage = async (path: string) => {
+      const { InvoiceDetailPage } =
+        await import('../../src/pages/Invoices/InvoiceDetailPage');
+      render(
+        <MemoryRouter initialEntries={[path]}>
+          <Routes>
+            <Route path="/invoices/:id" element={<InvoiceDetailPage />} />
+            <Route path="/invoices/new" element={<InvoiceDetailPage />} />
+          </Routes>
+        </MemoryRouter>
+      );
+    };
+
+    beforeEach(() => {
+      vi.mocked(taxRateService.listTaxRates).mockResolvedValue(mockTaxRates);
+    });
+
+    it("picks the tenant's default rate on a new invoice and sends its ID", async () => {
+      const user = userEvent.setup({ delay: null });
+      const tenantWithDefault = {
+        ...mockTenant,
+        settings: { defaultTaxRateId: 'tax-rate-1' },
+      };
+      vi.mocked(useTenantStore).mockImplementation((selector) => {
+        const state = {
+          currentTenant: tenantWithDefault,
+          tenants: [tenantWithDefault],
+        };
+        return typeof selector === 'function' ? selector(state) : state;
+      });
+      vi.mocked(invoiceService.createInvoice).mockResolvedValue({
+        ...mockInvoices[0],
+        id: 'invoice-new',
+      });
+      await renderPage('/invoices/new');
+
+      const picker = await screen.findByLabelText(/^tax rate$/i);
+      await waitFor(() => expect(picker).toHaveValue('tax-rate-1'));
+      expect(
+        screen.getByRole('option', { name: 'City Sales Tax (8.25%) · default' })
+      ).toBeInTheDocument();
+      expect(screen.getByText('Tax (8.25%):')).toBeInTheDocument();
+
+      await user.selectOptions(
+        screen.getByLabelText(/customer/i),
+        await screen.findByRole('option', { name: /John Doe/i })
+      );
+      await user.type(
+        screen.getAllByPlaceholderText(/description/i)[0],
+        'Service Charge'
+      );
+      await user.click(screen.getByRole('button', { name: /create invoice/i }));
+
+      await waitFor(() => {
+        expect(invoiceService.createInvoice).toHaveBeenCalled();
+      });
+      const [body] = vi.mocked(invoiceService.createInvoice).mock.calls[0];
+      expect(body.tax_rate_id).toBe('tax-rate-1');
+      expect(body.tax_rate).toBeUndefined();
+    });
+
+    it("shows the invoice's configured rate and sends a newly picked one by ID", async () => {
+      const user = userEvent.setup({ delay: null });
+      vi.mocked(invoiceService.getInvoice).mockResolvedValue({
+        ...mockInvoices[0],
+        tax_rate_id: 'tax-rate-1',
+        tax_rate: { id: 'tax-rate-1', name: 'City Sales Tax', rate: '0.0825' },
+      });
+      vi.mocked(invoiceService.updateInvoice).mockResolvedValue(
+        mockInvoices[0]
+      );
+      await renderPage('/invoices/invoice-1');
+
+      const picker = await screen.findByLabelText(/^tax rate$/i);
+      await waitFor(() => expect(picker).toHaveValue('tax-rate-1'));
+
+      await user.selectOptions(picker, 'tax-rate-2');
+      expect(screen.getByText('Tax (6%):')).toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: /save changes/i }));
+
+      await waitFor(() => {
+        expect(invoiceService.updateInvoice).toHaveBeenCalled();
+      });
+      const [, body] = vi.mocked(invoiceService.updateInvoice).mock.calls[0];
+      expect(body.tax_rate_id).toBe('tax-rate-2');
+      expect(body.tax_rate).toBeUndefined();
+    });
+
+    it('sends a custom rate as a fraction (replacing the configured one)', async () => {
+      const user = userEvent.setup({ delay: null });
+      vi.mocked(invoiceService.getInvoice).mockResolvedValue({
+        ...mockInvoices[0],
+        tax_rate_id: 'tax-rate-1',
+        tax_rate: { id: 'tax-rate-1', name: 'City Sales Tax', rate: '0.0825' },
+      });
+      vi.mocked(invoiceService.updateInvoice).mockResolvedValue(
+        mockInvoices[0]
+      );
+      await renderPage('/invoices/invoice-1');
+
+      const picker = await screen.findByLabelText(/^tax rate$/i);
+      await waitFor(() => expect(picker).toHaveValue('tax-rate-1'));
+      await user.selectOptions(picker, '');
+      const custom = screen.getByLabelText(/custom rate/i);
+      await user.clear(custom);
+      await user.type(custom, '5');
+      await user.click(screen.getByRole('button', { name: /save changes/i }));
+
+      await waitFor(() => {
+        expect(invoiceService.updateInvoice).toHaveBeenCalled();
+      });
+      const [, body] = vi.mocked(invoiceService.updateInvoice).mock.calls[0];
+      expect(body.tax_rate).toBe(0.05);
+      expect(body.tax_rate_id).toBeUndefined();
     });
   });
 
