@@ -19,9 +19,10 @@ func SetupStripeRoutes(router *gin.RouterGroup, cfg *routeconfigs.RouteConfig) {
 	// Determine environment for logging
 	environment := "unknown"
 	if len(cfg.Config.Stripe.SecretKey) > 8 {
-		if cfg.Config.Stripe.SecretKey[:8] == "sk_test_" {
+		switch cfg.Config.Stripe.SecretKey[:8] {
+		case "sk_test_":
 			environment = "test"
-		} else if cfg.Config.Stripe.SecretKey[:8] == "sk_live_" {
+		case "sk_live_":
 			environment = "live"
 		}
 	}

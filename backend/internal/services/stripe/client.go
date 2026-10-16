@@ -64,9 +64,10 @@ func NewClient(cfg *config.Config) (*Client, error) {
 	// Determine environment from secret key prefix
 	environment := "unknown"
 	if len(cfg.Stripe.SecretKey) > 8 {
-		if cfg.Stripe.SecretKey[:8] == "sk_test_" {
+		switch cfg.Stripe.SecretKey[:8] {
+		case "sk_test_":
 			environment = "test"
-		} else if cfg.Stripe.SecretKey[:8] == "sk_live_" {
+		case "sk_live_":
 			environment = "live"
 		}
 	}
