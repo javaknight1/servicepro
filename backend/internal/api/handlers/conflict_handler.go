@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/javaknight1/servicepro/backend/internal/api/apierror"
 	"github.com/javaknight1/servicepro/backend/internal/api/middleware"
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/services/conflict"
@@ -38,7 +39,7 @@ func NewConflictHandler(detector *conflict.ConflictDetector) *ConflictHandler {
 func (h *ConflictHandler) CheckConflicts(c *gin.Context) {
 	tenantID, err := middleware.GetTenantID(c)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusUnauthorized, models.ErrorResponse{
 			Error:   "unauthorized",
 			Message: "Tenant context required",
 		})
@@ -47,10 +48,7 @@ func (h *ConflictHandler) CheckConflicts(c *gin.Context) {
 
 	var req conflict.ConflictCheckRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
-			Error:   "invalid_request",
-			Message: "Invalid request body: " + publicError(err),
-		})
+		apierror.BindError(c, err)
 		return
 	}
 
@@ -58,10 +56,7 @@ func (h *ConflictHandler) CheckConflicts(c *gin.Context) {
 
 	response, err := h.detector.CheckConflicts(c.Request.Context(), &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "internal_error",
-			Message: "Failed to check conflicts: " + publicError(err),
-		})
+		apierror.Internal(c, err, "Failed to check conflicts")
 		return
 	}
 

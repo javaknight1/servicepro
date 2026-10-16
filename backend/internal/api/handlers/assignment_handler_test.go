@@ -284,7 +284,7 @@ func TestCreateAssignment_InvalidRequest(t *testing.T) {
 	var response models.ErrorResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(t, err)
-	assert.Equal(t, "invalid_request", response.Error)
+	assert.Equal(t, "malformed_json", response.Error)
 }
 
 // TestCreateAssignment_JobNotFound tests job not found error
@@ -710,7 +710,7 @@ func TestUpdateAssignment_InvalidRequest(t *testing.T) {
 	var response models.ErrorResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(t, err)
-	assert.Equal(t, "invalid_request", response.Error)
+	assert.Equal(t, "validation_failed", response.Error)
 }
 
 // TestCheckAvailability_Success tests successful availability check

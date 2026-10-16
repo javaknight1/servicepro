@@ -8,8 +8,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"gorm.io/gorm"
 
+	"github.com/javaknight1/servicepro/backend/internal/api/apierror"
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/services"
 )
@@ -32,7 +32,7 @@ func (h *JobHandler) getUserContext(c *gin.Context) (uuid.UUID, models.UserRole,
 	// Get user ID from context - the permission middleware uses "user_id" as the key
 	userIDValue, exists := c.Get("user_id")
 	if !exists || userIDValue == nil {
-		c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusUnauthorized, models.ErrorResponse{
 			Error:   "unauthorized",
 			Message: "User not authenticated",
 		})
@@ -40,10 +40,7 @@ func (h *JobHandler) getUserContext(c *gin.Context) (uuid.UUID, models.UserRole,
 	}
 	userID, ok := userIDValue.(uuid.UUID)
 	if !ok {
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "internal_error",
-			Message: "Invalid user ID in context",
-		})
+		apierror.Internal(c, nil, "Invalid user ID in context")
 		return uuid.Nil, "", errors.New("invalid user ID")
 	}
 
@@ -84,34 +81,14 @@ func (h *JobHandler) CreateJob(c *gin.Context) {
 
 	var req models.CreateJobRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
-			Error:   "invalid_request",
-			Message: "Invalid job data: " + publicError(err),
-		})
+		apierror.BindError(c, err)
 		return
 	}
 
 	// Create job
 	job, err := h.jobService.WithContext(c.Request.Context()).CreateJob(&req, userID)
 	if err != nil {
-		switch {
-		case errors.Is(err, services.ErrCustomerNotFound):
-			c.JSON(http.StatusNotFound, models.ErrorResponse{
-				Error:   "customer_not_found",
-				Message: "The specified customer does not exist",
-			})
-		case errors.Is(err, gorm.ErrRecordNotFound):
-			c.JSON(http.StatusNotFound, models.ErrorResponse{
-				Error:   "not_found",
-				Message: publicError(err),
-			})
-		default:
-			log.Printf("Error creating job: %v", err)
-			c.JSON(http.StatusBadRequest, models.ErrorResponse{
-				Error:   "creation_failed",
-				Message: publicError(err),
-			})
-		}
+		apierror.Respond(c, err, "Failed to create job")
 		return
 	}
 
@@ -142,7 +119,7 @@ func (h *JobHandler) GetJob(c *gin.Context) {
 	// Parse job ID
 	jobID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_id",
 			Message: "Invalid job ID format",
 		})
@@ -152,24 +129,7 @@ func (h *JobHandler) GetJob(c *gin.Context) {
 	// Get job
 	job, err := h.jobService.WithContext(c.Request.Context()).GetJobByID(jobID, userID, userRole)
 	if err != nil {
-		switch {
-		case errors.Is(err, services.ErrJobNotFound):
-			c.JSON(http.StatusNotFound, models.ErrorResponse{
-				Error:   "job_not_found",
-				Message: "Job not found",
-			})
-		case errors.Is(err, services.ErrUnauthorized):
-			c.JSON(http.StatusForbidden, models.ErrorResponse{
-				Error:   "forbidden",
-				Message: "You do not have permission to view this job",
-			})
-		default:
-			log.Printf("Error getting job: %v", err)
-			c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-				Error:   "internal_error",
-				Message: "Failed to retrieve job",
-			})
-		}
+		apierror.Respond(c, err, "Failed to get job")
 		return
 	}
 
@@ -198,7 +158,7 @@ func (h *JobHandler) GetJobByNumber(c *gin.Context) {
 
 	jobNumber := c.Param("jobNumber")
 	if jobNumber == "" {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
 			Message: "Job number is required",
 		})
@@ -208,24 +168,7 @@ func (h *JobHandler) GetJobByNumber(c *gin.Context) {
 	// Get job
 	job, err := h.jobService.WithContext(c.Request.Context()).GetJobByJobNumber(jobNumber, userID, userRole)
 	if err != nil {
-		switch {
-		case errors.Is(err, services.ErrJobNotFound):
-			c.JSON(http.StatusNotFound, models.ErrorResponse{
-				Error:   "job_not_found",
-				Message: "Job not found",
-			})
-		case errors.Is(err, services.ErrUnauthorized):
-			c.JSON(http.StatusForbidden, models.ErrorResponse{
-				Error:   "forbidden",
-				Message: "You do not have permission to view this job",
-			})
-		default:
-			log.Printf("Error getting job by number: %v", err)
-			c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-				Error:   "internal_error",
-				Message: "Failed to retrieve job",
-			})
-		}
+		apierror.Respond(c, err, "Failed to get job")
 		return
 	}
 
@@ -258,7 +201,7 @@ func (h *JobHandler) UpdateJob(c *gin.Context) {
 	// Parse job ID
 	jobID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_id",
 			Message: "Invalid job ID format",
 		})
@@ -267,34 +210,14 @@ func (h *JobHandler) UpdateJob(c *gin.Context) {
 
 	var req models.UpdateJobRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
-			Error:   "invalid_request",
-			Message: "Invalid job data: " + publicError(err),
-		})
+		apierror.BindError(c, err)
 		return
 	}
 
 	// Update job
 	job, err := h.jobService.WithContext(c.Request.Context()).UpdateJob(jobID, &req, userID, userRole)
 	if err != nil {
-		switch {
-		case errors.Is(err, services.ErrJobNotFound):
-			c.JSON(http.StatusNotFound, models.ErrorResponse{
-				Error:   "job_not_found",
-				Message: "Job not found",
-			})
-		case errors.Is(err, services.ErrUnauthorized):
-			c.JSON(http.StatusForbidden, models.ErrorResponse{
-				Error:   "forbidden",
-				Message: "You do not have permission to update this job",
-			})
-		default:
-			log.Printf("Error updating job: %v", err)
-			c.JSON(http.StatusBadRequest, models.ErrorResponse{
-				Error:   "update_failed",
-				Message: publicError(err),
-			})
-		}
+		apierror.Respond(c, err, "Failed to update job")
 		return
 	}
 
@@ -309,7 +232,8 @@ func (h *JobHandler) UpdateJob(c *gin.Context) {
 // @Security BearerAuth
 // @Param id path string true "Job ID (UUID)"
 // @Success 204 "No Content"
-// @Failure 400 {object} models.ErrorResponse "Invalid request or job cannot be deleted"
+// @Failure 400 {object} models.ErrorResponse "Invalid request"
+// @Failure 409 {object} models.ErrorResponse "Only scheduled or cancelled jobs can be deleted"
 // @Failure 401 {object} models.ErrorResponse "Unauthorized"
 // @Failure 403 {object} models.ErrorResponse "Forbidden"
 // @Failure 404 {object} models.ErrorResponse "Job not found"
@@ -325,7 +249,7 @@ func (h *JobHandler) DeleteJob(c *gin.Context) {
 	// Parse job ID
 	jobID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_id",
 			Message: "Invalid job ID format",
 		})
@@ -335,24 +259,7 @@ func (h *JobHandler) DeleteJob(c *gin.Context) {
 	// Delete job
 	err = h.jobService.WithContext(c.Request.Context()).DeleteJob(jobID, userID, userRole)
 	if err != nil {
-		switch {
-		case errors.Is(err, services.ErrJobNotFound):
-			c.JSON(http.StatusNotFound, models.ErrorResponse{
-				Error:   "job_not_found",
-				Message: "Job not found",
-			})
-		case errors.Is(err, services.ErrUnauthorized):
-			c.JSON(http.StatusForbidden, models.ErrorResponse{
-				Error:   "forbidden",
-				Message: "You do not have permission to delete this job",
-			})
-		default:
-			log.Printf("Error deleting job: %v", err)
-			c.JSON(http.StatusBadRequest, models.ErrorResponse{
-				Error:   "delete_failed",
-				Message: publicError(err),
-			})
-		}
+		apierror.Respond(c, err, "Failed to delete job")
 		return
 	}
 
@@ -392,10 +299,7 @@ func (h *JobHandler) ListJobs(c *gin.Context) {
 	// Parse filter parameters
 	var filter models.JobListFilter
 	if err := c.ShouldBindQuery(&filter); err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
-			Error:   "invalid_request",
-			Message: "Invalid query parameters: " + publicError(err),
-		})
+		apierror.BindError(c, err)
 		return
 	}
 
@@ -412,11 +316,7 @@ func (h *JobHandler) ListJobs(c *gin.Context) {
 	// Get jobs
 	jobs, total, err := h.jobService.WithContext(c.Request.Context()).ListJobs(&filter, userID, userRole)
 	if err != nil {
-		log.Printf("Error listing jobs: %v", err)
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "internal_error",
-			Message: "Failed to retrieve jobs",
-		})
+		apierror.Respond(c, err, "Failed to list jobs")
 		return
 	}
 
@@ -456,11 +356,7 @@ func (h *JobHandler) GetMyJobs(c *gin.Context) {
 	// Get jobs
 	jobs, err := h.jobService.WithContext(c.Request.Context()).GetMyJobs(userID)
 	if err != nil {
-		log.Printf("Error getting user jobs: %v", err)
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "internal_error",
-			Message: "Failed to retrieve jobs",
-		})
+		apierror.Respond(c, err, "Failed to get your jobs")
 		return
 	}
 
@@ -485,7 +381,7 @@ func (h *JobHandler) GetScheduledJobs(c *gin.Context) {
 	endStr := c.Query("end")
 
 	if startStr == "" || endStr == "" {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
 			Message: "Start and end dates are required",
 		})
@@ -494,7 +390,7 @@ func (h *JobHandler) GetScheduledJobs(c *gin.Context) {
 
 	start, err := strconv.ParseInt(startStr, 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
 			Message: "Invalid start date format. Use epoch seconds",
 		})
@@ -503,7 +399,7 @@ func (h *JobHandler) GetScheduledJobs(c *gin.Context) {
 
 	end, err := strconv.ParseInt(endStr, 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
 			Message: "Invalid end date format. Use epoch seconds",
 		})
@@ -512,11 +408,7 @@ func (h *JobHandler) GetScheduledJobs(c *gin.Context) {
 
 	jobs, err := h.jobService.WithContext(c.Request.Context()).GetScheduledJobs(start, end)
 	if err != nil {
-		log.Printf("Error getting scheduled jobs: %v", err)
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "internal_error",
-			Message: "Failed to retrieve scheduled jobs",
-		})
+		apierror.Respond(c, err, "Failed to get scheduled jobs")
 		return
 	}
 
@@ -536,11 +428,7 @@ func (h *JobHandler) GetScheduledJobs(c *gin.Context) {
 func (h *JobHandler) GetOverdueJobs(c *gin.Context) {
 	jobs, err := h.jobService.WithContext(c.Request.Context()).GetOverdueJobs()
 	if err != nil {
-		log.Printf("Error getting overdue jobs: %v", err)
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "internal_error",
-			Message: "Failed to retrieve overdue jobs",
-		})
+		apierror.Respond(c, err, "Failed to get overdue jobs")
 		return
 	}
 
@@ -555,7 +443,8 @@ func (h *JobHandler) GetOverdueJobs(c *gin.Context) {
 // @Security BearerAuth
 // @Param id path string true "Job ID (UUID)"
 // @Success 200 {object} models.JobResponse
-// @Failure 400 {object} models.ErrorResponse "Invalid request or job cannot be started"
+// @Failure 400 {object} models.ErrorResponse "Invalid request"
+// @Failure 409 {object} models.ErrorResponse "Job cannot be started in its current status"
 // @Failure 401 {object} models.ErrorResponse "Unauthorized"
 // @Failure 403 {object} models.ErrorResponse "Forbidden"
 // @Failure 404 {object} models.ErrorResponse "Job not found"
@@ -571,7 +460,7 @@ func (h *JobHandler) StartJob(c *gin.Context) {
 	// Parse job ID
 	jobID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_id",
 			Message: "Invalid job ID format",
 		})
@@ -581,24 +470,7 @@ func (h *JobHandler) StartJob(c *gin.Context) {
 	// Start job
 	job, err := h.jobService.WithContext(c.Request.Context()).StartJob(jobID, userID, userRole)
 	if err != nil {
-		switch {
-		case errors.Is(err, services.ErrJobNotFound):
-			c.JSON(http.StatusNotFound, models.ErrorResponse{
-				Error:   "job_not_found",
-				Message: "Job not found",
-			})
-		case errors.Is(err, services.ErrUnauthorized):
-			c.JSON(http.StatusForbidden, models.ErrorResponse{
-				Error:   "forbidden",
-				Message: "You do not have permission to start this job",
-			})
-		default:
-			log.Printf("Error starting job: %v", err)
-			c.JSON(http.StatusBadRequest, models.ErrorResponse{
-				Error:   "start_failed",
-				Message: publicError(err),
-			})
-		}
+		apierror.Respond(c, err, "Failed to start job")
 		return
 	}
 
@@ -615,7 +487,8 @@ func (h *JobHandler) StartJob(c *gin.Context) {
 // @Param id path string true "Job ID (UUID)"
 // @Param request body object{completion_notes=string} false "Completion notes"
 // @Success 200 {object} models.JobResponse
-// @Failure 400 {object} models.ErrorResponse "Invalid request or job cannot be completed"
+// @Failure 400 {object} models.ErrorResponse "Invalid request"
+// @Failure 409 {object} models.ErrorResponse "Job cannot be completed in its current status"
 // @Failure 401 {object} models.ErrorResponse "Unauthorized"
 // @Failure 403 {object} models.ErrorResponse "Forbidden"
 // @Failure 404 {object} models.ErrorResponse "Job not found"
@@ -631,7 +504,7 @@ func (h *JobHandler) CompleteJob(c *gin.Context) {
 	// Parse job ID
 	jobID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_id",
 			Message: "Invalid job ID format",
 		})
@@ -647,24 +520,7 @@ func (h *JobHandler) CompleteJob(c *gin.Context) {
 	// Complete job
 	job, err := h.jobService.WithContext(c.Request.Context()).CompleteJob(jobID, req.CompletionNotes, userID, userRole)
 	if err != nil {
-		switch {
-		case errors.Is(err, services.ErrJobNotFound):
-			c.JSON(http.StatusNotFound, models.ErrorResponse{
-				Error:   "job_not_found",
-				Message: "Job not found",
-			})
-		case errors.Is(err, services.ErrUnauthorized):
-			c.JSON(http.StatusForbidden, models.ErrorResponse{
-				Error:   "forbidden",
-				Message: "You do not have permission to complete this job",
-			})
-		default:
-			log.Printf("Error completing job: %v", err)
-			c.JSON(http.StatusBadRequest, models.ErrorResponse{
-				Error:   "complete_failed",
-				Message: publicError(err),
-			})
-		}
+		apierror.Respond(c, err, "Failed to complete job")
 		return
 	}
 
@@ -682,6 +538,7 @@ func (h *JobHandler) CompleteJob(c *gin.Context) {
 // @Param request body object{reason=string} false "Cancellation reason"
 // @Success 200 {object} models.JobResponse
 // @Failure 400 {object} models.ErrorResponse "Invalid request"
+// @Failure 409 {object} models.ErrorResponse "Invalid status transition"
 // @Failure 401 {object} models.ErrorResponse "Unauthorized"
 // @Failure 403 {object} models.ErrorResponse "Forbidden"
 // @Failure 404 {object} models.ErrorResponse "Job not found"
@@ -697,7 +554,7 @@ func (h *JobHandler) CancelJob(c *gin.Context) {
 	// Parse job ID
 	jobID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_id",
 			Message: "Invalid job ID format",
 		})
@@ -713,24 +570,7 @@ func (h *JobHandler) CancelJob(c *gin.Context) {
 	// Cancel job
 	job, err := h.jobService.WithContext(c.Request.Context()).CancelJob(jobID, req.Reason, userID, userRole)
 	if err != nil {
-		switch {
-		case errors.Is(err, services.ErrJobNotFound):
-			c.JSON(http.StatusNotFound, models.ErrorResponse{
-				Error:   "job_not_found",
-				Message: "Job not found",
-			})
-		case errors.Is(err, services.ErrUnauthorized):
-			c.JSON(http.StatusForbidden, models.ErrorResponse{
-				Error:   "forbidden",
-				Message: "Only admins and managers can cancel jobs",
-			})
-		default:
-			log.Printf("Error cancelling job: %v", err)
-			c.JSON(http.StatusBadRequest, models.ErrorResponse{
-				Error:   "cancel_failed",
-				Message: publicError(err),
-			})
-		}
+		apierror.Respond(c, err, "Failed to cancel job")
 		return
 	}
 
@@ -748,6 +588,7 @@ func (h *JobHandler) CancelJob(c *gin.Context) {
 // @Param request body object{reason=string} false "On-hold reason"
 // @Success 200 {object} models.JobResponse
 // @Failure 400 {object} models.ErrorResponse "Invalid request"
+// @Failure 409 {object} models.ErrorResponse "Invalid status transition"
 // @Failure 401 {object} models.ErrorResponse "Unauthorized"
 // @Failure 403 {object} models.ErrorResponse "Forbidden"
 // @Failure 404 {object} models.ErrorResponse "Job not found"
@@ -763,7 +604,7 @@ func (h *JobHandler) PutOnHold(c *gin.Context) {
 	// Parse job ID
 	jobID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_id",
 			Message: "Invalid job ID format",
 		})
@@ -779,24 +620,7 @@ func (h *JobHandler) PutOnHold(c *gin.Context) {
 	// Put job on hold
 	job, err := h.jobService.WithContext(c.Request.Context()).PutOnHold(jobID, req.Reason, userID, userRole)
 	if err != nil {
-		switch {
-		case errors.Is(err, services.ErrJobNotFound):
-			c.JSON(http.StatusNotFound, models.ErrorResponse{
-				Error:   "job_not_found",
-				Message: "Job not found",
-			})
-		case errors.Is(err, services.ErrUnauthorized):
-			c.JSON(http.StatusForbidden, models.ErrorResponse{
-				Error:   "forbidden",
-				Message: "You do not have permission to put this job on hold",
-			})
-		default:
-			log.Printf("Error putting job on hold: %v", err)
-			c.JSON(http.StatusBadRequest, models.ErrorResponse{
-				Error:   "hold_failed",
-				Message: publicError(err),
-			})
-		}
+		apierror.Respond(c, err, "Failed to put job on hold")
 		return
 	}
 
@@ -812,6 +636,7 @@ func (h *JobHandler) PutOnHold(c *gin.Context) {
 // @Param id path string true "Job ID (UUID)"
 // @Success 200 {object} models.JobResponse
 // @Failure 400 {object} models.ErrorResponse "Invalid request"
+// @Failure 409 {object} models.ErrorResponse "Invalid status transition"
 // @Failure 401 {object} models.ErrorResponse "Unauthorized"
 // @Failure 403 {object} models.ErrorResponse "Forbidden"
 // @Failure 404 {object} models.ErrorResponse "Job not found"
@@ -827,7 +652,7 @@ func (h *JobHandler) ResumeJob(c *gin.Context) {
 	// Parse job ID
 	jobID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_id",
 			Message: "Invalid job ID format",
 		})
@@ -837,24 +662,7 @@ func (h *JobHandler) ResumeJob(c *gin.Context) {
 	// Resume job
 	job, err := h.jobService.WithContext(c.Request.Context()).ResumeJob(jobID, userID, userRole)
 	if err != nil {
-		switch {
-		case errors.Is(err, services.ErrJobNotFound):
-			c.JSON(http.StatusNotFound, models.ErrorResponse{
-				Error:   "job_not_found",
-				Message: "Job not found",
-			})
-		case errors.Is(err, services.ErrUnauthorized):
-			c.JSON(http.StatusForbidden, models.ErrorResponse{
-				Error:   "forbidden",
-				Message: "You do not have permission to resume this job",
-			})
-		default:
-			log.Printf("Error resuming job: %v", err)
-			c.JSON(http.StatusBadRequest, models.ErrorResponse{
-				Error:   "resume_failed",
-				Message: publicError(err),
-			})
-		}
+		apierror.Respond(c, err, "Failed to resume job")
 		return
 	}
 
@@ -887,7 +695,7 @@ func (h *JobHandler) AssignTechnician(c *gin.Context) {
 	// Parse job ID
 	jobID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_id",
 			Message: "Invalid job ID format",
 		})
@@ -900,16 +708,13 @@ func (h *JobHandler) AssignTechnician(c *gin.Context) {
 		Role         string `json:"role"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
-			Error:   "invalid_request",
-			Message: "Invalid request: " + publicError(err),
-		})
+		apierror.BindError(c, err)
 		return
 	}
 
 	technicianID, err := uuid.Parse(req.TechnicianID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_request",
 			Message: "Invalid technician ID format",
 		})
@@ -919,24 +724,7 @@ func (h *JobHandler) AssignTechnician(c *gin.Context) {
 	// Assign technician
 	err = h.jobService.WithContext(c.Request.Context()).AssignTechnician(jobID, technicianID, req.Role, userID, userRole)
 	if err != nil {
-		switch {
-		case errors.Is(err, services.ErrJobNotFound):
-			c.JSON(http.StatusNotFound, models.ErrorResponse{
-				Error:   "job_not_found",
-				Message: "Job not found",
-			})
-		case errors.Is(err, services.ErrUnauthorized):
-			c.JSON(http.StatusForbidden, models.ErrorResponse{
-				Error:   "forbidden",
-				Message: "Only admins and managers can assign technicians",
-			})
-		default:
-			log.Printf("Error assigning technician: %v", err)
-			c.JSON(http.StatusBadRequest, models.ErrorResponse{
-				Error:   "assignment_failed",
-				Message: publicError(err),
-			})
-		}
+		apierror.Respond(c, err, "Failed to assign technician")
 		return
 	}
 
@@ -970,7 +758,7 @@ func (h *JobHandler) UnassignTechnician(c *gin.Context) {
 	// Parse job ID
 	jobID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_id",
 			Message: "Invalid job ID format",
 		})
@@ -980,7 +768,7 @@ func (h *JobHandler) UnassignTechnician(c *gin.Context) {
 	// Parse technician ID
 	technicianID, err := uuid.Parse(c.Param("technicianId"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_id",
 			Message: "Invalid technician ID format",
 		})
@@ -990,24 +778,7 @@ func (h *JobHandler) UnassignTechnician(c *gin.Context) {
 	// Unassign technician
 	err = h.jobService.WithContext(c.Request.Context()).UnassignTechnician(jobID, technicianID, userID, userRole)
 	if err != nil {
-		switch {
-		case errors.Is(err, services.ErrJobNotFound):
-			c.JSON(http.StatusNotFound, models.ErrorResponse{
-				Error:   "job_not_found",
-				Message: "Job not found",
-			})
-		case errors.Is(err, services.ErrUnauthorized):
-			c.JSON(http.StatusForbidden, models.ErrorResponse{
-				Error:   "forbidden",
-				Message: "Only admins and managers can unassign technicians",
-			})
-		default:
-			log.Printf("Error unassigning technician: %v", err)
-			c.JSON(http.StatusBadRequest, models.ErrorResponse{
-				Error:   "unassignment_failed",
-				Message: publicError(err),
-			})
-		}
+		apierror.Respond(c, err, "Failed to unassign technician")
 		return
 	}
 
@@ -1042,7 +813,7 @@ func (h *JobHandler) AddMaterial(c *gin.Context) {
 	// Parse job ID
 	jobID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_id",
 			Message: "Invalid job ID format",
 		})
@@ -1053,34 +824,14 @@ func (h *JobHandler) AddMaterial(c *gin.Context) {
 	// leaves an absent field at this value).
 	material := models.JobMaterial{Billable: true}
 	if err := c.ShouldBindJSON(&material); err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
-			Error:   "invalid_request",
-			Message: "Invalid material data: " + publicError(err),
-		})
+		apierror.BindError(c, err)
 		return
 	}
 
 	// Add material
 	err = h.jobService.WithContext(c.Request.Context()).AddMaterial(jobID, &material, userID, userRole)
 	if err != nil {
-		switch {
-		case errors.Is(err, services.ErrJobNotFound):
-			c.JSON(http.StatusNotFound, models.ErrorResponse{
-				Error:   "job_not_found",
-				Message: "Job not found",
-			})
-		case errors.Is(err, services.ErrUnauthorized):
-			c.JSON(http.StatusForbidden, models.ErrorResponse{
-				Error:   "forbidden",
-				Message: "You do not have permission to add materials to this job",
-			})
-		default:
-			log.Printf("Error adding material: %v", err)
-			c.JSON(http.StatusBadRequest, models.ErrorResponse{
-				Error:   "add_material_failed",
-				Message: publicError(err),
-			})
-		}
+		apierror.Respond(c, err, "Failed to add material")
 		return
 	}
 
@@ -1114,7 +865,7 @@ func (h *JobHandler) AddNote(c *gin.Context) {
 	// Parse job ID
 	jobID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_id",
 			Message: "Invalid job ID format",
 		})
@@ -1126,29 +877,14 @@ func (h *JobHandler) AddNote(c *gin.Context) {
 		IsInternal bool   `json:"is_internal"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
-			Error:   "invalid_request",
-			Message: "Invalid note data: " + publicError(err),
-		})
+		apierror.BindError(c, err)
 		return
 	}
 
 	// Add note
 	err = h.jobService.WithContext(c.Request.Context()).AddNote(jobID, userID, req.Note, req.IsInternal, userRole)
 	if err != nil {
-		switch {
-		case errors.Is(err, services.ErrJobNotFound):
-			c.JSON(http.StatusNotFound, models.ErrorResponse{
-				Error:   "job_not_found",
-				Message: "Job not found",
-			})
-		default:
-			log.Printf("Error adding note: %v", err)
-			c.JSON(http.StatusBadRequest, models.ErrorResponse{
-				Error:   "add_note_failed",
-				Message: publicError(err),
-			})
-		}
+		apierror.Respond(c, err, "Failed to add note")
 		return
 	}
 
@@ -1170,11 +906,7 @@ func (h *JobHandler) AddNote(c *gin.Context) {
 func (h *JobHandler) GetJobStats(c *gin.Context) {
 	stats, err := h.jobService.WithContext(c.Request.Context()).GetJobStats()
 	if err != nil {
-		log.Printf("Error getting job stats: %v", err)
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "internal_error",
-			Message: "Failed to retrieve statistics",
-		})
+		apierror.Respond(c, err, "Failed to get job statistics")
 		return
 	}
 
@@ -1197,7 +929,7 @@ func (h *JobHandler) GetTechnicianWorkload(c *gin.Context) {
 	// Parse technician ID
 	technicianID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_id",
 			Message: "Invalid technician ID format",
 		})
@@ -1206,11 +938,7 @@ func (h *JobHandler) GetTechnicianWorkload(c *gin.Context) {
 
 	workload, err := h.jobService.WithContext(c.Request.Context()).GetTechnicianWorkload(technicianID)
 	if err != nil {
-		log.Printf("Error getting technician workload: %v", err)
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "internal_error",
-			Message: "Failed to retrieve workload statistics",
-		})
+		apierror.Respond(c, err, "Failed to get technician workload")
 		return
 	}
 
@@ -1235,7 +963,7 @@ func (h *JobHandler) GetCustomerJobs(c *gin.Context) {
 	// Parse customer ID
 	customerID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_id",
 			Message: "Invalid customer ID format",
 		})
@@ -1249,11 +977,7 @@ func (h *JobHandler) GetCustomerJobs(c *gin.Context) {
 	// Get jobs
 	jobs, total, err := h.jobService.WithContext(c.Request.Context()).GetCustomerJobs(customerID, limit, offset)
 	if err != nil {
-		log.Printf("Error getting customer jobs: %v", err)
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "internal_error",
-			Message: "Failed to retrieve jobs",
-		})
+		apierror.Respond(c, err, "Failed to get customer jobs")
 		return
 	}
 
@@ -1283,7 +1007,8 @@ func (h *JobHandler) GetCustomerJobs(c *gin.Context) {
 // @Param id path string true "Job ID (UUID)"
 // @Param request body models.StatusChangeRequest true "Status transition request"
 // @Success 200 {object} models.JobResponse
-// @Failure 400 {object} models.ErrorResponse "Invalid request or invalid transition"
+// @Failure 400 {object} models.ErrorResponse "Invalid request"
+// @Failure 409 {object} models.ErrorResponse "Invalid status transition"
 // @Failure 401 {object} models.ErrorResponse "Unauthorized"
 // @Failure 403 {object} models.ErrorResponse "Forbidden"
 // @Failure 404 {object} models.ErrorResponse "Job not found"
@@ -1299,7 +1024,7 @@ func (h *JobHandler) TransitionStatus(c *gin.Context) {
 	// Parse job ID
 	jobID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_id",
 			Message: "Invalid job ID format",
 		})
@@ -1309,34 +1034,14 @@ func (h *JobHandler) TransitionStatus(c *gin.Context) {
 	// Parse request body
 	var req models.StatusChangeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
-			Error:   "invalid_request",
-			Message: "Invalid request: " + publicError(err),
-		})
+		apierror.BindError(c, err)
 		return
 	}
 
 	// Transition status
 	job, err := h.jobService.WithContext(c.Request.Context()).TransitionStatus(jobID, req.ToStatus, string(req.Reason), req.Notes, userID, userRole)
 	if err != nil {
-		switch {
-		case errors.Is(err, services.ErrJobNotFound):
-			c.JSON(http.StatusNotFound, models.ErrorResponse{
-				Error:   "job_not_found",
-				Message: "Job not found",
-			})
-		case errors.Is(err, services.ErrUnauthorized):
-			c.JSON(http.StatusForbidden, models.ErrorResponse{
-				Error:   "forbidden",
-				Message: "You do not have permission to transition this job",
-			})
-		default:
-			log.Printf("Error transitioning job status: %v", err)
-			c.JSON(http.StatusBadRequest, models.ErrorResponse{
-				Error:   "transition_failed",
-				Message: publicError(err),
-			})
-		}
+		apierror.Respond(c, err, "Failed to change job status")
 		return
 	}
 
@@ -1362,7 +1067,7 @@ func (h *JobHandler) GetStatusHistory(c *gin.Context) {
 	// Parse job ID
 	jobID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_id",
 			Message: "Invalid job ID format",
 		})
@@ -1377,11 +1082,7 @@ func (h *JobHandler) GetStatusHistory(c *gin.Context) {
 	// Get status history
 	history, err := h.jobService.WithContext(c.Request.Context()).GetStatusHistory(jobID, limit, offset, sortOrder)
 	if err != nil {
-		log.Printf("Error getting status history: %v", err)
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "internal_error",
-			Message: "Failed to retrieve status history",
-		})
+		apierror.Respond(c, err, "Failed to get status history")
 		return
 	}
 
@@ -1409,21 +1110,13 @@ func (h *JobHandler) GetAllowedTransitions(c *gin.Context) {
 	}
 	jobID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: "invalid_id", Message: "Invalid job ID format"})
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{Error: "invalid_id", Message: "Invalid job ID format"})
 		return
 	}
 
 	resp, err := h.jobService.WithContext(c.Request.Context()).GetAllowedTransitions(jobID, userID, userRole)
 	if err != nil {
-		switch {
-		case errors.Is(err, services.ErrJobNotFound):
-			c.JSON(http.StatusNotFound, models.ErrorResponse{Error: "job_not_found", Message: "Job not found"})
-		case errors.Is(err, services.ErrUnauthorized):
-			c.JSON(http.StatusForbidden, models.ErrorResponse{Error: "forbidden", Message: "You do not have permission to view this job"})
-		default:
-			log.Printf("Error getting allowed transitions: %v", err)
-			c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "internal_error", Message: "Failed to retrieve allowed transitions"})
-		}
+		apierror.Respond(c, err, "Failed to get allowed transitions")
 		return
 	}
 	c.JSON(http.StatusOK, resp)

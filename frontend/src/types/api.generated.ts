@@ -3418,7 +3418,7 @@ export interface paths {
                     };
                     content?: never;
                 };
-                /** @description Invalid request or job cannot be deleted */
+                /** @description Invalid request */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -3447,6 +3447,15 @@ export interface paths {
                 };
                 /** @description Job not found */
                 404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Only scheduled or cancelled jobs can be deleted */
+                409: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -3822,6 +3831,15 @@ export interface paths {
                         "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
+                /** @description Invalid status transition */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
                 /** @description Internal server error */
                 500: {
                     headers: {
@@ -3880,7 +3898,7 @@ export interface paths {
                         "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.JobResponse"];
                     };
                 };
-                /** @description Invalid request or job cannot be completed */
+                /** @description Invalid request */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -3909,6 +3927,15 @@ export interface paths {
                 };
                 /** @description Job not found */
                 404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Job cannot be completed in its current status */
+                409: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -4003,6 +4030,15 @@ export interface paths {
                 };
                 /** @description Job not found */
                 404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Invalid status transition */
+                409: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -4279,6 +4315,15 @@ export interface paths {
                         "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
+                /** @description Invalid status transition */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
                 /** @description Internal server error */
                 500: {
                     headers: {
@@ -4330,7 +4375,7 @@ export interface paths {
                         "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.JobResponse"];
                     };
                 };
-                /** @description Invalid request or job cannot be started */
+                /** @description Invalid request */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -4359,6 +4404,15 @@ export interface paths {
                 };
                 /** @description Job not found */
                 404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Job cannot be started in its current status */
+                409: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -4498,7 +4552,7 @@ export interface paths {
                         "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.JobResponse"];
                     };
                 };
-                /** @description Invalid request or invalid transition */
+                /** @description Invalid request */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -4527,6 +4581,15 @@ export interface paths {
                 };
                 /** @description Job not found */
                 404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Invalid status transition */
+                409: {
                     headers: {
                         [name: string]: unknown;
                     };

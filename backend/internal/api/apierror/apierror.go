@@ -22,6 +22,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
 	"github.com/go-playground/validator/v10"
+	"gorm.io/gorm"
 
 	apperrors "github.com/javaknight1/servicepro/backend/internal/errors"
 	"github.com/javaknight1/servicepro/backend/internal/models"
@@ -112,6 +113,7 @@ func humanize(code string) string {
 
 // Respond maps err to the envelope:
 //   - a domain error (internal/errors) -> its status, code, message, fields;
+//   - gorm.ErrRecordNotFound -> 404 not_found;
 //   - validation / malformed JSON errors -> 400;
 //   - anything else is an infrastructure failure -> logged with the request
 //     ID, answered with a generic 500 (internalMessage, or a default if "").
@@ -121,6 +123,10 @@ func Respond(c *gin.Context, err error, internalMessage string) {
 	}
 	if de, ok := apperrors.As(err); ok {
 		WriteResponse(c, de.Status, models.ErrorResponse{Error: de.Code, Message: de.Message, Fields: de.Fields})
+		return
+	}
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		Write(c, http.StatusNotFound, apperrors.CodeNotFound, apperrors.MessageForStatus(http.StatusNotFound))
 		return
 	}
 	if writeRequestShapeError(c, err) {
