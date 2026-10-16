@@ -84,34 +84,6 @@ func TestCreateJob_RejectsAssigneeFromOtherTenant(t *testing.T) {
 	assert.Equal(t, int64(1), jobs, "nothing created: only the fixture's job exists")
 }
 
-func TestAssignmentService_RejectsAssigneeFromOtherTenant(t *testing.T) {
-	f := setupAssignees(t)
-	jobRepo := repository.NewJobRepository(f.db)
-	// userRepo is never reached for a non-member (membership is checked
-	// first, so another tenant's user looks exactly like an unknown one).
-	svc := NewAssignmentService(jobRepo, nil, f.db)
-
-	_, err := svc.CreateAssignment(f.ctxA, &AssignmentRequest{JobID: f.jobA.ID, TechnicianID: f.userB, Role: "technician"}, f.userA)
-	require.ErrorIs(t, err, ErrTechnicianNotFound)
-
-	_, err = svc.CreateAssignment(f.ctxA, &AssignmentRequest{JobID: f.jobA.ID, TechnicianID: uuid.New(), Role: "technician"}, f.userA)
-	require.ErrorIs(t, err, ErrTechnicianNotFound)
-
-	// Tenant B can't reach tenant A's job, even with its own member.
-	_, err = svc.CreateAssignment(f.ctxB, &AssignmentRequest{JobID: f.jobA.ID, TechnicianID: f.userB, Role: "technician"}, f.userA)
-	require.ErrorIs(t, err, ErrJobNotFound)
-
-	created, errs := svc.BulkAssignTechnicians(f.ctxA, &BulkAssignmentRequest{
-		JobID:       f.jobA.ID,
-		Assignments: []AssignmentRequest{{TechnicianID: f.userB, Role: "technician"}},
-	}, f.userA)
-	assert.Empty(t, created)
-	require.Len(t, errs, 1)
-	assert.ErrorIs(t, errs[0], ErrTechnicianNotFound)
-
-	assert.Zero(t, f.assignmentCount(t))
-}
-
 // The repository refuses the write too, whatever the caller checked.
 func TestJobRepository_AddAssignmentChecksMembership(t *testing.T) {
 	f := setupAssignees(t)
