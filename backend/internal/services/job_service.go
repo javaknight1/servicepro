@@ -276,9 +276,6 @@ func (s *JobService) UpdateJob(id uuid.UUID, req *models.UpdateJobRequest, userI
 	if req.Description != nil {
 		job.Description = *req.Description
 	}
-	if req.Status != nil {
-		job.Status = *req.Status
-	}
 	if req.Priority != nil {
 		job.Priority = *req.Priority
 	}
@@ -476,25 +473,9 @@ func (s *JobService) StartJob(id uuid.UUID, userID uuid.UUID, userRole models.Us
 		return nil, ErrUnauthorized
 	}
 
-	// Validate can start
-	if err := s.validator.ValidateJobStart(job); err != nil {
+	if err := s.applyTransition(job, models.JobStatusInProgress, models.ReasonStartWork, nil, userID); err != nil {
 		return nil, err
 	}
-
-	previousStatus := job.Status
-
-	// Update status and set actual start time
-	nowEpoch := epoch.NowEpoch()
-	job.Status = models.JobStatusInProgress
-	job.ActualStartAt = &nowEpoch
-	job.UpdatedBy = &userID
-
-	if err := s.jobRepo.Update(job); err != nil {
-		return nil, err
-	}
-
-	// Record status transition
-	_ = s.recordStatusTransition(id, previousStatus, models.JobStatusInProgress, string(models.ReasonStartWork), nil, userID)
 
 	updatedJob, err := s.jobRepo.GetByID(id)
 	if err != nil {
@@ -520,30 +501,14 @@ func (s *JobService) CompleteJob(id uuid.UUID, completionNotes string, userID uu
 		return nil, ErrUnauthorized
 	}
 
-	// Validate can complete
-	if err := s.validator.ValidateJobCompletion(job); err != nil {
-		return nil, err
-	}
-
-	previousStatus := job.Status
-
-	// Update status and set actual end time
-	nowEpoch := epoch.NowEpoch()
-	job.Status = models.JobStatusCompleted
-	job.ActualEndAt = &nowEpoch
-	job.CompletionNotes = &completionNotes
-	job.UpdatedBy = &userID
-
-	if err := s.jobRepo.Update(job); err != nil {
-		return nil, err
-	}
-
-	// Record status transition
 	var notes *string
 	if completionNotes != "" {
 		notes = &completionNotes
+		job.CompletionNotes = &completionNotes
 	}
-	_ = s.recordStatusTransition(id, previousStatus, models.JobStatusCompleted, string(models.ReasonCompleteWork), notes, userID)
+	if err := s.applyTransition(job, models.JobStatusCompleted, models.ReasonCompleteWork, notes, userID); err != nil {
+		return nil, err
+	}
 
 	updatedJob, err := s.jobRepo.GetByID(id)
 	if err != nil {
@@ -569,35 +534,19 @@ func (s *JobService) CancelJob(id uuid.UUID, reason string, userID uuid.UUID, us
 		return nil, ErrUnauthorized
 	}
 
-	// Validate status transition
-	if err := s.validator.ValidateStatusTransition(job.Status, models.JobStatusCancelled); err != nil {
-		return nil, err
-	}
-
-	previousStatus := job.Status
-
-	// Update status and add cancellation note
-	job.Status = models.JobStatusCancelled
-	if reason != "" {
-		notes := ""
-		if job.InternalNotes != nil {
-			notes = *job.InternalNotes
-		}
-		notes = notes + "\n\nCancellation Reason: " + reason
-		job.InternalNotes = &notes
-	}
-	job.UpdatedBy = &userID
-
-	if err := s.jobRepo.Update(job); err != nil {
-		return nil, err
-	}
-
-	// Record status transition
 	var notes *string
 	if reason != "" {
 		notes = &reason
+		internal := ""
+		if job.InternalNotes != nil {
+			internal = *job.InternalNotes
+		}
+		internal = internal + "\n\nCancellation Reason: " + reason
+		job.InternalNotes = &internal
 	}
-	_ = s.recordStatusTransition(id, previousStatus, models.JobStatusCancelled, string(models.ReasonCancellation), notes, userID)
+	if err := s.applyTransition(job, models.JobStatusCancelled, models.ReasonCancellation, notes, userID); err != nil {
+		return nil, err
+	}
 
 	updatedJob, err := s.jobRepo.GetByID(id)
 	if err != nil {
@@ -623,35 +572,19 @@ func (s *JobService) PutOnHold(id uuid.UUID, reason string, userID uuid.UUID, us
 		return nil, ErrUnauthorized
 	}
 
-	// Validate status transition
-	if err := s.validator.ValidateStatusTransition(job.Status, models.JobStatusOnHold); err != nil {
-		return nil, err
-	}
-
-	previousStatus := job.Status
-
-	// Update status and add reason
-	job.Status = models.JobStatusOnHold
-	if reason != "" {
-		notes := ""
-		if job.InternalNotes != nil {
-			notes = *job.InternalNotes
-		}
-		notes = notes + "\n\nOn Hold Reason: " + reason
-		job.InternalNotes = &notes
-	}
-	job.UpdatedBy = &userID
-
-	if err := s.jobRepo.Update(job); err != nil {
-		return nil, err
-	}
-
-	// Record status transition
 	var notes *string
 	if reason != "" {
 		notes = &reason
+		internal := ""
+		if job.InternalNotes != nil {
+			internal = *job.InternalNotes
+		}
+		internal = internal + "\n\nOn Hold Reason: " + reason
+		job.InternalNotes = &internal
 	}
-	_ = s.recordStatusTransition(id, previousStatus, models.JobStatusOnHold, string(models.ReasonTechnicalIssue), notes, userID)
+	if err := s.applyTransition(job, models.JobStatusOnHold, models.ReasonTechnicalIssue, notes, userID); err != nil {
+		return nil, err
+	}
 
 	updatedJob, err := s.jobRepo.GetByID(id)
 	if err != nil {
@@ -682,23 +615,9 @@ func (s *JobService) ResumeJob(id uuid.UUID, userID uuid.UUID, userRole models.U
 		return nil, errors.New("can only resume jobs that are on hold")
 	}
 
-	// Validate status transition
-	if err := s.validator.ValidateStatusTransition(job.Status, models.JobStatusInProgress); err != nil {
+	if err := s.applyTransition(job, models.JobStatusInProgress, models.ReasonResume, nil, userID); err != nil {
 		return nil, err
 	}
-
-	previousStatus := job.Status
-
-	// Update status
-	job.Status = models.JobStatusInProgress
-	job.UpdatedBy = &userID
-
-	if err := s.jobRepo.Update(job); err != nil {
-		return nil, err
-	}
-
-	// Record status transition
-	_ = s.recordStatusTransition(id, previousStatus, models.JobStatusInProgress, string(models.ReasonResume), nil, userID)
 
 	updatedJob, err := s.jobRepo.GetByID(id)
 	if err != nil {
@@ -920,6 +839,38 @@ func (s *JobService) recordStatusTransition(jobID uuid.UUID, fromStatus, toStatu
 	return s.jobRepo.CreateStatusTransition(transition)
 }
 
+// applyTransition is the only way a job's status changes (T124 / audit
+// 7.H7): it validates the move against the job state machine in
+// models/job_status.go (models.ValidateTransition — the one source of truth;
+// the old duplicate rules in pkg/validators are gone), stamps
+// ActualStartAt/ActualEndAt, saves the job and records the history row.
+func (s *JobService) applyTransition(job *models.Job, to models.JobStatus, reason models.StatusTransitionReason, notes *string, userID uuid.UUID) error {
+	if err := models.ValidateTransition(job, to, notes); err != nil {
+		return err
+	}
+	from := job.Status
+	job.Status = to
+	job.UpdatedBy = &userID
+
+	now := epoch.NowEpoch()
+	switch to {
+	case models.JobStatusInProgress:
+		if job.ActualStartAt == nil {
+			job.ActualStartAt = &now
+		}
+	case models.JobStatusCompleted:
+		if job.ActualStartAt == nil {
+			job.ActualStartAt = &now
+		}
+		job.ActualEndAt = &now
+	}
+
+	if err := s.jobRepo.Update(job); err != nil {
+		return err
+	}
+	return s.recordStatusTransition(job.ID, from, to, string(reason), notes, userID)
+}
+
 // TransitionStatus transitions a job to a new status
 func (s *JobService) TransitionStatus(jobID uuid.UUID, toStatus models.JobStatus, reason string, notes *string, userID uuid.UUID, userRole models.UserRole) (*models.JobResponse, error) {
 	job, err := s.jobRepo.GetByID(jobID)
@@ -935,41 +886,17 @@ func (s *JobService) TransitionStatus(jobID uuid.UUID, toStatus models.JobStatus
 		return nil, ErrUnauthorized
 	}
 
-	// Validate the transition
-	if err := models.ValidateTransition(job, toStatus, notes); err != nil {
-		return nil, err
-	}
-
 	// No-op if same status
 	if job.Status == toStatus {
+		if err := models.ValidateTransition(job, toStatus, notes); err != nil {
+			return nil, err
+		}
 		response := job.ToResponse()
 		return &response, nil
 	}
 
-	previousStatus := job.Status
-
-	// Update the status
-	job.Status = toStatus
-	job.UpdatedBy = &userID
-
-	// Update timestamps based on status
-	nowEpoch := epoch.NowEpoch()
-	switch toStatus {
-	case models.JobStatusInProgress:
-		if job.ActualStartAt == nil {
-			job.ActualStartAt = &nowEpoch
-		}
-	case models.JobStatusCompleted:
-		job.ActualEndAt = &nowEpoch
-	}
-
-	if err := s.jobRepo.Update(job); err != nil {
+	if err := s.applyTransition(job, toStatus, models.StatusTransitionReason(reason), notes, userID); err != nil {
 		return nil, err
-	}
-
-	// Record the transition
-	if err := s.recordStatusTransition(jobID, previousStatus, toStatus, reason, notes, userID); err != nil {
-		// Log but don't fail the transition
 	}
 
 	// Reload with relationships

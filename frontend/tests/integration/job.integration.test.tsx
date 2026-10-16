@@ -534,6 +534,45 @@ describe('Job Lifecycle Integration', () => {
       });
     });
 
+    it('should not send status when editing a job (status changes via actions)', async () => {
+      vi.mocked(jobService.getJob).mockResolvedValue({
+        ...mockJobs[0],
+        scheduled_start_at: undefined,
+      } as unknown as Awaited<ReturnType<typeof jobService.getJob>>);
+      vi.mocked(jobService.updateJob).mockResolvedValue(
+        mockJobs[0] as unknown as Awaited<
+          ReturnType<typeof jobService.updateJob>
+        >
+      );
+
+      const { JobDetailPage } =
+        await import('../../src/pages/Jobs/JobDetailPage');
+
+      render(
+        <MemoryRouter initialEntries={['/jobs/job-1']}>
+          <Routes>
+            <Route path="/jobs/:id" element={<JobDetailPage />} />
+            <Route path="/jobs" element={<div>Jobs</div>} />
+          </Routes>
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(/title/i)).toHaveValue(mockJobs[0].title);
+      });
+      // The free-form status dropdown is gone (T124).
+      expect(screen.queryByLabelText(/^status$/i)).toBeNull();
+      await screen.findByRole('option', { name: /John Doe/i });
+
+      fireEvent.submit(screen.getByLabelText(/title/i).closest('form')!);
+
+      await waitFor(() => {
+        expect(jobService.updateJob).toHaveBeenCalled();
+      });
+      const payload = vi.mocked(jobService.updateJob).mock.calls[0][1];
+      expect(payload).not.toHaveProperty('status');
+    });
+
     it('should show validation errors for missing required fields', async () => {
       const user = userEvent.setup({ delay: null });
       const { JobDetailPage } =
