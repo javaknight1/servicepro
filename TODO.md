@@ -62,13 +62,13 @@
 
 ## v1 Launch Gate
 
-The minimum subset that must be done before real (paying) customers: **41 tasks, ~323h**. Everything else is post-launch growth or depth. The invite-gated preview (T205) needs only Phase 1 plus T106/T204/T206; the gate below is for opening to paying customers. Phase 4's gating subset is the parts of the stack that touch auth, tenancy, email and storage; the chi and pgx ports are not gating.
+The minimum subset that must be done before real (paying) customers: **40 tasks, ~321h**. Everything else is post-launch growth or depth. The invite-gated preview (T205) needs only Phase 1 plus T106/T204/T206; the gate below is for opening to paying customers. Phase 4's gating subset is the parts of the stack that touch auth, tenancy, email and storage; the chi and pgx ports are not gating.
 
 | Phase                                                | Gating tasks                                                                                                                                                                                                       |
 |------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Phase 1 — Security Remediation                       | **All** — ~~T102~~, ~~T103~~, ~~T104~~, ~~T105~~, ~~T106~~, ~~T107~~, ~~T108~~, ~~T109~~, ~~T110~~, ~~T111~~, ~~T112~~, ~~T113~~, ~~T114~~, ~~T115~~, ~~T116~~, ~~T117~~                                           |
 | Phase 2 — Correctness & Cleanup                      | ~~T118~~, ~~T119~~, ~~T120~~, ~~T121~~, ~~T122~~, ~~T123~~, ~~T124~~, ~~T126~~, ~~T130~~, ~~T131~~, ~~T132~~, ~~T133~~, ~~T136~~, ~~T224~~, ~~T225~~, ~~T227~~, ~~T232~~, ~~T234~~, ~~T238~~, ~~T239~~, T241, T243 |
-| Phase 3 — Platform & Delivery                        | ~~T139~~, ~~T140~~, ~~T141~~, ~~T142~~, ~~T143~~, ~~T144~~, ~~T145~~, ~~T146~~, ~~T150~~, ~~T151~~, T245                                                                                                           |
+| Phase 3 — Platform & Delivery                        | ~~T139~~, ~~T140~~, ~~T141~~, ~~T142~~, ~~T143~~, ~~T144~~, ~~T145~~, ~~T146~~, ~~T150~~, ~~T151~~, ~~T245~~                                                                                                       |
 | Phase 4 — Stack Convergence (LL parity; incremental) | T153, T154, T158, T159, T160                                                                                                                                                                                       |
 | Phase 5 — Core Workflow & Quoting                    | T028, T029, T030, T035, T167                                                                                                                                                                                       |
 | Phase 6 — Payments to the Business                   | T169, T170, T061, T063                                                                                                                                                                                             |
@@ -197,12 +197,12 @@ The minimum subset that must be done before real (paying) customers: **41 tasks,
 | ~~T237~~ | ~~2~~  | ~~Backend~~    | ~~3~~  | ~~Tax rates API + tax-rate picker; terms on invoice create; keep line discounts on edit~~             |
 | ~~T238~~ | ~~2~~  | ~~Security~~   | ~~1~~  | ~~Job assignment checks the technician belongs to the tenant~~                                        |
 | ~~T239~~ | ~~2~~  | ~~Security~~   | ~~1~~  | ~~Access log drops query strings~~                                                                    |
+| ~~T245~~ | ~~3~~  | ~~Testing~~    | ~~2~~  | ~~Repair the Postgres repository tests so CI go-test is green~~                                       |
 | T241     | 2      | Bug            | 3      | CSV imports are queued but never processed                                                            |
 | T242     | 2      | Bug            | 1      | PDF header/footer files are deleted before wkhtmltopdf reads them                                     |
 | T243     | 2      | Security       | 1      | A/R aging CSV export: proper CSV writer + formula neutralisation                                      |
 | T244     | 2      | Bug            | 3      | Handle the discarded GORM .Error results                                                              |
 | T101     | 3      | Monitoring     | 2      | Upload source maps to Sentry for production builds                                                    |
-| T245     | 3      | Testing        | 2      | Repair the Postgres repository tests so CI go-test is green                                           |
 | T153     | 4      | Backend        | 24     | Repositories take ctx + tenantID; services stop taking *gorm.DB; transaction manager                  |
 | T154     | 4      | Security       | 12     | Postgres RLS backstop keyed on a per-transaction tenant GUC + isolation tests                         |
 | T155     | 4      | Backend        | 40     | Gin → chi                                                                                             |
@@ -510,7 +510,7 @@ Money flows that are wired but broken (payments don't update invoices, reminders
 
 ### Phase 3 — Platform & Delivery (T101, T139, T140, T141, T142, T143, T144, T145, T146, T147, T148, T149, T150, T151, T152, T245)
 
-Migrations, versioning, CI, the release pipeline and the edge setup — League Looper's delivery pattern applied to ServicePro. From `docs/audits/2026-10-16/infra.md`. Deploy jobs stay skipped until Phase 14 provisions GCP. **2 open tasks, ~4h.** 14 done.
+Migrations, versioning, CI, the release pipeline and the edge setup — League Looper's delivery pattern applied to ServicePro. From `docs/audits/2026-10-16/infra.md`. Deploy jobs stay skipped until Phase 14 provisions GCP. **1 open tasks, ~2h.** 15 done.
 
 - [x] T139 — golang-migrate baseline (000001), cmd/migrate, dev-only startup migrations ✓ (2026-10-16)
 - [x] T140 — /version endpoint and schema-aware readiness ✓ (2026-10-16)
@@ -526,8 +526,8 @@ Migrations, versioning, CI, the release pipeline and the edge setup — League L
 - [x] T150 — Cloudflare Workers static assets + /api edge proxy Worker + _headers ✓ (2026-10-16)
 - [x] T151 — Ops docs: Cloud Run setup, deploy/rollback, backups + nightly pg_dump → R2 workflow ✓ (2026-10-16)
 - [x] T152 — Commit generated OpenAPI and TS types for drift gating ✓ (2026-10-16)
+- [x] T245 — Repair the Postgres repository tests so CI go-test is green ✓ (2026-10-16)
 - [ ] T101 — Upload source maps to Sentry for production builds
-- [ ] T245 — Repair the Postgres repository tests so CI go-test is green
 
 #### T101 — Upload source maps to Sentry for production builds
 
@@ -540,20 +540,6 @@ Migrations, versioning, CI, the release pipeline and the edge setup — League L
 **Why we need it** — Minified stack traces make frontend errors from real users hard to act on.
 
 **Notes** — Old task (P2, Feb 2026). GlitchTip stays for local dev; production is Sentry SaaS. infra audit §5 CHANGE `vite.config.ts`.
-
----
-
-#### T245 — Repair the Postgres repository tests so CI go-test is green
-
-**Phase**: 3 · **Category**: Testing · **Hours**: 2 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T102
-
-**What it is** — The repository tests run against the migrated CI database and pass.
-
-**What it does** — `internal/repository/job_repository_test.go` (16 tests) and the customer bench predate T102: they create customers without a tenant (tenant_id NOT NULL, tenancy plugin requires a tenant in context) and with a phone that fails `validate_phone`. Create a tenant fixture, run every call with `tenancy.WithTenant` context, use valid fixtures, add a cross-tenant case. CI now migrates `TEST_DATABASE_URL` before `go test` (4e7e3c8), so these run for real.
-
-**Why we need it** — CI go-test is red until these pass, which blocks every merge gate.
-
-**Notes** — Found while repairing CI (2026-10-16): the tests used a hard-coded localhost DSN, so they always skipped locally and never ran against a real schema.
 
 ---
 
@@ -2964,3 +2950,4 @@ Dated history from the original "Completed Items" list:
 - **T237** — Tax rates API + tax-rate picker; terms on invoice create; keep line discounts on edit. Tenant-scoped tax rates API (`GET/POST/PUT/DELETE /api/v1/tax-rates`, own + global rows; global read-only 403, in-use delete 409) with `tax_rates.read` (all roles) / `tax_rates.manage` (super_admin, admin) via migration `000014`; `CreateInvoiceRequest.terms_and_conditions` (follow-up PUT removed); direct `tax_rate` on update clears `tax_rate_id`; `TaxRatePicker` on invoice (sends `tax_rate_id`) and quote forms; invoice form round-trips per-line discounts; Cypress selectors refreshed; cross-tenant + Postgres grant tests (98d7df6, 115dcb0, 4826dbe, 7db9374, 8072299, d1fc6b6). Tax-rate management screen → T235.
 - **T238** — Job assignment checks the technician belongs to the tenant. Every assignment path (create job with assignees, `POST /jobs/:id/assign`, `POST /assignments`, bulk) requires an active `tenant_users` membership in the job's tenant; unknown/inactive/other-tenant users get a typed 404 (`assignee_not_found` / `technician_not_found`); CreateJob checks before writing; repository backstop `IsActiveTenantMember`; cross-tenant tests (cef9489).
 - **T239** — Access log drops query strings. Access log logs the path plus sorted query KEYS only (`middleware.QueryKeys`); same for the unused request loggers, `AccessLogger` and the panic handler's Sentry extra; test asserts `?token=secret123` never reaches a log line (9cc9f5e).
+- **T245** — Repair the Postgres repository tests so CI go-test is green. Repository tests run in a seeded tenant against the migrated DB: shared fixture (`openTestDB` with the tenancy plugin, `createTestTenant`, `addMember`, cleanup), valid fixtures, exact counts, new cross-tenant and non-member assignment tests (18 pass); customer bench seeds its own tenant; CI migrates TEST_DATABASE_URL first and runs the Postgres race tests (4e7e3c8, ae193e0).
