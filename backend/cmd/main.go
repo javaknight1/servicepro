@@ -33,6 +33,7 @@ import (
 
 	"github.com/javaknight1/servicepro/backend/config"
 	"github.com/javaknight1/servicepro/backend/internal/api/routes"
+	"github.com/javaknight1/servicepro/backend/internal/health"
 	analyticsclient "github.com/javaknight1/servicepro/backend/pkg/clients/analytics"
 	emailclient "github.com/javaknight1/servicepro/backend/pkg/clients/email"
 	errortracking "github.com/javaknight1/servicepro/backend/pkg/clients/errortracking"
@@ -135,6 +136,15 @@ func main() {
 		}
 	}
 
+	// Compare the database schema with the migrations embedded in this build;
+	// /health/ready returns 503 while it is behind or dirty.
+	schemaMonitor := database.NewSchemaMonitor(cfg.Database.URL)
+	logging.Info(ctx, "[MIGRATE] Schema state", map[string]any{
+		"status":   schemaMonitor.State().Status,
+		"applied":  schemaMonitor.State().Applied,
+		"expected": schemaMonitor.State().Expected,
+	})
+
 	// Connect to Redis
 	redisClient, err := database.NewRedisClient(&cfg.Redis)
 	if err != nil {
@@ -202,7 +212,10 @@ func main() {
 	}
 
 	// Setup routes
-	routes.Setup(router, db, redisClient, emailClient, storageClient, smsClient, errorTrackingClient, metricsClient, analyticsClient, cfg)
+	routes.Setup(router, db, redisClient, emailClient, storageClient, smsClient, errorTrackingClient, metricsClient, analyticsClient, cfg, routes.PlatformOptions{
+		Schema:    schemaMonitor,
+		RedisMode: health.RedisModeConnected,
+	})
 
 	// Create HTTP server with timeouts
 	addr := fmt.Sprintf(":%s", cfg.Server.Port)

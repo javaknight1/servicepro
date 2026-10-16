@@ -28,8 +28,17 @@ import (
 	storageclient "github.com/javaknight1/servicepro/backend/pkg/clients/storage"
 )
 
+// PlatformOptions carries process-level state that routes report on but do
+// not own (computed in cmd/main.go at boot).
+type PlatformOptions struct {
+	// Schema reports migration state for /health/ready (nil skips the check).
+	Schema health.SchemaStateProvider
+	// RedisMode is one of the health.RedisMode* constants.
+	RedisMode string
+}
+
 // Setup configures all API routes
-func Setup(router *gin.Engine, db *gorm.DB, redisClient *redis.Client, email emailclient.Client, storage storageclient.Client, sms smsclient.Client, errorTracker errortracking.Client, metrics metricsclient.Client, analytics analyticsclient.Client, cfg *config.Config) {
+func Setup(router *gin.Engine, db *gorm.DB, redisClient *redis.Client, email emailclient.Client, storage storageclient.Client, sms smsclient.Client, errorTracker errortracking.Client, metrics metricsclient.Client, analytics analyticsclient.Client, cfg *config.Config, platform PlatformOptions) {
 	// Apply recovery middleware first to catch panics and send to error tracking
 	router.Use(middleware.RecoveryMiddleware(errorTracker))
 
@@ -47,8 +56,12 @@ func Setup(router *gin.Engine, db *gorm.DB, redisClient *redis.Client, email ema
 	v1Group := router.Group("/api/v1")
 	v1.Setup(v1Group, routeCfg)
 
+	// Build identity (root, unversioned: proxied by the edge Worker and used
+	// by deploy verification)
+	router.GET("/version", handlers.GetVersion)
+
 	// Setup health check system
-	setupHealthEndpoints(router, db, redisClient, cfg)
+	setupHealthEndpoints(router, db, redisClient, cfg, platform)
 
 	// Setup metrics endpoint for Prometheus scraping
 	setupMetricsEndpoint(router, metrics, cfg)
@@ -58,7 +71,7 @@ func Setup(router *gin.Engine, db *gorm.DB, redisClient *redis.Client, email ema
 }
 
 // setupHealthEndpoints configures health check endpoints with deep dependency checks
-func setupHealthEndpoints(router *gin.Engine, db *gorm.DB, redisClient *redis.Client, cfg *config.Config) {
+func setupHealthEndpoints(router *gin.Engine, db *gorm.DB, redisClient *redis.Client, cfg *config.Config, platform PlatformOptions) {
 	ctx := context.Background()
 
 	// Get the underlying sql.DB for health checks
@@ -69,9 +82,11 @@ func setupHealthEndpoints(router *gin.Engine, db *gorm.DB, redisClient *redis.Cl
 
 	// Setup health checker with configured checks
 	checker, runner, _, _ := health.Setup(health.SetupOptions{
-		Config: cfg,
-		DB:     sqlDB,
-		Redis:  redisClient,
+		Config:    cfg,
+		DB:        sqlDB,
+		Redis:     redisClient,
+		RedisMode: platform.RedisMode,
+		Schema:    platform.Schema,
 	})
 
 	// Start the background health check runner

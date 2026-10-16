@@ -35,13 +35,3 @@ func SetupWebhookRoutes(router *gin.RouterGroup, cfg *routeconfigs.RouteConfig) 
 		}
 	}
 }
-
-// SetupVersionRoutes configures version endpoint
-func SetupVersionRoutes(router *gin.RouterGroup, cfg *routeconfigs.RouteConfig) {
-	router.GET("/version", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"version": "1.0.0",
-			"api":     "v1",
-		})
-	})
-}
