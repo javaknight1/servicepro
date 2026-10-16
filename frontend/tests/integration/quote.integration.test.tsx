@@ -596,6 +596,56 @@ describe('Quote Workflow Integration', () => {
     });
   });
 
+  describe('Quote List search and sort (T228)', () => {
+    it('sends the typed search as q (debounced) and resets to page 1', async () => {
+      const user = userEvent.setup({ delay: null });
+      const { QuotesPage } = await import('../../src/pages/Quotes/QuotesPage');
+
+      render(
+        <MemoryRouter initialEntries={['/quotes']}>
+          <QuotesPage />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(quoteService.getQuotes).toHaveBeenCalledTimes(1);
+      });
+
+      await user.type(screen.getByPlaceholderText(/search quotes/i), ' acme ');
+
+      await waitFor(() => {
+        expect(quoteService.getQuotes).toHaveBeenLastCalledWith(
+          expect.objectContaining({ q: 'acme', page: 1 })
+        );
+      });
+      // One request for the whole burst of keystrokes, not one per key.
+      expect(quoteService.getQuotes).toHaveBeenCalledTimes(2);
+    });
+
+    it('sends sort_by/sort_order when a sortable column is clicked', async () => {
+      const user = userEvent.setup({ delay: null });
+      const { QuotesPage } = await import('../../src/pages/Quotes/QuotesPage');
+
+      render(
+        <MemoryRouter initialEntries={['/quotes']}>
+          <QuotesPage />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('QT-001')).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByText('Total'));
+
+      await waitFor(() => {
+        expect(quoteService.getQuotes).toHaveBeenLastCalledWith(
+          expect.objectContaining({ sort_by: 'total' })
+        );
+      });
+    });
+  });
+
   describe('Quote Filtering', () => {
     it('should filter quotes by status', async () => {
       const user = userEvent.setup({ delay: null });
