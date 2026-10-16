@@ -57,7 +57,7 @@ type TaxRate struct {
 	TaxType       TaxType         `gorm:"type:tax_type;not null;default:sales_tax" json:"tax_type"`
 	Region        string          `gorm:"type:varchar(100)" json:"region,omitempty"`
 	IsCompound    bool            `gorm:"default:false" json:"is_compound"`
-	IsActive      bool            `gorm:"default:true" json:"is_active"`
+	IsActive      bool            `json:"is_active"` // no default:true tag (it turns false into true on insert)
 	EffectiveDate *time.Time      `gorm:"type:date" json:"effective_date,omitempty"`
 	ExpiryDate    *time.Time      `gorm:"type:date" json:"expiry_date,omitempty"`
 	CreatedAt     time.Time       `gorm:"autoCreateTime" json:"created_at"`
@@ -83,7 +83,7 @@ type PaymentTerm struct {
 	LateFeeAmount      decimal.Decimal `gorm:"type:decimal(10,2)" json:"late_fee_amount,omitempty"`
 	GracePeriodDays    int             `gorm:"default:0" json:"grace_period_days"`
 	IsDefault          bool            `gorm:"default:false" json:"is_default"`
-	IsActive           bool            `gorm:"default:true" json:"is_active"`
+	IsActive           bool            `json:"is_active"` // no default:true tag (it turns false into true on insert)
 	CreatedAt          time.Time       `gorm:"autoCreateTime" json:"created_at"`
 	UpdatedAt          time.Time       `gorm:"autoUpdateTime" json:"updated_at"`
 }
@@ -209,7 +209,7 @@ type InvoiceLine struct {
 	// Calculations
 	DiscountPercentage decimal.Decimal `gorm:"type:decimal(5,2);default:0.00" json:"discount_percentage"`
 	DiscountAmount     decimal.Decimal `gorm:"type:decimal(12,2);default:0.00" json:"discount_amount"`
-	Taxable            bool            `gorm:"default:true" json:"taxable"`
+	Taxable            bool            `json:"taxable"` // no default tag: GORM would turn an explicit false into the DB default true (audit 7.M3)
 	TaxRate            decimal.Decimal `gorm:"type:decimal(10,4);default:0.00" json:"tax_rate"`
 	TaxAmount          decimal.Decimal `gorm:"type:decimal(12,2);default:0.00" json:"tax_amount"`
 

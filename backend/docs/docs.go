@@ -11523,6 +11523,7 @@ const docTemplate = `{
                     "type": "number"
                 },
                 "taxable": {
+                    "description": "no default tag: GORM would turn an explicit false into the DB default true (audit 7.M3)",
                     "type": "boolean"
                 },
                 "unit_of_measure": {
@@ -12482,6 +12483,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "is_active": {
+                    "description": "no default:true tag (it turns false into true on insert)",
                     "type": "boolean"
                 },
                 "is_default": {
@@ -13508,6 +13510,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "is_active": {
+                    "description": "no default:true tag (it turns false into true on insert)",
                     "type": "boolean"
                 },
                 "is_compound": {
@@ -14756,6 +14759,7 @@ const docTemplate = `{
                     "minimum": 0
                 },
                 "is_active": {
+                    "description": "default true",
                     "type": "boolean"
                 },
                 "is_default": {

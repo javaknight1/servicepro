@@ -100,7 +100,7 @@ type TenantUser struct {
 	InvitedBy  *uuid.UUID `json:"invited_by,omitempty" gorm:"type:uuid"`
 	InvitedAt  *time.Time `json:"invited_at,omitempty"`
 	AcceptedAt *time.Time `json:"accepted_at,omitempty"`
-	IsActive   bool       `json:"is_active" gorm:"default:true"`
+	IsActive   bool       `json:"is_active"` // no default:true tag (it turns false into true on insert)
 	CreatedAt  time.Time  `json:"created_at"`
 	UpdatedAt  time.Time  `json:"updated_at"`
 
