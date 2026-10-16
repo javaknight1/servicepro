@@ -175,7 +175,7 @@ func (i *Invoice) BeforeCreate(tx *gorm.DB) error {
 // - Token exists (not nil or empty)
 // - Token is not voided (PaymentTokenVoidedAt is nil)
 // - Token is not expired (PaymentTokenExpiresAt is in the future)
-// - Invoice status is "sent" (not paid, cancelled, or draft)
+// - Invoice accepts payments (sent, viewed, overdue, partially paid) and has a balance due
 func (i *Invoice) IsPaymentTokenValid() bool {
 	// Check if token exists
 	if i.PaymentToken == nil || *i.PaymentToken == "" {
@@ -192,12 +192,8 @@ func (i *Invoice) IsPaymentTokenValid() bool {
 		return false
 	}
 
-	// Check if invoice is in a payable status
-	if i.Status != InvoiceStatusSent {
-		return false
-	}
-
-	return true
+	// Check if invoice is in a payable status with a balance left
+	return i.Status.AcceptsPayments() && i.BalanceDue().IsPositive()
 }
 
 // InvoiceLine represents a line item in an invoice

@@ -7,6 +7,7 @@ import (
 	"github.com/javaknight1/servicepro/backend/internal/tenancy"
 
 	"github.com/google/uuid"
+	"github.com/shopspring/decimal"
 	"github.com/stripe/stripe-go/v76"
 
 	stripeClient "github.com/javaknight1/servicepro/backend/internal/services/stripe"
@@ -39,11 +40,14 @@ func (a *InvoicePaymentHandlerAdapter) HandleInvoicePaymentCompleted(
 		return fmt.Errorf("invalid invoice ID: %w", err)
 	}
 
-	// Convert cents to decimal
-	amountPaid := stripeClient.ConvertCentsToDecimal(amountPaidCents)
+	return a.applyCheckoutPayment(ctx, invoiceID, stripeClient.ConvertCentsToDecimal(amountPaidCents), checkoutSessionID, paymentIntentID)
+}
 
+// applyCheckoutPayment records a completed Checkout payment against the
+// invoice (idempotent per session; see InvoiceService.MarkInvoiceAsPaid).
+func (a *InvoicePaymentHandlerAdapter) applyCheckoutPayment(ctx context.Context, invoiceID uuid.UUID, amountPaid decimal.Decimal, checkoutSessionID, paymentIntentID string) error {
 	// Mark invoice as paid
-	_, err = a.invoiceService.MarkInvoiceAsPaid(ctx, invoiceID, amountPaid, checkoutSessionID, paymentIntentID)
+	_, err := a.invoiceService.MarkInvoiceAsPaid(ctx, invoiceID, amountPaid, checkoutSessionID, paymentIntentID)
 	if err != nil {
 		return fmt.Errorf("failed to mark invoice as paid: %w", err)
 	}
@@ -108,8 +112,13 @@ func (a *InvoicePaymentHandlerAdapter) CreateCheckoutCompletedHandler() stripeCl
 
 		logging.Info(ctx, "[INVOICE-PAYMENT-HANDLER] Processing invoice payment", map[string]any{"invoice_id": invoiceIDStr, "session_id": session.ID, "amount": session.AmountTotal})
 
-		// Mark invoice as paid
-		if err := a.HandleInvoicePaymentCompleted(ctx, invoiceIDStr, session.AmountTotal, session.ID, session.PaymentIntentID); err != nil {
+		invoiceID, err := uuid.Parse(invoiceIDStr)
+		if err != nil {
+			return fmt.Errorf("invalid invoice ID: %w", err)
+		}
+		// Stripe reports the amount in the session currency's minor units.
+		amount := stripeClient.FromMinorUnits(session.AmountTotal, session.Currency)
+		if err := a.applyCheckoutPayment(ctx, invoiceID, amount, session.ID, session.PaymentIntentID); err != nil {
 			return fmt.Errorf("failed to handle invoice payment: %w", err)
 		}
 

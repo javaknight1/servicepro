@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
@@ -72,38 +73,19 @@ type CheckoutSessionResult struct {
 	TotalAmount decimal.Decimal
 }
 
-// CreateCheckoutSessionForInvoice creates a Stripe Checkout session for an invoice payment
+// CreateCheckoutSessionForInvoice creates a Stripe Checkout session that
+// charges exactly the invoice's balance due (T119 / audit 7.C2).
 func (s *InvoicePaymentService) CreateCheckoutSessionForInvoice(ctx context.Context, token string) (*CheckoutSessionResult, error) {
-	// Validate the payment token and get the invoice
+	// Validate the payment token and get the invoice (payable statuses only,
+	// with a positive balance).
 	invoice, err := s.invoiceService.ValidatePaymentToken(ctx, token)
 	if err != nil {
 		return nil, err
 	}
 
-	// Build line items from invoice lines
-	lineItems := s.buildLineItems(invoice)
-
-	// Build checkout session params
-	params := &stripe.CheckoutSessionParams{
-		Mode:       stripe.String(string(stripe.CheckoutSessionModePayment)),
-		SuccessURL: stripe.String(fmt.Sprintf("%s?session_id={CHECKOUT_SESSION_ID}", s.successURL)),
-		CancelURL:  stripe.String(s.cancelURL),
-		LineItems:  lineItems,
-		Metadata: map[string]string{
-			"invoice_id":   invoice.ID.String(),
-			"payment_type": "invoice",
-		},
-		PaymentIntentData: &stripe.CheckoutSessionPaymentIntentDataParams{
-			Metadata: map[string]string{
-				"invoice_id":   invoice.ID.String(),
-				"payment_type": "invoice",
-			},
-		},
-	}
-
-	// Add customer email if available
-	if invoice.Customer != nil && invoice.Customer.Email != "" {
-		params.CustomerEmail = stripe.String(invoice.Customer.Email)
+	params, balance := s.buildCheckoutParams(invoice, invoiceCurrency(invoice), time.Now())
+	if params == nil {
+		return nil, ErrInvoiceNotPayable
 	}
 
 	// Create the checkout session
@@ -119,54 +101,63 @@ func (s *InvoicePaymentService) CreateCheckoutSessionForInvoice(ctx context.Cont
 		SessionID:   sess.ID,
 		URL:         sess.URL,
 		InvoiceID:   invoice.ID,
-		TotalAmount: invoice.TotalAmount,
+		TotalAmount: balance,
 	}, nil
 }
 
-// buildLineItems converts invoice lines to Stripe checkout line items
-func (s *InvoicePaymentService) buildLineItems(invoice *models.Invoice) []*stripe.CheckoutSessionLineItemParams {
-	lineItems := make([]*stripe.CheckoutSessionLineItemParams, 0, len(invoice.Lines)+1)
+// invoiceCurrency is the ISO currency invoices are charged in. Today every
+// tenant bills in USD; T127 makes this the tenant's currency setting.
+func invoiceCurrency(_ *models.Invoice) string {
+	return "usd"
+}
 
-	for _, line := range invoice.Lines {
-		// Calculate unit amount in cents
-		unitAmount := stripeClient.ConvertDecimalToCents(line.UnitPrice)
-		quantity := line.Quantity.IntPart()
-		if quantity <= 0 {
-			quantity = 1
-		}
-
-		lineItem := &stripe.CheckoutSessionLineItemParams{
-			PriceData: &stripe.CheckoutSessionLineItemPriceDataParams{
-				Currency: stripe.String("usd"),
-				ProductData: &stripe.CheckoutSessionLineItemPriceDataProductDataParams{
-					Name:        stripe.String(line.Description),
-					Description: stripe.String(fmt.Sprintf("Invoice: %s", invoice.InvoiceNumber)),
-				},
-				UnitAmount: stripe.Int64(unitAmount),
-			},
-			Quantity: stripe.Int64(quantity),
-		}
-		lineItems = append(lineItems, lineItem)
+// buildCheckoutParams builds a Checkout session with ONE line item for the
+// balance due (total_amount - amount_paid), in the currency's minor units.
+// Per-line items were wrong: fractional quantities were truncated, line and
+// invoice discounts and earlier payments were ignored. It returns nil when
+// nothing is owed.
+//
+// The idempotency key covers the invoice, the amount and the hour, so a
+// double-click or client retry reuses one session instead of creating
+// several, while a new payment link after a partial payment (different
+// amount) or a later visit gets a fresh session.
+func (s *InvoicePaymentService) buildCheckoutParams(invoice *models.Invoice, currency string, now time.Time) (*stripe.CheckoutSessionParams, decimal.Decimal) {
+	balance := invoice.BalanceDue()
+	units := stripeClient.ToMinorUnits(balance, currency)
+	if units <= 0 {
+		return nil, balance
 	}
 
-	// Add tax as a separate line item if applicable
-	if invoice.TaxAmount.GreaterThan(decimal.Zero) {
-		taxAmount := stripeClient.ConvertDecimalToCents(invoice.TaxAmount)
-		taxLineItem := &stripe.CheckoutSessionLineItemParams{
+	metadata := map[string]string{
+		"invoice_id":   invoice.ID.String(),
+		"payment_type": "invoice",
+	}
+	params := &stripe.CheckoutSessionParams{
+		Mode:       stripe.String(string(stripe.CheckoutSessionModePayment)),
+		SuccessURL: stripe.String(fmt.Sprintf("%s?session_id={CHECKOUT_SESSION_ID}", s.successURL)),
+		CancelURL:  stripe.String(s.cancelURL),
+		LineItems: []*stripe.CheckoutSessionLineItemParams{{
 			PriceData: &stripe.CheckoutSessionLineItemPriceDataParams{
-				Currency: stripe.String("usd"),
+				Currency: stripe.String(currency),
 				ProductData: &stripe.CheckoutSessionLineItemPriceDataProductDataParams{
-					Name:        stripe.String("Tax"),
-					Description: stripe.String(fmt.Sprintf("Tax for Invoice: %s", invoice.InvoiceNumber)),
+					Name:        stripe.String(fmt.Sprintf("Invoice %s", invoice.InvoiceNumber)),
+					Description: stripe.String("Balance due"),
 				},
-				UnitAmount: stripe.Int64(taxAmount),
+				UnitAmount: stripe.Int64(units),
 			},
 			Quantity: stripe.Int64(1),
-		}
-		lineItems = append(lineItems, taxLineItem)
+		}},
+		Metadata: metadata,
+		PaymentIntentData: &stripe.CheckoutSessionPaymentIntentDataParams{
+			Metadata: metadata,
+		},
 	}
-
-	return lineItems
+	if invoice.Customer != nil && invoice.Customer.Email != "" {
+		params.CustomerEmail = stripe.String(invoice.Customer.Email)
+	}
+	params.SetIdempotencyKey(fmt.Sprintf("invoice-checkout:%s:%s:%d:%s",
+		invoice.ID, currency, units, now.UTC().Format("2006010215")))
+	return params, balance
 }
 
 // GetInvoiceByToken retrieves an invoice by payment token for display purposes
