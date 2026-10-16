@@ -50,6 +50,8 @@ export interface Invoice {
   lines: InvoiceLineItem[];
   /** Payments recorded against the invoice (manual and Stripe). */
   payments?: InvoicePayment[];
+  /** Money returned to the customer (manual and Stripe). */
+  refunds?: InvoiceRefund[];
   created_at: string;
   updated_at: string;
 }
@@ -94,6 +96,27 @@ export interface InvoiceStats {
   overdue_invoices: number;
   total_outstanding: number;
   total_revenue: number;
+}
+
+/** A refund on an invoice. Amounts are API decimals (strings). */
+export interface InvoiceRefund {
+  id: string;
+  invoice_id: string;
+  amount: string | number;
+  refund_date: string;
+  method?: string;
+  reason?: string;
+  stripe_charge_id?: string;
+  created_at: string;
+}
+
+/** Body of POST /invoices/{id}/refunds (money returned outside Stripe). */
+export interface RefundRequest {
+  amount: number;
+  method?: string;
+  reason?: string;
+  /** RFC 3339; the API defaults to now. */
+  refund_date?: string;
 }
 
 /** Body of POST /invoices/{id}/payments (a manually recorded payment). */
@@ -179,6 +202,22 @@ class InvoiceService {
     const response = await api.post<InvoicePayment>(
       `${this.basePath}/${id}/payments`,
       payment
+    );
+    return response.data;
+  }
+
+  /**
+   * Record money returned to the customer (needs payments.refund). 400 =
+   * more than was paid or nothing paid; a refund to zero marks the invoice
+   * refunded. Stripe refunds arrive by webhook and need no call.
+   */
+  async recordRefund(
+    id: string,
+    refund: RefundRequest
+  ): Promise<InvoiceRefund> {
+    const response = await api.post<InvoiceRefund>(
+      `${this.basePath}/${id}/refunds`,
+      refund
     );
     return response.data;
   }

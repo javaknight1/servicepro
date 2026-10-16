@@ -22,18 +22,19 @@ function formatDate(value?: string): string {
 interface InvoicePaymentHistoryProps {
   invoice: Pick<
     Invoice,
-    'total_amount' | 'amount_paid' | 'amount_due' | 'payments'
+    'total_amount' | 'amount_paid' | 'amount_due' | 'payments' | 'refunds'
   >;
   /** Action buttons (record payment, refund, cancel) shown in the header. */
   actions?: ReactNode;
 }
 
-/** Paid / balance summary and the list of payments on an invoice. */
+/** Paid / balance summary and the payments and refunds on an invoice. */
 export function InvoicePaymentHistory({
   invoice,
   actions,
 }: InvoicePaymentHistoryProps) {
   const payments = invoice.payments ?? [];
+  const refunds = invoice.refunds ?? [];
 
   return (
     <div className="bg-white rounded-lg border border-neutral-200 p-6">
@@ -109,6 +110,51 @@ export function InvoicePaymentHistory({
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+      {refunds.length > 0 && (
+        <div className="mt-6">
+          <h3 className="text-sm font-semibold text-neutral-900 mb-2">
+            Refunds
+          </h3>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-neutral-200">
+                  <th className="text-left py-2 px-3 font-medium text-neutral-600">
+                    Date
+                  </th>
+                  <th className="text-left py-2 px-3 font-medium text-neutral-600">
+                    Method
+                  </th>
+                  <th className="text-left py-2 px-3 font-medium text-neutral-600">
+                    Reason
+                  </th>
+                  <th className="text-right py-2 px-3 font-medium text-neutral-600">
+                    Amount
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {refunds.map((refund) => (
+                  <tr key={refund.id} className="border-b border-neutral-100">
+                    <td className="py-2 px-3">
+                      {formatDate(refund.refund_date)}
+                    </td>
+                    <td className="py-2 px-3 capitalize">
+                      {methodLabel(refund.method, !!refund.stripe_charge_id)}
+                    </td>
+                    <td className="py-2 px-3 text-neutral-600">
+                      {refund.reason || '-'}
+                    </td>
+                    <td className="py-2 px-3 text-right font-medium">
+                      -{formatDollars(refund.amount)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>

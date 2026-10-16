@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { DashboardLayout } from '@components/layout';
-import { Button, Badge } from '@components/shared';
+import { Button, Badge, getStatusBadgeVariant } from '@components/shared';
 import {
   invoiceService,
   Invoice,
@@ -16,7 +16,11 @@ import {
   CancelInvoiceModal,
   InvoicePaymentHistory,
   RecordPaymentModal,
+  RefundModal,
 } from '@components/invoices';
+import { getInvoiceStatusLabel } from '@app-types';
+import { useTenantStore } from '@store';
+import { useTenantPermissions } from '@/utils/tenantPermissions';
 import {
   formatDollars,
   lineTotal,
@@ -42,6 +46,7 @@ import {
   Bell,
   DollarSign,
   Ban,
+  Undo2,
 } from 'lucide-react';
 
 interface InvoiceFormData {
@@ -107,6 +112,9 @@ export function InvoiceDetailPage() {
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [showRefundModal, setShowRefundModal] = useState(false);
+  const { currentTenant } = useTenantStore();
+  const { can } = useTenantPermissions(currentTenant);
 
   const loadCustomers = async () => {
     setIsLoadingCustomers(true);
@@ -414,6 +422,11 @@ export function InvoiceDetailPage() {
     if (id) loadInvoice(id);
   };
 
+  const handleRefunded = () => {
+    setShowRefundModal(false);
+    if (id) loadInvoice(id);
+  };
+
   const handleInvoiceCancelled = () => {
     setShowCancelModal(false);
     if (id) loadInvoice(id);
@@ -437,6 +450,8 @@ export function InvoiceDetailPage() {
       InvoiceStatus.VIEWED,
       InvoiceStatus.OVERDUE,
     ].includes(invoiceStatus) && amountPaid === 0;
+  // The API refunds up to the amount paid; payments.refund is checked there too.
+  const canRefund = can('payments.refund') && amountPaid > 0;
 
   // Update customer email when customer selection changes
   const handleCustomerChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -447,26 +462,6 @@ export function InvoiceDetailPage() {
       setCustomerEmail(selectedCustomer.email);
     } else {
       setCustomerEmail('');
-    }
-  };
-
-  const getStatusBadgeVariant = (
-    status: InvoiceStatus
-  ): 'success' | 'warning' | 'error' | 'info' | 'neutral' => {
-    switch (status) {
-      case InvoiceStatus.PAID:
-        return 'success';
-      case InvoiceStatus.SENT:
-      case InvoiceStatus.VIEWED:
-        return 'info';
-      case InvoiceStatus.OVERDUE:
-        return 'error';
-      case InvoiceStatus.PARTIALLY_PAID:
-        return 'warning';
-      case InvoiceStatus.CANCELLED:
-        return 'neutral';
-      default:
-        return 'neutral';
     }
   };
 
@@ -498,8 +493,7 @@ export function InvoiceDetailPage() {
             </h1>
             {!isNew && (
               <Badge variant={getStatusBadgeVariant(invoiceStatus)}>
-                {invoiceStatus.charAt(0).toUpperCase() +
-                  invoiceStatus.slice(1).replace('_', ' ')}
+                {getInvoiceStatusLabel(invoiceStatus)}
               </Badge>
             )}
           </div>
@@ -830,6 +824,17 @@ export function InvoiceDetailPage() {
                       Record Payment
                     </Button>
                   )}
+                  {canRefund && (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => setShowRefundModal(true)}
+                      className="flex items-center gap-2"
+                    >
+                      <Undo2 className="h-4 w-4" />
+                      Record Refund
+                    </Button>
+                  )}
                   {canCancel && (
                     <Button
                       type="button"
@@ -1016,6 +1021,13 @@ export function InvoiceDetailPage() {
               amountDue={amountDue}
               onClose={() => setShowPaymentModal(false)}
               onRecorded={handlePaymentRecorded}
+            />
+            <RefundModal
+              isOpen={showRefundModal}
+              invoiceId={id}
+              amountPaid={amountPaid}
+              onClose={() => setShowRefundModal(false)}
+              onRefunded={handleRefunded}
             />
             <CancelInvoiceModal
               isOpen={showCancelModal}

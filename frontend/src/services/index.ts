@@ -22,7 +22,9 @@ export type {
   InvoiceStats,
   InvoiceLineItem,
   InvoicePayment,
+  InvoiceRefund,
   PaymentRequest,
+  RefundRequest,
 } from './invoiceService';
 export { InvoiceStatus } from './invoiceService';
 

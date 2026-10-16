@@ -68,6 +68,7 @@ export function getStatusBadgeVariant(status: string): BadgeVariant {
     paid: 'success',
     partially_paid: 'warning',
     overdue: 'error',
+    refunded: 'neutral',
 
     // Customer statuses
     prospect: 'info',
