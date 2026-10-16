@@ -73,12 +73,17 @@ install-golangci-lint: ## Install golangci-lint at the pinned version
 	@curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/$(GOLANGCI_LINT_VERSION)/install.sh \
 		| sh -s -- -b $$(go env GOPATH)/bin $(GOLANGCI_LINT_VERSION)
 
+# Hooks live in the shared .git/hooks, so link them to the MAIN checkout's
+# scripts/git-hooks (not the current worktree's) - a link into a worktree goes
+# dangling when that worktree is removed and git then skips the hook silently.
 install-hooks: ## Symlink the versioned git hooks (scripts/git-hooks) into .git/hooks
-	@hooks_dir="$$(git rev-parse --git-path hooks)"; mkdir -p "$$hooks_dir"; \
+	@hooks_dir="$$(git rev-parse --path-format=absolute --git-common-dir)/hooks"; \
+	main_root="$$(dirname "$$(git rev-parse --path-format=absolute --git-common-dir)")"; \
+	mkdir -p "$$hooks_dir"; \
 	for h in pre-commit commit-msg; do \
-		chmod +x "scripts/git-hooks/$$h"; \
-		ln -sf "$(CURDIR)/scripts/git-hooks/$$h" "$$hooks_dir/$$h"; \
-		echo "installed $$hooks_dir/$$h -> scripts/git-hooks/$$h"; \
+		chmod +x "$$main_root/scripts/git-hooks/$$h"; \
+		ln -sf "$$main_root/scripts/git-hooks/$$h" "$$hooks_dir/$$h"; \
+		echo "installed $$hooks_dir/$$h -> $$main_root/scripts/git-hooks/$$h"; \
 	done
 
 # =============================================================================
