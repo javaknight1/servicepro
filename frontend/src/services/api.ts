@@ -46,23 +46,66 @@ api.interceptors.request.use(
   }
 );
 
+/**
+ * Auth endpoints that must never trigger the refresh-and-redirect flow.
+ * A 401 from these means "bad credentials / invalid token", and the caller
+ * (e.g. the login page) needs to receive the error to display it.
+ */
+const AUTH_ENDPOINT_PATTERNS: RegExp[] = [
+  /\/v1\/auth\/login\b/,
+  /\/v1\/auth\/register\b/,
+  /\/v1\/auth\/refresh\b/,
+  /\/v1\/auth\/logout\b/,
+  /\/v1\/auth\/reset-request\b/,
+  /\/v1\/auth\/reset-password\b/,
+  /\/v1\/auth\/forgot-password\b/,
+  /\/v1\/auth\/verify\b/,
+  /\/v1\/auth\/resend-verification\b/,
+];
+
+export function isAuthEndpoint(url: string | undefined): boolean {
+  if (!url) return false;
+  return AUTH_ENDPOINT_PATTERNS.some((pattern) => pattern.test(url));
+}
+
+// Single-flight refresh: concurrent 401s share one refresh request.
+let refreshPromise: Promise<unknown> | null = null;
+
+function refreshSession(): Promise<unknown> {
+  if (!refreshPromise) {
+    refreshPromise = axios
+      .post('/api/v1/auth/refresh', {}, { withCredentials: true })
+      .finally(() => {
+        refreshPromise = null;
+      });
+  }
+  return refreshPromise;
+}
+
 // Response interceptor - handle token refresh
 // Tokens are in httpOnly cookies, so refresh is handled automatically by the backend
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError<ApiError>) => {
-    const originalRequest = error.config as InternalAxiosRequestConfig & {
-      _retry?: boolean;
-    };
+    const originalRequest = error.config as
+      | (InternalAxiosRequestConfig & { _retry?: boolean })
+      | undefined;
 
-    // If error is 401 and we haven't retried yet, try to refresh the token
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // If error is 401 and we haven't retried yet, try to refresh the token.
+    // Auth endpoints are excluded so their errors reach the caller
+    // (e.g. "invalid credentials" on the login page).
+    if (
+      error.response?.status === 401 &&
+      originalRequest &&
+      !originalRequest._retry &&
+      !isAuthEndpoint(originalRequest.url)
+    ) {
       originalRequest._retry = true;
 
       try {
         // Attempt to refresh the token via cookie
         // The refresh token cookie is automatically sent with this request
-        await axios.post('/api/v1/auth/refresh', {}, { withCredentials: true });
+        await refreshSession();
 
         // Retry the original request (new access token cookie is automatically set)
         return api(originalRequest);
@@ -71,7 +114,9 @@ api.interceptors.response.use(
         localStorage.removeItem('auth-storage'); // Clear zustand persisted auth state
         localStorage.removeItem('tenant-storage'); // Clear tenant state
         localStorage.removeItem(CURRENT_TENANT_KEY);
-        window.location.href = '/login';
+        if (window.location.pathname !== '/login') {
+          window.location.href = '/login';
+        }
         return Promise.reject(refreshError);
       }
     }
@@ -105,7 +150,7 @@ export const authApi = {
     api.post('/v1/auth/reset-password', data),
 
   verifyEmail: (data: VerifyEmailRequest) =>
-    api.get(`/v1/auth/verify?token=${data.token}`),
+    api.get('/v1/auth/verify', { params: { token: data.token } }),
 
   resendVerification: (data: ResendVerificationRequest) =>
     api.post('/v1/auth/resend-verification', data),

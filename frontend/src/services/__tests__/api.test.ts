@@ -136,9 +136,9 @@ describe('api service', () => {
 
         await authApi.verifyEmail(verifyData);
 
-        expect(mockAxios.get).toHaveBeenCalledWith(
-          '/v1/auth/verify?token=verify-token'
-        );
+        expect(mockAxios.get).toHaveBeenCalledWith('/v1/auth/verify', {
+          params: { token: 'verify-token' },
+        });
       });
     });
 
