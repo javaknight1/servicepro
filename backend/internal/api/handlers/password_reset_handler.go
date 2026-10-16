@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/javaknight1/servicepro/backend/internal/api/apierror"
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/services"
 	"github.com/javaknight1/servicepro/backend/pkg/auth"
@@ -40,10 +41,7 @@ func (h *PasswordResetHandler) RequestPasswordReset(c *gin.Context) {
 
 	// Bind and validate request
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
-			Error:   "invalid_request",
-			Message: "Invalid email format",
-		})
+		apierror.BindError(c, err)
 		return
 	}
 
@@ -52,7 +50,7 @@ func (h *PasswordResetHandler) RequestPasswordReset(c *gin.Context) {
 	if err != nil {
 		// Handle different error types
 		if errors.Is(err, auth.ErrInvalidEmailFormat) {
-			c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 				Error:   "invalid_email",
 				Message: "Invalid email format",
 			})
@@ -90,10 +88,7 @@ func (h *PasswordResetHandler) ResetPassword(c *gin.Context) {
 
 	// Bind and validate request
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
-			Error:   "invalid_request",
-			Message: "Token and password are required",
-		})
+		apierror.BindError(c, err)
 		return
 	}
 
@@ -103,14 +98,14 @@ func (h *PasswordResetHandler) ResetPassword(c *gin.Context) {
 		// Handle different error types
 		switch {
 		case errors.Is(err, services.ErrInvalidResetToken):
-			c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusUnauthorized, models.ErrorResponse{
 				Error:   "invalid_token",
 				Message: "Invalid or expired reset token",
 			})
 			return
 
 		case errors.Is(err, services.ErrWeakPassword):
-			c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 				Error:   "weak_password",
 				Message: "Password must be at least 8 characters with uppercase, lowercase, number, and special character",
 			})
@@ -121,7 +116,7 @@ func (h *PasswordResetHandler) ResetPassword(c *gin.Context) {
 			errors.Is(err, auth.ErrPasswordNoLowercase),
 			errors.Is(err, auth.ErrPasswordNoNumber),
 			errors.Is(err, auth.ErrPasswordNoSpecial):
-			c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 				Error:   "weak_password",
 				Message: publicError(err),
 			})
@@ -129,10 +124,7 @@ func (h *PasswordResetHandler) ResetPassword(c *gin.Context) {
 
 		default:
 			// Internal server error
-			c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-				Error:   "internal_error",
-				Message: "An error occurred while processing your request",
-			})
+			apierror.Internal(c, err, "An error occurred while processing your request")
 			return
 		}
 	}

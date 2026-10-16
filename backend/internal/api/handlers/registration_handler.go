@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/javaknight1/servicepro/backend/internal/api/apierror"
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/services"
 	"github.com/javaknight1/servicepro/backend/pkg/auth"
@@ -54,10 +55,7 @@ func (h *RegistrationHandler) Register(c *gin.Context) {
 
 	// Bind and validate request
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
-			Error:   "invalid_request",
-			Message: "Invalid email or password format",
-		})
+		apierror.BindError(c, err)
 		return
 	}
 
@@ -66,28 +64,25 @@ func (h *RegistrationHandler) Register(c *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrRegistrationClosed):
-			c.JSON(http.StatusForbidden, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusForbidden, models.ErrorResponse{
 				Error:   "registration_closed",
 				Message: "Registration is by invitation only. A valid invite code or invitation is required.",
 			})
 			return
 		case errors.Is(err, services.ErrInvalidInviteCode):
-			c.JSON(http.StatusForbidden, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusForbidden, models.ErrorResponse{
 				Error:   "invalid_invite_code",
 				Message: "That invite code is not valid. It may have expired, been used up or been revoked.",
 			})
 			return
 		case errors.Is(err, services.ErrInvalidInvitation):
-			c.JSON(http.StatusForbidden, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusForbidden, models.ErrorResponse{
 				Error:   "invalid_invitation",
 				Message: "This invitation is no longer valid for this email address.",
 			})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "internal_error",
-			Message: "An error occurred while processing your request",
-		})
+		apierror.Internal(c, err, "An error occurred while processing your request")
 		return
 	}
 
@@ -98,21 +93,21 @@ func (h *RegistrationHandler) Register(c *gin.Context) {
 		// Handle different error types
 		switch {
 		case errors.Is(err, auth.ErrInvalidEmailFormat):
-			c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 				Error:   "invalid_email",
 				Message: "Invalid email format",
 			})
 			return
 
 		case errors.Is(err, services.ErrWeakPassword):
-			c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 				Error:   "weak_password",
 				Message: "Password must be at least 8 characters with uppercase, lowercase, number, and special character",
 			})
 			return
 
 		case errors.Is(err, auth.ErrPasswordTooShort):
-			c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 				Error:   "weak_password",
 				Message: publicError(err),
 			})
@@ -122,14 +117,14 @@ func (h *RegistrationHandler) Register(c *gin.Context) {
 			errors.Is(err, auth.ErrPasswordNoLowercase),
 			errors.Is(err, auth.ErrPasswordNoNumber),
 			errors.Is(err, auth.ErrPasswordNoSpecial):
-			c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 				Error:   "weak_password",
 				Message: publicError(err),
 			})
 			return
 
 		case errors.Is(err, services.ErrEmailAlreadyExists):
-			c.JSON(http.StatusConflict, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusConflict, models.ErrorResponse{
 				Error:   "email_exists",
 				Message: "An account with this email already exists",
 			})
@@ -137,10 +132,7 @@ func (h *RegistrationHandler) Register(c *gin.Context) {
 
 		default:
 			// Internal server error
-			c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-				Error:   "internal_error",
-				Message: "An error occurred while processing your request",
-			})
+			apierror.Internal(c, err, "An error occurred while processing your request")
 			return
 		}
 	}

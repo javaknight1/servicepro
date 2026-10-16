@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
+	"github.com/javaknight1/servicepro/backend/internal/api/apierror"
 	"github.com/javaknight1/servicepro/backend/internal/api/middleware"
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/services"
@@ -41,7 +42,7 @@ func NewInviteCodeHandler(service *services.InviteCodeService) *InviteCodeHandle
 func (h *InviteCodeHandler) CreateInviteCode(c *gin.Context) {
 	var req models.CreateInviteCodeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: "invalid_request", Message: "Invalid invite code options"})
+		apierror.BindError(c, err)
 		return
 	}
 	maxUses := 1
@@ -59,7 +60,7 @@ func (h *InviteCodeHandler) CreateInviteCode(c *gin.Context) {
 
 	code, ic, err := h.service.Create(c.Request.Context(), maxUses, time.Duration(hours)*time.Hour, createdBy, req.Note)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "create_failed", Message: "Failed to create invite code"})
+		apierror.Internal(c, err, "Failed to create invite code")
 		return
 	}
 	c.JSON(http.StatusCreated, models.CreateInviteCodeResponse{Code: code, InviteCode: *ic})
@@ -79,7 +80,7 @@ func (h *InviteCodeHandler) CreateInviteCode(c *gin.Context) {
 func (h *InviteCodeHandler) ListInviteCodes(c *gin.Context) {
 	codes, err := h.service.List(c.Request.Context(), 200)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "fetch_failed", Message: "Failed to list invite codes"})
+		apierror.Internal(c, err, "Failed to list invite codes")
 		return
 	}
 	c.JSON(http.StatusOK, codes)
@@ -100,15 +101,15 @@ func (h *InviteCodeHandler) ListInviteCodes(c *gin.Context) {
 func (h *InviteCodeHandler) RevokeInviteCode(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: "invalid_id", Message: "Invalid invite code ID"})
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{Error: "invalid_id", Message: "Invalid invite code ID"})
 		return
 	}
 	if err := h.service.Revoke(c.Request.Context(), id); err != nil {
 		if errors.Is(err, services.ErrInviteCodeNotFound) {
-			c.JSON(http.StatusNotFound, models.ErrorResponse{Error: "not_found", Message: "Invite code not found"})
+			apierror.WriteResponse(c, http.StatusNotFound, models.ErrorResponse{Error: "not_found", Message: "Invite code not found"})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "revoke_failed", Message: "Failed to revoke invite code"})
+		apierror.Internal(c, err, "Failed to revoke invite code")
 		return
 	}
 	c.Status(http.StatusNoContent)
