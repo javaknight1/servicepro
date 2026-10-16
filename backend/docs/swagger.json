@@ -6308,6 +6308,53 @@
                 }
             }
         },
+        "/internal/jobs/quote-expiry": {
+            "post": {
+                "description": "Internal job endpoint (auth: X-Internal-Jobs-Token header = INTERNAL_JOBS_SECRET; 404 when the secret is unset). Moves sent/viewed quotes past valid_until to expired, for every tenant. Idempotent (one conditional UPDATE). Mounted at the server root (/internal/jobs/quote-expiry), outside /api.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Internal"
+                ],
+                "summary": "Run quote expiry job",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Internal jobs secret",
+                        "name": "X-Internal-Jobs-Token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_api_handlers.QuoteExpiryJobResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/internal_api_handlers.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/internal_api_handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_api_handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/invitations/{token}": {
             "get": {
                 "description": "Get invitation details by token (for registration page)",
@@ -15751,6 +15798,23 @@
                 },
                 "total_amount": {
                     "type": "string"
+                }
+            }
+        },
+        "internal_api_handlers.QuoteExpiryJobResponse": {
+            "type": "object",
+            "properties": {
+                "duration_ms": {
+                    "type": "integer",
+                    "example": 12
+                },
+                "expired": {
+                    "type": "integer",
+                    "example": 3
+                },
+                "job": {
+                    "type": "string",
+                    "example": "quote-expiry"
                 }
             }
         },

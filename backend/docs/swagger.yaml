@@ -3934,6 +3934,18 @@ definitions:
       total_amount:
         type: string
     type: object
+  internal_api_handlers.QuoteExpiryJobResponse:
+    properties:
+      duration_ms:
+        example: 12
+        type: integer
+      expired:
+        example: 3
+        type: integer
+      job:
+        example: quote-expiry
+        type: string
+    type: object
   internal_api_handlers.RecordPaymentRequest:
     properties:
       amount:
@@ -8244,6 +8256,40 @@ paths:
           schema:
             $ref: '#/definitions/internal_api_handlers.ErrorResponse'
       summary: Run payment reminders job
+      tags:
+      - Internal
+  /internal/jobs/quote-expiry:
+    post:
+      description: 'Internal job endpoint (auth: X-Internal-Jobs-Token header = INTERNAL_JOBS_SECRET;
+        404 when the secret is unset). Moves sent/viewed quotes past valid_until to
+        expired, for every tenant. Idempotent (one conditional UPDATE). Mounted at
+        the server root (/internal/jobs/quote-expiry), outside /api.'
+      parameters:
+      - description: Internal jobs secret
+        in: header
+        name: X-Internal-Jobs-Token
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_api_handlers.QuoteExpiryJobResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+      summary: Run quote expiry job
       tags:
       - Internal
   /invitations/{token}:

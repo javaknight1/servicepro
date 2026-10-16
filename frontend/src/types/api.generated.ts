@@ -7679,6 +7679,75 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/internal/jobs/quote-expiry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run quote expiry job
+         * @description Internal job endpoint (auth: X-Internal-Jobs-Token header = INTERNAL_JOBS_SECRET; 404 when the secret is unset). Moves sent/viewed quotes past valid_until to expired, for every tenant. Idempotent (one conditional UPDATE). Mounted at the server root (/internal/jobs/quote-expiry), outside /api.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description Internal jobs secret */
+                    "X-Internal-Jobs-Token": string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_api_handlers.QuoteExpiryJobResponse"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_api_handlers.ErrorResponse"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_api_handlers.ErrorResponse"];
+                    };
+                };
+                /** @description Internal Server Error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_api_handlers.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/invitations/{token}": {
         parameters: {
             query?: never;
@@ -13725,6 +13794,14 @@ export interface components {
             subtotal?: string;
             tax_amount?: string;
             total_amount?: string;
+        };
+        "internal_api_handlers.QuoteExpiryJobResponse": {
+            /** @example 12 */
+            duration_ms?: number;
+            /** @example 3 */
+            expired?: number;
+            /** @example quote-expiry */
+            job?: string;
         };
         "internal_api_handlers.RecordPaymentRequest": {
             amount: number;
