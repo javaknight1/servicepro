@@ -782,7 +782,8 @@ export function InvoiceDetailPage() {
                   Payment Reminders
                 </h2>
                 {invoiceStatus !== InvoiceStatus.PAID &&
-                  invoiceStatus !== InvoiceStatus.CANCELLED && (
+                  invoiceStatus !== InvoiceStatus.CANCELLED &&
+                  invoiceStatus !== InvoiceStatus.REFUNDED && (
                     <Button
                       type="button"
                       variant="secondary"

@@ -705,6 +705,8 @@ func invoiceErrorStatus(err error) int {
 		errors.Is(err, services.ErrInvoiceHasPayments),
 		errors.Is(err, services.ErrPaymentNotAllowed),
 		errors.Is(err, services.ErrOverpayment),
+		errors.Is(err, services.ErrRefundExceedsPaid),
+		errors.Is(err, services.ErrRefundNotAllowed),
 		errors.Is(err, services.ErrInvalidLineItem),
 		errors.Is(err, services.ErrInvalidDiscount),
 		errors.Is(err, services.ErrInvalidTaxRate),
@@ -721,4 +723,65 @@ func invoiceErrorStatus(err error) int {
 		return http.StatusBadRequest
 	}
 	return http.StatusInternalServerError
+}
+
+// RecordRefundRequest records money returned to the customer
+type RecordRefundRequest struct {
+	Amount     decimal.Decimal `json:"amount" binding:"required"`
+	RefundDate *time.Time      `json:"refund_date,omitempty"`
+	Method     string          `json:"method,omitempty"`
+	Reason     string          `json:"reason,omitempty"`
+}
+
+// RecordRefund godoc
+// @Summary Record refund
+// @Description Record money returned to the customer (cash, check, or a refund made outside the Stripe webhook). Lowers amount_paid; a refund to zero marks the invoice refunded. Stripe refunds are recorded automatically from charge.refunded.
+// @Tags invoices
+// @Accept json
+// @Produce json
+// @Param id path string true "Invoice ID"
+// @Param refund body RecordRefundRequest true "Refund data"
+// @Success 201 {object} models.InvoiceRefund
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 409 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /invoices/{id}/refunds [post]
+// @Security BearerAuth
+func (h *InvoiceHandler) RecordRefund(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Invalid invoice ID"})
+		return
+	}
+	var req RecordRefundRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: publicError(err)})
+		return
+	}
+	userIDValue, exists := c.Get("user_id")
+	userID, ok := userIDValue.(uuid.UUID)
+	if !exists || !ok {
+		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "Unauthorized"})
+		return
+	}
+
+	refund := &models.InvoiceRefund{
+		InvoiceID: id,
+		Amount:    req.Amount,
+		Method:    req.Method,
+		Reason:    req.Reason,
+		CreatedBy: &userID,
+	}
+	if req.RefundDate != nil {
+		refund.RefundDate = *req.RefundDate
+	}
+	created, err := h.service.RecordRefund(ctx, refund)
+	if err != nil {
+		c.JSON(invoiceErrorStatus(err), ErrorResponse{Error: publicError(err)})
+		return
+	}
+	c.JSON(http.StatusCreated, created)
 }

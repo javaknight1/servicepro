@@ -155,6 +155,7 @@ type Invoice struct {
 	TaxRate     *TaxRate         `gorm:"foreignKey:TaxRateID" json:"tax_rate,omitempty"`
 	Lines       []InvoiceLine    `gorm:"foreignKey:InvoiceID" json:"lines,omitempty"`
 	Payments    []InvoicePayment `gorm:"foreignKey:InvoiceID" json:"payments,omitempty"`
+	Refunds     []InvoiceRefund  `gorm:"foreignKey:InvoiceID" json:"refunds,omitempty"`
 }
 
 // TableName overrides the table name
@@ -339,6 +340,35 @@ func (i *Invoice) BalanceDue() decimal.Decimal {
 // TableName overrides the table name
 func (InvoicePayment) TableName() string {
 	return "invoice_payments"
+}
+
+// InvoiceRefund is money returned to the customer for an invoice (T125). It
+// reduces invoices.amount_paid in the same transaction; a refund to zero
+// moves the invoice to refunded. Stripe refunds are recorded from the
+// charge.refunded webhook, manual ones through POST /invoices/{id}/refunds.
+type InvoiceRefund struct {
+	ID        uuid.UUID `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
+	InvoiceID uuid.UUID `gorm:"type:uuid;not null;index" json:"invoice_id"`
+
+	Amount     decimal.Decimal `gorm:"type:decimal(12,2);not null" json:"amount"`
+	RefundDate time.Time       `gorm:"type:date;not null" json:"refund_date"`
+	Method     string          `gorm:"type:varchar(50)" json:"method,omitempty"`
+	Reason     string          `gorm:"type:text" json:"reason,omitempty"`
+
+	// Stripe references (nil for manual refunds). The payment intent ties a
+	// refund to the Checkout payment it reverses.
+	StripePaymentIntentID *string `gorm:"type:varchar(255)" json:"stripe_payment_intent_id,omitempty"`
+	StripeChargeID        *string `gorm:"type:varchar(255)" json:"stripe_charge_id,omitempty"`
+
+	// CreatedBy is the staff member who recorded it; nil for webhooks.
+	CreatedBy *uuid.UUID `gorm:"type:uuid" json:"created_by,omitempty"`
+	CreatedAt time.Time  `gorm:"autoCreateTime" json:"created_at"`
+	UpdatedAt time.Time  `gorm:"autoUpdateTime" json:"updated_at"`
+}
+
+// TableName overrides the table name
+func (InvoiceRefund) TableName() string {
+	return "invoice_refunds"
 }
 
 // InvoiceAuditLog represents an audit log entry for invoice changes
