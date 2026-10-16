@@ -27,22 +27,6 @@ func NewInvoicePaymentHandlerAdapter(invoiceService *InvoiceService) *InvoicePay
 	}
 }
 
-// HandleInvoicePaymentCompleted handles the invoice payment completion from a Stripe webhook
-func (a *InvoicePaymentHandlerAdapter) HandleInvoicePaymentCompleted(
-	ctx context.Context,
-	invoiceIDStr string,
-	amountPaidCents int64,
-	checkoutSessionID, paymentIntentID string,
-) error {
-	// Parse invoice ID
-	invoiceID, err := uuid.Parse(invoiceIDStr)
-	if err != nil {
-		return fmt.Errorf("invalid invoice ID: %w", err)
-	}
-
-	return a.applyCheckoutPayment(ctx, invoiceID, stripeClient.ConvertCentsToDecimal(amountPaidCents), checkoutSessionID, paymentIntentID)
-}
-
 // applyCheckoutPayment records a completed Checkout payment against the
 // invoice (idempotent per session; see InvoiceService.MarkInvoiceAsPaid).
 func (a *InvoicePaymentHandlerAdapter) applyCheckoutPayment(ctx context.Context, invoiceID uuid.UUID, amountPaid decimal.Decimal, checkoutSessionID, paymentIntentID string) error {

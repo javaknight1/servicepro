@@ -105,36 +105,6 @@ func (p *EventProcessor) ProcessEvent(ctx context.Context, event *stripe.Event) 
 	return nil
 }
 
-// GetStatistics returns event processing statistics
-func (p *EventProcessor) GetStatistics() *EventStatistics {
-	p.statsLock.RLock()
-	defer p.statsLock.RUnlock()
-
-	// Create a copy
-	stats := &EventStatistics{
-		TotalProcessed:        p.stats.TotalProcessed,
-		SuccessfullyProcessed: p.stats.SuccessfullyProcessed,
-		FailedProcessed:       p.stats.FailedProcessed,
-		EventCounts:           make(map[string]int64),
-	}
-
-	for k, v := range p.stats.EventCounts {
-		stats.EventCounts[k] = v
-	}
-
-	return stats
-}
-
-// ResetStatistics resets all statistics (for testing)
-func (p *EventProcessor) ResetStatistics() {
-	p.statsLock.Lock()
-	defer p.statsLock.Unlock()
-
-	p.stats = &EventStatistics{
-		EventCounts: make(map[string]int64),
-	}
-}
-
 // Common Event Type Constants
 const (
 	// Payment Intent Events
@@ -316,33 +286,6 @@ func ParseCustomer(event *stripe.Event) (*CustomerData, error) {
 		Description: cust.Description,
 		Metadata:    cust.Metadata,
 	}, nil
-}
-
-// ParseRefund parses a refund from an event
-func ParseRefund(event *stripe.Event) (*RefundData, error) {
-	var ref stripe.Refund
-	if err := json.Unmarshal(event.Data.Raw, &ref); err != nil {
-		return nil, fmt.Errorf("failed to parse refund: %w", err)
-	}
-
-	data := &RefundData{
-		ID:       ref.ID,
-		Amount:   ref.Amount,
-		Currency: string(ref.Currency),
-		Reason:   string(ref.Reason),
-		Status:   string(ref.Status),
-		Metadata: ref.Metadata,
-	}
-
-	if ref.Charge != nil {
-		data.ChargeID = ref.Charge.ID
-	}
-
-	if ref.PaymentIntent != nil {
-		data.PaymentIntentID = ref.PaymentIntent.ID
-	}
-
-	return data, nil
 }
 
 // CheckoutSessionData represents parsed checkout session data from an event
