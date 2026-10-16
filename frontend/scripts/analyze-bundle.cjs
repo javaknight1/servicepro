@@ -48,6 +48,9 @@ const config = {
     'vendor-stripe': 10,
     'vendor-calendar': 50,
     'vendor-table': 10,
+    // Sentry + PostHog, measured at 109 KB on 2026-10-16. Too big for every
+    // page: T246 lazy-loads/trims them and should lower this budget.
+    'vendor-observability': 115,
     vendor: 60,
     'page-dashboard': 10,
     'page-settings': 20,

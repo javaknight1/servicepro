@@ -39,6 +39,9 @@ export const manualChunks = {
   // Stripe (lazy loaded)
   'vendor-stripe': ['@stripe/react-stripe-js', '@stripe/stripe-js'],
 
+  // Error tracking + product analytics (loaded on every page)
+  'vendor-observability': ['@sentry', '@sentry-internal', 'posthog-js'],
+
   // Calendar — separate chunk to avoid circular dependency with vendor-react
   'vendor-calendar': [
     'react-big-calendar',
@@ -46,7 +49,6 @@ export const manualChunks = {
     'dom-helpers',
     'date-arithmetic',
   ],
-
 };
 
 // =============================================================================
