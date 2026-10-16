@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -13,8 +13,29 @@ import {
   CardContent,
 } from '@components/shared';
 import { useAuthStore } from '@store';
-import { AxiosError } from 'axios';
-import type { ErrorResponse } from '@app-types';
+import {
+  getApiErrorInfo,
+  getErrorMessage,
+  TOO_MANY_ATTEMPTS_MESSAGE,
+} from '@/utils/error';
+import { getSafeReturnUrl } from '@/utils/urlSanitizer';
+
+const INVALID_CREDENTIALS_MESSAGE = 'Invalid email or password.';
+
+/**
+ * Map a failed login to a user-facing message. The API returns the same 401
+ * for an unknown email and a wrong password, and a generic 429 once attempts
+ * are throttled (there is no "account locked" state any more).
+ */
+function getLoginErrorMessage(err: unknown): string {
+  const { status, message } = getApiErrorInfo(err);
+  if (status === 429) return TOO_MANY_ATTEMPTS_MESSAGE;
+  if (status === 401) return message || INVALID_CREDENTIALS_MESSAGE;
+  return (
+    message ||
+    getErrorMessage(err, 'Failed to login. Please check your credentials.')
+  );
+}
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -25,6 +46,8 @@ type LoginFormData = z.infer<typeof loginSchema>;
 
 export function LoginPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const returnUrl = getSafeReturnUrl(searchParams.get('returnUrl'));
   const login = useAuthStore((state) => state.login);
   const [error, setError] = useState<string>('');
 
@@ -40,13 +63,9 @@ export function LoginPage() {
     try {
       setError('');
       await login(data.email, data.password);
-      navigate('/dashboard');
-    } catch (err) {
-      const axiosError = err as AxiosError<ErrorResponse>;
-      setError(
-        axiosError.response?.data?.message ||
-          'Failed to login. Please check your credentials.'
-      );
+      navigate(returnUrl ?? '/dashboard');
+    } catch (err: unknown) {
+      setError(getLoginErrorMessage(err));
     }
   };
 

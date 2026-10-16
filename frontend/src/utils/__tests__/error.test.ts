@@ -1,9 +1,15 @@
 import { describe, it, expect } from 'vitest';
 import { AxiosError } from 'axios';
 import {
+  getApiErrorInfo,
   getErrorMessage,
+  getTenantErrorMessage,
   isAxiosError,
   isAxiosErrorWithStatus,
+  isForbiddenError,
+  TENANT_ACCESS_DENIED_MESSAGE,
+  TENANT_PERMISSION_MESSAGE,
+  TOO_MANY_ATTEMPTS_MESSAGE,
 } from '../error';
 
 describe('error utilities', () => {
@@ -156,5 +162,45 @@ describe('error utilities', () => {
       const error = new Error('Test error');
       expect(isAxiosErrorWithStatus(error, 500)).toBe(false);
     });
+  });
+});
+
+describe('API error helpers', () => {
+  const apiError = (status: number, data: Record<string, string>) => ({
+    response: { status, data },
+  });
+
+  it('getApiErrorInfo reads status, code and message structurally', () => {
+    expect(
+      getApiErrorInfo(apiError(403, { error: 'forbidden', message: 'No' }))
+    ).toEqual({ status: 403, code: 'forbidden', message: 'No' });
+    expect(getApiErrorInfo(new Error('x'))).toEqual({});
+    expect(getApiErrorInfo(null)).toEqual({});
+  });
+
+  it('getTenantErrorMessage maps 403s to permission messages', () => {
+    expect(
+      getTenantErrorMessage(
+        apiError(403, {
+          error: 'forbidden',
+          message: 'required: tenants.manage',
+        })
+      )
+    ).toBe(TENANT_PERMISSION_MESSAGE);
+    expect(
+      getTenantErrorMessage(apiError(403, { error: 'tenant_access_denied' }))
+    ).toBe(TENANT_ACCESS_DENIED_MESSAGE);
+    expect(getTenantErrorMessage(apiError(429, {}))).toBe(
+      TOO_MANY_ATTEMPTS_MESSAGE
+    );
+    expect(
+      getTenantErrorMessage(apiError(400, { message: 'Bad slug' }), 'x')
+    ).toBe('Bad slug');
+    expect(getTenantErrorMessage({}, 'fallback')).toBe('fallback');
+  });
+
+  it('isForbiddenError detects 403 only', () => {
+    expect(isForbiddenError(apiError(403, {}))).toBe(true);
+    expect(isForbiddenError(apiError(401, {}))).toBe(false);
   });
 });

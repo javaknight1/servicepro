@@ -107,3 +107,26 @@ export function sanitizeUrlProperties<T extends Record<string, unknown>>(
   }
   return out as T;
 }
+
+/**
+ * Validate a post-login `returnUrl` query value. Only same-origin, absolute
+ * paths are allowed (no `//host`, `/\host`, schemes or control characters),
+ * so the login page cannot be used as an open redirect.
+ */
+export function getSafeReturnUrl(
+  raw: string | null | undefined
+): string | null {
+  if (!raw) return null;
+  if (!raw.startsWith('/') || raw.startsWith('//') || raw.startsWith('/\\')) {
+    return null;
+  }
+  // eslint-disable-next-line no-control-regex
+  if (/[\u0000-\u001f\u007f]/.test(raw)) return null;
+  try {
+    const url = new URL(raw, 'https://placeholder.invalid');
+    if (url.origin !== 'https://placeholder.invalid') return null;
+    return `${url.pathname}${url.search}${url.hash}`;
+  } catch {
+    return null;
+  }
+}

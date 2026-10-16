@@ -297,6 +297,48 @@ describe('LoginPage', () => {
       });
     });
 
+    it('returns to a safe returnUrl (invitation accept link) after login', async () => {
+      const user = userEvent.setup({ delay: null });
+      mockLogin.mockResolvedValueOnce({});
+      window.history.pushState(
+        {},
+        '',
+        `/login?returnUrl=${encodeURIComponent('/invitations/accept?token=abc')}`
+      );
+      renderWithRouter(<LoginPage />);
+
+      await user.type(screen.getByLabelText(/email/i), 'test@example.com');
+      await user.type(screen.getByLabelText(/password/i), 'password123');
+      await user.click(screen.getByRole('button', { name: /sign in/i }));
+
+      await waitFor(() => {
+        expect(mockNavigate).toHaveBeenCalledWith(
+          '/invitations/accept?token=abc'
+        );
+      });
+      window.history.pushState({}, '', '/');
+    });
+
+    it('ignores an off-site returnUrl', async () => {
+      const user = userEvent.setup({ delay: null });
+      mockLogin.mockResolvedValueOnce({});
+      window.history.pushState(
+        {},
+        '',
+        `/login?returnUrl=${encodeURIComponent('//evil.example/phish')}`
+      );
+      renderWithRouter(<LoginPage />);
+
+      await user.type(screen.getByLabelText(/email/i), 'test@example.com');
+      await user.type(screen.getByLabelText(/password/i), 'password123');
+      await user.click(screen.getByRole('button', { name: /sign in/i }));
+
+      await waitFor(() => {
+        expect(mockNavigate).toHaveBeenCalledWith('/dashboard');
+      });
+      window.history.pushState({}, '', '/');
+    });
+
     it('does not call login when form is invalid', async () => {
       const user = userEvent.setup({ delay: null });
       renderWithRouter(<LoginPage />);
@@ -331,6 +373,49 @@ describe('LoginPage', () => {
 
       await waitFor(() => {
         expect(screen.getByText(/invalid credentials/i)).toBeInTheDocument();
+      });
+    });
+
+    it('shows a generic "try again shortly" message when throttled (429)', async () => {
+      const user = userEvent.setup({ delay: null });
+      mockLogin.mockRejectedValueOnce({
+        response: {
+          status: 429,
+          data: {
+            error: 'rate_limit_exceeded',
+            message: 'Too many login attempts. Please wait a moment.',
+          },
+        },
+      });
+      renderWithRouter(<LoginPage />);
+
+      await user.type(screen.getByLabelText(/email/i), 'test@example.com');
+      await user.type(screen.getByLabelText(/password/i), 'password123');
+      await user.click(screen.getByRole('button', { name: /sign in/i }));
+
+      await waitFor(() => {
+        expect(
+          screen.getByText('Too many attempts, try again shortly.')
+        ).toBeInTheDocument();
+      });
+      expect(mockNavigate).not.toHaveBeenCalled();
+    });
+
+    it('shows the same message for unknown email and wrong password (401)', async () => {
+      const user = userEvent.setup({ delay: null });
+      mockLogin.mockRejectedValueOnce({
+        response: { status: 401, data: { error: 'invalid_credentials' } },
+      });
+      renderWithRouter(<LoginPage />);
+
+      await user.type(screen.getByLabelText(/email/i), 'nobody@example.com');
+      await user.type(screen.getByLabelText(/password/i), 'password123');
+      await user.click(screen.getByRole('button', { name: /sign in/i }));
+
+      await waitFor(() => {
+        expect(
+          screen.getByText('Invalid email or password.')
+        ).toBeInTheDocument();
       });
     });
 

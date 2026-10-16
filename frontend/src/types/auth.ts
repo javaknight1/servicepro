@@ -24,7 +24,15 @@ export interface LoginResponse {
 export interface RegisterRequest {
   email: string;
   password: string;
+  /** Tenant invitation token (from an emailed `/register?invitation=` link). */
   invitation_token?: string;
+  /** Platform invite code; required when the API runs REGISTRATION_MODE=invite_only. */
+  invite_code?: string;
+}
+
+export interface RegisterOptions {
+  invitationToken?: string;
+  inviteCode?: string;
 }
 
 export interface RegisterResponse {
@@ -70,7 +78,7 @@ export interface AuthState {
   register: (
     email: string,
     password: string,
-    invitationToken?: string
+    options?: RegisterOptions
   ) => Promise<void>;
   logout: () => Promise<void>;
   refreshAccessToken: () => Promise<void>;
