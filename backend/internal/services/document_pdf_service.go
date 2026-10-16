@@ -358,16 +358,19 @@ func (s *DocumentPDFService) buildInvoicePDFData(invoice *models.Invoice) *pdf.I
 			Description: line.Description,
 			Quantity:    line.Quantity.InexactFloat64(),
 			UnitPrice:   line.UnitPrice.InexactFloat64(),
-			Amount:      line.Quantity.Mul(line.UnitPrice).InexactFloat64(),
+			// Net of the line's own discount, so the lines add up to the
+			// subtotal (audit 7.M7).
+			Amount: lineNet(line).InexactFloat64(),
 		}
 		data.LineItems = append(data.LineItems, lineItem)
 	}
 
 	data.Subtotal = invoice.Subtotal.InexactFloat64()
+	data.Discount = invoice.DiscountAmount.InexactFloat64()
 	data.TaxAmount = invoice.TaxAmount.InexactFloat64()
 	data.Total = invoice.TotalAmount.InexactFloat64()
 	data.AmountPaid = invoice.AmountPaid.InexactFloat64()
-	data.AmountDue = invoice.AmountDue.InexactFloat64()
+	data.AmountDue = invoice.BalanceDue().InexactFloat64()
 
 	return data
 }
@@ -424,12 +427,13 @@ func (s *DocumentPDFService) buildReceiptPDFData(invoice *models.Invoice) *pdf.R
 			Description: line.Description,
 			Quantity:    line.Quantity.InexactFloat64(),
 			UnitPrice:   line.UnitPrice.InexactFloat64(),
-			Amount:      line.Quantity.Mul(line.UnitPrice).InexactFloat64(),
+			Amount:      lineNet(line).InexactFloat64(),
 		}
 		data.LineItems = append(data.LineItems, lineItem)
 	}
 
 	data.Subtotal = invoice.Subtotal.InexactFloat64()
+	data.Discount = invoice.DiscountAmount.InexactFloat64()
 	data.TaxAmount = invoice.TaxAmount.InexactFloat64()
 	data.Total = invoice.TotalAmount.InexactFloat64()
 	data.AmountPaid = invoice.AmountPaid.InexactFloat64()

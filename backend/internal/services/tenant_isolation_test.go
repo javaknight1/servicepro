@@ -164,7 +164,7 @@ func TestTenantIsolation_InvoicesAndPayments(t *testing.T) {
 
 	inv, err := svc.CreateInvoice(f.ctxA, &models.Invoice{
 		CustomerID: f.custA.ID, InvoiceNumber: "INV-A-1", IssueDate: now, DueDate: now.Add(24 * time.Hour),
-		TotalAmount: decimal.NewFromInt(100),
+		Lines: oneLine(100),
 	}, f.userA)
 	require.NoError(t, err)
 
@@ -177,7 +177,7 @@ func TestTenantIsolation_InvoicesAndPayments(t *testing.T) {
 	assert.Error(t, err)
 	_, err = svc.GetInvoiceByNumber(f.ctxB, inv.InvoiceNumber)
 	assert.Error(t, err)
-	_, err = svc.UpdateInvoice(f.ctxB, inv.ID, &models.Invoice{Notes: "pwned"}, f.userA)
+	_, err = svc.UpdateInvoice(f.ctxB, inv.ID, &InvoiceUpdate{Notes: strPtr("pwned")}, f.userA)
 	assert.Error(t, err)
 	assert.Error(t, svc.DeleteInvoice(f.ctxB, inv.ID))
 	_, err = svc.AddLineItem(f.ctxB, inv.ID, &models.InvoiceLine{Description: "x", Quantity: decimal.NewFromInt(1), UnitPrice: decimal.NewFromInt(1)})

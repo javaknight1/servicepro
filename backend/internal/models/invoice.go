@@ -144,6 +144,11 @@ type Invoice struct {
 	UpdatedAt time.Time      `gorm:"autoUpdateTime" json:"updated_at"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"deleted_at,omitempty"`
 
+	// ApplyTaxRate is a create-time input only (not stored): a direct tax
+	// rate (0.0825 = 8.25%) that overrides TaxRateID's rate when the server
+	// computes the totals.
+	ApplyTaxRate *decimal.Decimal `gorm:"-" json:"-" swaggerignore:"true"`
+
 	// Relationships
 	Customer    *Customer        `gorm:"foreignKey:CustomerID" json:"customer,omitempty"`
 	PaymentTerm *PaymentTerm     `gorm:"foreignKey:PaymentTermID" json:"payment_term,omitempty"`

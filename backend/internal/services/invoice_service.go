@@ -49,6 +49,8 @@ var (
 	// ErrInvoiceHasPayments is returned when deleting or cancelling an invoice
 	// that has payments recorded against it
 	ErrInvoiceHasPayments = errors.New("invoice has recorded payments; refund them first")
+	// ErrTaxRateNotFound is returned for an unknown tax_rate_id
+	ErrTaxRateNotFound = errors.New("tax rate not found")
 )
 
 // InvoiceService handles invoice business logic
@@ -126,7 +128,22 @@ func (s *InvoiceService) CreateInvoice(ctx context.Context, invoice *models.Invo
 
 	// Create invoice in transaction
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		// Create invoice
+		// Totals are always computed here, never taken from the client.
+		rate, err := resolveTaxRate(tx, invoice.ApplyTaxRate, invoice.TaxRateID, nil)
+		if err != nil {
+			return err
+		}
+		totals, err := calculateInvoiceTotals(invoice.Lines, invoice.DiscountAmount, rate)
+		if err != nil {
+			return err
+		}
+		setInvoiceTotals(invoice, totals)
+		for i := range invoice.Lines {
+			if invoice.Lines[i].ID == uuid.Nil {
+				invoice.Lines[i].ID = uuid.New()
+			}
+		}
+
 		if err := tx.Create(invoice).Error; err != nil {
 			return fmt.Errorf("failed to create invoice: %w", err)
 		}
@@ -196,64 +213,174 @@ func (s *InvoiceService) GetInvoiceByNumber(ctx context.Context, invoiceNumber s
 	return &invoice, nil
 }
 
-// UpdateInvoice updates an existing invoice
-func (s *InvoiceService) UpdateInvoice(ctx context.Context, id uuid.UUID, updates *models.Invoice, userID uuid.UUID) (*models.Invoice, error) {
-	// Get existing invoice
-	existing, err := s.GetInvoice(ctx, id)
-	if err != nil {
-		return nil, err
-	}
+// InvoiceUpdate is a partial invoice update: nil fields are left unchanged.
+// Status is deliberately absent — it changes only through send, payment,
+// cancel and refund.
+type InvoiceUpdate struct {
+	DueDate            *time.Time
+	PaymentTermID      *uuid.UUID
+	TaxRateID          *uuid.UUID
+	TaxRate            *decimal.Decimal // direct rate (0.0825 = 8.25%); overrides TaxRateID's rate
+	PONumber           *string
+	Notes              *string
+	TermsAndConditions *string
+	DiscountAmount     *decimal.Decimal
+	Lines              []models.InvoiceLine // nil = keep the current lines
+}
 
-	// Check if invoice can be modified
-	if existing.Status == models.InvoiceStatusPaid {
-		return nil, ErrInvoiceAlreadyPaid
+// UpdateInvoice applies a partial update and recomputes the totals inside
+// the same transaction, whatever changed (T225 / audit 7.H3): a discount or
+// tax-rate change alone updates total_amount, and sending lines without a
+// tax rate keeps the invoice's current rate instead of zeroing the tax.
+func (s *InvoiceService) UpdateInvoice(ctx context.Context, id uuid.UUID, upd *InvoiceUpdate, userID uuid.UUID) (*models.Invoice, error) {
+	if upd == nil {
+		upd = &InvoiceUpdate{}
 	}
-
-	// Set updated by
-	updates.UpdatedBy = &userID
-	if updates.CustomerID != uuid.Nil && updates.CustomerID != existing.CustomerID {
-		if err := s.requireCustomer(ctx, updates.CustomerID); err != nil {
-			return nil, err
+	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		existing, err := lockInvoice(tx, id)
+		if err != nil {
+			return err
 		}
-	}
+		if existing.Status == models.InvoiceStatusPaid {
+			return ErrInvoiceAlreadyPaid
+		}
 
-	// Validate updates
-	if err := s.validateInvoiceUpdates(existing, updates); err != nil {
-		return nil, err
-	}
+		fields := map[string]interface{}{"updated_by": userID}
+		if upd.DueDate != nil {
+			if upd.DueDate.Before(existing.IssueDate) {
+				return invalidInvoice("due_date must be after issue_date")
+			}
+			fields["due_date"] = *upd.DueDate
+		}
+		if upd.PaymentTermID != nil {
+			fields["payment_term_id"] = *upd.PaymentTermID
+		}
+		if upd.TaxRateID != nil {
+			fields["tax_rate_id"] = *upd.TaxRateID
+		}
+		if upd.PONumber != nil {
+			fields["po_number"] = *upd.PONumber
+		}
+		if upd.Notes != nil {
+			fields["notes"] = *upd.Notes
+		}
+		if upd.TermsAndConditions != nil {
+			fields["terms_and_conditions"] = *upd.TermsAndConditions
+		}
+		discount := existing.DiscountAmount
+		if upd.DiscountAmount != nil {
+			discount = *upd.DiscountAmount
+		}
 
-	// Update in transaction
-	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		// Update invoice
-		if err := tx.Model(&models.Invoice{}).Where("id = ?", id).Updates(updates).Error; err != nil {
+		var current []models.InvoiceLine
+		if err := tx.Where("invoice_id = ?", id).Order("sort_order ASC").Find(&current).Error; err != nil {
+			return err
+		}
+
+		// Rate: the request's direct rate or new tax_rate_id; otherwise keep
+		// what the invoice already uses (its lines' rate, else its tax_rate_id).
+		var rate decimal.Decimal
+		switch {
+		case upd.TaxRate != nil || upd.TaxRateID != nil:
+			rate, err = resolveTaxRate(tx, upd.TaxRate, upd.TaxRateID, nil)
+		case len(current) > 0:
+			rate, err = resolveTaxRate(tx, nil, nil, current)
+		default:
+			rate, err = resolveTaxRate(tx, nil, existing.TaxRateID, nil)
+		}
+		if err != nil {
+			return err
+		}
+
+		lines := current
+		replaceLines := upd.Lines != nil
+		if replaceLines {
+			lines = upd.Lines
+		}
+		totals, err := calculateInvoiceTotals(lines, discount, rate)
+		if err != nil {
+			return err
+		}
+		if totals.Total.LessThan(existing.AmountPaid) {
+			return invalidInvoice("invoice total cannot be less than the amount already paid")
+		}
+		fields["subtotal"] = totals.Subtotal
+		fields["discount_amount"] = totals.Discount
+		fields["tax_amount"] = totals.Tax
+		fields["total_amount"] = totals.Total
+
+		if err := tx.Model(&models.Invoice{}).Where("id = ?", id).Updates(fields).Error; err != nil {
 			return fmt.Errorf("failed to update invoice: %w", err)
 		}
 
-		// If line items are provided, update them
-		if len(updates.Lines) > 0 {
-			// Delete existing line items
-			if err := tx.Where("invoice_id = ?", id).Delete(&models.InvoiceLine{}).Error; err != nil {
-				return fmt.Errorf("failed to delete old line items: %w", err)
-			}
-
-			// Create new line items
-			for i := range updates.Lines {
-				updates.Lines[i].InvoiceID = id
-				if err := tx.Create(&updates.Lines[i]).Error; err != nil {
-					return fmt.Errorf("failed to create line item: %w", err)
-				}
+		if !replaceLines {
+			return saveLineTaxes(tx, lines)
+		}
+		if err := tx.Where("invoice_id = ?", id).Delete(&models.InvoiceLine{}).Error; err != nil {
+			return fmt.Errorf("failed to delete old line items: %w", err)
+		}
+		for i := range lines {
+			lines[i].ID = uuid.New()
+			lines[i].InvoiceID = id
+			if err := tx.Create(&lines[i]).Error; err != nil {
+				return fmt.Errorf("failed to create line item: %w", err)
 			}
 		}
-
 		return nil
 	})
-
 	if err != nil {
 		return nil, err
 	}
 
-	// Reload invoice with relationships
 	return s.GetInvoice(ctx, id)
+}
+
+// saveLineTaxes writes back the per-line fields calculateInvoiceTotals fills.
+func saveLineTaxes(tx *gorm.DB, lines []models.InvoiceLine) error {
+	for _, l := range lines {
+		if err := tx.Model(&models.InvoiceLine{}).Where("id = ? AND invoice_id = ?", l.ID, l.InvoiceID).Updates(map[string]interface{}{
+			"discount_amount": l.DiscountAmount,
+			"tax_rate":        l.TaxRate,
+			"tax_amount":      l.TaxAmount,
+		}).Error; err != nil {
+			return fmt.Errorf("failed to update line item: %w", err)
+		}
+	}
+	return nil
+}
+
+// setInvoiceTotals copies calculated totals onto an invoice.
+func setInvoiceTotals(invoice *models.Invoice, t invoiceTotals) {
+	invoice.Subtotal = t.Subtotal
+	invoice.DiscountAmount = t.Discount
+	invoice.TaxAmount = t.Tax
+	invoice.TotalAmount = t.Total
+}
+
+// resolveTaxRate picks the rate for an invoice: a direct rate, else the
+// configured tax rate (global or the caller's tenant — the tenancy plugin
+// hides other tenants' rates), else the rate already on the invoice's lines,
+// else zero.
+func resolveTaxRate(tx *gorm.DB, direct *decimal.Decimal, taxRateID *uuid.UUID, currentLines []models.InvoiceLine) (decimal.Decimal, error) {
+	if direct != nil {
+		return *direct, nil
+	}
+	if taxRateID != nil {
+		var tr models.TaxRate
+		if err := tx.First(&tr, "id = ?", *taxRateID).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return decimal.Zero, ErrTaxRateNotFound
+			}
+			return decimal.Zero, err
+		}
+		return tr.Rate, nil
+	}
+	for _, l := range currentLines {
+		if l.TaxRate.IsPositive() {
+			return l.TaxRate, nil
+		}
+	}
+	return decimal.Zero, nil
 }
 
 // DeleteInvoice soft deletes an invoice
@@ -387,26 +514,48 @@ func (s *InvoiceService) ListInvoices(ctx context.Context, filter *models.Invoic
 func (s *InvoiceService) AddLineItem(ctx context.Context, invoiceID uuid.UUID, lineItem *models.InvoiceLine) (*models.InvoiceLine, error) {
 	lineItem.InvoiceID = invoiceID
 
-	// invoice_lines has no tenant_id: the (tenant-scoped) invoice lookup is
-	// what authorises adding a line to it.
-	invoice, err := s.GetInvoice(ctx, invoiceID)
+	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// invoice_lines has no tenant_id: the (tenant-scoped) invoice lookup
+		// is what authorises adding a line to it.
+		invoice, err := lockInvoice(tx, invoiceID)
+		if err != nil {
+			return err
+		}
+		if invoice.Status == models.InvoiceStatusPaid {
+			return ErrInvoiceAlreadyPaid
+		}
+		var lines []models.InvoiceLine
+		if err := tx.Where("invoice_id = ?", invoiceID).Order("sort_order ASC").Find(&lines).Error; err != nil {
+			return err
+		}
+		rate, err := resolveTaxRate(tx, nil, invoice.TaxRateID, lines)
+		if err != nil {
+			return err
+		}
+		lineItem.SortOrder = len(lines)
+		lines = append(lines, *lineItem)
+		totals, err := calculateInvoiceTotals(lines, invoice.DiscountAmount, rate)
+		if err != nil {
+			return err
+		}
+		*lineItem = lines[len(lines)-1]
+		if lineItem.ID == uuid.Nil {
+			lineItem.ID = uuid.New()
+		}
+		if err := tx.Create(lineItem).Error; err != nil {
+			return fmt.Errorf("failed to add line item: %w", err)
+		}
+		if err := saveLineTaxes(tx, lines[:len(lines)-1]); err != nil {
+			return err
+		}
+		return tx.Model(&models.Invoice{}).Where("id = ?", invoiceID).Updates(map[string]interface{}{
+			"subtotal": totals.Subtotal, "discount_amount": totals.Discount,
+			"tax_amount": totals.Tax, "total_amount": totals.Total,
+		}).Error
+	})
 	if err != nil {
 		return nil, err
 	}
-
-	// Calculate tax if applicable
-	if lineItem.Taxable {
-		if invoice.TaxRate != nil {
-			lineItem.TaxRate = invoice.TaxRate.Rate
-			lineTotal := lineItem.Quantity.Mul(lineItem.UnitPrice).Sub(lineItem.DiscountAmount)
-			lineItem.TaxAmount = lineTotal.Mul(lineItem.TaxRate).Round(2)
-		}
-	}
-
-	if err := s.db.WithContext(ctx).Create(lineItem).Error; err != nil {
-		return nil, fmt.Errorf("failed to add line item: %w", err)
-	}
-
 	return lineItem, nil
 }
 
@@ -678,33 +827,19 @@ func (s *InvoiceService) generateInvoiceNumber(ctx context.Context) (string, err
 
 func (s *InvoiceService) validateInvoice(invoice *models.Invoice) error {
 	if invoice.CustomerID == uuid.Nil {
-		return errors.New("customer_id is required")
+		return invalidInvoice("customer_id is required")
 	}
 
 	if invoice.IssueDate.IsZero() {
-		return errors.New("issue_date is required")
+		return invalidInvoice("issue_date is required")
 	}
 
 	if invoice.DueDate.IsZero() {
-		return errors.New("due_date is required")
+		return invalidInvoice("due_date is required")
 	}
 
 	if invoice.DueDate.Before(invoice.IssueDate) {
-		return errors.New("due_date must be after issue_date")
-	}
-
-	return nil
-}
-
-func (s *InvoiceService) validateInvoiceUpdates(existing, updates *models.Invoice) error {
-	// Don't allow changing customer on sent invoices
-	if existing.Status != models.InvoiceStatusDraft && updates.CustomerID != uuid.Nil && updates.CustomerID != existing.CustomerID {
-		return errors.New("cannot change customer on sent invoice")
-	}
-
-	// Validate due date if provided
-	if !updates.DueDate.IsZero() && updates.DueDate.Before(existing.IssueDate) {
-		return errors.New("due_date must be after issue_date")
+		return invalidInvoice("due_date must be after issue_date")
 	}
 
 	return nil
@@ -724,26 +859,6 @@ func (s *InvoiceService) validateForSending(invoice *models.Invoice) error {
 	}
 
 	return nil
-}
-
-// CalculateTotals manually calculates invoice totals (for verification)
-func (s *InvoiceService) CalculateTotals(invoice *models.Invoice) {
-	subtotal := decimal.Zero
-	taxAmount := decimal.Zero
-
-	for _, line := range invoice.Lines {
-		lineTotal := line.Quantity.Mul(line.UnitPrice).Sub(line.DiscountAmount)
-		subtotal = subtotal.Add(lineTotal)
-
-		if line.Taxable {
-			lineTax := lineTotal.Mul(line.TaxRate)
-			taxAmount = taxAmount.Add(lineTax)
-		}
-	}
-
-	invoice.Subtotal = subtotal
-	invoice.TaxAmount = taxAmount
-	invoice.TotalAmount = subtotal.Add(taxAmount).Sub(invoice.DiscountAmount)
 }
 
 // GetInvoiceByPaymentToken retrieves an invoice by its payment token

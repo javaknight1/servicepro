@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -316,58 +317,14 @@ func (h *InvoiceHandler) CreateInvoice(c *gin.Context) {
 		invoice.DueDate = *req.DueDate
 	}
 
-	// Convert line items and calculate totals
-	invoice.Lines = make([]models.InvoiceLine, len(req.Lines))
-	subtotal := decimal.Zero
-	totalTax := decimal.Zero
-
-	for i, lineReq := range req.Lines {
-		taxable := true
-		if lineReq.Taxable != nil {
-			taxable = *lineReq.Taxable
-		}
-
-		// Apply tax rate from request if provided
-		var lineTaxRate decimal.Decimal
-		if req.TaxRate != nil {
-			lineTaxRate = *req.TaxRate
-		}
-
-		// Calculate line total and tax
-		lineTotal := lineReq.Quantity.Mul(lineReq.UnitPrice).Sub(lineReq.DiscountAmount)
-		var lineTaxAmount decimal.Decimal
-		if taxable {
-			lineTaxAmount = lineTotal.Mul(lineTaxRate).Round(2)
-		}
-
-		subtotal = subtotal.Add(lineTotal)
-		totalTax = totalTax.Add(lineTaxAmount)
-
-		invoice.Lines[i] = models.InvoiceLine{
-			Description:        lineReq.Description,
-			Quantity:           lineReq.Quantity,
-			UnitPrice:          lineReq.UnitPrice,
-			UnitOfMeasure:      lineReq.UnitOfMeasure,
-			DiscountPercentage: lineReq.DiscountPercentage,
-			DiscountAmount:     lineReq.DiscountAmount,
-			Taxable:            taxable,
-			TaxRate:            lineTaxRate,
-			TaxAmount:          lineTaxAmount,
-			ProductID:          lineReq.ProductID,
-			ServiceID:          lineReq.ServiceID,
-			SortOrder:          i,
-		}
-	}
-
-	// Set invoice totals
-	invoice.Subtotal = subtotal
-	invoice.TaxAmount = totalTax
-	invoice.TotalAmount = subtotal.Add(totalTax).Sub(invoice.DiscountAmount)
+	// Totals, line discounts and taxes are computed by the service.
+	invoice.Lines = toInvoiceLines(req.Lines)
+	invoice.ApplyTaxRate = req.TaxRate
 
 	// Create invoice
 	created, err := h.service.CreateInvoice(ctx, invoice, userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: publicError(err)})
+		c.JSON(invoiceErrorStatus(err), ErrorResponse{Error: publicError(err)})
 		return
 	}
 
@@ -415,107 +372,24 @@ func (h *InvoiceHandler) UpdateInvoice(c *gin.Context) {
 		return
 	}
 
-	// Convert request to invoice model
-	updates := &models.Invoice{}
-
-	if req.Status != nil {
-		updates.Status = *req.Status
+	// Totals are recomputed by the service whatever changed.
+	upd := &services.InvoiceUpdate{
+		DueDate:            req.DueDate,
+		PaymentTermID:      req.PaymentTermID,
+		TaxRateID:          req.TaxRateID,
+		TaxRate:            req.TaxRate,
+		PONumber:           req.PONumber,
+		Notes:              req.Notes,
+		TermsAndConditions: req.TermsAndConditions,
+		DiscountAmount:     req.DiscountAmount,
 	}
-
-	if req.DueDate != nil {
-		updates.DueDate = *req.DueDate
-	}
-
-	if req.PaymentTermID != nil {
-		updates.PaymentTermID = req.PaymentTermID
-	}
-
-	if req.TaxRateID != nil {
-		updates.TaxRateID = req.TaxRateID
-	}
-
-	if req.PONumber != nil {
-		updates.PONumber = *req.PONumber
-	}
-
-	if req.Notes != nil {
-		updates.Notes = *req.Notes
-	}
-
-	if req.DiscountAmount != nil {
-		updates.DiscountAmount = *req.DiscountAmount
-	}
-
-	if req.TermsAndConditions != nil {
-		updates.TermsAndConditions = *req.TermsAndConditions
-	}
-
-	// Convert line items if provided and calculate totals
 	if req.Lines != nil {
-		updates.Lines = make([]models.InvoiceLine, len(req.Lines))
-		subtotal := decimal.Zero
-		totalTax := decimal.Zero
-
-		for i, lineReq := range req.Lines {
-			taxable := true
-			if lineReq.Taxable != nil {
-				taxable = *lineReq.Taxable
-			}
-
-			// Apply tax rate from request if provided
-			var lineTaxRate decimal.Decimal
-			if req.TaxRate != nil {
-				lineTaxRate = *req.TaxRate
-			}
-
-			// Calculate line total and tax
-			lineTotal := lineReq.Quantity.Mul(lineReq.UnitPrice).Sub(lineReq.DiscountAmount)
-			var lineTaxAmount decimal.Decimal
-			if taxable {
-				lineTaxAmount = lineTotal.Mul(lineTaxRate).Round(2)
-			}
-
-			subtotal = subtotal.Add(lineTotal)
-			totalTax = totalTax.Add(lineTaxAmount)
-
-			updates.Lines[i] = models.InvoiceLine{
-				Description:        lineReq.Description,
-				Quantity:           lineReq.Quantity,
-				UnitPrice:          lineReq.UnitPrice,
-				UnitOfMeasure:      lineReq.UnitOfMeasure,
-				DiscountPercentage: lineReq.DiscountPercentage,
-				DiscountAmount:     lineReq.DiscountAmount,
-				Taxable:            taxable,
-				TaxRate:            lineTaxRate,
-				TaxAmount:          lineTaxAmount,
-				ProductID:          lineReq.ProductID,
-				ServiceID:          lineReq.ServiceID,
-				SortOrder:          i,
-			}
-		}
-
-		// Set invoice totals
-		discountAmount := decimal.Zero
-		if req.DiscountAmount != nil {
-			discountAmount = *req.DiscountAmount
-		}
-		updates.Subtotal = subtotal
-		updates.TaxAmount = totalTax
-		updates.TotalAmount = subtotal.Add(totalTax).Sub(discountAmount)
+		upd.Lines = toInvoiceLines(req.Lines)
 	}
 
-	// Update invoice
-	updated, err := h.service.UpdateInvoice(ctx, id, updates, userID)
+	updated, err := h.service.UpdateInvoice(ctx, id, upd, userID)
 	if err != nil {
-		if err == services.ErrInvoiceNotFound {
-			c.JSON(http.StatusNotFound, ErrorResponse{Error: "Invoice not found"})
-			return
-		}
-		if err == services.ErrInvoiceAlreadyPaid {
-			c.JSON(http.StatusBadRequest, ErrorResponse{Error: publicError(err)})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: publicError(err)})
+		c.JSON(invoiceErrorStatus(err), ErrorResponse{Error: publicError(err)})
 		return
 	}
 
@@ -782,4 +656,46 @@ func (h *InvoiceHandler) GetReceiptPDF(c *gin.Context) {
 	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", filename))
 	c.Header("Content-Length", fmt.Sprintf("%d", len(content)))
 	c.Data(http.StatusOK, "application/pdf", content)
+}
+
+// toInvoiceLines maps request lines to models; money fields are filled in by
+// the service's totals calculation. Lines are taxable unless taxable=false.
+func toInvoiceLines(reqLines []CreateLineItemRequest) []models.InvoiceLine {
+	lines := make([]models.InvoiceLine, len(reqLines))
+	for i, l := range reqLines {
+		taxable := l.Taxable == nil || *l.Taxable
+		lines[i] = models.InvoiceLine{
+			Description:        l.Description,
+			Quantity:           l.Quantity,
+			UnitPrice:          l.UnitPrice,
+			UnitOfMeasure:      l.UnitOfMeasure,
+			DiscountPercentage: l.DiscountPercentage,
+			DiscountAmount:     l.DiscountAmount,
+			Taxable:            taxable,
+			ProductID:          l.ProductID,
+			ServiceID:          l.ServiceID,
+			SortOrder:          i,
+		}
+	}
+	return lines
+}
+
+// invoiceErrorStatus maps invoice service errors to HTTP status codes:
+// not-found 404, business-rule violations 400, anything else 500.
+func invoiceErrorStatus(err error) int {
+	switch {
+	case errors.Is(err, services.ErrInvoiceNotFound), errors.Is(err, services.ErrCustomerNotFound):
+		return http.StatusNotFound
+	case errors.Is(err, services.ErrInvoiceAlreadyPaid),
+		errors.Is(err, services.ErrInvalidLineItem),
+		errors.Is(err, services.ErrInvalidDiscount),
+		errors.Is(err, services.ErrInvalidTaxRate),
+		errors.Is(err, services.ErrTaxRateNotFound):
+		return http.StatusBadRequest
+	}
+	var rule *services.InvoiceRuleError
+	if errors.As(err, &rule) {
+		return http.StatusBadRequest
+	}
+	return http.StatusInternalServerError
 }

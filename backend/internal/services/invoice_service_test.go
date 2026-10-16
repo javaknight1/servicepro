@@ -394,8 +394,8 @@ func TestInvoiceService_UpdateInvoice(t *testing.T) {
 	require.NoError(t, db.Create(invoice).Error)
 
 	t.Run("Update invoice notes", func(t *testing.T) {
-		updates := &models.Invoice{
-			Notes: "Updated notes",
+		updates := &InvoiceUpdate{
+			Notes: strPtr("Updated notes"),
 		}
 
 		updated, err := service.UpdateInvoice(ctx, invoice.ID, updates, userID)
@@ -408,8 +408,8 @@ func TestInvoiceService_UpdateInvoice(t *testing.T) {
 		// Mark invoice as paid
 		db.Model(&models.Invoice{}).Where("id = ?", invoice.ID).Update("status", models.InvoiceStatusPaid)
 
-		updates := &models.Invoice{
-			Notes: "Trying to update",
+		updates := &InvoiceUpdate{
+			Notes: strPtr("Trying to update"),
 		}
 
 		_, err := service.UpdateInvoice(ctx, invoice.ID, updates, userID)
