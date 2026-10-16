@@ -879,8 +879,7 @@ describe('Invoice & Payment Integration', () => {
       });
     });
 
-    it('should provide navigation to invoices list', async () => {
-      const user = userEvent.setup();
+    it('is a public page with no links into the authenticated app', async () => {
       const { PaymentSuccessPage } =
         await import('../../src/pages/Invoices/PaymentSuccessPage');
 
@@ -890,15 +889,14 @@ describe('Invoice & Payment Integration', () => {
         </MemoryRouter>
       );
 
-      const viewInvoicesLink = screen.queryByRole('link', {
-        name: /view invoices|back to invoices/i,
-      });
-      if (viewInvoicesLink) {
-        expect(viewInvoicesLink).toHaveAttribute(
-          'href',
-          expect.stringContaining('/invoices')
-        );
-      }
+      // The payer is the end customer (not an app user), so the page must
+      // not send them to authenticated routes like /invoices.
+      expect(
+        screen.queryByRole('link', { name: /view invoices|back to invoices/i })
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByText(/you can close this window/i)
+      ).toBeInTheDocument();
     });
   });
 

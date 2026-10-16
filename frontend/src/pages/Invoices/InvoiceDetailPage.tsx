@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { DashboardLayout } from '@components/layout';
 import { Button, Badge } from '@components/shared';
@@ -96,23 +96,6 @@ export function InvoiceDetailPage() {
     useState(false);
   const [customerName, setCustomerName] = useState<string>('');
 
-  useEffect(() => {
-    loadCustomers();
-    if (!isNew && id) {
-      loadInvoice(id);
-    } else {
-      // Set default dates
-      const today = new Date();
-      const dueDate = new Date();
-      dueDate.setDate(dueDate.getDate() + 30);
-      setFormData((prev) => ({
-        ...prev,
-        issue_date: today.toISOString().split('T')[0],
-        due_date: dueDate.toISOString().split('T')[0],
-      }));
-    }
-  }, [id, isNew]);
-
   const loadCustomers = async () => {
     setIsLoadingCustomers(true);
     try {
@@ -125,57 +108,7 @@ export function InvoiceDetailPage() {
     }
   };
 
-  const loadInvoice = async (invoiceId: string) => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const invoice = await invoiceService.getInvoice(invoiceId);
-      // Convert tax_rate from decimal (0.07) back to percentage (7) for display
-      const taxRatePercent = taxRateToPercent(invoice.tax_rate);
-      setFormData({
-        customer_id: invoice.customer_id || '',
-        issue_date: invoice.issue_date ? invoice.issue_date.split('T')[0] : '',
-        due_date: invoice.due_date ? invoice.due_date.split('T')[0] : '',
-        tax_rate: taxRatePercent,
-        notes: invoice.notes || '',
-        terms: invoice.terms || '',
-      });
-      if (invoice.lines && invoice.lines.length > 0) {
-        setLineItems(
-          invoice.lines.map((line) => ({
-            description: line.description,
-            quantity: line.quantity,
-            unit_price: line.unit_price,
-          }))
-        );
-      }
-      // Set invoice status and number
-      setInvoiceStatus(invoice.status || InvoiceStatus.DRAFT);
-      setInvoiceNumber(invoice.invoice_number || '');
-      // Set customer email and name if available
-      if (invoice.customer?.email) {
-        setCustomerEmail(invoice.customer.email);
-      }
-      if (invoice.customer) {
-        const name = invoice.customer.company_name
-          ? `${invoice.customer.company_name} (${invoice.customer.first_name} ${invoice.customer.last_name})`
-          : `${invoice.customer.first_name} ${invoice.customer.last_name}`;
-        setCustomerName(name);
-      }
-
-      // Load reminders for non-draft invoices
-      if (invoice.status && invoice.status !== InvoiceStatus.DRAFT) {
-        loadReminders(invoiceId);
-      }
-    } catch (err) {
-      console.error('Failed to load invoice:', err);
-      setError('Failed to load invoice details');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const loadReminders = async (invoiceId: string) => {
+  const loadReminders = useCallback(async (invoiceId: string) => {
     setRemindersLoading(true);
     try {
       const data = await paymentReminderService.getReminderHistory(invoiceId);
@@ -185,7 +118,85 @@ export function InvoiceDetailPage() {
     } finally {
       setRemindersLoading(false);
     }
-  };
+  }, []);
+
+  const loadInvoice = useCallback(
+    async (invoiceId: string, isStale: () => boolean = () => false) => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const invoice = await invoiceService.getInvoice(invoiceId);
+        if (isStale()) return;
+        // Convert tax_rate from decimal (0.07) back to percentage (7) for display
+        const taxRatePercent = taxRateToPercent(invoice.tax_rate);
+        setFormData({
+          customer_id: invoice.customer_id || '',
+          issue_date: invoice.issue_date
+            ? invoice.issue_date.split('T')[0]
+            : '',
+          due_date: invoice.due_date ? invoice.due_date.split('T')[0] : '',
+          tax_rate: taxRatePercent,
+          notes: invoice.notes || '',
+          terms: invoice.terms || '',
+        });
+        if (invoice.lines && invoice.lines.length > 0) {
+          setLineItems(
+            invoice.lines.map((line) => ({
+              description: line.description,
+              quantity: line.quantity,
+              unit_price: line.unit_price,
+            }))
+          );
+        }
+        // Set invoice status and number
+        setInvoiceStatus(invoice.status || InvoiceStatus.DRAFT);
+        setInvoiceNumber(invoice.invoice_number || '');
+        // Set customer email and name if available
+        if (invoice.customer?.email) {
+          setCustomerEmail(invoice.customer.email);
+        }
+        if (invoice.customer) {
+          const name = invoice.customer.company_name
+            ? `${invoice.customer.company_name} (${invoice.customer.first_name} ${invoice.customer.last_name})`
+            : `${invoice.customer.first_name} ${invoice.customer.last_name}`;
+          setCustomerName(name);
+        }
+
+        // Load reminders for non-draft invoices
+        if (invoice.status && invoice.status !== InvoiceStatus.DRAFT) {
+          loadReminders(invoiceId);
+        }
+      } catch (err) {
+        if (isStale()) return;
+        console.error('Failed to load invoice:', err);
+        setError('Failed to load invoice details');
+      } finally {
+        if (!isStale()) setIsLoading(false);
+      }
+    },
+    [loadReminders]
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    loadCustomers();
+    if (!isNew && id) {
+      loadInvoice(id, () => cancelled);
+    } else {
+      // Set default dates
+      const today = new Date();
+      const dueDate = new Date();
+      dueDate.setDate(dueDate.getDate() + 30);
+      setFormData((prev) => ({
+        ...prev,
+        issue_date: today.toISOString().split('T')[0],
+        due_date: dueDate.toISOString().split('T')[0],
+      }));
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [id, isNew, loadInvoice]);
 
   const handleSendReminder = async () => {
     if (!id || isNew) return;

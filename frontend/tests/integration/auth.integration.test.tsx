@@ -59,16 +59,6 @@ vi.mock('react-router-dom', async () => {
   };
 });
 
-// Mock user data
-const mockUser = {
-  id: 'user-123',
-  email: 'test@example.com',
-  first_name: 'Test',
-  last_name: 'User',
-  is_active: true,
-  email_verified: true,
-};
-
 const mockTenant = {
   id: 'tenant-123',
   name: 'Test Organization',
