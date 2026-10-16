@@ -152,11 +152,15 @@ Content-Type: application/json
 
 ```json
 {
-  "error": "error_code",
-  "message": "Human-readable error message",
-  "details": { "field": "Additional context" }
+  "error": "validation_failed",
+  "message": "Validation failed: email must be a valid email address",
+  "request_id": "3f6c1b9e-2a4d-4e7b-9a51-0c8d2f1e6b7a",
+  "fields": { "email": "email must be a valid email address" }
 }
 ```
+
+Every error uses this envelope; see [errors.md](errors.md) for the contract, the status-code
+rules and the common codes. Every response carries an `X-Request-ID` header.
 
 ## HTTP Status Codes
 

@@ -97,10 +97,19 @@ type UpdateProfileRequest struct {
 	LastName  *string `json:"last_name"`
 }
 
-// ErrorResponse represents an error response
+// ErrorResponse is the standard API error envelope (T223, docs/api/errors.md).
+// Write it through internal/api/apierror, which fills request_id and
+// normalises code/message, rather than with c.JSON directly.
 type ErrorResponse struct {
-	Error   string   `json:"error"`
-	Message string   `json:"message,omitempty"`
+	// Error is a stable snake_case machine code (e.g. "not_found", "cannot_accept").
+	Error string `json:"error" example:"cannot_accept"`
+	// Message is human-readable and safe to show to the user.
+	Message string `json:"message,omitempty" example:"This quote can no longer be accepted"`
+	// RequestID matches the X-Request-ID response header and the server's log lines.
+	RequestID string `json:"request_id,omitempty" example:"3f6c1b9e-2a4d-4e7b-9a51-0c8d2f1e6b7a"`
+	// Fields maps request field names to problems (validation errors only).
+	Fields map[string]string `json:"fields,omitempty"`
+	// Details lists extra messages, e.g. per-row import errors.
 	Details []string `json:"details,omitempty"`
 }
 

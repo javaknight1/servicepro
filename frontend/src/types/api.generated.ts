@@ -12148,9 +12148,27 @@ export interface components {
             start?: string;
         };
         "github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse": {
+            /** @description Details lists extra messages, e.g. per-row import errors. */
             details?: string[];
+            /**
+             * @description Error is a stable snake_case machine code (e.g. "not_found", "cannot_accept").
+             * @example cannot_accept
+             */
             error?: string;
+            /** @description Fields maps request field names to problems (validation errors only). */
+            fields?: {
+                [key: string]: string;
+            };
+            /**
+             * @description Message is human-readable and safe to show to the user.
+             * @example This quote can no longer be accepted
+             */
             message?: string;
+            /**
+             * @description RequestID matches the X-Request-ID response header and the server's log lines.
+             * @example 3f6c1b9e-2a4d-4e7b-9a51-0c8d2f1e6b7a
+             */
+            request_id?: string;
         };
         "github_com_javaknight1_servicepro_backend_internal_models.ExcelExportOptions": {
             auto_filter?: boolean;
