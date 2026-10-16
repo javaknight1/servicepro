@@ -87,6 +87,38 @@ func TestJobNumbering_SurvivesSoftDelete(t *testing.T) {
 	assert.Equal(t, "JOB-000003", mk().JobNumber)
 }
 
+// T127: numbers use the tenant's configured prefixes; another tenant's
+// prefix never applies, and unset prefixes fall back to INV-/QUO-/JOB-.
+func TestDocumentNumbering_UsesTenantPrefixes(t *testing.T) {
+	f := setupIsolation(t)
+	f.setTenantSettings(t, f.ctxA, models.TenantSettings{InvoicePrefix: " ACME-", QuotePrefix: "Q", JobPrefix: "WO-"})
+	f.setTenantSettings(t, f.ctxB, models.TenantSettings{Timezone: "UTC"})
+	svc := NewInvoiceService(f.db)
+
+	assert.Equal(t, "ACME-000001", createUnnumberedInvoice(t, svc, f.ctxA, f.custA.ID, f.userA).InvoiceNumber)
+	assert.Equal(t, "INV-000001", createUnnumberedInvoice(t, svc, f.ctxB, f.custB.ID, f.userA).InvoiceNumber,
+		"tenant A's prefix does not leak into tenant B")
+
+	q := &models.Quote{ID: uuid.New(), CustomerID: f.custA.ID, Status: models.QuoteStatusDraft,
+		ValidUntil: time.Now().Add(72 * time.Hour), CreatedBy: f.userA}
+	require.NoError(t, f.db.WithContext(f.ctxA).Create(q).Error)
+	assert.Equal(t, "Q000001", q.QuoteNumber)
+
+	job := &models.Job{ID: uuid.New(), CustomerID: f.custA.ID, Title: "Job", JobType: models.JobTypeRepair,
+		Status: models.JobStatusNew, Priority: models.JobPriorityNormal, CreatedBy: f.userA}
+	require.NoError(t, f.db.WithContext(f.ctxA).Create(job).Error)
+	assert.Equal(t, "WO-000001", job.JobNumber)
+}
+
+func TestCounterPrefix_FallsBackOnUnusablePrefix(t *testing.T) {
+	assert.Equal(t, "INV-", models.CounterPrefix(models.TenantSettings{}, models.CounterInvoice))
+	assert.Equal(t, "INV-", models.CounterPrefix(models.TenantSettings{InvoicePrefix: "   "}, models.CounterInvoice))
+	assert.Equal(t, "INV-", models.CounterPrefix(models.TenantSettings{InvoicePrefix: "A\nB"}, models.CounterInvoice))
+	assert.Equal(t, "INV-", models.CounterPrefix(models.TenantSettings{InvoicePrefix: "THIS-PREFIX-IS-WAY-TOO-LONG-"}, models.CounterInvoice))
+	assert.Equal(t, "QUO-", models.CounterPrefix(models.TenantSettings{InvoicePrefix: "X-"}, models.CounterQuote))
+	assert.Equal(t, "JOB-", models.CounterPrefix(models.TenantSettings{}, models.CounterJob))
+}
+
 func TestQuoteNumbering_UsesTenantCounter(t *testing.T) {
 	f := setupIsolation(t)
 	q := &models.Quote{ID: uuid.New(), CustomerID: f.custA.ID, Status: models.QuoteStatusDraft,

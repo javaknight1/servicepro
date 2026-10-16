@@ -78,8 +78,13 @@ func (s *TenantSettings) Scan(value interface{}) error {
 		return nil
 	}
 
-	bytes, ok := value.([]byte)
-	if !ok {
+	var bytes []byte
+	switch v := value.(type) {
+	case []byte:
+		bytes = v
+	case string:
+		bytes = []byte(v)
+	default:
 		return errors.New("failed to scan TenantSettings: invalid type")
 	}
 
@@ -89,6 +94,19 @@ func (s *TenantSettings) Scan(value interface{}) error {
 	}
 
 	return json.Unmarshal(bytes, s)
+}
+
+// TenantSettingsInTx reads a tenant's settings with db (in a create hook,
+// the transaction the document is inserted in). A tenant that cannot be read
+// yields zero settings, so callers fall back to their defaults; on Postgres
+// a failed read also aborts the surrounding transaction, so the create still
+// fails loudly rather than silently using defaults.
+func TenantSettingsInTx(db *gorm.DB, tenantID uuid.UUID) TenantSettings {
+	var rows []struct{ Settings TenantSettings }
+	if err := db.Table("tenants").Select("settings").Where("id = ?", tenantID).Limit(1).Find(&rows).Error; err != nil || len(rows) == 0 {
+		return TenantSettings{}
+	}
+	return rows[0].Settings
 }
 
 // TenantUser represents a user's membership in a tenant

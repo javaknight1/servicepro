@@ -3,6 +3,9 @@ package models
 import (
 	"errors"
 	"fmt"
+	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -18,7 +21,8 @@ const (
 	CounterJob     = "job"
 )
 
-// Default number prefixes. T127 makes these tenant settings.
+// Default number prefixes, used when the tenant has not configured its own
+// (TenantSettings.InvoicePrefix / QuotePrefix / JobPrefix, T127).
 var counterPrefixes = map[string]string{
 	CounterInvoice: "INV-",
 	CounterQuote:   "QUO-",
@@ -51,14 +55,14 @@ func NextDocumentNumber(tx *gorm.DB, tenantID uuid.UUID, kind string) (string, e
 	if tenantID == uuid.Nil {
 		return "", ErrNoTenantForNumber
 	}
-	prefix, ok := counterPrefixes[kind]
-	if !ok {
+	if _, ok := counterPrefixes[kind]; !ok {
 		return "", fmt.Errorf("unknown document counter %q", kind)
 	}
 	table, column := counterTable(kind)
 
 	// A fresh session so the caller's statement (model, clauses) doesn't leak in.
 	db := tx.Session(&gorm.Session{NewDB: true})
+	prefix := CounterPrefix(TenantSettingsInTx(db, tenantID), kind)
 	for attempt := 0; attempt < 1000; attempt++ {
 		var n int64
 		if err := db.Raw(`INSERT INTO tenant_counters (tenant_id, kind, next_value) VALUES (?, ?, 2)
@@ -80,6 +84,33 @@ func NextDocumentNumber(tx *gorm.DB, tenantID uuid.UUID, kind string) (string, e
 		}
 	}
 	return "", fmt.Errorf("allocate %s number: too many numbers already taken", kind)
+}
+
+// maxNumberPrefixLen keeps prefix + 6-digit counter well inside the
+// varchar(50) number columns.
+const maxNumberPrefixLen = 20
+
+// CounterPrefix returns the tenant's configured number prefix for kind, or
+// the default (INV-/QUO-/JOB-) when it is unset or unusable (T127). The
+// settings endpoint does not validate prefixes, so they are cleaned here:
+// surrounding space is trimmed, and a prefix with control characters or
+// longer than 20 characters falls back to the default.
+func CounterPrefix(settings TenantSettings, kind string) string {
+	var configured string
+	switch kind {
+	case CounterInvoice:
+		configured = settings.InvoicePrefix
+	case CounterQuote:
+		configured = settings.QuotePrefix
+	case CounterJob:
+		configured = settings.JobPrefix
+	}
+	configured = strings.TrimSpace(configured)
+	if configured == "" || utf8.RuneCountInString(configured) > maxNumberPrefixLen ||
+		strings.IndexFunc(configured, unicode.IsControl) >= 0 {
+		return counterPrefixes[kind]
+	}
+	return configured
 }
 
 func counterTable(kind string) (table, column string) {

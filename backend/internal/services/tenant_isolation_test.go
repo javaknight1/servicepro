@@ -37,7 +37,7 @@ func setupIsolation(t *testing.T) *isolationFixture {
 	sqlDB.SetMaxOpenConns(1)
 
 	for _, m := range []any{
-		&models.User{}, &models.Customer{}, &models.Job{}, &models.JobAssignment{},
+		&models.Tenant{}, &models.User{}, &models.Customer{}, &models.Job{}, &models.JobAssignment{},
 		&models.JobMaterial{}, &models.JobNote{}, &models.Quote{}, &models.QuoteItem{},
 		&models.Invoice{}, &models.InvoiceLine{}, &models.InvoicePayment{},
 		&models.PaymentTerm{}, &models.TaxRate{}, &models.Payment{}, &models.ExportJob{}, &models.InvoiceAuditLog{}, &models.JobStatusTransition{}, &models.InvoiceRefund{},
@@ -59,6 +59,20 @@ func setupIsolation(t *testing.T) *isolationFixture {
 	require.NoError(t, repo.WithContext(f.ctxA).Create(f.custA))
 	require.NoError(t, repo.WithContext(f.ctxB).Create(f.custB))
 	return f
+}
+
+// setTenantSettings stores settings as the tenant of ctx (the fixture starts
+// with no tenant rows, so documents use the default settings).
+func (f *isolationFixture) setTenantSettings(t *testing.T, ctx context.Context, settings models.TenantSettings) {
+	t.Helper()
+	tenantID, ok := tenancy.TenantID(ctx)
+	require.True(t, ok)
+	raw, err := settings.Value()
+	require.NoError(t, err)
+	now := time.Now()
+	require.NoError(t, f.db.Exec(`INSERT INTO tenants (id, name, slug, settings, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)
+		ON CONFLICT (id) DO UPDATE SET settings = excluded.settings`,
+		tenantID.String(), "T "+tenantID.String(), tenantID.String(), raw, now, now).Error)
 }
 
 func TestTenantIsolation_Customers(t *testing.T) {
