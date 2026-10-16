@@ -249,13 +249,37 @@ type InvoicePayment struct {
 	ReferenceNumber string          `gorm:"type:varchar(100)" json:"reference_number,omitempty"`
 	Notes           string          `gorm:"type:text" json:"notes,omitempty"`
 
-	// Metadata
-	CreatedBy uuid.UUID `gorm:"type:uuid;not null" json:"created_by"`
-	CreatedAt time.Time `gorm:"autoCreateTime" json:"created_at"`
-	UpdatedAt time.Time `gorm:"autoUpdateTime" json:"updated_at"`
+	// Stripe references for online payments (nil for manually recorded
+	// payments). A checkout session is applied at most once (unique index,
+	// migration 000007).
+	StripeCheckoutSessionID *string `gorm:"type:varchar(255)" json:"stripe_checkout_session_id,omitempty"`
+	StripePaymentIntentID   *string `gorm:"type:varchar(255)" json:"stripe_payment_intent_id,omitempty"`
+
+	// CreatedBy is the staff member who recorded the payment; nil for
+	// payments recorded by a Stripe webhook.
+	CreatedBy *uuid.UUID `gorm:"type:uuid" json:"created_by,omitempty"`
+	CreatedAt time.Time  `gorm:"autoCreateTime" json:"created_at"`
+	UpdatedAt time.Time  `gorm:"autoUpdateTime" json:"updated_at"`
 
 	// Relationships
 	Invoice *Invoice `gorm:"foreignKey:InvoiceID" json:"invoice,omitempty"`
+}
+
+// AcceptsPayments reports whether money can be recorded against an invoice
+// in this status. Drafts were never issued; cancelled and refunded invoices
+// are closed.
+func (s InvoiceStatus) AcceptsPayments() bool {
+	switch s {
+	case InvoiceStatusSent, InvoiceStatusViewed, InvoiceStatusPartiallyPaid, InvoiceStatusOverdue:
+		return true
+	}
+	return false
+}
+
+// BalanceDue is total_amount - amount_paid, computed in Go so it does not
+// depend on the generated amount_due column having been read back.
+func (i *Invoice) BalanceDue() decimal.Decimal {
+	return i.TotalAmount.Sub(i.AmountPaid)
 }
 
 // TableName overrides the table name

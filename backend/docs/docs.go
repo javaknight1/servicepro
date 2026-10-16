@@ -11570,7 +11570,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "created_by": {
-                    "description": "Metadata",
+                    "description": "CreatedBy is the staff member who recorded the payment; nil for\npayments recorded by a Stripe webhook.",
                     "type": "string"
                 },
                 "id": {
@@ -11597,6 +11597,13 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "reference_number": {
+                    "type": "string"
+                },
+                "stripe_checkout_session_id": {
+                    "description": "Stripe references for online payments (nil for manually recorded\npayments). A checkout session is applied at most once (unique index,\nmigration 000007).",
+                    "type": "string"
+                },
+                "stripe_payment_intent_id": {
                     "type": "string"
                 },
                 "updated_at": {

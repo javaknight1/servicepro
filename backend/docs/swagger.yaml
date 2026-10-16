@@ -1417,7 +1417,9 @@ definitions:
       created_at:
         type: string
       created_by:
-        description: Metadata
+        description: |-
+          CreatedBy is the staff member who recorded the payment; nil for
+          payments recorded by a Stripe webhook.
         type: string
       id:
         type: string
@@ -1434,6 +1436,14 @@ definitions:
       payment_method:
         type: string
       reference_number:
+        type: string
+      stripe_checkout_session_id:
+        description: |-
+          Stripe references for online payments (nil for manually recorded
+          payments). A checkout session is applied at most once (unique index,
+          migration 000007).
+        type: string
+      stripe_payment_intent_id:
         type: string
       updated_at:
         type: string

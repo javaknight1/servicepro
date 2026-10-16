@@ -193,7 +193,9 @@ func setupTestDB(t *testing.T) *gorm.DB {
 			payment_date DATE NOT NULL,
 			reference_number TEXT,
 			notes TEXT,
-			created_by TEXT NOT NULL,
+			stripe_checkout_session_id TEXT,
+			stripe_payment_intent_id TEXT,
+			created_by TEXT,
 			created_at DATETIME,
 			updated_at DATETIME
 		)
@@ -601,28 +603,11 @@ func TestInvoiceService_RecordPayment(t *testing.T) {
 	}
 	require.NoError(t, db.Create(invoice).Error)
 
-	t.Run("Record full payment", func(t *testing.T) {
-		payment := &models.InvoicePayment{
-			InvoiceID:     invoice.ID,
-			Amount:        decimal.NewFromFloat(1082.50),
-			PaymentDate:   time.Now(),
-			PaymentMethod: "bank_transfer",
-			CreatedBy:     userID,
-		}
-
-		created, err := service.RecordPayment(ctx, payment)
-
-		require.NoError(t, err)
-		assert.NotNil(t, created)
-		assert.Equal(t, invoice.ID, created.InvoiceID)
-		assert.Equal(t, decimal.NewFromFloat(1082.50), created.Amount)
-	})
-
 	t.Run("Cannot record negative payment", func(t *testing.T) {
 		payment := &models.InvoicePayment{
 			InvoiceID: invoice.ID,
 			Amount:    decimal.NewFromFloat(-100.00),
-			CreatedBy: userID,
+			CreatedBy: &userID,
 		}
 
 		_, err := service.RecordPayment(ctx, payment)
@@ -635,7 +620,7 @@ func TestInvoiceService_RecordPayment(t *testing.T) {
 		payment := &models.InvoicePayment{
 			InvoiceID: invoice.ID,
 			Amount:    decimal.NewFromFloat(2000.00),
-			CreatedBy: userID,
+			CreatedBy: &userID,
 		}
 
 		_, err := service.RecordPayment(ctx, payment)
@@ -643,6 +628,29 @@ func TestInvoiceService_RecordPayment(t *testing.T) {
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "exceeds")
 	})
+	t.Run("Record full payment", func(t *testing.T) {
+		payment := &models.InvoicePayment{
+			InvoiceID:     invoice.ID,
+			Amount:        decimal.NewFromFloat(1082.50),
+			PaymentDate:   time.Now(),
+			PaymentMethod: "bank_transfer",
+			CreatedBy:     &userID,
+		}
+
+		created, err := service.RecordPayment(ctx, payment)
+
+		require.NoError(t, err)
+		assert.NotNil(t, created)
+		assert.Equal(t, invoice.ID, created.InvoiceID)
+		assert.True(t, decimal.NewFromFloat(1082.50).Equal(created.Amount))
+
+		var got models.Invoice
+		require.NoError(t, db.First(&got, "id = ?", invoice.ID).Error)
+		assert.Equal(t, models.InvoiceStatusPaid, got.Status, "T118: the invoice is marked paid")
+		assert.True(t, got.AmountPaid.Equal(decimal.NewFromFloat(1082.50)))
+		assert.NotNil(t, got.PaidDate)
+	})
+
 }
 
 func TestInvoiceService_SendInvoice(t *testing.T) {

@@ -11903,7 +11903,10 @@ export interface components {
             /** @description Payment details */
             amount?: number;
             created_at?: string;
-            /** @description Metadata */
+            /**
+             * @description CreatedBy is the staff member who recorded the payment; nil for
+             *     payments recorded by a Stripe webhook.
+             */
             created_by?: string;
             id?: string;
             /** @description Relationships */
@@ -11913,6 +11916,13 @@ export interface components {
             payment_date?: string;
             payment_method?: string;
             reference_number?: string;
+            /**
+             * @description Stripe references for online payments (nil for manually recorded
+             *     payments). A checkout session is applied at most once (unique index,
+             *     migration 000007).
+             */
+            stripe_checkout_session_id?: string;
+            stripe_payment_intent_id?: string;
             updated_at?: string;
         };
         /** @enum {string} */
