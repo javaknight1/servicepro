@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { DashboardLayout } from '@components/layout';
-import { Button } from '@components/shared';
+import { Badge, Button, getStatusBadgeVariant } from '@components/shared';
 import { quoteService } from '@services/quoteService';
-import { getErrorMessage } from '@/utils/error';
+import { getApiErrorInfo, getErrorMessage } from '@/utils/error';
 import {
   formatDollars,
   lineTotal,
@@ -28,6 +28,16 @@ import {
   XCircle,
   Pencil,
 } from 'lucide-react';
+
+/** The API's message for a failed quote action (e.g. "Quote cannot be
+ * accepted in current status"), else a fallback. */
+function quoteActionError(err: unknown, fallback: string): string {
+  const { message } = getApiErrorInfo(err);
+  return message || getErrorMessage(err, fallback);
+}
+
+const quoteStatusLabel = (status: string): string =>
+  status.charAt(0).toUpperCase() + status.slice(1);
 
 interface QuoteFormData {
   customer_id: string;
@@ -74,6 +84,7 @@ export function QuoteDetailPage() {
   const [isRevisingQuote, setIsRevisingQuote] = useState(false);
   const [isDownloadingPDF, setIsDownloadingPDF] = useState(false);
   const [quoteStatus, setQuoteStatus] = useState<string>('draft');
+  const [quoteNumber, setQuoteNumber] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -130,6 +141,7 @@ export function QuoteDetailPage() {
         );
       }
       setQuoteStatus(quote.status || 'draft');
+      setQuoteNumber(quote.quote_number || '');
     } catch (err) {
       console.error('Failed to load quote:', err);
       setError('Failed to load quote details');
@@ -303,13 +315,12 @@ export function QuoteDetailPage() {
     setIsSendingQuote(true);
     setError(null);
     try {
-      await quoteService.sendQuote(id);
-      setQuoteStatus('sent');
+      const updated = await quoteService.sendQuote(id);
+      setQuoteStatus(updated?.status || 'sent');
       trackEvent(AnalyticsEvents.QUOTE_SENT, { total: calculateTotal() });
     } catch (err: unknown) {
       console.error('Failed to send quote:', err);
-      const error = err as { response?: { data?: { message?: string } } };
-      setError(error?.response?.data?.message || 'Failed to send quote');
+      setError(quoteActionError(err, 'Failed to send quote'));
     } finally {
       setIsSendingQuote(false);
     }
@@ -338,13 +349,12 @@ export function QuoteDetailPage() {
     setIsAcceptingQuote(true);
     setError(null);
     try {
-      await quoteService.acceptQuote(id);
-      setQuoteStatus('accepted');
+      const updated = await quoteService.acceptQuote(id);
+      setQuoteStatus(updated?.status || 'accepted');
       trackEvent(AnalyticsEvents.QUOTE_ACCEPTED, { total: calculateTotal() });
     } catch (err: unknown) {
       console.error('Failed to accept quote:', err);
-      const error = err as { response?: { data?: { message?: string } } };
-      setError(error?.response?.data?.message || 'Failed to accept quote');
+      setError(quoteActionError(err, 'Failed to accept quote'));
     } finally {
       setIsAcceptingQuote(false);
     }
@@ -356,13 +366,12 @@ export function QuoteDetailPage() {
     setIsDecliningQuote(true);
     setError(null);
     try {
-      await quoteService.rejectQuote(id);
-      setQuoteStatus('declined');
+      const updated = await quoteService.rejectQuote(id);
+      setQuoteStatus(updated?.status || 'declined');
       trackEvent(AnalyticsEvents.QUOTE_REJECTED);
     } catch (err: unknown) {
       console.error('Failed to decline quote:', err);
-      const error = err as { response?: { data?: { message?: string } } };
-      setError(error?.response?.data?.message || 'Failed to decline quote');
+      setError(quoteActionError(err, 'Failed to decline quote'));
     } finally {
       setIsDecliningQuote(false);
     }
@@ -374,11 +383,11 @@ export function QuoteDetailPage() {
     setIsRevisingQuote(true);
     setError(null);
     try {
-      await quoteService.reviseQuote(id);
-      setQuoteStatus('draft');
+      const updated = await quoteService.reviseQuote(id);
+      setQuoteStatus(updated?.status || 'draft');
     } catch (err: unknown) {
       console.error('Failed to revise quote:', err);
-      setError(getErrorMessage(err, 'Failed to revise quote'));
+      setError(quoteActionError(err, 'Failed to revise quote'));
     } finally {
       setIsRevisingQuote(false);
     }
@@ -420,8 +429,15 @@ export function QuoteDetailPage() {
                 ? 'Clone Quote'
                 : isNew
                   ? 'Create Quote'
-                  : 'Edit Quote'}
+                  : quoteNumber
+                    ? `Quote ${quoteNumber}`
+                    : 'Edit Quote'}
             </h1>
+            {!isNew && (
+              <Badge variant={getStatusBadgeVariant(quoteStatus)}>
+                {quoteStatusLabel(quoteStatus)}
+              </Badge>
+            )}
           </div>
           {!isNew && (
             <div className="flex items-center gap-2">

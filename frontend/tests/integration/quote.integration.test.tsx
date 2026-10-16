@@ -417,77 +417,84 @@ describe('Quote Workflow Integration', () => {
   });
 
   describe('Quote Status Transitions', () => {
-    it('should send a draft quote to customer', async () => {
+    const renderQuote = async (quoteId: string) => {
+      const { QuoteDetailPage } =
+        await import('../../src/pages/Quotes/QuoteDetailPage');
+      render(
+        <MemoryRouter initialEntries={[`/quotes/${quoteId}`]}>
+          <Routes>
+            <Route path="/quotes/:id" element={<QuoteDetailPage />} />
+          </Routes>
+        </MemoryRouter>
+      );
+      await waitFor(() => {
+        expect(quoteService.getQuote).toHaveBeenCalledWith(quoteId);
+      });
+    };
+
+    it('shows the quote number and status', async () => {
+      vi.mocked(quoteService.getQuote).mockResolvedValue({
+        ...mockQuotes[1],
+        quote_number: 'QUO-000042',
+      });
+
+      await renderQuote('quote-2');
+      expect(
+        await screen.findByRole('heading', { name: 'Quote QUO-000042' })
+      ).toBeInTheDocument();
+      expect(screen.getByText('Sent')).toBeInTheDocument();
+    });
+
+    it('sends a draft quote and shows the status the API returned', async () => {
       const user = userEvent.setup({ delay: null });
       vi.mocked(quoteService.getQuote).mockResolvedValue(mockQuotes[0]); // Draft quote
       vi.mocked(quoteService.sendQuote).mockResolvedValue({
         ...mockQuotes[0],
         status: 'sent' as const,
-        sent_at: '2024-01-05T00:00:00Z',
       });
 
-      const { QuoteDetailPage } =
-        await import('../../src/pages/Quotes/QuoteDetailPage');
-
-      render(
-        <MemoryRouter initialEntries={['/quotes/quote-1']}>
-          <Routes>
-            <Route path="/quotes/:id" element={<QuoteDetailPage />} />
-          </Routes>
-        </MemoryRouter>
+      await renderQuote('quote-1');
+      await user.click(
+        await screen.findByRole('button', { name: /send quote/i })
       );
 
       await waitFor(() => {
-        expect(quoteService.getQuote).toHaveBeenCalledWith('quote-1');
+        expect(quoteService.sendQuote).toHaveBeenCalledWith('quote-1');
       });
-
-      // Find and click send button
-      const sendButton = screen.queryByRole('button', { name: /send/i });
-      if (sendButton) {
-        await user.click(sendButton);
-
-        await waitFor(() => {
-          expect(quoteService.sendQuote).toHaveBeenCalledWith('quote-1');
-        });
-      }
+      expect(await screen.findByText('Sent')).toBeInTheDocument();
+      // A sent quote is read-only until revised
+      expect(
+        screen.getByRole('button', { name: /save changes/i })
+      ).toBeDisabled();
+      expect(
+        screen.getByRole('button', { name: /send quote/i })
+      ).toBeDisabled();
     });
 
-    it('should accept a sent quote', async () => {
+    it('accepts a sent quote', async () => {
       const user = userEvent.setup({ delay: null });
       vi.mocked(quoteService.getQuote).mockResolvedValue(mockQuotes[1]); // Sent quote
       vi.mocked(quoteService.acceptQuote).mockResolvedValue({
         ...mockQuotes[1],
         status: 'accepted' as const,
-        accepted_at: '2024-01-05T00:00:00Z',
       });
 
-      const { QuoteDetailPage } =
-        await import('../../src/pages/Quotes/QuoteDetailPage');
-
-      render(
-        <MemoryRouter initialEntries={['/quotes/quote-2']}>
-          <Routes>
-            <Route path="/quotes/:id" element={<QuoteDetailPage />} />
-          </Routes>
-        </MemoryRouter>
+      await renderQuote('quote-2');
+      await user.click(
+        await screen.findByRole('button', { name: /^accept$/i })
       );
 
       await waitFor(() => {
-        expect(quoteService.getQuote).toHaveBeenCalledWith('quote-2');
+        expect(quoteService.acceptQuote).toHaveBeenCalledWith('quote-2');
       });
-
-      // Find and click accept button
-      const acceptButton = screen.queryByRole('button', { name: /accept/i });
-      if (acceptButton) {
-        await user.click(acceptButton);
-
-        await waitFor(() => {
-          expect(quoteService.acceptQuote).toHaveBeenCalledWith('quote-2');
-        });
-      }
+      expect(await screen.findByText('Accepted')).toBeInTheDocument();
+      // Accepted quotes are final: no accept/decline/revise
+      expect(screen.queryByRole('button', { name: /^accept$/i })).toBeNull();
+      expect(screen.queryByRole('button', { name: /decline/i })).toBeNull();
+      expect(screen.queryByRole('button', { name: /revise/i })).toBeNull();
     });
 
-    it('should reject a sent quote', async () => {
+    it('declines a sent quote', async () => {
       const user = userEvent.setup({ delay: null });
       vi.mocked(quoteService.getQuote).mockResolvedValue(mockQuotes[1]); // Sent quote
       vi.mocked(quoteService.rejectQuote).mockResolvedValue({
@@ -495,40 +502,39 @@ describe('Quote Workflow Integration', () => {
         status: 'declined' as const,
       });
 
-      const { QuoteDetailPage } =
-        await import('../../src/pages/Quotes/QuoteDetailPage');
-
-      render(
-        <MemoryRouter initialEntries={['/quotes/quote-2']}>
-          <Routes>
-            <Route path="/quotes/:id" element={<QuoteDetailPage />} />
-          </Routes>
-        </MemoryRouter>
-      );
+      await renderQuote('quote-2');
+      await user.click(await screen.findByRole('button', { name: /decline/i }));
 
       await waitFor(() => {
-        expect(quoteService.getQuote).toHaveBeenCalled();
+        expect(quoteService.rejectQuote).toHaveBeenCalledWith('quote-2');
+      });
+      expect(await screen.findByText('Declined')).toBeInTheDocument();
+      // A declined quote can be revised and sent again
+      expect(screen.getByRole('button', { name: /revise/i })).toBeEnabled();
+    });
+
+    it("shows the API's reason when accepting is refused", async () => {
+      const user = userEvent.setup({ delay: null });
+      vi.mocked(quoteService.getQuote).mockResolvedValue(mockQuotes[1]);
+      vi.mocked(quoteService.acceptQuote).mockRejectedValue({
+        response: {
+          status: 403,
+          data: {
+            error: 'cannot_accept',
+            message: 'Quote cannot be accepted in current status',
+          },
+        },
       });
 
-      // Find and click reject/decline button
-      const rejectButton = screen.queryByRole('button', {
-        name: /reject|decline/i,
-      });
-      if (rejectButton) {
-        await user.click(rejectButton);
+      await renderQuote('quote-2');
+      await user.click(
+        await screen.findByRole('button', { name: /^accept$/i })
+      );
 
-        // Confirm if dialog appears
-        const confirmButton = screen.queryByRole('button', {
-          name: /confirm|yes/i,
-        });
-        if (confirmButton) {
-          await user.click(confirmButton);
-        }
-
-        await waitFor(() => {
-          expect(quoteService.rejectQuote).toHaveBeenCalledWith('quote-2');
-        });
-      }
+      expect(
+        await screen.findByText('Quote cannot be accepted in current status')
+      ).toBeInTheDocument();
+      expect(screen.getByText('Sent')).toBeInTheDocument();
     });
 
     it('should keep a sent quote read-only until it is revised', async () => {
@@ -539,16 +545,7 @@ describe('Quote Workflow Integration', () => {
         status: 'draft' as const,
       });
 
-      const { QuoteDetailPage } =
-        await import('../../src/pages/Quotes/QuoteDetailPage');
-
-      render(
-        <MemoryRouter initialEntries={['/quotes/quote-2']}>
-          <Routes>
-            <Route path="/quotes/:id" element={<QuoteDetailPage />} />
-          </Routes>
-        </MemoryRouter>
-      );
+      await renderQuote('quote-2');
 
       const saveButton = await screen.findByRole('button', {
         name: /save changes/i,
@@ -562,6 +559,7 @@ describe('Quote Workflow Integration', () => {
       });
       await waitFor(() => expect(saveButton).toBeEnabled());
       expect(screen.queryByRole('button', { name: /revise/i })).toBeNull();
+      expect(screen.getByText('Draft')).toBeInTheDocument();
     });
   });
 
@@ -668,7 +666,13 @@ describe('Quote Workflow Integration', () => {
       const user = userEvent.setup({ delay: null });
       vi.mocked(quoteService.getQuote).mockResolvedValue(mockQuotes[0]);
       vi.mocked(quoteService.sendQuote).mockRejectedValue({
-        response: { data: { message: 'Customer email not available' } },
+        response: {
+          status: 403,
+          data: {
+            error: 'cannot_send',
+            message: 'Quote cannot be sent in current status',
+          },
+        },
       });
 
       const { QuoteDetailPage } =
@@ -682,23 +686,14 @@ describe('Quote Workflow Integration', () => {
         </MemoryRouter>
       );
 
-      await waitFor(() => {
-        expect(quoteService.getQuote).toHaveBeenCalled();
-      });
+      await user.click(
+        await screen.findByRole('button', { name: /send quote/i })
+      );
 
-      const sendButton = screen.queryByRole('button', { name: /send/i });
-      if (sendButton) {
-        await user.click(sendButton);
-
-        await waitFor(() => {
-          const errorMessage = screen.queryByText(
-            /error|failed|not available/i
-          );
-          if (errorMessage) {
-            expect(errorMessage).toBeInTheDocument();
-          }
-        });
-      }
+      expect(
+        await screen.findByText('Quote cannot be sent in current status')
+      ).toBeInTheDocument();
+      expect(screen.getByText('Draft')).toBeInTheDocument();
     });
   });
 });
