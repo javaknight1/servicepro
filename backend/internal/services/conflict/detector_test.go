@@ -145,6 +145,16 @@ func (m *MockJobRepository) GetTechnicianWorkload(userID uuid.UUID) (map[string]
 	return args.Get(0).(map[string]interface{}), args.Error(1)
 }
 
+func (m *MockJobRepository) CreateWithTransition(job *models.Job, transition *models.JobStatusTransition) error {
+	args := m.Called(job, transition)
+	return args.Error(0)
+}
+
+func (m *MockJobRepository) UpdateWithTransition(job *models.Job, transition *models.JobStatusTransition) error {
+	args := m.Called(job, transition)
+	return args.Error(0)
+}
+
 func (m *MockJobRepository) CreateStatusTransition(transition *models.JobStatusTransition) error {
 	args := m.Called(transition)
 	return args.Error(0)

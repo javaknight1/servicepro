@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/utils"
@@ -457,6 +458,30 @@ func (r *JobRepository) GetTechnicianWorkload(userID uuid.UUID) (map[string]inte
 	workload["by_status"] = statusCounts
 
 	return workload, nil
+}
+
+// CreateWithTransition inserts a job and its creation history row
+// atomically.
+func (r *JobRepository) CreateWithTransition(job *models.Job, transition *models.JobStatusTransition) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(job).Error; err != nil {
+			return err
+		}
+		transition.JobID = job.ID
+		return tx.Create(transition).Error
+	})
+}
+
+// UpdateWithTransition saves a job whose status changed together with the
+// history row, so status and history can never disagree. Preloaded
+// associations are not saved.
+func (r *JobRepository) UpdateWithTransition(job *models.Job, transition *models.JobStatusTransition) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Omit(clause.Associations).Save(job).Error; err != nil {
+			return err
+		}
+		return tx.Create(transition).Error
+	})
 }
 
 // CreateStatusTransition creates a new status transition record

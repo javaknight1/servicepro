@@ -114,6 +114,11 @@ type JobRepositoryInterface interface {
 
 	// Status transition operations
 	CreateStatusTransition(transition *models.JobStatusTransition) error
+	// CreateWithTransition inserts a job and its first history row in one
+	// transaction; UpdateWithTransition saves a status change and its
+	// history row in one transaction (T124).
+	CreateWithTransition(job *models.Job, transition *models.JobStatusTransition) error
+	UpdateWithTransition(job *models.Job, transition *models.JobStatusTransition) error
 	GetStatusHistory(jobID uuid.UUID, limit, offset int, sortOrder string) ([]models.JobStatusTransition, int64, error)
 }
 

@@ -138,6 +138,7 @@ func (s *JobService) CreateJob(req *models.CreateJobRequest, createdBy uuid.UUID
 
 	// Create job
 	job := &models.Job{
+		ID:                  uuid.New(),
 		CustomerID:          req.CustomerID,
 		Title:               req.Title,
 		Description:         req.Description,
@@ -167,20 +168,22 @@ func (s *JobService) CreateJob(req *models.CreateJobRequest, createdBy uuid.UUID
 		job.Priority = models.JobPriorityNormal
 	}
 
-	if err := s.jobRepo.Create(job); err != nil {
+	// The job and its first history row are written together. from_status is
+	// NOT NULL, so creation is recorded as new -> new (it used to pass "",
+	// which always failed and the error was swallowed — audit 7.M1).
+	created := "Job created"
+	if err := s.jobRepo.CreateWithTransition(job, newTransition(uuid.Nil, models.JobStatusNew, models.JobStatusNew, models.ReasonOther, &created, createdBy)); err != nil {
 		return nil, err
 	}
-
-	// Record initial status transition
-	_ = s.recordStatusTransition(job.ID, "", models.JobStatusNew, string(models.ReasonOther), nil, createdBy)
 
 	// Create assignments if provided
 	if len(req.Assignments) > 0 {
 		for _, assignmentReq := range req.Assignments {
 			assignment := &models.JobAssignment{
-				JobID:  job.ID,
-				UserID: assignmentReq.UserID,
-				Role:   assignmentReq.Role,
+				JobID:      job.ID,
+				UserID:     assignmentReq.UserID,
+				Role:       assignmentReq.Role,
+				AssignedAt: epoch.NowEpoch(), // was left 0 (1970) — audit 7.M2
 			}
 			if assignment.Role == "" {
 				assignment.Role = "technician"
@@ -645,9 +648,10 @@ func (s *JobService) AssignTechnician(jobID, technicianID uuid.UUID, role string
 	}
 
 	assignment := &models.JobAssignment{
-		JobID:  jobID,
-		UserID: technicianID,
-		Role:   role,
+		JobID:      jobID,
+		UserID:     technicianID,
+		Role:       role,
+		AssignedAt: epoch.NowEpoch(), // was left 0 (1970) — audit 7.M2
 	}
 
 	// Validate assignment
@@ -825,18 +829,18 @@ func (s *JobService) GetTechnicianWorkload(userID uuid.UUID) (map[string]interfa
 	return s.jobRepo.GetTechnicianWorkload(userID)
 }
 
-// recordStatusTransition records a status change in the transition history
-func (s *JobService) recordStatusTransition(jobID uuid.UUID, fromStatus, toStatus models.JobStatus, reason string, notes *string, changedBy uuid.UUID) error {
-	transition := &models.JobStatusTransition{
+// newTransition builds a job history row.
+func newTransition(jobID uuid.UUID, from, to models.JobStatus, reason models.StatusTransitionReason, notes *string, changedBy uuid.UUID) *models.JobStatusTransition {
+	return &models.JobStatusTransition{
+		ID:             uuid.New(),
 		JobID:          jobID,
-		FromStatus:     fromStatus,
-		ToStatus:       toStatus,
-		Reason:         models.StatusTransitionReason(reason),
+		FromStatus:     from,
+		ToStatus:       to,
+		Reason:         reason,
 		Notes:          notes,
 		ChangedBy:      changedBy,
 		TransitionedAt: epoch.NowEpoch(),
 	}
-	return s.jobRepo.CreateStatusTransition(transition)
 }
 
 // applyTransition is the only way a job's status changes (T124 / audit
@@ -865,10 +869,7 @@ func (s *JobService) applyTransition(job *models.Job, to models.JobStatus, reaso
 		job.ActualEndAt = &now
 	}
 
-	if err := s.jobRepo.Update(job); err != nil {
-		return err
-	}
-	return s.recordStatusTransition(job.ID, from, to, string(reason), notes, userID)
+	return s.jobRepo.UpdateWithTransition(job, newTransition(job.ID, from, to, reason, notes, userID))
 }
 
 // TransitionStatus transitions a job to a new status
