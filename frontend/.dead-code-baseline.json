@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "lastUpdated": "2026-10-16T19:40:18.029Z",
+  "lastUpdated": "2026-10-16T20:50:56.184Z",
   "description": "Known unused exports baseline. Run `npm run dead-code:update` to update.",
   "exports": [
     "src/components/Loadable.tsx:275 - PageLoader",
@@ -38,7 +38,6 @@
     "src/services/arAgingService.ts:134 - default",
     "src/services/billingService.ts:54 - default",
     "src/services/membershipService.ts:41 - default",
-    "src/services/tenantService.ts:65 - default",
     "src/types/customer.ts:84 - getPreferredContactMethodLabel",
     "src/types/job.ts:155 - StatusHistoryResponse",
     "src/types/job.ts:160 - TransitionStatusRequest",
@@ -61,10 +60,7 @@
     "src/types/payment.ts:462 - PaymentMethodActivityLog",
     "src/types/payment.ts:89 - PaymentFormData",
     "src/types/payment.ts:94 - PaymentFormProps",
-    "src/types/quote.ts:82 - LineItemValidationErrors",
-    "src/types/quote.ts:88 - BulkAction",
     "src/types/revenue.ts:132 - ChartOptions",
-    "src/types/tenant.ts:107 - InvitationsResponse",
     "src/utils/cache.ts:522 - withCache",
     "src/utils/cache.ts:574 - sessionCache",
     "src/utils/epoch.ts:186 - formatEpochTime",

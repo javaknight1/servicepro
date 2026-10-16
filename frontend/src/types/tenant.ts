@@ -115,10 +115,6 @@ export interface InviteMemberRequest {
   role_id: string;
 }
 
-export interface InvitationsResponse {
-  invitations?: Invitation[];
-}
-
 // Response types
 export interface TenantListResponse {
   tenants: Tenant[];

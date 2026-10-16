@@ -65,5 +65,3 @@ export const invitationApi = {
 
   accept: (token: string) => api.post(`/v1/invitations/${token}/accept`),
 };
-
-export default tenantApi;

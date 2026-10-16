@@ -100,14 +100,3 @@ export interface QuoteStats {
   declined_quotes: number;
   expired_quotes: number;
 }
-
-export interface LineItemValidationErrors {
-  description?: string;
-  quantity?: string;
-  unit_price?: string;
-}
-
-export interface BulkAction {
-  type: 'delete' | 'duplicate' | 'move';
-  itemIds: string[];
-}
