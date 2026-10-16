@@ -1,6 +1,9 @@
 package middleware
 
 import (
+	"github.com/javaknight1/servicepro/backend/internal/api/apierror"
+	"github.com/javaknight1/servicepro/backend/internal/models"
+
 	"net/http"
 	"strings"
 
@@ -23,7 +26,7 @@ func AuthMiddleware(jwtSecret string) gin.HandlerFunc {
 		// Get token from Authorization header
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization header required"})
+			apierror.WriteResponse(c, http.StatusUnauthorized, models.ErrorResponse{Error: "Authorization header required"})
 			c.Abort()
 			return
 		}
@@ -31,7 +34,7 @@ func AuthMiddleware(jwtSecret string) gin.HandlerFunc {
 		// Check Bearer prefix
 		parts := strings.SplitN(authHeader, " ", 2)
 		if len(parts) != 2 || parts[0] != "Bearer" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid authorization header format"})
+			apierror.WriteResponse(c, http.StatusUnauthorized, models.ErrorResponse{Error: "Invalid authorization header format"})
 			c.Abort()
 			return
 		}
@@ -48,7 +51,7 @@ func AuthMiddleware(jwtSecret string) gin.HandlerFunc {
 		})
 
 		if err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid or expired token"})
+			apierror.WriteResponse(c, http.StatusUnauthorized, models.ErrorResponse{Error: "Invalid or expired token"})
 			c.Abort()
 			return
 		}
@@ -56,7 +59,7 @@ func AuthMiddleware(jwtSecret string) gin.HandlerFunc {
 		// Extract claims
 		claims, ok := token.Claims.(*Claims)
 		if !ok || !token.Valid {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token claims"})
+			apierror.WriteResponse(c, http.StatusUnauthorized, models.ErrorResponse{Error: "Invalid token claims"})
 			c.Abort()
 			return
 		}
@@ -75,7 +78,7 @@ func RequireRole(roles ...string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userRole, exists := c.Get("role")
 		if !exists {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+			apierror.WriteResponse(c, http.StatusUnauthorized, models.ErrorResponse{Error: "Unauthorized"})
 			c.Abort()
 			return
 		}
@@ -90,7 +93,7 @@ func RequireRole(roles ...string) gin.HandlerFunc {
 		}
 
 		if !hasRole {
-			c.JSON(http.StatusForbidden, gin.H{"error": "Insufficient permissions"})
+			apierror.WriteResponse(c, http.StatusForbidden, models.ErrorResponse{Error: "Insufficient permissions"})
 			c.Abort()
 			return
 		}

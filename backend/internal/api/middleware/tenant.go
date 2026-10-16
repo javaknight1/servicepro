@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
+	"github.com/javaknight1/servicepro/backend/internal/api/apierror"
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/tenancy"
 )
@@ -69,7 +70,7 @@ func (tm *TenantMiddleware) RequireTenant() gin.HandlerFunc {
 		if tenantIDStr := c.GetHeader(TenantHeader); tenantIDStr != "" {
 			parsed, err := uuid.Parse(tenantIDStr)
 			if err != nil {
-				c.AbortWithStatusJSON(http.StatusBadRequest, models.ErrorResponse{
+				apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 					Error:   "invalid_tenant_id",
 					Message: "Invalid tenant ID format",
 				})
@@ -80,14 +81,11 @@ func (tm *TenantMiddleware) RequireTenant() gin.HandlerFunc {
 			tenants, err := tm.tenantRepo.GetUserTenants(c.Request.Context(), userUUID)
 			if err != nil {
 				log.Printf("[TENANT] Failed to get user tenants: %v", err)
-				c.AbortWithStatusJSON(http.StatusInternalServerError, models.ErrorResponse{
-					Error:   "tenant_lookup_failed",
-					Message: "Failed to determine tenant context",
-				})
+				apierror.Internal(c, err, "Failed to determine tenant context")
 				return
 			}
 			if len(tenants) == 0 {
-				c.AbortWithStatusJSON(http.StatusForbidden, models.ErrorResponse{
+				apierror.WriteResponse(c, http.StatusForbidden, models.ErrorResponse{
 					Error:   "no_tenant_access",
 					Message: "User does not belong to any organization",
 				})
@@ -117,7 +115,7 @@ func (tm *TenantMiddleware) RequireTenantFromPath(param string) gin.HandlerFunc 
 
 		tenantID, err := uuid.Parse(c.Param(param))
 		if err != nil {
-			c.AbortWithStatusJSON(http.StatusBadRequest, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 				Error:   "invalid_tenant_id",
 				Message: "Invalid tenant ID format",
 			})
@@ -141,17 +139,14 @@ func (tm *TenantMiddleware) bindTenant(c *gin.Context, userID, tenantID uuid.UUI
 	if err != nil || membership == nil {
 		if membership == nil {
 			log.Printf("[SECURITY] User %s attempted to access tenant %s without membership", userID, tenantID)
-			c.AbortWithStatusJSON(http.StatusForbidden, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusForbidden, models.ErrorResponse{
 				Error:   "tenant_access_denied",
 				Message: "You do not have access to this organization",
 			})
 			return false
 		}
 		log.Printf("[TENANT] Failed to verify tenant membership: %v", err)
-		c.AbortWithStatusJSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "tenant_verification_failed",
-			Message: "Failed to verify tenant access",
-		})
+		apierror.Internal(c, err, "Failed to verify tenant access")
 		return false
 	}
 
@@ -160,7 +155,7 @@ func (tm *TenantMiddleware) bindTenant(c *gin.Context, userID, tenantID uuid.UUI
 		if err != nil {
 			log.Printf("[TENANT] Failed to load tenant %s: %v", tenantID, err)
 		}
-		c.AbortWithStatusJSON(http.StatusForbidden, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusForbidden, models.ErrorResponse{
 			Error:   "tenant_inactive",
 			Message: "This organization is not active",
 		})
@@ -184,7 +179,7 @@ func (tm *TenantMiddleware) bindTenant(c *gin.Context, userID, tenantID uuid.UUI
 func authenticatedUserID(c *gin.Context) (uuid.UUID, bool) {
 	userID, exists := c.Get(userIDKey)
 	if !exists {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusUnauthorized, models.ErrorResponse{
 			Error:   "unauthorized",
 			Message: "User not authenticated",
 		})
@@ -192,7 +187,7 @@ func authenticatedUserID(c *gin.Context) (uuid.UUID, bool) {
 	}
 	userUUID, ok := userID.(uuid.UUID)
 	if !ok {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusUnauthorized, models.ErrorResponse{
 			Error:   "unauthorized",
 			Message: "Invalid user ID format",
 		})

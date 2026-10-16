@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/javaknight1/servicepro/backend/internal/api/apierror"
 	"github.com/javaknight1/servicepro/backend/internal/models"
 )
 
@@ -37,7 +38,7 @@ func RequireCSRFHeader(cookieNames ...string) gin.HandlerFunc {
 			}
 		}
 		if hasAuthCookie && c.GetHeader(CSRFHeader) != CSRFHeaderValue {
-			c.AbortWithStatusJSON(http.StatusForbidden, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusForbidden, models.ErrorResponse{
 				Error:   "csrf_check_failed",
 				Message: "Missing " + CSRFHeader + " header",
 			})

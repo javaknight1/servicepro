@@ -7,6 +7,8 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+
+	"github.com/javaknight1/servicepro/backend/internal/api/apierror"
 )
 
 // Headers set by the Cloudflare Worker that proxies servicepro.sharkfins.xyz
@@ -71,10 +73,7 @@ func edgeSecretValid(c *gin.Context, secret string) bool {
 func RequireEdgeProxy() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if strings.HasPrefix(c.Request.URL.Path, "/api/") && !c.GetBool(edgeVerifiedContextKey) {
-			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
-				"error":   "forbidden",
-				"message": "Direct access is not allowed",
-			})
+			apierror.Write(c, http.StatusForbidden, "forbidden", "Direct access is not allowed")
 			return
 		}
 		c.Next()

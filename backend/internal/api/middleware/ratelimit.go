@@ -13,6 +13,7 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"github.com/javaknight1/servicepro/backend/config"
+	"github.com/javaknight1/servicepro/backend/internal/api/apierror"
 	"github.com/javaknight1/servicepro/backend/internal/models"
 )
 
@@ -81,7 +82,7 @@ func (rl *RateLimiter) LoginRateLimit() gin.HandlerFunc {
 		ctx := c.Request.Context()
 
 		throttled := func() {
-			c.AbortWithStatusJSON(http.StatusTooManyRequests, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusTooManyRequests, models.ErrorResponse{
 				Error:   "rate_limit_exceeded",
 				Message: "Too many login attempts. Please wait a moment and try again.",
 			})
@@ -186,7 +187,7 @@ func (rl *RateLimiter) PasswordResetRateLimit() gin.HandlerFunc {
 			// Get TTL to inform user when they can retry
 			ttl, _ := rl.redis.TTL(ctx, key).Result()
 
-			c.JSON(http.StatusTooManyRequests, models.ErrorResponse{
+			apierror.WriteResponse(c, http.StatusTooManyRequests, models.ErrorResponse{
 				Error:   "rate_limit_exceeded",
 				Message: fmt.Sprintf("Too many password reset requests. Please try again in %v", ttl.Round(time.Second)),
 			})

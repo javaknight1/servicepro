@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+
+	"github.com/javaknight1/servicepro/backend/internal/api/apierror"
 )
 
 // SimpleRateLimiter implements an in-memory token bucket rate limiter
@@ -57,11 +59,7 @@ func (rl *SimpleRateLimiter) RateLimit() gin.HandlerFunc {
 
 		if !allowed {
 			c.Header("Retry-After", fmt.Sprintf("%d", int(time.Until(resetTime).Seconds())))
-			c.JSON(http.StatusTooManyRequests, gin.H{
-				"error":       "Rate limit exceeded",
-				"message":     fmt.Sprintf("Too many requests. Limit: %d requests per %v", rl.rate, rl.window),
-				"retry_after": int(time.Until(resetTime).Seconds()),
-			})
+			apierror.Write(c, http.StatusTooManyRequests, "rate_limit_exceeded", fmt.Sprintf("Too many requests. Limit: %d requests per %v", rl.rate, rl.window))
 			c.Abort()
 			return
 		}
@@ -157,11 +155,7 @@ func (url *SimpleUserRateLimiter) RateLimit() gin.HandlerFunc {
 
 		if !allowed {
 			c.Header("Retry-After", fmt.Sprintf("%d", int(time.Until(resetTime).Seconds())))
-			c.JSON(http.StatusTooManyRequests, gin.H{
-				"error":       "Rate limit exceeded",
-				"message":     fmt.Sprintf("Too many requests. Limit: %d requests per %v", url.rate, url.window),
-				"retry_after": int(time.Until(resetTime).Seconds()),
-			})
+			apierror.Write(c, http.StatusTooManyRequests, "rate_limit_exceeded", fmt.Sprintf("Too many requests. Limit: %d requests per %v", url.rate, url.window))
 			c.Abort()
 			return
 		}
