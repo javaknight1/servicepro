@@ -8,10 +8,11 @@ import (
 type Provider string
 
 const (
-	ProviderBetterStack Provider = "betterstack"
-	ProviderCloudWatch  Provider = "cloudwatch"
-	ProviderLoki        Provider = "loki"
-	ProviderMock        Provider = "mock"
+	// ProviderStdout writes one JSON object per line to stdout (deployed
+	// environments: Cloud Run ships stdout to Cloud Logging).
+	ProviderStdout Provider = "stdout"
+	// ProviderMock writes human-readable lines (development, tests).
+	ProviderMock Provider = "mock"
 )
 
 // Level represents log severity level

@@ -39,18 +39,14 @@ func GetRegisteredProviders() []Provider {
 
 // NewClient creates a new logging client based on configuration.
 //
-// Provider selection order:
-// 1. If cfg.Server.Env == "development" -> Mock
-// 2. If cfg.BetterStack.Enabled && cfg.BetterStack.SourceToken != "" -> BetterStack
-// 3. If cfg.Loki.Enabled && cfg.Loki.Endpoint != "" -> Loki
-// 4. If cfg.AWS.Region != "" -> CloudWatch
-// 5. Fallback -> Mock
+// Provider selection: development -> Mock (readable text on stdout);
+// everything else -> Stdout (structured JSON lines, collected by the platform,
+// e.g. Cloud Run -> Cloud Logging). Remote log shippers (Better Stack, Loki,
+// CloudWatch) were removed in T126; Better Stack is used for uptime only.
 //
-// Note: Providers must be registered by importing their packages with blank imports:
+// Providers must be registered with a blank import:
 //
 //	import _ "github.com/javaknight1/servicepro/backend/pkg/clients/logging/mock"
-//	import _ "github.com/javaknight1/servicepro/backend/pkg/clients/logging/betterstack"
-//	import _ "github.com/javaknight1/servicepro/backend/pkg/clients/logging/cloudwatch"
 func NewClient(ctx context.Context, cfg *config.Config) (Client, error) {
 	if cfg == nil {
 		return nil, fmt.Errorf("config is required")
@@ -73,28 +69,10 @@ func NewClient(ctx context.Context, cfg *config.Config) (Client, error) {
 
 // detectProvider determines which provider to use based on configuration
 func detectProvider(cfg *config.Config) Provider {
-	// 1. Development environment defaults to mock
 	if cfg.Server.Env == "development" {
 		return ProviderMock
 	}
-
-	// 2. Check for Better Stack credentials
-	if cfg.BetterStack.Enabled && cfg.BetterStack.SourceToken != "" {
-		return ProviderBetterStack
-	}
-
-	// 3. Check for Loki credentials
-	if cfg.Loki.Enabled && cfg.Loki.Endpoint != "" {
-		return ProviderLoki
-	}
-
-	// 4. Check for AWS credentials (CloudWatch Logs)
-	if cfg.AWS.Region != "" {
-		return ProviderCloudWatch
-	}
-
-	// 5. Fallback to mock
-	return ProviderMock
+	return ProviderStdout
 }
 
 // MustNewClient creates a new logging client or panics on error.

@@ -23,12 +23,10 @@ type Config struct {
 	S3Compatible  S3CompatibleConfig
 	SMTP          SMTPConfig
 	Resend        ResendConfig
-	BetterStack   BetterStackConfig
 	Stripe        StripeConfig
 	Sentry        SentryConfig
 	Health        HealthConfig
 	Analytics     AnalyticsConfig
-	Loki          LokiConfig
 	Prometheus    PrometheusConfig
 	OpenTelemetry OpenTelemetryConfig
 	PDF           PDFConfig
@@ -148,12 +146,6 @@ type SMTPConfig struct {
 	FromName  string
 	UseTLS    bool // Implicit TLS (port 465)
 	StartTLS  bool // STARTTLS (port 587)
-}
-
-// BetterStackConfig holds Better Stack (Logtail) monitoring configuration
-type BetterStackConfig struct {
-	SourceToken string
-	Enabled     bool
 }
 
 // ServerConfig holds server configuration
@@ -327,15 +319,6 @@ type AnalyticsConfig struct {
 	Debug         bool   // Enable debug logging for analytics
 	PostHogAPIKey string // PostHog API key
 	PostHogHost   string // PostHog API host
-}
-
-// LokiConfig holds Grafana Loki logging configuration
-type LokiConfig struct {
-	Enabled  bool
-	Endpoint string
-	TenantID string
-	Username string
-	Password string
 }
 
 // PrometheusConfig holds Prometheus metrics configuration
@@ -559,10 +542,6 @@ func Load() *Config {
 			FromEmail: getEnv("RESEND_FROM_EMAIL", "noreply@servicepro.com"),
 			FromName:  getEnv("RESEND_FROM_NAME", "ServicePro"),
 		},
-		BetterStack: BetterStackConfig{
-			SourceToken: getEnv("LOGTAIL_SOURCE_TOKEN", ""),
-			Enabled:     getEnvAsBool("LOGTAIL_ENABLED", true),
-		},
 		Stripe: StripeConfig{
 			SecretKey:      getEnv("STRIPE_SECRET_KEY", ""),
 			PublishableKey: getEnv("STRIPE_PUBLISHABLE_KEY", ""),
@@ -599,13 +578,6 @@ func Load() *Config {
 			Debug:         getEnvAsBool("ANALYTICS_DEBUG", false),
 			PostHogAPIKey: getEnv("POSTHOG_API_KEY", ""),
 			PostHogHost:   getEnv("POSTHOG_HOST", "https://us.i.posthog.com"),
-		},
-		Loki: LokiConfig{
-			Enabled:  getEnvAsBool("LOKI_ENABLED", false),
-			Endpoint: getEnv("LOKI_ENDPOINT", ""),
-			TenantID: getEnv("LOKI_TENANT_ID", ""),
-			Username: getEnv("LOKI_USERNAME", ""),
-			Password: getEnv("LOKI_PASSWORD", ""),
 		},
 		Prometheus: PrometheusConfig{
 			Enabled:      getEnvAsBool("PROMETHEUS_ENABLED", false),
