@@ -1,6 +1,8 @@
 # Changelog
 
-All notable changes to ServicePro will be documented in this file.
+> **History up to v0.7.0. Later releases: GitHub Releases (generated from commit subjects by scripts/gh-release.sh).**
+>
+> This file is frozen and no longer updated. See [RELEASING.md](RELEASING.md).
 
 ## [0.7.0] - 2026-02-07
 
