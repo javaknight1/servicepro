@@ -80,8 +80,17 @@ export type {
   TenantState,
 } from './tenant';
 
+/** The API's error envelope (T223, docs/api/errors.md). */
 export interface ApiError {
+  /** Stable snake_case machine code. */
   error: string;
+  /** Human-readable, safe to show. */
   message?: string;
+  /** Matches the X-Request-ID response header. */
+  request_id?: string;
+  /** Validation errors: request field -> problem. */
+  fields?: Record<string, string>;
+  /** Extra messages, e.g. per-row import errors. */
+  details?: string[];
   statusCode?: number;
 }

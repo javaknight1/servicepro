@@ -1,16 +1,39 @@
 import { AxiosError } from 'axios';
 
 /**
- * API Error response structure
+ * The API's error envelope (T223, docs/api/errors.md):
+ * `{ error: code, message, request_id, fields?, details? }`.
+ * Endpoints written before T223 may send only `error` (sometimes a
+ * sentence) — every field is optional here.
  */
-interface ApiErrorResponse {
-  message?: string;
+export interface ApiErrorResponse {
+  /** Stable snake_case machine code (legacy: may be a sentence). */
   error?: string;
+  /** Human-readable, safe to show. */
+  message?: string;
+  /** Matches the X-Request-ID header and the server's log lines. */
+  request_id?: string;
+  /** Validation errors: request field -> problem. */
+  fields?: Record<string, string>;
+  /** Extra messages, e.g. per-row import errors. */
+  details?: string[];
+}
+
+/**
+ * Appends "(Reference: <request id>)" to a message for server errors
+ * (5xx), so a user's report can be matched to the server's log lines.
+ * Other errors are returned unchanged: they are the user's to fix.
+ */
+export function withErrorReference(message: string, error: unknown): string {
+  const { status, requestId } = getApiErrorInfo(error);
+  if (!requestId || status === undefined || status < 500) return message;
+  return `${message} (Reference: ${requestId})`;
 }
 
 /**
  * Extract error message from various error types
- * Handles Axios errors, standard errors, and unknown values
+ * Handles Axios errors, standard errors, and unknown values.
+ * Server errors (5xx) carry "(Reference: <request id>)".
  */
 export function getErrorMessage(
   error: unknown,
@@ -18,7 +41,8 @@ export function getErrorMessage(
 ): string {
   if (error instanceof AxiosError) {
     const data = error.response?.data as ApiErrorResponse | undefined;
-    return data?.message || data?.error || error.message || fallback;
+    const message = data?.message || data?.error || error.message || fallback;
+    return withErrorReference(message, error);
   }
 
   if (error instanceof Error) {
@@ -58,6 +82,33 @@ export interface ApiErrorInfo {
   status?: number;
   code?: string;
   message?: string;
+  /** From the envelope's request_id, else the X-Request-ID header. */
+  requestId?: string;
+  /** Validation errors: request field -> problem. */
+  fields?: Record<string, string>;
+}
+
+function isStringRecord(value: unknown): value is Record<string, string> {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    !Array.isArray(value) &&
+    Object.values(value).every((v) => typeof v === 'string')
+  );
+}
+
+/** X-Request-ID from axios response headers (plain object or AxiosHeaders). */
+function headerRequestId(response: object): string | undefined {
+  if (!('headers' in response)) return undefined;
+  const headers: unknown = response.headers;
+  if (typeof headers !== 'object' || headers === null) return undefined;
+  const value: unknown =
+    'x-request-id' in headers
+      ? headers['x-request-id']
+      : 'X-Request-ID' in headers
+        ? headers['X-Request-ID']
+        : undefined;
+  return typeof value === 'string' && value !== '' ? value : undefined;
 }
 
 export function getApiErrorInfo(error: unknown): ApiErrorInfo {
@@ -79,8 +130,24 @@ export function getApiErrorInfo(error: unknown): ApiErrorInfo {
     if ('message' in data && typeof data.message === 'string') {
       info.message = data.message;
     }
+    if (
+      'request_id' in data &&
+      typeof data.request_id === 'string' &&
+      data.request_id !== ''
+    ) {
+      info.requestId = data.request_id;
+    }
+    if ('fields' in data && isStringRecord(data.fields)) {
+      info.fields = data.fields;
+    }
   }
+  info.requestId ??= headerRequestId(response);
   return info;
+}
+
+/** Per-field validation messages from an API error (empty if none). */
+export function getFieldErrors(error: unknown): Record<string, string> {
+  return getApiErrorInfo(error).fields ?? {};
 }
 
 /** Shown for throttled requests (HTTP 429); the API's own wording is generic. */
@@ -113,5 +180,8 @@ export function getTenantErrorMessage(
     return message || code;
   }
   if (status === 429) return TOO_MANY_ATTEMPTS_MESSAGE;
-  return message || code || getErrorMessage(error, fallback);
+  const apiText = message || code;
+  return apiText
+    ? withErrorReference(apiText, error)
+    : getErrorMessage(error, fallback);
 }

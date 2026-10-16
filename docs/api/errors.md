@@ -34,7 +34,7 @@ clients keep working; T223 added `request_id` and `fields` and made `error` alwa
   (exposed to browsers by CORS) and in `request_id` of error bodies.
 - Every structured log line written with the request's context (`logging.*(c.Request.Context(), …)`)
   carries `request_id`, as does the access log line and Sentry panic reports.
-- The web app shows it as "Reference: <id>" on generic error messages so a user's report can be
+- The web app shows it as "(Reference: <id>)" on server-error messages so a user's report can be
   matched to a log line.
 
 ## Status codes
@@ -73,7 +73,9 @@ current state". An infrastructure failure is **500**, never reported as a domain
 
 ## Frontend usage
 
-`frontend/src/utils/error.ts`: `getErrorMessage()` returns `message` (falling back to the code),
-`getApiErrorInfo()` returns `{status, code, message, requestId, fields}`, and
-`getErrorMessageWithReference()` appends "Reference: <id>" for 5xx/generic errors. The request ID is
-read from the body or, for endpoints not yet using the envelope, the `X-Request-ID` header.
+`frontend/src/utils/error.ts`: `getErrorMessage()` returns `message` (falling back to the code) and,
+for a 5xx, appends "(Reference: <request id>)"; `getApiErrorInfo()` returns
+`{status, code, message, requestId, fields}`; `getFieldErrors()` returns the validation `fields`;
+`withErrorReference(message, error)` adds the reference to a custom message. The request ID comes from
+the body or, for responses without the envelope (e.g. an edge 502), the `X-Request-ID` header. The
+axios interceptor (`services/api.ts`) records a Sentry breadcrumb and `request_id` tag for every 5xx.

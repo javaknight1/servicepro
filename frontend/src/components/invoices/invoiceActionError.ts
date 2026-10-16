@@ -1,4 +1,8 @@
-import { getApiErrorInfo, getErrorMessage } from '@/utils/error';
+import {
+  getApiErrorInfo,
+  getErrorMessage,
+  withErrorReference,
+} from '@/utils/error';
 
 const GENERIC_API_MESSAGE = 'The request could not be processed';
 
@@ -11,8 +15,9 @@ function sentence(text: string): string {
 /**
  * Message for a failed invoice money action (payment, refund, cancel).
  *
- * The invoice API answers business-rule failures with a human sentence in
- * `error` (e.g. "payment amount exceeds outstanding balance"):
+ * The invoice API answers business-rule failures with a stable code in
+ * `error` and a human sentence in `message` (e.g. "Payment amount exceeds
+ * outstanding balance"); server errors (5xx) get a request-ID reference:
  * - 400: the request breaks a rule (overpayment, invoice not open for
  *   payments, refund larger than the amount paid, invalid amount);
  * - 409: the invoice is closed or its status changed (e.g. someone else just
@@ -36,7 +41,7 @@ export function getInvoiceActionError(error: unknown, action: string): string {
       return 'This invoice no longer exists.';
     default:
       return useful
-        ? sentence(useful)
+        ? withErrorReference(sentence(useful), error)
         : getErrorMessage(error, `${action} failed. Please try again.`);
   }
 }
