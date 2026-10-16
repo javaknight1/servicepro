@@ -208,7 +208,8 @@ describe('API error helpers', () => {
     expect(
       getTenantErrorMessage(
         apiError(403, {
-          error: 'You cannot invite someone with a role above your own',
+          error: 'insufficient_role',
+          message: 'You cannot invite someone with a role above your own',
         })
       )
     ).toBe('You cannot invite someone with a role above your own');

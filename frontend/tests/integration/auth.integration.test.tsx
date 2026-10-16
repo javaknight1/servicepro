@@ -745,9 +745,15 @@ describe('Authentication Flow Integration', () => {
 
     it("shows the invitation handler's reason when the link is no longer valid", async () => {
       mockRegisterStores(vi.fn());
-      // The invitation handler puts its human message in `error`
+      // The invitation handler sends a code in `error` and a human `message`
       vi.mocked(invitationApi.getByToken).mockRejectedValue({
-        response: { status: 410, data: { error: 'Invitation has expired' } },
+        response: {
+          status: 410,
+          data: {
+            error: 'invitation_expired',
+            message: 'Invitation has expired',
+          },
+        },
       });
 
       render(

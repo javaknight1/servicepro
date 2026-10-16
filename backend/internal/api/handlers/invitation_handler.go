@@ -51,25 +51,25 @@ func (h *InvitationHandler) InviteMember(c *gin.Context) {
 
 	tenantID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Invalid tenant ID"})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "invalid_tenant_id", Message: "Invalid tenant ID"})
 		return
 	}
 
 	var req InviteMemberRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: publicError(err)})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "invalid_request", Message: publicError(err)})
 		return
 	}
 
 	// Get user ID from context
 	userIDValue, exists := c.Get("user_id")
 	if !exists || userIDValue == nil {
-		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "Unauthorized"})
+		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "unauthorized", Message: "Unauthorized"})
 		return
 	}
 	userID, ok := userIDValue.(uuid.UUID)
 	if !ok {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Invalid user ID in context"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "internal_error", Message: "An error occurred while processing your request"})
 		return
 	}
 
@@ -78,15 +78,15 @@ func (h *InvitationHandler) InviteMember(c *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrUserAlreadyMember):
-			c.JSON(http.StatusConflict, ErrorResponse{Error: "User is already a member of this organization"})
+			c.JSON(http.StatusConflict, ErrorResponse{Error: "already_member", Message: "User is already a member of this organization"})
 		case errors.Is(err, services.ErrPendingInvitationExists):
-			c.JSON(http.StatusConflict, ErrorResponse{Error: "A pending invitation already exists for this email"})
+			c.JSON(http.StatusConflict, ErrorResponse{Error: "invitation_exists", Message: "A pending invitation already exists for this email"})
 		case errors.Is(err, services.ErrInsufficientRoleLevel):
-			c.JSON(http.StatusForbidden, ErrorResponse{Error: "You cannot invite someone with a role above your own"})
+			c.JSON(http.StatusForbidden, ErrorResponse{Error: "insufficient_role", Message: "You cannot invite someone with a role above your own"})
 		case errors.Is(err, services.ErrRoleNotAssignable):
-			c.JSON(http.StatusBadRequest, ErrorResponse{Error: "This role cannot be assigned"})
+			c.JSON(http.StatusBadRequest, ErrorResponse{Error: "invalid_role", Message: "This role cannot be assigned"})
 		default:
-			c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to create invitation"})
+			c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "invite_failed", Message: "Failed to create invitation"})
 		}
 		return
 	}
@@ -113,13 +113,13 @@ func (h *InvitationHandler) GetPendingInvitations(c *gin.Context) {
 
 	tenantID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Invalid tenant ID"})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "invalid_tenant_id", Message: "Invalid tenant ID"})
 		return
 	}
 
 	invitations, err := h.invitationService.GetPendingInvitationsForTenant(ctx, tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to load invitations"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "load_failed", Message: "Failed to load invitations"})
 		return
 	}
 
@@ -147,23 +147,23 @@ func (h *InvitationHandler) CancelInvitation(c *gin.Context) {
 
 	invitationID, err := uuid.Parse(c.Param("invitation_id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Invalid invitation ID"})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "invalid_invitation_id", Message: "Invalid invitation ID"})
 		return
 	}
 
 	tenantID, err := middleware.GetTenantID(c)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Invalid tenant ID"})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "invalid_tenant_id", Message: "Invalid tenant ID"})
 		return
 	}
 
 	err = h.invitationService.CancelInvitation(ctx, tenantID, invitationID)
 	if err != nil {
 		if errors.Is(err, services.ErrInvitationNotFound) {
-			c.JSON(http.StatusNotFound, ErrorResponse{Error: "Invitation not found"})
+			c.JSON(http.StatusNotFound, ErrorResponse{Error: "invitation_not_found", Message: "Invitation not found"})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to update invitation"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "update_failed", Message: "Failed to update invitation"})
 		return
 	}
 
@@ -191,23 +191,23 @@ func (h *InvitationHandler) ResendInvitation(c *gin.Context) {
 
 	invitationID, err := uuid.Parse(c.Param("invitation_id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Invalid invitation ID"})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "invalid_invitation_id", Message: "Invalid invitation ID"})
 		return
 	}
 
 	tenantID, err := middleware.GetTenantID(c)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Invalid tenant ID"})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "invalid_tenant_id", Message: "Invalid tenant ID"})
 		return
 	}
 
 	err = h.invitationService.ResendInvitation(ctx, tenantID, invitationID)
 	if err != nil {
 		if errors.Is(err, services.ErrInvitationNotFound) {
-			c.JSON(http.StatusNotFound, ErrorResponse{Error: "Invitation not found"})
+			c.JSON(http.StatusNotFound, ErrorResponse{Error: "invitation_not_found", Message: "Invitation not found"})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to update invitation"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "update_failed", Message: "Failed to update invitation"})
 		return
 	}
 
@@ -232,27 +232,27 @@ func (h *InvitationHandler) GetInvitationByToken(c *gin.Context) {
 
 	token := c.Param("token")
 	if token == "" {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Token is required"})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "token_required", Message: "Token is required"})
 		return
 	}
 
 	invitation, err := h.invitationService.GetInvitationByToken(ctx, token)
 	if err != nil {
 		if errors.Is(err, services.ErrInvitationNotFound) {
-			c.JSON(http.StatusNotFound, ErrorResponse{Error: "Invitation not found"})
+			c.JSON(http.StatusNotFound, ErrorResponse{Error: "invitation_not_found", Message: "Invitation not found"})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to load invitation"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "load_failed", Message: "Failed to load invitation"})
 		return
 	}
 
 	if invitation.IsExpired() {
-		c.JSON(http.StatusGone, ErrorResponse{Error: "Invitation has expired"})
+		c.JSON(http.StatusGone, ErrorResponse{Error: "invitation_expired", Message: "Invitation has expired"})
 		return
 	}
 
 	if invitation.Status != models.InvitationStatusPending {
-		c.JSON(http.StatusGone, ErrorResponse{Error: "Invitation is no longer valid"})
+		c.JSON(http.StatusGone, ErrorResponse{Error: "invitation_invalid", Message: "Invitation is no longer valid"})
 		return
 	}
 
@@ -280,19 +280,19 @@ func (h *InvitationHandler) AcceptInvitation(c *gin.Context) {
 
 	token := c.Param("token")
 	if token == "" {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Token is required"})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "token_required", Message: "Token is required"})
 		return
 	}
 
 	// Get user ID from context
 	userIDValue, exists := c.Get("user_id")
 	if !exists || userIDValue == nil {
-		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "Unauthorized"})
+		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "unauthorized", Message: "Unauthorized"})
 		return
 	}
 	userID, ok := userIDValue.(uuid.UUID)
 	if !ok {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Invalid user ID in context"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "internal_error", Message: "An error occurred while processing your request"})
 		return
 	}
 
@@ -300,17 +300,17 @@ func (h *InvitationHandler) AcceptInvitation(c *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrInvitationNotFound):
-			c.JSON(http.StatusNotFound, ErrorResponse{Error: "Invitation not found"})
+			c.JSON(http.StatusNotFound, ErrorResponse{Error: "invitation_not_found", Message: "Invitation not found"})
 		case errors.Is(err, services.ErrInvitationExpired):
-			c.JSON(http.StatusGone, ErrorResponse{Error: "Invitation has expired"})
+			c.JSON(http.StatusGone, ErrorResponse{Error: "invitation_expired", Message: "Invitation has expired"})
 		case errors.Is(err, services.ErrInvitationAlreadyUsed):
-			c.JSON(http.StatusGone, ErrorResponse{Error: "Invitation has already been used"})
+			c.JSON(http.StatusGone, ErrorResponse{Error: "invitation_used", Message: "Invitation has already been used"})
 		case errors.Is(err, services.ErrInvitationEmailMismatch):
-			c.JSON(http.StatusForbidden, ErrorResponse{Error: "This invitation was sent to a different email address"})
+			c.JSON(http.StatusForbidden, ErrorResponse{Error: "invitation_email_mismatch", Message: "This invitation was sent to a different email address"})
 		case errors.Is(err, services.ErrRoleNotAssignable):
-			c.JSON(http.StatusBadRequest, ErrorResponse{Error: "This invitation is no longer valid"})
+			c.JSON(http.StatusBadRequest, ErrorResponse{Error: "invitation_invalid", Message: "This invitation is no longer valid"})
 		default:
-			c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to accept invitation"})
+			c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "accept_failed", Message: "Failed to accept invitation"})
 		}
 		return
 	}
