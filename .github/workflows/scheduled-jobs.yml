@@ -1,0 +1,96 @@
+# Scheduled background jobs.
+#
+# On Cloud Run the API runs no in-process tickers (RUN_BACKGROUND_WORKERS=false):
+# CPU is throttled between requests and instances scale to zero, so hourly
+# goroutine tickers would not fire reliably. Instead the API exposes each job as
+#   POST /internal/jobs/<name>
+# authenticated by the X-Internal-Jobs-Token header (= INTERNAL_JOBS_SECRET),
+# and this workflow is the scheduler.
+#
+# NOT LIVE YET: until the repo variable API_URL is set (the API isn't hosted),
+# every run is a no-op — the job is skipped, never failed.
+#
+# Schedule (UTC):
+#   hourly at :15   payment-reminders    unpaid-invoice reminder emails
+#   daily  02:15    analytics-aggregate  roll up analytics
+#   daily  02:15    webhook-cleanup      prune processed Stripe webhook events
+# GitHub may delay scheduled runs under load; the jobs must tolerate a late or
+# skipped tick (they select by due-time, not "exactly now").
+#
+# Manual run: Actions -> "Scheduled jobs" -> Run workflow, pick a job or "all".
+name: Scheduled jobs
+
+on:
+  schedule:
+    - cron: '15 * * * *'
+  workflow_dispatch:
+    inputs:
+      job:
+        description: 'Job to run'
+        type: choice
+        default: all
+        options:
+          - all
+          - payment-reminders
+          - analytics-aggregate
+          - webhook-cleanup
+
+concurrency:
+  group: scheduled-jobs
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  run:
+    if: vars.API_URL != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      API_URL: ${{ vars.API_URL }}
+      JOBS_TOKEN: ${{ secrets.INTERNAL_JOBS_SECRET }}
+      EVENT: ${{ github.event_name }}
+      SCHEDULE: ${{ github.event.schedule }}
+      INPUT_JOB: ${{ inputs.job }}
+    steps:
+      - name: Run jobs
+        run: |
+          set -euo pipefail
+          : "${JOBS_TOKEN:?INTERNAL_JOBS_SECRET secret is not set}"
+          failed=0
+
+          # post <job> — POST one job, log the result, record failure.
+          post() {
+            local job="$1" out code
+            out=$(curl -sS -m 300 -w $'\n%{http_code}' -X POST \
+                    -H "X-Internal-Jobs-Token: ${JOBS_TOKEN}" \
+                    -H 'Content-Type: application/json' \
+                    "${API_URL%/}/internal/jobs/${job}") || { echo "::error::${job}: request failed"; failed=1; return; }
+            code=$(tail -n1 <<<"$out"); out=$(sed '$d' <<<"$out")
+            echo "${job} -> HTTP ${code} ${out}"
+            echo "| \`${job}\` | ${code} | \`${out:0:200}\` |" >> "$GITHUB_STEP_SUMMARY"
+            if [ "$code" -lt 200 ] || [ "$code" -ge 300 ]; then
+              echo "::error::${job}: HTTP ${code}"; failed=1
+            fi
+          }
+
+          echo "| job | status | result |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|---|---|---|" >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            if [ "$INPUT_JOB" = "all" ]; then
+              jobs="payment-reminders analytics-aggregate webhook-cleanup"
+            else
+              jobs="$INPUT_JOB"
+            fi
+          else
+            # Hourly tick: reminders every hour; the daily jobs on the 02:xx tick.
+            jobs="payment-reminders"
+            if [ "$(date -u +%H)" = "02" ]; then
+              jobs="$jobs analytics-aggregate webhook-cleanup"
+            fi
+          fi
+
+          echo "trigger=${EVENT} schedule=${SCHEDULE:-n/a} jobs=${jobs}"
+          for j in $jobs; do post "$j"; done
+          exit "$failed"
