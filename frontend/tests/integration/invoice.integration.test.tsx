@@ -880,7 +880,7 @@ describe('Invoice & Payment Integration', () => {
     });
 
     it('should provide navigation to invoices list', async () => {
-      const user = userEvent.setup();
+      userEvent.setup();
       const { PaymentSuccessPage } =
         await import('../../src/pages/Invoices/PaymentSuccessPage');
 

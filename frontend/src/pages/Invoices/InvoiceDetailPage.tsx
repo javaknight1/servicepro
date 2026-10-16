@@ -104,6 +104,8 @@ export function InvoiceDetailPage() {
         due_date: dueDate.toISOString().split('T')[0],
       }));
     }
+    // Load once per invoice id; loadInvoice/loadCustomers are recreated each render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, isNew]);
 
   const loadCustomers = async () => {
