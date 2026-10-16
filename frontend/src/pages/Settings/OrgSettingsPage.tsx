@@ -998,7 +998,8 @@ export function OrgSettingsPage() {
                         Timezone
                       </label>
                       <p className="text-sm text-neutral-500 mb-2">
-                        All business hours are interpreted in this timezone
+                        Used for invoice due dates, payment terms and payment
+                        reminders
                       </p>
                       <select
                         value={timezone}
@@ -1022,8 +1023,16 @@ export function OrgSettingsPage() {
 
                     {/* Business hours grid */}
                     <div>
-                      <p className="text-sm font-medium text-neutral-900 mb-3">
-                        Operating Hours
+                      <div className="flex items-center gap-2 mb-1">
+                        <p className="text-sm font-medium text-neutral-900">
+                          Operating Hours
+                        </p>
+                        <Badge variant="neutral">Coming soon</Badge>
+                      </div>
+                      {/* No backend reads businessHours yet (T099). */}
+                      <p className="text-sm text-neutral-500 mb-3">
+                        Saved for upcoming scheduling checks. Jobs aren&apos;t
+                        checked against these hours yet.
                       </p>
                       <div className="space-y-3">
                         {(
