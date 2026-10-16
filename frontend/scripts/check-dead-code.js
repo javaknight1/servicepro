@@ -162,6 +162,11 @@ function main() {
   const currentExports = new Set(filteredResults);
   const baseline = loadBaseline();
   const baselineExports = new Set(baseline.exports);
+  // Compare by "file - name", not line number: an edit above an export must
+  // not make an old, already-baselined export look new.
+  const keyOf = (entry) => entry.replace(/:\d+ - /, ' - ');
+  const currentKeys = new Set([...currentExports].map(keyOf));
+  const baselineKeys = new Set([...baselineExports].map(keyOf));
 
   if (updateMode) {
     saveBaseline([...currentExports]);
@@ -170,12 +175,12 @@ function main() {
 
   // Find new unused exports (not in baseline)
   const newUnused = [...currentExports].filter(
-    (exp) => !baselineExports.has(exp)
+    (exp) => !baselineKeys.has(keyOf(exp))
   );
 
   // Find removed exports (in baseline but no longer unused - these are good!)
   const removed = [...baselineExports].filter(
-    (exp) => !currentExports.has(exp)
+    (exp) => !currentKeys.has(keyOf(exp))
   );
 
   if (removed.length > 0) {
