@@ -38,7 +38,7 @@ func (w *PaymentReminderWorker) run(ctx context.Context) {
 	defer ticker.Stop()
 
 	// Run immediately on start
-	w.service.ProcessAllTenants(ctx)
+	_, _ = w.service.ProcessAllTenants(ctx)
 
 	for {
 		select {
@@ -47,7 +47,7 @@ func (w *PaymentReminderWorker) run(ctx context.Context) {
 		case <-w.stopChan:
 			return
 		case <-ticker.C:
-			w.service.ProcessAllTenants(ctx)
+			_, _ = w.service.ProcessAllTenants(ctx)
 		}
 	}
 }

@@ -193,9 +193,16 @@ func main() {
 		poolCollector := database.NewPoolMetricsCollector(sqlDB, metricsClient, 15*time.Second)
 		poolCollector.Start(ctx)
 
-		// Start KPI metrics collector (platform overview, revenue, A/R aging)
-		kpiCollector := database.NewKPIMetricsCollector(sqlDB, metricsClient, 60*time.Second)
-		kpiCollector.Start(ctx)
+		// Start KPI metrics collector (platform overview, revenue, A/R aging).
+		// It polls the database every minute, so it is a background worker:
+		// off by default outside development (keeps Supabase connections idle).
+		if cfg.Server.RunBackgroundWorkers {
+			kpiCollector := database.NewKPIMetricsCollector(sqlDB, metricsClient, 60*time.Second)
+			kpiCollector.Start(ctx)
+		}
+	}
+	if !cfg.Server.RunBackgroundWorkers {
+		logging.Info(ctx, "In-process background workers disabled (RUN_BACKGROUND_WORKERS=false); trigger /internal/jobs/* from a scheduler", nil)
 	}
 
 	// Initialize Gin router

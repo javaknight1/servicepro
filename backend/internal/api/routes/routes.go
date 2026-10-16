@@ -60,6 +60,10 @@ func Setup(router *gin.Engine, db *gorm.DB, redisClient *redis.Client, email ema
 	// by deploy verification)
 	router.GET("/version", handlers.GetVersion)
 
+	// Internal job endpoints for an external scheduler (replace in-process
+	// tickers on Cloud Run)
+	setupInternalJobRoutes(router, routeCfg, cfg)
+
 	// Setup health check system
 	setupHealthEndpoints(router, db, redisClient, cfg, platform)
 
@@ -68,6 +72,26 @@ func Setup(router *gin.Engine, db *gorm.DB, redisClient *redis.Client, email ema
 
 	// Setup Swagger documentation endpoint
 	setupSwaggerEndpoint(router, cfg)
+}
+
+// setupInternalJobRoutes registers POST /internal/jobs/* guarded by
+// X-Internal-Jobs-Token == INTERNAL_JOBS_SECRET (404 when the secret is unset).
+// They live at the server root, outside /api, so the edge Worker (which only
+// proxies /api/* and /version) never exposes them; schedulers call the Cloud
+// Run URL directly.
+func setupInternalJobRoutes(router *gin.Engine, routeCfg *RouteConfig, cfg *config.Config) {
+	var reminders handlers.ReminderRunner
+	if routeCfg.Services != nil && routeCfg.Services.PaymentReminder != nil {
+		reminders = routeCfg.Services.PaymentReminder
+	}
+	jobs := handlers.NewInternalJobsHandler(cfg.Server.InternalJobsSecret, reminders)
+
+	group := router.Group("/internal/jobs", jobs.Authorize)
+	group.POST("/payment-reminders", jobs.RunPaymentReminders)
+
+	logging.Info(context.Background(), "Internal job endpoints registered", map[string]any{
+		"enabled": cfg.Server.InternalJobsSecret != "", "endpoints": "/internal/jobs/payment-reminders", "source": "jobs",
+	})
 }
 
 // setupHealthEndpoints configures health check endpoints with deep dependency checks
@@ -160,8 +184,10 @@ func NewRouteConfig(db *gorm.DB, redis *redis.Client, email emailclient.Client, 
 	svc := SetupServices(db, redis, repos, cfg, email, storage, mw.JWTManager, mw.PermChecker)
 	handlers := SetupHandlers(cfg, repos, svc, mw)
 
-	// Start payment reminder background worker
-	if svc.PaymentReminder != nil {
+	// Start payment reminder background worker (RUN_BACKGROUND_WORKERS;
+	// development default). Deployed environments call
+	// POST /internal/jobs/payment-reminders from a scheduler instead.
+	if svc.PaymentReminder != nil && cfg.Server.RunBackgroundWorkers {
 		reminderWorker := services.NewPaymentReminderWorker(svc.PaymentReminder, 1*time.Hour)
 		reminderWorker.Start(context.Background())
 	}
