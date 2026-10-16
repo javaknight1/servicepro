@@ -47,35 +47,6 @@ export const manualChunks = {
     'date-arithmetic',
   ],
 
-  // PDF generation — lazy-loaded via dynamic import, so this chunk only loads on demand
-  'vendor-pdf': [
-    '@react-pdf/renderer',
-    '@react-pdf/pdfkit',
-    '@react-pdf/layout',
-    '@react-pdf/font',
-    '@react-pdf/fns',
-    '@react-pdf/image',
-    '@react-pdf/primitives',
-    '@react-pdf/png-js',
-    '@react-pdf/reconciler',
-    '@react-pdf/render',
-    '@react-pdf/stylesheet',
-    '@react-pdf/textkit',
-    'fontkit',
-    'restructure',
-    'yoga-layout',
-    'brotli',
-    'pako',
-    'crypto-js',
-    'unicode-trie',
-    'unicode-properties',
-    'linebreak',
-    'hyphen',
-    'dfa',
-  ],
-
-  // Data table — only used on specific pages
-  'vendor-table': ['@tanstack/react-table', '@tanstack/table-core'],
 };
 
 // =============================================================================
@@ -165,7 +136,6 @@ export const buildOptions: BuildOptions = {
         if (id.includes('/components/calendar')) return 'feature-calendar';
         if (id.includes('/components/scheduling')) return 'feature-scheduling';
         if (id.includes('/components/quotes')) return 'feature-quotes';
-        if (id.includes('/components/templates')) return 'feature-templates';
 
         return undefined;
       },

@@ -37,8 +37,6 @@
       "@utils/*": ["./src/utils/*"],
       "@store": ["./src/store"],
       "@store/*": ["./src/store/*"],
-      "@theme": ["./src/theme"],
-      "@theme/*": ["./src/theme/*"],
       "@app-types": ["./src/types"],
       "@app-types/*": ["./src/types/*"],
       "@config": ["./src/config"],
