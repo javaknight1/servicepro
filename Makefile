@@ -118,8 +118,8 @@ migrate: ## Apply pending migrations to the local db (go run ./cmd/migrate up)
 migrate-version: ## Print the applied schema version + dirty flag (local db)
 	@cd backend && DATABASE_URL="$(LOCAL_DATABASE_URL)" MIGRATION_DATABASE_URL="$(LOCAL_DATABASE_URL)" go run ./cmd/migrate version
 
-migrate-down: ## Roll back migrations on the LOCAL db only
-	@cd backend && DATABASE_URL="$(LOCAL_DATABASE_URL)" MIGRATION_DATABASE_URL="$(LOCAL_DATABASE_URL)" go run ./cmd/migrate down
+migrate-down: ## Roll back STEPS migrations on the LOCAL db only (default 1; STEPS=-all for everything)
+	@cd backend && DATABASE_URL="$(LOCAL_DATABASE_URL)" MIGRATION_DATABASE_URL="$(LOCAL_DATABASE_URL)" go run ./cmd/migrate down $(or $(STEPS),1)
 
 migrate-create: ## Create the next migration pair (make migrate-create NAME=add_foo)
 	@if [ -z "$(NAME)" ]; then echo "Usage: make migrate-create NAME=add_foo"; exit 1; fi

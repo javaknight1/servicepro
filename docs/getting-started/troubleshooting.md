@@ -133,7 +133,7 @@ docker compose up -d postgres
 cd backend && go run cmd//main.go migrate status
 
 # Reset migrations (WARNING: deletes all data)
-go run cmd//main.go migrate down --all
+go run ./cmd/migrate down -all   # from backend/; or: make migrate-down STEPS=-all
 go run cmd//main.go migrate up
 
 # Or reset entire database

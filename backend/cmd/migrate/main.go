@@ -10,7 +10,8 @@
 // Usage (from backend/):
 //
 //	go run ./cmd/migrate up         # apply all pending migrations
-//	go run ./cmd/migrate down       # roll everything back (refused when ENV=production)
+//	go run ./cmd/migrate down N     # roll back the last N migrations (refused when ENV=production)
+//	go run ./cmd/migrate down -all  # roll everything back (refused when ENV=production)
 //	go run ./cmd/migrate version    # print applied version + dirty flag
 //	go run ./cmd/migrate force N    # set version N and clear dirty flag (repair)
 //
@@ -57,10 +58,26 @@ func main() {
 			fail("refusing to run `down` with ENV=production; production rollback is a forward-fix migration. " +
 				"Set ALLOW_PRODUCTION_DOWN=true only if you are certain.")
 		}
-		if err := database.MigrateDown(databaseURL); err != nil {
+		// Require an explicit step count or -all: a bare `down` (or a typo'd
+		// argument) used to drop every table.
+		if len(os.Args) < 3 {
+			usage("down needs a step count (e.g. `down 1`) or -all")
+		}
+		if os.Args[2] == "-all" {
+			if err := database.MigrateDown(databaseURL); err != nil {
+				fail("migrate down failed: %v", err)
+			}
+			fmt.Println("all migrations rolled back")
+			break
+		}
+		steps, err := strconv.Atoi(os.Args[2])
+		if err != nil || steps <= 0 {
+			usage(fmt.Sprintf("invalid step count %q", os.Args[2]))
+		}
+		if err := database.MigrateDownSteps(databaseURL, steps); err != nil {
 			fail("migrate down failed: %v", err)
 		}
-		fmt.Println("all migrations rolled back")
+		printVersion(databaseURL)
 
 	case "version":
 		printVersion(databaseURL)
@@ -111,7 +128,9 @@ func usage(problem string) {
 
 Usage:
   migrate up         apply all pending migrations
-  migrate down       roll everything back (refused when ENV=production unless ALLOW_PRODUCTION_DOWN=true)
+  migrate down N     roll back the last N migrations
+  migrate down -all  roll everything back
+                     (both refused when ENV=production unless ALLOW_PRODUCTION_DOWN=true)
   migrate version    print applied version + dirty flag
   migrate force N    set the recorded version to N and clear the dirty flag (no SQL is run)
 `, problem)

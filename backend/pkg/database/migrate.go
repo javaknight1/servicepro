@@ -171,6 +171,23 @@ func MigrateDown(databaseURL string) error {
 	return nil
 }
 
+// MigrateDownSteps rolls back the last n applied migrations (n > 0).
+func MigrateDownSteps(databaseURL string, n int) error {
+	if n <= 0 {
+		return fmt.Errorf("roll back migrations: step count must be positive, got %d", n)
+	}
+	m, err := newMigrator(databaseURL)
+	if err != nil {
+		return err
+	}
+	defer func() { _, _ = m.Close() }()
+
+	if err := m.Steps(-n); err != nil && !errors.Is(err, migrate.ErrNoChange) {
+		return fmt.Errorf("roll back %d migration(s): %w", n, err)
+	}
+	return nil
+}
+
 // ForceMigrationVersion sets the recorded version (clearing the dirty flag)
 // without running any SQL. Used to repair a dirty schema after fixing it by
 // hand. version -1 means "no migrations applied".
