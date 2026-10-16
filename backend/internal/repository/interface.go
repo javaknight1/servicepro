@@ -203,22 +203,3 @@ type ScheduleRepositoryInterface interface {
 	GetScheduleCount() (int64, error)
 	GetConflictCount() (int64, error)
 }
-
-// =============================================================================
-// Payment Repository Interface
-// =============================================================================
-
-// PaymentRepositoryInterface defines the interface for payment repository
-type PaymentRepositoryInterface interface {
-	// WithContext returns a repository whose queries run with ctx. Pass the
-	// request context so tenant scoping (internal/tenancy) applies.
-	WithContext(ctx context.Context) PaymentRepositoryInterface
-
-	CreatePayment(payment *models.Payment) error
-	GetPaymentByID(id uuid.UUID) (*models.Payment, error)
-	GetPaymentByStripeID(stripePaymentIntentID string) (*models.Payment, error)
-	UpdatePayment(payment *models.Payment) error
-	GetPaymentsByUserID(userID uuid.UUID, filter *models.PaymentListFilter) ([]models.Payment, error)
-	CreateRefund(refund *models.PaymentRefund) error
-	GetRefundsByPaymentID(paymentID uuid.UUID) ([]models.PaymentRefund, error)
-}

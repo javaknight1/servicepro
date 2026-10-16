@@ -40,7 +40,7 @@ func setupIsolation(t *testing.T) *isolationFixture {
 		&models.Tenant{}, &models.TenantUser{}, &models.User{}, &models.Customer{}, &models.Job{}, &models.JobAssignment{},
 		&models.JobMaterial{}, &models.JobNote{}, &models.Quote{}, &models.QuoteItem{},
 		&models.Invoice{}, &models.InvoiceLine{}, &models.InvoicePayment{},
-		&models.PaymentTerm{}, &models.TaxRate{}, &models.Payment{}, &models.ExportJob{}, &models.InvoiceAuditLog{}, &models.JobStatusTransition{}, &models.InvoiceRefund{},
+		&models.PaymentTerm{}, &models.TaxRate{}, &models.ExportJob{}, &models.InvoiceAuditLog{}, &models.JobStatusTransition{}, &models.InvoiceRefund{},
 	} {
 		createSQLiteTableForModel(t, db, m, "")
 	}
@@ -218,16 +218,6 @@ func TestTenantIsolation_InvoicesAndPayments(t *testing.T) {
 	require.NoError(t, err)
 	assert.Empty(t, still.Notes)
 
-	// Payments (Stripe payment records)
-	pay := &models.Payment{ID: uuid.New(), UserID: f.userA, InvoiceID: &inv.ID, StripePaymentIntentID: "pi_a", Amount: decimal.NewFromInt(10), Currency: "usd", Status: "succeeded"}
-	require.NoError(t, f.db.WithContext(f.ctxA).Omit("Metadata").Create(pay).Error)
-	payRepoB := repository.NewPaymentRepository(f.db).WithContext(f.ctxB)
-	_, err = payRepoB.GetPaymentByID(pay.ID)
-	assert.Error(t, err)
-	_, err = payRepoB.GetPaymentByStripeID("pi_a")
-	assert.Error(t, err)
-	_, err = repository.NewPaymentRepository(f.db).WithContext(f.ctxA).GetPaymentByID(pay.ID)
-	assert.NoError(t, err)
 }
 
 func TestTenantIsolation_Exports(t *testing.T) {
