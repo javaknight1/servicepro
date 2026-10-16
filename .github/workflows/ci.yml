@@ -79,6 +79,9 @@ jobs:
       TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/servicepro_test?sslmode=disable
       REDIS_URL: redis://localhost:6379
       ENV: test
+      # Postgres-backed concurrency tests (payments, numbering, quote races)
+      # create a fresh database per test on this server.
+      SERVICEPRO_TEST_PG_URL: postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-go@v6
@@ -86,6 +89,10 @@ jobs:
           go-version-file: backend/go.mod
           check-latest: true
           cache-dependency-path: backend/go.sum
+      - name: Migrate test database
+        working-directory: backend
+        # Repository tests run against DATABASE_URL and need the schema.
+        run: go run ./cmd/migrate up
       - name: Unit tests
         working-directory: backend
         # -skip Integration: suites that need the full stack run in

@@ -17,7 +17,7 @@ import (
 // setupTestDB creates a test database connection
 func setupTestDB(t *testing.T) *gorm.DB {
 	cfg := &config.DatabaseConfig{
-		URL:             "postgres://postgres:postgres@localhost:5432/servicepro_test?sslmode=disable",
+		URL:             testDatabaseURL(),
 		MaxOpenConns:    25,
 		MaxIdleConns:    5,
 		ConnMaxLifetime: time.Hour,
