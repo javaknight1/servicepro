@@ -85,6 +85,9 @@ type LogEntry struct {
 	// SpanID for distributed tracing correlation
 	SpanID string `json:"span_id,omitempty"`
 
+	// RequestID correlates the entry with an HTTP request (X-Request-ID)
+	RequestID string `json:"request_id,omitempty"`
+
 	// Error contains error details if this is an error log
 	Error *ErrorInfo `json:"error,omitempty"`
 

@@ -29,15 +29,16 @@ func init() {
 // jsonLine is the stdout JSON shape. "severity", "message" and "time" are the
 // keys Google Cloud Logging maps to the entry's level, text and timestamp.
 type jsonLine struct {
-	Severity string             `json:"severity"`
-	Message  string             `json:"message"`
-	Time     time.Time          `json:"time"`
-	Source   string             `json:"source,omitempty"`
-	Fields   map[string]any     `json:"fields,omitempty"`
-	TraceID  string             `json:"trace_id,omitempty"`
-	SpanID   string             `json:"span_id,omitempty"`
-	Error    *logging.ErrorInfo `json:"error,omitempty"`
-	HTTP     *logging.HTTPInfo  `json:"http,omitempty"`
+	Severity  string             `json:"severity"`
+	Message   string             `json:"message"`
+	Time      time.Time          `json:"time"`
+	Source    string             `json:"source,omitempty"`
+	Fields    map[string]any     `json:"fields,omitempty"`
+	TraceID   string             `json:"trace_id,omitempty"`
+	SpanID    string             `json:"span_id,omitempty"`
+	RequestID string             `json:"request_id,omitempty"`
+	Error     *logging.ErrorInfo `json:"error,omitempty"`
+	HTTP      *logging.HTTPInfo  `json:"http,omitempty"`
 }
 
 // Config holds configuration for the mock logging client
@@ -91,6 +92,10 @@ func (c *Client) Log(ctx context.Context, entry *logging.LogEntry) error {
 	}
 	if spanID != "" && entry.SpanID == "" {
 		entry.SpanID = spanID
+	}
+
+	if entry.RequestID == "" {
+		entry.RequestID = logging.ExtractRequestID(ctx)
 	}
 
 	// Extract user info from context
@@ -218,7 +223,7 @@ func (c *Client) printEntry(entry *logging.LogEntry) {
 		}
 		data, err := json.Marshal(jsonLine{
 			Severity: severity, Message: entry.Message, Time: entry.Timestamp, Source: entry.Source,
-			Fields: entry.Fields, TraceID: entry.TraceID, SpanID: entry.SpanID, Error: entry.Error, HTTP: entry.HTTP,
+			Fields: entry.Fields, TraceID: entry.TraceID, SpanID: entry.SpanID, RequestID: entry.RequestID, Error: entry.Error, HTTP: entry.HTTP,
 		})
 		if err != nil {
 			data, _ = json.Marshal(jsonLine{Severity: severity, Message: entry.Message, Time: entry.Timestamp})
@@ -233,6 +238,9 @@ func (c *Client) printEntry(entry *logging.LogEntry) {
 		}
 
 		msg := fmt.Sprintf("[%s] %s [%s] %s", timestamp, level, source, entry.Message)
+		if entry.RequestID != "" {
+			msg += " request_id=" + entry.RequestID
+		}
 
 		if len(entry.Fields) > 0 {
 			fieldsJSON, _ := json.Marshal(entry.Fields)

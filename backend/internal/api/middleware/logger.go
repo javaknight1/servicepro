@@ -92,25 +92,3 @@ func StructuredLogger() gin.HandlerFunc {
 		fmt.Printf("LOG: %+v\n", logEntry)
 	}
 }
-
-// RequestIDMiddleware adds a unique request ID to each request
-func RequestIDMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		// Get request ID from header or generate new one
-		requestID := c.GetHeader("X-Request-ID")
-		if requestID == "" {
-			requestID = generateRequestID()
-		}
-
-		// Set request ID in context and response header
-		c.Set("request_id", requestID)
-		c.Header("X-Request-ID", requestID)
-
-		c.Next()
-	}
-}
-
-// generateRequestID generates a simple request ID
-func generateRequestID() string {
-	return fmt.Sprintf("%d", time.Now().UnixNano())
-}

@@ -230,6 +230,9 @@ func run() error {
 	// Use gin.New() instead of gin.Default() so we can use our custom RecoveryMiddleware
 	// that integrates with error tracking (Sentry)
 	router := gin.New()
+	// Correlation ID first, so every response (even an edge rejection) and
+	// every log line for the request carries X-Request-ID (T223).
+	router.Use(middleware.RequestID())
 	// Resolve the real visitor IP from the edge proxy headers before anything
 	// (logger, rate limiters) reads c.ClientIP().
 	router.Use(middleware.EdgeClientIP(cfg.Server.EdgeProxySecret))
@@ -238,7 +241,7 @@ func run() error {
 	if cfg.Server.Env == "production" && cfg.Server.EdgeProxySecret != "" {
 		router.Use(middleware.RequireEdgeProxy())
 	}
-	router.Use(gin.Logger()) // Add Gin's logger middleware
+	router.Use(gin.LoggerWithFormatter(middleware.AccessLogFormatter)) // access log with request_id
 
 	// Apply Gin-specific configuration
 	router.MaxMultipartMemory = cfg.Server.MaxMultipartMemory
