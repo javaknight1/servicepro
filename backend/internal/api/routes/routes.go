@@ -54,6 +54,8 @@ func Setup(router *gin.Engine, db *gorm.DB, redisClient *redis.Client, email ema
 
 	// Setup v1 routes
 	v1Group := router.Group("/api/v1")
+	// CSRF: cookie-authenticated mutations must carry X-Requested-With.
+	v1Group.Use(middleware.RequireCSRFHeader(cfg.Cookie.AccessTokenName, cfg.Cookie.RefreshTokenName))
 	v1.Setup(v1Group, routeCfg)
 
 	// Build identity (root, unversioned: proxied by the edge Worker and used

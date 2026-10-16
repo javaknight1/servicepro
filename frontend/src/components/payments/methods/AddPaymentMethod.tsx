@@ -91,6 +91,7 @@ function AddPaymentMethodForm({
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
           },
           body: JSON.stringify({
             stripe_payment_method_id: paymentMethod.id,

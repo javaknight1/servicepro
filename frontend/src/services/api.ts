@@ -24,6 +24,8 @@ const api: AxiosInstance = axios.create({
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
+    // CSRF: the backend rejects cookie-authenticated mutations without it.
+    'X-Requested-With': 'XMLHttpRequest',
   },
   withCredentials: true, // Required for httpOnly cookies to be sent with requests
 });
@@ -67,7 +69,10 @@ api.interceptors.response.use(
         await axios.post(
           `${API_BASE_URL}/v1/auth/refresh`,
           {},
-          { withCredentials: true }
+          {
+            withCredentials: true,
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+          }
         );
 
         // Retry the original request (new access token cookie is automatically set)

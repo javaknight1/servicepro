@@ -250,6 +250,8 @@ type CookieConfig struct {
 	// Secure indicates if cookies should only be sent over HTTPS
 	Secure bool
 	// SameSite controls cross-site cookie behavior ("Strict", "Lax", or "None")
+	// for the access token cookie. The refresh token cookie is always Strict:
+	// it is only ever sent by the app's own XHR to /api/v1/auth.
 	SameSite string
 	// AccessTokenName is the cookie name for the access token
 	AccessTokenName string
@@ -491,9 +493,9 @@ func Load() *Config {
 			RateLimitAttempts: 5,                // 5 attempts per window
 		},
 		Cookie: CookieConfig{
-			Domain:           getEnv("COOKIE_DOMAIN", ""),          // Empty for development (localhost)
-			Secure:           getEnvAsBool("COOKIE_SECURE", false), // true in production (HTTPS only)
-			SameSite:         getEnv("COOKIE_SAMESITE", "Lax"),     // Lax provides CSRF protection
+			Domain:           getEnv("COOKIE_DOMAIN", ""),           // Empty for development (localhost)
+			Secure:           getEnvAsBool("COOKIE_SECURE", !isDev), // HTTPS-only everywhere but local development
+			SameSite:         getEnv("COOKIE_SAMESITE", "Lax"),      // Lax provides CSRF protection
 			AccessTokenName:  getEnv("COOKIE_ACCESS_TOKEN_NAME", "access_token"),
 			RefreshTokenName: getEnv("COOKIE_REFRESH_TOKEN_NAME", "refresh_token"),
 			RefreshTokenPath: getEnv("COOKIE_REFRESH_TOKEN_PATH", "/api/v1/auth"),
@@ -637,7 +639,7 @@ func Load() *Config {
 			Enabled:          getEnvAsBool("CORS_ENABLED", true),
 			AllowedOrigins:   getEnvAsStringSlice("CORS_ALLOWED_ORIGINS", []string{"http://localhost:3000", "http://localhost:5173"}),
 			AllowedMethods:   getEnvAsStringSlice("CORS_ALLOWED_METHODS", []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"}),
-			AllowedHeaders:   getEnvAsStringSlice("CORS_ALLOWED_HEADERS", []string{"Accept", "Authorization", "Content-Type", "X-Request-ID"}),
+			AllowedHeaders:   getEnvAsStringSlice("CORS_ALLOWED_HEADERS", []string{"Accept", "Authorization", "Content-Type", "X-Request-ID", "X-Requested-With", "X-Tenant-ID"}),
 			ExposedHeaders:   getEnvAsStringSlice("CORS_EXPOSED_HEADERS", []string{"X-Request-ID", "X-RateLimit-Remaining", "X-RateLimit-Reset"}),
 			AllowCredentials: getEnvAsBool("CORS_ALLOW_CREDENTIALS", true),
 			MaxAge:           getEnvAsInt("CORS_MAX_AGE", 86400), // 24 hours

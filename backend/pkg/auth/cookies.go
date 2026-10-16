@@ -46,14 +46,15 @@ func (cm *CookieManager) getSameSite() http.SameSite {
 // SetAccessToken sets the access token as an httpOnly cookie
 func (cm *CookieManager) SetAccessToken(c *gin.Context, token string) {
 	maxAge := int(cm.accessExpiration.Seconds())
-	cm.setCookie(c, cm.config.AccessTokenName, token, maxAge, "/")
+	cm.setCookie(c, cm.config.AccessTokenName, token, maxAge, "/", cm.getSameSite())
 }
 
 // SetRefreshToken sets the refresh token as an httpOnly cookie
-// The refresh token is restricted to the auth path for security
+// The refresh token is restricted to the auth path and is always
+// SameSite=Strict: only the app's own same-site XHR to /api/v1/auth needs it.
 func (cm *CookieManager) SetRefreshToken(c *gin.Context, token string) {
 	maxAge := int(cm.refreshExpiration.Seconds())
-	cm.setCookie(c, cm.config.RefreshTokenName, token, maxAge, cm.config.RefreshTokenPath)
+	cm.setCookie(c, cm.config.RefreshTokenName, token, maxAge, cm.config.RefreshTokenPath, http.SameSiteStrictMode)
 }
 
 // SetTokens sets both access and refresh tokens as httpOnly cookies
@@ -89,8 +90,8 @@ func (cm *CookieManager) GetRefreshToken(c *gin.Context) (string, error) {
 }
 
 // setCookie is a helper to set a cookie with consistent settings
-func (cm *CookieManager) setCookie(c *gin.Context, name, value string, maxAge int, path string) {
-	c.SetSameSite(cm.getSameSite())
+func (cm *CookieManager) setCookie(c *gin.Context, name, value string, maxAge int, path string, sameSite http.SameSite) {
+	c.SetSameSite(sameSite)
 	c.SetCookie(
 		name,
 		value,
