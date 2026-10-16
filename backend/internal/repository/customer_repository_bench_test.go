@@ -3,48 +3,46 @@ package repository
 import (
 	"fmt"
 	"testing"
-	"time"
 
-	"gorm.io/gorm"
-
-	"github.com/javaknight1/servicepro/backend/config"
 	"github.com/javaknight1/servicepro/backend/internal/models"
-	"github.com/javaknight1/servicepro/backend/pkg/database"
 )
 
-// setupBenchDB creates a test database connection for benchmarks
-func setupBenchDB(b *testing.B) *gorm.DB {
-	// Use test database configuration
-	cfg := &config.DatabaseConfig{
-		URL:             testDatabaseURL(),
-		MaxOpenConns:    25,
-		MaxIdleConns:    5,
-		ConnMaxLifetime: time.Hour,
-	}
-
-	db, _, err := database.NewGormDB(cfg)
-	if err != nil {
-		b.Skipf("Skipping benchmark - database not available: %v", err)
-	}
-	return db
+// setupBenchRepo seeds a fresh tenant (removed when the benchmark ends) and
+// returns a customer repository scoped to it.
+func setupBenchRepo(b *testing.B) CustomerRepositoryInterface {
+	b.Helper()
+	db := openTestDB(b)
+	tt := createTestTenant(b, db)
+	return NewCustomerRepository(db).WithContext(tt.Ctx)
 }
 
-// seedBenchData creates sample customers for benchmarking
-func seedBenchData(b *testing.B, db *gorm.DB, count int) {
+// benchCustomer returns a valid customer whose email and phone derive from i.
+func benchCustomer(email string, i int) *models.Customer {
+	return &models.Customer{
+		FirstName:            "Bench",
+		LastName:             "Mark",
+		Email:                email,
+		PhonePrimary:         fmt.Sprintf("512-555-%04d", i%10000),
+		BillingAddressStreet: "123 Test St",
+		BillingAddressCity:   "Austin",
+		BillingAddressState:  "TX",
+		BillingAddressZip:    "78701",
+		CustomerType:         models.CustomerTypeResidential,
+		Status:               models.CustomerStatusActive,
+	}
+}
+
+// seedBenchData creates sample customers in the repository's tenant
+func seedBenchData(b *testing.B, repo CustomerRepositoryInterface, count int) {
 	b.Helper()
-	repo := NewCustomerRepository(db)
 
-	// Clear existing test data
-	db.Exec("DELETE FROM customers WHERE email LIKE 'bench%@example.com'")
-
-	// Create test customers
 	for i := 0; i < count; i++ {
 		companyName := fmt.Sprintf("Company %d", i%10)
 		customer := &models.Customer{
 			FirstName:            fmt.Sprintf("First%d", i),
 			LastName:             fmt.Sprintf("Last%d", i),
 			Email:                fmt.Sprintf("bench%d@example.com", i),
-			PhonePrimary:         fmt.Sprintf("555-0%04d", i),
+			PhonePrimary:         fmt.Sprintf("512-555-%04d", i%10000),
 			CompanyName:          &companyName,
 			BillingAddressStreet: fmt.Sprintf("%d Main St", i),
 			BillingAddressCity:   []string{"Austin", "Houston", "Dallas", "San Antonio"}[i%4],
@@ -65,12 +63,8 @@ func seedBenchData(b *testing.B, db *gorm.DB, count int) {
 
 // BenchmarkFullTextSearch benchmarks the full-text search performance
 func BenchmarkFullTextSearch(b *testing.B) {
-	db := setupBenchDB(b)
-	repo := NewCustomerRepository(db)
-
-	// Seed 1000 test customers
-	seedBenchData(b, db, 1000)
-	defer db.Exec("DELETE FROM customers WHERE email LIKE 'bench%@example.com'")
+	repo := setupBenchRepo(b)
+	seedBenchData(b, repo, 1000)
 
 	benchmarks := []struct {
 		name      string
@@ -147,11 +141,8 @@ func BenchmarkFullTextSearch(b *testing.B) {
 
 // BenchmarkFullTextSearchWithFilters benchmarks search with various filters
 func BenchmarkFullTextSearchWithFilters(b *testing.B) {
-	db := setupBenchDB(b)
-	repo := NewCustomerRepository(db)
-
-	seedBenchData(b, db, 1000)
-	defer db.Exec("DELETE FROM customers WHERE email LIKE 'bench%@example.com'")
+	repo := setupBenchRepo(b)
+	seedBenchData(b, repo, 1000)
 
 	benchmarks := []struct {
 		name         string
@@ -228,11 +219,8 @@ func BenchmarkFullTextSearchWithFilters(b *testing.B) {
 
 // BenchmarkAutocomplete benchmarks the autocomplete performance
 func BenchmarkAutocomplete(b *testing.B) {
-	db := setupBenchDB(b)
-	repo := NewCustomerRepository(db)
-
-	seedBenchData(b, db, 1000)
-	defer db.Exec("DELETE FROM customers WHERE email LIKE 'bench%@example.com'")
+	repo := setupBenchRepo(b)
+	seedBenchData(b, repo, 1000)
 
 	benchmarks := []struct {
 		name   string
@@ -281,11 +269,8 @@ func BenchmarkAutocomplete(b *testing.B) {
 
 // BenchmarkSearch compares basic search vs full-text search
 func BenchmarkSearchComparison(b *testing.B) {
-	db := setupBenchDB(b)
-	repo := NewCustomerRepository(db)
-
-	seedBenchData(b, db, 1000)
-	defer db.Exec("DELETE FROM customers WHERE email LIKE 'bench%@example.com'")
+	repo := setupBenchRepo(b)
+	seedBenchData(b, repo, 1000)
 
 	query := "company"
 
@@ -312,27 +297,12 @@ func BenchmarkSearchComparison(b *testing.B) {
 
 // BenchmarkGetByID benchmarks ID lookup performance
 func BenchmarkGetByID(b *testing.B) {
-	db := setupBenchDB(b)
-	repo := NewCustomerRepository(db)
+	repo := setupBenchRepo(b)
 
-	// Create a test customer
-	customer := &models.Customer{
-		FirstName:            "Bench",
-		LastName:             "Mark",
-		Email:                "benchmark@example.com",
-		PhonePrimary:         "555-0000",
-		BillingAddressStreet: "123 Test St",
-		BillingAddressCity:   "Austin",
-		BillingAddressState:  "TX",
-		BillingAddressZip:    "78701",
-		CustomerType:         models.CustomerTypeResidential,
-		Status:               models.CustomerStatusActive,
-	}
-
+	customer := benchCustomer("benchmark@example.com", 0)
 	if err := repo.Create(customer); err != nil {
 		b.Fatalf("Failed to create test customer: %v", err)
 	}
-	defer db.Exec("DELETE FROM customers WHERE email = 'benchmark@example.com'")
 
 	id := customer.ID
 
@@ -347,26 +317,11 @@ func BenchmarkGetByID(b *testing.B) {
 
 // BenchmarkGetByEmail benchmarks email lookup performance
 func BenchmarkGetByEmail(b *testing.B) {
-	db := setupBenchDB(b)
-	repo := NewCustomerRepository(db)
+	repo := setupBenchRepo(b)
 
-	customer := &models.Customer{
-		FirstName:            "Bench",
-		LastName:             "Mark",
-		Email:                "benchmark@example.com",
-		PhonePrimary:         "555-0000",
-		BillingAddressStreet: "123 Test St",
-		BillingAddressCity:   "Austin",
-		BillingAddressState:  "TX",
-		BillingAddressZip:    "78701",
-		CustomerType:         models.CustomerTypeResidential,
-		Status:               models.CustomerStatusActive,
-	}
-
-	if err := repo.Create(customer); err != nil {
+	if err := repo.Create(benchCustomer("benchmark@example.com", 0)); err != nil {
 		b.Fatalf("Failed to create test customer: %v", err)
 	}
-	defer db.Exec("DELETE FROM customers WHERE email = 'benchmark@example.com'")
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -379,11 +334,8 @@ func BenchmarkGetByEmail(b *testing.B) {
 
 // BenchmarkList benchmarks paginated list performance
 func BenchmarkList(b *testing.B) {
-	db := setupBenchDB(b)
-	repo := NewCustomerRepository(db)
-
-	seedBenchData(b, db, 1000)
-	defer db.Exec("DELETE FROM customers WHERE email LIKE 'bench%@example.com'")
+	repo := setupBenchRepo(b)
+	seedBenchData(b, repo, 1000)
 
 	benchmarks := []struct {
 		name     string
@@ -429,27 +381,11 @@ func BenchmarkList(b *testing.B) {
 
 // BenchmarkCreate benchmarks customer creation
 func BenchmarkCreate(b *testing.B) {
-	db := setupBenchDB(b)
-	repo := NewCustomerRepository(db)
-
-	// Cleanup function
-	defer db.Exec("DELETE FROM customers WHERE email LIKE 'bench-create-%@example.com'")
+	repo := setupBenchRepo(b)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		customer := &models.Customer{
-			FirstName:            "Benchmark",
-			LastName:             "User",
-			Email:                fmt.Sprintf("bench-create-%d@example.com", i),
-			PhonePrimary:         fmt.Sprintf("555-%04d", i),
-			BillingAddressStreet: "123 Test St",
-			BillingAddressCity:   "Austin",
-			BillingAddressState:  "TX",
-			BillingAddressZip:    "78701",
-			CustomerType:         models.CustomerTypeResidential,
-			Status:               models.CustomerStatusActive,
-		}
-
+		customer := benchCustomer(fmt.Sprintf("bench-create-%d@example.com", i), i)
 		if err := repo.Create(customer); err != nil {
 			b.Fatalf("Create failed: %v", err)
 		}
@@ -458,27 +394,12 @@ func BenchmarkCreate(b *testing.B) {
 
 // BenchmarkUpdate benchmarks customer updates
 func BenchmarkUpdate(b *testing.B) {
-	db := setupBenchDB(b)
-	repo := NewCustomerRepository(db)
+	repo := setupBenchRepo(b)
 
-	// Create a test customer
-	customer := &models.Customer{
-		FirstName:            "Bench",
-		LastName:             "Mark",
-		Email:                "bench-update@example.com",
-		PhonePrimary:         "555-0000",
-		BillingAddressStreet: "123 Test St",
-		BillingAddressCity:   "Austin",
-		BillingAddressState:  "TX",
-		BillingAddressZip:    "78701",
-		CustomerType:         models.CustomerTypeResidential,
-		Status:               models.CustomerStatusActive,
-	}
-
+	customer := benchCustomer("bench-update@example.com", 0)
 	if err := repo.Create(customer); err != nil {
 		b.Fatalf("Failed to create test customer: %v", err)
 	}
-	defer db.Exec("DELETE FROM customers WHERE email = 'bench-update@example.com'")
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -491,11 +412,8 @@ func BenchmarkUpdate(b *testing.B) {
 
 // BenchmarkSearchStats benchmarks statistics retrieval
 func BenchmarkSearchStats(b *testing.B) {
-	db := setupBenchDB(b)
-	repo := NewCustomerRepository(db)
-
-	seedBenchData(b, db, 1000)
-	defer db.Exec("DELETE FROM customers WHERE email LIKE 'bench%@example.com'")
+	repo := setupBenchRepo(b)
+	seedBenchData(b, repo, 1000)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
