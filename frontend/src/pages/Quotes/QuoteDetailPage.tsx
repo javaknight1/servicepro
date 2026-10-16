@@ -14,6 +14,7 @@ import {
 import { trackEvent, AnalyticsEvents } from '@services/analytics';
 import type { Customer } from '@services/customerService';
 import { fetchAllCustomers } from '@services/customerLookup';
+import { useTenantStore } from '@store';
 import type { Quote, LineItemFormData } from '@app-types/quote';
 import {
   ArrowLeft,
@@ -86,6 +87,8 @@ export function QuoteDetailPage() {
   const [quoteStatus, setQuoteStatus] = useState<string>('draft');
   const [quoteNumber, setQuoteNumber] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
+  const { currentTenant } = useTenantStore();
+  const defaultTaxRateId = currentTenant?.settings?.defaultTaxRateId;
 
   useEffect(() => {
     loadCustomers();
@@ -104,6 +107,18 @@ export function QuoteDetailPage() {
       }));
     }
   }, [id, isNew, isCloning, cloneFromId]);
+
+  // New quote + tenant default tax rate (T127): leave the rate blank so the
+  // API applies the default (there is no tax-rate endpoint to show it).
+  useEffect(() => {
+    if (isNew && !isCloning && defaultTaxRateId) {
+      setFormData((prev) => ({ ...prev, tax_rate: '' }));
+    }
+  }, [isNew, isCloning, defaultTaxRateId]);
+
+  // Blank rate on a new quote: the tenant's default applies on save
+  const taxFromDefault =
+    isNew && Boolean(defaultTaxRateId) && formData.tax_rate === '';
 
   const loadCustomers = async () => {
     setIsLoadingCustomers(true);
@@ -253,7 +268,7 @@ export function QuoteDetailPage() {
     const submitData = {
       customer_id: formData.customer_id,
       valid_until: validUntilDate,
-      tax_rate: taxRateDecimal,
+      tax_rate: taxFromDefault ? undefined : taxRateDecimal,
       notes: formData.notes || undefined,
       terms: formData.terms || undefined,
       items: lineItems.map((item, index) => ({
@@ -596,8 +611,16 @@ export function QuoteDetailPage() {
                   min="0"
                   max="100"
                   step="0.01"
+                  placeholder={
+                    isNew && defaultTaxRateId ? 'Default rate' : undefined
+                  }
                   className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                 />
+                {taxFromDefault && (
+                  <p className="mt-1 text-xs text-neutral-500">
+                    Left blank, your default tax rate applies.
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -699,15 +722,23 @@ export function QuoteDetailPage() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-neutral-600">
-                      Tax ({formData.tax_rate}%):
+                      {taxFromDefault
+                        ? 'Tax (default rate):'
+                        : `Tax (${formData.tax_rate}%):`}
                     </span>
                     <span className="font-medium">
-                      {formatDollars(calculateTax())}
+                      {taxFromDefault
+                        ? 'Set on save'
+                        : formatDollars(calculateTax())}
                     </span>
                   </div>
                   <div className="flex justify-between text-lg font-semibold pt-2 border-t">
                     <span>Total:</span>
-                    <span>{formatDollars(calculateTotal())}</span>
+                    <span>
+                      {taxFromDefault
+                        ? `${formatDollars(calculateSubtotal())} + tax`
+                        : formatDollars(calculateTotal())}
+                    </span>
                   </div>
                 </div>
               </div>

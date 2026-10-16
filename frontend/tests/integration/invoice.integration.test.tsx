@@ -54,6 +54,12 @@ vi.mock('@/utils/tenantPermissions', () => ({
   useTenantPermissions: vi.fn(),
 }));
 
+vi.mock('@services/paymentTermService', () => ({
+  paymentTermService: {
+    getPaymentTerm: vi.fn(),
+  },
+}));
+
 vi.mock('@services/customerService', () => ({
   customerService: {
     getCustomers: vi.fn(),
@@ -65,6 +71,7 @@ vi.mock('@services/customerService', () => ({
 import { useAuthStore, useTenantStore, useSidebarStore } from '@store';
 import { invoiceService } from '@services/invoiceService';
 import { customerService } from '@services/customerService';
+import { paymentTermService } from '@services/paymentTermService';
 import { useTenantPermissions } from '@/utils/tenantPermissions';
 
 let grantedPermissions = new Set<string>();
@@ -556,6 +563,111 @@ describe('Invoice & Payment Integration', () => {
       const [createBody] = vi.mocked(invoiceService.createInvoice).mock
         .calls[0];
       expect(createBody).not.toHaveProperty('terms');
+    });
+  });
+
+  describe('Tenant defaults on a new invoice (T127)', () => {
+    it('prefills the default payment term and leaves the tax to the default rate', async () => {
+      const user = userEvent.setup({ delay: null });
+      const tenantWithDefaults = {
+        ...mockTenant,
+        settings: {
+          defaultTaxRateId: 'tax-rate-1',
+          defaultPaymentTermId: 'term-15',
+        },
+      };
+      vi.mocked(useTenantStore).mockImplementation((selector) => {
+        const state = {
+          currentTenant: tenantWithDefaults,
+          tenants: [tenantWithDefaults],
+        };
+        return typeof selector === 'function' ? selector(state) : state;
+      });
+      vi.mocked(paymentTermService.getPaymentTerm).mockResolvedValue({
+        id: 'term-15',
+        name: 'Net 15',
+        term_type: 'net_15',
+        days_until_due: 15,
+        is_default: false,
+        is_active: true,
+      });
+      vi.mocked(invoiceService.createInvoice).mockResolvedValue({
+        ...mockInvoices[0],
+        id: 'invoice-new',
+      });
+
+      const { InvoiceDetailPage } =
+        await import('../../src/pages/Invoices/InvoiceDetailPage');
+      render(
+        <MemoryRouter initialEntries={['/invoices/new']}>
+          <Routes>
+            <Route path="/invoices/new" element={<InvoiceDetailPage />} />
+          </Routes>
+        </MemoryRouter>
+      );
+
+      expect(
+        await screen.findByText('Payment term: Net 15')
+      ).toBeInTheDocument();
+      expect(paymentTermService.getPaymentTerm).toHaveBeenCalledWith('term-15');
+      const issue = (screen.getByLabelText(/issue date/i) as HTMLInputElement)
+        .value;
+      const due = new Date(issue + 'T00:00:00Z');
+      due.setUTCDate(due.getUTCDate() + 15);
+      expect(screen.getByLabelText(/due date/i)).toHaveValue(
+        due.toISOString().split('T')[0]
+      );
+      expect(screen.getByLabelText(/tax rate/i)).toHaveValue(null);
+      expect(screen.getByText('Tax (default rate):')).toBeInTheDocument();
+
+      const customerSelect = screen.getByLabelText(/customer/i);
+      await screen.findByRole('option', { name: /John Doe/i });
+      await user.selectOptions(customerSelect, 'customer-1');
+      await user.type(
+        screen.getAllByPlaceholderText(/description/i)[0],
+        'Service Charge'
+      );
+      await user.click(screen.getByRole('button', { name: /create invoice/i }));
+
+      await waitFor(() => {
+        expect(invoiceService.createInvoice).toHaveBeenCalled();
+      });
+      const [body] = vi.mocked(invoiceService.createInvoice).mock.calls[0];
+      // Omitted, so the API applies the tenant's default rate
+      expect(body.tax_rate).toBeUndefined();
+    });
+
+    it('sends 0% tax when the tenant has no default rate', async () => {
+      const user = userEvent.setup({ delay: null });
+      vi.mocked(invoiceService.createInvoice).mockResolvedValue({
+        ...mockInvoices[0],
+        id: 'invoice-new',
+      });
+      const { InvoiceDetailPage } =
+        await import('../../src/pages/Invoices/InvoiceDetailPage');
+      render(
+        <MemoryRouter initialEntries={['/invoices/new']}>
+          <Routes>
+            <Route path="/invoices/new" element={<InvoiceDetailPage />} />
+          </Routes>
+        </MemoryRouter>
+      );
+
+      const customerSelect = await screen.findByLabelText(/customer/i);
+      await screen.findByRole('option', { name: /John Doe/i });
+      await user.selectOptions(customerSelect, 'customer-1');
+      await user.type(
+        screen.getAllByPlaceholderText(/description/i)[0],
+        'Service Charge'
+      );
+      await user.click(screen.getByRole('button', { name: /create invoice/i }));
+
+      await waitFor(() => {
+        expect(invoiceService.createInvoice).toHaveBeenCalledWith(
+          expect.objectContaining({ tax_rate: 0 })
+        );
+      });
+      expect(paymentTermService.getPaymentTerm).not.toHaveBeenCalled();
     });
   });
 
