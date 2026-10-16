@@ -121,6 +121,22 @@ func TestCustomerMetrics_RefreshIsTenantScoped(t *testing.T) {
 	assert.ErrorIs(t, f.svc.RefreshMetricsCache(context.Background(), nil), tenancy.ErrNoTenant)
 }
 
+// T123: cohort analysis returned "unavailable" because v_customer_cohorts
+// never existed.
+func TestCustomerCohorts(t *testing.T) {
+	f := setupMetricsFixture(t)
+	ctxA := tenancy.WithTenant(context.Background(), f.tenantA)
+
+	cohorts, err := f.svc.GetCohortData(ctxA, 12)
+	require.NoError(t, err)
+	require.Len(t, cohorts, 1)
+	c := cohorts[0]
+	assert.Equal(t, 1, c.CohortSize)
+	assert.Equal(t, 1, c.Month1Retained, "activity ~45-55 days after signup counts for month 1")
+	assert.Equal(t, 0, c.Month3Retained)
+	assert.True(t, c.RetentionRate1M.Equal(decimal.NewFromInt(100)))
+}
+
 // T123: a filtered summary referenced alias "c" on an un-aliased customers
 // table ("missing FROM-clause entry for table c").
 func TestCustomerReportSummary_WithFilters(t *testing.T) {

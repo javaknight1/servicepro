@@ -296,3 +296,70 @@ func (s *customerReportService) ensureMetricsFresh(ctx context.Context) error {
 	}
 	return s.RefreshMetricsCache(ctx, nil)
 }
+
+// GetCohortData groups the tenant's customers by the month they were created
+// and counts how many were still active (any job, invoice or quote) 1, 2, 3
+// and 6 months later.
+func (s *customerReportService) GetCohortData(ctx context.Context, months int) ([]models.CohortData, error) {
+	if months <= 0 {
+		months = 12
+	}
+	if months > 36 {
+		months = 36
+	}
+	now := time.Now().UTC()
+	thisMonth := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
+	since := thisMonth.AddDate(0, -(months - 1), 0)
+
+	activity, err := s.loadCustomerActivity(ctx, nil, &since)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load cohort data: %w", err)
+	}
+
+	type cohort struct {
+		size     int
+		retained [4]int // months 1, 2, 3, 6
+	}
+	offsets := [4]int{1, 2, 3, 6}
+	cohorts := map[time.Time]*cohort{}
+	for _, a := range activity {
+		created := a.CreatedAt.UTC()
+		month := time.Date(created.Year(), created.Month(), 1, 0, 0, 0, 0, time.UTC)
+		c := cohorts[month]
+		if c == nil {
+			c = &cohort{}
+			cohorts[month] = c
+		}
+		c.size++
+		last := a.lastActivity()
+		for i, off := range offsets {
+			if last != nil && !last.Before(month.AddDate(0, off, 0)) {
+				c.retained[i]++
+			}
+		}
+	}
+
+	rate := func(n, size int) decimal.Decimal {
+		if size == 0 {
+			return decimal.Zero
+		}
+		return decimal.NewFromInt(int64(n * 100)).Div(decimal.NewFromInt(int64(size))).Round(2)
+	}
+
+	result := make([]models.CohortData, 0, len(cohorts))
+	for month, c := range cohorts {
+		result = append(result, models.CohortData{
+			CohortMonth:     month,
+			CohortSize:      c.size,
+			Month1Retained:  c.retained[0],
+			Month2Retained:  c.retained[1],
+			Month3Retained:  c.retained[2],
+			Month6Retained:  c.retained[3],
+			RetentionRate1M: rate(c.retained[0], c.size),
+			RetentionRate3M: rate(c.retained[2], c.size),
+			RetentionRate6M: rate(c.retained[3], c.size),
+		})
+	}
+	sort.Slice(result, func(i, j int) bool { return result[i].CohortMonth.After(result[j].CohortMonth) })
+	return result, nil
+}

@@ -2,7 +2,6 @@ package services
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -514,17 +513,6 @@ func (s *customerReportService) GetAtRiskCustomers(ctx context.Context, limit in
 
 	return results, nil
 }
-
-func (s *customerReportService) GetCohortData(ctx context.Context, months int) ([]models.CohortData, error) {
-	// v_customer_cohorts was never created by a migration and a raw view
-	// query would not be tenant-scoped; report the feature as unavailable
-	// rather than risk a cross-tenant read.
-	return nil, ErrCohortsUnavailable
-}
-
-// ErrCohortsUnavailable is returned by GetCohortAnalysis until a tenant-aware
-// cohort query exists.
-var ErrCohortsUnavailable = errors.New("cohort analysis is not available")
 
 // tenantFilterValue returns the caller's tenant for explicit filters on
 // joined tables, or uuid.Nil (matches nothing) when there is none.
