@@ -117,14 +117,8 @@ func (s *InvoiceService) CreateInvoice(ctx context.Context, invoice *models.Invo
 		invoice.DueDate = dueDate
 	}
 
-	// Generate invoice number if not provided (fallback for databases without triggers)
-	if invoice.InvoiceNumber == "" {
-		invoiceNumber, err := s.generateInvoiceNumber(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("failed to generate invoice number: %w", err)
-		}
-		invoice.InvoiceNumber = invoiceNumber
-	}
+	// The invoice number is allocated from the tenant's counter inside the
+	// create transaction (models.Invoice.BeforeCreate).
 
 	// Validate invoice
 	if err := s.validateInvoice(invoice); err != nil {
@@ -880,27 +874,6 @@ func (s *InvoiceService) requireCustomer(ctx context.Context, customerID uuid.UU
 		return ErrCustomerNotFound
 	}
 	return nil
-}
-
-// generateInvoiceNumber generates a unique invoice number
-func (s *InvoiceService) generateInvoiceNumber(ctx context.Context) (string, error) {
-	var maxNumber string
-	err := s.db.WithContext(ctx).
-		Model(&models.Invoice{}).
-		Select("COALESCE(MAX(invoice_number), 'INV-000000')").
-		Scan(&maxNumber).Error
-
-	if err != nil {
-		return "", err
-	}
-
-	// Parse the current max number and increment
-	var num int
-	if _, err := fmt.Sscanf(maxNumber, "INV-%d", &num); err != nil {
-		num = 0
-	}
-
-	return fmt.Sprintf("INV-%06d", num+1), nil
 }
 
 func (s *InvoiceService) validateInvoice(invoice *models.Invoice) error {

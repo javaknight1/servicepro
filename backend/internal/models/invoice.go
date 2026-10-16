@@ -162,10 +162,18 @@ func (Invoice) TableName() string {
 	return "invoices"
 }
 
-// BeforeCreate hook to ensure invoice number is generated
+// BeforeCreate assigns an ID and allocates the tenant's next invoice number
+// if none is set (NextDocumentNumber).
 func (i *Invoice) BeforeCreate(tx *gorm.DB) error {
 	if i.ID == uuid.Nil {
 		i.ID = uuid.New()
+	}
+	if i.InvoiceNumber == "" {
+		n, err := NextDocumentNumber(tx, i.TenantID, CounterInvoice)
+		if err != nil {
+			return err
+		}
+		i.InvoiceNumber = n
 	}
 	return nil
 }

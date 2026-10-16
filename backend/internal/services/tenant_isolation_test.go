@@ -44,6 +44,7 @@ func setupIsolation(t *testing.T) *isolationFixture {
 	} {
 		createSQLiteTableForModel(t, db, m, "")
 	}
+	createTenantCountersTable(t, db)
 	require.NoError(t, tenancy.Register(db))
 
 	f := &isolationFixture{
