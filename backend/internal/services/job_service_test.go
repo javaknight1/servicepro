@@ -490,7 +490,7 @@ func TestJobService_UpdateJob_Unauthorized(t *testing.T) {
 	differentUserID := uuid.New()
 
 	req := &models.UpdateJobRequest{
-		Title: stringPtr("New Title"),
+		Title: strPtr("New Title"),
 	}
 
 	mockJobRepo.On("GetByID", job.ID).Return(job, nil)
