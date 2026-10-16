@@ -172,6 +172,35 @@ func TestTaxRates_DeleteInUseIsConflict(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+// T237: switching an invoice from a configured tax rate to a direct rate
+// clears tax_rate_id; picking a configured rate sets it again.
+func TestInvoiceUpdate_DirectRateClearsTaxRateID(t *testing.T) {
+	f := setupIsolation(t)
+	svc := NewInvoiceService(f.db)
+	rate := seedRate(t, f, f.ctxA, "0.1", true)
+
+	inv := newDraftInvoice(f)
+	inv.TaxRateID = &rate.ID
+	inv, err := svc.CreateInvoice(f.ctxA, inv, f.userA)
+	require.NoError(t, err)
+
+	direct := dec("0.05")
+	got, err := svc.UpdateInvoice(f.ctxA, inv.ID, &InvoiceUpdate{TaxRate: &direct}, f.userA)
+	require.NoError(t, err)
+	assert.Nil(t, got.TaxRateID, "a direct rate replaces the configured one")
+	assertDec(t, "5", got.TaxAmount, "tax at the direct rate")
+
+	got, err = svc.UpdateInvoice(f.ctxA, inv.ID, &InvoiceUpdate{TaxRateID: &rate.ID}, f.userA)
+	require.NoError(t, err)
+	require.NotNil(t, got.TaxRateID)
+	assert.Equal(t, rate.ID, *got.TaxRateID)
+	assertDec(t, "10", got.TaxAmount, "tax at the configured rate")
+
+	got, err = svc.UpdateInvoice(f.ctxA, inv.ID, &InvoiceUpdate{Notes: strPtr("x")}, f.userA)
+	require.NoError(t, err)
+	require.NotNil(t, got.TaxRateID, "other edits keep the configured rate")
+}
+
 // T237 (Postgres): migration 000014 grants tax_rates.manage to super_admin
 // and admin only, tax_rates.read to every role; the service works against the
 // real schema (gen_random_uuid ids, tax_type enum, rate CHECK).

@@ -292,6 +292,10 @@ func (s *InvoiceService) UpdateInvoice(ctx context.Context, id uuid.UUID, upd *I
 		}
 		if upd.TaxRateID != nil {
 			fields["tax_rate_id"] = *upd.TaxRateID
+		} else if upd.TaxRate != nil {
+			// A direct rate alone replaces the configured one (T237): the
+			// invoice no longer uses that tax rate, so don't keep pointing at it.
+			fields["tax_rate_id"] = nil
 		}
 		if upd.PONumber != nil {
 			fields["po_number"] = *upd.PONumber

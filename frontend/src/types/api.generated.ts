@@ -13885,7 +13885,7 @@ export interface components {
             notes?: string;
             payment_term_id?: string;
             po_number?: string;
-            /** @description Direct tax rate (e.g., 0.07 for 7%) */
+            /** @description Direct tax rate (e.g., 0.07 for 7%); without tax_rate_id it clears the invoice's tax_rate_id */
             tax_rate?: number;
             tax_rate_id?: string;
             terms_and_conditions?: string;
