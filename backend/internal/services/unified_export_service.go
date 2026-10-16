@@ -6,6 +6,7 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"io"
 	"os"
 	"path/filepath"
@@ -791,10 +792,10 @@ func (s *unifiedExportService) ExportToPDF(ctx context.Context, data interface{}
 	return os.ReadFile(tempFile)
 }
 
-func (s *unifiedExportService) buildPDFHTML(data interface{}, config *models.ExportConfig, opts *models.PDFExportOptions) string {
-	var html strings.Builder
-
-	html.WriteString(`<!DOCTYPE html>
+// pdfExportTemplate renders export PDFs. html/template escapes every value
+// (titles, header text, customer/job fields), so user content can't inject
+// markup such as <iframe src=file://...> into the wkhtmltopdf input (F-8).
+var pdfExportTemplate = template.Must(template.New("export").Parse(`<!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
@@ -810,98 +811,70 @@ func (s *unifiedExportService) buildPDFHTML(data interface{}, config *models.Exp
         .footer { margin-top: 30px; text-align: center; color: #666; font-size: 10px; }
     </style>
 </head>
-<body>`)
+<body>
+<h1>{{.Title}}</h1>
+{{if .HeaderText}}<p>{{.HeaderText}}</p>{{end}}
+{{if .Headers}}<div class="summary"><span class="summary-item"><strong>{{.SummaryLabel}}:</strong> {{len .Rows}}</span></div>
+<table><thead><tr>{{range .Headers}}<th>{{.}}</th>{{end}}</tr></thead><tbody>
+{{range .Rows}}<tr>{{range .}}<td>{{.}}</td>{{end}}</tr>
+{{end}}</tbody></table>{{else}}<pre>{{.Raw}}</pre>{{end}}
+<div class="footer">Generated on {{.GeneratedAt}}</div>
+</body></html>`))
 
-	// Add title
-	title := opts.Title
-	if title == "" {
-		title = fmt.Sprintf("%s Export", strings.Title(string(config.ExportType)))
+type pdfExportView struct {
+	Title, HeaderText, SummaryLabel, Raw, GeneratedAt string
+	Headers                                           []string
+	Rows                                              [][]string
+}
+
+func (s *unifiedExportService) buildPDFHTML(data interface{}, config *models.ExportConfig, opts *models.PDFExportOptions) string {
+	view := pdfExportView{
+		Title:       opts.Title,
+		HeaderText:  opts.HeaderText,
+		GeneratedAt: time.Now().Format("January 2, 2006 3:04 PM"),
 	}
-	html.WriteString(fmt.Sprintf("<h1>%s</h1>", title))
-
-	// Add header text if provided
-	if opts.HeaderText != "" {
-		html.WriteString(fmt.Sprintf("<p>%s</p>", opts.HeaderText))
+	if view.Title == "" {
+		view.Title = fmt.Sprintf("%s Export", strings.Title(string(config.ExportType))) //nolint:staticcheck // ASCII export type names
 	}
 
-	// Build table based on data type
 	switch d := data.(type) {
 	case []models.Customer:
-		html.WriteString(s.buildCustomersPDFTable(d))
+		view.SummaryLabel = "Total Customers"
+		view.Headers = []string{"Name", "Company", "Email", "Phone", "Type", "Status", "City", "State"}
+		for _, c := range d {
+			view.Rows = append(view.Rows, []string{c.FirstName + " " + c.LastName, ptrToStr(c.CompanyName), c.Email, c.PhonePrimary,
+				string(c.CustomerType), string(c.Status), c.BillingAddressCity, c.BillingAddressState})
+		}
 	case []models.Job:
-		html.WriteString(s.buildJobsPDFTable(d))
+		view.SummaryLabel = "Total Jobs"
+		view.Headers = []string{"Title", "Status", "Scheduled", "Created"}
+		for _, j := range d {
+			view.Rows = append(view.Rows, []string{j.Title, string(j.Status), formatEpochPtr(j.ScheduledStartAt), j.CreatedAt.Format("2006-01-02")})
+		}
 	case []models.Invoice:
-		html.WriteString(s.buildInvoicesPDFTable(d))
+		view.SummaryLabel = "Total Invoices"
+		view.Headers = []string{"Invoice #", "Status", "Subtotal", "Tax", "Total", "Due Date"}
+		for _, inv := range d {
+			view.Rows = append(view.Rows, []string{inv.InvoiceNumber, string(inv.Status), "$" + inv.Subtotal.StringFixed(2),
+				"$" + inv.TaxAmount.StringFixed(2), "$" + inv.TotalAmount.StringFixed(2), inv.DueDate.Format("2006-01-02")})
+		}
 	case []models.Quote:
-		html.WriteString(s.buildQuotesPDFTable(d))
+		view.SummaryLabel = "Total Quotes"
+		view.Headers = []string{"Quote #", "Status", "Total", "Valid Until", "Created"}
+		for _, q := range d {
+			view.Rows = append(view.Rows, []string{q.QuoteNumber, string(q.Status), "$" + q.Total.StringFixed(2),
+				q.ValidUntil.Format("2006-01-02"), q.CreatedAt.Format("2006-01-02")})
+		}
 	default:
 		jsonData, _ := json.MarshalIndent(data, "", "  ")
-		html.WriteString(fmt.Sprintf("<pre>%s</pre>", string(jsonData)))
+		view.Raw = string(jsonData)
 	}
 
-	// Add footer
-	html.WriteString(fmt.Sprintf(`<div class="footer">Generated on %s</div>`, time.Now().Format("January 2, 2006 3:04 PM")))
-	html.WriteString("</body></html>")
-
-	return html.String()
-}
-
-func (s *unifiedExportService) buildCustomersPDFTable(customers []models.Customer) string {
-	var html strings.Builder
-	html.WriteString(fmt.Sprintf(`<div class="summary"><span class="summary-item"><strong>Total Customers:</strong> %d</span></div>`, len(customers)))
-	html.WriteString(`<table><thead><tr><th>Name</th><th>Company</th><th>Email</th><th>Phone</th><th>Type</th><th>Status</th><th>City</th><th>State</th></tr></thead><tbody>`)
-
-	for _, c := range customers {
-		html.WriteString(fmt.Sprintf("<tr><td>%s %s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>",
-			c.FirstName, c.LastName, ptrToStr(c.CompanyName), c.Email, c.PhonePrimary,
-			c.CustomerType, c.Status, c.BillingAddressCity, c.BillingAddressState))
+	var out strings.Builder
+	if err := pdfExportTemplate.Execute(&out, view); err != nil {
+		return "<!DOCTYPE html><html><body><p>Export could not be rendered.</p></body></html>"
 	}
-
-	html.WriteString("</tbody></table>")
-	return html.String()
-}
-
-func (s *unifiedExportService) buildJobsPDFTable(jobs []models.Job) string {
-	var html strings.Builder
-	html.WriteString(fmt.Sprintf(`<div class="summary"><span class="summary-item"><strong>Total Jobs:</strong> %d</span></div>`, len(jobs)))
-	html.WriteString(`<table><thead><tr><th>Title</th><th>Status</th><th>Scheduled</th><th>Created</th></tr></thead><tbody>`)
-
-	for _, j := range jobs {
-		html.WriteString(fmt.Sprintf("<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>",
-			j.Title, j.Status, formatEpochPtr(j.ScheduledStartAt), j.CreatedAt.Format("2006-01-02")))
-	}
-
-	html.WriteString("</tbody></table>")
-	return html.String()
-}
-
-func (s *unifiedExportService) buildInvoicesPDFTable(invoices []models.Invoice) string {
-	var html strings.Builder
-	html.WriteString(fmt.Sprintf(`<div class="summary"><span class="summary-item"><strong>Total Invoices:</strong> %d</span></div>`, len(invoices)))
-	html.WriteString(`<table><thead><tr><th>Invoice #</th><th>Status</th><th>Subtotal</th><th>Tax</th><th>Total</th><th>Due Date</th></tr></thead><tbody>`)
-
-	for _, inv := range invoices {
-		html.WriteString(fmt.Sprintf("<tr><td>%s</td><td>%s</td><td>$%s</td><td>$%s</td><td>$%s</td><td>%s</td></tr>",
-			inv.InvoiceNumber, inv.Status, inv.Subtotal.StringFixed(2), inv.TaxAmount.StringFixed(2),
-			inv.TotalAmount.StringFixed(2), inv.DueDate.Format("2006-01-02")))
-	}
-
-	html.WriteString("</tbody></table>")
-	return html.String()
-}
-
-func (s *unifiedExportService) buildQuotesPDFTable(quotes []models.Quote) string {
-	var html strings.Builder
-	html.WriteString(fmt.Sprintf(`<div class="summary"><span class="summary-item"><strong>Total Quotes:</strong> %d</span></div>`, len(quotes)))
-	html.WriteString(`<table><thead><tr><th>Quote #</th><th>Status</th><th>Total</th><th>Valid Until</th><th>Created</th></tr></thead><tbody>`)
-
-	for _, q := range quotes {
-		html.WriteString(fmt.Sprintf("<tr><td>%s</td><td>%s</td><td>$%s</td><td>%s</td><td>%s</td></tr>",
-			q.QuoteNumber, q.Status, q.Total.StringFixed(2), q.ValidUntil.Format("2006-01-02"), q.CreatedAt.Format("2006-01-02")))
-	}
-
-	html.WriteString("</tbody></table>")
-	return html.String()
+	return out.String()
 }
 
 // GetExportStatus returns the status of an export job
