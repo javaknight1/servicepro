@@ -97,7 +97,16 @@ func SetupServices(
 	svc.PDF = services.NewPDFService("", "", "./exports/pdf")
 
 	// Export service
-	svc.Export = services.NewUnifiedExportService(db, svc.PDF, "./exports", "")
+	// Export files go to object storage so any instance can serve the
+	// download (T128); local ./exports only without a storage client (dev).
+	var exportFiles services.ExportFileStore
+	if storageClient != nil {
+		exportFiles = services.NewObjectExportStore(storageClient)
+	} else {
+		log.Println("[SERVICES] Storage client not configured: exports are stored on local disk (development only)")
+		exportFiles = services.NewLocalExportStore("./exports")
+	}
+	svc.Export = services.NewUnifiedExportService(db, svc.PDF, exportFiles, "")
 
 	// Payment terms service
 	svc.PaymentTerms = services.NewPaymentTermsService(db)

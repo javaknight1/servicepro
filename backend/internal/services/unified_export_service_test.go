@@ -6,6 +6,7 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"io"
 	"testing"
 	"time"
 
@@ -16,7 +17,13 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/javaknight1/servicepro/backend/internal/models"
+	"github.com/javaknight1/servicepro/backend/internal/tenancy"
+	storagemock "github.com/javaknight1/servicepro/backend/pkg/clients/storage/mock"
 )
+
+// exportCtx carries a tenant: exports are tenant-owned and their storage key
+// includes the tenant (T128).
+var exportCtx = tenancy.WithTenant(context.Background(), uuid.MustParse("7e57a000-0000-4000-8000-0000000000e1"))
 
 func setupExportTestDB(t *testing.T) *gorm.DB {
 	// Use a unique database name per test with shared cache mode
@@ -141,7 +148,7 @@ func TestExportToCSV(t *testing.T) {
 	customers := createExportTestCustomers(t, db, 10)
 
 	pdfService := NewPDFService("", "", "")
-	service := NewUnifiedExportService(db, pdfService, t.TempDir(), "http://localhost")
+	service := NewUnifiedExportService(db, pdfService, NewLocalExportStore(t.TempDir()), "http://localhost")
 
 	config := &models.ExportConfig{
 		Format:     models.ExportFormatCSV,
@@ -149,7 +156,7 @@ func TestExportToCSV(t *testing.T) {
 		CSVOptions: models.DefaultCSVOptions(),
 	}
 
-	data, err := service.ExportToCSV(context.Background(), customers, config)
+	data, err := service.ExportToCSV(exportCtx, customers, config)
 
 	require.NoError(t, err)
 	assert.NotEmpty(t, data)
@@ -175,7 +182,7 @@ func TestExportToCSVWithBOM(t *testing.T) {
 	customers := createExportTestCustomers(t, db, 5)
 
 	pdfService := NewPDFService("", "", "")
-	service := NewUnifiedExportService(db, pdfService, t.TempDir(), "http://localhost")
+	service := NewUnifiedExportService(db, pdfService, NewLocalExportStore(t.TempDir()), "http://localhost")
 
 	config := &models.ExportConfig{
 		Format:     models.ExportFormatCSV,
@@ -187,7 +194,7 @@ func TestExportToCSVWithBOM(t *testing.T) {
 		},
 	}
 
-	data, err := service.ExportToCSV(context.Background(), customers, config)
+	data, err := service.ExportToCSV(exportCtx, customers, config)
 
 	require.NoError(t, err)
 
@@ -204,7 +211,7 @@ func TestExportToCSVWithDelimiter(t *testing.T) {
 	customers := createExportTestCustomers(t, db, 3)
 
 	pdfService := NewPDFService("", "", "")
-	service := NewUnifiedExportService(db, pdfService, t.TempDir(), "http://localhost")
+	service := NewUnifiedExportService(db, pdfService, NewLocalExportStore(t.TempDir()), "http://localhost")
 
 	testCases := []struct {
 		name      string
@@ -228,7 +235,7 @@ func TestExportToCSVWithDelimiter(t *testing.T) {
 				},
 			}
 
-			data, err := service.ExportToCSV(context.Background(), customers, config)
+			data, err := service.ExportToCSV(exportCtx, customers, config)
 
 			require.NoError(t, err)
 			assert.NotEmpty(t, data)
@@ -249,14 +256,14 @@ func TestExportToJSON(t *testing.T) {
 	customers := createExportTestCustomers(t, db, 5)
 
 	pdfService := NewPDFService("", "", "")
-	service := NewUnifiedExportService(db, pdfService, t.TempDir(), "http://localhost")
+	service := NewUnifiedExportService(db, pdfService, NewLocalExportStore(t.TempDir()), "http://localhost")
 
 	config := &models.ExportConfig{
 		Format:     models.ExportFormatJSON,
 		ExportType: models.ExportTypeCustomers,
 	}
 
-	data, err := service.ExportToJSON(context.Background(), customers, config)
+	data, err := service.ExportToJSON(exportCtx, customers, config)
 
 	require.NoError(t, err)
 	assert.NotEmpty(t, data)
@@ -274,7 +281,7 @@ func TestExportToExcel(t *testing.T) {
 	customers := createExportTestCustomers(t, db, 10)
 
 	pdfService := NewPDFService("", "", "")
-	service := NewUnifiedExportService(db, pdfService, t.TempDir(), "http://localhost")
+	service := NewUnifiedExportService(db, pdfService, NewLocalExportStore(t.TempDir()), "http://localhost")
 
 	config := &models.ExportConfig{
 		Format:     models.ExportFormatExcel,
@@ -286,7 +293,7 @@ func TestExportToExcel(t *testing.T) {
 		},
 	}
 
-	data, err := service.ExportToExcel(context.Background(), customers, config)
+	data, err := service.ExportToExcel(exportCtx, customers, config)
 
 	require.NoError(t, err)
 	assert.NotEmpty(t, data)
@@ -303,7 +310,7 @@ func TestExportWithFieldSelection(t *testing.T) {
 	customers := createExportTestCustomers(t, db, 5)
 
 	pdfService := NewPDFService("", "", "")
-	service := NewUnifiedExportService(db, pdfService, t.TempDir(), "http://localhost")
+	service := NewUnifiedExportService(db, pdfService, NewLocalExportStore(t.TempDir()), "http://localhost")
 
 	config := &models.ExportConfig{
 		Format:     models.ExportFormatCSV,
@@ -315,7 +322,7 @@ func TestExportWithFieldSelection(t *testing.T) {
 		},
 	}
 
-	data, err := service.ExportToCSV(context.Background(), customers, config)
+	data, err := service.ExportToCSV(exportCtx, customers, config)
 
 	require.NoError(t, err)
 
@@ -337,7 +344,7 @@ func TestExportJobLifecycle(t *testing.T) {
 	createExportTestCustomers(t, db, 20)
 
 	pdfService := NewPDFService("", "", "")
-	service := NewUnifiedExportService(db, pdfService, t.TempDir(), "http://localhost")
+	service := NewUnifiedExportService(db, pdfService, NewLocalExportStore(t.TempDir()), "http://localhost")
 
 	userID := uuid.New()
 
@@ -347,7 +354,7 @@ func TestExportJobLifecycle(t *testing.T) {
 	}
 
 	// Start export
-	job, err := service.StartExport(context.Background(), userID, config)
+	job, err := service.StartExport(exportCtx, userID, config)
 
 	require.NoError(t, err)
 	assert.NotEqual(t, uuid.Nil, job.ID)
@@ -366,7 +373,7 @@ func TestExportJobLifecycle(t *testing.T) {
 		case <-timeout:
 			t.Fatal("Export job timeout")
 		case <-ticker.C:
-			status, err := service.GetExportStatus(context.Background(), job.ID)
+			status, err := service.GetExportStatus(exportCtx, job.ID)
 			require.NoError(t, err)
 
 			if status.Status == models.ExportJobStatusCompleted ||
@@ -391,17 +398,17 @@ func TestExportProgress(t *testing.T) {
 	createExportTestCustomers(t, db, 100)
 
 	pdfService := NewPDFService("", "", "")
-	service := NewUnifiedExportService(db, pdfService, t.TempDir(), "http://localhost")
+	service := NewUnifiedExportService(db, pdfService, NewLocalExportStore(t.TempDir()), "http://localhost")
 
-	job, err := service.StartExport(context.Background(), uuid.New(), &models.ExportConfig{
+	job, err := service.StartExport(exportCtx, uuid.New(), &models.ExportConfig{
 		Format:     models.ExportFormatCSV,
 		ExportType: models.ExportTypeCustomers,
 	})
 	require.NoError(t, err)
 	assert.Equal(t, models.ExportJobStatusCompleted, job.Status, "the export runs inside the request")
 
-	other := NewUnifiedExportService(db, pdfService, t.TempDir(), "http://localhost")
-	progress, err := other.GetProgress(context.Background(), job.ID)
+	other := NewUnifiedExportService(db, pdfService, NewLocalExportStore(t.TempDir()), "http://localhost")
+	progress, err := other.GetProgress(exportCtx, job.ID)
 	require.NoError(t, err)
 	assert.Equal(t, models.ExportJobStatusCompleted, progress.Status)
 	assert.Equal(t, float64(100), progress.Progress)
@@ -413,17 +420,17 @@ func TestExportProgress(t *testing.T) {
 func TestExportCancelledJobStaysCancelled(t *testing.T) {
 	db := setupExportTestDB(t)
 	createExportTestCustomers(t, db, 3)
-	svc := NewUnifiedExportService(db, nil, t.TempDir(), "").(*unifiedExportService)
+	svc := NewUnifiedExportService(db, nil, NewLocalExportStore(t.TempDir()), "").(*unifiedExportService)
 
 	job := &models.ExportJob{ID: uuid.New(), UserID: uuid.New(), ExportType: models.ExportTypeCustomers,
 		Format: models.ExportFormatCSV, Status: models.ExportJobStatusPending, Filename: "c.csv",
 		FilePath: t.TempDir() + "/c.csv", CreatedAt: time.Now(), UpdatedAt: time.Now()}
 	require.NoError(t, db.Create(job).Error)
-	require.NoError(t, svc.CancelExport(context.Background(), job.ID))
+	require.NoError(t, svc.CancelExport(exportCtx, job.ID))
 
-	svc.processExport(context.Background(), job.ID, &models.ExportConfig{Format: models.ExportFormatCSV, ExportType: models.ExportTypeCustomers})
+	svc.processExport(exportCtx, job.ID, &models.ExportConfig{Format: models.ExportFormatCSV, ExportType: models.ExportTypeCustomers})
 
-	st, err := svc.GetExportStatus(context.Background(), job.ID)
+	st, err := svc.GetExportStatus(exportCtx, job.ID)
 	require.NoError(t, err)
 	assert.Equal(t, models.ExportJobStatusCancelled, st.Status)
 }
@@ -434,7 +441,7 @@ func TestCancelExport(t *testing.T) {
 	createExportTestCustomers(t, db, 10)
 
 	pdfService := NewPDFService("", "", "")
-	service := NewUnifiedExportService(db, pdfService, t.TempDir(), "http://localhost")
+	service := NewUnifiedExportService(db, pdfService, NewLocalExportStore(t.TempDir()), "http://localhost")
 
 	userID := uuid.New()
 
@@ -443,15 +450,15 @@ func TestCancelExport(t *testing.T) {
 		ExportType: models.ExportTypeCustomers,
 	}
 
-	job, err := service.StartExport(context.Background(), userID, config)
+	job, err := service.StartExport(exportCtx, userID, config)
 	require.NoError(t, err)
 
 	// Try to cancel immediately (may or may not succeed depending on timing)
-	_ = service.CancelExport(context.Background(), job.ID)
+	_ = service.CancelExport(exportCtx, job.ID)
 
 	// Get final status
 	time.Sleep(200 * time.Millisecond)
-	status, err := service.GetExportStatus(context.Background(), job.ID)
+	status, err := service.GetExportStatus(exportCtx, job.ID)
 	require.NoError(t, err)
 
 	// Status should be either cancelled or completed (if it finished before cancel)
@@ -467,7 +474,7 @@ func TestListExports(t *testing.T) {
 	createExportTestCustomers(t, db, 5)
 
 	pdfService := NewPDFService("", "", "")
-	service := NewUnifiedExportService(db, pdfService, t.TempDir(), "http://localhost")
+	service := NewUnifiedExportService(db, pdfService, NewLocalExportStore(t.TempDir()), "http://localhost")
 
 	userID := uuid.New()
 
@@ -478,12 +485,12 @@ func TestListExports(t *testing.T) {
 			Format:     format,
 			ExportType: models.ExportTypeCustomers,
 		}
-		_, err := service.StartExport(context.Background(), userID, config)
+		_, err := service.StartExport(exportCtx, userID, config)
 		require.NoError(t, err)
 	}
 
 	// List exports
-	exports, err := service.ListExports(context.Background(), userID, 10)
+	exports, err := service.ListExports(exportCtx, userID, 10)
 
 	require.NoError(t, err)
 	assert.Len(t, exports, 2)
@@ -494,7 +501,7 @@ func TestExportValidation(t *testing.T) {
 	db := setupExportTestDB(t)
 
 	pdfService := NewPDFService("", "", "")
-	service := NewUnifiedExportService(db, pdfService, t.TempDir(), "http://localhost")
+	service := NewUnifiedExportService(db, pdfService, NewLocalExportStore(t.TempDir()), "http://localhost")
 
 	userID := uuid.New()
 
@@ -503,7 +510,7 @@ func TestExportValidation(t *testing.T) {
 			ExportType: models.ExportTypeCustomers,
 		}
 
-		_, err := service.StartExport(context.Background(), userID, config)
+		_, err := service.StartExport(exportCtx, userID, config)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "format")
 	})
@@ -513,7 +520,7 @@ func TestExportValidation(t *testing.T) {
 			Format: models.ExportFormatCSV,
 		}
 
-		_, err := service.StartExport(context.Background(), userID, config)
+		_, err := service.StartExport(exportCtx, userID, config)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "export type")
 	})
@@ -543,7 +550,7 @@ func TestCharacterEncoding(t *testing.T) {
 	require.NoError(t, err)
 
 	pdfService := NewPDFService("", "", "")
-	service := NewUnifiedExportService(db, pdfService, t.TempDir(), "http://localhost")
+	service := NewUnifiedExportService(db, pdfService, NewLocalExportStore(t.TempDir()), "http://localhost")
 
 	config := &models.ExportConfig{
 		Format:     models.ExportFormatCSV,
@@ -555,7 +562,7 @@ func TestCharacterEncoding(t *testing.T) {
 		},
 	}
 
-	data, err := service.ExportToCSV(context.Background(), []models.Customer{customer}, config)
+	data, err := service.ExportToCSV(exportCtx, []models.Customer{customer}, config)
 	require.NoError(t, err)
 
 	// Verify special characters are preserved
@@ -570,7 +577,7 @@ func TestCharacterEncoding(t *testing.T) {
 func BenchmarkExportCSV_100Records(b *testing.B) {
 	db := setupExportBenchmarkDB(b, 100)
 	pdfService := NewPDFService("", "", "")
-	service := NewUnifiedExportService(db, pdfService, b.TempDir(), "http://localhost")
+	service := NewUnifiedExportService(db, pdfService, NewLocalExportStore(b.TempDir()), "http://localhost")
 
 	var customers []models.Customer
 	db.Find(&customers)
@@ -583,14 +590,14 @@ func BenchmarkExportCSV_100Records(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		service.ExportToCSV(context.Background(), customers, config)
+		service.ExportToCSV(exportCtx, customers, config)
 	}
 }
 
 func BenchmarkExportCSV_1000Records(b *testing.B) {
 	db := setupExportBenchmarkDB(b, 1000)
 	pdfService := NewPDFService("", "", "")
-	service := NewUnifiedExportService(db, pdfService, b.TempDir(), "http://localhost")
+	service := NewUnifiedExportService(db, pdfService, NewLocalExportStore(b.TempDir()), "http://localhost")
 
 	var customers []models.Customer
 	db.Find(&customers)
@@ -603,14 +610,14 @@ func BenchmarkExportCSV_1000Records(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		service.ExportToCSV(context.Background(), customers, config)
+		service.ExportToCSV(exportCtx, customers, config)
 	}
 }
 
 func BenchmarkExportCSV_10000Records(b *testing.B) {
 	db := setupExportBenchmarkDB(b, 10000)
 	pdfService := NewPDFService("", "", "")
-	service := NewUnifiedExportService(db, pdfService, b.TempDir(), "http://localhost")
+	service := NewUnifiedExportService(db, pdfService, NewLocalExportStore(b.TempDir()), "http://localhost")
 
 	var customers []models.Customer
 	db.Find(&customers)
@@ -623,14 +630,14 @@ func BenchmarkExportCSV_10000Records(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		service.ExportToCSV(context.Background(), customers, config)
+		service.ExportToCSV(exportCtx, customers, config)
 	}
 }
 
 func BenchmarkExportJSON_1000Records(b *testing.B) {
 	db := setupExportBenchmarkDB(b, 1000)
 	pdfService := NewPDFService("", "", "")
-	service := NewUnifiedExportService(db, pdfService, b.TempDir(), "http://localhost")
+	service := NewUnifiedExportService(db, pdfService, NewLocalExportStore(b.TempDir()), "http://localhost")
 
 	var customers []models.Customer
 	db.Find(&customers)
@@ -642,14 +649,14 @@ func BenchmarkExportJSON_1000Records(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		service.ExportToJSON(context.Background(), customers, config)
+		service.ExportToJSON(exportCtx, customers, config)
 	}
 }
 
 func BenchmarkExportExcel_1000Records(b *testing.B) {
 	db := setupExportBenchmarkDB(b, 1000)
 	pdfService := NewPDFService("", "", "")
-	service := NewUnifiedExportService(db, pdfService, b.TempDir(), "http://localhost")
+	service := NewUnifiedExportService(db, pdfService, NewLocalExportStore(b.TempDir()), "http://localhost")
 
 	var customers []models.Customer
 	db.Find(&customers)
@@ -662,7 +669,7 @@ func BenchmarkExportExcel_1000Records(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		service.ExportToExcel(context.Background(), customers, config)
+		service.ExportToExcel(exportCtx, customers, config)
 	}
 }
 
@@ -759,4 +766,43 @@ func TestExportFileExtensions(t *testing.T) {
 			assert.Equal(t, tc.expected, tc.format.GetExtension())
 		})
 	}
+}
+
+// T128: export files go to object storage, so a download served by another
+// instance (a fresh service with its own empty local disk) still works, and
+// cleanup removes the object.
+func TestExport_ObjectStorageDownloadFromAnyInstance(t *testing.T) {
+	db := setupExportTestDB(t)
+	createExportTestCustomers(t, db, 5)
+	store := NewObjectExportStore(storagemock.NewClient(nil))
+
+	userID := uuid.New()
+	job, err := NewUnifiedExportService(db, nil, store, "").StartExport(exportCtx, userID, &models.ExportConfig{
+		Format: models.ExportFormatCSV, ExportType: models.ExportTypeCustomers,
+	})
+	require.NoError(t, err)
+	require.Equal(t, models.ExportJobStatusCompleted, job.Status)
+	assert.Contains(t, job.FilePath, "exports/7e57a000-0000-4000-8000-0000000000e1/"+job.ID.String()+"/")
+
+	other := NewUnifiedExportService(db, nil, store, "")
+	rc, got, err := other.GetExportFile(exportCtx, job.ID)
+	require.NoError(t, err)
+	defer rc.Close()
+	body, err := io.ReadAll(rc)
+	require.NoError(t, err)
+	assert.Equal(t, job.ID, got.ID)
+	assert.Equal(t, int64(len(body)), got.FileSize)
+	assert.Contains(t, string(body), "First")
+
+	require.NoError(t, db.Model(&models.ExportJob{}).Where("id = ?", job.ID).Update("expires_at", time.Now().Add(-time.Hour)).Error)
+	require.NoError(t, other.CleanupExpiredExports(exportCtx))
+	_, err = store.Open(exportCtx, job.FilePath)
+	assert.Error(t, err, "expired export object is deleted")
+}
+
+func TestExport_RequiresTenant(t *testing.T) {
+	db := setupExportTestDB(t)
+	_, err := NewUnifiedExportService(db, nil, NewLocalExportStore(t.TempDir()), "").StartExport(context.Background(), uuid.New(),
+		&models.ExportConfig{Format: models.ExportFormatCSV, ExportType: models.ExportTypeCustomers})
+	assert.ErrorIs(t, err, tenancy.ErrNoTenant)
 }
