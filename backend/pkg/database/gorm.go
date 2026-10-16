@@ -50,7 +50,7 @@ func NewGormDB(cfg *config.DatabaseConfig) (*gorm.DB, *QueryLogger, error) {
 	sqlDB.SetConnMaxLifetime(cfg.ConnMaxLifetime)
 
 	// Verify connection
-	if err := sqlDB.Ping(); err != nil {
+	if err := sqlDB.PingContext(context.Background()); err != nil {
 		return nil, nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 

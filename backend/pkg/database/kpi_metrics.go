@@ -147,4 +147,7 @@ func (c *KPIMetricsCollector) collectARAging(ctx context.Context) {
 		}
 		c.arOutstanding.WithLabels(map[string]string{"age_bucket": bucket}).Set(amount)
 	}
+	if err := rows.Err(); err != nil {
+		logging.Warn(ctx, "[KPI] Failed to read A/R aging rows", map[string]any{"error": err.Error()})
+	}
 }

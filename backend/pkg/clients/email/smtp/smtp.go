@@ -176,7 +176,7 @@ func (c *Client) Send(ctx context.Context, msg *email.EmailMessage) (*email.Send
 	}
 
 	// Send via SMTP
-	err := c.sendMail(from, allRecipients, []byte(emailBuilder.String()))
+	err := c.sendMail(ctx, from, allRecipients, []byte(emailBuilder.String()))
 	if err != nil {
 		return &email.SendResult{
 			Success:  false,
@@ -198,7 +198,7 @@ func (c *Client) Send(ctx context.Context, msg *email.EmailMessage) (*email.Send
 }
 
 // sendMail sends the email using the configured SMTP settings
-func (c *Client) sendMail(from string, to []string, msg []byte) error {
+func (c *Client) sendMail(ctx context.Context, from string, to []string, msg []byte) error {
 	addr := net.JoinHostPort(c.config.Host, fmt.Sprintf("%d", c.config.Port))
 
 	// For Mailpit and other dev servers, we use plain SMTP without auth
@@ -221,9 +221,9 @@ func (c *Client) sendMail(from string, to []string, msg []byte) error {
 		tlsConfig := &tls.Config{
 			ServerName: c.config.Host,
 		}
-		conn, err = tls.Dial("tcp", addr, tlsConfig)
+		conn, err = (&tls.Dialer{Config: tlsConfig}).DialContext(ctx, "tcp", addr)
 	} else {
-		conn, err = net.Dial("tcp", addr)
+		conn, err = (&net.Dialer{}).DialContext(ctx, "tcp", addr)
 	}
 	if err != nil {
 		return fmt.Errorf("failed to connect to SMTP server: %w", err)
@@ -697,7 +697,7 @@ func (c *Client) SendPaymentReceiptEmail(ctx context.Context, to string, invoice
 // HealthCheck implements email.Client
 func (c *Client) HealthCheck(ctx context.Context) error {
 	addr := net.JoinHostPort(c.config.Host, fmt.Sprintf("%d", c.config.Port))
-	conn, err := net.DialTimeout("tcp", addr, 5*time.Second)
+	conn, err := (&net.Dialer{Timeout: 5 * time.Second}).DialContext(ctx, "tcp", addr)
 	if err != nil {
 		return fmt.Errorf("SMTP health check failed: %w", err)
 	}

@@ -19,6 +19,8 @@ linters:
     - gocritic
     - errorlint
     - errcheck
+    - noctx
+    - rowserrcheck
 
   settings:
     errcheck:
