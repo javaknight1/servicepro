@@ -100,26 +100,6 @@ func ExtractUserInfo(ctx context.Context) *UserInfo {
 	return info
 }
 
-// WithTraceID adds trace ID to context
-func WithTraceID(ctx context.Context, traceID string) context.Context {
-	return context.WithValue(ctx, ContextKeyTraceID, traceID)
-}
-
-// WithSpanID adds span ID to context
-func WithSpanID(ctx context.Context, spanID string) context.Context {
-	return context.WithValue(ctx, ContextKeySpanID, spanID)
-}
-
-// WithUserID adds user ID to context
-func WithUserID(ctx context.Context, userID string) context.Context {
-	return context.WithValue(ctx, ContextKeyUserID, userID)
-}
-
-// WithTenantID adds tenant ID to context
-func WithTenantID(ctx context.Context, tenantID string) context.Context {
-	return context.WithValue(ctx, ContextKeyTenantID, tenantID)
-}
-
 // WithRequestID adds request ID to context
 func WithRequestID(ctx context.Context, requestID string) context.Context {
 	return context.WithValue(ctx, ContextKeyRequestID, requestID)
@@ -150,11 +130,6 @@ func L() Client {
 	return globalLogger
 }
 
-// Default returns the global logger (alias for L).
-func Default() Client {
-	return L()
-}
-
 // Convenience functions that use the global logger
 
 // Debug logs a debug message using the global logger
@@ -175,11 +150,6 @@ func Warn(ctx context.Context, msg string, fields map[string]any) {
 // Error logs an error message using the global logger
 func Error(ctx context.Context, msg string, fields map[string]any) {
 	L().Error(ctx, msg, fields)
-}
-
-// Fatal logs a fatal message using the global logger
-func Fatal(ctx context.Context, msg string, fields map[string]any) {
-	L().Fatal(ctx, msg, fields)
 }
 
 // noopClient is a no-op implementation used when no logger is configured

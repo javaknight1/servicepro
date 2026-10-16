@@ -356,39 +356,12 @@ func IsTerminalStatus(status JobStatus) bool {
 	return status == JobStatusCancelled
 }
 
-// IsFinalStatus checks if a status is at the end of the workflow (paid or cancelled)
-func IsFinalStatus(status JobStatus) bool {
-	return status == JobStatusPaid || status == JobStatusCancelled
-}
-
 // StatusChangeRequest represents a request to change job status
 type StatusChangeRequest struct {
 	JobID    uuid.UUID              `json:"job_id"`
 	ToStatus JobStatus              `json:"to_status" binding:"required,oneof=new scheduled en_route in_progress on_hold completed invoiced paid cancelled"`
 	Reason   StatusTransitionReason `json:"reason" binding:"omitempty,oneof=start_work complete_work customer_request technical_issue schedule_change cancellation resume other"`
 	Notes    *string                `json:"notes,omitempty"`
-}
-
-// StatusHistoryRequest represents a request for status history
-type StatusHistoryRequest struct {
-	JobID     uuid.UUID  `form:"job_id" json:"job_id,omitempty"`
-	FromDate  *time.Time `form:"from_date" json:"from_date,omitempty"`
-	ToDate    *time.Time `form:"to_date" json:"to_date,omitempty"`
-	ChangedBy *uuid.UUID `form:"changed_by" json:"changed_by,omitempty"`
-	Limit     *int       `form:"limit" json:"limit,omitempty"`
-	Offset    *int       `form:"offset" json:"offset,omitempty"`
-}
-
-// StatusChangeResponse represents the response for a status change
-type StatusChangeResponse struct {
-	JobID          uuid.UUID              `json:"job_id"`
-	JobNumber      string                 `json:"job_number"`
-	PreviousStatus JobStatus              `json:"previous_status"`
-	NewStatus      JobStatus              `json:"new_status"`
-	Reason         StatusTransitionReason `json:"reason,omitempty"`
-	Notes          *string                `json:"notes,omitempty"`
-	ChangedBy      uuid.UUID              `json:"changed_by"`
-	ChangedAt      int64                  `json:"changed_at"`
 }
 
 // StatusHistoryResponse represents status history for a job

@@ -174,22 +174,6 @@ type ExportProgress struct {
 	Message          string          `json:"message,omitempty"`
 }
 
-// ExportResult represents the final result of an export
-type ExportResult struct {
-	Success      bool      `json:"success"`
-	JobID        uuid.UUID `json:"job_id"`
-	Filename     string    `json:"filename"`
-	FilePath     string    `json:"file_path"`
-	FileSize     int64     `json:"file_size"`
-	MimeType     string    `json:"mime_type"`
-	DownloadURL  string    `json:"download_url"`
-	RecordCount  int       `json:"record_count"`
-	GeneratedAt  time.Time `json:"generated_at"`
-	ExpiresAt    time.Time `json:"expires_at"`
-	DurationMs   int64     `json:"duration_ms"`
-	ErrorMessage string    `json:"error_message,omitempty"`
-}
-
 // ExportMimeTypes maps export formats to MIME types
 var ExportMimeTypes = map[ExportFormat]string{
 	ExportFormatCSV:   "text/csv; charset=utf-8",

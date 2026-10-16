@@ -183,113 +183,6 @@ func (InvoiceTemplateVersion) TableName() string {
 	return "invoice_template_versions"
 }
 
-// TemplateStatistics represents usage statistics for a template
-type TemplateStatistics struct {
-	TotalUsage            int64           `json:"total_usage"`
-	SuccessfulGenerations int64           `json:"successful_generations"`
-	FailedGenerations     int64           `json:"failed_generations"`
-	AvgGenerationTimeMs   decimal.Decimal `json:"avg_generation_time_ms"`
-	LastUsed              *time.Time      `json:"last_used,omitempty"`
-	TotalPDFSizeMB        decimal.Decimal `json:"total_pdf_size_mb"`
-}
-
-// CreateTemplateRequest represents a request to create a new template
-type CreateTemplateRequest struct {
-	Name        string         `json:"name" binding:"required"`
-	Description string         `json:"description"`
-	HTMLContent string         `json:"html_content" binding:"required"`
-	CSSContent  string         `json:"css_content"`
-	HeaderHTML  string         `json:"header_html"`
-	FooterHTML  string         `json:"footer_html"`
-	Status      TemplateStatus `json:"status"`
-	IsDefault   bool           `json:"is_default"`
-
-	// Layout settings
-	PageSize        PageSize        `json:"page_size"`
-	PageOrientation PageOrientation `json:"page_orientation"`
-	MarginTop       decimal.Decimal `json:"margin_top"`
-	MarginRight     decimal.Decimal `json:"margin_right"`
-	MarginBottom    decimal.Decimal `json:"margin_bottom"`
-	MarginLeft      decimal.Decimal `json:"margin_left"`
-
-	// Branding
-	LogoURL      string          `json:"logo_url"`
-	LogoPosition string          `json:"logo_position"`
-	LogoWidth    decimal.Decimal `json:"logo_width"`
-	LogoHeight   decimal.Decimal `json:"logo_height"`
-
-	// Watermark
-	WatermarkText     string          `json:"watermark_text"`
-	WatermarkOpacity  decimal.Decimal `json:"watermark_opacity"`
-	WatermarkRotation int             `json:"watermark_rotation"`
-	WatermarkEnabled  bool            `json:"watermark_enabled"`
-
-	// Page numbers
-	ShowPageNumbers    bool   `json:"show_page_numbers"`
-	PageNumberFormat   string `json:"page_number_format"`
-	PageNumberPosition string `json:"page_number_position"`
-
-	// Custom settings
-	CustomFonts   map[string]interface{} `json:"custom_fonts"`
-	FieldMappings map[string]interface{} `json:"field_mappings"`
-	PreviewData   map[string]interface{} `json:"preview_data"`
-
-	Tags []string `json:"tags"`
-}
-
-// UpdateTemplateRequest represents a request to update a template
-type UpdateTemplateRequest struct {
-	Name        *string         `json:"name"`
-	Description *string         `json:"description"`
-	HTMLContent *string         `json:"html_content"`
-	CSSContent  *string         `json:"css_content"`
-	HeaderHTML  *string         `json:"header_html"`
-	FooterHTML  *string         `json:"footer_html"`
-	Status      *TemplateStatus `json:"status"`
-	IsDefault   *bool           `json:"is_default"`
-
-	// Layout settings
-	PageSize        *PageSize        `json:"page_size"`
-	PageOrientation *PageOrientation `json:"page_orientation"`
-	MarginTop       *decimal.Decimal `json:"margin_top"`
-	MarginRight     *decimal.Decimal `json:"margin_right"`
-	MarginBottom    *decimal.Decimal `json:"margin_bottom"`
-	MarginLeft      *decimal.Decimal `json:"margin_left"`
-
-	// Branding
-	LogoURL      *string          `json:"logo_url"`
-	LogoPosition *string          `json:"logo_position"`
-	LogoWidth    *decimal.Decimal `json:"logo_width"`
-	LogoHeight   *decimal.Decimal `json:"logo_height"`
-
-	// Watermark
-	WatermarkText     *string          `json:"watermark_text"`
-	WatermarkOpacity  *decimal.Decimal `json:"watermark_opacity"`
-	WatermarkRotation *int             `json:"watermark_rotation"`
-	WatermarkEnabled  *bool            `json:"watermark_enabled"`
-
-	// Page numbers
-	ShowPageNumbers    *bool   `json:"show_page_numbers"`
-	PageNumberFormat   *string `json:"page_number_format"`
-	PageNumberPosition *string `json:"page_number_position"`
-
-	// Custom settings
-	CustomFonts   *map[string]interface{} `json:"custom_fonts"`
-	FieldMappings *map[string]interface{} `json:"field_mappings"`
-	PreviewData   *map[string]interface{} `json:"preview_data"`
-
-	Tags         *[]string `json:"tags"`
-	VersionNotes *string   `json:"version_notes"`
-}
-
-// GeneratePDFRequest represents a request to generate a PDF from a template
-type GeneratePDFRequest struct {
-	TemplateID uuid.UUID              `json:"template_id" binding:"required"`
-	InvoiceID  *uuid.UUID             `json:"invoice_id"`
-	Data       map[string]interface{} `json:"data" binding:"required"`
-	OutputPath *string                `json:"output_path"`
-}
-
 // GeneratePDFResponse represents the response after PDF generation
 type GeneratePDFResponse struct {
 	Success          bool      `json:"success"`
@@ -298,13 +191,6 @@ type GeneratePDFResponse struct {
 	GenerationTimeMs int       `json:"generation_time_ms"`
 	Error            string    `json:"error,omitempty"`
 	GeneratedAt      time.Time `json:"generated_at"`
-}
-
-// TemplatePreviewRequest represents a request to preview a template
-type TemplatePreviewRequest struct {
-	HTMLContent string                 `json:"html_content" binding:"required"`
-	CSSContent  string                 `json:"css_content"`
-	Data        map[string]interface{} `json:"data"`
 }
 
 // BeforeCreate hook for InvoiceTemplate

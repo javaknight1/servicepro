@@ -112,16 +112,6 @@ func IsValidAction(action string) bool {
 	return false
 }
 
-// ParsePermissionName parses a permission name (e.g., "users.create") into resource and action
-// Splits on the first dot only, so "api.users.create" becomes resource="api", action="users.create"
-func ParsePermissionName(name string) (resource, action string, err error) {
-	parts := strings.SplitN(name, ".", 2)
-	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
-		return "", "", ErrInvalidPermissionFormat
-	}
-	return parts[0], parts[1], nil
-}
-
 // Matches checks if this permission matches the given resource and action
 func (p *Permission) Matches(resource, action string) bool {
 	return p.Resource == resource && p.Action == action
@@ -237,11 +227,6 @@ func (pc *PermissionChecker) CanAll(permissionNames ...string) bool {
 	return true
 }
 
-// GetPermissions returns all permissions
-func (pc *PermissionChecker) GetPermissions() []Permission {
-	return pc.permissions
-}
-
 // GetPermissionsByResource returns all permissions for a specific resource
 func (pc *PermissionChecker) GetPermissionsByResource(resource string) []Permission {
 	var result []Permission
@@ -250,41 +235,5 @@ func (pc *PermissionChecker) GetPermissionsByResource(resource string) []Permiss
 			result = append(result, perm)
 		}
 	}
-	return result
-}
-
-// GetPermissionsByAction returns all permissions with a specific action
-func (pc *PermissionChecker) GetPermissionsByAction(action string) []Permission {
-	var result []Permission
-	for _, perm := range pc.permissions {
-		if perm.Action == action {
-			result = append(result, perm)
-		}
-	}
-	return result
-}
-
-// ResourcePermissions groups permissions by resource
-type ResourcePermissions struct {
-	Resource    string       `json:"resource"`
-	Permissions []Permission `json:"permissions"`
-}
-
-// GroupByResource groups permissions by resource
-func (pc *PermissionChecker) GroupByResource() []ResourcePermissions {
-	grouped := make(map[string][]Permission)
-
-	for _, perm := range pc.permissions {
-		grouped[perm.Resource] = append(grouped[perm.Resource], perm)
-	}
-
-	result := make([]ResourcePermissions, 0, len(grouped))
-	for resource, perms := range grouped {
-		result = append(result, ResourcePermissions{
-			Resource:    resource,
-			Permissions: perms,
-		})
-	}
-
 	return result
 }

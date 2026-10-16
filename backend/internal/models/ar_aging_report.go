@@ -156,19 +156,3 @@ func GetBucketColor(bucket AgingBucket) string {
 		return "#9CA3AF"
 	}
 }
-
-// GetAgingBucket determines the aging bucket for a given number of days overdue
-func GetAgingBucket(daysOverdue int) AgingBucket {
-	switch {
-	case daysOverdue <= 0:
-		return AgingBucketCurrent
-	case daysOverdue <= 30:
-		return AgingBucket1To30
-	case daysOverdue <= 60:
-		return AgingBucket31To60
-	case daysOverdue <= 90:
-		return AgingBucket61To90
-	default:
-		return AgingBucket90Plus
-	}
-}

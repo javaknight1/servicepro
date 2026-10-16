@@ -105,16 +105,6 @@ const (
 	ExportFormatPDF   ExportFormat = "pdf"
 )
 
-// ExportRequest represents the request payload for exporting customers
-type ExportRequest struct {
-	Format       ExportFormat   `form:"format" binding:"required,oneof=csv json"`
-	CustomerType CustomerType   `form:"customer_type" binding:"omitempty,oneof=residential commercial"`
-	Status       CustomerStatus `form:"status" binding:"omitempty,oneof=active inactive prospect"`
-	City         string         `form:"city"`
-	State        string         `form:"state"`
-	IncludeNotes bool           `form:"include_notes"`
-}
-
 // CSVImportRow represents a row from the CSV import file
 type CSVImportRow struct {
 	FirstName            string `csv:"first_name"`
@@ -218,68 +208,4 @@ func (r *CSVImportRow) ToCustomer() *Customer {
 	}
 
 	return customer
-}
-
-// CSVExportRow represents a row for CSV export
-type CSVExportRow struct {
-	ID                   string `csv:"id"`
-	FirstName            string `csv:"first_name"`
-	LastName             string `csv:"last_name"`
-	CompanyName          string `csv:"company_name"`
-	Email                string `csv:"email"`
-	PhonePrimary         string `csv:"phone_primary"`
-	PhoneSecondary       string `csv:"phone_secondary"`
-	BillingAddressStreet string `csv:"billing_address_street"`
-	BillingAddressCity   string `csv:"billing_address_city"`
-	BillingAddressState  string `csv:"billing_address_state"`
-	BillingAddressZip    string `csv:"billing_address_zip"`
-	ServiceAddressStreet string `csv:"service_address_street"`
-	ServiceAddressCity   string `csv:"service_address_city"`
-	ServiceAddressState  string `csv:"service_address_state"`
-	ServiceAddressZip    string `csv:"service_address_zip"`
-	CustomerType         string `csv:"customer_type"`
-	Status               string `csv:"status"`
-	Notes                string `csv:"notes"`
-	CreatedAt            string `csv:"created_at"`
-	UpdatedAt            string `csv:"updated_at"`
-}
-
-// FromCustomer creates a CSVExportRow from a Customer model
-func (r *CSVExportRow) FromCustomer(customer *Customer) {
-	r.ID = customer.ID.String()
-	r.FirstName = customer.FirstName
-	r.LastName = customer.LastName
-	r.Email = customer.Email
-	r.PhonePrimary = customer.PhonePrimary
-	r.BillingAddressStreet = customer.BillingAddressStreet
-	r.BillingAddressCity = customer.BillingAddressCity
-	r.BillingAddressState = customer.BillingAddressState
-	r.BillingAddressZip = customer.BillingAddressZip
-	r.CustomerType = string(customer.CustomerType)
-	r.Status = string(customer.Status)
-	r.CreatedAt = customer.CreatedAt.Format(time.RFC3339)
-	r.UpdatedAt = customer.UpdatedAt.Format(time.RFC3339)
-
-	// Optional fields
-	if customer.CompanyName != nil {
-		r.CompanyName = *customer.CompanyName
-	}
-	if customer.PhoneSecondary != nil {
-		r.PhoneSecondary = *customer.PhoneSecondary
-	}
-	if customer.ServiceAddressStreet != nil {
-		r.ServiceAddressStreet = *customer.ServiceAddressStreet
-	}
-	if customer.ServiceAddressCity != nil {
-		r.ServiceAddressCity = *customer.ServiceAddressCity
-	}
-	if customer.ServiceAddressState != nil {
-		r.ServiceAddressState = *customer.ServiceAddressState
-	}
-	if customer.ServiceAddressZip != nil {
-		r.ServiceAddressZip = *customer.ServiceAddressZip
-	}
-	if customer.Notes != nil {
-		r.Notes = *customer.Notes
-	}
 }

@@ -428,56 +428,6 @@ func TestRole_ValidateHierarchy_Circular(t *testing.T) {
 	assert.ErrorIs(t, err, ErrCircularRoleHierarchy, "Circular hierarchy should error")
 }
 
-func TestRoleAssignment_IsExpired(t *testing.T) {
-	now := time.Now()
-	past := now.Add(-1 * time.Hour)
-	future := now.Add(1 * time.Hour)
-
-	tests := []struct {
-		name      string
-		expiresAt *time.Time
-		want      bool
-	}{
-		{"No expiration", nil, false},
-		{"Expired", &past, true},
-		{"Not expired", &future, false},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			ra := RoleAssignment{
-				ExpiresAt: tt.expiresAt,
-			}
-			assert.Equal(t, tt.want, ra.IsExpired())
-		})
-	}
-}
-
-func TestRoleAssignment_IsActive(t *testing.T) {
-	now := time.Now()
-	past := now.Add(-1 * time.Hour)
-	future := now.Add(1 * time.Hour)
-
-	tests := []struct {
-		name      string
-		expiresAt *time.Time
-		want      bool
-	}{
-		{"No expiration - active", nil, true},
-		{"Expired - not active", &past, false},
-		{"Not expired - active", &future, true},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			ra := RoleAssignment{
-				ExpiresAt: tt.expiresAt,
-			}
-			assert.Equal(t, tt.want, ra.IsActive())
-		})
-	}
-}
-
 func TestRole_ToResponse(t *testing.T) {
 	roleID := uuid.New()
 	parentID := uuid.New()

@@ -131,11 +131,6 @@ type AddSavedPaymentMethodRequest struct {
 	SetAsDefault    bool   `json:"set_as_default"`
 }
 
-// SetDefaultSavedPaymentMethodRequest represents the request to set a default payment method
-type SetDefaultSavedPaymentMethodRequest struct {
-	PaymentMethodID uuid.UUID `json:"payment_method_id" binding:"required"`
-}
-
 // BillingEventResponse represents the API response for a billing event
 type BillingEventResponse struct {
 	ID               uuid.UUID          `json:"id"`
@@ -160,18 +155,4 @@ type ListBillingEventsResponse struct {
 // CreateSetupIntentResponse represents the response for creating a setup intent
 type CreateSetupIntentResponse struct {
 	ClientSecret string `json:"client_secret"`
-}
-
-// CreateCheckoutSessionRequest represents the request to create a checkout session
-type CreateCheckoutSessionRequest struct {
-	TierID       uuid.UUID    `json:"tier_id" binding:"required"`
-	BillingCycle BillingCycle `json:"billing_cycle" binding:"required,oneof=monthly annual"`
-	SuccessURL   string       `json:"success_url" binding:"required,url"`
-	CancelURL    string       `json:"cancel_url" binding:"required,url"`
-}
-
-// CreateCheckoutSessionResponse represents the response for creating a checkout session
-type CreateCheckoutSessionResponse struct {
-	SessionID string `json:"session_id"`
-	URL       string `json:"url"`
 }

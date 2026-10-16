@@ -77,13 +77,3 @@ func detectProvider(cfg *config.Config) Provider {
 	// Fallback to mock (for tests or when storage is not configured)
 	return ProviderMock
 }
-
-// MustNewClient creates a new storage client or panics on error.
-// This is useful for application initialization.
-func MustNewClient(ctx context.Context, cfg *config.Config) Client {
-	client, err := NewClient(ctx, cfg)
-	if err != nil {
-		panic(fmt.Sprintf("failed to create storage client: %v", err))
-	}
-	return client
-}

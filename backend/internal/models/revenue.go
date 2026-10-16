@@ -232,29 +232,6 @@ type RevenueReportMetadata struct {
 	ExecutionTime int64              `json:"execution_time_ms"`
 }
 
-// DateRange represents a date range
-type DateRange struct {
-	Start time.Time `json:"start"`
-	End   time.Time `json:"end"`
-}
-
-// RevenueComparison compares revenue between two periods
-type RevenueComparison struct {
-	CurrentPeriod  RevenueSummary `json:"current_period"`
-	PreviousPeriod RevenueSummary `json:"previous_period"`
-	Growth         GrowthMetrics  `json:"growth"`
-}
-
-// GrowthMetrics represents growth calculations
-type GrowthMetrics struct {
-	RevenueGrowth         decimal.Decimal `json:"revenue_growth"`
-	RevenueGrowthRate     decimal.Decimal `json:"revenue_growth_rate"`
-	TransactionGrowth     int             `json:"transaction_growth"`
-	TransactionGrowthRate decimal.Decimal `json:"transaction_growth_rate"`
-	CustomerGrowth        int             `json:"customer_growth"`
-	CustomerGrowthRate    decimal.Decimal `json:"customer_growth_rate"`
-}
-
 // ReportExportRequest represents a request to export revenue data
 type ReportExportRequest struct {
 	Query           RevenueReportQuery `json:"query"`
@@ -276,12 +253,6 @@ type ReportExportResponse struct {
 	GeneratedAt time.Time    `json:"generated_at"`
 }
 
-// RevenueExportRequest is an alias for ReportExportRequest (backward compatibility)
-type RevenueExportRequest = ReportExportRequest
-
-// RevenueExportResponse is an alias for ReportExportResponse (backward compatibility)
-type RevenueExportResponse = ReportExportResponse
-
 // RevenueChartData represents data formatted for charts
 type RevenueChartData struct {
 	Labels   []string               `json:"labels"`
@@ -299,106 +270,4 @@ type RevenueChartDataset struct {
 	Tension         float64           `json:"tension,omitempty"`
 }
 
-// RevenueMetrics represents key performance indicators
-type RevenueMetrics struct {
-	MRR                   decimal.Decimal `json:"mrr"`  // Monthly Recurring Revenue
-	ARR                   decimal.Decimal `json:"arr"`  // Annual Recurring Revenue
-	ARPU                  decimal.Decimal `json:"arpu"` // Average Revenue Per User
-	ChurnRate             decimal.Decimal `json:"churn_rate"`
-	CustomerLifetimeValue decimal.Decimal `json:"customer_lifetime_value"`
-	RevenuePerCustomer    decimal.Decimal `json:"revenue_per_customer"`
-	Currency              string          `json:"currency"`
-	CalculatedAt          time.Time       `json:"calculated_at"`
-}
-
-// RevenueForecast represents forecasted revenue
-type RevenueForecast struct {
-	Period            string          `json:"period"`
-	ForecastedRevenue decimal.Decimal `json:"forecasted_revenue"`
-	LowerBound        decimal.Decimal `json:"lower_bound"`
-	UpperBound        decimal.Decimal `json:"upper_bound"`
-	Confidence        decimal.Decimal `json:"confidence"`
-}
-
-// RevenueAlert represents an alert condition
-type RevenueAlert struct {
-	ID            uuid.UUID              `gorm:"type:uuid;primary_key" json:"id"`
-	Name          string                 `gorm:"type:varchar(200);not null" json:"name"`
-	Description   string                 `gorm:"type:text" json:"description,omitempty"`
-	Condition     map[string]interface{} `gorm:"type:jsonb;not null" json:"condition"`
-	IsActive      bool                   `gorm:"not null;default:true" json:"is_active"`
-	LastTriggered *time.Time             `json:"last_triggered,omitempty"`
-	CreatedAt     time.Time              `gorm:"autoCreateTime" json:"created_at"`
-	UpdatedAt     time.Time              `gorm:"autoUpdateTime" json:"updated_at"`
-}
-
-// TableName specifies the table name
-func (RevenueAlert) TableName() string {
-	return "revenue_alerts"
-}
-
 // Helper methods
-
-// CalculateGrowthRate calculates the growth rate between two values
-func CalculateGrowthRate(current, previous decimal.Decimal) decimal.Decimal {
-	if previous.IsZero() {
-		return decimal.Zero
-	}
-	return current.Sub(previous).Div(previous).Mul(decimal.NewFromInt(100))
-}
-
-// FormatCurrency formats a decimal amount as currency
-func FormatCurrency(amount decimal.Decimal, currency string) string {
-	switch currency {
-	case "USD":
-		return "$" + amount.StringFixed(2)
-	case "EUR":
-		return "€" + amount.StringFixed(2)
-	case "GBP":
-		return "£" + amount.StringFixed(2)
-	default:
-		return amount.StringFixed(2) + " " + currency
-	}
-}
-
-// GetPeriodStart returns the start of a period based on the period type
-func GetPeriodStart(t time.Time, periodType PeriodType) time.Time {
-	switch periodType {
-	case PeriodTypeDaily:
-		return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
-	case PeriodTypeWeekly:
-		// Start of week (Monday)
-		weekday := int(t.Weekday())
-		if weekday == 0 {
-			weekday = 7
-		}
-		return time.Date(t.Year(), t.Month(), t.Day()-weekday+1, 0, 0, 0, 0, t.Location())
-	case PeriodTypeMonthly:
-		return time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, t.Location())
-	case PeriodTypeQuarterly:
-		month := ((int(t.Month())-1)/3)*3 + 1
-		return time.Date(t.Year(), time.Month(month), 1, 0, 0, 0, 0, t.Location())
-	case PeriodTypeYearly:
-		return time.Date(t.Year(), 1, 1, 0, 0, 0, 0, t.Location())
-	default:
-		return t
-	}
-}
-
-// GetPeriodEnd returns the end of a period based on the period type
-func GetPeriodEnd(start time.Time, periodType PeriodType) time.Time {
-	switch periodType {
-	case PeriodTypeDaily:
-		return start.AddDate(0, 0, 1)
-	case PeriodTypeWeekly:
-		return start.AddDate(0, 0, 7)
-	case PeriodTypeMonthly:
-		return start.AddDate(0, 1, 0)
-	case PeriodTypeQuarterly:
-		return start.AddDate(0, 3, 0)
-	case PeriodTypeYearly:
-		return start.AddDate(1, 0, 0)
-	default:
-		return start
-	}
-}

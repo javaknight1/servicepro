@@ -44,24 +44,6 @@ func (l Level) String() string {
 	}
 }
 
-// ParseLevel parses a string into a Level
-func ParseLevel(s string) Level {
-	switch s {
-	case "DEBUG", "debug":
-		return LevelDebug
-	case "INFO", "info":
-		return LevelInfo
-	case "WARN", "warn", "WARNING", "warning":
-		return LevelWarn
-	case "ERROR", "error":
-		return LevelError
-	case "FATAL", "fatal":
-		return LevelFatal
-	default:
-		return LevelInfo
-	}
-}
-
 // LogEntry represents a single log entry
 type LogEntry struct {
 	// Timestamp when the log entry was created
@@ -215,14 +197,4 @@ type BatchOptions struct {
 
 	// RetryDelay is the initial delay between retries
 	RetryDelay time.Duration
-}
-
-// DefaultBatchOptions returns sensible default batch options
-func DefaultBatchOptions() *BatchOptions {
-	return &BatchOptions{
-		MaxSize:       100,
-		FlushInterval: 5 * time.Second,
-		RetryAttempts: 3,
-		RetryDelay:    1 * time.Second,
-	}
 }
