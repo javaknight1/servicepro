@@ -3877,8 +3877,6 @@ definitions:
         type: string
       po_number:
         type: string
-      status:
-        $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.InvoiceStatus'
       tax_rate:
         description: Direct tax rate (e.g., 0.07 for 7%)
         type: number
@@ -8060,6 +8058,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
@@ -8134,6 +8136,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
@@ -8177,6 +8183,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
@@ -8216,6 +8226,10 @@ paths:
             $ref: '#/definitions/internal_api_handlers.ErrorResponse'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/internal_api_handlers.ErrorResponse'
         "500":
@@ -8388,6 +8402,10 @@ paths:
             $ref: '#/definitions/internal_api_handlers.ErrorResponse'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/internal_api_handlers.ErrorResponse'
         "500":

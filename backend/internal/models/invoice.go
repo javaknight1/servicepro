@@ -274,6 +274,51 @@ type InvoicePayment struct {
 	Invoice *Invoice `gorm:"foreignKey:InvoiceID" json:"invoice,omitempty"`
 }
 
+// invoiceTransitions lists every allowed invoice status change (T124 /
+// audit 7.H2). Status is never set directly by a client: send moves
+// draft→sent, payments move to partially_paid/paid, refunds (T125) to
+// partially_paid/refunded, cancel to cancelled. cancelled and refunded are
+// terminal.
+var invoiceTransitions = map[InvoiceStatus][]InvoiceStatus{
+	InvoiceStatusDraft:         {InvoiceStatusSent, InvoiceStatusCancelled},
+	InvoiceStatusSent:          {InvoiceStatusViewed, InvoiceStatusOverdue, InvoiceStatusPartiallyPaid, InvoiceStatusPaid, InvoiceStatusCancelled},
+	InvoiceStatusViewed:        {InvoiceStatusOverdue, InvoiceStatusPartiallyPaid, InvoiceStatusPaid, InvoiceStatusCancelled},
+	InvoiceStatusOverdue:       {InvoiceStatusPartiallyPaid, InvoiceStatusPaid, InvoiceStatusCancelled},
+	InvoiceStatusPartiallyPaid: {InvoiceStatusPaid, InvoiceStatusRefunded},
+	InvoiceStatusPaid:          {InvoiceStatusPartiallyPaid, InvoiceStatusRefunded},
+	InvoiceStatusCancelled:     {},
+	InvoiceStatusRefunded:      {},
+}
+
+// CanTransitionTo reports whether an invoice may move from s to to. Staying
+// in the same status is always allowed.
+func (s InvoiceStatus) CanTransitionTo(to InvoiceStatus) bool {
+	if s == to {
+		return true
+	}
+	for _, allowed := range invoiceTransitions[s] {
+		if allowed == to {
+			return true
+		}
+	}
+	return false
+}
+
+// AllowedTransitions returns the statuses an invoice in s can move to.
+func (s InvoiceStatus) AllowedTransitions() []InvoiceStatus {
+	return append([]InvoiceStatus(nil), invoiceTransitions[s]...)
+}
+
+// IsEditable reports whether an invoice's content (lines, amounts, dates,
+// notes) may still change: not once it is paid, cancelled or refunded.
+func (s InvoiceStatus) IsEditable() bool {
+	switch s {
+	case InvoiceStatusPaid, InvoiceStatusCancelled, InvoiceStatusRefunded:
+		return false
+	}
+	return true
+}
+
 // AcceptsPayments reports whether money can be recorded against an invoice
 // in this status. Drafts were never issued; cancelled and refunded invoices
 // are closed.

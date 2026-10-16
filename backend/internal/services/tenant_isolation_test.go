@@ -40,7 +40,7 @@ func setupIsolation(t *testing.T) *isolationFixture {
 		&models.User{}, &models.Customer{}, &models.Job{}, &models.JobAssignment{},
 		&models.JobMaterial{}, &models.JobNote{}, &models.Quote{}, &models.QuoteItem{},
 		&models.Invoice{}, &models.InvoiceLine{}, &models.InvoicePayment{},
-		&models.PaymentTerm{}, &models.TaxRate{}, &models.Payment{}, &models.ExportJob{},
+		&models.PaymentTerm{}, &models.TaxRate{}, &models.Payment{}, &models.ExportJob{}, &models.InvoiceAuditLog{},
 	} {
 		createSQLiteTableForModel(t, db, m, "")
 	}

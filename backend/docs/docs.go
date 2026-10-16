@@ -6364,6 +6364,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/internal_api_handlers.ErrorResponse"
                         }
                     },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/internal_api_handlers.ErrorResponse"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -6410,6 +6416,12 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/internal_api_handlers.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/internal_api_handlers.ErrorResponse"
                         }
@@ -6481,6 +6493,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/internal_api_handlers.ErrorResponse"
                         }
                     },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/internal_api_handlers.ErrorResponse"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -6541,6 +6559,12 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/internal_api_handlers.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/internal_api_handlers.ErrorResponse"
                         }
@@ -6811,6 +6835,12 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/internal_api_handlers.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/internal_api_handlers.ErrorResponse"
                         }
@@ -15175,9 +15205,6 @@ const docTemplate = `{
                 },
                 "po_number": {
                     "type": "string"
-                },
-                "status": {
-                    "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.InvoiceStatus"
                 },
                 "tax_rate": {
                     "description": "Direct tax rate (e.g., 0.07 for 7%)",
