@@ -6644,12 +6644,12 @@ paths:
           description: Invalid ID
           schema:
             $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
-        "403":
-          description: Quote cannot be deleted
-          schema:
-            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
         "404":
           description: Quote not found
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "409":
+          description: Quote cannot be deleted in its current status
           schema:
             $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
         "500":
@@ -6722,12 +6722,12 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
-        "403":
-          description: Quote cannot be edited
-          schema:
-            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
         "404":
           description: Quote not found
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "409":
+          description: Quote cannot be edited in its current status
           schema:
             $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
         "500":
@@ -6759,12 +6759,12 @@ paths:
           description: Invalid ID
           schema:
             $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
-        "403":
-          description: Quote cannot be accepted
-          schema:
-            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
         "404":
           description: Quote not found
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "409":
+          description: Quote cannot be accepted in its current status
           schema:
             $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
         "500":
@@ -6829,12 +6829,12 @@ paths:
           description: Invalid ID
           schema:
             $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
-        "403":
-          description: Quote cannot be rejected
-          schema:
-            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
         "404":
           description: Quote not found
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "409":
+          description: Quote cannot be rejected in its current status
           schema:
             $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
         "500":
@@ -6904,12 +6904,12 @@ paths:
           description: Invalid ID
           schema:
             $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
-        "403":
-          description: Quote cannot be sent
-          schema:
-            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
         "404":
           description: Quote not found
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "409":
+          description: Quote cannot be sent in its current status
           schema:
             $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
         "500":

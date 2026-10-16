@@ -3,8 +3,9 @@ package handlers
 import (
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
+
+	"github.com/javaknight1/servicepro/backend/internal/api/apierror"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -42,17 +43,14 @@ func (h *QuoteHandler) CreateQuote(c *gin.Context) {
 
 	// Bind and validate request
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
-			Error:   "invalid_request",
-			Message: "Invalid quote data: " + publicError(err),
-		})
+		apierror.BindError(c, err)
 		return
 	}
 
 	// Get user ID from context (set by auth middleware)
 	userID, err := getUserIDFromContext(c)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusUnauthorized, models.ErrorResponse{
 			Error:   "unauthorized",
 			Message: "User authentication required",
 		})
@@ -62,18 +60,7 @@ func (h *QuoteHandler) CreateQuote(c *gin.Context) {
 	// Create quote
 	quote, err := h.quoteService.WithContext(c.Request.Context()).CreateQuote(&req, userID)
 	if err != nil {
-		if errors.Is(err, services.ErrInvalidQuoteData) {
-			c.JSON(http.StatusBadRequest, models.ErrorResponse{
-				Error:   "invalid_data",
-				Message: publicError(err),
-			})
-			return
-		}
-
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "internal_error",
-			Message: "Failed to create quote",
-		})
+		apierror.Respond(c, err, "Failed to create quote")
 		return
 	}
 
@@ -103,20 +90,14 @@ func (h *QuoteHandler) ListQuotes(c *gin.Context) {
 
 	// Bind query parameters
 	if err := c.ShouldBindQuery(&params); err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
-			Error:   "invalid_request",
-			Message: "Invalid query parameters: " + publicError(err),
-		})
+		apierror.BindError(c, err)
 		return
 	}
 
 	// List quotes
 	quotes, err := h.quoteService.WithContext(c.Request.Context()).ListQuotes(&params)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "internal_error",
-			Message: "Failed to list quotes",
-		})
+		apierror.Internal(c, err, "Failed to list quotes")
 		return
 	}
 
@@ -140,7 +121,7 @@ func (h *QuoteHandler) GetQuote(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_id",
 			Message: "Invalid quote ID format",
 		})
@@ -150,18 +131,7 @@ func (h *QuoteHandler) GetQuote(c *gin.Context) {
 	// Get quote
 	quote, err := h.quoteService.WithContext(c.Request.Context()).GetQuote(id)
 	if err != nil {
-		if errors.Is(err, services.ErrQuoteNotFound) {
-			c.JSON(http.StatusNotFound, models.ErrorResponse{
-				Error:   "not_found",
-				Message: "Quote not found",
-			})
-			return
-		}
-
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "internal_error",
-			Message: "Failed to get quote",
-		})
+		apierror.Respond(c, err, "Failed to get quote")
 		return
 	}
 
@@ -185,18 +155,7 @@ func (h *QuoteHandler) GetQuoteByNumber(c *gin.Context) {
 	// Get quote
 	quote, err := h.quoteService.WithContext(c.Request.Context()).GetQuoteByNumber(quoteNumber)
 	if err != nil {
-		if errors.Is(err, services.ErrQuoteNotFound) {
-			c.JSON(http.StatusNotFound, models.ErrorResponse{
-				Error:   "not_found",
-				Message: "Quote not found",
-			})
-			return
-		}
-
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "internal_error",
-			Message: "Failed to get quote",
-		})
+		apierror.Respond(c, err, "Failed to get quote")
 		return
 	}
 
@@ -214,7 +173,7 @@ func (h *QuoteHandler) GetQuoteByNumber(c *gin.Context) {
 // @Success 200 {object} models.QuoteResponse
 // @Failure 400 {object} models.ErrorResponse "Invalid request"
 // @Failure 401 {object} models.ErrorResponse "Unauthorized"
-// @Failure 403 {object} models.ErrorResponse "Quote cannot be edited"
+// @Failure 409 {object} models.ErrorResponse "Quote cannot be edited in its current status"
 // @Failure 404 {object} models.ErrorResponse "Quote not found"
 // @Failure 500 {object} models.ErrorResponse "Internal server error"
 // @Router /api/v1/quotes/{id} [put]
@@ -223,7 +182,7 @@ func (h *QuoteHandler) UpdateQuote(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_id",
 			Message: "Invalid quote ID format",
 		})
@@ -234,17 +193,14 @@ func (h *QuoteHandler) UpdateQuote(c *gin.Context) {
 
 	// Bind and validate request
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
-			Error:   "invalid_request",
-			Message: "Invalid quote data: " + publicError(err),
-		})
+		apierror.BindError(c, err)
 		return
 	}
 
 	// Get user ID from context
 	userID, err := getUserIDFromContext(c)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusUnauthorized, models.ErrorResponse{
 			Error:   "unauthorized",
 			Message: "User authentication required",
 		})
@@ -254,34 +210,7 @@ func (h *QuoteHandler) UpdateQuote(c *gin.Context) {
 	// Update quote
 	quote, err := h.quoteService.WithContext(c.Request.Context()).UpdateQuote(id, &req, userID)
 	if err != nil {
-		if errors.Is(err, services.ErrQuoteNotFound) {
-			c.JSON(http.StatusNotFound, models.ErrorResponse{
-				Error:   "not_found",
-				Message: "Quote not found",
-			})
-			return
-		}
-
-		if errors.Is(err, services.ErrQuoteCannotBeEdited) {
-			c.JSON(http.StatusForbidden, models.ErrorResponse{
-				Error:   "cannot_edit",
-				Message: "Quote cannot be edited in current status",
-			})
-			return
-		}
-
-		if errors.Is(err, services.ErrInvalidQuoteData) {
-			c.JSON(http.StatusBadRequest, models.ErrorResponse{
-				Error:   "invalid_data",
-				Message: publicError(err),
-			})
-			return
-		}
-
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "internal_error",
-			Message: "Failed to update quote",
-		})
+		apierror.Respond(c, err, "Failed to update quote")
 		return
 	}
 
@@ -297,7 +226,7 @@ func (h *QuoteHandler) UpdateQuote(c *gin.Context) {
 // @Param id path string true "Quote ID"
 // @Success 204 "No Content"
 // @Failure 400 {object} models.ErrorResponse "Invalid ID"
-// @Failure 403 {object} models.ErrorResponse "Quote cannot be deleted"
+// @Failure 409 {object} models.ErrorResponse "Quote cannot be deleted in its current status"
 // @Failure 404 {object} models.ErrorResponse "Quote not found"
 // @Failure 500 {object} models.ErrorResponse "Internal server error"
 // @Router /api/v1/quotes/{id} [delete]
@@ -306,7 +235,7 @@ func (h *QuoteHandler) DeleteQuote(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_id",
 			Message: "Invalid quote ID format",
 		})
@@ -316,26 +245,7 @@ func (h *QuoteHandler) DeleteQuote(c *gin.Context) {
 	// Delete quote
 	err = h.quoteService.WithContext(c.Request.Context()).DeleteQuote(id)
 	if err != nil {
-		if errors.Is(err, services.ErrQuoteNotFound) {
-			c.JSON(http.StatusNotFound, models.ErrorResponse{
-				Error:   "not_found",
-				Message: "Quote not found",
-			})
-			return
-		}
-
-		if errors.Is(err, services.ErrQuoteCannotBeDeleted) {
-			c.JSON(http.StatusForbidden, models.ErrorResponse{
-				Error:   "cannot_delete",
-				Message: "Quote can only be deleted in draft status",
-			})
-			return
-		}
-
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "internal_error",
-			Message: "Failed to delete quote",
-		})
+		apierror.Respond(c, err, "Failed to delete quote")
 		return
 	}
 
@@ -351,7 +261,7 @@ func (h *QuoteHandler) DeleteQuote(c *gin.Context) {
 // @Param id path string true "Quote ID"
 // @Success 200 {object} models.QuoteResponse
 // @Failure 400 {object} models.ErrorResponse "Invalid ID"
-// @Failure 403 {object} models.ErrorResponse "Quote cannot be sent"
+// @Failure 409 {object} models.ErrorResponse "Quote cannot be sent in its current status"
 // @Failure 404 {object} models.ErrorResponse "Quote not found"
 // @Failure 500 {object} models.ErrorResponse "Internal server error"
 // @Router /api/v1/quotes/{id}/send [post]
@@ -360,7 +270,7 @@ func (h *QuoteHandler) SendQuote(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_id",
 			Message: "Invalid quote ID format",
 		})
@@ -370,36 +280,14 @@ func (h *QuoteHandler) SendQuote(c *gin.Context) {
 	// Send quote
 	err = h.quoteService.WithContext(c.Request.Context()).SendQuote(id)
 	if err != nil {
-		if errors.Is(err, services.ErrQuoteNotFound) {
-			c.JSON(http.StatusNotFound, models.ErrorResponse{
-				Error:   "not_found",
-				Message: "Quote not found",
-			})
-			return
-		}
-
-		if errors.Is(err, services.ErrQuoteCannotBeSent) {
-			c.JSON(http.StatusForbidden, models.ErrorResponse{
-				Error:   "cannot_send",
-				Message: "Quote cannot be sent in current status",
-			})
-			return
-		}
-
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "internal_error",
-			Message: "Failed to send quote",
-		})
+		apierror.Respond(c, err, "Failed to send quote")
 		return
 	}
 
 	// Get updated quote
 	quote, err := h.quoteService.WithContext(c.Request.Context()).GetQuote(id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "internal_error",
-			Message: "Quote sent but failed to fetch updated quote",
-		})
+		apierror.Internal(c, err, "Quote sent but failed to fetch updated quote")
 		return
 	}
 
@@ -415,7 +303,7 @@ func (h *QuoteHandler) SendQuote(c *gin.Context) {
 // @Param id path string true "Quote ID"
 // @Success 200 {object} models.QuoteResponse
 // @Failure 400 {object} models.ErrorResponse "Invalid ID"
-// @Failure 403 {object} models.ErrorResponse "Quote cannot be accepted"
+// @Failure 409 {object} models.ErrorResponse "Quote cannot be accepted in its current status"
 // @Failure 404 {object} models.ErrorResponse "Quote not found"
 // @Failure 500 {object} models.ErrorResponse "Internal server error"
 // @Router /api/v1/quotes/{id}/accept [post]
@@ -424,7 +312,7 @@ func (h *QuoteHandler) AcceptQuote(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_id",
 			Message: "Invalid quote ID format",
 		})
@@ -434,36 +322,14 @@ func (h *QuoteHandler) AcceptQuote(c *gin.Context) {
 	// Accept quote
 	err = h.quoteService.WithContext(c.Request.Context()).AcceptQuote(id)
 	if err != nil {
-		if errors.Is(err, services.ErrQuoteNotFound) {
-			c.JSON(http.StatusNotFound, models.ErrorResponse{
-				Error:   "not_found",
-				Message: "Quote not found",
-			})
-			return
-		}
-
-		if errors.Is(err, services.ErrQuoteCannotBeAccepted) {
-			c.JSON(http.StatusForbidden, models.ErrorResponse{
-				Error:   "cannot_accept",
-				Message: "Quote cannot be accepted in current status",
-			})
-			return
-		}
-
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "internal_error",
-			Message: "Failed to accept quote",
-		})
+		apierror.Respond(c, err, "Failed to accept quote")
 		return
 	}
 
 	// Get updated quote
 	quote, err := h.quoteService.WithContext(c.Request.Context()).GetQuote(id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "internal_error",
-			Message: "Quote accepted but failed to fetch updated quote",
-		})
+		apierror.Internal(c, err, "Quote accepted but failed to fetch updated quote")
 		return
 	}
 
@@ -486,24 +352,17 @@ func (h *QuoteHandler) AcceptQuote(c *gin.Context) {
 func (h *QuoteHandler) ReviseQuote(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: "invalid_id", Message: "Invalid quote ID format"})
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{Error: "invalid_id", Message: "Invalid quote ID format"})
 		return
 	}
 	svc := h.quoteService.WithContext(c.Request.Context())
 	if err := svc.ReviseQuote(id); err != nil {
-		switch {
-		case errors.Is(err, services.ErrQuoteNotFound):
-			c.JSON(http.StatusNotFound, models.ErrorResponse{Error: "not_found", Message: "Quote not found"})
-		case errors.Is(err, services.ErrQuoteCannotBeRevised):
-			c.JSON(http.StatusConflict, models.ErrorResponse{Error: "cannot_revise", Message: err.Error()})
-		default:
-			c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "internal_error", Message: "Failed to revise quote"})
-		}
+		apierror.Respond(c, err, "Failed to revise quote")
 		return
 	}
 	quote, err := svc.GetQuote(id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "internal_error", Message: "Quote revised but failed to fetch updated quote"})
+		apierror.Internal(c, err, "Quote revised but failed to fetch updated quote")
 		return
 	}
 	c.JSON(http.StatusOK, quote)
@@ -518,7 +377,7 @@ func (h *QuoteHandler) ReviseQuote(c *gin.Context) {
 // @Param id path string true "Quote ID"
 // @Success 200 {object} models.QuoteResponse
 // @Failure 400 {object} models.ErrorResponse "Invalid ID"
-// @Failure 403 {object} models.ErrorResponse "Quote cannot be rejected"
+// @Failure 409 {object} models.ErrorResponse "Quote cannot be rejected in its current status"
 // @Failure 404 {object} models.ErrorResponse "Quote not found"
 // @Failure 500 {object} models.ErrorResponse "Internal server error"
 // @Router /api/v1/quotes/{id}/reject [post]
@@ -527,7 +386,7 @@ func (h *QuoteHandler) RejectQuote(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_id",
 			Message: "Invalid quote ID format",
 		})
@@ -537,36 +396,14 @@ func (h *QuoteHandler) RejectQuote(c *gin.Context) {
 	// Reject quote
 	err = h.quoteService.WithContext(c.Request.Context()).RejectQuote(id)
 	if err != nil {
-		if errors.Is(err, services.ErrQuoteNotFound) {
-			c.JSON(http.StatusNotFound, models.ErrorResponse{
-				Error:   "not_found",
-				Message: "Quote not found",
-			})
-			return
-		}
-
-		if errors.Is(err, services.ErrQuoteCannotBeRejected) {
-			c.JSON(http.StatusForbidden, models.ErrorResponse{
-				Error:   "cannot_reject",
-				Message: "Quote cannot be rejected in current status",
-			})
-			return
-		}
-
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "internal_error",
-			Message: "Failed to reject quote",
-		})
+		apierror.Respond(c, err, "Failed to reject quote")
 		return
 	}
 
 	// Get updated quote
 	quote, err := h.quoteService.WithContext(c.Request.Context()).GetQuote(id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "internal_error",
-			Message: "Quote rejected but failed to fetch updated quote",
-		})
+		apierror.Internal(c, err, "Quote rejected but failed to fetch updated quote")
 		return
 	}
 
@@ -589,7 +426,7 @@ func (h *QuoteHandler) GetCustomerQuotes(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_id",
 			Message: "Invalid customer ID format",
 		})
@@ -599,10 +436,7 @@ func (h *QuoteHandler) GetCustomerQuotes(c *gin.Context) {
 	// Get customer quotes
 	quotes, err := h.quoteService.WithContext(c.Request.Context()).GetQuotesByCustomer(id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "internal_error",
-			Message: "Failed to get customer quotes",
-		})
+		apierror.Internal(c, err, "Failed to get customer quotes")
 		return
 	}
 
@@ -621,10 +455,7 @@ func (h *QuoteHandler) GetCustomerQuotes(c *gin.Context) {
 func (h *QuoteHandler) GetQuoteStats(c *gin.Context) {
 	stats, err := h.quoteService.WithContext(c.Request.Context()).GetQuoteStats()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "internal_error",
-			Message: "Failed to get quote statistics",
-		})
+		apierror.Internal(c, err, "Failed to get quote statistics")
 		return
 	}
 
@@ -648,7 +479,7 @@ func (h *QuoteHandler) GetQuotePDF(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_id",
 			Message: "Invalid quote ID format",
 		})
@@ -658,19 +489,7 @@ func (h *QuoteHandler) GetQuotePDF(c *gin.Context) {
 	// Download PDF content directly
 	content, filename, err := h.quoteService.WithContext(c.Request.Context()).DownloadQuotePDF(id)
 	if err != nil {
-		if errors.Is(err, services.ErrQuoteNotFound) {
-			c.JSON(http.StatusNotFound, models.ErrorResponse{
-				Error:   "not_found",
-				Message: "Quote not found",
-			})
-			return
-		}
-
-		log.Printf("[QUOTE-HANDLER] Failed to get quote PDF for %s: %v", id, err)
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "internal_error",
-			Message: "Failed to get quote PDF: " + publicError(err),
-		})
+		apierror.Respond(c, err, "Failed to get quote PDF")
 		return
 	}
 

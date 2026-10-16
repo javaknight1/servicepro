@@ -4894,8 +4894,8 @@ export interface paths {
                         "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
-                /** @description Quote cannot be edited */
-                403: {
+                /** @description Quote not found */
+                404: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -4903,8 +4903,8 @@ export interface paths {
                         "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
-                /** @description Quote not found */
-                404: {
+                /** @description Quote cannot be edited in its current status */
+                409: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -4956,8 +4956,8 @@ export interface paths {
                         "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
-                /** @description Quote cannot be deleted */
-                403: {
+                /** @description Quote not found */
+                404: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -4965,8 +4965,8 @@ export interface paths {
                         "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
-                /** @description Quote not found */
-                404: {
+                /** @description Quote cannot be deleted in its current status */
+                409: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -5033,8 +5033,8 @@ export interface paths {
                         "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
-                /** @description Quote cannot be accepted */
-                403: {
+                /** @description Quote not found */
+                404: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -5042,8 +5042,8 @@ export interface paths {
                         "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
-                /** @description Quote not found */
-                404: {
+                /** @description Quote cannot be accepted in its current status */
+                409: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -5180,8 +5180,8 @@ export interface paths {
                         "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
-                /** @description Quote cannot be rejected */
-                403: {
+                /** @description Quote not found */
+                404: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -5189,8 +5189,8 @@ export interface paths {
                         "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
-                /** @description Quote not found */
-                404: {
+                /** @description Quote cannot be rejected in its current status */
+                409: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -5336,8 +5336,8 @@ export interface paths {
                         "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
-                /** @description Quote cannot be sent */
-                403: {
+                /** @description Quote not found */
+                404: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -5345,8 +5345,8 @@ export interface paths {
                         "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
-                /** @description Quote not found */
-                404: {
+                /** @description Quote cannot be sent in its current status */
+                409: {
                     headers: {
                         [name: string]: unknown;
                     };
