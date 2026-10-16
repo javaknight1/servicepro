@@ -62,23 +62,23 @@
 
 ## v1 Launch Gate
 
-The minimum subset that must be done before real (paying) customers: **40 tasks, ~319h**. Everything else is post-launch growth or depth. The invite-gated preview (T205) needs only Phase 1 plus T106/T204/T206; the gate below is for opening to paying customers. Phase 4's gating subset is the parts of the stack that touch auth, tenancy, email and storage; the chi and pgx ports are not gating.
+The minimum subset that must be done before real (paying) customers: **38 tasks, ~317h**. Everything else is post-launch growth or depth. The invite-gated preview (T205) needs only Phase 1 plus T106/T204/T206; the gate below is for opening to paying customers. Phase 4's gating subset is the parts of the stack that touch auth, tenancy, email and storage; the chi and pgx ports are not gating.
 
-| Phase                                                | Gating tasks                                                                                                                                                                                   |
-|------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Phase 1 — Security Remediation                       | **All** — ~~T102~~, ~~T103~~, ~~T104~~, ~~T105~~, ~~T106~~, ~~T107~~, ~~T108~~, ~~T109~~, ~~T110~~, ~~T111~~, ~~T112~~, ~~T113~~, ~~T114~~, ~~T115~~, ~~T116~~, ~~T117~~                       |
-| Phase 2 — Correctness & Cleanup                      | ~~T118~~, ~~T119~~, ~~T120~~, ~~T121~~, ~~T122~~, ~~T123~~, ~~T124~~, ~~T126~~, ~~T130~~, ~~T131~~, ~~T132~~, ~~T133~~, ~~T136~~, ~~T224~~, ~~T225~~, ~~T227~~, ~~T232~~, ~~T234~~, T238, T239 |
-| Phase 3 — Platform & Delivery                        | ~~T139~~, ~~T140~~, ~~T141~~, ~~T142~~, ~~T143~~, ~~T144~~, ~~T145~~, ~~T146~~, ~~T150~~, ~~T151~~                                                                                             |
-| Phase 4 — Stack Convergence (LL parity; incremental) | T153, T154, T158, T159, T160                                                                                                                                                                   |
-| Phase 5 — Core Workflow & Quoting                    | T028, T029, T030, T035, T167                                                                                                                                                                   |
-| Phase 6 — Payments to the Business                   | T169, T170, T061, T063                                                                                                                                                                         |
-| Phase 7 — Dispatch & Field                           | T173, T174, T176                                                                                                                                                                               |
-| Phase 8 — Customer Communications                    | T048, T049, T050                                                                                                                                                                               |
-| Phase 9 — Customer Self-Service                      | T183, T081                                                                                                                                                                                     |
-| Phase 10 — Commercial/B2B Wedge                      | T186                                                                                                                                                                                           |
-| Phase 11 — Integrations & Migration                  | T192, T193                                                                                                                                                                                     |
-| Phase 14 — Hosting & Launch Readiness                | T202, T203, T204, T205, T206, T207, T208, T209, T210, T211, T212, T213                                                                                                                         |
-| Phase 16 — Go-to-Market                              | T218                                                                                                                                                                                           |
+| Phase                                                | Gating tasks                                                                                                                                                                                           |
+|------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Phase 1 — Security Remediation                       | **All** — ~~T102~~, ~~T103~~, ~~T104~~, ~~T105~~, ~~T106~~, ~~T107~~, ~~T108~~, ~~T109~~, ~~T110~~, ~~T111~~, ~~T112~~, ~~T113~~, ~~T114~~, ~~T115~~, ~~T116~~, ~~T117~~                               |
+| Phase 2 — Correctness & Cleanup                      | ~~T118~~, ~~T119~~, ~~T120~~, ~~T121~~, ~~T122~~, ~~T123~~, ~~T124~~, ~~T126~~, ~~T130~~, ~~T131~~, ~~T132~~, ~~T133~~, ~~T136~~, ~~T224~~, ~~T225~~, ~~T227~~, ~~T232~~, ~~T234~~, ~~T238~~, ~~T239~~ |
+| Phase 3 — Platform & Delivery                        | ~~T139~~, ~~T140~~, ~~T141~~, ~~T142~~, ~~T143~~, ~~T144~~, ~~T145~~, ~~T146~~, ~~T150~~, ~~T151~~                                                                                                     |
+| Phase 4 — Stack Convergence (LL parity; incremental) | T153, T154, T158, T159, T160                                                                                                                                                                           |
+| Phase 5 — Core Workflow & Quoting                    | T028, T029, T030, T035, T167                                                                                                                                                                           |
+| Phase 6 — Payments to the Business                   | T169, T170, T061, T063                                                                                                                                                                                 |
+| Phase 7 — Dispatch & Field                           | T173, T174, T176                                                                                                                                                                                       |
+| Phase 8 — Customer Communications                    | T048, T049, T050                                                                                                                                                                                       |
+| Phase 9 — Customer Self-Service                      | T183, T081                                                                                                                                                                                             |
+| Phase 10 — Commercial/B2B Wedge                      | T186                                                                                                                                                                                                   |
+| Phase 11 — Integrations & Migration                  | T192, T193                                                                                                                                                                                             |
+| Phase 14 — Hosting & Launch Readiness                | T202, T203, T204, T205, T206, T207, T208, T209, T210, T211, T212, T213                                                                                                                                 |
+| Phase 16 — Go-to-Market                              | T218                                                                                                                                                                                                   |
 
 **Explicitly NOT in the launch gate** (ship without them):
 
@@ -193,10 +193,10 @@ The minimum subset that must be done before real (paying) customers: **40 tasks,
 | ~~T232~~ | ~~2~~  | ~~Bug~~        | ~~2~~  | ~~Frontend money calls match the API: record payment URL, cancel reason, refunds, quote revise~~      |
 | ~~T233~~ | ~~2~~  | ~~Bug~~        | ~~1~~  | ~~JobMaterial.Billable default:true stores false as true~~                                            |
 | ~~T234~~ | ~~2~~  | ~~Bug~~        | ~~2~~  | ~~Invoice/quote forms use the API's fields: tax_rate_id, terms_and_conditions, default tax prefill~~  |
+| ~~T238~~ | ~~2~~  | ~~Security~~   | ~~1~~  | ~~Job assignment checks the technician belongs to the tenant~~                                        |
+| ~~T239~~ | ~~2~~  | ~~Security~~   | ~~1~~  | ~~Access log drops query strings~~                                                                    |
 | T129     | 2      | Cleanup        | 4      | Backend dead-code removal and a stricter linter                                                       |
 | T237     | 2      | Backend        | 3      | Tax rates API + tax-rate picker; terms on invoice create; keep line discounts on edit                 |
-| T238     | 2      | Security       | 1      | Job assignment checks the technician belongs to the tenant                                            |
-| T239     | 2      | Security       | 1      | Access log drops query strings                                                                        |
 | T101     | 3      | Monitoring     | 2      | Upload source maps to Sentry for production builds                                                    |
 | T153     | 4      | Backend        | 24     | Repositories take ctx + tenantID; services stop taking *gorm.DB; transaction manager                  |
 | T154     | 4      | Security       | 12     | Postgres RLS backstop keyed on a per-transaction tenant GUC + isolation tests                         |
@@ -406,7 +406,7 @@ Work completed under the old P0–P3/sprint TODO. Details are in Verified Comple
 
 ### Phase 2 — Correctness & Cleanup (T118, T119, T120, T121, T122, T123, T124, T125, T126, T127, T128, T129, T130, T131, T132, T133, T134, T135, T136, T137, T138, T223, T224, T225, T226, T227, T228, T229, T232, T233, T234, T237, T238, T239)
 
-Money flows that are wired but broken (payments don't update invoices, reminders never sent, numbering wedges, a panicking webhook), frontend bugs users would hit in the preview, and dead code. From `docs/audits/2026-10-16/backend-correctness.md` and `docs/audits/2026-10-16/frontend.md`. **4 open tasks, ~9h.** 30 done.
+Money flows that are wired but broken (payments don't update invoices, reminders never sent, numbering wedges, a panicking webhook), frontend bugs users would hit in the preview, and dead code. From `docs/audits/2026-10-16/backend-correctness.md` and `docs/audits/2026-10-16/frontend.md`. **2 open tasks, ~7h.** 32 done.
 
 - [x] T118 — Recording a payment updates the invoice balance and status ✓ (2026-10-16)
 - [x] T119 — Stripe Checkout charges the true balance due ✓ (2026-10-16)
@@ -438,10 +438,10 @@ Money flows that are wired but broken (payments don't update invoices, reminders
 - [x] T232 — Frontend money calls match the API: record payment URL, cancel reason, refunds, quote revise ✓ (2026-10-16)
 - [x] T233 — JobMaterial.Billable default:true stores false as true ✓ (2026-10-16)
 - [x] T234 — Invoice/quote forms use the API's fields: tax_rate_id, terms_and_conditions, default tax prefill ✓ (2026-10-16)
+- [x] T238 — Job assignment checks the technician belongs to the tenant ✓ (2026-10-16)
+- [x] T239 — Access log drops query strings ✓ (2026-10-16)
 - [ ] T129 — Backend dead-code removal and a stricter linter
 - [ ] T237 — Tax rates API + tax-rate picker; terms on invoice create; keep line discounts on edit
-- [ ] T238 — Job assignment checks the technician belongs to the tenant
-- [ ] T239 — Access log drops query strings
 
 #### T129 — Backend dead-code removal and a stricter linter
 
@@ -468,34 +468,6 @@ Money flows that are wired but broken (payments don't update invoices, reminders
 **Why we need it** — There's no way to manage or pick configured tax rates, so every invoice uses a hand-typed rate; line discounts set via the API are silently lost when the invoice is edited in the UI.
 
 **Notes** — Follow-up from the T234 report (2026-10-16). T235's default-tax-rate picker needs this list endpoint.
-
----
-
-#### T238 — Job assignment checks the technician belongs to the tenant
-
-**Phase**: 2 · **Category**: Security · **Hours**: 1 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T102
-
-**What it is** — A job can only be assigned to an active member of the job's tenant.
-
-**What it does** — Before creating a job assignment, look up the user's active `tenant_users` membership for the job's tenant; unknown or other-tenant user → 404/400 with a typed error (today it ends in a foreign-key violation → 500, and a user ID from another tenant that exists would be accepted). Cross-tenant regression test.
-
-**Why we need it** — CLAUDE.md hard rule 1: tenant comes from membership, never a client-supplied ID alone.
-
-**Notes** — Found during T223 (2026-10-16).
-
----
-
-#### T239 — Access log drops query strings
-
-**Phase**: 2 · **Category**: Security · **Hours**: 1 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T223
-
-**What it is** — Request logs never contain query-string values (tokens, emails, codes).
-
-**What it does** — The T223 access log still records the full URL with its query string, as `gin.Logger` did; log the path only (optionally the sorted query keys without values). Test that `?token=…` never reaches a log line.
-
-**Why we need it** — Password-reset/verification tokens and invite codes can arrive as query params and would sit in Cloud Logging.
-
-**Notes** — Found during T223 (2026-10-16). Same rule as the frontend PostHog/Sentry scrubbing (T134).
 
 ---
 
@@ -2936,3 +2908,5 @@ Dated history from the original "Completed Items" list:
 - **T232** — Frontend money calls match the API: record payment URL, cancel reason, refunds, quote revise. Record Payment / Cancel Invoice (reason required) / Record Refund dialogs and a Payments + Refunds section on the invoice page against `/invoices/{id}/payments`, `/cancel`, `/refunds` (refund gated on `payments.refund`); API 400/409 reasons shown; Refunded badge; quote detail shows number + status and the API's refusal reason, QuoteActionsMenu reports errors; integration tests assert every step (6ddd208, 8aac090, 74ec760). Field mismatches → T234.
 - **T233** — JobMaterial.Billable default:true stores false as true. `JobMaterial.Billable` `default:true` removed; `AddMaterial` defaults omitted `billable` to true explicitly; regression tests (ced0464).
 - **T234** — Invoice/quote forms use the API's fields: tax_rate_id, terms_and_conditions, default tax prefill. Invoice form shows the stored tax rate (API returns the rate object, so edits used to zero the tax) and keeps per-line taxable flags; `terms_and_conditions` read/sent; typed create/update request bodies; new invoices/quotes prefill the tenant's default tax rate (left to the server) and payment term (due date from `days_until_due`); QuotesPage shows refused list actions in an inline banner (3cf699c, 9df0441, 228fd35). Tax-rate picker + create terms field → T237.
+- **T238** — Job assignment checks the technician belongs to the tenant. Every assignment path (create job with assignees, `POST /jobs/:id/assign`, `POST /assignments`, bulk) requires an active `tenant_users` membership in the job's tenant; unknown/inactive/other-tenant users get a typed 404 (`assignee_not_found` / `technician_not_found`); CreateJob checks before writing; repository backstop `IsActiveTenantMember`; cross-tenant tests (cef9489).
+- **T239** — Access log drops query strings. Access log logs the path plus sorted query KEYS only (`middleware.QueryKeys`); same for the unused request loggers, `AccessLogger` and the panic handler's Sentry extra; test asserts `?token=secret123` never reaches a log line (9cc9f5e).
