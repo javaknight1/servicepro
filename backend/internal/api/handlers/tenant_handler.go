@@ -2,8 +2,6 @@ package handlers
 
 import (
 	"errors"
-	"fmt"
-	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -280,6 +278,7 @@ func (h *TenantHandler) ListUserTenants(c *gin.Context) {
 // @Success		201		{object}	models.TenantMemberResponse
 // @Failure		400		{object}	models.ErrorResponse
 // @Failure		401		{object}	models.ErrorResponse
+// @Failure		403		{object}	models.ErrorResponse
 // @Failure		409		{object}	models.ErrorResponse
 // @Failure		500		{object}	models.ErrorResponse
 // @Router			/tenants/{id}/members [post]
@@ -312,19 +311,27 @@ func (h *TenantHandler) AddMember(c *gin.Context) {
 		return
 	}
 
-	member, err := h.tenantService.AddMember(c.Request.Context(), tenantID, &req, userID)
+	actor := services.MemberActor{UserID: userID, RoleLevel: middleware.GetTenantRoleLevel(c)}
+	member, err := h.tenantService.AddMember(c.Request.Context(), tenantID, &req, actor)
 	if err != nil {
-		if errors.Is(err, repository.ErrUserAlreadyInTenant) {
+		switch {
+		case errors.Is(err, repository.ErrUserAlreadyInTenant):
 			c.JSON(http.StatusConflict, models.ErrorResponse{
 				Error:   "already_member",
 				Message: "User is already a member of this organization",
 			})
-			return
+		case writeRoleRuleError(c, err):
+		case errors.Is(err, services.ErrMemberNotAddable):
+			c.JSON(http.StatusBadRequest, models.ErrorResponse{
+				Error:   "add_member_failed",
+				Message: "Could not add this member. Send them an invitation instead.",
+			})
+		default:
+			c.JSON(http.StatusInternalServerError, models.ErrorResponse{
+				Error:   "add_member_failed",
+				Message: "Failed to add member",
+			})
 		}
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "add_member_failed",
-			Message: err.Error(),
-		})
 		return
 	}
 
@@ -367,8 +374,19 @@ func (h *TenantHandler) RemoveMember(c *gin.Context) {
 		return
 	}
 
-	if err := h.tenantService.RemoveMember(c.Request.Context(), tenantID, userID); err != nil {
+	actorID, err := middleware.GetUserID(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+			Error:   "unauthorized",
+			Message: "User not authenticated",
+		})
+		return
+	}
+	actor := services.MemberActor{UserID: actorID, RoleLevel: middleware.GetTenantRoleLevel(c)}
+
+	if err := h.tenantService.RemoveMember(c.Request.Context(), tenantID, userID, actor); err != nil {
 		switch {
+		case writeRoleRuleError(c, err):
 		case errors.Is(err, repository.ErrUserNotInTenant):
 			c.JSON(http.StatusNotFound, models.ErrorResponse{
 				Error:   "not_member",
@@ -437,8 +455,19 @@ func (h *TenantHandler) UpdateMemberRole(c *gin.Context) {
 		return
 	}
 
-	if err := h.tenantService.UpdateMemberRole(c.Request.Context(), tenantID, userID, req.RoleID); err != nil {
+	actorID, err := middleware.GetUserID(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+			Error:   "unauthorized",
+			Message: "User not authenticated",
+		})
+		return
+	}
+	actor := services.MemberActor{UserID: actorID, RoleLevel: middleware.GetTenantRoleLevel(c)}
+
+	if err := h.tenantService.UpdateMemberRole(c.Request.Context(), tenantID, userID, req.RoleID, actor); err != nil {
 		switch {
+		case writeRoleRuleError(c, err):
 		case errors.Is(err, repository.ErrUserNotInTenant):
 			c.JSON(http.StatusNotFound, models.ErrorResponse{
 				Error:   "not_member",
@@ -486,38 +515,7 @@ func (h *TenantHandler) GetTenantMembers(c *gin.Context) {
 		return
 	}
 
-	// Verify user belongs to this tenant
-	userID, err := middleware.GetUserID(c)
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, models.ErrorResponse{
-			Error:   "unauthorized",
-			Message: "User not authenticated",
-		})
-		return
-	}
-
-	log.Printf("[TENANT-HANDLER] GetTenantMembers: Checking if user %s belongs to tenant %s", userID, tenantID)
-
-	belongs, err := h.tenantService.UserBelongsToTenant(c.Request.Context(), userID, tenantID)
-	if err != nil {
-		log.Printf("[TENANT-HANDLER] GetTenantMembers: Error checking membership: %v", err)
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "membership_check_failed",
-			Message: fmt.Sprintf("Failed to check membership: %v", err),
-		})
-		return
-	}
-
-	log.Printf("[TENANT-HANDLER] GetTenantMembers: UserBelongsToTenant result=%v", belongs)
-
-	if !belongs {
-		c.JSON(http.StatusForbidden, models.ErrorResponse{
-			Error:   "forbidden",
-			Message: fmt.Sprintf("User %s is not a member of tenant %s", userID, tenantID),
-		})
-		return
-	}
-
+	// Membership in tenantID is verified by RequireTenantFromPath.
 	members, err := h.tenantService.GetTenantMembers(c.Request.Context(), tenantID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
@@ -530,4 +528,29 @@ func (h *TenantHandler) GetTenantMembers(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"members": members,
 	})
+}
+
+// writeRoleRuleError maps the membership role-hierarchy errors to 403/400
+// responses. It returns false when err is not one of them.
+func writeRoleRuleError(c *gin.Context, err error) bool {
+	switch {
+	case errors.Is(err, services.ErrCannotChangeOwnRole):
+		c.JSON(http.StatusForbidden, models.ErrorResponse{
+			Error:   "cannot_change_own_role",
+			Message: "You cannot change your own role",
+		})
+	case errors.Is(err, services.ErrInsufficientRoleLevel):
+		c.JSON(http.StatusForbidden, models.ErrorResponse{
+			Error:   "insufficient_role",
+			Message: "You cannot grant a role above your own or manage a member who outranks you",
+		})
+	case errors.Is(err, services.ErrRoleNotAssignable):
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Error:   "invalid_role",
+			Message: "This role cannot be assigned",
+		})
+	default:
+		return false
+	}
+	return true
 }

@@ -20,7 +20,63 @@ var (
 	ErrInvalidTenantSlug     = errors.New("invalid tenant slug")
 	ErrCannotRemoveOwner     = errors.New("cannot remove tenant owner")
 	ErrCannotChangeOwnerRole = errors.New("cannot change owner's role")
+	// ErrCannotChangeOwnRole is returned when a member tries to change their own role.
+	ErrCannotChangeOwnRole = errors.New("cannot change your own role")
+	// ErrRoleNotAssignable is returned for roles that can never be granted
+	// through tenant membership (super_admin) or that don't exist.
+	ErrRoleNotAssignable = errors.New("role cannot be assigned")
+	// ErrInsufficientRoleLevel is returned when the actor tries to grant a
+	// role above their own, or manage a member who outranks them.
+	ErrInsufficientRoleLevel = errors.New("insufficient role level")
+	// ErrMemberNotAddable is a deliberately generic error for AddMember so the
+	// endpoint can't be used to probe which emails have accounts.
+	ErrMemberNotAddable = errors.New("member could not be added")
 )
+
+// SuperAdminHierarchyLevel is the hierarchy level of the platform super_admin
+// role. Roles at or above it are never assignable through the API.
+const SuperAdminHierarchyLevel = 100
+
+// MemberActor identifies the member performing a membership change and their
+// role level in the tenant (from the tenant middleware, never the request).
+type MemberActor struct {
+	UserID    uuid.UUID
+	RoleLevel int
+}
+
+// ValidateAssignableRole enforces the role-grant rules shared by direct member
+// management and invitations: super_admin (or anything at its level) is never
+// assignable, and nobody may grant a role above their own level.
+func ValidateAssignableRole(role *models.Role, actor MemberActor) error {
+	if role == nil || role.HierarchyLevel >= SuperAdminHierarchyLevel || role.Name == "super_admin" {
+		return ErrRoleNotAssignable
+	}
+	if role.HierarchyLevel > actor.RoleLevel {
+		return ErrInsufficientRoleLevel
+	}
+	return nil
+}
+
+// checkAssignableRole loads a role and validates it with ValidateAssignableRole.
+func (s *TenantService) checkAssignableRole(ctx context.Context, roleID uuid.UUID, actor MemberActor) error {
+	role, err := s.tenantRepo.GetRoleByID(ctx, roleID)
+	if err != nil {
+		return ErrRoleNotAssignable
+	}
+	return ValidateAssignableRole(role, actor)
+}
+
+// checkCanManageMember ensures the target member does not outrank the actor.
+func (s *TenantService) checkCanManageMember(ctx context.Context, tenantID, targetUserID uuid.UUID, actor MemberActor) error {
+	membership, err := s.tenantRepo.GetUserTenantMembership(ctx, targetUserID, tenantID)
+	if err != nil {
+		return err
+	}
+	if membership.Role != nil && membership.Role.HierarchyLevel > actor.RoleLevel {
+		return ErrInsufficientRoleLevel
+	}
+	return nil
+}
 
 // slugRegex validates tenant slugs (alphanumeric and hyphens only)
 var slugRegex = regexp.MustCompile(`^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$`)
@@ -283,11 +339,16 @@ func (s *TenantService) GetUserTenants(ctx context.Context, userID uuid.UUID) ([
 }
 
 // AddMember adds a user to a tenant
-func (s *TenantService) AddMember(ctx context.Context, tenantID uuid.UUID, req *models.AddMemberRequest, invitedBy uuid.UUID) (*models.TenantMemberResponse, error) {
-	// Find user by email
+func (s *TenantService) AddMember(ctx context.Context, tenantID uuid.UUID, req *models.AddMemberRequest, actor MemberActor) (*models.TenantMemberResponse, error) {
+	if err := s.checkAssignableRole(ctx, req.RoleID, actor); err != nil {
+		return nil, err
+	}
+	invitedBy := actor.UserID
+
+	// Find user by email. Don't reveal whether the account exists.
 	user, err := s.userRepo.GetByEmail(req.Email)
-	if err != nil {
-		return nil, fmt.Errorf("user not found with email: %s", req.Email)
+	if err != nil || user == nil {
+		return nil, ErrMemberNotAddable
 	}
 
 	now := time.Now()
@@ -323,7 +384,7 @@ func (s *TenantService) AddMember(ctx context.Context, tenantID uuid.UUID, req *
 }
 
 // RemoveMember removes a user from a tenant
-func (s *TenantService) RemoveMember(ctx context.Context, tenantID, userID uuid.UUID) error {
+func (s *TenantService) RemoveMember(ctx context.Context, tenantID, userID uuid.UUID, actor MemberActor) error {
 	// Check if user is the owner
 	tenant, err := s.tenantRepo.GetByID(ctx, tenantID)
 	if err != nil {
@@ -331,6 +392,12 @@ func (s *TenantService) RemoveMember(ctx context.Context, tenantID, userID uuid.
 	}
 	if tenant.OwnerID == userID {
 		return ErrCannotRemoveOwner
+	}
+	// Members may always leave; removing someone else requires not being outranked.
+	if userID != actor.UserID {
+		if err := s.checkCanManageMember(ctx, tenantID, userID, actor); err != nil {
+			return err
+		}
 	}
 
 	if err := s.tenantRepo.RemoveMember(ctx, tenantID, userID); err != nil {
@@ -344,7 +411,17 @@ func (s *TenantService) RemoveMember(ctx context.Context, tenantID, userID uuid.
 }
 
 // UpdateMemberRole updates a member's role
-func (s *TenantService) UpdateMemberRole(ctx context.Context, tenantID, userID, roleID uuid.UUID) error {
+func (s *TenantService) UpdateMemberRole(ctx context.Context, tenantID, userID, roleID uuid.UUID, actor MemberActor) error {
+	if userID == actor.UserID {
+		return ErrCannotChangeOwnRole
+	}
+	if err := s.checkAssignableRole(ctx, roleID, actor); err != nil {
+		return err
+	}
+	if err := s.checkCanManageMember(ctx, tenantID, userID, actor); err != nil {
+		return err
+	}
+
 	// Check if user is the owner - owner must remain admin
 	tenant, err := s.tenantRepo.GetByID(ctx, tenantID)
 	if err != nil {
