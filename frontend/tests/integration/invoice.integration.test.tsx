@@ -107,11 +107,11 @@ const mockInvoices = [
     issue_date: '2024-01-01',
     due_date: '2024-01-31',
     subtotal: 1000,
-    tax_rate: 0.08,
     tax_amount: 80,
     total_amount: 1080,
     amount_paid: 0,
     amount_due: 1080,
+    terms_and_conditions: 'Net 30. Late fee 1.5%/month.',
     lines: [
       {
         id: 'line-1',
@@ -121,6 +121,8 @@ const mockInvoices = [
         unit_price: 800,
         total: 800,
         sort_order: 0,
+        taxable: true,
+        tax_rate: '0.0800',
       },
       {
         id: 'line-2',
@@ -130,6 +132,8 @@ const mockInvoices = [
         unit_price: 200,
         total: 200,
         sort_order: 1,
+        taxable: false,
+        tax_rate: '0.0800',
       },
     ],
     created_at: '2024-01-01T00:00:00Z',
@@ -144,7 +148,6 @@ const mockInvoices = [
     issue_date: '2024-01-02',
     due_date: '2024-02-01',
     subtotal: 500,
-    tax_rate: 0.08,
     tax_amount: 40,
     total_amount: 540,
     amount_paid: 0,
@@ -173,7 +176,6 @@ const mockInvoices = [
     issue_date: '2024-01-03',
     due_date: '2024-02-02',
     subtotal: 1500,
-    tax_rate: 0.08,
     tax_amount: 120,
     total_amount: 1620,
     amount_paid: 1620,
@@ -203,7 +205,6 @@ const mockInvoices = [
     issue_date: '2023-12-01',
     due_date: '2023-12-31',
     subtotal: 750,
-    tax_rate: 0.08,
     tax_amount: 60,
     total_amount: 810,
     amount_paid: 0,
@@ -512,6 +513,128 @@ describe('Invoice & Payment Integration', () => {
               }),
             ],
           })
+        );
+      });
+    });
+
+    it('sets terms_and_conditions on the new invoice (create takes none)', async () => {
+      const user = userEvent.setup({ delay: null });
+      vi.mocked(invoiceService.createInvoice).mockResolvedValue({
+        ...mockInvoices[0],
+        id: 'invoice-new',
+      });
+      vi.mocked(invoiceService.updateInvoice).mockResolvedValue(
+        mockInvoices[0]
+      );
+
+      const { InvoiceDetailPage } =
+        await import('../../src/pages/Invoices/InvoiceDetailPage');
+      render(
+        <MemoryRouter initialEntries={['/invoices/new']}>
+          <Routes>
+            <Route path="/invoices/new" element={<InvoiceDetailPage />} />
+          </Routes>
+        </MemoryRouter>
+      );
+
+      const customerSelect = await screen.findByLabelText(/customer/i);
+      await screen.findByRole('option', { name: /John Doe/i });
+      await user.selectOptions(customerSelect, 'customer-1');
+      await user.type(
+        screen.getAllByPlaceholderText(/description/i)[0],
+        'Service Charge'
+      );
+      await user.type(screen.getByLabelText(/terms & conditions/i), 'Net 15');
+      await user.click(screen.getByRole('button', { name: /create invoice/i }));
+
+      await waitFor(() => {
+        expect(invoiceService.updateInvoice).toHaveBeenCalledWith(
+          'invoice-new',
+          { terms_and_conditions: 'Net 15' }
+        );
+      });
+      const [createBody] = vi.mocked(invoiceService.createInvoice).mock
+        .calls[0];
+      expect(createBody).not.toHaveProperty('terms');
+    });
+  });
+
+  describe('Invoice Editing', () => {
+    const renderDraft = async () => {
+      vi.mocked(invoiceService.getInvoice).mockResolvedValue(mockInvoices[0]);
+      vi.mocked(invoiceService.updateInvoice).mockResolvedValue(
+        mockInvoices[0]
+      );
+      const { InvoiceDetailPage } =
+        await import('../../src/pages/Invoices/InvoiceDetailPage');
+      render(
+        <MemoryRouter initialEntries={['/invoices/invoice-1']}>
+          <Routes>
+            <Route path="/invoices/:id" element={<InvoiceDetailPage />} />
+          </Routes>
+        </MemoryRouter>
+      );
+      return screen.findByLabelText(/tax rate/i);
+    };
+
+    it('shows the stored tax rate, taxable flags and terms_and_conditions', async () => {
+      const taxInput = await renderDraft();
+
+      // The rate comes from the lines (the invoice's tax_rate is an object)
+      expect(taxInput).toHaveValue(8);
+      expect(screen.getByLabelText(/terms & conditions/i)).toHaveValue(
+        'Net 30. Late fee 1.5%/month.'
+      );
+      expect(screen.getByLabelText('Line 1 taxable')).toBeChecked();
+      expect(screen.getByLabelText('Line 2 taxable')).not.toBeChecked();
+      // 8% of the taxable $800 line only
+      expect(screen.getByText('$64.00')).toBeInTheDocument();
+    });
+
+    it('saves terms_and_conditions and omits an unchanged tax rate', async () => {
+      const user = userEvent.setup({ delay: null });
+      await renderDraft();
+
+      const terms = screen.getByLabelText(/terms & conditions/i);
+      await user.clear(terms);
+      await user.type(terms, 'Due on receipt');
+      await user.click(screen.getByRole('button', { name: /save changes/i }));
+
+      await waitFor(() => {
+        expect(invoiceService.updateInvoice).toHaveBeenCalled();
+      });
+      const [, body] = vi.mocked(invoiceService.updateInvoice).mock.calls[0];
+      expect(body).toEqual(
+        expect.objectContaining({
+          terms_and_conditions: 'Due on receipt',
+          lines: [
+            expect.objectContaining({
+              description: 'HVAC Installation Service',
+              taxable: true,
+            }),
+            expect.objectContaining({
+              description: 'Parts and Materials',
+              taxable: false,
+            }),
+          ],
+        })
+      );
+      expect(body).not.toHaveProperty('terms');
+      expect(body.tax_rate).toBeUndefined();
+    });
+
+    it('sends a changed tax rate as a fraction', async () => {
+      const user = userEvent.setup({ delay: null });
+      const taxInput = await renderDraft();
+
+      await user.clear(taxInput);
+      await user.type(taxInput, '8.25');
+      await user.click(screen.getByRole('button', { name: /save changes/i }));
+
+      await waitFor(() => {
+        expect(invoiceService.updateInvoice).toHaveBeenCalledWith(
+          'invoice-1',
+          expect.objectContaining({ tax_rate: 0.0825 })
         );
       });
     });

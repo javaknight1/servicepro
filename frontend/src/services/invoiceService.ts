@@ -21,6 +21,17 @@ export interface InvoiceLineItem {
   unit_price: number;
   total: number;
   sort_order: number;
+  /** Whether the invoice's tax rate applies to this line (API default true). */
+  taxable?: boolean;
+  /** The rate the server applied to this line (fraction, e.g. "0.0825"). */
+  tax_rate?: string | number;
+}
+
+/** A configured tax rate (`models.TaxRate`); `rate` is a fraction. */
+export interface InvoiceTaxRate {
+  id: string;
+  name: string;
+  rate: string | number;
 }
 
 export interface Invoice {
@@ -40,13 +51,18 @@ export interface Invoice {
   issue_date: string;
   due_date: string;
   subtotal: number;
-  tax_rate: number;
   tax_amount: number;
   total_amount: number;
   amount_paid: number;
   amount_due: number;
+  /** Configured tax rate the invoice uses, if any (the rate actually
+   * applied is stored on each line's `tax_rate`). */
+  tax_rate_id?: string;
+  /** The preloaded tax-rate row for `tax_rate_id` (an object, not a number). */
+  tax_rate?: InvoiceTaxRate;
+  payment_term_id?: string;
   notes?: string;
-  terms?: string;
+  terms_and_conditions?: string;
   lines: InvoiceLineItem[];
   /** Payments recorded against the invoice (manual and Stripe). */
   payments?: InvoicePayment[];
@@ -129,6 +145,42 @@ export interface PaymentRequest {
   payment_date?: string;
 }
 
+/** A line in an invoice create/update body. */
+export interface InvoiceLineRequest {
+  description: string;
+  quantity: number;
+  unit_price: number;
+  /** Omitted = taxable. */
+  taxable?: boolean;
+}
+
+/** Body of POST /invoices (handlers.CreateInvoiceRequest). */
+export interface CreateInvoiceRequest {
+  customer_id: string;
+  issue_date?: string;
+  due_date?: string;
+  payment_term_id?: string;
+  tax_rate_id?: string;
+  /** Direct rate as a fraction (0.0825 = 8.25%); overrides tax_rate_id.
+   * Omitted, the tenant's default tax rate applies. */
+  tax_rate?: number;
+  notes?: string;
+  lines: InvoiceLineRequest[];
+}
+
+/** Body of PUT /invoices/{id} (handlers.UpdateInvoiceRequest); omitted
+ * fields are left unchanged. */
+export interface UpdateInvoiceRequest {
+  due_date?: string;
+  payment_term_id?: string;
+  tax_rate_id?: string;
+  /** Direct rate as a fraction; omitted, the invoice keeps its rate. */
+  tax_rate?: number;
+  notes?: string;
+  terms_and_conditions?: string;
+  lines?: InvoiceLineRequest[];
+}
+
 export interface PDFDownloadResponse {
   download_url: string;
   expires_at: string;
@@ -171,12 +223,15 @@ class InvoiceService {
     return response.data;
   }
 
-  async createInvoice(data: Partial<Invoice>): Promise<Invoice> {
+  async createInvoice(data: CreateInvoiceRequest): Promise<Invoice> {
     const response = await api.post<Invoice>(this.basePath, data);
     return response.data;
   }
 
-  async updateInvoice(id: string, data: Partial<Invoice>): Promise<Invoice> {
+  async updateInvoice(
+    id: string,
+    data: UpdateInvoiceRequest
+  ): Promise<Invoice> {
     const response = await api.put<Invoice>(`${this.basePath}/${id}`, data);
     return response.data;
   }
