@@ -182,6 +182,14 @@ func (m *MockJobService) GetStatusHistory(jobID uuid.UUID, limit, offset int, so
 	return args.Get(0).(*models.StatusHistoryResponse), args.Error(1)
 }
 
+func (m *MockJobService) GetAllowedTransitions(jobID uuid.UUID, userID uuid.UUID, userRole models.UserRole) (*models.AllowedTransitionsResponse, error) {
+	args := m.Called(jobID, userID, userRole)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.AllowedTransitionsResponse), args.Error(1)
+}
+
 // Helper functions
 func setupJobTestRouter() *gin.Engine {
 	gin.SetMode(gin.TestMode)

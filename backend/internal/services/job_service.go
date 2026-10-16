@@ -73,6 +73,7 @@ type JobServiceInterface interface {
 	// Status transition operations
 	TransitionStatus(jobID uuid.UUID, toStatus models.JobStatus, reason string, notes *string, userID uuid.UUID, userRole models.UserRole) (*models.JobResponse, error)
 	GetStatusHistory(jobID uuid.UUID, limit, offset int, sortOrder string) (*models.StatusHistoryResponse, error)
+	GetAllowedTransitions(jobID uuid.UUID, userID uuid.UUID, userRole models.UserRole) (*models.AllowedTransitionsResponse, error)
 }
 
 // JobService handles job business logic
@@ -933,5 +934,30 @@ func (s *JobService) GetStatusHistory(jobID uuid.UUID, limit, offset int, sortOr
 	return &models.StatusHistoryResponse{
 		Transitions: responses,
 		Total:       total,
+	}, nil
+}
+
+// GetAllowedTransitions returns the statuses a job can move to next, from
+// the single job state machine (models/job_status.go).
+func (s *JobService) GetAllowedTransitions(jobID uuid.UUID, userID uuid.UUID, userRole models.UserRole) (*models.AllowedTransitionsResponse, error) {
+	job, err := s.jobRepo.GetByID(jobID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrJobNotFound
+		}
+		return nil, err
+	}
+	if err := s.validator.CanUserModifyJob(job, userID, userRole); err != nil {
+		return nil, ErrUnauthorized
+	}
+	allowed := models.GetAllowedTransitions(job.Status)
+	if allowed == nil {
+		allowed = []models.JobStatus{}
+	}
+	return &models.AllowedTransitionsResponse{
+		JobID:              job.ID,
+		CurrentStatus:      job.Status,
+		AllowedTransitions: allowed,
+		IsTerminal:         models.IsTerminalStatus(job.Status),
 	}, nil
 }
