@@ -8086,6 +8086,89 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/invoices/{id}/refunds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record refund
+         * @description Record money returned to the customer (cash, check, or a refund made outside the Stripe webhook). Lowers amount_paid; a refund to zero marks the invoice refunded. Stripe refunds are recorded automatically from charge.refunded.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Invoice ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            /** @description Refund data */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["internal_api_handlers.RecordRefundRequest"];
+                };
+            };
+            responses: {
+                /** @description Created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.InvoiceRefund"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_api_handlers.ErrorResponse"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_api_handlers.ErrorResponse"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_api_handlers.ErrorResponse"];
+                    };
+                };
+                /** @description Internal Server Error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_api_handlers.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/invoices/{id}/reminders": {
         parameters: {
             query?: never;
@@ -12061,6 +12144,7 @@ export interface components {
             /** @description Additional information */
             po_number?: string;
             quote_id?: string;
+            refunds?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.InvoiceRefund"][];
             sent_date?: string;
             /** @description Status and dates */
             status?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.InvoiceStatus"];
@@ -12139,6 +12223,24 @@ export interface components {
              *     migration 000007).
              */
             stripe_checkout_session_id?: string;
+            stripe_payment_intent_id?: string;
+            updated_at?: string;
+        };
+        "github_com_javaknight1_servicepro_backend_internal_models.InvoiceRefund": {
+            amount?: number;
+            created_at?: string;
+            /** @description CreatedBy is the staff member who recorded it; nil for webhooks. */
+            created_by?: string;
+            id?: string;
+            invoice_id?: string;
+            method?: string;
+            reason?: string;
+            refund_date?: string;
+            stripe_charge_id?: string;
+            /**
+             * @description Stripe references (nil for manual refunds). The payment intent ties a
+             *     refund to the Checkout payment it reverses.
+             */
             stripe_payment_intent_id?: string;
             updated_at?: string;
         };
@@ -13158,6 +13260,7 @@ export interface components {
             /** @description Additional information */
             po_number?: string;
             quote_id?: string;
+            refunds?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.InvoiceRefund"][];
             sent_date?: string;
             /** @description Status and dates */
             status?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.InvoiceStatus"];
@@ -13217,6 +13320,12 @@ export interface components {
             payment_date?: string;
             payment_method?: string;
             reference_number?: string;
+        };
+        "internal_api_handlers.RecordRefundRequest": {
+            amount: number;
+            method?: string;
+            reason?: string;
+            refund_date?: string;
         };
         "internal_api_handlers.StartExportRequest": {
             csv_options?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.CSVExportOptions"];

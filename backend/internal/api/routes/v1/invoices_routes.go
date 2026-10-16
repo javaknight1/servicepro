@@ -60,6 +60,11 @@ func SetupInvoiceRoutes(router *gin.RouterGroup, cfg *routeconfigs.RouteConfig) 
 			cfg.Middleware.PermMiddleware.RequirePermission(permissions.PaymentsCreate),
 			cfg.Handlers.Invoice.RecordPayment)
 
+		// Record refund - requires "payments.refund" permission
+		invoices.POST("/:id/refunds",
+			cfg.Middleware.PermMiddleware.RequirePermission(permissions.PaymentsRefund),
+			cfg.Handlers.Invoice.RecordRefund)
+
 		// Cancel invoice - requires "invoices.update" permission
 		invoices.POST("/:id/cancel",
 			cfg.Middleware.PermMiddleware.RequirePermission(permissions.InvoicesUpdate),

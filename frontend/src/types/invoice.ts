@@ -6,6 +6,7 @@ export enum InvoiceStatus {
   PARTIALLY_PAID = 'partially_paid',
   OVERDUE = 'overdue',
   CANCELLED = 'cancelled',
+  REFUNDED = 'refunded',
 }
 
 export interface InvoiceLineItem {
@@ -90,6 +91,7 @@ export const getInvoiceStatusLabel = (status: InvoiceStatus): string => {
     [InvoiceStatus.PARTIALLY_PAID]: 'Partially Paid',
     [InvoiceStatus.OVERDUE]: 'Overdue',
     [InvoiceStatus.CANCELLED]: 'Cancelled',
+    [InvoiceStatus.REFUNDED]: 'Refunded',
   };
   return labels[status] || status;
 };

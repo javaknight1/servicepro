@@ -203,6 +203,7 @@ func setupTestDB(t *testing.T) *gorm.DB {
 
 	createTenantCountersTable(t, db)
 	createSQLiteTableForModel(t, db, &models.InvoiceAuditLog{}, "")
+	createSQLiteTableForModel(t, db, &models.InvoiceRefund{}, "")
 	// Documents are numbered per tenant; these tests run as one tenant.
 	return db.WithContext(legacyTestCtx)
 }

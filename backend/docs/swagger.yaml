@@ -1324,6 +1324,10 @@ definitions:
         type: string
       quote_id:
         type: string
+      refunds:
+        items:
+          $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.InvoiceRefund'
+        type: array
       sent_date:
         type: string
       status:
@@ -1459,6 +1463,35 @@ definitions:
           migration 000007).
         type: string
       stripe_payment_intent_id:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  github_com_javaknight1_servicepro_backend_internal_models.InvoiceRefund:
+    properties:
+      amount:
+        type: number
+      created_at:
+        type: string
+      created_by:
+        description: CreatedBy is the staff member who recorded it; nil for webhooks.
+        type: string
+      id:
+        type: string
+      invoice_id:
+        type: string
+      method:
+        type: string
+      reason:
+        type: string
+      refund_date:
+        type: string
+      stripe_charge_id:
+        type: string
+      stripe_payment_intent_id:
+        description: |-
+          Stripe references (nil for manual refunds). The payment intent ties a
+          refund to the Checkout payment it reverses.
         type: string
       updated_at:
         type: string
@@ -3744,6 +3777,10 @@ definitions:
         type: string
       quote_id:
         type: string
+      refunds:
+        items:
+          $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.InvoiceRefund'
+        type: array
       sent_date:
         type: string
       status:
@@ -3850,6 +3887,19 @@ definitions:
       payment_method:
         type: string
       reference_number:
+        type: string
+    required:
+    - amount
+    type: object
+  internal_api_handlers.RecordRefundRequest:
+    properties:
+      amount:
+        type: number
+      method:
+        type: string
+      reason:
+        type: string
+      refund_date:
         type: string
     required:
     - amount
@@ -8380,6 +8430,53 @@ paths:
       security:
       - BearerAuth: []
       summary: Get receipt PDF
+      tags:
+      - invoices
+  /invoices/{id}/refunds:
+    post:
+      consumes:
+      - application/json
+      description: Record money returned to the customer (cash, check, or a refund
+        made outside the Stripe webhook). Lowers amount_paid; a refund to zero marks
+        the invoice refunded. Stripe refunds are recorded automatically from charge.refunded.
+      parameters:
+      - description: Invoice ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Refund data
+        in: body
+        name: refund
+        required: true
+        schema:
+          $ref: '#/definitions/internal_api_handlers.RecordRefundRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.InvoiceRefund'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Record refund
       tags:
       - invoices
   /invoices/{id}/reminders:

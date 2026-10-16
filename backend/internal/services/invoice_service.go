@@ -194,6 +194,9 @@ func (s *InvoiceService) GetInvoice(ctx context.Context, id uuid.UUID) (*models.
 		Preload("Payments", func(db *gorm.DB) *gorm.DB {
 			return db.Order("payment_date DESC")
 		}).
+		Preload("Refunds", func(db *gorm.DB) *gorm.DB {
+			return db.Order("refund_date DESC")
+		}).
 		Preload("PaymentTerm").
 		Preload("TaxRate").
 		First(&invoice, "id = ?", id).Error

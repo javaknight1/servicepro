@@ -6757,6 +6757,76 @@ const docTemplate = `{
                 ]
             }
         },
+        "/invoices/{id}/refunds": {
+            "post": {
+                "description": "Record money returned to the customer (cash, check, or a refund made outside the Stripe webhook). Lowers amount_paid; a refund to zero marks the invoice refunded. Stripe refunds are recorded automatically from charge.refunded.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "invoices"
+                ],
+                "summary": "Record refund",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Invoice ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Refund data",
+                        "name": "refund",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_api_handlers.RecordRefundRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.InvoiceRefund"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/internal_api_handlers.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/internal_api_handlers.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/internal_api_handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_api_handlers.ErrorResponse"
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
         "/invoices/{id}/reminders": {
             "get": {
                 "description": "Get the list of payment reminders sent for a specific invoice",
@@ -11583,6 +11653,12 @@ const docTemplate = `{
                 "quote_id": {
                     "type": "string"
                 },
+                "refunds": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.InvoiceRefund"
+                    }
+                },
                 "sent_date": {
                     "type": "string"
                 },
@@ -11777,6 +11853,46 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "stripe_payment_intent_id": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_javaknight1_servicepro_backend_internal_models.InvoiceRefund": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "number"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "created_by": {
+                    "description": "CreatedBy is the staff member who recorded it; nil for webhooks.",
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "invoice_id": {
+                    "type": "string"
+                },
+                "method": {
+                    "type": "string"
+                },
+                "reason": {
+                    "type": "string"
+                },
+                "refund_date": {
+                    "type": "string"
+                },
+                "stripe_charge_id": {
+                    "type": "string"
+                },
+                "stripe_payment_intent_id": {
+                    "description": "Stripe references (nil for manual refunds). The payment intent ties a\nrefund to the Checkout payment it reverses.",
                     "type": "string"
                 },
                 "updated_at": {
@@ -15129,6 +15245,12 @@ const docTemplate = `{
                 "quote_id": {
                     "type": "string"
                 },
+                "refunds": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.InvoiceRefund"
+                    }
+                },
                 "sent_date": {
                     "type": "string"
                 },
@@ -15290,6 +15412,26 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "reference_number": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_api_handlers.RecordRefundRequest": {
+            "type": "object",
+            "required": [
+                "amount"
+            ],
+            "properties": {
+                "amount": {
+                    "type": "number"
+                },
+                "method": {
+                    "type": "string"
+                },
+                "reason": {
+                    "type": "string"
+                },
+                "refund_date": {
                     "type": "string"
                 }
             }

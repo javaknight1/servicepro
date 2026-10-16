@@ -10,6 +10,7 @@ export enum InvoiceStatus {
   PARTIALLY_PAID = 'partially_paid',
   OVERDUE = 'overdue',
   CANCELLED = 'cancelled',
+  REFUNDED = 'refunded',
 }
 
 export interface InvoiceLineItem {
