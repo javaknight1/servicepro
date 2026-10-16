@@ -155,6 +155,9 @@ func SetupServices(
 	// Invitation service
 	svc.Invitation = services.NewInvitationService(db, emailClient, cfg.Server.FrontendURL)
 
+	// Platform invite codes (REGISTRATION_MODE=invite_only)
+	svc.InviteCodes = services.NewInviteCodeService(db)
+
 	// Payment reminder service
 	svc.PaymentReminder = services.NewPaymentReminderService(db, &services.PaymentReminderServiceConfig{
 		EmailClient: emailClient,

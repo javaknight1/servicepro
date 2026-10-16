@@ -21,6 +21,162 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/admin/invite-codes": {
+            "get": {
+                "description": "Lists platform invite codes, newest first. Platform super admins only.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "List invite codes",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.InviteCode"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "description": "Creates a platform invite code for invite-only registration. The plaintext code is returned once. Platform super admins only.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Create invite code",
+                "parameters": [
+                    {
+                        "description": "Invite code options",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.CreateInviteCodeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.CreateInviteCodeResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/admin/invite-codes/{id}": {
+            "delete": {
+                "description": "Revokes a platform invite code. Platform super admins only.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Revoke invite code",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Invite code ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/v1/admin/webhooks/events": {
             "get": {
                 "description": "Retrieves webhook events with optional filtering",
@@ -886,6 +1042,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Invalid request or validation error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Registration requires an invite code or invitation",
                         "schema": {
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
@@ -10788,6 +10950,38 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_javaknight1_servicepro_backend_internal_models.CreateInviteCodeRequest": {
+            "type": "object",
+            "properties": {
+                "expires_in_hours": {
+                    "description": "ExpiresInHours sets an expiry relative to now (0 = never). Default 168 (7 days).",
+                    "type": "integer",
+                    "maximum": 8760,
+                    "minimum": 0
+                },
+                "max_uses": {
+                    "description": "MaxUses is how many registrations the code allows (0 = unlimited). Default 1.",
+                    "type": "integer",
+                    "maximum": 10000,
+                    "minimum": 0
+                },
+                "note": {
+                    "type": "string",
+                    "maxLength": 255
+                }
+            }
+        },
+        "github_com_javaknight1_servicepro_backend_internal_models.CreateInviteCodeResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "invite_code": {
+                    "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.InviteCode"
+                }
+            }
+        },
         "github_com_javaknight1_servicepro_backend_internal_models.CreateJobAssignmentRequest": {
             "type": "object",
             "required": [
@@ -11889,6 +12083,39 @@ const docTemplate = `{
                 "InvitationStatusExpired",
                 "InvitationStatusCancelled"
             ]
+        },
+        "github_com_javaknight1_servicepro_backend_internal_models.InviteCode": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "created_by": {
+                    "type": "string"
+                },
+                "expires_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "max_uses": {
+                    "description": "0 = unlimited",
+                    "type": "integer"
+                },
+                "note": {
+                    "type": "string"
+                },
+                "revoked_at": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "uses": {
+                    "type": "integer"
+                }
+            }
         },
         "github_com_javaknight1_servicepro_backend_internal_models.Invoice": {
             "type": "object",
@@ -13483,6 +13710,10 @@ const docTemplate = `{
                 },
                 "invitation_token": {
                     "description": "Optional invitation token to auto-join organization",
+                    "type": "string"
+                },
+                "invite_code": {
+                    "description": "InviteCode is required when REGISTRATION_MODE=invite_only and no\ninvitation token for this email is supplied.",
                     "type": "string"
                 },
                 "password": {

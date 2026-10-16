@@ -281,6 +281,20 @@ func (s *InvitationService) rejectUnassignableInvitationRole(ctx context.Context
 	return nil
 }
 
+// IsPendingInvitationFor reports whether token is a pending, unexpired
+// invitation addressed to email (used by invite-only registration).
+func (s *InvitationService) IsPendingInvitationFor(ctx context.Context, token, email string) bool {
+	if token == "" {
+		return false
+	}
+	var invitation models.OrganizationInvitation
+	if err := s.db.WithContext(ctx).Where("token = ? AND status = ?", token, models.InvitationStatusPending).
+		First(&invitation).Error; err != nil {
+		return false
+	}
+	return !invitation.IsExpired() && strings.EqualFold(strings.TrimSpace(invitation.Email), strings.TrimSpace(email))
+}
+
 // GetInvitationByToken retrieves an invitation by token
 func (s *InvitationService) GetInvitationByToken(ctx context.Context, token string) (*models.OrganizationInvitation, error) {
 	var invitation models.OrganizationInvitation
@@ -311,6 +325,19 @@ func (s *InvitationService) AcceptInvitationOnRegistration(ctx context.Context, 
 		invitation.Status = models.InvitationStatusExpired
 		s.db.WithContext(ctx).Save(&invitation)
 		return ErrInvitationExpired
+	}
+
+	// The invitation must have been issued to the registering user's email;
+	// otherwise anyone holding a leaked link could join the tenant.
+	var user models.User
+	if err := s.db.WithContext(ctx).First(&user, "id = ?", userID).Error; err != nil {
+		return fmt.Errorf("user not found")
+	}
+	if !strings.EqualFold(strings.TrimSpace(user.Email), strings.TrimSpace(invitation.Email)) {
+		return ErrInvitationEmailMismatch
+	}
+	if err := s.rejectUnassignableInvitationRole(ctx, invitation.RoleID); err != nil {
+		return err
 	}
 
 	// Create TenantUser

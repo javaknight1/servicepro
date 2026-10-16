@@ -65,6 +65,7 @@ type Services struct {
 	InvoicePayment    *services.InvoicePaymentService
 	Tenant            *services.TenantService
 	Invitation        *services.InvitationService
+	InviteCodes       *services.InviteCodeService
 	Membership        *services.MembershipService
 	Stripe            *services.StripeService
 	ProfilePicture    *services.ProfilePictureService
@@ -107,6 +108,7 @@ type Handlers struct {
 	PublicInvoice     *handlers.PublicInvoiceHandler
 	Tenant            *handlers.TenantHandler
 	Invitation        *handlers.InvitationHandler
+	InviteCode        *handlers.InviteCodeHandler
 	Role              *handlers.RoleHandler
 	Revenue           *handlers.RevenueHandler
 	ARAging           *handlers.ARAgingHandler

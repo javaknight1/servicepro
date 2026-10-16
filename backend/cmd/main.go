@@ -220,6 +220,11 @@ func main() {
 	// Resolve the real visitor IP from the edge proxy headers before anything
 	// (logger, rate limiters) reads c.ClientIP().
 	router.Use(middleware.EdgeClientIP(cfg.Server.EdgeProxySecret))
+	// In production, /api/* is only reachable through the Cloudflare Worker
+	// (it adds the edge secret); direct *.run.app calls are refused (F-6).
+	if cfg.Server.Env == "production" && cfg.Server.EdgeProxySecret != "" {
+		router.Use(middleware.RequireEdgeProxy())
+	}
 	router.Use(gin.Logger()) // Add Gin's logger middleware
 
 	// Apply Gin-specific configuration
@@ -228,10 +233,11 @@ func main() {
 		if err := router.SetTrustedProxies(cfg.Server.TrustedProxies); err != nil {
 			logging.Warn(ctx, "Failed to set trusted proxies", map[string]any{"error": err.Error()})
 		}
-	} else if cfg.Server.EdgeProxySecret != "" {
-		// Behind the edge proxy the visitor IP comes only from the verified
-		// X-SP-Client-IP header; never trust caller-supplied X-Forwarded-For
-		// (Gin trusts every proxy by default).
+	} else {
+		// No trusted proxies configured: never trust caller-supplied
+		// X-Forwarded-For (Gin trusts every proxy by default, which let any
+		// client pick its rate-limit IP, F-7). Behind the edge proxy the
+		// visitor IP comes from the verified X-SP-Client-IP header instead.
 		if err := router.SetTrustedProxies(nil); err != nil {
 			logging.Warn(ctx, "Failed to disable trusted proxies", map[string]any{"error": err.Error()})
 		}

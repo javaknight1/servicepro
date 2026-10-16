@@ -15,6 +15,12 @@ import (
 type RegistrationHandler struct {
 	registrationService services.RegistrationServiceInterface
 	invitationService   *services.InvitationService
+	gate                *services.RegistrationGate
+}
+
+// SetRegistrationGate enables REGISTRATION_MODE enforcement (invite_only).
+func (h *RegistrationHandler) SetRegistrationGate(gate *services.RegistrationGate) {
+	h.gate = gate
 }
 
 // NewRegistrationHandler creates a new registration handler
@@ -39,6 +45,7 @@ func (h *RegistrationHandler) SetInvitationService(invitationService *services.I
 // @Param request body models.RegisterRequest true "Registration details"
 // @Success 201 {object} models.RegisterResponse
 // @Failure 400 {object} models.ErrorResponse "Invalid request or validation error"
+// @Failure 403 {object} models.ErrorResponse "Registration requires an invite code or invitation"
 // @Failure 409 {object} models.ErrorResponse "Email already exists"
 // @Failure 500 {object} models.ErrorResponse "Internal server error"
 // @Router /api/v1/auth/register [post]
@@ -54,9 +61,27 @@ func (h *RegistrationHandler) Register(c *gin.Context) {
 		return
 	}
 
+	// Invite-only registration is enforced here, server-side (F-6).
+	release, err := h.gate.Admit(c.Request.Context(), req.Email, req.InviteCode, req.InvitationToken)
+	if err != nil {
+		if errors.Is(err, services.ErrRegistrationClosed) {
+			c.JSON(http.StatusForbidden, models.ErrorResponse{
+				Error:   "registration_closed",
+				Message: "Registration is by invitation only. A valid invite code or invitation is required.",
+			})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
+			Error:   "internal_error",
+			Message: "An error occurred while processing your request",
+		})
+		return
+	}
+
 	// Attempt registration
 	response, err := h.registrationService.Register(req.Email, req.Password)
 	if err != nil {
+		release()
 		// Handle different error types
 		switch {
 		case errors.Is(err, auth.ErrInvalidEmailFormat):

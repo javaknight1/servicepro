@@ -257,6 +257,17 @@ Stripe: point the webhook endpoint at
 `https://servicepro.sharkfins.xyz/api/v1/stripe/webhooks` (the Worker passes the
 raw body through untouched).
 
+Edge enforcement: with `ENV=production` and `EDGE_PROXY_SECRET` set, the API
+rejects every `/api/*` request that lacks the Worker's `X-SP-Edge-Secret`
+header (403), so the public `*.run.app` URL can't be used to bypass
+Cloudflare. `/health/*`, `/version` and `/internal/jobs/*` (own token) stay
+reachable directly. The Stripe webhook is deliberately **not** exempt: Stripe
+calls the public domain, which goes through the Worker.
+
+Registration: deployed environments default to `REGISTRATION_MODE=invite_only`.
+Create invite codes with `make invite-code` (pointing `DATABASE_URL` at the
+target database) or `POST /api/v1/admin/invite-codes` as a platform super admin.
+
 ## 10. First release
 
 ```bash

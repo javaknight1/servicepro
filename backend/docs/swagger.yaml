@@ -480,6 +480,31 @@ definitions:
     - last_name
     - phone_primary
     type: object
+  github_com_javaknight1_servicepro_backend_internal_models.CreateInviteCodeRequest:
+    properties:
+      expires_in_hours:
+        description: ExpiresInHours sets an expiry relative to now (0 = never). Default
+          168 (7 days).
+        maximum: 8760
+        minimum: 0
+        type: integer
+      max_uses:
+        description: MaxUses is how many registrations the code allows (0 = unlimited).
+          Default 1.
+        maximum: 10000
+        minimum: 0
+        type: integer
+      note:
+        maxLength: 255
+        type: string
+    type: object
+  github_com_javaknight1_servicepro_backend_internal_models.CreateInviteCodeResponse:
+    properties:
+      code:
+        type: string
+      invite_code:
+        $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.InviteCode'
+    type: object
   github_com_javaknight1_servicepro_backend_internal_models.CreateJobAssignmentRequest:
     properties:
       role:
@@ -1227,6 +1252,28 @@ definitions:
     - InvitationStatusAccepted
     - InvitationStatusExpired
     - InvitationStatusCancelled
+  github_com_javaknight1_servicepro_backend_internal_models.InviteCode:
+    properties:
+      created_at:
+        type: string
+      created_by:
+        type: string
+      expires_at:
+        type: string
+      id:
+        type: string
+      max_uses:
+        description: 0 = unlimited
+        type: integer
+      note:
+        type: string
+      revoked_at:
+        type: string
+      updated_at:
+        type: string
+      uses:
+        type: integer
+    type: object
   github_com_javaknight1_servicepro_backend_internal_models.Invoice:
     properties:
       amount_due:
@@ -2314,6 +2361,11 @@ definitions:
         type: string
       invitation_token:
         description: Optional invitation token to auto-join organization
+        type: string
+      invite_code:
+        description: |-
+          InviteCode is required when REGISTRATION_MODE=invite_only and no
+          invitation token for this email is supplied.
         type: string
       password:
         minLength: 8
@@ -4117,6 +4169,107 @@ info:
   title: ServicePro API
   version: "1.0"
 paths:
+  /admin/invite-codes:
+    get:
+      description: Lists platform invite codes, newest first. Platform super admins
+        only.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.InviteCode'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List invite codes
+      tags:
+      - Admin
+    post:
+      consumes:
+      - application/json
+      description: Creates a platform invite code for invite-only registration. The
+        plaintext code is returned once. Platform super admins only.
+      parameters:
+      - description: Invite code options
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.CreateInviteCodeRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.CreateInviteCodeResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create invite code
+      tags:
+      - Admin
+  /admin/invite-codes/{id}:
+    delete:
+      description: Revokes a platform invite code. Platform super admins only.
+      parameters:
+      - description: Invite code ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Revoke invite code
+      tags:
+      - Admin
   /api/v1/admin/webhooks/events:
     get:
       consumes:
@@ -4675,6 +4828,10 @@ paths:
             $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.RegisterResponse'
         "400":
           description: Invalid request or validation error
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "403":
+          description: Registration requires an invite code or invitation
           schema:
             $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
         "409":

@@ -4,6 +4,203 @@
  */
 
 export interface paths {
+    "/admin/invite-codes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List invite codes
+         * @description Lists platform invite codes, newest first. Platform super admins only.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.InviteCode"][];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Internal Server Error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * Create invite code
+         * @description Creates a platform invite code for invite-only registration. The plaintext code is returned once. Platform super admins only.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            /** @description Invite code options */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.CreateInviteCodeRequest"];
+                };
+            };
+            responses: {
+                /** @description Created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.CreateInviteCodeResponse"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Internal Server Error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/invite-codes/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Revoke invite code
+         * @description Revokes a platform invite code. Platform super admins only.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Invite code ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description No Content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Internal Server Error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/webhooks/events": {
         parameters: {
             query?: never;
@@ -1041,6 +1238,15 @@ export interface paths {
                 };
                 /** @description Invalid request or validation error */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Registration requires an invite code or invitation */
+                403: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -12188,6 +12394,17 @@ export interface components {
             /** @enum {unknown} */
             status?: "active" | "inactive" | "prospect";
         };
+        "github_com_javaknight1_servicepro_backend_internal_models.CreateInviteCodeRequest": {
+            /** @description ExpiresInHours sets an expiry relative to now (0 = never). Default 168 (7 days). */
+            expires_in_hours?: number;
+            /** @description MaxUses is how many registrations the code allows (0 = unlimited). Default 1. */
+            max_uses?: number;
+            note?: string;
+        };
+        "github_com_javaknight1_servicepro_backend_internal_models.CreateInviteCodeResponse": {
+            code?: string;
+            invite_code?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.InviteCode"];
+        };
         "github_com_javaknight1_servicepro_backend_internal_models.CreateJobAssignmentRequest": {
             role?: string;
             user_id: string;
@@ -12520,6 +12737,18 @@ export interface components {
         };
         /** @enum {string} */
         "github_com_javaknight1_servicepro_backend_internal_models.InvitationStatus": "pending" | "accepted" | "expired" | "cancelled";
+        "github_com_javaknight1_servicepro_backend_internal_models.InviteCode": {
+            created_at?: string;
+            created_by?: string;
+            expires_at?: string;
+            id?: string;
+            /** @description 0 = unlimited */
+            max_uses?: number;
+            note?: string;
+            revoked_at?: string;
+            updated_at?: string;
+            uses?: number;
+        };
         "github_com_javaknight1_servicepro_backend_internal_models.Invoice": {
             /** @description Computed column */
             amount_due?: number;
@@ -13015,6 +13244,11 @@ export interface components {
             email: string;
             /** @description Optional invitation token to auto-join organization */
             invitation_token?: string;
+            /**
+             * @description InviteCode is required when REGISTRATION_MODE=invite_only and no
+             *     invitation token for this email is supplied.
+             */
+            invite_code?: string;
             password: string;
         };
         "github_com_javaknight1_servicepro_backend_internal_models.RegisterResponse": {

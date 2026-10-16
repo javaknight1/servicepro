@@ -74,6 +74,9 @@ type RegisterRequest struct {
 	Email           string  `json:"email" binding:"required,email"`
 	Password        string  `json:"password" binding:"required,min=8"`
 	InvitationToken *string `json:"invitation_token,omitempty"` // Optional invitation token to auto-join organization
+	// InviteCode is required when REGISTRATION_MODE=invite_only and no
+	// invitation token for this email is supplied.
+	InviteCode *string `json:"invite_code,omitempty"`
 }
 
 // RegisterResponse represents the registration response payload

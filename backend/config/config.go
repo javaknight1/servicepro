@@ -230,6 +230,9 @@ type JWTConfig struct {
 
 // AuthConfig holds authentication configuration
 type AuthConfig struct {
+	// RegistrationMode is "open" or "invite_only" (REGISTRATION_MODE).
+	// Default: open in development, invite_only everywhere else.
+	RegistrationMode  string
 	MaxLoginAttempts  int
 	LockoutDuration   time.Duration
 	RateLimitWindow   time.Duration
@@ -402,6 +405,15 @@ const DefaultDatabaseURL = "postgresql://postgres:password@localhost:5432/servic
 // In other environments an unset REDIS_URL means "Redis not configured".
 const defaultDevRedisURL = "redis://localhost:6379"
 
+// defaultRegistrationMode keeps self-registration open for local development
+// only; every deployed environment is invite-only unless configured.
+func defaultRegistrationMode(isDev bool) string {
+	if isDev {
+		return "open"
+	}
+	return "invite_only"
+}
+
 func Load() *Config {
 	// Load .env file if it exists (for local development)
 	_ = godotenv.Load()
@@ -464,6 +476,7 @@ func Load() *Config {
 			RefreshExpiration: time.Hour * 24 * 7, // 7 days as per requirements
 		},
 		Auth: AuthConfig{
+			RegistrationMode:  getEnv("REGISTRATION_MODE", defaultRegistrationMode(isDev)),
 			MaxLoginAttempts:  5,                // 5 failed attempts before lockout
 			LockoutDuration:   time.Minute * 30, // 30 minutes lockout
 			RateLimitWindow:   time.Minute * 15, // 15 minutes window
@@ -655,6 +668,12 @@ func validateConfig(cfg *Config) {
 		errors = append(errors, "JWT_SECRET is using the insecure default value - please set a unique secret (hint: use 'openssl rand -base64 32' to generate one)")
 	} else if len(cfg.JWT.Secret) < 32 {
 		errors = append(errors, "JWT_SECRET must be at least 32 characters for security")
+	}
+
+	switch cfg.Auth.RegistrationMode {
+	case "open", "invite_only":
+	default:
+		errors = append(errors, "REGISTRATION_MODE must be \"open\" or \"invite_only\"")
 	}
 
 	// Check Stripe webhook secret (required if Stripe is configured)

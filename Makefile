@@ -31,7 +31,7 @@ SEED_FILE            := backend/seeds/dev_seed.sql
 .PHONY: help versions \
 	setup install-deps install-golangci-lint install-hooks \
 	dev dev-db dev-backend dev-frontend up down \
-	migrate migrate-version migrate-down migrate-create seed db-wait db-fresh db-fresh-seed db-reset hash-password \
+	migrate migrate-version migrate-down migrate-create seed db-wait db-fresh db-fresh-seed db-reset hash-password invite-code \
 	lint lint-check lint-fix format format-check \
 	backend-lint backend-lint-fix backend-format backend-test backend-build backend-vuln backend-docker \
 	frontend-lint frontend-lint-fix frontend-format frontend-typecheck frontend-test frontend-build \
@@ -147,6 +147,10 @@ db-reset: ## Recreate the local db after confirmation (deletes all data)
 
 hash-password: ## Print a bcrypt hash (make hash-password PASSWORD=secret)
 	@cd backend && go run ../scripts/hash-password.go $(PASSWORD)
+
+invite-code: ## Create a registration invite code (make invite-code [MAX_USES=1] [EXPIRES=168h] [NOTE=...]; DATABASE_URL overrides the local db)
+	@cd backend && DATABASE_URL="$${DATABASE_URL:-$(LOCAL_DATABASE_URL)}" go run ./cmd/invite create \
+		-max-uses "$(or $(MAX_USES),1)" -expires "$(or $(EXPIRES),168h)" -note "$(NOTE)"
 
 # =============================================================================
 # Lint + format
