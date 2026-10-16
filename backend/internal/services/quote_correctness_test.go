@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	apperrors "github.com/javaknight1/servicepro/backend/internal/errors"
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/repository"
 )
@@ -128,4 +129,38 @@ func TestUpdateQuote_KeepsCustomerChange(t *testing.T) {
 
 	_, err = svc.UpdateQuote(created.ID, quoteRequest(f.custB.ID), f.userA)
 	assert.Error(t, err, "can't move a quote to another tenant's customer")
+}
+
+// T223: a database failure during a status change is an infrastructure error
+// (the API answers 500), not a "cannot accept/reject" refusal or a 404.
+func TestQuoteTransitions_DatabaseFailureIsNotADomainError(t *testing.T) {
+	f := setupIsolation(t)
+	svc := quoteServiceFor(f)
+	created, err := svc.CreateQuote(quoteRequest(f.custA.ID), f.userA)
+	require.NoError(t, err)
+	require.NoError(t, f.db.Exec("DROP TABLE quotes").Error)
+
+	for name, action := range map[string]func(uuid.UUID) error{
+		"send": svc.SendQuote, "accept": svc.AcceptQuote, "reject": svc.RejectQuote,
+		"revise": svc.ReviseQuote, "delete": svc.DeleteQuote,
+	} {
+		err := action(created.ID)
+		require.Error(t, err, name)
+		_, isDomain := apperrors.As(err)
+		assert.False(t, isDomain, "%s: database failure reported as a domain error: %v", name, err)
+	}
+	_, err = svc.GetQuote(created.ID)
+	_, isDomain := apperrors.As(err)
+	assert.False(t, isDomain, "get: database failure reported as not found: %v", err)
+}
+
+// T223: status conflicts are typed 409s the API passes through.
+func TestQuoteTransitions_ConflictsAre409(t *testing.T) {
+	for _, err := range []*apperrors.Error{
+		ErrQuoteCannotBeSent, ErrQuoteCannotBeAccepted, ErrQuoteCannotBeRejected,
+		ErrQuoteCannotBeRevised, ErrQuoteCannotBeEdited, ErrQuoteCannotBeDeleted,
+	} {
+		assert.Equal(t, 409, err.Status, err.Code)
+	}
+	assert.Equal(t, 404, ErrQuoteNotFound.Status)
 }

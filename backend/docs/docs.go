@@ -4116,14 +4116,14 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     },
-                    "403": {
-                        "description": "Quote cannot be edited",
+                    "404": {
+                        "description": "Quote not found",
                         "schema": {
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     },
-                    "404": {
-                        "description": "Quote not found",
+                    "409": {
+                        "description": "Quote cannot be edited in its current status",
                         "schema": {
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
@@ -4167,14 +4167,14 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     },
-                    "403": {
-                        "description": "Quote cannot be deleted",
+                    "404": {
+                        "description": "Quote not found",
                         "schema": {
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     },
-                    "404": {
-                        "description": "Quote not found",
+                    "409": {
+                        "description": "Quote cannot be deleted in its current status",
                         "schema": {
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
@@ -4223,14 +4223,14 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     },
-                    "403": {
-                        "description": "Quote cannot be accepted",
+                    "404": {
+                        "description": "Quote not found",
                         "schema": {
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     },
-                    "404": {
-                        "description": "Quote not found",
+                    "409": {
+                        "description": "Quote cannot be accepted in its current status",
                         "schema": {
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
@@ -4329,14 +4329,14 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     },
-                    "403": {
-                        "description": "Quote cannot be rejected",
+                    "404": {
+                        "description": "Quote not found",
                         "schema": {
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     },
-                    "404": {
-                        "description": "Quote not found",
+                    "409": {
+                        "description": "Quote cannot be rejected in its current status",
                         "schema": {
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
@@ -4441,14 +4441,14 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     },
-                    "403": {
-                        "description": "Quote cannot be sent",
+                    "404": {
+                        "description": "Quote not found",
                         "schema": {
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     },
-                    "404": {
-                        "description": "Quote not found",
+                    "409": {
+                        "description": "Quote cannot be sent in its current status",
                         "schema": {
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }

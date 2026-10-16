@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -16,6 +17,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
+	"github.com/javaknight1/servicepro/backend/internal/api/middleware"
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/services"
 )
@@ -489,7 +491,7 @@ func TestUpdateQuote_CannotBeEdited(t *testing.T) {
 
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusForbidden, w.Code)
+	assert.Equal(t, http.StatusConflict, w.Code)
 
 	mockQuoteService.AssertExpectations(t)
 }
@@ -529,7 +531,7 @@ func TestDeleteQuote_CannotBeDeleted(t *testing.T) {
 
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusForbidden, w.Code)
+	assert.Equal(t, http.StatusConflict, w.Code)
 
 	mockQuoteService.AssertExpectations(t)
 }
@@ -728,3 +730,52 @@ func (m *MockQuoteService) WithContext(_ context.Context) services.QuoteServiceI
 
 // decPtr returns a pointer to d (optional decimal request fields).
 func decPtr(d decimal.Decimal) *decimal.Decimal { return &d }
+
+// T223: a status conflict on send/accept/reject/revise is a 409 carrying the
+// domain code and message (it was a 403 for send/accept/reject), and a
+// database failure is a generic 500 (accept/reject called it "cannot
+// accept/reject"). Every error body carries the request ID.
+func TestQuoteActions_ConflictIs409AndInfraIs500(t *testing.T) {
+	actions := []struct {
+		name     string
+		method   string
+		handler  func(*QuoteHandler) gin.HandlerFunc
+		conflict error
+		code     string
+	}{
+		{"send", "SendQuote", func(h *QuoteHandler) gin.HandlerFunc { return h.SendQuote }, services.ErrQuoteCannotBeSent, "cannot_send"},
+		{"accept", "AcceptQuote", func(h *QuoteHandler) gin.HandlerFunc { return h.AcceptQuote }, services.ErrQuoteCannotBeAccepted, "cannot_accept"},
+		{"reject", "RejectQuote", func(h *QuoteHandler) gin.HandlerFunc { return h.RejectQuote }, services.ErrQuoteCannotBeRejected, "cannot_reject"},
+		{"revise", "ReviseQuote", func(h *QuoteHandler) gin.HandlerFunc { return h.ReviseQuote }, services.ErrQuoteCannotBeRevised, "cannot_revise"},
+	}
+	for _, a := range actions {
+		for _, tc := range []struct {
+			serviceErr error
+			status     int
+			code       string
+		}{
+			{fmt.Errorf("wrapped: %w", a.conflict), http.StatusConflict, a.code},
+			{services.ErrQuoteNotFound, http.StatusNotFound, "not_found"},
+			{fmt.Errorf("failed to %s quote: %w", a.name, errors.New("pq: connection refused")), http.StatusInternalServerError, "internal_error"},
+		} {
+			svc := new(MockQuoteService)
+			quoteID := uuid.New()
+			svc.On(a.method, quoteID).Return(tc.serviceErr)
+
+			router := setupQuoteTestRouter()
+			router.Use(middleware.RequestID())
+			router.POST("/quotes/:id/"+a.name, a.handler(NewQuoteHandler(svc)))
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, httptest.NewRequest(http.MethodPost, "/quotes/"+quoteID.String()+"/"+a.name, nil))
+
+			var body models.ErrorResponse
+			assert.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+			assert.Equal(t, tc.status, w.Code, "%s: %v", a.name, tc.serviceErr)
+			assert.Equal(t, tc.code, body.Error, a.name)
+			assert.NotEmpty(t, body.Message, a.name)
+			assert.NotContains(t, body.Message, "pq:", a.name)
+			assert.Equal(t, w.Header().Get("X-Request-ID"), body.RequestID, a.name)
+			assert.NotEmpty(t, body.RequestID, a.name)
+		}
+	}
+}
