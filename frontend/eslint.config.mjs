@@ -18,6 +18,8 @@ export default [
       'cypress/**',
       'scripts/**',
       'config/**',
+      '.wrangler/**',
+      'worker/worker-configuration.d.ts',
     ],
   },
   {

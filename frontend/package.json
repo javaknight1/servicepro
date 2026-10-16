@@ -3,13 +3,19 @@
   "private": true,
   "version": "0.7.0",
   "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
     "build:analyze": "ANALYZE=true tsc && vite build",
     "lint": "eslint . --max-warnings 0",
     "preview": "vite preview",
-    "type-check": "tsc --noEmit",
+    "cf:dev": "vite build && wrangler dev",
+    "cf:deploy": "wrangler deploy",
+    "cf:typegen": "wrangler types worker/worker-configuration.d.ts --strict-vars=false && prettier --log-level warn --write worker/worker-configuration.d.ts",
+    "type-check": "tsc --noEmit && tsc --noEmit -p worker/tsconfig.json",
     "test": "vitest",
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
@@ -87,6 +93,7 @@
     "vite-plugin-compression": "^0.5.1",
     "vite-plugin-pwa": "^0.21.2",
     "vitest": "^4.0.17",
-    "workbox-window": "^7.3.0"
+    "workbox-window": "^7.3.0",
+    "wrangler": "^4.151.0"
   }
 }

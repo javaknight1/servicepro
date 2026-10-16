@@ -1,0 +1,4 @@
+# Wrangler local state and local-only Worker secrets
+.wrangler/
+.dev.vars*
+!.dev.vars.example
