@@ -96,8 +96,11 @@ export const TENANT_ACCESS_DENIED_MESSAGE =
   "You don't have access to this organization.";
 
 /**
- * Error message for organization (`/tenants/:id/*`) calls: a 403 becomes a
- * clear permission message instead of a generic failure.
+ * Error message for organization (`/tenants/:id/*`) calls: a 403 from the
+ * membership or permission middleware becomes a clear permission message
+ * instead of a generic failure. Other 403s carry a specific human message
+ * in `error` (e.g. "You cannot invite someone with a role above your own"
+ * from the invitation handler), which is kept.
  */
 export function getTenantErrorMessage(
   error: unknown,
@@ -105,10 +108,10 @@ export function getTenantErrorMessage(
 ): string {
   const { status, code, message } = getApiErrorInfo(error);
   if (status === 403) {
-    return code === 'tenant_access_denied'
-      ? TENANT_ACCESS_DENIED_MESSAGE
-      : TENANT_PERMISSION_MESSAGE;
+    if (code === 'tenant_access_denied') return TENANT_ACCESS_DENIED_MESSAGE;
+    if (!code || code === 'forbidden') return TENANT_PERMISSION_MESSAGE;
+    return message || code;
   }
   if (status === 429) return TOO_MANY_ATTEMPTS_MESSAGE;
-  return message || getErrorMessage(error, fallback);
+  return message || code || getErrorMessage(error, fallback);
 }

@@ -733,6 +733,24 @@ describe('Authentication Flow Integration', () => {
       });
     });
 
+    it("shows the invitation handler's reason when the link is no longer valid", async () => {
+      mockRegisterStores(vi.fn());
+      // The invitation handler puts its human message in `error`
+      vi.mocked(invitationApi.getByToken).mockRejectedValue({
+        response: { status: 410, data: { error: 'Invitation has expired' } },
+      });
+
+      render(
+        <MemoryRouter initialEntries={['/register?invitation=tok-old']}>
+          <RegisterPage />
+        </MemoryRouter>
+      );
+
+      expect(
+        await screen.findByText('Invitation has expired')
+      ).toBeInTheDocument();
+    });
+
     it('explains a rejected tenant invitation', async () => {
       const user = userEvent.setup({ delay: null });
       mockRegisterStores(vi.fn().mockRejectedValue(registrationClosed));
