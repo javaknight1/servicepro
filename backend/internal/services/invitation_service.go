@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"net/url"
 	"strings"
 	"time"
 
@@ -44,6 +45,18 @@ func NewInvitationService(db *gorm.DB, emailClient email.Client, appURL string) 
 		emailClient: emailClient,
 		appURL:      appURL,
 	}
+}
+
+// inviteAcceptURL builds the link an existing user follows to accept an invitation.
+// Query values are encoded so any token survives (T229).
+func (s *InvitationService) inviteAcceptURL(token string) string {
+	return strings.TrimRight(s.appURL, "/") + "/invitations/accept?" + url.Values{"token": {token}}.Encode()
+}
+
+// inviteRegisterURL builds the link a new user follows to register and join. The
+// email is query-encoded so addresses containing "+" or "&" survive (T229).
+func (s *InvitationService) inviteRegisterURL(token, email string) string {
+	return strings.TrimRight(s.appURL, "/") + "/register?" + url.Values{"invitation": {token}, "email": {email}}.Encode()
 }
 
 // InviteMember invites a user to join an organization
@@ -118,7 +131,7 @@ func (s *InvitationService) InviteMember(ctx context.Context, tenantID uuid.UUID
 			inviterName = *inviter.FirstName + " " + *inviter.LastName
 		}
 
-		acceptURL := fmt.Sprintf("%s/invitations/accept?token=%s", s.appURL, token)
+		acceptURL := s.inviteAcceptURL(token)
 		go s.sendExistingUserInviteEmail(ctx, email, tenant.Name, inviterName, role.Name, acceptURL)
 
 		return &models.InvitationResponse{
@@ -157,7 +170,7 @@ func (s *InvitationService) InviteMember(ctx context.Context, tenantID uuid.UUID
 			inviterName = *inviter.FirstName + " " + *inviter.LastName
 		}
 
-		registerURL := fmt.Sprintf("%s/register?invitation=%s&email=%s", s.appURL, existingInvitation.Token, email)
+		registerURL := s.inviteRegisterURL(existingInvitation.Token, email)
 		go s.sendNewUserInviteEmail(ctx, email, tenant.Name, inviterName, role.Name, registerURL)
 
 		resp := existingInvitation.ToResponse(false)
@@ -195,7 +208,7 @@ func (s *InvitationService) InviteMember(ctx context.Context, tenantID uuid.UUID
 		inviterName = *inviter.FirstName + " " + *inviter.LastName
 	}
 
-	registerURL := fmt.Sprintf("%s/register?invitation=%s&email=%s", s.appURL, token, email)
+	registerURL := s.inviteRegisterURL(token, email)
 	go s.sendNewUserInviteEmail(ctx, email, tenant.Name, inviterName, role.Name, registerURL)
 
 	resp := invitation.ToResponse(false)
@@ -408,10 +421,10 @@ func (s *InvitationService) ResendInvitation(ctx context.Context, tenantID, invi
 	}
 
 	if userExists {
-		acceptURL := fmt.Sprintf("%s/invitations/accept?token=%s", s.appURL, invitation.Token)
+		acceptURL := s.inviteAcceptURL(invitation.Token)
 		go s.sendExistingUserInviteEmail(ctx, invitation.Email, invitation.Tenant.Name, inviterName, invitation.Role.Name, acceptURL)
 	} else {
-		registerURL := fmt.Sprintf("%s/register?invitation=%s&email=%s", s.appURL, invitation.Token, invitation.Email)
+		registerURL := s.inviteRegisterURL(invitation.Token, invitation.Email)
 		go s.sendNewUserInviteEmail(ctx, invitation.Email, invitation.Tenant.Name, inviterName, invitation.Role.Name, registerURL)
 	}
 
