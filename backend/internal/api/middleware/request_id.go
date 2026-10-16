@@ -52,20 +52,28 @@ func RequestIDFrom(c *gin.Context) string {
 
 // AccessLogFormatter is gin's default access-log line with the request ID
 // appended, so an access line can be matched to the app's log lines and to
-// the "Reference" a user reports from the error UI.
+// the "Reference" a user reports from the error UI. gin hands it the path
+// with the raw query attached; only the path and the sorted query parameter
+// names are logged, never their values (T239).
 func AccessLogFormatter(param gin.LogFormatterParams) string {
 	if param.Latency > time.Minute {
 		param.Latency = param.Latency.Truncate(time.Second)
 	}
 	requestID, _ := param.Keys[requestIDKey].(string)
-	return fmt.Sprintf("[GIN] %v | %3d | %13v | %15s | %-7s %#v | request_id=%s\n%s",
+	path, rawQuery := splitQuery(param.Path)
+	queryKeys := ""
+	if keys := QueryKeys(rawQuery); keys != "" {
+		queryKeys = fmt.Sprintf(" | query_keys=%q", keys)
+	}
+	return fmt.Sprintf("[GIN] %v | %3d | %13v | %15s | %-7s %#v | request_id=%s%s\n%s",
 		param.TimeStamp.Format("2006/01/02 - 15:04:05"),
 		param.StatusCode,
 		param.Latency,
 		param.ClientIP,
 		param.Method,
-		param.Path,
+		path,
 		requestID,
+		queryKeys,
 		param.ErrorMessage,
 	)
 }

@@ -123,8 +123,8 @@ type AccessLoggingConfig struct {
 	LogRequestBody  bool
 	LogResponseBody bool
 	LogHeaders      bool
-	LogQueryParams  bool
-	MaxBodyLogSize  int // in bytes
+	LogQueryParams  bool // logs query parameter names only, never values (T239)
+	MaxBodyLogSize  int  // in bytes
 
 	// Performance metrics
 	EnableMetrics     bool
