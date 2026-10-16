@@ -434,7 +434,7 @@ func DefaultCustomerCreatedHandler() EventHandler {
 			return err
 		}
 
-		logging.Info(ctx, "[Stripe] Customer created", map[string]any{"id": cust.ID, "email": cust.Email})
+		logging.Info(ctx, "[Stripe] Customer created", map[string]any{"id": cust.ID})
 
 		return nil
 	}

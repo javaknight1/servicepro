@@ -85,12 +85,12 @@ func (s *RegistrationService) Register(emailAddr, password string) (*models.Regi
 		bgCtx := context.Background()
 		if s.verificationService != nil {
 			if err := s.verificationService.SendVerificationEmail(user.ID); err != nil {
-				logging.Error(bgCtx, "[REGISTRATION] Failed to send verification email", map[string]any{"email": user.Email, "error": err})
+				logging.Error(bgCtx, "[REGISTRATION] Failed to send verification email", map[string]any{"user_id": user.ID, "error": err})
 			}
 		} else {
 			// Fallback to welcome email if verification service not configured
 			if err := s.emailClient.SendWelcomeEmail(bgCtx, user.Email, user.Email); err != nil {
-				logging.Error(bgCtx, "[REGISTRATION] Failed to send welcome email", map[string]any{"email": user.Email, "error": err})
+				logging.Error(bgCtx, "[REGISTRATION] Failed to send welcome email", map[string]any{"user_id": user.ID, "error": err})
 			}
 		}
 	}()

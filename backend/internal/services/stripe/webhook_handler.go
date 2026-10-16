@@ -584,7 +584,7 @@ func (s *WebhookHandlerService) handleCustomerCreated(ctx context.Context, event
 		return fmt.Errorf("failed to parse customer: %w", err)
 	}
 
-	logging.Info(ctx, "[Stripe] Customer created", map[string]any{"id": cust.ID, "email": cust.Email})
+	logging.Info(ctx, "[Stripe] Customer created", map[string]any{"id": cust.ID})
 
 	return nil
 }

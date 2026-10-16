@@ -69,7 +69,7 @@ func (s *PasswordResetService) RequestPasswordReset(emailAddr string) error {
 		if errors.Is(err, repository.ErrUserNotFound) {
 			// For security, don't reveal if email exists
 			// Return success but don't send email
-			logging.Info(context.Background(), "[PASSWORD-RESET] Password reset requested for non-existent email", map[string]any{"email": emailAddr})
+			logging.Info(context.Background(), "[PASSWORD-RESET] Password reset requested for non-existent email", nil)
 			return nil
 		}
 		return err
@@ -95,7 +95,7 @@ func (s *PasswordResetService) RequestPasswordReset(emailAddr string) error {
 	go func() {
 		bgCtx := context.Background()
 		if err := s.emailClient.SendPasswordResetEmail(bgCtx, user.Email, resetToken, s.resetURL); err != nil {
-			logging.Error(bgCtx, "[PASSWORD-RESET] Failed to send password reset email", map[string]any{"email": user.Email, "error": err})
+			logging.Error(bgCtx, "[PASSWORD-RESET] Failed to send password reset email", map[string]any{"user_id": user.ID, "error": err})
 		}
 	}()
 
@@ -164,7 +164,7 @@ func (s *PasswordResetService) ResetPassword(token, newPassword string) error {
 	go func() {
 		bgCtx := context.Background()
 		if err := s.emailClient.SendPasswordResetConfirmationEmail(bgCtx, user.Email); err != nil {
-			logging.Error(bgCtx, "[PASSWORD-RESET] Failed to send password reset confirmation email", map[string]any{"email": user.Email, "error": err})
+			logging.Error(bgCtx, "[PASSWORD-RESET] Failed to send password reset confirmation email", map[string]any{"user_id": user.ID, "error": err})
 		}
 	}()
 

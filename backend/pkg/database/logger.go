@@ -122,6 +122,13 @@ func (l *QueryLogger) Error(ctx context.Context, msg string, data ...any) {
 }
 
 // Trace is called by GORM after every query. It handles timing, logging, and metrics.
+// ParamsFilter implements gorm's logger.ParamsFilter: the SQL passed to Trace
+// keeps its placeholders, so logged queries never contain bound values
+// (emails, password hashes, tokens).
+func (l *QueryLogger) ParamsFilter(_ context.Context, sql string, _ ...any) (string, []any) {
+	return sql, nil
+}
+
 func (l *QueryLogger) Trace(ctx context.Context, begin time.Time, fc func() (sql string, rowsAffected int64), err error) {
 	elapsed := time.Since(begin)
 	sql, rows := fc()

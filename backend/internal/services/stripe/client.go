@@ -420,7 +420,7 @@ func (c *Client) CreateCustomer(ctx context.Context, params *CustomerParams) (*C
 
 	stripeParams.Context = ctx
 
-	logging.Info(ctx, "Creating Stripe customer", map[string]any{"email": stringPtrValue(params.Email)})
+	logging.Info(ctx, "Creating Stripe customer", nil)
 
 	cust, err := customer.New(stripeParams)
 	if err != nil {

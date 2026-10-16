@@ -111,7 +111,7 @@ func (s *EmailVerificationService) SendVerificationEmail(userID uuid.UUID) error
 	go func() {
 		bgCtx := context.Background()
 		if err := s.emailClient.SendEmailVerificationEmail(bgCtx, user.Email, verificationToken, s.verificationURL); err != nil {
-			logging.Error(bgCtx, "[EMAIL-VERIFICATION] Failed to send verification email", map[string]any{"email": user.Email, "error": err})
+			logging.Error(bgCtx, "[EMAIL-VERIFICATION] Failed to send verification email", map[string]any{"user_id": user.ID, "error": err})
 		}
 	}()
 
@@ -165,7 +165,7 @@ func (s *EmailVerificationService) VerifyEmail(token string) error {
 	go func() {
 		bgCtx := context.Background()
 		if err := s.emailClient.SendEmailVerificationSuccessEmail(bgCtx, user.Email); err != nil {
-			logging.Error(bgCtx, "[EMAIL-VERIFICATION] Failed to send verification success email", map[string]any{"email": user.Email, "error": err})
+			logging.Error(bgCtx, "[EMAIL-VERIFICATION] Failed to send verification success email", map[string]any{"user_id": user.ID, "error": err})
 		}
 	}()
 
@@ -185,7 +185,7 @@ func (s *EmailVerificationService) ResendVerificationEmail(emailAddr string) err
 		if errors.Is(err, repository.ErrUserNotFound) {
 			// For security, don't reveal if email exists
 			// Return success but don't send email
-			logging.Info(context.Background(), "[EMAIL-VERIFICATION] Verification resend requested for non-existent email", map[string]any{"email": emailAddr})
+			logging.Info(context.Background(), "[EMAIL-VERIFICATION] Verification resend requested for non-existent email", nil)
 			return nil
 		}
 		return err
@@ -242,9 +242,9 @@ func (s *EmailVerificationService) SendReminderEmails() error {
 
 		// Send reminder email (not async for batch processing)
 		if err := s.emailClient.SendEmailVerificationReminderEmail(ctx, user.Email, verificationToken, s.verificationURL); err != nil {
-			logging.Error(ctx, "[EMAIL-VERIFICATION] Failed to send verification reminder", map[string]any{"email": user.Email, "error": err})
+			logging.Error(ctx, "[EMAIL-VERIFICATION] Failed to send verification reminder", map[string]any{"user_id": user.ID, "error": err})
 		} else {
-			logging.Info(ctx, "[EMAIL-VERIFICATION] Sent verification reminder", map[string]any{"email": user.Email})
+			logging.Info(ctx, "[EMAIL-VERIFICATION] Sent verification reminder", map[string]any{"user_id": user.ID})
 		}
 
 		// Add small delay to avoid overwhelming email service
@@ -257,14 +257,14 @@ func (s *EmailVerificationService) SendReminderEmails() error {
 // HandleBounce handles AWS SES bounce notifications
 func (s *EmailVerificationService) HandleBounce(emailAddr string) error {
 	ctx := context.Background()
-	logging.Info(ctx, "[EMAIL-VERIFICATION] Processing bounce for email", map[string]any{"email": emailAddr})
+	logging.Info(ctx, "[EMAIL-VERIFICATION] Processing bounce for email", nil)
 
 	// Get user by email
 	user, err := s.userRepo.GetByEmail(emailAddr)
 	if err != nil {
 		if errors.Is(err, repository.ErrUserNotFound) {
 			// Email might have been deleted
-			logging.Info(ctx, "[EMAIL-VERIFICATION] Bounce received for non-existent user", map[string]any{"email": emailAddr})
+			logging.Info(ctx, "[EMAIL-VERIFICATION] Bounce received for non-existent user", nil)
 			return nil
 		}
 		return err
@@ -279,7 +279,7 @@ func (s *EmailVerificationService) HandleBounce(emailAddr string) error {
 
 		// Mark bounce in database (we could add a bounced field later)
 		// For now, just log it
-		logging.Warn(ctx, "[EMAIL-VERIFICATION] Hard bounce received for unverified user", map[string]any{"user_id": user.ID, "email": emailAddr})
+		logging.Warn(ctx, "[EMAIL-VERIFICATION] Hard bounce received for unverified user", map[string]any{"user_id": user.ID})
 
 		// Could implement:
 		// - Flag account as having invalid email

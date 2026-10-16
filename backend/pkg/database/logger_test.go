@@ -154,3 +154,14 @@ func TestTruncateSQL(t *testing.T) {
 		})
 	}
 }
+
+func TestQueryLoggerParamsFilterDropsBoundValues(t *testing.T) {
+	l := &QueryLogger{}
+	sql, vars := l.ParamsFilter(t.Context(), `SELECT * FROM "users" WHERE email = $1`, "owner@example.com")
+	if vars != nil {
+		t.Fatalf("expected no bound values, got %v", vars)
+	}
+	if strings.Contains(sql, "owner@example.com") || !strings.Contains(sql, "$1") {
+		t.Fatalf("expected placeholder SQL, got %q", sql)
+	}
+}
