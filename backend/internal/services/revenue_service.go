@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	csvsafe "github.com/javaknight1/servicepro/backend/pkg/csv"
+
 	"github.com/javaknight1/servicepro/backend/internal/tenancy"
 
 	"github.com/google/uuid"
@@ -418,7 +420,7 @@ func (s *revenueReportService) exportToCSV(report *models.RevenueReportResponse,
 		csvContent += "Category,Revenue,Transaction Count,Average Value,Percentage\n"
 		for _, cat := range report.ByCategory {
 			csvContent += fmt.Sprintf("%s,%s,%d,%s,%s%%\n",
-				cat.Category,
+				csvsafe.Field(cat.Category),
 				cat.Revenue.String(),
 				cat.TransactionCount,
 				cat.AverageValue.String(),

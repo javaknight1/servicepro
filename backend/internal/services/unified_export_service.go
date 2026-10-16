@@ -14,6 +14,8 @@ import (
 	"sync"
 	"time"
 
+	csvsafe "github.com/javaknight1/servicepro/backend/pkg/csv"
+
 	"github.com/javaknight1/servicepro/backend/internal/tenancy"
 
 	"github.com/google/uuid"
@@ -450,7 +452,7 @@ func (s *unifiedExportService) writeCustomersCSV(writer *csv.Writer, customers [
 	// Write data rows
 	for _, customer := range customers {
 		row := s.customerToRow(customer, selectedFields)
-		if err := writer.Write(row); err != nil {
+		if err := writer.Write(csvsafe.SafeRow(row)); err != nil {
 			return err
 		}
 	}
@@ -507,7 +509,7 @@ func (s *unifiedExportService) writeJobsCSV(writer *csv.Writer, jobs []models.Jo
 			formatEpochPtr(job.ScheduledStartAt),
 			job.CreatedAt.Format(time.RFC3339),
 		}
-		if err := writer.Write(row); err != nil {
+		if err := writer.Write(csvsafe.SafeRow(row)); err != nil {
 			return err
 		}
 	}
@@ -534,7 +536,7 @@ func (s *unifiedExportService) writeInvoicesCSV(writer *csv.Writer, invoices []m
 			inv.DueDate.Format(time.RFC3339),
 			inv.CreatedAt.Format(time.RFC3339),
 		}
-		if err := writer.Write(row); err != nil {
+		if err := writer.Write(csvsafe.SafeRow(row)); err != nil {
 			return err
 		}
 	}
@@ -559,7 +561,7 @@ func (s *unifiedExportService) writeQuotesCSV(writer *csv.Writer, quotes []model
 			quote.ValidUntil.Format(time.RFC3339),
 			quote.CreatedAt.Format(time.RFC3339),
 		}
-		if err := writer.Write(row); err != nil {
+		if err := writer.Write(csvsafe.SafeRow(row)); err != nil {
 			return err
 		}
 	}
@@ -650,17 +652,17 @@ func (s *unifiedExportService) writeCustomersExcel(f *excelize.File, sheet strin
 	// Write data
 	for i, customer := range customers {
 		row := i + 2
-		f.SetCellValue(sheet, fmt.Sprintf("A%d", row), customer.ID.String())
-		f.SetCellValue(sheet, fmt.Sprintf("B%d", row), customer.FirstName)
-		f.SetCellValue(sheet, fmt.Sprintf("C%d", row), customer.LastName)
-		f.SetCellValue(sheet, fmt.Sprintf("D%d", row), ptrToStr(customer.CompanyName))
-		f.SetCellValue(sheet, fmt.Sprintf("E%d", row), customer.Email)
-		f.SetCellValue(sheet, fmt.Sprintf("F%d", row), customer.PhonePrimary)
-		f.SetCellValue(sheet, fmt.Sprintf("G%d", row), string(customer.CustomerType))
-		f.SetCellValue(sheet, fmt.Sprintf("H%d", row), string(customer.Status))
-		f.SetCellValue(sheet, fmt.Sprintf("I%d", row), customer.BillingAddressCity)
-		f.SetCellValue(sheet, fmt.Sprintf("J%d", row), customer.BillingAddressState)
-		f.SetCellValue(sheet, fmt.Sprintf("K%d", row), customer.CreatedAt.Format("2006-01-02"))
+		f.SetCellValue(sheet, fmt.Sprintf("A%d", row), csvsafe.SafeCell(customer.ID.String()))
+		f.SetCellValue(sheet, fmt.Sprintf("B%d", row), csvsafe.SafeCell(customer.FirstName))
+		f.SetCellValue(sheet, fmt.Sprintf("C%d", row), csvsafe.SafeCell(customer.LastName))
+		f.SetCellValue(sheet, fmt.Sprintf("D%d", row), csvsafe.SafeCell(ptrToStr(customer.CompanyName)))
+		f.SetCellValue(sheet, fmt.Sprintf("E%d", row), csvsafe.SafeCell(customer.Email))
+		f.SetCellValue(sheet, fmt.Sprintf("F%d", row), csvsafe.SafeCell(customer.PhonePrimary))
+		f.SetCellValue(sheet, fmt.Sprintf("G%d", row), csvsafe.SafeCell(string(customer.CustomerType)))
+		f.SetCellValue(sheet, fmt.Sprintf("H%d", row), csvsafe.SafeCell(string(customer.Status)))
+		f.SetCellValue(sheet, fmt.Sprintf("I%d", row), csvsafe.SafeCell(customer.BillingAddressCity))
+		f.SetCellValue(sheet, fmt.Sprintf("J%d", row), csvsafe.SafeCell(customer.BillingAddressState))
+		f.SetCellValue(sheet, fmt.Sprintf("K%d", row), csvsafe.SafeCell(customer.CreatedAt.Format("2006-01-02")))
 	}
 
 	// Freeze header row
@@ -694,12 +696,12 @@ func (s *unifiedExportService) writeJobsExcel(f *excelize.File, sheet string, jo
 
 	for i, job := range jobs {
 		row := i + 2
-		f.SetCellValue(sheet, fmt.Sprintf("A%d", row), job.ID.String())
-		f.SetCellValue(sheet, fmt.Sprintf("B%d", row), job.CustomerID.String())
-		f.SetCellValue(sheet, fmt.Sprintf("C%d", row), job.Title)
-		f.SetCellValue(sheet, fmt.Sprintf("D%d", row), string(job.Status))
-		f.SetCellValue(sheet, fmt.Sprintf("E%d", row), formatEpochPtr(job.ScheduledStartAt))
-		f.SetCellValue(sheet, fmt.Sprintf("F%d", row), job.CreatedAt.Format("2006-01-02"))
+		f.SetCellValue(sheet, fmt.Sprintf("A%d", row), csvsafe.SafeCell(job.ID.String()))
+		f.SetCellValue(sheet, fmt.Sprintf("B%d", row), csvsafe.SafeCell(job.CustomerID.String()))
+		f.SetCellValue(sheet, fmt.Sprintf("C%d", row), csvsafe.SafeCell(job.Title))
+		f.SetCellValue(sheet, fmt.Sprintf("D%d", row), csvsafe.SafeCell(string(job.Status)))
+		f.SetCellValue(sheet, fmt.Sprintf("E%d", row), csvsafe.SafeCell(formatEpochPtr(job.ScheduledStartAt)))
+		f.SetCellValue(sheet, fmt.Sprintf("F%d", row), csvsafe.SafeCell(job.CreatedAt.Format("2006-01-02")))
 	}
 
 	return nil
@@ -715,18 +717,18 @@ func (s *unifiedExportService) writeInvoicesExcel(f *excelize.File, sheet string
 
 	for i, inv := range invoices {
 		row := i + 2
-		f.SetCellValue(sheet, fmt.Sprintf("A%d", row), inv.ID.String())
-		f.SetCellValue(sheet, fmt.Sprintf("B%d", row), inv.InvoiceNumber)
-		f.SetCellValue(sheet, fmt.Sprintf("C%d", row), inv.CustomerID.String())
-		f.SetCellValue(sheet, fmt.Sprintf("D%d", row), string(inv.Status))
+		f.SetCellValue(sheet, fmt.Sprintf("A%d", row), csvsafe.SafeCell(inv.ID.String()))
+		f.SetCellValue(sheet, fmt.Sprintf("B%d", row), csvsafe.SafeCell(inv.InvoiceNumber))
+		f.SetCellValue(sheet, fmt.Sprintf("C%d", row), csvsafe.SafeCell(inv.CustomerID.String()))
+		f.SetCellValue(sheet, fmt.Sprintf("D%d", row), csvsafe.SafeCell(string(inv.Status)))
 		subtotal, _ := inv.Subtotal.Float64()
 		f.SetCellValue(sheet, fmt.Sprintf("E%d", row), subtotal)
 		tax, _ := inv.TaxAmount.Float64()
 		f.SetCellValue(sheet, fmt.Sprintf("F%d", row), tax)
 		total, _ := inv.TotalAmount.Float64()
 		f.SetCellValue(sheet, fmt.Sprintf("G%d", row), total)
-		f.SetCellValue(sheet, fmt.Sprintf("H%d", row), inv.DueDate.Format("2006-01-02"))
-		f.SetCellValue(sheet, fmt.Sprintf("I%d", row), inv.CreatedAt.Format("2006-01-02"))
+		f.SetCellValue(sheet, fmt.Sprintf("H%d", row), csvsafe.SafeCell(inv.DueDate.Format("2006-01-02")))
+		f.SetCellValue(sheet, fmt.Sprintf("I%d", row), csvsafe.SafeCell(inv.CreatedAt.Format("2006-01-02")))
 	}
 
 	return nil
@@ -742,14 +744,14 @@ func (s *unifiedExportService) writeQuotesExcel(f *excelize.File, sheet string, 
 
 	for i, quote := range quotes {
 		row := i + 2
-		f.SetCellValue(sheet, fmt.Sprintf("A%d", row), quote.ID.String())
-		f.SetCellValue(sheet, fmt.Sprintf("B%d", row), quote.QuoteNumber)
-		f.SetCellValue(sheet, fmt.Sprintf("C%d", row), quote.CustomerID.String())
-		f.SetCellValue(sheet, fmt.Sprintf("D%d", row), string(quote.Status))
+		f.SetCellValue(sheet, fmt.Sprintf("A%d", row), csvsafe.SafeCell(quote.ID.String()))
+		f.SetCellValue(sheet, fmt.Sprintf("B%d", row), csvsafe.SafeCell(quote.QuoteNumber))
+		f.SetCellValue(sheet, fmt.Sprintf("C%d", row), csvsafe.SafeCell(quote.CustomerID.String()))
+		f.SetCellValue(sheet, fmt.Sprintf("D%d", row), csvsafe.SafeCell(string(quote.Status)))
 		total, _ := quote.Total.Float64()
 		f.SetCellValue(sheet, fmt.Sprintf("E%d", row), total)
-		f.SetCellValue(sheet, fmt.Sprintf("F%d", row), quote.ValidUntil.Format("2006-01-02"))
-		f.SetCellValue(sheet, fmt.Sprintf("G%d", row), quote.CreatedAt.Format("2006-01-02"))
+		f.SetCellValue(sheet, fmt.Sprintf("F%d", row), csvsafe.SafeCell(quote.ValidUntil.Format("2006-01-02")))
+		f.SetCellValue(sheet, fmt.Sprintf("G%d", row), csvsafe.SafeCell(quote.CreatedAt.Format("2006-01-02")))
 	}
 
 	return nil

@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"time"
 
+	csvsafe "github.com/javaknight1/servicepro/backend/pkg/csv"
+
 	"github.com/javaknight1/servicepro/backend/internal/tenancy"
 
 	"github.com/google/uuid"
@@ -616,7 +618,7 @@ func (s *customerReportService) exportToCSV(report *models.CustomerReportRespons
 		csvContent += "Segment,Count,Percentage,Total Revenue,Average Revenue\n"
 		for _, seg := range report.SegmentBreakdown {
 			csvContent += fmt.Sprintf("%s,%d,%s%%,%s,%s\n",
-				seg.DisplayName,
+				csvsafe.Field(seg.DisplayName),
 				seg.Count,
 				seg.Percentage.String(),
 				seg.TotalRevenue.String(),
@@ -644,10 +646,10 @@ func (s *customerReportService) exportToCSV(report *models.CustomerReportRespons
 				name = *cust.CompanyName
 			}
 			csvContent += fmt.Sprintf("%s,%s,%s,%s,%s,%d\n",
-				name,
-				cust.Email,
-				cust.CustomerType,
-				cust.Segment,
+				csvsafe.Field(name),
+				csvsafe.Field(cust.Email),
+				csvsafe.Field(string(cust.CustomerType)),
+				csvsafe.Field(string(cust.Segment)),
 				cust.TotalRevenue.String(),
 				cust.TotalJobs,
 			)
