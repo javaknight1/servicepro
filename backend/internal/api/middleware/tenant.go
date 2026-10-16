@@ -221,28 +221,3 @@ func GetTenantRoleLevel(c *gin.Context) int {
 	}
 	return 0
 }
-
-// GetTenant is a helper to get the current tenant from context
-func GetTenant(c *gin.Context) (*models.Tenant, error) {
-	value, exists := c.Get(TenantKey)
-	if !exists {
-		return nil, fmt.Errorf("tenant not found in context")
-	}
-
-	tenant, ok := value.(*models.Tenant)
-	if !ok {
-		return nil, fmt.Errorf("invalid tenant type in context")
-	}
-
-	return tenant, nil
-}
-
-// MustGetTenantID returns the tenant ID or panics if not found
-// Use this only when RequireTenant middleware is guaranteed to have run
-func MustGetTenantID(c *gin.Context) uuid.UUID {
-	tenantID, err := GetTenantID(c)
-	if err != nil {
-		panic(err)
-	}
-	return tenantID
-}

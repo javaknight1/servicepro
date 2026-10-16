@@ -155,24 +155,8 @@ func Setup(opts SetupOptions) (*Checker, *Runner, *UptimeTracker, *Notifier) {
 	return checker, runner, uptimeTracker, notifier
 }
 
-// QuickSetup creates a simple health check system with minimal configuration
-func QuickSetup(db *sql.DB, redisClient *redis.Client) (*Checker, *Runner, *UptimeTracker) {
-	checker, runner, uptimeTracker, _ := Setup(SetupOptions{
-		Config: nil, // Use defaults
-		DB:     db,
-		Redis:  redisClient,
-	})
-	return checker, runner, uptimeTracker
-}
-
 // StartHealthSystem starts the health check system
 func StartHealthSystem(runner *Runner) {
 	runner.Start()
 	logging.Info(context.Background(), "Health check system started", map[string]any{"source": "health"})
-}
-
-// StopHealthSystem stops the health check system
-func StopHealthSystem(runner *Runner) {
-	runner.Stop()
-	logging.Info(context.Background(), "Health check system stopped", map[string]any{"source": "health"})
 }

@@ -124,21 +124,6 @@ func (rl *APIRateLimiter) RateLimit(tier RateLimitTier) gin.HandlerFunc {
 	}
 }
 
-// RateLimitAnonymous applies rate limiting for anonymous/unauthenticated requests
-func (rl *APIRateLimiter) RateLimitAnonymous() gin.HandlerFunc {
-	return rl.RateLimit(TierAnonymous)
-}
-
-// RateLimitAuthenticated applies rate limiting for authenticated users
-func (rl *APIRateLimiter) RateLimitAuthenticated() gin.HandlerFunc {
-	return rl.RateLimit(TierAuthenticated)
-}
-
-// RateLimitAdmin applies stricter rate limiting for admin endpoints
-func (rl *APIRateLimiter) RateLimitAdmin() gin.HandlerFunc {
-	return rl.RateLimit(TierAdmin)
-}
-
 // DynamicRateLimit applies rate limiting based on context (auto-detects tier)
 func (rl *APIRateLimiter) DynamicRateLimit() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -326,22 +311,6 @@ func (rl *APIRateLimiter) cleanupRoutine() {
 			bucket.mu.Unlock()
 		}
 		rl.fallback.mu.Unlock()
-	}
-}
-
-// GetRateLimitStats returns current rate limit statistics (for monitoring)
-func (rl *APIRateLimiter) GetRateLimitStats() map[string]interface{} {
-	rl.fallback.mu.RLock()
-	defer rl.fallback.mu.RUnlock()
-
-	return map[string]interface{}{
-		"enabled":                rl.config.Enabled,
-		"use_redis":              rl.config.UseRedis,
-		"anonymous_limit":        rl.config.AnonymousLimit,
-		"authenticated_limit":    rl.config.AuthenticatedLimit,
-		"admin_limit":            rl.config.AdminLimit,
-		"window":                 rl.config.Window.String(),
-		"in_memory_bucket_count": len(rl.fallback.buckets),
 	}
 }
 

@@ -29,7 +29,7 @@ func TestAPIRateLimiter_RateLimitDisabled(t *testing.T) {
 	limiter := NewAPIRateLimiter(nil, cfg)
 
 	router := gin.New()
-	router.GET("/test", limiter.RateLimitAnonymous(), func(c *gin.Context) {
+	router.GET("/test", limiter.RateLimit(TierAnonymous), func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok"})
 	})
 
@@ -60,7 +60,7 @@ func TestAPIRateLimiter_AnonymousLimit(t *testing.T) {
 	limiter := NewAPIRateLimiter(nil, cfg)
 
 	router := gin.New()
-	router.GET("/test", limiter.RateLimitAnonymous(), func(c *gin.Context) {
+	router.GET("/test", limiter.RateLimit(TierAnonymous), func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok"})
 	})
 
@@ -127,7 +127,7 @@ func TestAPIRateLimiter_AuthenticatedLimit(t *testing.T) {
 		c.Set("userID", consistentUserID)
 		c.Next()
 	})
-	router.GET("/test", limiter.RateLimitAuthenticated(), func(c *gin.Context) {
+	router.GET("/test", limiter.RateLimit(TierAuthenticated), func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok"})
 	})
 
@@ -180,7 +180,7 @@ func TestAPIRateLimiter_AdminLimit(t *testing.T) {
 		c.Set("userRole", "admin")
 		c.Next()
 	})
-	router.GET("/admin/test", limiter.RateLimitAdmin(), func(c *gin.Context) {
+	router.GET("/admin/test", limiter.RateLimit(TierAdmin), func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok"})
 	})
 
@@ -225,10 +225,10 @@ func TestAPIRateLimiter_ExcludedPaths(t *testing.T) {
 	limiter := NewAPIRateLimiter(nil, cfg)
 
 	router := gin.New()
-	router.GET("/health", limiter.RateLimitAnonymous(), func(c *gin.Context) {
+	router.GET("/health", limiter.RateLimit(TierAnonymous), func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok"})
 	})
-	router.GET("/api/v1/version", limiter.RateLimitAnonymous(), func(c *gin.Context) {
+	router.GET("/api/v1/version", limiter.RateLimit(TierAnonymous), func(c *gin.Context) {
 		c.JSON(200, gin.H{"version": "1.0"})
 	})
 
@@ -266,7 +266,7 @@ func TestAPIRateLimiter_BurstMultiplier(t *testing.T) {
 	limiter := NewAPIRateLimiter(nil, cfg)
 
 	router := gin.New()
-	router.GET("/test", limiter.RateLimitAnonymous(), func(c *gin.Context) {
+	router.GET("/test", limiter.RateLimit(TierAnonymous), func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok"})
 	})
 
@@ -377,7 +377,7 @@ func TestAPIRateLimiter_DifferentUsers(t *testing.T) {
 			c.Set("userID", userID)
 			c.Next()
 		})
-		router.GET("/test", limiter.RateLimitAuthenticated(), func(c *gin.Context) {
+		router.GET("/test", limiter.RateLimit(TierAuthenticated), func(c *gin.Context) {
 			c.JSON(200, gin.H{"status": "ok"})
 		})
 
@@ -417,7 +417,7 @@ func TestAPIRateLimiter_ConcurrentRequests(t *testing.T) {
 	limiter := NewAPIRateLimiter(nil, cfg)
 
 	router := gin.New()
-	router.GET("/test", limiter.RateLimitAnonymous(), func(c *gin.Context) {
+	router.GET("/test", limiter.RateLimit(TierAnonymous), func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok"})
 	})
 
@@ -459,35 +459,6 @@ func TestAPIRateLimiter_ConcurrentRequests(t *testing.T) {
 	}
 }
 
-func TestAPIRateLimiter_GetRateLimitStats(t *testing.T) {
-	cfg := &config.RateLimitConfig{
-		Enabled:            true,
-		UseRedis:           false,
-		AnonymousLimit:     100,
-		AuthenticatedLimit: 1000,
-		AdminLimit:         50,
-		BurstMultiplier:    1.2,
-		Window:             time.Minute,
-	}
-
-	limiter := NewAPIRateLimiter(nil, cfg)
-
-	stats := limiter.GetRateLimitStats()
-
-	if stats["enabled"] != true {
-		t.Error("Expected enabled=true")
-	}
-	if stats["anonymous_limit"] != 100 {
-		t.Errorf("Expected anonymous_limit=100, got %v", stats["anonymous_limit"])
-	}
-	if stats["authenticated_limit"] != 1000 {
-		t.Errorf("Expected authenticated_limit=1000, got %v", stats["authenticated_limit"])
-	}
-	if stats["admin_limit"] != 50 {
-		t.Errorf("Expected admin_limit=50, got %v", stats["admin_limit"])
-	}
-}
-
 func TestAPIRateLimiter_ResponseFormat(t *testing.T) {
 	cfg := &config.RateLimitConfig{
 		Enabled:            true,
@@ -502,7 +473,7 @@ func TestAPIRateLimiter_ResponseFormat(t *testing.T) {
 	limiter := NewAPIRateLimiter(nil, cfg)
 
 	router := gin.New()
-	router.GET("/test", limiter.RateLimitAnonymous(), func(c *gin.Context) {
+	router.GET("/test", limiter.RateLimit(TierAnonymous), func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok"})
 	})
 
