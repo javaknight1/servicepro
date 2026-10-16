@@ -49,6 +49,16 @@ var (
 	// ErrInvoiceHasPayments is returned when deleting or cancelling an invoice
 	// that has payments recorded against it
 	ErrInvoiceHasPayments = errors.New("invoice has recorded payments; refund them first")
+	// ErrAlreadyInvoiced is returned when the job or quote already has an invoice
+	ErrAlreadyInvoiced = errors.New("this job or quote has already been invoiced")
+	// ErrInvoiceSourceNotFound is returned when the job or quote doesn't exist (in this tenant)
+	ErrInvoiceSourceNotFound = errors.New("job or quote not found")
+	// ErrInvoiceSourceCustomer is returned when the job or quote is for another customer
+	ErrInvoiceSourceCustomer = errors.New("job or quote belongs to a different customer")
+	// ErrInvoiceSourceStatus is returned when invoicing a cancelled job
+	ErrInvoiceSourceStatus = errors.New("cannot invoice a cancelled job")
+	// ErrQuoteNotAccepted is returned when invoicing a quote that wasn't accepted
+	ErrQuoteNotAccepted = errors.New("only accepted quotes can be invoiced")
 	// ErrTaxRateNotFound is returned for an unknown tax_rate_id
 	ErrTaxRateNotFound = errors.New("tax rate not found")
 )
@@ -128,6 +138,12 @@ func (s *InvoiceService) CreateInvoice(ctx context.Context, invoice *models.Invo
 
 	// Create invoice in transaction
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// A job or quote is invoiced at most once (audit 7.M5). Locking the
+		// source row serialises concurrent creates for the same job/quote.
+		if err := guardInvoiceSource(tx, invoice); err != nil {
+			return err
+		}
+
 		// Totals are always computed here, never taken from the client.
 		rate, err := resolveTaxRate(tx, invoice.ApplyTaxRate, invoice.TaxRateID, nil)
 		if err != nil {
@@ -381,6 +397,68 @@ func resolveTaxRate(tx *gorm.DB, direct *decimal.Decimal, taxRateID *uuid.UUID, 
 		}
 	}
 	return decimal.Zero, nil
+}
+
+// guardInvoiceSource locks the job and/or quote an invoice is created from
+// and refuses a second invoice for it (audit 7.M5): a quote must be accepted
+// and for the same customer; a job must belong to the customer, not be
+// cancelled and not already be invoiced. Cancelled invoices don't count.
+func guardInvoiceSource(tx *gorm.DB, invoice *models.Invoice) error {
+	if invoice.JobID != nil {
+		var job models.Job
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&job, "id = ?", *invoice.JobID).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return ErrInvoiceSourceNotFound
+			}
+			return err
+		}
+		if job.CustomerID != invoice.CustomerID {
+			return ErrInvoiceSourceCustomer
+		}
+		switch job.Status {
+		case models.JobStatusInvoiced, models.JobStatusPaid:
+			return ErrAlreadyInvoiced
+		case models.JobStatusCancelled:
+			return ErrInvoiceSourceStatus
+		}
+		if err := requireNoActiveInvoice(tx, "job_id", *invoice.JobID); err != nil {
+			return err
+		}
+	}
+	if invoice.QuoteID != nil {
+		var quote models.Quote
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&quote, "id = ?", *invoice.QuoteID).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return ErrInvoiceSourceNotFound
+			}
+			return err
+		}
+		if quote.CustomerID != invoice.CustomerID {
+			return ErrInvoiceSourceCustomer
+		}
+		if quote.Status != models.QuoteStatusAccepted {
+			return ErrQuoteNotAccepted
+		}
+		if err := requireNoActiveInvoice(tx, "quote_id", *invoice.QuoteID); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// requireNoActiveInvoice fails when a non-cancelled invoice already exists
+// for the given job_id / quote_id column.
+func requireNoActiveInvoice(tx *gorm.DB, column string, id uuid.UUID) error {
+	var n int64
+	if err := tx.Model(&models.Invoice{}).
+		Where(column+" = ? AND status <> ?", id, models.InvoiceStatusCancelled).
+		Count(&n).Error; err != nil {
+		return err
+	}
+	if n > 0 {
+		return ErrAlreadyInvoiced
+	}
+	return nil
 }
 
 // DeleteInvoice soft deletes an invoice
