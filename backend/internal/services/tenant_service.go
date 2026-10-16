@@ -86,18 +86,15 @@ type PermissionCacheInvalidator interface {
 	InvalidateUserPermissions(ctx context.Context, userID uuid.UUID) error
 }
 
-// MembershipAssigner interface for assigning default membership
-type MembershipAssigner interface {
-	AssignDefaultTier(ctx context.Context, tenantID uuid.UUID) error
-}
+// OwnerRoleName is the role a tenant's creator gets in the new tenant.
+const OwnerRoleName = "admin"
 
 // TenantService handles tenant business logic
 type TenantService struct {
-	tenantRepo         *repository.TenantRepository
-	userRepo           repository.UserRepositoryInterface
-	permInvalidator    PermissionCacheInvalidator
-	membershipAssigner MembershipAssigner
-	defaultRoleID      uuid.UUID // Default role for new members
+	tenantRepo      *repository.TenantRepository
+	userRepo        repository.UserRepositoryInterface
+	permInvalidator PermissionCacheInvalidator
+	defaultRoleID   uuid.UUID // Default role for new members
 }
 
 // NewTenantService creates a new tenant service
@@ -115,12 +112,6 @@ func NewTenantService(tenantRepo *repository.TenantRepository, userRepo reposito
 // This is optional - if not set, permission cache won't be invalidated on membership changes
 func (s *TenantService) SetPermissionInvalidator(invalidator PermissionCacheInvalidator) {
 	s.permInvalidator = invalidator
-}
-
-// SetMembershipAssigner sets the membership assigner for assigning default tiers
-// This is optional - if not set, new tenants won't get a default membership tier
-func (s *TenantService) SetMembershipAssigner(assigner MembershipAssigner) {
-	s.membershipAssigner = assigner
 }
 
 // invalidatePermissionCache invalidates the permission cache for a user
@@ -162,56 +153,19 @@ func (s *TenantService) CreateTenant(ctx context.Context, req *models.CreateTena
 		tenant.Settings = *req.Settings
 	}
 
-	if err := s.tenantRepo.Create(ctx, tenant); err != nil {
+	// Tenant, owner membership and default tier are created atomically
+	// (T226): a failure leaves nothing behind and does not burn the slug.
+	if err := s.tenantRepo.CreateWithOwner(ctx, tenant, OwnerRoleName, DefaultTierName); err != nil {
 		if errors.Is(err, repository.ErrTenantSlugExists) {
 			return nil, ErrInvalidTenantSlug
 		}
 		return nil, fmt.Errorf("failed to create tenant: %w", err)
 	}
 
-	logging.Info(ctx, "[TENANT] Created tenant", map[string]any{"tenant_id": tenant.ID, "name": tenant.Name, "owner_id": ownerID})
-
-	// Add owner as admin member
-	adminRoleID, _ := uuid.Parse("00000000-0000-0000-0000-000000000002") // admin role
-	now := time.Now()
-	membership := &models.TenantUser{
-		ID:         uuid.New(),
-		TenantID:   tenant.ID,
-		UserID:     ownerID,
-		RoleID:     adminRoleID,
-		AcceptedAt: &now,
-		IsActive:   true,
-	}
-
-	logging.Info(ctx, "[TENANT] Adding owner as member", map[string]any{"membership_id": membership.ID, "tenant_id": membership.TenantID, "user_id": membership.UserID, "role_id": membership.RoleID})
-
-	if err := s.tenantRepo.AddMember(ctx, membership); err != nil {
-		logging.Error(ctx, "[TENANT] Error adding member", map[string]any{"error": err})
-		// Rollback tenant creation
-		_ = s.tenantRepo.Delete(ctx, tenant.ID)
-		return nil, fmt.Errorf("failed to add owner as member: %w", err)
-	}
-
-	logging.Info(ctx, "[TENANT] Successfully added owner as member", nil)
+	logging.Info(ctx, "[TENANT] Created tenant", map[string]any{"tenant_id": tenant.ID, "owner_id": ownerID})
 
 	// Invalidate permission cache for the owner so they get their new permissions
 	s.invalidatePermissionCache(ctx, ownerID)
-
-	// Verify the membership was created
-	belongs, err := s.tenantRepo.UserBelongsToTenant(ctx, ownerID, tenant.ID)
-	if err != nil {
-		logging.Warn(ctx, "[TENANT] Could not verify membership", map[string]any{"error": err})
-	} else {
-		logging.Info(ctx, "[TENANT] Membership verification", map[string]any{"user_belongs_to_tenant": belongs})
-	}
-
-	// Assign default membership tier (Free)
-	if s.membershipAssigner != nil {
-		if err := s.membershipAssigner.AssignDefaultTier(ctx, tenant.ID); err != nil {
-			logging.Warn(ctx, "[TENANT] Could not assign default membership tier", map[string]any{"error": err})
-			// Don't fail tenant creation for this
-		}
-	}
 
 	return tenant, nil
 }

@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -43,6 +45,79 @@ func (r *TenantRepository) Create(ctx context.Context, tenant *models.Tenant) er
 	}
 
 	return r.db.WithContext(ctx).Create(tenant).Error
+}
+
+// CreateWithOwner creates the tenant, its owner's membership (role
+// ownerRoleName) and, when that tier exists, the default subscription
+// (tier defaultTierName) in one transaction (T226). Any failure leaves
+// nothing behind, so a failed signup does not keep the slug.
+func (r *TenantRepository) CreateWithOwner(ctx context.Context, tenant *models.Tenant, ownerRoleName, defaultTierName string) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var count int64
+		if err := tx.Model(&models.Tenant{}).
+			Where("slug = ? AND deleted_at IS NULL", tenant.Slug).
+			Count(&count).Error; err != nil {
+			return fmt.Errorf("failed to check slug uniqueness: %w", err)
+		}
+		if count > 0 {
+			return ErrTenantSlugExists
+		}
+		if err := tx.Create(tenant).Error; err != nil {
+			if isUniqueViolation(err) {
+				return ErrTenantSlugExists // concurrent signup took the slug
+			}
+			return fmt.Errorf("create tenant: %w", err)
+		}
+
+		var role models.Role
+		if err := tx.Where("name = ?", ownerRoleName).First(&role).Error; err != nil {
+			return fmt.Errorf("load owner role %q: %w", ownerRoleName, err)
+		}
+		now := time.Now()
+		if err := tx.Create(&models.TenantUser{
+			ID:         uuid.New(),
+			TenantID:   tenant.ID,
+			UserID:     tenant.OwnerID,
+			RoleID:     role.ID,
+			AcceptedAt: &now,
+			IsActive:   true,
+		}).Error; err != nil {
+			return fmt.Errorf("add owner membership: %w", err)
+		}
+
+		var tier models.MembershipTier
+		err := tx.Where("name = ? AND enabled = ?", defaultTierName, true).First(&tier).Error
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			logging.Warn(ctx, "[TENANT-REPO] Default tier not found, tenant created without a subscription", map[string]any{"tier_name": defaultTierName})
+			return nil
+		}
+		if err != nil {
+			return fmt.Errorf("load default tier: %w", err)
+		}
+		periodEnd := now.AddDate(0, 1, 0)
+		if err := tx.Create(&models.TenantSubscription{
+			ID:                 uuid.New(),
+			TenantID:           tenant.ID,
+			TierID:             tier.ID,
+			Status:             models.MembershipStatusActive,
+			BillingCycle:       models.BillingCycleMonthly,
+			PriceCents:         tier.MonthlyPriceCents,
+			StartedAt:          now,
+			CurrentPeriodStart: now,
+			CurrentPeriodEnd:   &periodEnd,
+		}).Error; err != nil {
+			return fmt.Errorf("create default subscription: %w", err)
+		}
+		return nil
+	})
+}
+
+// isUniqueViolation reports a unique-constraint error (Postgres 23505, or
+// SQLite in tests).
+func isUniqueViolation(err error) bool {
+	msg := err.Error()
+	return strings.Contains(msg, "23505") || strings.Contains(msg, "duplicate key") ||
+		strings.Contains(msg, "UNIQUE constraint failed")
 }
 
 // GetByID retrieves a tenant by ID
