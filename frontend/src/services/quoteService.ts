@@ -103,6 +103,15 @@ class QuoteService {
   }
 
   /**
+   * Revise a sent, viewed, expired or declined quote: back to draft so it
+   * can be edited (only drafts are editable) and sent again.
+   */
+  async reviseQuote(id: string): Promise<Quote> {
+    const response = await api.post<Quote>(`${this.basePath}/${id}/revise`);
+    return response.data;
+  }
+
+  /**
    * Reject a quote
    */
   async rejectQuote(id: string): Promise<Quote> {

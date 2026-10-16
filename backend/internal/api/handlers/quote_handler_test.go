@@ -80,6 +80,11 @@ func (m *MockQuoteService) AcceptQuote(id uuid.UUID) error {
 	return args.Error(0)
 }
 
+func (m *MockQuoteService) ReviseQuote(id uuid.UUID) error {
+	args := m.Called(id)
+	return args.Error(0)
+}
+
 func (m *MockQuoteService) RejectQuote(id uuid.UUID) error {
 	args := m.Called(id)
 	return args.Error(0)

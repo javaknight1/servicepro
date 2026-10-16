@@ -49,6 +49,31 @@ func TestAcceptRejectQuote_OnlyOneWins(t *testing.T) {
 	assert.ErrorIs(t, NewQuoteService(repository.NewQuoteRepository(f.db)).WithContext(f.ctxB).AcceptQuote(created.ID), ErrQuoteNotFound)
 }
 
+// Audit 7.M4: sent quotes were still editable. Only drafts are; a sent
+// quote is revised back to draft first. Accepted quotes can't be revised.
+func TestSentQuote_ReadOnlyUntilRevised(t *testing.T) {
+	f := setupIsolation(t)
+	svc := quoteServiceFor(f)
+	created, err := svc.CreateQuote(quoteRequest(f.custA.ID), f.userA)
+	require.NoError(t, err)
+	require.NoError(t, svc.SendQuote(created.ID))
+
+	_, err = svc.UpdateQuote(created.ID, quoteRequest(f.custA.ID), f.userA)
+	assert.ErrorIs(t, err, ErrQuoteCannotBeEdited)
+
+	require.NoError(t, svc.ReviseQuote(created.ID))
+	got, err := svc.GetQuote(created.ID)
+	require.NoError(t, err)
+	assert.Equal(t, models.QuoteStatusDraft, got.Status)
+	_, err = svc.UpdateQuote(created.ID, quoteRequest(f.custA.ID), f.userA)
+	require.NoError(t, err)
+
+	assert.ErrorIs(t, svc.ReviseQuote(created.ID), ErrQuoteCannotBeRevised, "already a draft")
+	require.NoError(t, svc.SendQuote(created.ID))
+	require.NoError(t, svc.AcceptQuote(created.ID))
+	assert.ErrorIs(t, svc.ReviseQuote(created.ID), ErrQuoteCannotBeRevised, "accepted quotes stay accepted")
+}
+
 // Concurrent accept/decline on Postgres: exactly one succeeds.
 func TestPostgres_AcceptRejectQuote_Concurrent(t *testing.T) {
 	db := setupPostgres(t)

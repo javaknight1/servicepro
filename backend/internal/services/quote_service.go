@@ -29,6 +29,8 @@ var (
 	ErrQuoteCannotBeAccepted = errors.New("quote cannot be accepted")
 	// ErrQuoteCannotBeRejected is returned when trying to reject a non-rejectable quote
 	ErrQuoteCannotBeRejected = errors.New("quote cannot be rejected")
+	// ErrQuoteCannotBeRevised is returned when revising a draft or accepted quote
+	ErrQuoteCannotBeRevised = errors.New("only sent, viewed, expired or declined quotes can be revised")
 )
 
 // QuoteServiceInterface defines the interface for quote service
@@ -54,6 +56,8 @@ type QuoteServiceInterface interface {
 	AcceptQuote(id uuid.UUID) error
 	// RejectQuote marks a quote as rejected
 	RejectQuote(id uuid.UUID) error
+	// ReviseQuote takes a sent/viewed/expired/declined quote back to draft
+	ReviseQuote(id uuid.UUID) error
 	// GetQuotesByCustomer retrieves all quotes for a customer
 	GetQuotesByCustomer(customerID uuid.UUID) ([]models.QuoteResponse, error)
 	// GetQuoteStats retrieves quote statistics
@@ -434,6 +438,21 @@ func (s *QuoteService) RejectQuote(id uuid.UUID) error {
 			return ErrQuoteNotFound
 		}
 		return ErrQuoteCannotBeRejected
+	}
+	return nil
+}
+
+// ReviseQuote takes a sent, viewed, expired or declined quote back to draft
+// so it can be edited (only drafts are editable) and sent again.
+func (s *QuoteService) ReviseQuote(id uuid.UUID) error {
+	if err := s.quoteRepo.MarkAsRevised(id); err != nil {
+		if err.Error() == "quote not found" {
+			return ErrQuoteNotFound
+		}
+		if errors.Is(err, repository.ErrQuoteStatusConflict) {
+			return ErrQuoteCannotBeRevised
+		}
+		return err
 	}
 	return nil
 }

@@ -61,6 +61,11 @@ func SetupQuoteRoutes(router *gin.RouterGroup, cfg *routeconfigs.RouteConfig) {
 			cfg.Middleware.PermMiddleware.RequirePermission(permissions.QuotesApprove),
 			cfg.Handlers.Quote.RejectQuote)
 
+		// Revise (back to draft for editing) - requires "quotes.update"
+		quotes.POST("/:id/revise",
+			cfg.Middleware.PermMiddleware.RequirePermission(permissions.QuotesUpdate),
+			cfg.Handlers.Quote.ReviseQuote)
+
 		// Get quote PDF download URL - requires "quotes.read" permission
 		quotes.GET("/:id/pdf",
 			cfg.Middleware.PermMiddleware.RequirePermission(permissions.QuotesRead),

@@ -31,6 +31,7 @@ vi.mock('@services/quoteService', () => ({
     sendQuote: vi.fn(),
     acceptQuote: vi.fn(),
     rejectQuote: vi.fn(),
+    reviseQuote: vi.fn(),
     getStats: vi.fn(),
     downloadQuotePDF: vi.fn(),
   },
@@ -528,6 +529,39 @@ describe('Quote Workflow Integration', () => {
           expect(quoteService.rejectQuote).toHaveBeenCalledWith('quote-2');
         });
       }
+    });
+
+    it('should keep a sent quote read-only until it is revised', async () => {
+      const user = userEvent.setup({ delay: null });
+      vi.mocked(quoteService.getQuote).mockResolvedValue(mockQuotes[1]); // Sent quote
+      vi.mocked(quoteService.reviseQuote).mockResolvedValue({
+        ...mockQuotes[1],
+        status: 'draft' as const,
+      });
+
+      const { QuoteDetailPage } =
+        await import('../../src/pages/Quotes/QuoteDetailPage');
+
+      render(
+        <MemoryRouter initialEntries={['/quotes/quote-2']}>
+          <Routes>
+            <Route path="/quotes/:id" element={<QuoteDetailPage />} />
+          </Routes>
+        </MemoryRouter>
+      );
+
+      const saveButton = await screen.findByRole('button', {
+        name: /save changes/i,
+      });
+      await waitFor(() => expect(saveButton).toBeDisabled());
+
+      await user.click(screen.getByRole('button', { name: /revise/i }));
+
+      await waitFor(() => {
+        expect(quoteService.reviseQuote).toHaveBeenCalledWith('quote-2');
+      });
+      await waitFor(() => expect(saveButton).toBeEnabled());
+      expect(screen.queryByRole('button', { name: /revise/i })).toBeNull();
     });
   });
 

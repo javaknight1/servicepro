@@ -196,9 +196,21 @@ func (q *Quote) IsValidStatus() bool {
 	return false
 }
 
-// CanEdit checks if the quote can be edited
+// CanEdit checks if the quote can be edited. Only drafts: a sent quote is
+// what the customer saw, so changing it needs an explicit revise (back to
+// draft) and a re-send (audit 7.M4).
 func (q *Quote) CanEdit() bool {
-	return q.Status == QuoteStatusDraft || q.Status == QuoteStatusSent
+	return q.Status == QuoteStatusDraft
+}
+
+// CanRevise reports whether a quote can be taken back to draft for changes:
+// sent, viewed, expired or declined quotes (not accepted ones).
+func (q *Quote) CanRevise() bool {
+	switch q.Status {
+	case QuoteStatusSent, QuoteStatusViewed, QuoteStatusExpired, QuoteStatusDeclined:
+		return true
+	}
+	return false
 }
 
 // CanDelete checks if the quote can be deleted
