@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -317,7 +318,7 @@ func (h *ARAgingHandler) ExportARAgingReport(c *gin.Context) {
 					inv.TotalAmount.String() + "," +
 					inv.AmountPaid.String() + "," +
 					inv.AmountDue.String() + "," +
-					string(rune(inv.DaysOverdue+'0')) + "," +
+					strconv.Itoa(inv.DaysOverdue) + "," +
 					models.GetBucketDisplayName(inv.Bucket) + "," +
 					string(inv.Status) + "\n",
 			)
