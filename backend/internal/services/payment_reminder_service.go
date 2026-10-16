@@ -145,7 +145,7 @@ func (s *PaymentReminderService) ProcessTenantReminders(ctx context.Context, ten
 			continue
 		}
 
-		daysOverdue := int(time.Since(invoice.DueDate).Hours() / 24)
+		daysOverdue := tenantDaysOverdue(tenant, invoice)
 
 		// Only the latest reminder whose threshold has passed is due. Earlier
 		// slots that were never sent (the invoice became overdue before the
@@ -187,6 +187,16 @@ func (s *PaymentReminderService) ProcessTenantReminders(ctx context.Context, ten
 	return result
 }
 
+// tenantDaysOverdue counts whole calendar days past the invoice's due date in
+// the tenant's time zone (T127; was UTC hours / 24).
+func tenantDaysOverdue(tenant *models.Tenant, invoice *models.Invoice) int {
+	days := calendarDaysBetween(invoice.DueDate, time.Now(), loadLocationOrUTC(tenant.Settings.Timezone))
+	if days < 0 {
+		return 0
+	}
+	return days
+}
+
 // staleReminderClaim is how long a "pending" reminder may sit before another
 // run may take it over (the run that claimed it crashed before sending).
 const staleReminderClaim = time.Hour
@@ -204,7 +214,8 @@ func (s *PaymentReminderService) SendReminder(ctx context.Context, tenant *model
 // failed (retry) or its claim is stale. Anything else returns
 // ErrReminderAlreadySent and sends nothing.
 func (s *PaymentReminderService) sendReminder(ctx context.Context, tenant *models.Tenant, invoice *models.Invoice, customer *models.Customer, reminderNumber int, manual bool, channel, recipient, tone string) (*models.PaymentReminder, error) {
-	subject := buildSubject(invoice.InvoiceNumber, tone, int(time.Since(invoice.DueDate).Hours()/24))
+	daysOverdue := tenantDaysOverdue(tenant, invoice)
+	subject := buildSubject(invoice.InvoiceNumber, tone, daysOverdue)
 
 	reminder := &models.PaymentReminder{
 		ID:             uuid.New(),
@@ -259,7 +270,7 @@ func (s *PaymentReminderService) sendReminder(ctx context.Context, tenant *model
 	case "email":
 		sendErr = s.sendEmailReminder(ctx, tenant, invoice, customer, tone, subject, recipient)
 	case "sms":
-		sendErr = s.sendSMSReminder(ctx, invoice, customer, tone, recipient)
+		sendErr = s.sendSMSReminder(ctx, invoice, customer, tone, recipient, daysOverdue)
 	default:
 		sendErr = fmt.Errorf("unsupported reminder channel %q", channel)
 	}
@@ -342,7 +353,7 @@ func (s *PaymentReminderService) SendManualReminder(ctx context.Context, tenantI
 
 	daysOverdue := 0
 	if invoice.DueDate.Before(time.Now()) {
-		daysOverdue = int(time.Since(invoice.DueDate).Hours() / 24)
+		daysOverdue = tenantDaysOverdue(&tenant, &invoice)
 	}
 	tone := determineTone(daysOverdue)
 
@@ -456,7 +467,7 @@ func (s *PaymentReminderService) sendEmailReminder(ctx context.Context, tenant *
 		return fmt.Errorf("email client not configured")
 	}
 
-	htmlBody, textBody := renderReminderEmail(tenant.Name, customer.GetDisplayName(), invoice, tone)
+	htmlBody, textBody := renderReminderEmail(tenant.Name, customer.GetDisplayName(), invoice, tone, tenantDaysOverdue(tenant, invoice))
 
 	msg := emailclient.NewEmailMessage(recipient, subject, htmlBody).
 		WithTextBody(textBody).
@@ -469,12 +480,11 @@ func (s *PaymentReminderService) sendEmailReminder(ctx context.Context, tenant *
 }
 
 // sendSMSReminder sends a reminder via SMS
-func (s *PaymentReminderService) sendSMSReminder(ctx context.Context, invoice *models.Invoice, customer *models.Customer, tone, recipient string) error {
+func (s *PaymentReminderService) sendSMSReminder(ctx context.Context, invoice *models.Invoice, customer *models.Customer, tone, recipient string, daysOverdue int) error {
 	if s.smsClient == nil {
 		return fmt.Errorf("SMS client not configured")
 	}
 
-	daysOverdue := int(time.Since(invoice.DueDate).Hours() / 24)
 	message := buildSMSContent(customer.FirstName, invoice.InvoiceNumber, invoice.AmountDue.StringFixed(2), daysOverdue, tone)
 
 	return s.smsClient.SendNotification(ctx, recipient, message)
@@ -517,14 +527,14 @@ func buildSMSContent(firstName, invoiceNumber, amountDue string, daysOverdue int
 }
 
 // renderReminderEmail renders the payment reminder email HTML and text
-func renderReminderEmail(companyName, customerName string, invoice *models.Invoice, tone string) (string, string) {
+func renderReminderEmail(companyName, customerName string, invoice *models.Invoice, tone string, daysOverdue int) (string, string) {
 	data := map[string]string{
 		"CompanyName":   companyName,
 		"CustomerName":  customerName,
 		"InvoiceNumber": invoice.InvoiceNumber,
 		"AmountDue":     invoice.AmountDue.StringFixed(2),
 		"DueDate":       invoice.DueDate.Format("January 2, 2006"),
-		"DaysOverdue":   fmt.Sprintf("%d", int(time.Since(invoice.DueDate).Hours()/24)),
+		"DaysOverdue":   fmt.Sprintf("%d", daysOverdue),
 		"Tone":          tone,
 	}
 

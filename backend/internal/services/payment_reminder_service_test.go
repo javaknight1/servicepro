@@ -244,3 +244,21 @@ func TestPaymentReminderWorker_StopIsIdempotent(t *testing.T) {
 	w.Stop()
 	assert.NotPanics(t, w.Stop)
 }
+
+// T127: days overdue are whole calendar days in the tenant's time zone, not
+// UTC hours / 24.
+func TestTenantDaysOverdue_UsesTenantTimezone(t *testing.T) {
+	for _, tz := range []string{"Pacific/Auckland", "Pacific/Honolulu", "America/New_York"} {
+		loc, err := time.LoadLocation(tz)
+		require.NoError(t, err)
+		local := time.Now().In(loc)
+		// The due date is a DATE (midnight UTC) seven local days ago.
+		due := time.Date(local.Year(), local.Month(), local.Day(), 0, 0, 0, 0, time.UTC).AddDate(0, 0, -7)
+
+		tenant := &models.Tenant{}
+		tenant.Settings.Timezone = tz
+		assert.Equal(t, 7, tenantDaysOverdue(tenant, &models.Invoice{DueDate: due}), tz)
+	}
+	future := &models.Invoice{DueDate: time.Now().AddDate(0, 0, 3)}
+	assert.Equal(t, 0, tenantDaysOverdue(&models.Tenant{}, future))
+}
