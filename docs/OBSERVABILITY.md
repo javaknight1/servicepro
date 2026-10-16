@@ -41,7 +41,7 @@ The industry recognizes three complementary signals that together give full visi
 | Pillar      | What It Is                                              | What It Answers                          | Tool Examples                      | ServicePro Status  |
 | ----------- | ------------------------------------------------------- | ---------------------------------------- | ---------------------------------- | ------------------ |
 | **Metrics** | Numeric time-series data (counters, gauges, histograms) | "How many? How fast? How much?"          | Prometheus, Datadog, CloudWatch    | Implemented (T005) |
-| **Logs**    | Discrete text events with context                       | "What happened? What was the context?"   | Loki, BetterStack, CloudWatch Logs | Implemented (T006) |
+| **Logs**    | Discrete text events with context                       | "What happened? What was the context?"   | JSON on stdout → Cloud Logging     | Implemented (T006, T126) |
 | **Traces**  | Request flow across services/components                 | "Where did this request spend its time?" | Jaeger, Zipkin, Sentry Tracing     | Planned (T024)     |
 
 Each pillar has different strengths:

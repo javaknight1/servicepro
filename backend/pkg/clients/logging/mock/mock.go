@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"os"
 	"sync"
 	"time"
 
@@ -20,6 +21,23 @@ func init() {
 		}
 		return NewClient(mockCfg, cfg), nil
 	})
+	logging.RegisterProvider(logging.ProviderStdout, func(ctx context.Context, cfg *config.Config) (logging.Client, error) {
+		return NewClient(&Config{PrintToStdout: true, JSONFormat: true}, cfg), nil
+	})
+}
+
+// jsonLine is the stdout JSON shape. "severity", "message" and "time" are the
+// keys Google Cloud Logging maps to the entry's level, text and timestamp.
+type jsonLine struct {
+	Severity string             `json:"severity"`
+	Message  string             `json:"message"`
+	Time     time.Time          `json:"time"`
+	Source   string             `json:"source,omitempty"`
+	Fields   map[string]any     `json:"fields,omitempty"`
+	TraceID  string             `json:"trace_id,omitempty"`
+	SpanID   string             `json:"span_id,omitempty"`
+	Error    *logging.ErrorInfo `json:"error,omitempty"`
+	HTTP     *logging.HTTPInfo  `json:"http,omitempty"`
 }
 
 // Config holds configuration for the mock logging client
@@ -194,8 +212,18 @@ func (c *Client) applyDefaults(entry *logging.LogEntry) {
 
 func (c *Client) printEntry(entry *logging.LogEntry) {
 	if c.config.JSONFormat {
-		data, _ := json.Marshal(entry)
-		log.Println(string(data))
+		severity := entry.Level.String()
+		if entry.Level == logging.LevelFatal {
+			severity = "CRITICAL"
+		}
+		data, err := json.Marshal(jsonLine{
+			Severity: severity, Message: entry.Message, Time: entry.Timestamp, Source: entry.Source,
+			Fields: entry.Fields, TraceID: entry.TraceID, SpanID: entry.SpanID, Error: entry.Error, HTTP: entry.HTTP,
+		})
+		if err != nil {
+			data, _ = json.Marshal(jsonLine{Severity: severity, Message: entry.Message, Time: entry.Timestamp})
+		}
+		_, _ = fmt.Fprintln(os.Stdout, string(data))
 	} else {
 		timestamp := entry.Timestamp.Format(time.RFC3339)
 		level := entry.Level.String()
