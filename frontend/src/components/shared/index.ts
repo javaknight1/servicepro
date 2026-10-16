@@ -16,6 +16,7 @@ export { EmptyState } from './EmptyState';
 export { ErrorState } from './ErrorState';
 export { Avatar } from './Avatar';
 export { ImageCropModal } from './ImageCropModal';
+export { TaxRatePicker } from './TaxRatePicker';
 export {
   DropdownMenu,
   DropdownMenuItem,

@@ -1,7 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { DashboardLayout } from '@components/layout';
-import { Button, Badge, getStatusBadgeVariant } from '@components/shared';
+import {
+  Button,
+  Badge,
+  getStatusBadgeVariant,
+  TaxRatePicker,
+} from '@components/shared';
 import {
   invoiceService,
   Invoice,
@@ -36,6 +41,7 @@ import { trackEvent, AnalyticsEvents } from '@services/analytics';
 import type { Customer } from '@services/customerService';
 import { fetchAllCustomers } from '@services/customerLookup';
 import { paymentTermService } from '@services/paymentTermService';
+import { useTaxRates } from '@/hooks/useTaxRates';
 import {
   ArrowLeft,
   Save,
@@ -57,7 +63,9 @@ interface InvoiceFormData {
   customer_id: string;
   issue_date: string;
   due_date: string;
-  /** Percent ("8.25"); sent as a direct rate fraction. */
+  /** Configured tax rate picked (sent as tax_rate_id); '' = custom rate. */
+  tax_rate_id: string;
+  /** Percent ("8.25"); a custom rate is sent as a direct rate fraction. */
   tax_rate: string;
   notes: string;
   terms_and_conditions: string;
@@ -90,6 +98,7 @@ const initialFormData: InvoiceFormData = {
   customer_id: '',
   issue_date: '',
   due_date: '',
+  tax_rate_id: '',
   tax_rate: '0',
   notes: '',
   terms_and_conditions: '',
@@ -135,6 +144,8 @@ export function InvoiceDetailPage() {
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   // The tax percent as loaded, so an unchanged rate isn't re-sent on save
   const [loadedTaxRate, setLoadedTaxRate] = useState<string | null>(null);
+  const [loadedTaxRateId, setLoadedTaxRateId] = useState('');
+  const { taxRates, loaded: taxRatesLoaded } = useTaxRates();
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [showRefundModal, setShowRefundModal] = useState(false);
@@ -181,12 +192,14 @@ export function InvoiceDetailPage() {
         // Convert the stored rate from decimal (0.07) to percentage (7)
         const taxRatePercent = taxRateToPercent(storedTaxRate(invoice));
         setLoadedTaxRate(taxRatePercent);
+        setLoadedTaxRateId(invoice.tax_rate_id || '');
         setFormData({
           customer_id: invoice.customer_id || '',
           issue_date: invoice.issue_date
             ? invoice.issue_date.split('T')[0]
             : '',
           due_date: invoice.due_date ? invoice.due_date.split('T')[0] : '',
+          tax_rate_id: invoice.tax_rate_id || '',
           tax_rate: taxRatePercent,
           notes: invoice.notes || '',
           terms_and_conditions: invoice.terms_and_conditions || '',
@@ -252,12 +265,33 @@ export function InvoiceDetailPage() {
   }, [id, isNew, loadInvoice]);
 
   // New invoice + tenant default tax rate: leave the rate blank so the API
-  // applies the default (there is no tax-rate endpoint to show its value).
+  // applies the default, then pick it once the tax rates load (T237).
   useEffect(() => {
     if (isNew && defaultTaxRateId) {
       setFormData((prev) => ({ ...prev, tax_rate: '' }));
     }
   }, [isNew, defaultTaxRateId]);
+  useEffect(() => {
+    if (!isNew || !defaultTaxRateId || !taxRatesLoaded) return;
+    const rate = taxRates.find((r) => r.id === defaultTaxRateId);
+    if (!rate) return;
+    setFormData((prev) =>
+      prev.tax_rate_id || prev.tax_rate !== ''
+        ? prev
+        : {
+            ...prev,
+            tax_rate_id: rate.id,
+            tax_rate: taxRateToPercent(rate.rate),
+          }
+    );
+  }, [isNew, defaultTaxRateId, taxRates, taxRatesLoaded]);
+
+  // The picker's rates, plus the invoice's own (it may be inactive now)
+  const invoiceTaxRate = invoice?.tax_rate;
+  const pickerRates =
+    invoiceTaxRate && !taxRates.some((r) => r.id === invoiceTaxRate.id)
+      ? [...taxRates, invoiceTaxRate]
+      : taxRates;
 
   // New invoice + tenant default payment term: due date = issue date + term.
   useEffect(() => {
@@ -287,7 +321,10 @@ export function InvoiceDetailPage() {
 
   // Blank rate on a new invoice: the tenant's default applies on save
   const taxFromDefault =
-    isNew && Boolean(defaultTaxRateId) && formData.tax_rate === '';
+    isNew &&
+    Boolean(defaultTaxRateId) &&
+    !formData.tax_rate_id &&
+    formData.tax_rate === '';
 
   const handleSendReminder = async () => {
     if (!id || isNew) return;
@@ -403,7 +440,10 @@ export function InvoiceDetailPage() {
           customer_id: formData.customer_id,
           issue_date: issueDateISO,
           due_date: dueDateISO,
-          tax_rate: taxFromDefault ? undefined : taxRateDecimal,
+          // A picked rate goes by ID; a typed one as a direct fraction
+          tax_rate_id: formData.tax_rate_id || undefined,
+          tax_rate:
+            formData.tax_rate_id || taxFromDefault ? undefined : taxRateDecimal,
           notes: formData.notes || undefined,
           terms_and_conditions: formData.terms_and_conditions || undefined,
           lines,
@@ -414,11 +454,19 @@ export function InvoiceDetailPage() {
           line_items: lineItems.length,
         });
       } else if (id) {
+        // Unchanged: omit both, so the invoice keeps its rate and tax_rate_id
+        const taxUnchanged =
+          formData.tax_rate_id === loadedTaxRateId &&
+          formData.tax_rate === loadedTaxRate;
         const updateData: UpdateInvoiceRequest = {
           due_date: dueDateISO,
-          // Unchanged: omit it, so the invoice keeps its rate and tax_rate_id
+          tax_rate_id:
+            taxUnchanged || !formData.tax_rate_id
+              ? undefined
+              : formData.tax_rate_id,
+          // A typed rate replaces the configured one (clears tax_rate_id)
           tax_rate:
-            formData.tax_rate === loadedTaxRate ? undefined : taxRateDecimal,
+            taxUnchanged || formData.tax_rate_id ? undefined : taxRateDecimal,
           // Empty strings clear the stored values
           notes: formData.notes,
           terms_and_conditions: formData.terms_and_conditions,
@@ -723,39 +771,27 @@ export function InvoiceDetailPage() {
                 )}
               </div>
 
-              <div>
-                <label
-                  htmlFor="tax_rate"
-                  className="block text-sm font-medium text-neutral-700 mb-1"
-                >
-                  Tax Rate (%)
-                </label>
-                <input
-                  type="number"
-                  id="tax_rate"
-                  name="tax_rate"
-                  value={formData.tax_rate}
-                  onChange={handleChange}
-                  min="0"
-                  max="100"
-                  step="0.01"
-                  placeholder={
-                    isNew && defaultTaxRateId ? 'Default rate' : undefined
-                  }
-                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                />
-                {taxFromDefault && (
-                  <p className="mt-1 text-xs text-neutral-500">
-                    Left blank, your default tax rate applies.
-                  </p>
-                )}
-                {invoice?.tax_rate?.name &&
-                  formData.tax_rate === loadedTaxRate && (
-                    <p className="mt-1 text-xs text-neutral-500">
-                      {invoice.tax_rate.name}
-                    </p>
-                  )}
-              </div>
+              <TaxRatePicker
+                taxRates={pickerRates}
+                taxRateId={formData.tax_rate_id}
+                percent={formData.tax_rate}
+                defaultTaxRateId={defaultTaxRateId}
+                placeholder={
+                  isNew && defaultTaxRateId ? 'Default rate' : undefined
+                }
+                hint={
+                  taxFromDefault
+                    ? 'Left blank, your default tax rate applies.'
+                    : undefined
+                }
+                onChange={({ taxRateId, percent }) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    tax_rate_id: taxRateId,
+                    tax_rate: percent,
+                  }))
+                }
+              />
             </div>
           </div>
 
