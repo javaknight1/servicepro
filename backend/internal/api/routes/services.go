@@ -15,6 +15,7 @@ import (
 	stripeService "github.com/javaknight1/servicepro/backend/internal/services/stripe"
 	"github.com/javaknight1/servicepro/backend/pkg/auth"
 	emailclient "github.com/javaknight1/servicepro/backend/pkg/clients/email"
+	smsclient "github.com/javaknight1/servicepro/backend/pkg/clients/sms"
 	storageclient "github.com/javaknight1/servicepro/backend/pkg/clients/storage"
 )
 
@@ -26,6 +27,7 @@ func SetupServices(
 	cfg *config.Config,
 	emailClient emailclient.Client,
 	storageClient storageclient.Client,
+	smsClient smsclient.Client,
 	jwtManager *auth.JWTManager,
 	permChecker *permissionsSvc.PermissionChecker,
 ) *Services {
@@ -165,7 +167,7 @@ func SetupServices(
 	// Payment reminder service
 	svc.PaymentReminder = services.NewPaymentReminderService(db, &services.PaymentReminderServiceConfig{
 		EmailClient: emailClient,
-		SMSClient:   nil, // SMS client is passed via routes.go Setup, will be set there if needed
+		SMSClient:   smsClient, // nil when no SMS provider is configured: reminders fall back to email
 		FrontendURL: cfg.Server.FrontendURL,
 		BackendURL:  cfg.Server.BackendURL,
 	})

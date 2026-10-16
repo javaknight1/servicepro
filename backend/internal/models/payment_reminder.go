@@ -9,21 +9,24 @@ import (
 
 // PaymentReminder represents a payment reminder sent for an overdue invoice
 type PaymentReminder struct {
-	ID             uuid.UUID      `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
-	TenantID       uuid.UUID      `gorm:"type:uuid;not null" json:"tenant_id"`
-	InvoiceID      uuid.UUID      `gorm:"type:uuid;not null" json:"invoice_id"`
-	CustomerID     uuid.UUID      `gorm:"type:uuid;not null" json:"customer_id"`
-	ReminderNumber int            `gorm:"not null;default:1" json:"reminder_number"`
-	Channel        string         `gorm:"type:notification_channel;not null;default:'email'" json:"channel"`
-	Status         string         `gorm:"type:notification_status;not null;default:'pending'" json:"status"`
-	Tone           string         `gorm:"type:varchar(20);not null;default:'friendly'" json:"tone"`
-	Recipient      string         `gorm:"type:varchar(255);not null" json:"recipient"`
-	Subject        string         `gorm:"type:varchar(500)" json:"subject"`
-	ErrorMessage   *string        `gorm:"type:text" json:"error_message,omitempty"`
-	SentAt         *int64         `gorm:"type:bigint" json:"sent_at,omitempty"`
-	CreatedAt      time.Time      `json:"created_at"`
-	UpdatedAt      time.Time      `json:"updated_at"`
-	DeletedAt      gorm.DeletedAt `json:"deleted_at,omitempty"`
+	ID             uuid.UUID `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
+	TenantID       uuid.UUID `gorm:"type:uuid;not null" json:"tenant_id"`
+	InvoiceID      uuid.UUID `gorm:"type:uuid;not null" json:"invoice_id"`
+	CustomerID     uuid.UUID `gorm:"type:uuid;not null" json:"customer_id"`
+	ReminderNumber int       `gorm:"not null;default:1" json:"reminder_number"`
+	// IsManual separates manually sent reminders (numbered 1, 2, ... on their
+	// own) from the automatic schedule's slots (migration 000010).
+	IsManual     bool           `gorm:"not null" json:"is_manual"`
+	Channel      string         `gorm:"type:notification_channel;not null;default:'email'" json:"channel"`
+	Status       string         `gorm:"type:notification_status;not null;default:'pending'" json:"status"`
+	Tone         string         `gorm:"type:varchar(20);not null;default:'friendly'" json:"tone"`
+	Recipient    string         `gorm:"type:varchar(255);not null" json:"recipient"`
+	Subject      string         `gorm:"type:varchar(500)" json:"subject"`
+	ErrorMessage *string        `gorm:"type:text" json:"error_message,omitempty"`
+	SentAt       *int64         `gorm:"type:bigint" json:"sent_at,omitempty"`
+	CreatedAt    time.Time      `json:"created_at"`
+	UpdatedAt    time.Time      `json:"updated_at"`
+	DeletedAt    gorm.DeletedAt `json:"deleted_at,omitempty"`
 
 	// Relationships
 	Invoice  *Invoice  `gorm:"foreignKey:InvoiceID" json:"invoice,omitempty"`
@@ -42,6 +45,7 @@ type PaymentReminderResponse struct {
 	InvoiceNumber  string    `json:"invoice_number"`
 	CustomerName   string    `json:"customer_name"`
 	ReminderNumber int       `json:"reminder_number"`
+	IsManual       bool      `json:"is_manual"`
 	Channel        string    `json:"channel"`
 	Status         string    `json:"status"`
 	Tone           string    `json:"tone"`
@@ -57,6 +61,7 @@ func (r *PaymentReminder) ToResponse() PaymentReminderResponse {
 		ID:             r.ID,
 		InvoiceID:      r.InvoiceID,
 		ReminderNumber: r.ReminderNumber,
+		IsManual:       r.IsManual,
 		Channel:        r.Channel,
 		Status:         r.Status,
 		Tone:           r.Tone,

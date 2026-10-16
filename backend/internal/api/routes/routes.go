@@ -191,7 +191,7 @@ func setupMetricsEndpoint(router *gin.Engine, metrics metricsclient.Client, cfg 
 func NewRouteConfig(db *gorm.DB, redis *redis.Client, email emailclient.Client, storage storageclient.Client, sms smsclient.Client, analytics analyticsclient.Client, cfg *config.Config) *RouteConfig {
 	repos := SetupRepositories(db)
 	mw := SetupMiddleware(repos, cfg, redis)
-	svc := SetupServices(db, redis, repos, cfg, email, storage, mw.JWTManager, mw.PermChecker)
+	svc := SetupServices(db, redis, repos, cfg, email, storage, sms, mw.JWTManager, mw.PermChecker)
 	handlers := SetupHandlers(cfg, repos, svc, mw)
 
 	// Start payment reminder background worker (RUN_BACKGROUND_WORKERS;
