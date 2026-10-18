@@ -94,13 +94,6 @@ export function CustomerDetailPage() {
   const [recentJobs, setRecentJobs] = useState<Job[]>([]);
   const [isLoadingJobs, setIsLoadingJobs] = useState(false);
 
-  useEffect(() => {
-    if (!isNew && id) {
-      loadCustomer(id);
-      loadRecentJobs(id);
-    }
-  }, [id, isNew]);
-
   const loadCustomer = async (customerId: string) => {
     setIsLoading(true);
     setError(null);
@@ -153,6 +146,13 @@ export function CustomerDetailPage() {
       setIsLoadingJobs(false);
     }
   };
+
+  useEffect(() => {
+    if (!isNew && id) {
+      loadCustomer(id);
+      loadRecentJobs(id);
+    }
+  }, [id, isNew]);
 
   const handleChange = (
     e: React.ChangeEvent<

@@ -26,7 +26,12 @@ export default defineConfig([
   },
   {
     files: ['**/*.{ts,tsx}'],
-    extends: [js.configs.recommended, tseslint.configs.recommended],
+    extends: [
+      js.configs.recommended,
+      tseslint.configs.recommended,
+      // rules-of-hooks, exhaustive-deps + the React Compiler rules
+      reactHooks.configs.flat.recommended,
+    ],
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'module',
@@ -41,7 +46,6 @@ export default defineConfig([
       },
     },
     plugins: {
-      'react-hooks': reactHooks,
       'react-refresh': reactRefreshPlugin,
     },
     rules: {
@@ -52,9 +56,11 @@ export default defineConfig([
       ],
       '@typescript-eslint/no-explicit-any': 'warn',
 
-      // React hooks rules
-      'react-hooks/rules-of-hooks': 'error',
-      'react-hooks/exhaustive-deps': 'warn',
+      // React hooks rules (recommended preset above)
+      // TODO(T164): enable react-hooks/set-state-in-effect — 41 violations in 28 files
+      // (data loading via setState inside useEffect; fix by moving server
+      // state to TanStack Query rather than a sweeping refactor here).
+      'react-hooks/set-state-in-effect': 'off',
 
       // React refresh
       'react-refresh/only-export-components': [

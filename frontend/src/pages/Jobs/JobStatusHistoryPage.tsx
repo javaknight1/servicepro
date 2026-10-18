@@ -29,13 +29,6 @@ export function JobStatusHistoryPage() {
   const [error, setError] = useState<string | null>(null);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
-  useEffect(() => {
-    if (id) {
-      loadData();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, sortOrder]);
-
   const loadData = async () => {
     if (!id) return;
 
@@ -55,6 +48,13 @@ export function JobStatusHistoryPage() {
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (id) {
+      loadData();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, sortOrder]);
 
   const toggleSort = () => {
     setSortOrder((prev) => (prev === 'desc' ? 'asc' : 'desc'));

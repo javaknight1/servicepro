@@ -106,24 +106,6 @@ export function QuoteDetailPage() {
     null
   );
 
-  useEffect(() => {
-    loadCustomers();
-    if (!isNew && id) {
-      loadQuote(id);
-    } else if (isCloning && cloneFromId) {
-      // Load source quote for cloning
-      loadQuoteForCloning(cloneFromId);
-    } else {
-      // Set default valid_until to 30 days from now
-      const defaultDate = new Date();
-      defaultDate.setDate(defaultDate.getDate() + 30);
-      setFormData((prev) => ({
-        ...prev,
-        valid_until: defaultDate.toISOString().split('T')[0],
-      }));
-    }
-  }, [id, isNew, isCloning, cloneFromId]);
-
   // New quote + tenant default tax rate (T127): leave the rate blank so the
   // API applies the default, then pick it once the tax rates load (T237).
   useEffect(() => {
@@ -253,6 +235,24 @@ export function QuoteDetailPage() {
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    loadCustomers();
+    if (!isNew && id) {
+      loadQuote(id);
+    } else if (isCloning && cloneFromId) {
+      // Load source quote for cloning
+      loadQuoteForCloning(cloneFromId);
+    } else {
+      // Set default valid_until to 30 days from now
+      const defaultDate = new Date();
+      defaultDate.setDate(defaultDate.getDate() + 30);
+      setFormData((prev) => ({
+        ...prev,
+        valid_until: defaultDate.toISOString().split('T')[0],
+      }));
+    }
+  }, [id, isNew, isCloning, cloneFromId]);
 
   const handleChange = (
     e: React.ChangeEvent<

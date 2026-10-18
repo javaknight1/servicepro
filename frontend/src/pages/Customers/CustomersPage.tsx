@@ -32,11 +32,6 @@ export function CustomersPage() {
   });
   const [searchQuery, setSearchQuery] = useState('');
 
-  useEffect(() => {
-    loadCustomers();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters]);
-
   const loadCustomers = async () => {
     const requestId = ++requestIdRef.current;
     setIsLoading(true);
@@ -57,6 +52,11 @@ export function CustomersPage() {
       if (requestId === requestIdRef.current) setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    loadCustomers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
