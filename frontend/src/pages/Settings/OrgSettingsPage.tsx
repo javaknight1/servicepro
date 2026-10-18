@@ -220,7 +220,6 @@ export function OrgSettingsPage() {
     if (activeTab === 'notifications' && currentTenant) {
       loadReminderSettings();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, currentTenant]);
 
   const loadReminderSettings = async () => {

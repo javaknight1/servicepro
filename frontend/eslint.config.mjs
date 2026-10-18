@@ -1,10 +1,12 @@
-// ESLint v9+ flat config for React + TypeScript
-import tsParser from '@typescript-eslint/parser';
-import tsPlugin from '@typescript-eslint/eslint-plugin';
-import reactHooksPlugin from 'eslint-plugin-react-hooks';
+// ESLint 10 flat config for React + TypeScript
+import js from '@eslint/js';
+import { defineConfig } from 'eslint/config';
+import globals from 'globals';
+import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefreshPlugin from 'eslint-plugin-react-refresh';
+import tseslint from 'typescript-eslint';
 
-export default [
+export default defineConfig([
   {
     ignores: [
       'node_modules/**',
@@ -24,39 +26,25 @@ export default [
   },
   {
     files: ['**/*.{ts,tsx}'],
+    extends: [js.configs.recommended, tseslint.configs.recommended],
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'module',
-      parser: tsParser,
       parserOptions: {
         ecmaFeatures: {
           jsx: true,
         },
       },
       globals: {
-        window: 'readonly',
-        document: 'readonly',
-        navigator: 'readonly',
-        console: 'readonly',
-        setTimeout: 'readonly',
-        clearTimeout: 'readonly',
-        setInterval: 'readonly',
-        clearInterval: 'readonly',
-        fetch: 'readonly',
-        Promise: 'readonly',
+        ...globals.browser,
         process: 'readonly',
-        React: 'readonly',
       },
     },
     plugins: {
-      '@typescript-eslint': tsPlugin,
-      'react-hooks': reactHooksPlugin,
+      'react-hooks': reactHooks,
       'react-refresh': reactRefreshPlugin,
     },
     rules: {
-      // Disable base rule - TypeScript handles this
-      'no-unused-vars': 'off',
-
       // TypeScript rules
       '@typescript-eslint/no-unused-vars': [
         'warn',
@@ -89,41 +77,27 @@ export default [
       '**/tests/**/*.{ts,tsx}',
       '**/__tests__/**/*.{ts,tsx}',
     ],
+    languageOptions: {
+      globals: globals.node,
+    },
     rules: {
       '@typescript-eslint/no-explicit-any': 'off',
-      '@typescript-eslint/no-unused-vars': [
-        'warn',
-        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
-      ],
       'no-console': 'off',
     },
   },
   {
-    files: ['**/*.{js,jsx}'],
+    files: ['**/*.{js,jsx,mjs,cjs}'],
+    extends: [js.configs.recommended],
     languageOptions: {
       ecmaVersion: 'latest',
-      sourceType: 'module',
       parserOptions: {
         ecmaFeatures: {
           jsx: true,
         },
       },
       globals: {
-        window: 'readonly',
-        document: 'readonly',
-        navigator: 'readonly',
-        console: 'readonly',
-        setTimeout: 'readonly',
-        clearTimeout: 'readonly',
-        setInterval: 'readonly',
-        clearInterval: 'readonly',
-        fetch: 'readonly',
-        Promise: 'readonly',
-        process: 'readonly',
-        require: 'readonly',
-        module: 'readonly',
-        __dirname: 'readonly',
-        Buffer: 'readonly',
+        ...globals.browser,
+        ...globals.node,
       },
     },
     rules: {
@@ -137,4 +111,4 @@ export default [
       'no-var': 'error',
     },
   },
-];
+]);

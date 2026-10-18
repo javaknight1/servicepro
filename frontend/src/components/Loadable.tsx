@@ -208,37 +208,30 @@ export function loadable<P extends object = object>(
   // Track load time
   const startTime = performance.now();
 
-  // Create lazy component with timeout
+  // Create lazy component with timeout (load errors propagate to the error boundary)
   const LazyComponent = lazy(async () => {
-    try {
-      // Create timeout promise if specified
-      const loadPromise = importFn();
+    // Create timeout promise if specified
+    const loadPromise = importFn();
 
-      if (timeout) {
-        const timeoutPromise = new Promise<never>((_, reject) => {
-          setTimeout(
-            () =>
-              reject(
-                new Error(
-                  `Chunk "${chunkName}" load timeout after ${timeout}ms`
-                )
-              ),
-            timeout
-          );
-        });
+    if (timeout) {
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(
+          () =>
+            reject(
+              new Error(`Chunk "${chunkName}" load timeout after ${timeout}ms`)
+            ),
+          timeout
+        );
+      });
 
-        const module = await Promise.race([loadPromise, timeoutPromise]);
-        trackChunkLoad(chunkName, startTime);
-        return module as { default: ComponentType<P> };
-      }
-
-      const module = await loadPromise;
+      const module = await Promise.race([loadPromise, timeoutPromise]);
       trackChunkLoad(chunkName, startTime);
       return module as { default: ComponentType<P> };
-    } catch (error) {
-      // Re-throw for error boundary to catch
-      throw error;
     }
+
+    const module = await loadPromise;
+    trackChunkLoad(chunkName, startTime);
+    return module as { default: ComponentType<P> };
   });
 
   // Create wrapper component
