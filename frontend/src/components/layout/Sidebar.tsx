@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router';
 import { cn } from '@utils/cn';
 import { useSidebarStore } from '@store/sidebarStore';
 import { useTenantStore } from '@store/tenantStore';

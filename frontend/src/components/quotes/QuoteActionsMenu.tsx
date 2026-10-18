@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { Send, Download, Check, X, Copy } from 'lucide-react';
 import { quoteService } from '../../services/quoteService';
 import { getApiErrorInfo, getErrorMessage } from '../../utils/error';

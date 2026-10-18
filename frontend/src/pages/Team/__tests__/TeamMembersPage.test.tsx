@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter } from 'react-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import type { Tenant, TenantMember } from '@/types/tenant';
@@ -149,12 +149,15 @@ describe('TeamMembersPage permissions', () => {
     getMembers.mockResolvedValue([member]);
     renderPage();
 
-    expect(await screen.findByText('tech@example.com')).toBeInTheDocument();
+    // The role-name fallback briefly allows management, so the list loads
+    // twice (React 19 commits the first load before the reload starts):
+    // wait for the settled state rather than the first match.
     await waitFor(() =>
       expect(
         screen.queryByRole('button', { name: /invite member/i })
       ).not.toBeInTheDocument()
     );
+    expect(await screen.findByText('tech@example.com')).toBeInTheDocument();
     expect(screen.queryByTitle('Remove member')).not.toBeInTheDocument();
   });
 

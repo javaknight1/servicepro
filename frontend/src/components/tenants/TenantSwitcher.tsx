@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { Building2, ChevronDown, Check, Plus } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { useTenantStore } from '@/store';
 import type { Tenant } from '@/types/tenant';
 

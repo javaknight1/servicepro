@@ -235,7 +235,7 @@ export function loadable<P extends object = object>(
   });
 
   // Create wrapper component
-  function LoadableComponent(props: P): JSX.Element {
+  function LoadableComponent(props: P): React.JSX.Element {
     const loadingFallback = fallback || <DefaultLoadingSpinner />;
     const delayedFallback =
       delay > 0 ? (

@@ -4,7 +4,7 @@ import {
   useParams,
   useSearchParams,
   useLocation,
-} from 'react-router-dom';
+} from 'react-router';
 import { DashboardLayout } from '@components/layout';
 import { Button } from '@components/shared';
 import {

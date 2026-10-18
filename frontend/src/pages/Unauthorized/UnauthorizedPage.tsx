@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { MainLayout } from '@components/layout';
 import { Button } from '@components/shared';
 import { ShieldAlert, Home, ArrowLeft } from 'lucide-react';

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router';
 import { MainLayout } from '@components/layout';
 import { Button, Card } from '@components/shared';
 import { authApi } from '@services';

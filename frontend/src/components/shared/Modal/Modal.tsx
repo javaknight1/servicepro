@@ -1,5 +1,12 @@
 import { Fragment, ReactNode } from 'react';
-import { Dialog, Transition } from '@headlessui/react';
+import {
+  Description,
+  Dialog,
+  DialogPanel,
+  DialogTitle,
+  Transition,
+  TransitionChild,
+} from '@headlessui/react';
 import { X } from 'lucide-react';
 import { cn } from '@utils/cn';
 
@@ -33,7 +40,7 @@ export function Modal({
   return (
     <Transition appear show={isOpen} as={Fragment}>
       <Dialog as="div" className="relative z-50" onClose={onClose}>
-        <Transition.Child
+        <TransitionChild
           as={Fragment}
           enter="ease-out duration-300"
           enterFrom="opacity-0"
@@ -43,11 +50,11 @@ export function Modal({
           leaveTo="opacity-0"
         >
           <div className="fixed inset-0 bg-black bg-opacity-25" />
-        </Transition.Child>
+        </TransitionChild>
 
         <div className="fixed inset-0 overflow-y-auto">
           <div className="flex min-h-full items-center justify-center p-4 text-center">
-            <Transition.Child
+            <TransitionChild
               as={Fragment}
               enter="ease-out duration-300"
               enterFrom="opacity-0 scale-95"
@@ -56,7 +63,7 @@ export function Modal({
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel
+              <DialogPanel
                 className={cn(
                   'w-full transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all',
                   sizes[size]
@@ -72,23 +79,23 @@ export function Modal({
                 )}
 
                 {title && (
-                  <Dialog.Title
+                  <DialogTitle
                     as="h3"
                     className="text-lg font-medium leading-6 text-neutral-900 mb-2"
                   >
                     {title}
-                  </Dialog.Title>
+                  </DialogTitle>
                 )}
 
                 {description && (
-                  <Dialog.Description className="text-sm text-neutral-500 mb-4">
+                  <Description className="text-sm text-neutral-500 mb-4">
                     {description}
-                  </Dialog.Description>
+                  </Description>
                 )}
 
                 <div className="mt-2">{children}</div>
-              </Dialog.Panel>
-            </Transition.Child>
+              </DialogPanel>
+            </TransitionChild>
           </div>
         </div>
       </Dialog>

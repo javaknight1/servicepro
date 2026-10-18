@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { BrowserRouter, useLocation } from 'react-router-dom';
+import { BrowserRouter, useLocation } from 'react-router';
 import { AppRoutes } from './routes';
 import { StripeProvider } from './providers/StripeProvider';
 import { QueryProvider } from './providers/QueryProvider';

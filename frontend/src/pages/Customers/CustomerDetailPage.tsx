@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router';
 import { DashboardLayout } from '@components/layout';
 import { Button, Badge, getStatusBadgeVariant } from '@components/shared';
 import { customerService } from '@services/customerService';

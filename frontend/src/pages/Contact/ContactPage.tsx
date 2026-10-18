@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { ArrowLeft, Mail } from 'lucide-react';
 import { Button, Input } from '@components/shared';
 import { Footer } from '@components/layout';

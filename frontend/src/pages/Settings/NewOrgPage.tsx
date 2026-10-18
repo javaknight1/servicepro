@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { DashboardLayout } from '@components/layout';
 import { Card, CardContent, Button, Input } from '@components/shared';
 import { useTenantStore } from '@store';

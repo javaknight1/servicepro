@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { History, Copy } from 'lucide-react';
 import { DropdownMenu, DropdownMenuItem } from '../shared/DropdownMenu';
 
