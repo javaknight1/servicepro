@@ -85,13 +85,13 @@ export function ForgotPasswordPage() {
             <CardHeader>
               <Link
                 to="/login"
-                className="inline-flex items-center text-sm text-neutral-600 hover:text-neutral-900 mb-4"
+                className="inline-flex items-center text-sm text-neutral-600 hover:text-neutral-900 mb-5.5"
               >
                 <ArrowLeft className="h-4 w-4 mr-1" />
                 Back to login
               </Link>
               <CardTitle className="text-center">Reset your password</CardTitle>
-              <p className="text-center text-sm text-neutral-600 mt-2">
+              <p className="text-center text-sm text-neutral-600">
                 Enter your email address and we'll send you a link to reset your
                 password.
               </p>

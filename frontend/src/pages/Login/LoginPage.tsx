@@ -80,7 +80,7 @@ export function LoginPage() {
               <CardTitle className="text-center">
                 Sign in to your account
               </CardTitle>
-              <p className="text-center text-sm text-neutral-600 mt-2">
+              <p className="text-center text-sm text-neutral-600">
                 Or{' '}
                 <Link
                   to="/register"
