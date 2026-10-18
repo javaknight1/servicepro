@@ -40,7 +40,7 @@
     "chart.js": "^4.4.1",
     "clsx": "^2.1.0",
     "date-fns": "^3.6.0",
-    "lucide-react": "^0.323.0",
+    "lucide-react": "^1.57.0",
     "posthog-js": "^1.347.2",
     "react": "^18.3.1",
     "react-chartjs-2": "^5.2.0",
