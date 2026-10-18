@@ -235,7 +235,7 @@ const CustomerReportPage: React.FC = () => {
         </div>
 
         {/* Controls */}
-        <div className="flex flex-wrap items-center gap-4 mb-6 p-4 bg-white rounded-lg shadow-sm border border-gray-200">
+        <div className="flex flex-wrap items-center gap-4 mb-6 p-4 bg-white rounded-lg shadow-xs border border-gray-200">
           <DateRangePicker
             startDate={startDate}
             endDate={endDate}
@@ -247,7 +247,7 @@ const CustomerReportPage: React.FC = () => {
             onChange={(e) =>
               setSelectedSegment(e.target.value as CustomerSegment | '')
             }
-            className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-blue-500"
           >
             <option value="">All Segments</option>
             <option value="high_value">High Value</option>
@@ -292,7 +292,7 @@ const CustomerReportPage: React.FC = () => {
             {/* Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
               {/* Total Customers */}
-              <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+              <div className="bg-white p-6 rounded-lg shadow-xs border border-gray-200">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-gray-600">Total Customers</p>
@@ -324,7 +324,7 @@ const CustomerReportPage: React.FC = () => {
               </div>
 
               {/* New Customers */}
-              <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+              <div className="bg-white p-6 rounded-lg shadow-xs border border-gray-200">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-gray-600">New This Period</p>
@@ -342,7 +342,7 @@ const CustomerReportPage: React.FC = () => {
               </div>
 
               {/* At Risk */}
-              <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+              <div className="bg-white p-6 rounded-lg shadow-xs border border-gray-200">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-gray-600">At Risk</p>
@@ -360,7 +360,7 @@ const CustomerReportPage: React.FC = () => {
               </div>
 
               {/* Total Revenue */}
-              <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+              <div className="bg-white p-6 rounded-lg shadow-xs border border-gray-200">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-gray-600">Total Revenue</p>
@@ -383,7 +383,7 @@ const CustomerReportPage: React.FC = () => {
             {/* Charts Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
               {/* Segmentation Pie Chart */}
-              <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+              <div className="bg-white p-6 rounded-lg shadow-xs border border-gray-200">
                 <div className="h-80">
                   {getSegmentChartData() ? (
                     <Doughnut
@@ -399,7 +399,7 @@ const CustomerReportPage: React.FC = () => {
               </div>
 
               {/* Acquisition Trend Line Chart */}
-              <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+              <div className="bg-white p-6 rounded-lg shadow-xs border border-gray-200">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">
                   Customer Acquisition Trend
                 </h3>
@@ -418,7 +418,7 @@ const CustomerReportPage: React.FC = () => {
               </div>
 
               {/* Geography Bar Chart */}
-              <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 lg:col-span-2">
+              <div className="bg-white p-6 rounded-lg shadow-xs border border-gray-200 lg:col-span-2">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">
                   <MapPin className="w-5 h-5 inline mr-2" />
                   Geographic Distribution (Top 10 States)
@@ -449,7 +449,7 @@ const CustomerReportPage: React.FC = () => {
                     {report.segment_breakdown.map((seg) => (
                       <div
                         key={seg.segment}
-                        className="bg-white p-4 rounded-lg shadow-sm border border-gray-200"
+                        className="bg-white p-4 rounded-lg shadow-xs border border-gray-200"
                         style={{
                           borderLeftColor: seg.color,
                           borderLeftWidth: 4,
@@ -474,7 +474,7 @@ const CustomerReportPage: React.FC = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Top Customers Table */}
               {report.top_customers && report.top_customers.length > 0 && (
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+                <div className="bg-white rounded-lg shadow-xs border border-gray-200">
                   <div className="px-6 py-4 border-b border-gray-200">
                     <h2 className="text-lg font-semibold text-gray-900">
                       Top Customers by Revenue
@@ -543,7 +543,7 @@ const CustomerReportPage: React.FC = () => {
               {/* At-Risk Customers Table */}
               {report.at_risk_customers &&
                 report.at_risk_customers.length > 0 && (
-                  <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+                  <div className="bg-white rounded-lg shadow-xs border border-gray-200">
                     <div className="px-6 py-4 border-b border-gray-200 flex items-center gap-2">
                       <AlertTriangle className="w-5 h-5 text-red-500" />
                       <h2 className="text-lg font-semibold text-gray-900">

@@ -35,9 +35,9 @@ export function MembershipTab() {
       <Card variant="elevated" padding="lg">
         <CardContent>
           <div className="animate-pulse space-y-4">
-            <div className="h-8 bg-neutral-200 rounded w-1/3"></div>
-            <div className="h-4 bg-neutral-200 rounded w-1/2"></div>
-            <div className="h-32 bg-neutral-200 rounded"></div>
+            <div className="h-8 bg-neutral-200 rounded-sm w-1/3"></div>
+            <div className="h-4 bg-neutral-200 rounded-sm w-1/2"></div>
+            <div className="h-32 bg-neutral-200 rounded-sm"></div>
           </div>
         </CardContent>
       </Card>

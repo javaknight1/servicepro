@@ -48,7 +48,7 @@ function ProfileDropdown() {
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center justify-center rounded-full hover:ring-2 hover:ring-primary-200 transition-all focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+        className="flex items-center justify-center rounded-full hover:ring-2 hover:ring-primary-200 transition-all focus:outline-hidden focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
         title={displayName}
       >
         <Avatar
@@ -90,7 +90,7 @@ function ProfileDropdown() {
             className="w-full flex items-start px-4 py-2 text-sm text-red-600 hover:bg-red-50 text-left"
             title="Signs you out on every device"
           >
-            <LogOut className="h-4 w-4 mr-3 mt-0.5 flex-shrink-0" />
+            <LogOut className="h-4 w-4 mr-3 mt-0.5 shrink-0" />
             <span>
               Log out
               {/* The API revokes every session (token version bump), not just this browser's. */}

@@ -156,7 +156,7 @@ export function JobFlowModal({ isOpen, onClose }: JobFlowModalProps) {
                 className="flex items-start gap-3 p-3 bg-white rounded-lg border border-neutral-200"
               >
                 <span
-                  className={`px-2 py-0.5 rounded text-xs font-medium border ${info.color}`}
+                  className={`px-2 py-0.5 rounded-sm text-xs font-medium border ${info.color}`}
                 >
                   {info.label}
                 </span>

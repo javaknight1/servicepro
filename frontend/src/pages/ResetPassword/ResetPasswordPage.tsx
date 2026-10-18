@@ -107,7 +107,7 @@ export function ResetPasswordPage() {
           <Card variant="elevated" padding="lg">
             <CardHeader>
               <CardTitle className="text-center">Set new password</CardTitle>
-              <p className="text-center text-sm text-neutral-600 mt-2">
+              <p className="text-center text-sm text-neutral-600">
                 Enter your new password below
               </p>
             </CardHeader>

@@ -50,12 +50,12 @@ export function TierComparisonTable({
                 >
                   <div className="space-y-2">
                     {tier.id === currentTierId && (
-                      <Badge variant="success" className="mb-2">
+                      <Badge variant="success" className="mb-4">
                         Current
                       </Badge>
                     )}
                     {tier.name === 'basic' && tier.id !== currentTierId && (
-                      <Badge variant="info" className="mb-2">
+                      <Badge variant="info" className="mb-4">
                         Popular
                       </Badge>
                     )}

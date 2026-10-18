@@ -231,7 +231,7 @@ export function RegisterPage() {
           <Card variant="elevated" padding="lg">
             <CardHeader>
               <CardTitle className="text-center">Create your account</CardTitle>
-              <p className="text-center text-sm text-neutral-600 mt-2">
+              <p className="text-center text-sm text-neutral-600">
                 Already have an account?{' '}
                 <Link
                   to="/login"
@@ -247,7 +247,7 @@ export function RegisterPage() {
               {invitation && (
                 <div className="mb-6 p-4 bg-primary-50 border border-primary-200 rounded-lg">
                   <div className="flex items-start">
-                    <Building2 className="h-5 w-5 text-primary-600 mt-0.5 mr-3 flex-shrink-0" />
+                    <Building2 className="h-5 w-5 text-primary-600 mt-0.5 mr-3 shrink-0" />
                     <div>
                       <p className="text-sm font-medium text-primary-900">
                         You've been invited to join
@@ -285,7 +285,7 @@ export function RegisterPage() {
                 />
 
                 {invitation && (
-                  <p className="text-xs text-neutral-500 -mt-2">
+                  <p className="text-xs text-neutral-500">
                     This email is linked to your invitation and cannot be
                     changed.
                   </p>
@@ -327,7 +327,7 @@ export function RegisterPage() {
                   {invitation ? 'Create account & join' : 'Create account'}
                 </Button>
 
-                <p className="text-xs text-neutral-500 text-center mt-4">
+                <p className="text-xs text-neutral-500 text-center">
                   By creating an account, you agree to our Terms of Service and
                   Privacy Policy.
                 </p>

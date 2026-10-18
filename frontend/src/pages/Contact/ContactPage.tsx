@@ -72,7 +72,7 @@ export function ContactPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
           {/* Contact Form */}
-          <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-8">
+          <div className="bg-white rounded-lg shadow-xs border border-neutral-200 p-8">
             <h2 className="text-2xl font-bold text-neutral-900 mb-6">
               Send us a message
             </h2>
@@ -141,7 +141,7 @@ export function ContactPage() {
                   required
                   rows={5}
                   placeholder="Tell us more about your question or feedback..."
-                  className="w-full px-3 py-2 border border-neutral-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  className="w-full px-3 py-2 border border-neutral-300 rounded-md shadow-xs focus:outline-hidden focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                 />
               </div>
               <Button type="submit" variant="primary" className="w-full">
@@ -152,7 +152,7 @@ export function ContactPage() {
 
           {/* Contact Information */}
           <div className="space-y-8">
-            <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-8">
+            <div className="bg-white rounded-lg shadow-xs border border-neutral-200 p-8">
               <h2 className="text-2xl font-bold text-neutral-900 mb-6">
                 Get in touch
               </h2>
@@ -186,7 +186,7 @@ function ContactInfo({ icon, title, content, href }: ContactInfoProps) {
 
   return (
     <div className="flex items-start space-x-4">
-      <div className="flex-shrink-0">{icon}</div>
+      <div className="shrink-0">{icon}</div>
       <div>
         <h3 className="text-sm font-medium text-neutral-500">{title}</h3>
         <ContentWrapper

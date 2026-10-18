@@ -276,9 +276,6 @@ export const optimizeDeps = {
 // =============================================================================
 
 export const cssOptions = {
-  // PostCSS config location
-  postcss: './postcss.config.js',
-
   // CSS modules configuration
   modules: {
     // Scoped class name format

@@ -96,7 +96,7 @@ function AddCardModalContent({
   return (
     <div className="space-y-4">
       <div className="flex items-center space-x-3 text-amber-700 bg-amber-50 p-3 rounded-lg">
-        <CreditCard className="h-5 w-5 flex-shrink-0" />
+        <CreditCard className="h-5 w-5 shrink-0" />
         <p className="text-sm">
           A payment method is required for paid plans. Your card will be charged
           at the start of each billing cycle.
@@ -105,7 +105,7 @@ function AddCardModalContent({
 
       {addError && (
         <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-center text-red-700 text-sm">
-          <AlertCircle className="h-4 w-4 mr-2 flex-shrink-0" />
+          <AlertCircle className="h-4 w-4 mr-2 shrink-0" />
           {addError}
         </div>
       )}
@@ -327,7 +327,7 @@ export function ChangeMembershipPage() {
             {/* Legacy Plan Warning */}
             {isLegacyPlan && (
               <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg flex items-start space-x-3">
-                <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
                 <div>
                   <p className="text-amber-800 font-medium">
                     You're on a legacy plan

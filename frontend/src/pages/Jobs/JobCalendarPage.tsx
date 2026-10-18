@@ -185,7 +185,7 @@ export function JobCalendarPage() {
         {/* Error message */}
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center gap-3">
-            <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0" />
+            <AlertCircle className="h-5 w-5 text-red-500 shrink-0" />
             <p className="text-sm text-red-700">{error}</p>
             <button
               onClick={() => loadJobs(currentDate)}
@@ -197,7 +197,7 @@ export function JobCalendarPage() {
         )}
 
         {/* Calendar */}
-        <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-4 overflow-hidden">
+        <div className="bg-white rounded-lg shadow-xs border border-neutral-200 p-4 overflow-hidden">
           <Calendar
             events={events}
             onEventClick={handleEventClick}
@@ -211,7 +211,7 @@ export function JobCalendarPage() {
         </div>
 
         {/* Legend */}
-        <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-4">
+        <div className="bg-white rounded-lg shadow-xs border border-neutral-200 p-4">
           <h3 className="text-sm font-medium text-neutral-700 mb-3">
             Status Legend
           </h3>

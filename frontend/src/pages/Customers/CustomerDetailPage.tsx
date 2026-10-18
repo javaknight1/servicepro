@@ -484,7 +484,7 @@ export function CustomerDetailPage() {
                   type="checkbox"
                   checked={useServiceAddress}
                   onChange={(e) => setUseServiceAddress(e.target.checked)}
-                  className="rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
+                  className="rounded-sm border-neutral-300 text-primary-600 focus:ring-primary-500"
                 />
                 <span className="text-sm text-neutral-600">
                   Different from billing address
@@ -687,7 +687,7 @@ export function CustomerDetailPage() {
                           do_not_email: e.target.checked,
                         }))
                       }
-                      className="rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
+                      className="rounded-sm border-neutral-300 text-primary-600 focus:ring-primary-500"
                     />
                     <span className="text-sm text-neutral-600">Email</span>
                   </label>
@@ -702,7 +702,7 @@ export function CustomerDetailPage() {
                           do_not_call: e.target.checked,
                         }))
                       }
-                      className="rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
+                      className="rounded-sm border-neutral-300 text-primary-600 focus:ring-primary-500"
                     />
                     <span className="text-sm text-neutral-600">Phone</span>
                   </label>
@@ -717,7 +717,7 @@ export function CustomerDetailPage() {
                           do_not_sms: e.target.checked,
                         }))
                       }
-                      className="rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
+                      className="rounded-sm border-neutral-300 text-primary-600 focus:ring-primary-500"
                     />
                     <span className="text-sm text-neutral-600">SMS</span>
                   </label>
@@ -732,7 +732,7 @@ export function CustomerDetailPage() {
                           do_not_mail: e.target.checked,
                         }))
                       }
-                      className="rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
+                      className="rounded-sm border-neutral-300 text-primary-600 focus:ring-primary-500"
                     />
                     <span className="text-sm text-neutral-600">Mail</span>
                   </label>
@@ -751,7 +751,7 @@ export function CustomerDetailPage() {
                         marketing_consent: e.target.checked,
                       }))
                     }
-                    className="rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
+                    className="rounded-sm border-neutral-300 text-primary-600 focus:ring-primary-500"
                   />
                   <span className="text-sm text-neutral-700">
                     Customer has consented to receive marketing communications

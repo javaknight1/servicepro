@@ -208,25 +208,25 @@ export function DashboardPage() {
                 </h3>
                 <ul className="space-y-3">
                   <li className="flex items-start">
-                    <Users className="h-5 w-5 text-primary-600 mr-3 mt-0.5 flex-shrink-0" />
+                    <Users className="h-5 w-5 text-primary-600 mr-3 mt-0.5 shrink-0" />
                     <span className="text-neutral-700">
                       Manage your customer database and track interactions
                     </span>
                   </li>
                   <li className="flex items-start">
-                    <Briefcase className="h-5 w-5 text-primary-600 mr-3 mt-0.5 flex-shrink-0" />
+                    <Briefcase className="h-5 w-5 text-primary-600 mr-3 mt-0.5 shrink-0" />
                     <span className="text-neutral-700">
                       Create and schedule jobs with status tracking
                     </span>
                   </li>
                   <li className="flex items-start">
-                    <FileText className="h-5 w-5 text-primary-600 mr-3 mt-0.5 flex-shrink-0" />
+                    <FileText className="h-5 w-5 text-primary-600 mr-3 mt-0.5 shrink-0" />
                     <span className="text-neutral-700">
                       Generate professional quotes for your services
                     </span>
                   </li>
                   <li className="flex items-start">
-                    <Receipt className="h-5 w-5 text-primary-600 mr-3 mt-0.5 flex-shrink-0" />
+                    <Receipt className="h-5 w-5 text-primary-600 mr-3 mt-0.5 shrink-0" />
                     <span className="text-neutral-700">
                       Send invoices and track payments
                     </span>

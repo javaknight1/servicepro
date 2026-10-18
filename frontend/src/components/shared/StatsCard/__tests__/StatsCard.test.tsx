@@ -165,7 +165,7 @@ describe('StatsCard', () => {
         'border',
         'border-neutral-200',
         'p-6',
-        'shadow-sm'
+        'shadow-xs'
       );
     });
   });

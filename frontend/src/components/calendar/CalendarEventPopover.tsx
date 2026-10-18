@@ -90,7 +90,7 @@ export function CalendarEventPopover({
           <div className="flex items-center gap-2 mb-1">
             <span
               className={cn(
-                'inline-block w-2 h-2 rounded-full flex-shrink-0',
+                'inline-block w-2 h-2 rounded-full shrink-0',
                 statusColor
               )}
             />
@@ -118,7 +118,7 @@ export function CalendarEventPopover({
       <div className="p-4 space-y-3">
         {/* Time */}
         <div className="flex items-center gap-3 text-sm">
-          <Clock className="h-4 w-4 text-neutral-400 flex-shrink-0" />
+          <Clock className="h-4 w-4 text-neutral-400 shrink-0" />
           <span className="text-neutral-700">
             {format(event.start, 'MMM d, yyyy')} &middot;{' '}
             {format(event.start, 'h:mm a')} - {format(event.end, 'h:mm a')}
@@ -128,7 +128,7 @@ export function CalendarEventPopover({
         {/* Customer */}
         {event.customerName && (
           <div className="flex items-center gap-3 text-sm">
-            <User className="h-4 w-4 text-neutral-400 flex-shrink-0" />
+            <User className="h-4 w-4 text-neutral-400 shrink-0" />
             <span className="text-neutral-700">{event.customerName}</span>
           </div>
         )}
@@ -136,7 +136,7 @@ export function CalendarEventPopover({
         {/* Location */}
         {event.location && (
           <div className="flex items-start gap-3 text-sm">
-            <MapPin className="h-4 w-4 text-neutral-400 flex-shrink-0 mt-0.5" />
+            <MapPin className="h-4 w-4 text-neutral-400 shrink-0 mt-0.5" />
             <span className="text-neutral-700">{event.location}</span>
           </div>
         )}
@@ -144,7 +144,7 @@ export function CalendarEventPopover({
         {/* Description */}
         {event.description && (
           <div className="flex items-start gap-3 text-sm">
-            <Briefcase className="h-4 w-4 text-neutral-400 flex-shrink-0 mt-0.5" />
+            <Briefcase className="h-4 w-4 text-neutral-400 shrink-0 mt-0.5" />
             <span className="text-neutral-600 line-clamp-2">
               {event.description}
             </span>

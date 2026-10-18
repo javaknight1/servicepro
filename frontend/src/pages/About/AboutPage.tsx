@@ -97,7 +97,7 @@ export function AboutPage() {
         </div>
 
         {/* CTA Section */}
-        <div className="mt-16 text-center bg-white rounded-lg shadow-sm border border-neutral-200 p-8">
+        <div className="mt-16 text-center bg-white rounded-lg shadow-xs border border-neutral-200 p-8">
           <h2 className="text-2xl font-bold text-neutral-900 mb-4">
             Ready to transform your business?
           </h2>
@@ -124,7 +124,7 @@ interface ValueCardProps {
 
 function ValueCard({ title, description }: ValueCardProps) {
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
+    <div className="bg-white rounded-lg shadow-xs border border-neutral-200 p-6">
       <h3 className="text-lg font-semibold text-neutral-900 mb-2">{title}</h3>
       <p className="text-neutral-600">{description}</p>
     </div>

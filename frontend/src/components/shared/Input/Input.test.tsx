@@ -359,7 +359,7 @@ describe('Input Component', () => {
       render(<Input />);
       const input = screen.getByRole('textbox');
 
-      expect(input).toHaveClass('focus:outline-none');
+      expect(input).toHaveClass('focus:outline-hidden');
       expect(input).toHaveClass('focus:ring-2');
       expect(input).toHaveClass('focus:ring-primary-500');
     });
