@@ -207,7 +207,7 @@ export const optimizeDeps = {
   include: [
     'react',
     'react-dom',
-    'react-router-dom',
+    'react-router',
     '@headlessui/react',
     'lucide-react',
     'clsx',
