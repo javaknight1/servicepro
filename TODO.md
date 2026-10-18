@@ -1,6 +1,6 @@
 # ServicePro — Roadmap
 
-**Last Updated**: 2026-10-16 (TODO reformatted from the P0–P3/sprint layout to League Looper's indexed phase format: Task Index with ID/Phase/Category/Hours, one detailed section per open task, a v1 Launch Gate and Verified Complete. A full audit of the repo (backend security, backend correctness, frontend, infra — stored in `docs/audits/2026-10-16/`) is filed as Phases 1–3 (T102–T152, T223–T226). The stack-convergence plan towards League Looper's stack is Phase 4 (T153–T166). Competitive research (`docs/product/competitive-research-2026-10.md`) became product Phases 5–16, merging the open T027–T101 tasks with new T167–T222. Hosting is deferred: ServicePro stays local-only until the production database decision (T202). Old IDs T001–T101 are kept; T011 never existed. Same day: Phase 3 platform work T139–T152 landed — golang-migrate, /version + schema-aware readiness, internal job endpoints, optional Redis, Cloud Run image, LL-style CI/release/hooks, Cloudflare Worker edge (not deployed); frontend fixes T130–T138; all of Phase 1 security (T102–T117) — tenant isolation plugin, per-tenant authz, invite-only registration, token/login/webhook/CSRF hardening, no known Go vulns; T227 added for the frontend follow-through. Same day: Phase 2 correctness work landed (T118–T129, T223–T239 — money path, numbering, status machines, refunds, quotes, tenant settings, error envelope + request IDs, ~39k lines of dead backend code removed, stricter golangci-lint); follow-ups T241–T244 filed.)
+**Last Updated**: 2026-10-18 (TODO reformatted from the P0–P3/sprint layout to League Looper's indexed phase format: Task Index with ID/Phase/Category/Hours, one detailed section per open task, a v1 Launch Gate and Verified Complete. A full audit of the repo (backend security, backend correctness, frontend, infra — stored in `docs/audits/2026-10-16/`) is filed as Phases 1–3 (T102–T152, T223–T226). The stack-convergence plan towards League Looper's stack is Phase 4 (T153–T166). Competitive research (`docs/product/competitive-research-2026-10.md`) became product Phases 5–16, merging the open T027–T101 tasks with new T167–T222. Hosting is deferred: ServicePro stays local-only until the production database decision (T202). Old IDs T001–T101 are kept; T011 never existed. Same day: Phase 3 platform work T139–T152 landed — golang-migrate, /version + schema-aware readiness, internal job endpoints, optional Redis, Cloud Run image, LL-style CI/release/hooks, Cloudflare Worker edge (not deployed); frontend fixes T130–T138; all of Phase 1 security (T102–T117) — tenant isolation plugin, per-tenant authz, invite-only registration, token/login/webhook/CSRF hardening, no known Go vulns; T227 added for the frontend follow-through. Same day: Phase 2 correctness work landed (T118–T129, T223–T239 — money path, numbering, status machines, refunds, quotes, tenant settings, error envelope + request IDs, ~39k lines of dead backend code removed, stricter golangci-lint); follow-ups T241–T244 filed. 2026-10-18: T231 (org deletion) deferred; Dependabot security-fix PRs enabled; SQLite ruled out for OD-1.)
 
 > **How to read this file.** Every task has an ID (T###). The **Task Index** lists all of them: completed rows
 > (struck through) first by ID, then open rows by Phase → ID. Each open task has exactly one detailed section under
@@ -324,7 +324,7 @@ The minimum subset that must be done before real (paying) customers: **40 tasks,
 | T199     | 13     | Feature        | 6      | One-click full data export (trust promise)                                                            |
 | T200     | 13     | Legal          | 6      | Account/tenant deletion + data retention policy                                                       |
 | T201     | 13     | Legal          | 3      | Privacy/CCPA handling SOP                                                                             |
-| T231     | 13     | Auth           | 1      | Owner decision: may a tenant's owner/admin delete their own organization?                             |
+| T231     | 13     | Auth           | 1      | Owner decision: may a tenant's owner/admin delete their own organization? (Deferred)                  |
 | T202     | 14     | Research       | 1      | Decide production database hosting (OWNER DECISION)                                                   |
 | T203     | 14     | Deploy         | 4      | GCP project + WIF + Artifact Registry + Cloud Run service                                             |
 | T204     | 14     | Deploy         | 2      | Deploy the Worker + DNS for servicepro.sharkfins.xyz                                                  |
@@ -2297,7 +2297,7 @@ Remaining roles, audit logging, MFA, and the export/deletion promises that back 
 - [ ] T199 — One-click full data export (trust promise)
 - [ ] T200 — Account/tenant deletion + data retention policy
 - [ ] T201 — Privacy/CCPA handling SOP
-- [ ] T231 — Owner decision: may a tenant's owner/admin delete their own organization?
+- [~] T231 — Owner decision: may a tenant's owner/admin delete their own organization? (Deferred)
 
 #### T074 — Create Accountant role
 
@@ -2407,15 +2407,11 @@ Remaining roles, audit logging, MFA, and the export/deletion promises that back 
 
 #### T231 — Owner decision: may a tenant's owner/admin delete their own organization?
 
-**Phase**: 13 · **Category**: Auth · **Hours**: 1 · **Status**: Open · **v1 Gate**: No · **Depends on**: T230
+**Phase**: 13 · **Category**: Auth · **Hours**: 1 · **Status**: Deferred · **v1 Gate**: No · **Depends on**: T230
 
 **What it is** — A deliberate rule for who can delete an organization, implemented as a permission grant.
 
-**What it does** — Decide (owner) whether the tenant creator/`admin` role gets `tenants.delete`. If yes: grant it in a new migration + dev seed, and the UI (already gated on the effective permission list from T230) shows the button automatically. Pair with T200's deletion/retention policy (soft delete + export first).
-
-**Why we need it** — Today only the platform `super_admin` has `tenants.delete`, so a business owner can't close their own account — a trust problem once there are paying customers.
-
-**Notes** — Split out of T230 (2026-10-16), which shipped the effective-permissions endpoint and UI gating.
+**Why it's deferred** — Deferred 2026-10-18 (owner): a future feature — few owners want to delete their organization. Until then only `super_admin` can. Revisit when a paying customer asks to close their account, or with T200's deletion/retention work. Split out of T230 (2026-10-16), which shipped the effective-permissions endpoint and UI gating.
 
 ---
 
@@ -2753,10 +2749,11 @@ Validate the beachhead before the Phase 9–10 build-out, then publish positioni
 
 - **OD-1 — Production database hosting** (T202). Separate Supabase Pro org ($25/mo), upgrade the existing org
   (~$45/mo), a schema inside an existing project ($0, shared blast radius), or Neon free (no Supabase Auth). Blocks
-  Phase 14 and T158.
-- **OD-2 — Make the GitHub repo private?** It is **public** and now contains the 2026-10-16 audit (exploit-level
-  detail on unfixed flaws) and the product strategy/pricing docs. At minimum keep the audits out of a public repo
-  until Phase 1 is done.
+  Phase 14 and T158. SQLite was considered and rejected (2026-10-18): the schema relies on Postgres (JSONB, plpgsql
+  triggers, tsvector/pg_trgm search, row locks on the payment path), Cloud Run has no persistent disk for a database
+  file, and T154's RLS backstop and T158's Supabase Auth both need Postgres. Neon free covers the $0 case.
+- **OD-2 — Make the GitHub repo private?** It is **public** and contains the 2026-10-16 audit and the product
+  strategy/pricing docs. The audit's flaws are fixed (Phase 1). Owner, 2026-10-18: leave it public for now.
 - **OD-3 — Redis in production** (T142, T161). Upstash (free tier, TLS) vs moving rate limits, tokens and caches to
   Postgres/in-memory and dropping Redis in production.
 - **OD-4 — Stripe Connect charge model** (T169). Direct charges (tenant is merchant of record and carries dispute
