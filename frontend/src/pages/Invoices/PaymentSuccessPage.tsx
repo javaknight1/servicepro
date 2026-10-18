@@ -41,7 +41,7 @@ export function PaymentSuccessPage() {
           address.
         </p>
 
-        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded mb-6">
+        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-sm mb-6">
           Your invoice has been paid. You can close this window.
         </div>
 

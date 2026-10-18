@@ -35,7 +35,7 @@ export function StatsCard({
   return (
     <div
       className={cn(
-        'bg-white rounded-xl border border-neutral-200 p-6 shadow-sm',
+        'bg-white rounded-xl border border-neutral-200 p-6 shadow-xs',
         className
       )}
     >
@@ -58,7 +58,7 @@ export function StatsCard({
           )}
         </div>
         {icon && (
-          <div className="p-3 bg-primary-100 rounded-lg flex-shrink-0 ml-4">
+          <div className="p-3 bg-primary-100 rounded-lg shrink-0 ml-4">
             {icon}
           </div>
         )}

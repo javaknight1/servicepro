@@ -113,13 +113,13 @@ export function ARAgingReportPage() {
       <DashboardLayout>
         <div className="p-6">
           <div className="animate-pulse">
-            <div className="h-8 bg-gray-200 rounded w-1/4 mb-6" />
+            <div className="h-8 bg-gray-200 rounded-sm w-1/4 mb-6" />
             <div className="grid grid-cols-4 gap-4 mb-8">
               {[...Array(4)].map((_, i) => (
-                <div key={i} className="h-24 bg-gray-200 rounded" />
+                <div key={i} className="h-24 bg-gray-200 rounded-sm" />
               ))}
             </div>
-            <div className="h-64 bg-gray-200 rounded" />
+            <div className="h-64 bg-gray-200 rounded-sm" />
           </div>
         </div>
       </DashboardLayout>
@@ -371,7 +371,7 @@ export function ARAgingReportPage() {
                       {[...Array(5)].map((_, i) => (
                         <div
                           key={i}
-                          className="h-20 bg-gray-100 rounded animate-pulse"
+                          className="h-20 bg-gray-100 rounded-sm animate-pulse"
                         />
                       ))}
                     </div>

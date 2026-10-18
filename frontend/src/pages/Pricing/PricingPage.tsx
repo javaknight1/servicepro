@@ -155,7 +155,7 @@ interface FaqItemProps {
 
 function FaqItem({ question, answer }: FaqItemProps) {
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
+    <div className="bg-white rounded-lg shadow-xs border border-neutral-200 p-6">
       <h3 className="text-lg font-medium text-neutral-900 mb-2">{question}</h3>
       <p className="text-neutral-600">{answer}</p>
     </div>

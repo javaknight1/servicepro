@@ -137,7 +137,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+        className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg shadow-xs hover:bg-gray-50 focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
       >
         <Calendar className="w-4 h-4 text-gray-500" />
         <span className="text-sm text-gray-700">{formatDisplayDate()}</span>
@@ -156,7 +156,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
                 <button
                   key={preset.label}
                   onClick={() => handlePresetClick(preset)}
-                  className="px-3 py-2 text-sm text-gray-700 bg-gray-50 rounded-md hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="px-3 py-2 text-sm text-gray-700 bg-gray-50 rounded-md hover:bg-gray-100 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                 >
                   {preset.label}
                 </button>
@@ -178,7 +178,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
                   type="date"
                   value={customStart}
                   onChange={(e) => setCustomStart(e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
               <div>
@@ -189,13 +189,13 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
                   type="date"
                   value={customEnd}
                   onChange={(e) => setCustomEnd(e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
               <button
                 onClick={handleCustomApply}
                 disabled={!customStart || !customEnd}
-                className="w-full px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-hidden focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Apply Custom Range
               </button>

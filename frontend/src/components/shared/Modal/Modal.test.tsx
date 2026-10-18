@@ -303,7 +303,7 @@ describe('Modal Component', () => {
       );
 
       await waitFor(() => {
-        const overlay = document.querySelector('.bg-black.bg-opacity-25');
+        const overlay = document.querySelector('.bg-black\\/25');
         expect(overlay).toBeInTheDocument();
       });
     });

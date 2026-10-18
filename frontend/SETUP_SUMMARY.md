@@ -164,7 +164,7 @@ The frontend is configured to work with your Go backend:
 
 ### 🎨 Customization
 
-**Colors**: Edit `tailwind.config.js` to change the color palette
+**Colors**: Edit the `@theme` block in `src/index.css` (Tailwind v4 CSS-first config) to change the color palette
 **Typography**: Update `src/theme/typography.ts` for font changes
 **Components**: All components support className prop for overrides
 

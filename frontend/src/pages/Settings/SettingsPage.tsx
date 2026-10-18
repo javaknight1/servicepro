@@ -264,7 +264,7 @@ export function SettingsPage() {
                       </div>
                       <input
                         type="checkbox"
-                        className="h-4 w-4 text-primary-600 rounded"
+                        className="h-4 w-4 text-primary-600 rounded-sm"
                         defaultChecked
                       />
                     </div>
@@ -280,7 +280,7 @@ export function SettingsPage() {
                       </div>
                       <input
                         type="checkbox"
-                        className="h-4 w-4 text-primary-600 rounded"
+                        className="h-4 w-4 text-primary-600 rounded-sm"
                         defaultChecked
                       />
                     </div>
@@ -296,7 +296,7 @@ export function SettingsPage() {
                       </div>
                       <input
                         type="checkbox"
-                        className="h-4 w-4 text-primary-600 rounded"
+                        className="h-4 w-4 text-primary-600 rounded-sm"
                       />
                     </div>
 

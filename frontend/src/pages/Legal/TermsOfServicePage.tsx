@@ -33,7 +33,7 @@ export function TermsOfServicePage() {
 
       {/* Main Content */}
       <main className="flex-1 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-8 md:p-12">
+        <div className="bg-white rounded-lg shadow-xs border border-neutral-200 p-8 md:p-12">
           <h1 className="text-4xl font-bold text-neutral-900 mb-2">
             Terms of Service
           </h1>

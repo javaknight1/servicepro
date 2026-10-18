@@ -105,7 +105,7 @@ function AddCardForm({
 
       {addError && (
         <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-center text-red-700 text-sm">
-          <AlertCircle className="h-4 w-4 mr-2 flex-shrink-0" />
+          <AlertCircle className="h-4 w-4 mr-2 shrink-0" />
           {addError}
         </div>
       )}
@@ -286,7 +286,7 @@ export function BillingSection() {
                   className="flex items-center justify-between p-4 border border-neutral-200 rounded-lg"
                 >
                   <div className="flex items-center space-x-4">
-                    <div className="h-10 w-16 bg-neutral-100 rounded flex items-center justify-center">
+                    <div className="h-10 w-16 bg-neutral-100 rounded-sm flex items-center justify-center">
                       <CreditCard className="h-6 w-6 text-neutral-500" />
                     </div>
                     <div>

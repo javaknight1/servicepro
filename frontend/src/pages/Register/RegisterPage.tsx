@@ -247,7 +247,7 @@ export function RegisterPage() {
               {invitation && (
                 <div className="mb-6 p-4 bg-primary-50 border border-primary-200 rounded-lg">
                   <div className="flex items-start">
-                    <Building2 className="h-5 w-5 text-primary-600 mt-0.5 mr-3 flex-shrink-0" />
+                    <Building2 className="h-5 w-5 text-primary-600 mt-0.5 mr-3 shrink-0" />
                     <div>
                       <p className="text-sm font-medium text-primary-900">
                         You've been invited to join

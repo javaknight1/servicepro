@@ -14,7 +14,7 @@ export function BillingToggle({ value, onChange }: BillingToggleProps) {
           onClick={() => onChange('monthly')}
           className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
             value === 'monthly'
-              ? 'bg-white text-neutral-900 shadow-sm'
+              ? 'bg-white text-neutral-900 shadow-xs'
               : 'text-neutral-600 hover:text-neutral-900'
           }`}
         >
@@ -25,7 +25,7 @@ export function BillingToggle({ value, onChange }: BillingToggleProps) {
           onClick={() => onChange('annual')}
           className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
             value === 'annual'
-              ? 'bg-white text-neutral-900 shadow-sm'
+              ? 'bg-white text-neutral-900 shadow-xs'
               : 'text-neutral-600 hover:text-neutral-900'
           }`}
         >

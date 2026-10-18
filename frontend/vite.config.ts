@@ -1,6 +1,7 @@
 /// <reference types="vitest/config" />
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import tailwindcss from '@tailwindcss/vite';
 import { visualizer } from 'rollup-plugin-visualizer';
 import viteCompression from 'vite-plugin-compression';
 import path from 'path';
@@ -18,6 +19,7 @@ import {
 export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
+    tailwindcss(),
 
     // Bundle analyzer (production only)
     mode === 'production' &&

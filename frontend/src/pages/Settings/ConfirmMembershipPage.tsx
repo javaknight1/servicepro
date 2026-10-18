@@ -92,7 +92,7 @@ function AddCardForm({
 
       {error && (
         <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-center text-red-700 text-sm">
-          <AlertCircle className="h-4 w-4 mr-2 flex-shrink-0" />
+          <AlertCircle className="h-4 w-4 mr-2 shrink-0" />
           {error}
         </div>
       )}
@@ -319,7 +319,7 @@ export function ConfirmMembershipPage() {
         {/* Error Message */}
         {error && (
           <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 flex items-start">
-            <AlertCircle className="h-5 w-5 mr-2 flex-shrink-0 mt-0.5" />
+            <AlertCircle className="h-5 w-5 mr-2 shrink-0 mt-0.5" />
             {error}
           </div>
         )}
@@ -331,19 +331,19 @@ export function ConfirmMembershipPage() {
               <CardTitle className="flex items-center">
                 Plan Summary
                 {preview?.is_upgrade && (
-                  <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                  <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-medium bg-green-100 text-green-800">
                     <TrendingUp className="h-3 w-3 mr-1" />
                     Upgrade
                   </span>
                 )}
                 {preview?.is_downgrade && !preview?.is_cancellation && (
-                  <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">
+                  <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-medium bg-amber-100 text-amber-800">
                     <TrendingDown className="h-3 w-3 mr-1" />
                     Downgrade
                   </span>
                 )}
                 {preview?.is_cancellation && (
-                  <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
+                  <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-medium bg-red-100 text-red-800">
                     Cancellation
                   </span>
                 )}
@@ -371,7 +371,7 @@ export function ConfirmMembershipPage() {
                           key={index}
                           className="p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start text-amber-800 text-sm"
                         >
-                          <AlertTriangle className="h-4 w-4 mr-2 flex-shrink-0 mt-0.5" />
+                          <AlertTriangle className="h-4 w-4 mr-2 shrink-0 mt-0.5" />
                           {warning}
                         </div>
                       ))}
@@ -544,7 +544,7 @@ export function ConfirmMembershipPage() {
                           className="h-4 w-4 text-primary-600 focus:ring-primary-500"
                         />
                         <div className="ml-4 flex items-center">
-                          <div className="h-8 w-12 bg-neutral-100 rounded flex items-center justify-center mr-3">
+                          <div className="h-8 w-12 bg-neutral-100 rounded-sm flex items-center justify-center mr-3">
                             <CreditCard className="h-5 w-5 text-neutral-500" />
                           </div>
                           <div>
@@ -595,7 +595,7 @@ export function ConfirmMembershipPage() {
 
           {/* Security Note */}
           <div className="flex items-start space-x-3 text-sm text-neutral-500">
-            <Shield className="h-5 w-5 flex-shrink-0 mt-0.5" />
+            <Shield className="h-5 w-5 shrink-0 mt-0.5" />
             <p>
               Your payment is secured with 256-bit SSL encryption. We never
               store your full card number on our servers.

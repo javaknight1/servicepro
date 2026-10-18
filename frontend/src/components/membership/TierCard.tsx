@@ -172,9 +172,9 @@ function FeatureItem({ label, value, type, unit }: FeatureItemProps) {
     return (
       <li className="flex items-center">
         {enabled ? (
-          <Check className="h-5 w-5 text-green-500 mr-3 flex-shrink-0" />
+          <Check className="h-5 w-5 text-green-500 mr-3 shrink-0" />
         ) : (
-          <X className="h-5 w-5 text-neutral-300 mr-3 flex-shrink-0" />
+          <X className="h-5 w-5 text-neutral-300 mr-3 shrink-0" />
         )}
         <span className={enabled ? 'text-neutral-700' : 'text-neutral-400'}>
           {label}
@@ -190,7 +190,7 @@ function FeatureItem({ label, value, type, unit }: FeatureItemProps) {
 
   return (
     <li className="flex items-center">
-      <Check className="h-5 w-5 text-green-500 mr-3 flex-shrink-0" />
+      <Check className="h-5 w-5 text-green-500 mr-3 shrink-0" />
       <span className="text-neutral-700">
         <strong>{displayValue}</strong> {label}
       </span>

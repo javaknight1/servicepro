@@ -30,7 +30,7 @@ export function PaymentCancelledPage() {
           Your payment was cancelled. No charges have been made.
         </p>
 
-        <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded mb-6">
+        <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded-sm mb-6">
           The invoice remains unpaid. You can try again using the payment link
           in your email.
         </div>

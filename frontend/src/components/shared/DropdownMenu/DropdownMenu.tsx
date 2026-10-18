@@ -88,7 +88,7 @@ export function DropdownMenu({
       <button
         ref={buttonRef}
         onClick={handleClick}
-        className="p-1 rounded-md hover:bg-neutral-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
+        className="p-1 rounded-md hover:bg-neutral-100 focus:outline-hidden focus:ring-2 focus:ring-primary-500"
         aria-label={buttonLabel}
         aria-expanded={isOpen}
         aria-haspopup="menu"

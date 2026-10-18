@@ -6,7 +6,7 @@ import { JobStatus } from './types';
 export const calendarStyles = {
   container: 'h-full w-full bg-white rounded-lg shadow-lg',
   loadingOverlay:
-    'absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-50',
+    'absolute inset-0 bg-white/75 flex items-center justify-center z-50',
   loadingSpinner:
     'animate-spin h-12 w-12 border-4 border-blue-500 border-t-transparent rounded-full',
 };
@@ -16,7 +16,7 @@ export const calendarStyles = {
  */
 export const getEventStyles = (status: JobStatus): string => {
   const baseStyles =
-    'text-white rounded px-2 py-1 text-sm font-medium transition-all duration-200 cursor-pointer';
+    'text-white rounded-sm px-2 py-1 text-sm font-medium transition-all duration-200 cursor-pointer';
 
   const statusStyles: Record<JobStatus, string> = {
     [JobStatus.SCHEDULED]:
@@ -120,18 +120,18 @@ export const rbcStyles = {
  */
 export const toolbarStyles = {
   container:
-    'flex flex-col sm:flex-row items-center justify-between gap-4 mb-6 p-4 bg-white rounded-lg shadow',
+    'flex flex-col sm:flex-row items-center justify-between gap-4 mb-6 p-4 bg-white rounded-lg shadow-sm',
   navigationGroup: 'flex items-center gap-2',
   navButton:
-    'px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors',
+    'px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors',
   todayButton:
-    'px-6 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors',
+    'px-6 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors',
   label: 'text-lg font-semibold text-gray-900 min-w-[200px] text-center',
   viewGroup: 'flex items-center gap-1 bg-gray-100 rounded-lg p-1',
   viewButton:
-    'px-3 py-1.5 text-sm font-medium text-gray-700 rounded-md hover:bg-white hover:shadow-sm transition-all',
+    'px-3 py-1.5 text-sm font-medium text-gray-700 rounded-md hover:bg-white hover:shadow-xs transition-all',
   viewButtonActive:
-    'px-3 py-1.5 text-sm font-medium text-blue-700 bg-white rounded-md shadow-sm',
+    'px-3 py-1.5 text-sm font-medium text-blue-700 bg-white rounded-md shadow-xs',
 };
 
 /**
@@ -143,7 +143,7 @@ export const eventStyles = {
   jobNumber: 'text-xs opacity-90 truncate',
   location: 'text-xs opacity-75 truncate mt-0.5',
   time: 'text-xs opacity-75',
-  priorityBadge: 'inline-block px-1.5 py-0.5 text-xs font-medium rounded',
+  priorityBadge: 'inline-block px-1.5 py-0.5 text-xs font-medium rounded-sm',
 };
 
 /**
@@ -151,10 +151,10 @@ export const eventStyles = {
  */
 export const skeletonStyles = {
   container: 'animate-pulse space-y-4 p-4',
-  header: 'h-12 bg-gray-200 rounded',
-  row: 'h-24 bg-gray-100 rounded',
+  header: 'h-12 bg-gray-200 rounded-sm',
+  row: 'h-24 bg-gray-100 rounded-sm',
   grid: 'grid grid-cols-7 gap-2',
-  cell: 'h-32 bg-gray-50 rounded',
+  cell: 'h-32 bg-gray-50 rounded-sm',
 };
 
 /**
@@ -167,7 +167,7 @@ export const errorBoundaryStyles = {
   title: 'text-xl font-semibold text-red-900 mb-2',
   message: 'text-red-700 text-center mb-6',
   button:
-    'px-6 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors',
+    'px-6 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-hidden focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors',
 };
 
 /**

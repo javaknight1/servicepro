@@ -314,7 +314,7 @@ const RevenueReportPage: React.FC = () => {
         </div>
 
         {/* Controls */}
-        <div className="flex flex-wrap items-center gap-4 mb-6 p-4 bg-white rounded-lg shadow-sm border border-gray-200">
+        <div className="flex flex-wrap items-center gap-4 mb-6 p-4 bg-white rounded-lg shadow-xs border border-gray-200">
           <DateRangePicker
             startDate={startDate}
             endDate={endDate}
@@ -324,7 +324,7 @@ const RevenueReportPage: React.FC = () => {
           <select
             value={periodType}
             onChange={(e) => setPeriodType(e.target.value as PeriodType)}
-            className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-blue-500"
           >
             <option value="daily">Daily</option>
             <option value="weekly">Weekly</option>
@@ -375,7 +375,7 @@ const RevenueReportPage: React.FC = () => {
             {/* Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
               {/* Total Revenue */}
-              <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+              <div className="bg-white p-6 rounded-lg shadow-xs border border-gray-200">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-gray-600">Total Revenue</p>
@@ -409,7 +409,7 @@ const RevenueReportPage: React.FC = () => {
               </div>
 
               {/* Net Revenue */}
-              <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+              <div className="bg-white p-6 rounded-lg shadow-xs border border-gray-200">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-gray-600">Net Revenue</p>
@@ -427,7 +427,7 @@ const RevenueReportPage: React.FC = () => {
               </div>
 
               {/* Transactions */}
-              <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+              <div className="bg-white p-6 rounded-lg shadow-xs border border-gray-200">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-gray-600">Total Transactions</p>
@@ -445,7 +445,7 @@ const RevenueReportPage: React.FC = () => {
               </div>
 
               {/* Customers */}
-              <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+              <div className="bg-white p-6 rounded-lg shadow-xs border border-gray-200">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-gray-600">Unique Customers</p>
@@ -466,7 +466,7 @@ const RevenueReportPage: React.FC = () => {
             {/* Charts Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
               {/* Revenue Line Chart */}
-              <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+              <div className="bg-white p-6 rounded-lg shadow-xs border border-gray-200">
                 <div className="h-80">
                   {getLineChartData() && (
                     <Line
@@ -478,7 +478,7 @@ const RevenueReportPage: React.FC = () => {
               </div>
 
               {/* Category Pie Chart */}
-              <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+              <div className="bg-white p-6 rounded-lg shadow-xs border border-gray-200">
                 <div className="h-80">
                   {getCategoryChartData() ? (
                     <Doughnut
@@ -494,7 +494,7 @@ const RevenueReportPage: React.FC = () => {
               </div>
 
               {/* Transaction Volume Bar Chart */}
-              <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 lg:col-span-2">
+              <div className="bg-white p-6 rounded-lg shadow-xs border border-gray-200 lg:col-span-2">
                 <div className="h-64">
                   {getTransactionChartData() && (
                     <Bar
@@ -508,7 +508,7 @@ const RevenueReportPage: React.FC = () => {
 
             {/* Top Customers Table */}
             {report.top_customers && report.top_customers.length > 0 && (
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+              <div className="bg-white rounded-lg shadow-xs border border-gray-200">
                 <div className="px-6 py-4 border-b border-gray-200">
                   <h2 className="text-lg font-semibold text-gray-900">
                     Top Customers by Revenue

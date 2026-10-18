@@ -350,13 +350,13 @@ export function CacheManager({ onClearCache }: CacheManagerProps) {
       <div className="flex gap-2">
         <button
           onClick={handleClearExpired}
-          className="px-3 py-1 bg-yellow-500 text-white rounded text-sm"
+          className="px-3 py-1 bg-yellow-500 text-white rounded-sm text-sm"
         >
           Clear Expired
         </button>
         <button
           onClick={handleClearCache}
-          className="px-3 py-1 bg-red-500 text-white rounded text-sm"
+          className="px-3 py-1 bg-red-500 text-white rounded-sm text-sm"
         >
           Clear All
         </button>

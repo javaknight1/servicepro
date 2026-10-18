@@ -502,7 +502,7 @@ export function TeamMembersPage() {
             <select
               value={newMemberRoleId}
               onChange={(e) => setNewMemberRoleId(e.target.value)}
-              className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-primary-500"
               required
             >
               <option value="">Select a role</option>
@@ -558,7 +558,7 @@ export function TeamMembersPage() {
             <select
               value={selectedRoleId}
               onChange={(e) => setSelectedRoleId(e.target.value)}
-              className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-primary-500"
             >
               {roles.map((role) => (
                 <option key={role.id} value={role.id}>

@@ -113,7 +113,7 @@ export function TeamRolesPage() {
 
         {/* Info Banner */}
         <div className="mb-6 flex items-start gap-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <Info className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+          <Info className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
           <div>
             <p className="text-sm text-blue-900 font-medium">System Roles</p>
             <p className="text-sm text-blue-700">
@@ -222,7 +222,7 @@ export function TeamRolesPage() {
                     ([resource, perms]) => (
                       <div key={resource}>
                         <h4 className="text-sm font-semibold text-neutral-900 uppercase tracking-wider mb-3 flex items-center">
-                          <span className="bg-neutral-100 px-2 py-1 rounded">
+                          <span className="bg-neutral-100 px-2 py-1 rounded-sm">
                             {resource.replace(/_/g, ' ')}
                           </span>
                         </h4>
@@ -259,7 +259,7 @@ export function TeamRolesPage() {
                                   </p>
                                 </div>
                                 {isGranted && (
-                                  <Check className="h-5 w-5 text-green-600 flex-shrink-0" />
+                                  <Check className="h-5 w-5 text-green-600 shrink-0" />
                                 )}
                               </div>
                             );

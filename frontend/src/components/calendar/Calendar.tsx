@@ -100,7 +100,7 @@ class CalendarErrorBoundary extends Component<
           </p>
           <button
             onClick={this.handleReset}
-            className="px-6 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors"
+            className="px-6 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-hidden focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors"
           >
             <RefreshCw className="w-4 h-4 inline-block mr-2" />
             Reload Calendar
@@ -118,10 +118,10 @@ class CalendarErrorBoundary extends Component<
  */
 const CalendarSkeleton: React.FC = () => (
   <div className="animate-pulse space-y-4 p-4" data-testid="calendar-skeleton">
-    <div className="h-12 bg-gray-200 rounded" />
+    <div className="h-12 bg-gray-200 rounded-sm" />
     <div className="grid grid-cols-7 gap-2">
       {Array.from({ length: 35 }).map((_, i) => (
-        <div key={i} className="h-32 bg-gray-50 rounded" />
+        <div key={i} className="h-32 bg-gray-50 rounded-sm" />
       ))}
     </div>
   </div>
