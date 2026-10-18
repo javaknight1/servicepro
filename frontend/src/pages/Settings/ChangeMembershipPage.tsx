@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router';
 import { useStripe, useElements, CardElement } from '@stripe/react-stripe-js';
 import { DashboardLayout } from '@components/layout';
 import { Card, CardContent, Button, Modal } from '@components/shared';

@@ -1,4 +1,4 @@
-import { Navigate, Outlet, useSearchParams } from 'react-router-dom';
+import { Navigate, Outlet, useSearchParams } from 'react-router';
 import { useAuthStore } from '@store';
 import { getSafeReturnUrl } from '@/utils/urlSanitizer';
 

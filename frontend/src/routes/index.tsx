@@ -6,7 +6,7 @@
  */
 
 import { useEffect } from 'react';
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router';
 import { ProtectedRoute, PublicRoute } from '@components/layout';
 /* eslint-disable react-refresh/only-export-components */
 import {

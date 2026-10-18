@@ -7,7 +7,7 @@
 
 import React from 'react';
 import { render, RenderOptions, RenderResult } from '@testing-library/react';
-import { MemoryRouter, Routes } from 'react-router-dom';
+import { MemoryRouter, Routes } from 'react-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { vi } from 'vitest';
 import type { User } from '../../src/types';

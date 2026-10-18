@@ -311,7 +311,7 @@ export const chunkConfig = {
 
   // Split configuration for vendor chunks
   vendorGroups: {
-    react: ['react', 'react-dom', 'react-router-dom'],
+    react: ['react', 'react-dom', 'react-router'],
     ui: ['@headlessui/react', 'lucide-react', 'clsx'],
     forms: ['react-hook-form', '@hookform/resolvers', 'zod'],
     data: ['@tanstack/react-query', 'zustand', 'axios'],

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router';
 import { MainLayout } from '@components/layout';
 import { Card, CardContent, Button } from '@components/shared';
 import { useAuthStore } from '@store';
