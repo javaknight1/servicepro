@@ -104,9 +104,27 @@ jobs:
               echo "kind=major" >> "$GITHUB_OUTPUT"
             fi
           else
-            # Title doesn't match the standard pattern (multi-package non-group
-            # PR, etc.). Be conservative.
-            echo "kind=unknown" >> "$GITHUB_OUTPUT"
+            # Multi-package PRs ("Bump esbuild and vite", typical of security
+            # fixes) have no versions in the title. The body lists one line per
+            # direct dependency: "Updates `vite` from 5.4.21 to 8.3.4". Auto-
+            # merge only if every listed update stays on its major.
+            UPDATES=$(gh pr view --repo "$REPO" "$NUMBER" --json body --jq .body \
+              | grep -E '^Updates `[^`]+` from [0-9]' || true)
+            KIND=unknown
+            while read -r line; do
+              [ -z "$line" ] && continue
+              if [[ "$line" =~ from\ ([0-9]+)[^\ ]*\ to\ ([0-9]+) ]]; then
+                if [ "${BASH_REMATCH[1]}" != "${BASH_REMATCH[2]}" ]; then
+                  KIND=major
+                  break
+                fi
+                KIND=patch_or_minor
+              else
+                KIND=unknown
+                break
+              fi
+            done <<<"$UPDATES"
+            echo "kind=$KIND" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Squash-merge
