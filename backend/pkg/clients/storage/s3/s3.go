@@ -58,7 +58,7 @@ type Config struct {
 // Client implements the storage.Client interface using S3-compatible storage
 type Client struct {
 	client    *s3.Client
-	uploader  *manager.Uploader
+	uploader  *manager.Uploader //nolint:staticcheck // SA1019: move to feature/s3/transfermanager (T247)
 	presigner *s3.PresignClient
 	config    *Config
 }
@@ -120,7 +120,7 @@ func NewClient(ctx context.Context, cfg *Config) (*Client, error) {
 	client := s3.NewFromConfig(awsCfg, s3Opts...)
 
 	// Create uploader
-	uploader := manager.NewUploader(client)
+	uploader := manager.NewUploader(client) //nolint:staticcheck // SA1019 (T247)
 
 	// Create presigner
 	presigner := s3.NewPresignClient(client)
@@ -207,7 +207,7 @@ func (c *Client) uploadData(ctx context.Context, data []byte, input *storage.Upl
 	}
 
 	// Perform upload
-	result, err := c.uploader.Upload(ctx, uploadInput)
+	result, err := c.uploader.Upload(ctx, uploadInput) //nolint:staticcheck // SA1019 (T247)
 	if err != nil {
 		return nil, fmt.Errorf("failed to upload to S3: %w", err)
 	}

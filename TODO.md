@@ -1,6 +1,6 @@
 # ServicePro — Roadmap
 
-**Last Updated**: 2026-10-18 (TODO reformatted from the P0–P3/sprint layout to League Looper's indexed phase format: Task Index with ID/Phase/Category/Hours, one detailed section per open task, a v1 Launch Gate and Verified Complete. A full audit of the repo (backend security, backend correctness, frontend, infra — stored in `docs/audits/2026-10-16/`) is filed as Phases 1–3 (T102–T152, T223–T226). The stack-convergence plan towards League Looper's stack is Phase 4 (T153–T166). Competitive research (`docs/product/competitive-research-2026-10.md`) became product Phases 5–16, merging the open T027–T101 tasks with new T167–T222. Hosting is deferred: ServicePro stays local-only until the production database decision (T202). Old IDs T001–T101 are kept; T011 never existed. Same day: Phase 3 platform work T139–T152 landed — golang-migrate, /version + schema-aware readiness, internal job endpoints, optional Redis, Cloud Run image, LL-style CI/release/hooks, Cloudflare Worker edge (not deployed); frontend fixes T130–T138; all of Phase 1 security (T102–T117) — tenant isolation plugin, per-tenant authz, invite-only registration, token/login/webhook/CSRF hardening, no known Go vulns; T227 added for the frontend follow-through. Same day: Phase 2 correctness work landed (T118–T129, T223–T239 — money path, numbering, status machines, refunds, quotes, tenant settings, error envelope + request IDs, ~39k lines of dead backend code removed, stricter golangci-lint); follow-ups T241–T244 filed. 2026-10-18: T231 (org deletion) deferred; Dependabot security-fix PRs enabled; SQLite ruled out for OD-1.)
+**Last Updated**: 2026-10-18 (TODO reformatted from the P0–P3/sprint layout to League Looper's indexed phase format: Task Index with ID/Phase/Category/Hours, one detailed section per open task, a v1 Launch Gate and Verified Complete. A full audit of the repo (backend security, backend correctness, frontend, infra — stored in `docs/audits/2026-10-16/`) is filed as Phases 1–3 (T102–T152, T223–T226). The stack-convergence plan towards League Looper's stack is Phase 4 (T153–T166). Competitive research (`docs/product/competitive-research-2026-10.md`) became product Phases 5–16, merging the open T027–T101 tasks with new T167–T222. Hosting is deferred: ServicePro stays local-only until the production database decision (T202). Old IDs T001–T101 are kept; T011 never existed. Same day: Phase 3 platform work T139–T152 landed — golang-migrate, /version + schema-aware readiness, internal job endpoints, optional Redis, Cloud Run image, LL-style CI/release/hooks, Cloudflare Worker edge (not deployed); frontend fixes T130–T138; all of Phase 1 security (T102–T117) — tenant isolation plugin, per-tenant authz, invite-only registration, token/login/webhook/CSRF hardening, no known Go vulns; T227 added for the frontend follow-through. Same day: Phase 2 correctness work landed (T118–T129, T223–T239 — money path, numbering, status machines, refunds, quotes, tenant settings, error envelope + request IDs, ~39k lines of dead backend code removed, stricter golangci-lint); follow-ups T241–T244 filed. 2026-10-18: T231 (org deletion) deferred; Dependabot security-fix PRs enabled; SQLite ruled out for OD-1; Go deps bumped, T247 filed.)
 
 > **How to read this file.** Every task has an ID (T###). The **Task Index** lists all of them: completed rows
 > (struck through) first by ID, then open rows by Phase → ID. Each open task has exactly one detailed section under
@@ -203,6 +203,7 @@ The minimum subset that must be done before real (paying) customers: **40 tasks,
 | T243     | 2      | Security       | 1      | A/R aging CSV export: proper CSV writer + formula neutralisation                                      |
 | T244     | 2      | Bug            | 3      | Handle the discarded GORM .Error results                                                              |
 | T101     | 3      | Monitoring     | 2      | Upload source maps to Sentry for production builds                                                    |
+| T247     | 3      | Platform       | 3      | Move S3 uploads from the deprecated feature/s3/manager to feature/s3/transfermanager                  |
 | T153     | 4      | Backend        | 24     | Repositories take ctx + tenantID; services stop taking *gorm.DB; transaction manager                  |
 | T154     | 4      | Security       | 12     | Postgres RLS backstop keyed on a per-transaction tenant GUC + isolation tests                         |
 | T155     | 4      | Backend        | 40     | Gin → chi                                                                                             |
@@ -509,9 +510,9 @@ Money flows that are wired but broken (payments don't update invoices, reminders
 
 ---
 
-### Phase 3 — Platform & Delivery (T101, T139, T140, T141, T142, T143, T144, T145, T146, T147, T148, T149, T150, T151, T152, T245)
+### Phase 3 — Platform & Delivery (T101, T139, T140, T141, T142, T143, T144, T145, T146, T147, T148, T149, T150, T151, T152, T245, T247)
 
-Migrations, versioning, CI, the release pipeline and the edge setup — League Looper's delivery pattern applied to ServicePro. From `docs/audits/2026-10-16/infra.md`. Deploy jobs stay skipped until Phase 14 provisions GCP. **1 open tasks, ~2h.** 15 done.
+Migrations, versioning, CI, the release pipeline and the edge setup — League Looper's delivery pattern applied to ServicePro. From `docs/audits/2026-10-16/infra.md`. Deploy jobs stay skipped until Phase 14 provisions GCP. **2 open tasks, ~5h.** 15 done.
 
 - [x] T139 — golang-migrate baseline (000001), cmd/migrate, dev-only startup migrations ✓ (2026-10-16)
 - [x] T140 — /version endpoint and schema-aware readiness ✓ (2026-10-16)
@@ -529,6 +530,7 @@ Migrations, versioning, CI, the release pipeline and the edge setup — League L
 - [x] T152 — Commit generated OpenAPI and TS types for drift gating ✓ (2026-10-16)
 - [x] T245 — Repair the Postgres repository tests so CI go-test is green ✓ (2026-10-16)
 - [ ] T101 — Upload source maps to Sentry for production builds
+- [ ] T247 — Move S3 uploads from the deprecated feature/s3/manager to feature/s3/transfermanager
 
 #### T101 — Upload source maps to Sentry for production builds
 
@@ -541,6 +543,20 @@ Migrations, versioning, CI, the release pipeline and the edge setup — League L
 **Why we need it** — Minified stack traces make frontend errors from real users hard to act on.
 
 **Notes** — Old task (P2, Feb 2026). GlitchTip stays for local dev; production is Sentry SaaS. infra audit §5 CHANGE `vite.config.ts`.
+
+---
+
+#### T247 — Move S3 uploads from the deprecated feature/s3/manager to feature/s3/transfermanager
+
+**Phase**: 3 · **Category**: Platform · **Hours**: 3 · **Status**: Open · **v1 Gate**: No · **Depends on**: none
+
+**What it is** — Object storage uploads use the AWS SDK's supported transfer manager instead of the deprecated `manager.Uploader`.
+
+**What it does** — Replace `manager.NewUploader` / `Uploader.Upload` in `pkg/clients/storage/s3/s3.go` with `feature/s3/transfermanager` (multipart behaviour, part size and concurrency kept), drop the three `//nolint:staticcheck` SA1019 suppressions, and check the upload against MinIO locally (and R2 when T155 lands).
+
+**Why we need it** — aws-sdk-go-v2 deprecated `feature/s3/manager` (discussions/3306); it will stop receiving fixes, and the lint suppressions hide any new deprecations in that file.
+
+**Notes** — Found when applying the 2026-10-18 Go minor/patch group (Dependabot #62).
 
 ---
 
@@ -727,7 +743,7 @@ D2: move to League Looper's stack one strangler step at a time while the app kee
 
 **Why we need it** — React 18 and ESLint 8 are end-of-line; the newer react-hooks rules surface the `exhaustive-deps` suppressions.
 
-**Notes** — frontend audit §4.5, §6. Folds in old P2 "Audit useCallback/useMemo Usage" (the React 19 lint rules cover it).
+**Notes** — frontend audit §4.5, §6. Folds in old P2 "Audit useCallback/useMemo Usage" (the React 19 lint rules cover it). 2026-10-18: also clears the open Dependabot alerts (4 high, 6 moderate: vite ≤6.4.2 and esbuild dev-server, react-router 6 → 7.18, sharp → 0.35.5, postcss-selector-parser via Tailwind v4/T163); their security PRs are majors and wait here for review.
 
 ---
 

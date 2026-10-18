@@ -117,14 +117,17 @@ func (c *Client) CaptureEvent(ctx context.Context, event *errortracking.Event) e
 		hub = sentry.CurrentHub()
 	}
 
+	// sentry-go 0.43 removed Extra; extras travel as contexts (see extraContext).
 	sentryEvent := &sentry.Event{
 		Message:     event.Message,
 		Level:       toSentryLevel(event.Level),
 		Timestamp:   event.Timestamp,
 		Tags:        event.Tags,
-		Extra:       event.Extra,
 		Fingerprint: event.Fingerprint,
 		Transaction: event.Transaction,
+	}
+	if len(event.Extra) > 0 {
+		sentryEvent.Contexts = map[string]sentry.Context{"extra": event.Extra}
 	}
 
 	if event.Error != nil {
@@ -243,7 +246,7 @@ func (c *Client) SetExtra(ctx context.Context, key string, value any) {
 	}
 
 	hub.ConfigureScope(func(scope *sentry.Scope) {
-		scope.SetExtra(key, value)
+		scope.SetContext(key, extraContext(value))
 	})
 }
 
@@ -294,7 +297,7 @@ func (c *Client) RecoverWithContext(ctx context.Context, extra map[string]any) {
 		if extra != nil {
 			hub.ConfigureScope(func(scope *sentry.Scope) {
 				for k, v := range extra {
-					scope.SetExtra(k, v)
+					scope.SetContext(k, extraContext(v))
 				}
 			})
 		}
@@ -333,15 +336,17 @@ func (s *sentryScoreWrapper) RemoveTag(key string) {
 }
 
 func (s *sentryScoreWrapper) SetExtra(key string, value any) {
-	s.scope.SetExtra(key, value)
+	s.scope.SetContext(key, extraContext(value))
 }
 
 func (s *sentryScoreWrapper) SetExtras(extras map[string]any) {
-	s.scope.SetExtras(extras)
+	for k, v := range extras {
+		s.scope.SetContext(k, extraContext(v))
+	}
 }
 
 func (s *sentryScoreWrapper) RemoveExtra(key string) {
-	s.scope.RemoveExtra(key)
+	s.scope.RemoveContext(key)
 }
 
 func (s *sentryScoreWrapper) SetUser(user *errortracking.User) {
@@ -417,3 +422,10 @@ var _ errortracking.Client = (*Client)(nil)
 
 // Ensure sentryScoreWrapper implements errortracking.Scope
 var _ errortracking.Scope = (*sentryScoreWrapper)(nil)
+
+// extraContext wraps an extra value as a Sentry context. sentry-go 0.43 removed
+// Scope.SetExtra; contexts are the closest replacement that keeps arbitrary
+// values visible on the event.
+func extraContext(value any) sentry.Context {
+	return sentry.Context{"value": value}
+}
