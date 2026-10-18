@@ -23,7 +23,7 @@ its **customers** are the people/companies it does work for.
 | Layer    | Today                                                              | Target (TODO Phase 4, League Looper parity)                       |
 | -------- | ------------------------------------------------------------------ | ----------------------------------------------------------------- |
 | API      | Go 1.26, Gin, GORM, Postgres 16, Redis (optional)                  | chi, pgx/sqlc, Postgres RLS backstop, Upstash (if Redis needed)   |
-| Auth     | Own JWT (httpOnly cookies) + bcrypt                                | Open (OD-9): Supabase Auth, Neon Auth, or keep own JWT            |
+| Auth     | Own JWT (httpOnly cookies) + bcrypt                                | Open (OD-9): Neon managed Better Auth (rec.) or Supabase Auth     |
 | Web      | React 18, Vite, TS strict, Zustand + React Query, Tailwind v3      | React 19, TanStack Query for all server state, Tailwind v4 tokens |
 | Email    | Resend / SES / SMTP (Mailpit locally)                              | Resend only                                                       |
 | Storage  | S3-compatible (MinIO locally)                                      | Cloudflare R2                                                     |
