@@ -40,8 +40,10 @@ const config = {
   // in frontend/config/optimization.ts (source of truth)
   chunkBudgets: {
     // React 19's react-dom client is ~22 KB gzipped bigger than 18's (44 -> 66 KB
-    // measured 2026-10-18, T164); no server code is bundled.
-    'vendor-react': 70,
+    // measured 2026-10-18, T164); no server code is bundled. Under Vite 8 the
+    // chunk also holds react-router (+ scheduler): Rolldown can't run the
+    // vendor <-> vendor-react cycle Rollup tolerated, so they moved in (~80 KB).
+    'vendor-react': 85,
     'vendor-ui': 25,
     'vendor-forms': 30,
     'vendor-data': 25,
@@ -50,9 +52,15 @@ const config = {
     'vendor-stripe': 10,
     'vendor-calendar': 50,
     'vendor-table': 10,
-    // Sentry + PostHog, measured at 109 KB on 2026-10-16. Too big for every
-    // page: T246 lazy-loads/trims them and should lower this budget.
-    'vendor-observability': 115,
+    // Sentry + PostHog. The old 115 KB budget (109 KB measured 2026-10-16) was
+    // an artifact of CI building without VITE_SENTRY_DSN: Rollup's parameter
+    // value tracking saw `dsn: ''` and dropped Sentry.init with its tracing +
+    // replay integrations. A Rollup build with a DSN set (as release-deploy
+    // builds) was already 190.6 KB. Rolldown (Vite 8) doesn't do that folding,
+    // so CI now measures the real production chunk: 190.8 KB on 2026-10-18.
+    // Still too big for every page: T246 lazy-loads/trims it and should lower
+    // this budget.
+    'vendor-observability': 195,
     vendor: 60,
     'page-dashboard': 10,
     'page-settings': 20,
@@ -141,10 +149,13 @@ function categorizeFile(filePath) {
  * Extract chunk name from build filename by stripping the hash suffix.
  * e.g. "vendor-react-B6rzUpVc.js" → "vendor-react"
  *      "index-Da3xK9pQ.js" → "index"
+ *      "vendor-date-DghDyF-w.js" → "vendor-date"
+ * Vite's [hash] is 8 base64url characters, so it can itself contain '-' or
+ * '_'; matching only [A-Za-z0-9] left such chunks without their budget.
  */
 function extractChunkName(filename) {
   const base = path.basename(filename, path.extname(filename));
-  const match = base.match(/^(.+)-[A-Za-z0-9]+$/);
+  const match = base.match(/^(.+)-[A-Za-z0-9_-]{8}$/);
   return match ? match[1] : base;
 }
 
