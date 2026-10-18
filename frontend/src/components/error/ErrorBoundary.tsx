@@ -113,7 +113,7 @@ function DefaultErrorFallback({
   error,
   resetError,
   showReportDialog,
-}: DefaultErrorFallbackProps): JSX.Element {
+}: DefaultErrorFallbackProps): React.JSX.Element {
   return (
     <div className="error-boundary-fallback">
       <div className="error-boundary-content">

@@ -329,7 +329,9 @@ export const analyzerConfig = {
 export const performanceBudgets = {
   // Maximum bundle sizes (in KB, gzipped)
   maxBundleSizes: {
-    'vendor-react': 60,
+    // React 19's react-dom client is ~22 KB gzipped bigger than 18's (44 -> 66 KB
+    // measured 2026-10-18, T164); no server code is bundled.
+    'vendor-react': 70,
     'vendor-ui': 25,
     'vendor-forms': 30,
     'vendor-data': 25,
