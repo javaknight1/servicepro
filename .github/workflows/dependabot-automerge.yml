@@ -152,7 +152,7 @@ jobs:
 
       - name: Check out master (post-merge)
         if: steps.merge.outcome == 'success'
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: master
           # Full history + tags: bump-version.sh reads the latest v* tag and the

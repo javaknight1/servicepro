@@ -50,7 +50,7 @@ jobs:
     outputs:
       deploy: ${{ steps.target.outputs.deploy }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Tag must match the VERSION file
         run: |
           set -euo pipefail
@@ -96,7 +96,7 @@ jobs:
       DATABASE_URL: ${{ secrets.MIGRATION_DATABASE_URL }}
       ENV: production
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-go@v6
         with:
           go-version-file: backend/go.mod
@@ -126,7 +126,7 @@ jobs:
       # visible to that step's `if`). Sentry steps skip when it's unset.
       SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           # Full history so the Sentry release step can attach commits.
           fetch-depth: 0
@@ -194,7 +194,7 @@ jobs:
     env:
       SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: actions/setup-node@v6
@@ -272,7 +272,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0 # full history + tags so the notes can diff from the previous tag
       - name: Publish GitHub Release
