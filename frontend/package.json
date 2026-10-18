@@ -39,7 +39,7 @@
     "axios": "^1.20.0",
     "chart.js": "^4.4.1",
     "clsx": "^2.1.0",
-    "date-fns": "^3.6.0",
+    "date-fns": "^4.4.0",
     "lucide-react": "^1.59.0",
     "posthog-js": "^1.347.2",
     "react": "^19.3.1",
