@@ -44,7 +44,7 @@ jobs:
         run: |
           : "${MIGRATION_DATABASE_URL:?MIGRATION_DATABASE_URL secret is not set (see docs/ops/cloud-run-setup.md)}"
       - uses: actions/checkout@v7
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version-file: backend/go.mod
           check-latest: true
