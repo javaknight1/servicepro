@@ -2768,9 +2768,11 @@ Validate the beachhead before the Phase 9–10 build-out, then publish positioni
   after 10 interviews; re-scope Phases 9–10 accordingly.
 - **OD-8 — Cloud Run region.** Follows the Neon project's region (OD-1); pick it when creating the Neon project.
 - **OD-9 — Auth provider now that the database is on Neon** (T158). D2 assumed Supabase Auth bundled with a Supabase
-  database. Options: (a) Supabase Auth alone in a Supabase project (the free tier is full with 2 active projects, so
-  Pro at $25/mo unless a slot frees up); (b) Neon Auth; (c) keep ServicePro's own JWT auth, hardened in Phase 1, and
-  drop T158 (no Google sign-in/MFA for free; T091/T092 come back). Blocks T158 and T092.
+  database. Options: (a) **Neon's managed Better Auth** — included on Neon Free up to 60k MAU, data in our own Neon
+  database (neon.com/pricing, checked 2026-10-18); Fleet decision 3 already names Better Auth as the self-owned
+  option. Recommended. (b) Supabase Auth alone in a Supabase project (the free tier is full with 2 active projects,
+  so Pro at $25/mo unless a slot frees up). (c) keep ServicePro's own JWT auth — ruled out by Fleet decision 3
+  ("never hand-rolled auth"). Blocks T158 and T092.
 
 
 ---
