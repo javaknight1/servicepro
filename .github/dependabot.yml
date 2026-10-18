@@ -56,6 +56,12 @@ updates:
       - 'npm'
     commit-message:
       prefix: 'deps(npm)'
+    ignore:
+      # 0.5 requires ESLint 9; we are on ESLint 8 until T164. A 0.x minor is
+      # semver-breaking but lands in the minor/patch group, where it fails
+      # npm ci and blocks every other bump in the group. Drop this with T164.
+      - dependency-name: 'eslint-plugin-react-refresh'
+        versions: ['>=0.5.0']
     groups:
       npm-minor-and-patch:
         update-types:
