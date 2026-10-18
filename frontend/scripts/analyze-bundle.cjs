@@ -48,9 +48,15 @@ const config = {
     'vendor-stripe': 10,
     'vendor-calendar': 50,
     'vendor-table': 10,
-    // Sentry + PostHog, measured at 109 KB on 2026-10-16. Too big for every
-    // page: T246 lazy-loads/trims them and should lower this budget.
-    'vendor-observability': 115,
+    // Sentry + PostHog. The old 115 KB budget (109 KB measured 2026-10-16) was
+    // an artifact of CI building without VITE_SENTRY_DSN: Rollup's parameter
+    // value tracking saw `dsn: ''` and dropped Sentry.init with its tracing +
+    // replay integrations. A Rollup build with a DSN set (as release-deploy
+    // builds) was already 190.6 KB. Rolldown (Vite 8) doesn't do that folding,
+    // so CI now measures the real production chunk: 190.8 KB on 2026-10-18.
+    // Still too big for every page: T246 lazy-loads/trims it and should lower
+    // this budget.
+    'vendor-observability': 195,
     vendor: 60,
     'page-dashboard': 10,
     'page-settings': 20,

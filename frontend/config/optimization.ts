@@ -13,7 +13,18 @@ import type { BuildOptions, PluginOption } from 'vite';
 
 export const manualChunks = {
   // Core React
-  'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+  // react-router, @remix-run/router and scheduler sit with react-dom /
+  // react-router-dom: left in `vendor` they form a vendor <-> vendor-react
+  // import cycle, which Rolldown's CommonJS wrappers can't evaluate
+  // ("r is not a function" at startup).
+  'vendor-react': [
+    'react',
+    'react-dom',
+    'react-router-dom',
+    'react-router',
+    '@remix-run/router',
+    'scheduler',
+  ],
 
   // UI Framework
   'vendor-ui': ['@headlessui/react', 'lucide-react', 'clsx'],
@@ -50,6 +61,66 @@ export const manualChunks = {
     'date-arithmetic',
   ],
 };
+
+/** True when `id` lives in `node_modules/<pkg>` (exact package boundary, so
+ * 'react' does not match 'react-big-calendar'). */
+function isPackage(id: string, pkg: string): boolean {
+  const needle = `node_modules/${pkg}`;
+  const idx = id.indexOf(needle);
+  if (idx === -1) return false;
+  const after = idx + needle.length;
+  return after >= id.length || id[after] === '/';
+}
+
+/**
+ * Rolldown code-splitting groups (Vite 8), replacing Rollup's function-form
+ * `manualChunks`. Ported as one group per chunk with explicit priorities —
+ * named vendor chunks first, then catch-all `vendor`, then the app feature
+ * chunks — and `includeDependenciesRecursively: false` (set below). With
+ * Rolldown's default (true) a group also captures its dependencies, so e.g.
+ * page-dashboard swallowed the shared app core (api, stores, layout) and the
+ * named vendor chunks drained `vendor`. Chunk names are unchanged and vendor
+ * contents match the Rollup split, so scripts/analyze-bundle.cjs budgets hold.
+ */
+const appChunks: Array<[name: string, test: (id: string) => boolean]> = [
+  ['page-dashboard', (id) => id.includes('/pages/Dashboard')],
+  ['page-settings', (id) => id.includes('/pages/Settings')],
+  [
+    'page-auth',
+    (id) => id.includes('/pages/Login') || id.includes('/pages/Register'),
+  ],
+  ['feature-calendar', (id) => id.includes('/components/calendar')],
+  ['feature-scheduling', (id) => id.includes('/components/scheduling')],
+  ['feature-quotes', (id) => id.includes('/components/quotes')],
+];
+
+const codeSplittingGroups = [
+  ...Object.entries(manualChunks).map(([name, packages]) => ({
+    name,
+    test: (id: string) => packages.some((pkg) => isPackage(id, pkg)),
+    priority: 30,
+  })),
+  {
+    name: 'vendor-workbox',
+    test: (id: string) => id.includes('node_modules') && id.includes('workbox'),
+    priority: 25,
+  },
+  // Everything else from node_modules, plus Rolldown's injected transform
+  // helpers (virtual `\0@oxc-project+runtime/...` ids, e.g. private-field
+  // lowering for safari14). Left unassigned they land in the entry chunk and
+  // vendor chunks would import from the app entry (a chunk cycle).
+  {
+    name: 'vendor',
+    test: (id: string) =>
+      id.includes('node_modules') || id.startsWith('\0@oxc-project+runtime'),
+    priority: 20,
+  },
+  ...appChunks.map(([name, test]) => ({
+    name,
+    test: (id: string) => !id.includes('node_modules') && test(id),
+    priority: 10,
+  })),
+];
 
 // =============================================================================
 // Build Options
@@ -99,54 +170,18 @@ export const buildOptions: BuildOptions = {
     },
   },
 
-  // Rollup options
-  rollupOptions: {
+  // Rolldown options (Vite 8; `rollupOptions` is a deprecated alias)
+  rolldownOptions: {
     output: {
-      // Manual chunk splitting
-      manualChunks: (id: string) => {
-        // Node modules chunking
-        if (id.includes('node_modules')) {
-          // Check against our defined chunks
-          // Use exact boundary matching to avoid 'react' matching 'react-big-calendar'
-          for (const [chunkName, packages] of Object.entries(manualChunks)) {
-            if (
-              packages.some((pkg) => {
-                const idx = id.indexOf(`node_modules/${pkg}`);
-                if (idx === -1) return false;
-                // Ensure exact match: next char must be '/' or end of string
-                const afterPkg = idx + `node_modules/${pkg}`.length;
-                return afterPkg >= id.length || id[afterPkg] === '/';
-              })
-            ) {
-              return chunkName;
-            }
-          }
-
-          // Workbox chunks
-          if (id.includes('workbox')) {
-            return 'vendor-workbox';
-          }
-
-          // Everything else goes to vendor
-          return 'vendor';
-        }
-
-        // Application code splitting by feature
-        if (id.includes('/pages/Dashboard')) return 'page-dashboard';
-        if (id.includes('/pages/Settings')) return 'page-settings';
-        if (id.includes('/pages/Login') || id.includes('/pages/Register')) {
-          return 'page-auth';
-        }
-        if (id.includes('/components/calendar')) return 'feature-calendar';
-        if (id.includes('/components/scheduling')) return 'feature-scheduling';
-        if (id.includes('/components/quotes')) return 'feature-quotes';
-
-        return undefined;
+      // Manual chunk splitting — see codeSplittingGroups
+      codeSplitting: {
+        groups: codeSplittingGroups,
+        includeDependenciesRecursively: false,
       },
 
       // Asset file naming
       assetFileNames: (assetInfo) => {
-        const info = assetInfo.name || '';
+        const info = assetInfo.names[0] || '';
 
         // Fonts
         if (/\.(woff2?|ttf|eot|otf)$/.test(info)) {
@@ -180,8 +215,7 @@ export const buildOptions: BuildOptions = {
       moduleSideEffects: 'no-external',
       // Remove unused exports
       propertyReadSideEffects: false,
-      // Remove unused assignments
-      tryCatchDeoptimization: false,
+      // (Rollup's tryCatchDeoptimization has no Rolldown equivalent)
     },
   },
 
@@ -230,15 +264,10 @@ export const optimizeDeps = {
   // Entry points for dependency scanning
   entries: ['./src/main.tsx', './src/App.tsx'],
 
-  // ESBuild options for pre-bundling
-  esbuildOptions: {
+  // Rolldown options for pre-bundling (Vite 8 replaced esbuildOptions)
+  rolldownOptions: {
     // Target for dependency pre-bundling
-    target: 'es2020',
-
-    // Supported extensions
-    supported: {
-      'top-level-await': true,
-    },
+    transform: { target: 'es2020' },
   },
 };
 

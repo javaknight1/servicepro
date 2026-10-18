@@ -1,4 +1,4 @@
-/// <reference types="vitest" />
+/// <reference types="vitest/config" />
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { visualizer } from 'rollup-plugin-visualizer';
@@ -117,4 +117,13 @@ export default defineConfig(({ mode }) => ({
 
   // CSS configuration
   css: cssOptions,
+
+  // Vite 8 gives a default import from a CommonJS module Node semantics
+  // (`default` = module.exports) because this package is "type": "module".
+  // CJS-only deps such as react-big-calendar/lib/addons/dragAndDrop then break
+  // at runtime in the production build ("L.default is not a function"). Keep
+  // the pre-Vite 8 interop until those imports are audited.
+  legacy: {
+    inconsistentCjsInterop: true,
+  },
 }));
