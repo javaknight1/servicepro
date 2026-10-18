@@ -295,7 +295,7 @@ jobs:
         # CVE-2026-33634: trivy-action tags 0.0.1–0.34.2 were compromised in
         # the March 2026 tag-hijack incident and deleted. 0.35.0 is the first
         # immutable safe release — never pin below it.
-        uses: aquasecurity/trivy-action@0.35.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: servicepro-api:scan
           format: table
