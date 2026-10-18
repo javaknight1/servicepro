@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
+import { z } from 'zod/mini';
 import { MainLayout } from '@components/layout';
 import {
   Button,
@@ -38,8 +38,10 @@ function getLoginErrorMessage(err: unknown): string {
 }
 
 const loginSchema = z.object({
-  email: z.string().email('Invalid email address'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
+  email: z.email('Invalid email address'),
+  password: z
+    .string()
+    .check(z.minLength(8, 'Password must be at least 8 characters')),
 });
 
 type LoginFormData = z.infer<typeof loginSchema>;

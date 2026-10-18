@@ -675,6 +675,48 @@ describe('Authentication Flow Integration', () => {
       ).toBeInTheDocument();
     });
 
+    it('trims whitespace around the invite code before sending it', async () => {
+      const user = userEvent.setup({ delay: null });
+      const mockRegister = vi.fn().mockResolvedValue(undefined);
+      mockRegisterStores(mockRegister);
+
+      render(
+        <MemoryRouter initialEntries={['/register']}>
+          <RegisterPage />
+        </MemoryRouter>
+      );
+      await fillRegistration(user);
+      await user.type(screen.getByLabelText(/invite code/i), '  CODE-7  ');
+      await user.click(screen.getByRole('button', { name: /create account/i }));
+
+      await waitFor(() => {
+        expect(mockRegister).toHaveBeenCalledWith(
+          'newuser@example.com',
+          'SecurePass123!',
+          { invitationToken: undefined, inviteCode: 'CODE-7' }
+        );
+      });
+    });
+
+    it('rejects an invite code longer than 128 characters', async () => {
+      const user = userEvent.setup({ delay: null });
+      const mockRegister = vi.fn();
+      mockRegisterStores(mockRegister);
+
+      render(
+        <MemoryRouter initialEntries={[`/register?invite=${'A'.repeat(129)}`]}>
+          <RegisterPage />
+        </MemoryRouter>
+      );
+      await fillRegistration(user);
+      await user.click(screen.getByRole('button', { name: /create account/i }));
+
+      expect(
+        await screen.findByText('Invite code is too long')
+      ).toBeInTheDocument();
+      expect(mockRegister).not.toHaveBeenCalled();
+    });
+
     it('shows a throttling message on 429', async () => {
       const user = userEvent.setup({ delay: null });
       mockRegisterStores(

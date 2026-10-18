@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
+import { z } from 'zod/mini';
 import { MainLayout } from '@components/layout';
 import {
   Button,
@@ -54,19 +54,21 @@ function getRegisterErrorMessage(err: unknown): string {
 
 const registerSchema = z
   .object({
-    email: z.string().email('Invalid email address'),
-    password: z.string().min(8, 'Password must be at least 8 characters'),
-    confirmPassword: z.string(),
-    inviteCode: z
+    email: z.email('Invalid email address'),
+    password: z
       .string()
-      .trim()
-      .max(128, 'Invite code is too long')
-      .optional(),
+      .check(z.minLength(8, 'Password must be at least 8 characters')),
+    confirmPassword: z.string(),
+    inviteCode: z.optional(
+      z.string().check(z.trim(), z.maxLength(128, 'Invite code is too long'))
+    ),
   })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords don't match",
-    path: ['confirmPassword'],
-  });
+  .check(
+    z.refine((data) => data.password === data.confirmPassword, {
+      error: "Passwords don't match",
+      path: ['confirmPassword'],
+    })
+  );
 
 type RegisterFormData = z.infer<typeof registerSchema>;
 
