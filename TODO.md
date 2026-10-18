@@ -1,6 +1,6 @@
 # ServicePro — Roadmap
 
-**Last Updated**: 2026-10-18 (TODO reformatted from the P0–P3/sprint layout to League Looper's indexed phase format: Task Index with ID/Phase/Category/Hours, one detailed section per open task, a v1 Launch Gate and Verified Complete. A full audit of the repo (backend security, backend correctness, frontend, infra — stored in `docs/audits/2026-10-16/`) is filed as Phases 1–3 (T102–T152, T223–T226). The stack-convergence plan towards League Looper's stack is Phase 4 (T153–T166). Competitive research (`docs/product/competitive-research-2026-10.md`) became product Phases 5–16, merging the open T027–T101 tasks with new T167–T222. Hosting is deferred: ServicePro stays local-only until the production database decision (T202). Old IDs T001–T101 are kept; T011 never existed. Same day: Phase 3 platform work T139–T152 landed — golang-migrate, /version + schema-aware readiness, internal job endpoints, optional Redis, Cloud Run image, LL-style CI/release/hooks, Cloudflare Worker edge (not deployed); frontend fixes T130–T138; all of Phase 1 security (T102–T117) — tenant isolation plugin, per-tenant authz, invite-only registration, token/login/webhook/CSRF hardening, no known Go vulns; T227 added for the frontend follow-through. Same day: Phase 2 correctness work landed (T118–T129, T223–T239 — money path, numbering, status machines, refunds, quotes, tenant settings, error envelope + request IDs, ~39k lines of dead backend code removed, stricter golangci-lint); follow-ups T241–T244 filed. 2026-10-18: T231 (org deletion) deferred; Dependabot security-fix PRs enabled; SQLite ruled out for OD-1; Go deps bumped, T247 filed; T202 decided — Neon; OD-9 (auth provider) opened; T164 frontend majors done (React 19, Router 7, Vite 8, ESLint 10, zod 4, Headless UI 2), T248/T249 filed.)
+**Last Updated**: 2026-10-18 (TODO reformatted from the P0–P3/sprint layout to League Looper's indexed phase format: Task Index with ID/Phase/Category/Hours, one detailed section per open task, a v1 Launch Gate and Verified Complete. A full audit of the repo (backend security, backend correctness, frontend, infra — stored in `docs/audits/2026-10-16/`) is filed as Phases 1–3 (T102–T152, T223–T226). The stack-convergence plan towards League Looper's stack is Phase 4 (T153–T166). Competitive research (`docs/product/competitive-research-2026-10.md`) became product Phases 5–16, merging the open T027–T101 tasks with new T167–T222. Hosting is deferred: ServicePro stays local-only until the production database decision (T202). Old IDs T001–T101 are kept; T011 never existed. Same day: Phase 3 platform work T139–T152 landed — golang-migrate, /version + schema-aware readiness, internal job endpoints, optional Redis, Cloud Run image, LL-style CI/release/hooks, Cloudflare Worker edge (not deployed); frontend fixes T130–T138; all of Phase 1 security (T102–T117) — tenant isolation plugin, per-tenant authz, invite-only registration, token/login/webhook/CSRF hardening, no known Go vulns; T227 added for the frontend follow-through. Same day: Phase 2 correctness work landed (T118–T129, T223–T239 — money path, numbering, status machines, refunds, quotes, tenant settings, error envelope + request IDs, ~39k lines of dead backend code removed, stricter golangci-lint); follow-ups T241–T244 filed. 2026-10-18: T231 (org deletion) deferred; Dependabot security-fix PRs enabled; SQLite ruled out for OD-1; Go deps bumped, T247 filed; T202 decided — Neon; OD-9 (auth provider) opened; T164 frontend majors done (React 19, Router 7, Vite 8, ESLint 10, zod 4, Headless UI 2), T248/T249 filed; Tailwind 4 engine landed (T163 tokens + dark mode remain); 0 open Dependabot alerts.)
 
 > **How to read this file.** Every task has an ID (T###). The **Task Index** lists all of them: completed rows
 > (struck through) first by ID, then open rows by Phase → ID. Each open task has exactly one detailed section under
@@ -217,7 +217,7 @@ The minimum subset that must be done before real (paying) customers: **39 tasks,
 | T160     | 4      | Infra          | 4      | Storage → Cloudflare R2 (fix presign host rewrite)                                                    |
 | T161     | 4      | Infra          | 4      | Production Redis: Upstash for rate limits/lockout/cache, or move them to Postgres                     |
 | T162     | 4      | Frontend       | 48     | Frontend server state → TanStack Query v5 (~26 pages)                                                 |
-| T163     | 4      | Frontend       | 40     | Tailwind v4 + semantic theme tokens + dark mode                                                       |
+| T163     | 4      | Frontend       | 32     | Tailwind v4 + semantic theme tokens + dark mode                                                       |
 | T165     | 4      | Monitoring     | 4      | Better Stack uptime/status + PostHog server-side events parity                                        |
 | T166     | 4      | Research       | 2      | Decide money representation (decimal vs integer cents) before the pgx port                            |
 | T248     | 4      | Monitoring     | 3      | Upgrade @sentry/react to 11 with an explicit data-collection config                                   |
@@ -565,7 +565,7 @@ Migrations, versioning, CI, the release pipeline and the edge setup — League L
 
 ### Phase 4 — Stack Convergence (LL parity; incremental) (T153, T154, T155, T156, T157, T158, T159, T160, T161, T162, T163, T164, T165, T166, T248, T249)
 
-D2: move to League Looper's stack one strangler step at a time while the app keeps working. Gating subset: the repository/tenant boundary, RLS, Supabase Auth, Resend, R2 and production Redis must be on the target stack before real customers; the chi and pgx ports are not gating. **15 open tasks, ~365h.** 1 done.
+D2: move to League Looper's stack one strangler step at a time while the app keeps working. Gating subset: the repository/tenant boundary, RLS, Supabase Auth, Resend, R2 and production Redis must be on the target stack before real customers; the chi and pgx ports are not gating. **15 open tasks, ~357h.** 1 done.
 
 - [x] T164 — React 19, React Router 7, Vite major, ESLint 9, Headless UI 2 ✓ (2026-10-18)
 - [ ] T153 — Repositories take ctx + tenantID; services stop taking *gorm.DB; transaction manager
@@ -726,7 +726,7 @@ D2: move to League Looper's stack one strangler step at a time while the app kee
 
 #### T163 — Tailwind v4 + semantic theme tokens + dark mode
 
-**Phase**: 4 · **Category**: Frontend · **Hours**: 40 · **Status**: Open · **v1 Gate**: No · **Depends on**: T137, T164
+**Phase**: 4 · **Category**: Frontend · **Hours**: 32 · **Status**: Open · **v1 Gate**: No · **Depends on**: T137, T164
 
 **What it is** — Styling uses Tailwind v4 with ~15 semantic CSS-variable tokens defined in one file, switching light/dark from `prefers-color-scheme` or `[data-theme]`.
 
@@ -734,7 +734,7 @@ D2: move to League Looper's stack one strangler step at a time while the app kee
 
 **Why we need it** — One-file theming like LL, consistent greys (two are mixed today), and dark mode (0 `dark:` classes today).
 
-**Notes** — frontend audit §6 (0.5–1 d upgrade + 4–6 d tokens). Folds in old P3 "Standardize Component Patterns".
+**Notes** — frontend audit §6 (0.5–1 d upgrade + 4–6 d tokens). Folds in old P3 "Standardize Component Patterns". 2026-10-18: the engine half is done — Tailwind 4.3 with CSS-first `@theme` in `src/index.css`, `@tailwindcss/vite`, PostCSS/autoprefixer removed, v3-compat base CSS (border/ring/placeholder/cursor), `space-y` margin fixes; login/register pixel-identical (c92d925). What remains is the ~15 semantic tokens and dark mode.
 
 ---
 
