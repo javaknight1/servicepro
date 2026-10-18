@@ -139,10 +139,13 @@ function categorizeFile(filePath) {
  * Extract chunk name from build filename by stripping the hash suffix.
  * e.g. "vendor-react-B6rzUpVc.js" → "vendor-react"
  *      "index-Da3xK9pQ.js" → "index"
+ *      "vendor-date-DghDyF-w.js" → "vendor-date"
+ * Vite's [hash] is 8 base64url characters, so it can itself contain '-' or
+ * '_'; matching only [A-Za-z0-9] left such chunks without their budget.
  */
 function extractChunkName(filename) {
   const base = path.basename(filename, path.extname(filename));
-  const match = base.match(/^(.+)-[A-Za-z0-9]+$/);
+  const match = base.match(/^(.+)-[A-Za-z0-9_-]{8}$/);
   return match ? match[1] : base;
 }
 
