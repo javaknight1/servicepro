@@ -36,11 +36,6 @@ export function JobsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isFlowModalOpen, setIsFlowModalOpen] = useState(false);
 
-  useEffect(() => {
-    loadJobs();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters]);
-
   const loadJobs = async () => {
     const requestId = ++requestIdRef.current;
     setIsLoading(true);
@@ -61,6 +56,11 @@ export function JobsPage() {
       if (requestId === requestIdRef.current) setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    loadJobs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();

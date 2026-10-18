@@ -36,7 +36,6 @@ const queryCache = new QueryCache({
   onError: (error, query) => {
     // Only show error notification for user-initiated queries
     if (query.state.data !== undefined) {
-      // eslint-disable-next-line no-console
       console.error('Query error:', error);
       // You could dispatch to a toast/notification system here
     }
@@ -53,7 +52,6 @@ const queryCache = new QueryCache({
 // Mutation cache with error handling
 const mutationCache = new MutationCache({
   onError: (error, _variables, _context, _mutation) => {
-    // eslint-disable-next-line no-console
     console.error('Mutation error:', error);
 
     // Handle specific error types

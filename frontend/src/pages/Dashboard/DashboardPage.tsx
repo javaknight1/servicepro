@@ -70,15 +70,6 @@ export function DashboardPage() {
     checkTenants();
   }, [loadTenants]);
 
-  // Only load dashboard data if user has an organization
-  useEffect(() => {
-    if (currentTenant) {
-      loadDashboardData();
-    } else {
-      setIsLoading(false);
-    }
-  }, [currentTenant]);
-
   const loadDashboardData = async () => {
     setIsLoading(true);
     try {
@@ -130,6 +121,15 @@ export function DashboardPage() {
       setIsLoading(false);
     }
   };
+
+  // Only load dashboard data if user has an organization
+  useEffect(() => {
+    if (currentTenant) {
+      loadDashboardData();
+    } else {
+      setIsLoading(false);
+    }
+  }, [currentTenant]);
 
   const quickActions = [
     {

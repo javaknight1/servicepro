@@ -166,14 +166,6 @@ export function OrgSettingsPage() {
     }
   }, [currentTenant]);
 
-  // Load members when members tab is active
-  useEffect(() => {
-    if (activeTab === 'members' && currentTenant) {
-      loadMembers();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, currentTenant, canManage]);
-
   const loadMembers = async () => {
     if (!currentTenant) return;
     setMembersLoading(true);
@@ -215,13 +207,13 @@ export function OrgSettingsPage() {
     }
   };
 
-  // Load notification settings when tab is active
+  // Load members when members tab is active
   useEffect(() => {
-    if (activeTab === 'notifications' && currentTenant) {
-      loadReminderSettings();
+    if (activeTab === 'members' && currentTenant) {
+      loadMembers();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, currentTenant]);
+  }, [activeTab, currentTenant, canManage]);
 
   const loadReminderSettings = async () => {
     setReminderSettingsLoading(true);
@@ -238,6 +230,13 @@ export function OrgSettingsPage() {
       setReminderSettingsLoading(false);
     }
   };
+
+  // Load notification settings when tab is active
+  useEffect(() => {
+    if (activeTab === 'notifications' && currentTenant) {
+      loadReminderSettings();
+    }
+  }, [activeTab, currentTenant]);
 
   // Load business hours settings when tab is active
   useEffect(() => {

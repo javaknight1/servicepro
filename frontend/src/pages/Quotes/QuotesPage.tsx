@@ -50,11 +50,6 @@ export function QuotesPage() {
   });
   const [searchQuery, setSearchQuery] = useState('');
 
-  useEffect(() => {
-    loadQuotes();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters]);
-
   const loadQuotes = async () => {
     const requestId = ++requestIdRef.current;
     setIsLoading(true);
@@ -72,6 +67,11 @@ export function QuotesPage() {
       if (requestId === requestIdRef.current) setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    loadQuotes();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters]);
 
   const handleActionDone = () => {
     setActionError(null);

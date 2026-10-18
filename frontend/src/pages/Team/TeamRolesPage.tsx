@@ -26,10 +26,18 @@ export function TeamRolesPage() {
     new Set()
   );
 
-  useEffect(() => {
-    loadData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const selectRole = async (role: Role) => {
+    setSelectedRole(role);
+    try {
+      const rolePerms = await roleApi
+        .getRolePermissions(role.id)
+        .then((res) => res.data);
+      setSelectedPermissions(new Set(rolePerms.map((p) => p.id)));
+    } catch (err) {
+      console.error('Failed to load role permissions:', err);
+      setSelectedPermissions(new Set());
+    }
+  };
 
   const loadData = async () => {
     setIsLoading(true);
@@ -52,18 +60,10 @@ export function TeamRolesPage() {
     }
   };
 
-  const selectRole = async (role: Role) => {
-    setSelectedRole(role);
-    try {
-      const rolePerms = await roleApi
-        .getRolePermissions(role.id)
-        .then((res) => res.data);
-      setSelectedPermissions(new Set(rolePerms.map((p) => p.id)));
-    } catch (err) {
-      console.error('Failed to load role permissions:', err);
-      setSelectedPermissions(new Set());
-    }
-  };
+  useEffect(() => {
+    loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Group permissions by resource
   const permissionsByResource = permissions.reduce(

@@ -37,11 +37,6 @@ export function InvoicesPage() {
   });
   const [searchQuery, setSearchQuery] = useState('');
 
-  useEffect(() => {
-    loadInvoices();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters]);
-
   const loadInvoices = async () => {
     const requestId = ++requestIdRef.current;
     setIsLoading(true);
@@ -62,6 +57,11 @@ export function InvoicesPage() {
       if (requestId === requestIdRef.current) setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    loadInvoices();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();

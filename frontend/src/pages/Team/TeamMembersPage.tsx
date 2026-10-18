@@ -64,13 +64,6 @@ export function TeamMembersPage() {
   );
   const [selectedRoleId, setSelectedRoleId] = useState('');
 
-  // Reload when the permission answer arrives: invitations and roles are
-  // only fetched for callers who may manage members.
-  useEffect(() => {
-    loadData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentTenant, canManage]);
-
   const loadData = async () => {
     if (!currentTenant) return;
 
@@ -114,6 +107,13 @@ export function TeamMembersPage() {
       setIsLoading(false);
     }
   };
+
+  // Reload when the permission answer arrives: invitations and roles are
+  // only fetched for callers who may manage members.
+  useEffect(() => {
+    loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentTenant, canManage]);
 
   const handleInviteMember = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -86,7 +86,6 @@ export const ConflictChecker: React.FC<ConflictCheckerProps> = ({
       const errorMessage =
         err instanceof Error ? err.message : 'Failed to check conflicts';
       setError(errorMessage);
-      // eslint-disable-next-line no-console
       console.error('Conflict check error:', err);
       // On error, don't block saving — notify parent that checking is done
       if (onConflictResolved) {
