@@ -1,6 +1,6 @@
 # ServicePro — Roadmap
 
-**Last Updated**: 2026-10-18 (TODO reformatted from the P0–P3/sprint layout to League Looper's indexed phase format: Task Index with ID/Phase/Category/Hours, one detailed section per open task, a v1 Launch Gate and Verified Complete. A full audit of the repo (backend security, backend correctness, frontend, infra — stored in `docs/audits/2026-10-16/`) is filed as Phases 1–3 (T102–T152, T223–T226). The stack-convergence plan towards League Looper's stack is Phase 4 (T153–T166). Competitive research (`docs/product/competitive-research-2026-10.md`) became product Phases 5–16, merging the open T027–T101 tasks with new T167–T222. Hosting is deferred: ServicePro stays local-only until the production database decision (T202). Old IDs T001–T101 are kept; T011 never existed. Same day: Phase 3 platform work T139–T152 landed — golang-migrate, /version + schema-aware readiness, internal job endpoints, optional Redis, Cloud Run image, LL-style CI/release/hooks, Cloudflare Worker edge (not deployed); frontend fixes T130–T138; all of Phase 1 security (T102–T117) — tenant isolation plugin, per-tenant authz, invite-only registration, token/login/webhook/CSRF hardening, no known Go vulns; T227 added for the frontend follow-through. Same day: Phase 2 correctness work landed (T118–T129, T223–T239 — money path, numbering, status machines, refunds, quotes, tenant settings, error envelope + request IDs, ~39k lines of dead backend code removed, stricter golangci-lint); follow-ups T241–T244 filed. 2026-10-18: T231 (org deletion) deferred; Dependabot security-fix PRs enabled; SQLite ruled out for OD-1; Go deps bumped, T247 filed.)
+**Last Updated**: 2026-10-18 (TODO reformatted from the P0–P3/sprint layout to League Looper's indexed phase format: Task Index with ID/Phase/Category/Hours, one detailed section per open task, a v1 Launch Gate and Verified Complete. A full audit of the repo (backend security, backend correctness, frontend, infra — stored in `docs/audits/2026-10-16/`) is filed as Phases 1–3 (T102–T152, T223–T226). The stack-convergence plan towards League Looper's stack is Phase 4 (T153–T166). Competitive research (`docs/product/competitive-research-2026-10.md`) became product Phases 5–16, merging the open T027–T101 tasks with new T167–T222. Hosting is deferred: ServicePro stays local-only until the production database decision (T202). Old IDs T001–T101 are kept; T011 never existed. Same day: Phase 3 platform work T139–T152 landed — golang-migrate, /version + schema-aware readiness, internal job endpoints, optional Redis, Cloud Run image, LL-style CI/release/hooks, Cloudflare Worker edge (not deployed); frontend fixes T130–T138; all of Phase 1 security (T102–T117) — tenant isolation plugin, per-tenant authz, invite-only registration, token/login/webhook/CSRF hardening, no known Go vulns; T227 added for the frontend follow-through. Same day: Phase 2 correctness work landed (T118–T129, T223–T239 — money path, numbering, status machines, refunds, quotes, tenant settings, error envelope + request IDs, ~39k lines of dead backend code removed, stricter golangci-lint); follow-ups T241–T244 filed. 2026-10-18: T231 (org deletion) deferred; Dependabot security-fix PRs enabled; SQLite ruled out for OD-1; Go deps bumped, T247 filed; T202 decided — Neon; OD-9 (auth provider) opened.)
 
 > **How to read this file.** Every task has an ID (T###). The **Task Index** lists all of them: completed rows
 > (struck through) first by ID, then open rows by Phase → ID. Each open task has exactly one detailed section under
@@ -28,8 +28,8 @@
 
 ## Status at a glance
 
-- **Local-only.** Not hosted anywhere; the old Fly.io/Pages workflows were replaced (Phase 3, done 2026-10-16) and hosting waits
-  on T202.
+- **Local-only.** Not hosted anywhere; the old Fly.io/Pages workflows were replaced (Phase 3, done 2026-10-16). The
+  database host is decided (Neon, T202, 2026-10-18); provisioning is Phase 14 (T203+).
 - **Backend has critical tenant-isolation and auth-escalation flaws** (security audit F-1–F-4). Phase 1 blocks any
   hosting, even invite-only.
 - **Money flows are partially broken** (recording a payment doesn't update the invoice, reminders have never sent,
@@ -48,8 +48,9 @@
    Postgres RLS backstop on `tenant_id`; Resend; Cloudflare R2; Upstash (optional Redis); Sentry; PostHog;
    Better Stack.
 3. **D3 — Hosting target.** Frontend on Cloudflare Workers static assets with an edge Worker proxying `/api/*` and
-   `/version` to Cloud Run at `servicepro.sharkfins.xyz`; API on Cloud Run; database **undecided** (owner deciding;
-   the Supabase free tier is full with 2 active projects) → local-only until then (T202).
+   `/version` to Cloud Run at `servicepro.sharkfins.xyz`; API on Cloud Run; database **Neon Postgres** (owner decision
+   2026-10-18, T202; free tier to start). Cloud Run runs in the Neon project's region (OD-8). Still local-only until
+   Phase 14 provisions it.
 4. **D4 — Commit convention = League Looper's.** `feat:`/`fix:` are user-facing; `deps`, `chore`, `docs`, `ci`,
    `build`, `test`, `style`, `refactor`, `perf`, `release` are filtered from release notes. Commits are the changelog;
    releases are tag-driven from `VERSION` (T146, T148). The historic `minor:`/`major:` prefixes are retired.
@@ -62,7 +63,7 @@
 
 ## v1 Launch Gate
 
-The minimum subset that must be done before real (paying) customers: **40 tasks, ~321h**. Everything else is post-launch growth or depth. The invite-gated preview (T205) needs only Phase 1 plus T106/T204/T206; the gate below is for opening to paying customers. Phase 4's gating subset is the parts of the stack that touch auth, tenancy, email and storage; the chi and pgx ports are not gating.
+The minimum subset that must be done before real (paying) customers: **39 tasks, ~320h**. Everything else is post-launch growth or depth. The invite-gated preview (T205) needs only Phase 1 plus T106/T204/T206; the gate below is for opening to paying customers. Phase 4's gating subset is the parts of the stack that touch auth, tenancy, email and storage; the chi and pgx ports are not gating.
 
 | Phase                                                | Gating tasks                                                                                                                                                                                                       |
 |------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -77,7 +78,7 @@ The minimum subset that must be done before real (paying) customers: **40 tasks,
 | Phase 9 — Customer Self-Service                      | T183, T081                                                                                                                                                                                                         |
 | Phase 10 — Commercial/B2B Wedge                      | T186                                                                                                                                                                                                               |
 | Phase 11 — Integrations & Migration                  | T192, T193                                                                                                                                                                                                         |
-| Phase 14 — Hosting & Launch Readiness                | T202, T203, T204, T205, T206, T207, T208, T209, T210, T211, T212, T213                                                                                                                                             |
+| Phase 14 — Hosting & Launch Readiness                | ~~T202~~, T203, T204, T205, T206, T207, T208, T209, T210, T211, T212, T213                                                                                                                                         |
 | Phase 16 — Go-to-Market                              | T218                                                                                                                                                                                                               |
 
 **Explicitly NOT in the launch gate** (ship without them):
@@ -183,6 +184,7 @@ The minimum subset that must be done before real (paying) customers: **40 tasks,
 | ~~T150~~ | ~~3~~  | ~~Deploy~~     | ~~6~~  | ~~Cloudflare Workers static assets + /api edge proxy Worker + _headers~~                              |
 | ~~T151~~ | ~~3~~  | ~~Docs~~       | ~~3~~  | ~~Ops docs: Cloud Run setup, deploy/rollback, backups + nightly pg_dump → R2 workflow~~               |
 | ~~T152~~ | ~~3~~  | ~~CI~~         | ~~1~~  | ~~Commit generated OpenAPI and TS types for drift gating~~                                            |
+| ~~T202~~ | ~~14~~ | ~~Research~~   | ~~1~~  | ~~Decide production database hosting (OWNER DECISION)~~                                               |
 | ~~T223~~ | ~~2~~  | ~~Backend~~    | ~~4~~  | ~~Request IDs and a standard API error envelope~~                                                     |
 | ~~T224~~ | ~~2~~  | ~~Bug~~        | ~~4~~  | ~~Quote correctness: lost customer edits, accept race, expiry, editable sent quotes~~                 |
 | ~~T225~~ | ~~2~~  | ~~Bug~~        | ~~4~~  | ~~Invoice totals: one server-side recalculation, tax/discount order, no double invoicing~~            |
@@ -326,7 +328,6 @@ The minimum subset that must be done before real (paying) customers: **40 tasks,
 | T200     | 13     | Legal          | 6      | Account/tenant deletion + data retention policy                                                       |
 | T201     | 13     | Legal          | 3      | Privacy/CCPA handling SOP                                                                             |
 | T231     | 13     | Auth           | 1      | Owner decision: may a tenant's owner/admin delete their own organization? (Deferred)                  |
-| T202     | 14     | Research       | 1      | Decide production database hosting (OWNER DECISION)                                                   |
 | T203     | 14     | Deploy         | 4      | GCP project + WIF + Artifact Registry + Cloud Run service                                             |
 | T204     | 14     | Deploy         | 2      | Deploy the Worker + DNS for servicepro.sharkfins.xyz                                                  |
 | T205     | 14     | Deploy         | 2      | Invite-gated preview launch                                                                           |
@@ -659,7 +660,7 @@ D2: move to League Looper's stack one strangler step at a time while the app kee
 
 **Why we need it** — D2: one auth system across the fleet, no in-house password and token code to keep secure, and Google sign-in/MFA for free.
 
-**Notes** — frontend audit §6 "Supabase Auth client" (3–5 days frontend; supabase-js stores the session in `localStorage` by default, a regression vs httpOnly cookies — decide knowingly or use the cookie helpers). LL `docs/auth-migration.md` is the reference. Needs a Supabase project, hence T202 (judgment call: the brief said T203). Backups must then include `auth.*` (T151).
+**Notes** — frontend audit §6 "Supabase Auth client" (3–5 days frontend; supabase-js stores the session in `localStorage` by default, a regression vs httpOnly cookies — decide knowingly or use the cookie helpers). LL `docs/auth-migration.md` is the reference. 2026-10-18: the database went to Neon (T202), so whether this stays Supabase Auth is open again (OD-9). Backups must then include `auth.*` (T151).
 
 ---
 
@@ -2433,9 +2434,9 @@ Remaining roles, audit logging, MFA, and the export/deletion promises that back 
 
 ### Phase 14 — Hosting & Launch Readiness (T202, T203, T204, T205, T206, T207, T208, T209, T210, T211, T212, T213)
 
-Provision and launch. **Blocked on T202** (production DB host) — ServicePro stays local-only until the owner decides. **12 open tasks, ~35h.**
+Provision and launch. Database: Neon (T202, decided 2026-10-18). ServicePro stays local-only until these land. **11 open tasks, ~34h.** 1 done.
 
-- [ ] T202 — Decide production database hosting (OWNER DECISION)
+- [x] T202 — Decide production database hosting (OWNER DECISION) ✓ (2026-10-18)
 - [ ] T203 — GCP project + WIF + Artifact Registry + Cloud Run service
 - [ ] T204 — Deploy the Worker + DNS for servicepro.sharkfins.xyz
 - [ ] T205 — Invite-gated preview launch
@@ -2447,20 +2448,6 @@ Provision and launch. **Blocked on T202** (production DB host) — ServicePro st
 - [ ] T211 — Update Fleet and the blog when ServicePro goes live
 - [ ] T212 — Production config review
 - [ ] T213 — Cost guardrails (Cloud Run max instances × DB pool, budget alerts)
-
-#### T202 — Decide production database hosting (OWNER DECISION)
-
-**Phase**: 14 · **Category**: Research · **Hours**: 1 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: none
-
-**What it is** — The owner picks where production Postgres lives.
-
-**What it does** — Options (2026-10-16): (a) a separate Supabase org on Pro, $25/mo; (b) upgrade the existing org to Pro, ~$45/mo; (c) a `servicepro` schema inside an existing Supabase project, $0 but shared limits, backups and blast radius; (d) Neon free tier (0.5 GB, autosuspend cold starts, no Supabase Auth — T158 would need another plan). Record the decision as a D-item, update Fleet, then unblock T203 and T158. Also fixes the region (OD-8).
-
-**Why we need it** — Blocked: the Supabase free tier is full (2 active projects). Everything from T203 on, and Supabase Auth, waits on this; until then ServicePro stays local-only.
-
-**Notes** — OD-1; D3.
-
----
 
 #### T203 — GCP project + WIF + Artifact Registry + Cloud Run service
 
@@ -2763,11 +2750,10 @@ Validate the beachhead before the Phase 9–10 build-out, then publish positioni
 
 ## Open Decisions
 
-- **OD-1 — Production database hosting** (T202). Separate Supabase Pro org ($25/mo), upgrade the existing org
-  (~$45/mo), a schema inside an existing project ($0, shared blast radius), or Neon free (no Supabase Auth). Blocks
-  Phase 14 and T158. SQLite was considered and rejected (2026-10-18): the schema relies on Postgres (JSONB, plpgsql
-  triggers, tsvector/pg_trgm search, row locks on the payment path), Cloud Run has no persistent disk for a database
-  file, and T154's RLS backstop and T158's Supabase Auth both need Postgres. Neon free covers the $0 case.
+- **OD-1 — Production database hosting** (T202). **Decided 2026-10-18: Neon** (free tier to start). SQLite was
+  considered and rejected the same day: the schema relies on Postgres (JSONB, plpgsql triggers, tsvector/pg_trgm
+  search, row locks on the payment path), Cloud Run has no persistent disk for a database file, and T154's RLS
+  backstop needs Postgres.
 - **OD-2 — Make the GitHub repo private?** It is **public** and contains the 2026-10-16 audit and the product
   strategy/pricing docs. The audit's flaws are fixed (Phase 1). Owner, 2026-10-18: leave it public for now.
 - **OD-3 — Redis in production** (T142, T161). Upstash (free tier, TLS) vs moving rate limits, tokens and caches to
@@ -2780,7 +2766,11 @@ Validate the beachhead before the Phase 9–10 build-out, then publish positioni
   cost and lead time; whether ServicePro registers on tenants' behalf.
 - **OD-7 — Beachhead confirmation** (T218). Confirm or change the commercial/B2B beachhead and the $99 Team price
   after 10 interviews; re-scope Phases 9–10 accordingly.
-- **OD-8 — Cloud Run region.** Follows the database region chosen in OD-1 (Cloud Run and DB in the same region).
+- **OD-8 — Cloud Run region.** Follows the Neon project's region (OD-1); pick it when creating the Neon project.
+- **OD-9 — Auth provider now that the database is on Neon** (T158). D2 assumed Supabase Auth bundled with a Supabase
+  database. Options: (a) Supabase Auth alone in a Supabase project (the free tier is full with 2 active projects, so
+  Pro at $25/mo unless a slot frees up); (b) Neon Auth; (c) keep ServicePro's own JWT auth, hardened in Phase 1, and
+  drop T158 (no Google sign-in/MFA for free; T091/T092 come back). Blocks T158 and T092.
 
 
 ---
@@ -2965,6 +2955,7 @@ Dated history from the original "Completed Items" list:
 - **T150** — Cloudflare Workers static assets + /api edge proxy Worker + _headers. `frontend/wrangler.jsonc` (worker `servicepro-web`, SPA fallback, `run_worker_first` for `/api/*` + `/version`, custom domain servicepro.sharkfins.xyz, workers.dev/previews off, `EDGE_PROXY_SECRET` required), `frontend/worker/{index,proxy}.ts` (503 when `API_ORIGIN` unset, raw body streamed, `X-SP-Client-IP`/`X-SP-Edge-Secret` set and spoofed copies stripped) with 22 tests, `public/_headers` (CSP/HSTS/cache) + `.assetsignore`; same-origin `/api` default; verified with `wrangler deploy --dry-run` and `wrangler dev`. Not deployed (T204).
 - **T151** — Ops docs: Cloud Run setup, deploy/rollback, backups + nightly pg_dump → R2 workflow. `docs/ops/cloud-run-setup.md`, `docs/ops/deploy.md` (rollback incl. Workers versions), `docs/ops/backups.md`; `.github/workflows/db-backup.yml` nightly pg_dump → R2 `servicepro-backups`, skipped until the `MIGRATION_DATABASE_URL` secret exists (activation + restore drill: T209).
 - **T152** — Commit generated OpenAPI and TS types for drift gating. `backend/docs/{swagger.json,swagger.yaml,docs.go}` and `frontend/src/types/api.generated.ts` committed; swag pinned via go.mod `tool` directive (`go tool swag`); `make openapi-check`, pre-commit hook and CI `openapi-drift` gate on them.
+- **T202** — Decide production database hosting (OWNER DECISION). Owner chose **Neon** Postgres (free tier to start; move to a paid plan when it outgrows the free limits). Recorded in D3 and OD-1; Cloud Run goes in the Neon region (OD-8). Neon has no bundled auth, so the T158 auth plan is reopened as OD-9.
 - **T223** — Request IDs and a standard API error envelope. Request-ID middleware mounted first (inbound X-Request-ID kept if 8–128 safe chars, else UUID) → response header, context, every log line, access log, Sentry tag; one envelope `{error: code, message, request_id, fields?, details?}` written through `internal/api/apierror` with typed domain errors in `internal/errors` (409 conflicts incl. quote/job status, 404 not-found, 400 validation with fields / malformed_json, generic 500 for infra); all handler groups + middleware converted, JSON 404 for unknown /api routes, `docs/api/errors.md`; frontend reads the envelope and shows 'Reference: <id>' on 5xx (67cce6a … 6ad0516). Follow-ups T238–T240.
 - **T224** — Quote correctness: lost customer edits, accept race, expiry, editable sent quotes. Quote update keeps customer changes (same-tenant check); accept/decline are single conditional updates (send/accept/decline never worked before — validation hook ran on an empty model); subtotal = sum of rounded item totals; only drafts editable + `POST /quotes/{id}/revise`; `POST /internal/jobs/quote-expiry` hourly in scheduled-jobs.yml (aeaef27, e04a7c3, 5ddeb72, fc15df2, 9a29a32).
 - **T225** — Invoice totals: one server-side recalculation, tax/discount order, no double invoicing. Removed GORM `default:true` on 5 models (46b6211); single totals calculation (`services/invoice_totals.go`: line discounts, invoice discount spread before tax) recalculated in create/update/add-line transactions with partial updates and total ≥ amount paid; PDF lines sum to subtotal; no double invoicing (row lock, accepted quote, matching customer) (a7634b5, 1d47ac7). `JobMaterial.Billable` → T233.

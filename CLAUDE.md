@@ -15,21 +15,22 @@ its **customers** are the people/companies it does work for.
   billing on net terms. Flat price, unlimited users, no contract.
 - **Status (2026-10-16): local-only, not hosted.** The 2026-10-16 audit (`docs/audits/2026-10-16/`)
   found critical tenant-isolation and auth-escalation flaws; TODO.md Phase 1 must be complete before
-  anything is exposed to the internet, even invite-only. The production DB host is an open owner
-  decision (TODO T202).
+  anything is exposed to the internet, even invite-only. Production database: **Neon** Postgres (owner
+  decision 2026-10-18, T202; not provisioned yet). Auth provider is open again (TODO OD-9).
 
 ## Stack
 
 | Layer    | Today                                                              | Target (TODO Phase 4, League Looper parity)                       |
 | -------- | ------------------------------------------------------------------ | ----------------------------------------------------------------- |
 | API      | Go 1.26, Gin, GORM, Postgres 16, Redis (optional)                  | chi, pgx/sqlc, Postgres RLS backstop, Upstash (if Redis needed)   |
-| Auth     | Own JWT (httpOnly cookies) + bcrypt                                | Supabase Auth; own `users` table keyed by `auth_user_id`          |
+| Auth     | Own JWT (httpOnly cookies) + bcrypt                                | Open (OD-9): Supabase Auth, Neon Auth, or keep own JWT            |
 | Web      | React 18, Vite, TS strict, Zustand + React Query, Tailwind v3      | React 19, TanStack Query for all server state, Tailwind v4 tokens |
 | Email    | Resend / SES / SMTP (Mailpit locally)                              | Resend only                                                       |
 | Storage  | S3-compatible (MinIO locally)                                      | Cloudflare R2                                                     |
 | Payments | Stripe (platform account)                                          | Stripe Connect — money goes to the tenant (T169)                  |
 | Obs.     | Sentry, PostHog, Prometheus `/metrics`, Grafana (local only)       | + Better Stack uptime/status                                      |
 | Hosting  | none                                                               | Cloudflare Worker (static assets + `/api` proxy) → Cloud Run      |
+| Database | Postgres 16 (Docker locally)                                       | Neon Postgres (T202), Cloud Run in the same region                |
 
 Decision record: TODO.md "Architecture decisions" (D1–D6). **Stay Go API + React SPA — not Next.js**
 (D1). Migrate incrementally; the app must keep working at every step. Don't introduce a new vendor or
