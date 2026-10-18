@@ -233,7 +233,7 @@ jobs:
       - name: Strip source maps from the publish dir
         run: find frontend/dist -name '*.map' -delete
       - name: Deploy to Cloudflare Workers (servicepro-web)
-        uses: cloudflare/wrangler-action@v3
+        uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
