@@ -3,7 +3,7 @@ import js from '@eslint/js';
 import { defineConfig } from 'eslint/config';
 import globals from 'globals';
 import reactHooks from 'eslint-plugin-react-hooks';
-import reactRefreshPlugin from 'eslint-plugin-react-refresh';
+import { reactRefresh } from 'eslint-plugin-react-refresh';
 import tseslint from 'typescript-eslint';
 
 export default defineConfig([
@@ -31,6 +31,8 @@ export default defineConfig([
       tseslint.configs.recommended,
       // rules-of-hooks, exhaustive-deps + the React Compiler rules
       reactHooks.configs.flat.recommended,
+      // only-export-components tuned for Vite (allowConstantExport etc.)
+      reactRefresh.configs.vite(),
     ],
     languageOptions: {
       ecmaVersion: 'latest',
@@ -45,9 +47,6 @@ export default defineConfig([
         process: 'readonly',
       },
     },
-    plugins: {
-      'react-refresh': reactRefreshPlugin,
-    },
     rules: {
       // TypeScript rules
       '@typescript-eslint/no-unused-vars': [
@@ -61,12 +60,6 @@ export default defineConfig([
       // (data loading via setState inside useEffect; fix by moving server
       // state to TanStack Query rather than a sweeping refactor here).
       'react-hooks/set-state-in-effect': 'off',
-
-      // React refresh
-      'react-refresh/only-export-components': [
-        'warn',
-        { allowConstantExport: true },
-      ],
 
       // General rules
       'no-console': ['warn', { allow: ['warn', 'error'] }],

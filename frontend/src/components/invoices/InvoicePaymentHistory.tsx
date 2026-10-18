@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { CreditCard } from 'lucide-react';
 import type { Invoice } from '@services/invoiceService';
 import { formatDollars } from '@/utils/money';
-import { MANUAL_PAYMENT_METHODS } from './RecordPaymentModal';
+import { MANUAL_PAYMENT_METHODS } from './paymentMethods';
 
 function methodLabel(method?: string, stripe?: boolean): string {
   if (stripe) return 'Online (Stripe)';

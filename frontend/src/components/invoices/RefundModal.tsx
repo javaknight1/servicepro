@@ -4,7 +4,7 @@ import { Button, Input, Modal } from '@components/shared';
 import { invoiceService } from '@services/invoiceService';
 import { formatDollars, roundToCents } from '@/utils/money';
 import { getInvoiceActionError } from './invoiceActionError';
-import { MANUAL_PAYMENT_METHODS } from './RecordPaymentModal';
+import { MANUAL_PAYMENT_METHODS } from './paymentMethods';
 
 const today = () => new Date().toISOString().split('T')[0];
 
