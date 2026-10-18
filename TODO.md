@@ -1,6 +1,6 @@
 # ServicePro — Roadmap
 
-**Last Updated**: 2026-10-18 (TODO reformatted from the P0–P3/sprint layout to League Looper's indexed phase format: Task Index with ID/Phase/Category/Hours, one detailed section per open task, a v1 Launch Gate and Verified Complete. A full audit of the repo (backend security, backend correctness, frontend, infra — stored in `docs/audits/2026-10-16/`) is filed as Phases 1–3 (T102–T152, T223–T226). The stack-convergence plan towards League Looper's stack is Phase 4 (T153–T166). Competitive research (`docs/product/competitive-research-2026-10.md`) became product Phases 5–16, merging the open T027–T101 tasks with new T167–T222. Hosting is deferred: ServicePro stays local-only until the production database decision (T202). Old IDs T001–T101 are kept; T011 never existed. Same day: Phase 3 platform work T139–T152 landed — golang-migrate, /version + schema-aware readiness, internal job endpoints, optional Redis, Cloud Run image, LL-style CI/release/hooks, Cloudflare Worker edge (not deployed); frontend fixes T130–T138; all of Phase 1 security (T102–T117) — tenant isolation plugin, per-tenant authz, invite-only registration, token/login/webhook/CSRF hardening, no known Go vulns; T227 added for the frontend follow-through. Same day: Phase 2 correctness work landed (T118–T129, T223–T239 — money path, numbering, status machines, refunds, quotes, tenant settings, error envelope + request IDs, ~39k lines of dead backend code removed, stricter golangci-lint); follow-ups T241–T244 filed. 2026-10-18: T231 (org deletion) deferred; Dependabot security-fix PRs enabled; SQLite ruled out for OD-1; Go deps bumped, T247 filed; T202 decided — Neon; OD-9 (auth provider) opened.)
+**Last Updated**: 2026-10-18 (TODO reformatted from the P0–P3/sprint layout to League Looper's indexed phase format: Task Index with ID/Phase/Category/Hours, one detailed section per open task, a v1 Launch Gate and Verified Complete. A full audit of the repo (backend security, backend correctness, frontend, infra — stored in `docs/audits/2026-10-16/`) is filed as Phases 1–3 (T102–T152, T223–T226). The stack-convergence plan towards League Looper's stack is Phase 4 (T153–T166). Competitive research (`docs/product/competitive-research-2026-10.md`) became product Phases 5–16, merging the open T027–T101 tasks with new T167–T222. Hosting is deferred: ServicePro stays local-only until the production database decision (T202). Old IDs T001–T101 are kept; T011 never existed. Same day: Phase 3 platform work T139–T152 landed — golang-migrate, /version + schema-aware readiness, internal job endpoints, optional Redis, Cloud Run image, LL-style CI/release/hooks, Cloudflare Worker edge (not deployed); frontend fixes T130–T138; all of Phase 1 security (T102–T117) — tenant isolation plugin, per-tenant authz, invite-only registration, token/login/webhook/CSRF hardening, no known Go vulns; T227 added for the frontend follow-through. Same day: Phase 2 correctness work landed (T118–T129, T223–T239 — money path, numbering, status machines, refunds, quotes, tenant settings, error envelope + request IDs, ~39k lines of dead backend code removed, stricter golangci-lint); follow-ups T241–T244 filed. 2026-10-18: T231 (org deletion) deferred; Dependabot security-fix PRs enabled; SQLite ruled out for OD-1; Go deps bumped, T247 filed; T202 decided — Neon; OD-9 (auth provider) opened; T164 frontend majors done (React 19, Router 7, Vite 8, ESLint 10, zod 4, Headless UI 2), T248/T249 filed.)
 
 > **How to read this file.** Every task has an ID (T###). The **Task Index** lists all of them: completed rows
 > (struck through) first by ID, then open rows by Phase → ID. Each open task has exactly one detailed section under
@@ -184,6 +184,7 @@ The minimum subset that must be done before real (paying) customers: **39 tasks,
 | ~~T150~~ | ~~3~~  | ~~Deploy~~     | ~~6~~  | ~~Cloudflare Workers static assets + /api edge proxy Worker + _headers~~                              |
 | ~~T151~~ | ~~3~~  | ~~Docs~~       | ~~3~~  | ~~Ops docs: Cloud Run setup, deploy/rollback, backups + nightly pg_dump → R2 workflow~~               |
 | ~~T152~~ | ~~3~~  | ~~CI~~         | ~~1~~  | ~~Commit generated OpenAPI and TS types for drift gating~~                                            |
+| ~~T164~~ | ~~4~~  | ~~Frontend~~   | ~~16~~ | ~~React 19, React Router 7, Vite major, ESLint 9, Headless UI 2~~                                     |
 | ~~T202~~ | ~~14~~ | ~~Research~~   | ~~1~~  | ~~Decide production database hosting (OWNER DECISION)~~                                               |
 | ~~T223~~ | ~~2~~  | ~~Backend~~    | ~~4~~  | ~~Request IDs and a standard API error envelope~~                                                     |
 | ~~T224~~ | ~~2~~  | ~~Bug~~        | ~~4~~  | ~~Quote correctness: lost customer edits, accept race, expiry, editable sent quotes~~                 |
@@ -217,9 +218,10 @@ The minimum subset that must be done before real (paying) customers: **39 tasks,
 | T161     | 4      | Infra          | 4      | Production Redis: Upstash for rate limits/lockout/cache, or move them to Postgres                     |
 | T162     | 4      | Frontend       | 48     | Frontend server state → TanStack Query v5 (~26 pages)                                                 |
 | T163     | 4      | Frontend       | 40     | Tailwind v4 + semantic theme tokens + dark mode                                                       |
-| T164     | 4      | Frontend       | 16     | React 19, React Router 7, Vite major, ESLint 9, Headless UI 2                                         |
 | T165     | 4      | Monitoring     | 4      | Better Stack uptime/status + PostHog server-side events parity                                        |
 | T166     | 4      | Research       | 2      | Decide money representation (decimal vs integer cents) before the pgx port                            |
+| T248     | 4      | Monitoring     | 3      | Upgrade @sentry/react to 11 with an explicit data-collection config                                   |
+| T249     | 4      | Frontend       | 2      | Drop Vite's legacy.inconsistentCjsInterop flag and ready the config for Vite's native loader          |
 | T028     | 5      | Feature        | 3      | Add "Convert Quote to Job" button                                                                     |
 | T029     | 5      | Feature        | 2      | Add "Generate Invoice from Job" button                                                                |
 | T030     | 5      | Feature        | 4      | Auto-populate invoice from job data                                                                   |
@@ -561,10 +563,11 @@ Migrations, versioning, CI, the release pipeline and the edge setup — League L
 
 ---
 
-### Phase 4 — Stack Convergence (LL parity; incremental) (T153, T154, T155, T156, T157, T158, T159, T160, T161, T162, T163, T164, T165, T166)
+### Phase 4 — Stack Convergence (LL parity; incremental) (T153, T154, T155, T156, T157, T158, T159, T160, T161, T162, T163, T164, T165, T166, T248, T249)
 
-D2: move to League Looper's stack one strangler step at a time while the app keeps working. Gating subset: the repository/tenant boundary, RLS, Supabase Auth, Resend, R2 and production Redis must be on the target stack before real customers; the chi and pgx ports are not gating. **14 open tasks, ~376h.**
+D2: move to League Looper's stack one strangler step at a time while the app keeps working. Gating subset: the repository/tenant boundary, RLS, Supabase Auth, Resend, R2 and production Redis must be on the target stack before real customers; the chi and pgx ports are not gating. **15 open tasks, ~365h.** 1 done.
 
+- [x] T164 — React 19, React Router 7, Vite major, ESLint 9, Headless UI 2 ✓ (2026-10-18)
 - [ ] T153 — Repositories take ctx + tenantID; services stop taking *gorm.DB; transaction manager
 - [ ] T154 — Postgres RLS backstop keyed on a per-transaction tenant GUC + isolation tests
 - [ ] T155 — Gin → chi
@@ -576,9 +579,10 @@ D2: move to League Looper's stack one strangler step at a time while the app kee
 - [ ] T161 — Production Redis: Upstash for rate limits/lockout/cache, or move them to Postgres
 - [ ] T162 — Frontend server state → TanStack Query v5 (~26 pages)
 - [ ] T163 — Tailwind v4 + semantic theme tokens + dark mode
-- [ ] T164 — React 19, React Router 7, Vite major, ESLint 9, Headless UI 2
 - [ ] T165 — Better Stack uptime/status + PostHog server-side events parity
 - [ ] T166 — Decide money representation (decimal vs integer cents) before the pgx port
+- [ ] T248 — Upgrade @sentry/react to 11 with an explicit data-collection config
+- [ ] T249 — Drop Vite's legacy.inconsistentCjsInterop flag and ready the config for Vite's native loader
 
 #### T153 — Repositories take ctx + tenantID; services stop taking *gorm.DB; transaction manager
 
@@ -716,13 +720,13 @@ D2: move to League Looper's stack one strangler step at a time while the app kee
 
 **Why we need it** — Fixes errors-as-empty-states, double requests and out-of-order responses (3.5, 3.7) at the root and matches LL (D2).
 
-**Notes** — frontend audit §6 (5–8 days). Today React Query is installed but used almost only by dead code.
+**Notes** — frontend audit §6 (5–8 days). Today React Query is installed but used almost only by dead code. 2026-10-18: when a page moves, delete its setState-in-useEffect loader; once the last one goes, turn `react-hooks/set-state-in-effect` back on in `frontend/eslint.config.mjs` (off since T164: 41 violations in 28 files).
 
 ---
 
 #### T163 — Tailwind v4 + semantic theme tokens + dark mode
 
-**Phase**: 4 · **Category**: Frontend · **Hours**: 40 · **Status**: Open · **v1 Gate**: No · **Depends on**: T137
+**Phase**: 4 · **Category**: Frontend · **Hours**: 40 · **Status**: Open · **v1 Gate**: No · **Depends on**: T137, T164
 
 **What it is** — Styling uses Tailwind v4 with ~15 semantic CSS-variable tokens defined in one file, switching light/dark from `prefers-color-scheme` or `[data-theme]`.
 
@@ -731,20 +735,6 @@ D2: move to League Looper's stack one strangler step at a time while the app kee
 **Why we need it** — One-file theming like LL, consistent greys (two are mixed today), and dark mode (0 `dark:` classes today).
 
 **Notes** — frontend audit §6 (0.5–1 d upgrade + 4–6 d tokens). Folds in old P3 "Standardize Component Patterns".
-
----
-
-#### T164 — React 19, React Router 7, Vite major, ESLint 9, Headless UI 2
-
-**Phase**: 4 · **Category**: Frontend · **Hours**: 16 · **Status**: Open · **v1 Gate**: No · **Depends on**: T137
-
-**What it is** — The frontend runs on current majors.
-
-**What it does** — React 18.3 → 19 (blockers: `@headlessui/react` v1 in `shared/Modal/Modal.tsx` → v2 or native `<dialog>`; react-big-calendar peer range; `forwardRef`/`defaultProps` codemods). React Router 6.30 → 7 library mode (enable future flags first). Vite 5.4 → current with plugin-react (drop `vite-plugin-pwa`, `vite-plugin-compression`, the custom `manualChunks`). ESLint 8.57 (EOL) → 9/10, react-hooks 7. While here: date-fns 4 + `@date-fns/tz`, zod 4, lucide-react, Stripe libs. Stay on TypeScript 5.9.
-
-**Why we need it** — React 18 and ESLint 8 are end-of-line; the newer react-hooks rules surface the `exhaustive-deps` suppressions.
-
-**Notes** — frontend audit §4.5, §6. Folds in old P2 "Audit useCallback/useMemo Usage" (the React 19 lint rules cover it). 2026-10-18: also clears the open Dependabot alerts (4 high, 6 moderate: vite ≤6.4.2 and esbuild dev-server, react-router 6 → 7.18, sharp → 0.35.5, postcss-selector-parser via Tailwind v4/T163); their security PRs are majors and wait here for review.
 
 ---
 
@@ -773,6 +763,34 @@ D2: move to League Looper's stack one strangler step at a time while the app kee
 **Why we need it** — sqlc generates types from the schema, so this must be settled before T156 ports the money tables.
 
 **Notes** — OD-5; D6. correctness audit 7.M14; frontend audit 3.4.
+
+---
+
+#### T248 — Upgrade @sentry/react to 11 with an explicit data-collection config
+
+**Phase**: 4 · **Category**: Monitoring · **Hours**: 3 · **Status**: Open · **v1 Gate**: No · **Depends on**: none
+
+**What it is** — The frontend is on the current Sentry SDK, and what it collects is a written decision instead of the SDK default.
+
+**What it does** — Sentry 11 turns data collection on by default and replaces `sendDefaultPii` with `dataCollection`. Bump `@sentry/react` (and `@sentry/vite-plugin` if used), set `dataCollection` so no emails, tokens, cookies, request bodies or query strings are sent (the existing `beforeSend`/URL scrubbing stays), and add a unit test that a captured event carries none of them. Pair with T246 (lazy-load and trim Sentry).
+
+**Why we need it** — Without it the SDK falls behind on fixes, and a plain bump would start sending data CLAUDE.md forbids sending to analytics.
+
+**Notes** — Held back from the T164 upgrade wave (2026-10-18) on purpose.
+
+---
+
+#### T249 — Drop Vite's legacy.inconsistentCjsInterop flag and ready the config for Vite's native loader
+
+**Phase**: 4 · **Category**: Frontend · **Hours**: 2 · **Status**: Open · **v1 Gate**: No · **Depends on**: none
+
+**What it is** — The Vite 8 build no longer relies on the legacy CommonJS default-import behaviour, and `vite.config.ts` loads under Vite's native config loader.
+
+**What it does** — Find the CommonJS default imports that broke without the flag (`react-big-calendar/lib/addons/dragAndDrop` gave `L.default is not a function` in the Jobs and calendar chunks), import them the Vite 8 way, then delete `legacy.inconsistentCjsInterop` from `vite.config.ts`. Replace `__dirname` with `import.meta.dirname` and add extensions to relative imports in the config. Verify with a production preview of the calendar pages.
+
+**Why we need it** — The flag is a migration crutch Vite will remove; when it goes, the calendar breaks only in production builds.
+
+**Notes** — Follow-up from the Vite 8 upgrade (T164, 2026-10-18).
 
 ---
 
@@ -2957,6 +2975,7 @@ Dated history from the original "Completed Items" list:
 - **T150** — Cloudflare Workers static assets + /api edge proxy Worker + _headers. `frontend/wrangler.jsonc` (worker `servicepro-web`, SPA fallback, `run_worker_first` for `/api/*` + `/version`, custom domain servicepro.sharkfins.xyz, workers.dev/previews off, `EDGE_PROXY_SECRET` required), `frontend/worker/{index,proxy}.ts` (503 when `API_ORIGIN` unset, raw body streamed, `X-SP-Client-IP`/`X-SP-Edge-Secret` set and spoofed copies stripped) with 22 tests, `public/_headers` (CSP/HSTS/cache) + `.assetsignore`; same-origin `/api` default; verified with `wrangler deploy --dry-run` and `wrangler dev`. Not deployed (T204).
 - **T151** — Ops docs: Cloud Run setup, deploy/rollback, backups + nightly pg_dump → R2 workflow. `docs/ops/cloud-run-setup.md`, `docs/ops/deploy.md` (rollback incl. Workers versions), `docs/ops/backups.md`; `.github/workflows/db-backup.yml` nightly pg_dump → R2 `servicepro-backups`, skipped until the `MIGRATION_DATABASE_URL` secret exists (activation + restore drill: T209).
 - **T152** — Commit generated OpenAPI and TS types for drift gating. `backend/docs/{swagger.json,swagger.yaml,docs.go}` and `frontend/src/types/api.generated.ts` committed; swag pinned via go.mod `tool` directive (`go tool swag`); `make openapi-check`, pre-commit hook and CI `openapi-drift` gate on them.
+- **T164** — React 19, React Router 7, Vite major, ESLint 9, Headless UI 2. All frontend majors landed in small commits: React 19.3 + react-dom 19 (a381e00), React Router 7.18 (`react-router-dom` removed), Headless UI 2 (Modal on v2 components), Vite 8 / Rolldown with the same vendor chunks (`codeSplitting.groups`, b38c6b6), @vitejs/plugin-react 6, Vitest 5, jsdom 30, jest-dom 7, ESLint 10 + typescript-eslint 8 + react-hooks 7 + react-refresh 0.5 (2cf082c), zod 4 via `zod/mini` + @hookform/resolvers 5 (c7f502c), Stripe.js 10 / react-stripe-js 7, date-fns 4, react-easy-crop 6, lucide-react 1.x; GitHub Actions checkout/setup-go/setup-node 7, wrangler-action 4; Node 24 in CI. Bundle budgets re-based with reasons (vendor-react 85 KB, vendor-observability 195 KB — CI now measures the real Sentry chunk); `analyze-bundle.cjs` chunk-name bug fixed. Follow-ups: T248 (Sentry 11), T249 (CJS interop flag), `react-hooks/set-state-in-effect` with T162.
 - **T202** — Decide production database hosting (OWNER DECISION). Owner chose **Neon** Postgres (free tier to start; move to a paid plan when it outgrows the free limits). Recorded in D3 and OD-1; Cloud Run goes in the Neon region (OD-8). Neon has no bundled auth, so the T158 auth plan is reopened as OD-9.
 - **T223** — Request IDs and a standard API error envelope. Request-ID middleware mounted first (inbound X-Request-ID kept if 8–128 safe chars, else UUID) → response header, context, every log line, access log, Sentry tag; one envelope `{error: code, message, request_id, fields?, details?}` written through `internal/api/apierror` with typed domain errors in `internal/errors` (409 conflicts incl. quote/job status, 404 not-found, 400 validation with fields / malformed_json, generic 500 for infra); all handler groups + middleware converted, JSON 404 for unknown /api routes, `docs/api/errors.md`; frontend reads the envelope and shows 'Reference: <id>' on 5xx (67cce6a … 6ad0516). Follow-ups T238–T240.
 - **T224** — Quote correctness: lost customer edits, accept race, expiry, editable sent quotes. Quote update keeps customer changes (same-tenant check); accept/decline are single conditional updates (send/accept/decline never worked before — validation hook ran on an empty model); subtotal = sum of rounded item totals; only drafts editable + `POST /quotes/{id}/revise`; `POST /internal/jobs/quote-expiry` hourly in scheduled-jobs.yml (aeaef27, e04a7c3, 5ddeb72, fc15df2, 9a29a32).
