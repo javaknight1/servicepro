@@ -16,14 +16,14 @@ its **customers** are the people/companies it does work for.
 - **Status (2026-10-16): local-only, not hosted.** The 2026-10-16 audit (`docs/audits/2026-10-16/`)
   found critical tenant-isolation and auth-escalation flaws; TODO.md Phase 1 must be complete before
   anything is exposed to the internet, even invite-only. Production database: **Neon** Postgres (owner
-  decision 2026-10-18, T202; not provisioned yet). Auth provider is open again (TODO OD-9).
+  decision 2026-10-18, T202; not provisioned yet). Auth target: **Neon's managed Better Auth** (OD-9, 2026-10-19).
 
 ## Stack
 
 | Layer    | Today                                                              | Target (TODO Phase 4, League Looper parity)                       |
 | -------- | ------------------------------------------------------------------ | ----------------------------------------------------------------- |
 | API      | Go 1.26, Gin, GORM, Postgres 16, Redis (optional)                  | chi, pgx/sqlc, Postgres RLS backstop, Upstash (if Redis needed)   |
-| Auth     | Own JWT (httpOnly cookies) + bcrypt                                | Open (OD-9): Neon managed Better Auth (rec.) or Supabase Auth     |
+| Auth     | Own JWT (httpOnly cookies) + bcrypt                                | Neon's managed Better Auth, JWKS-verified in the API (T158, OD-9) |
 | Web      | React 19, Vite 8, TS strict, Zustand + React Query, Tailwind v4    | React 19, TanStack Query for all server state, Tailwind v4 tokens |
 | Email    | Resend / SES / SMTP (Mailpit locally)                              | Resend only                                                       |
 | Storage  | S3-compatible (MinIO locally)                                      | Cloudflare R2                                                     |
