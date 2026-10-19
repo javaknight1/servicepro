@@ -7,12 +7,30 @@ name: CI
 #
 # The `name:` above must stay exactly "CI": dependabot-automerge.yml listens
 # for it by name (workflow_run), and a rename silently disables auto-merge.
+#
+# Actions minutes (OD-2): a private repo gets 2,000 free minutes a month, and a
+# full run bills ~15. So docs-only pushes don't run CI at all, and the `changes`
+# job below skips the jobs for areas a push or PR didn't touch. A manual or
+# dependabot-automerge dispatch always runs everything — that is the release
+# gate. A skipped job counts as passing, so auto-merge still sees CI succeed.
 
 on:
   push:
     branches: [master]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'help/**'
+      - 'training/**'
+      - 'grafana/**'
   pull_request:
     branches: [master]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'help/**'
+      - 'training/**'
+      - 'grafana/**'
   # Dispatchable so dependabot-automerge.yml can validate master after a
   # GITHUB_TOKEN merge — which, like a token-pushed tag, triggers nothing.
   workflow_dispatch:
@@ -28,7 +46,72 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  changes:
+    # Which areas this push or PR touched, from the GitHub API (no checkout).
+    # Anything outside backend/, frontend/ and the docs paths — .github/,
+    # Makefile, scripts/, VERSION, root config — runs everything, as does a
+    # file list the API can't give in full.
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      go: ${{ steps.areas.outputs.go }}
+      frontend: ${{ steps.areas.outputs.frontend }}
+      openapi: ${{ steps.areas.outputs.openapi }}
+      integration: ${{ steps.areas.outputs.integration }}
+    steps:
+      - id: areas
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          EVENT: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+          SHA: ${{ github.sha }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          set -uo pipefail
+          go=false frontend=false openapi=false integration=false all=false
+          files=""
+          case "$EVENT" in
+            push)
+              if [[ "$BEFORE" =~ ^0+$ ]] ||
+                 ! files=$(gh api "repos/$REPO/compare/$BEFORE...$SHA" --jq '.files[].filename'); then
+                all=true
+              fi
+              # compare lists at most 300 files.
+              [ "$(grep -c . <<<"$files")" -ge 300 ] && all=true ;;
+            pull_request)
+              files=$(gh api --paginate "repos/$REPO/pulls/$PR/files" --jq '.[].filename') || all=true ;;
+            *) all=true ;;
+          esac
+
+          while IFS= read -r f; do
+            case "$f" in
+              '') ;;
+              *.md|docs/*|help/*|training/*|grafana/*) ;;
+              backend/tests/integration/*) go=true; integration=true ;;
+              backend/*) go=true ;;
+              frontend/src/types/api.generated.ts|frontend/package.json|frontend/package-lock.json)
+                frontend=true; openapi=true ;;
+              frontend/*) frontend=true ;;
+              *) echo "runs everything: $f"; all=true ;;
+            esac
+          done <<<"$files"
+
+          if [ "$all" = true ]; then go=true frontend=true openapi=true integration=true; fi
+          [ "$go" = true ] && openapi=true
+          {
+            echo "go=$go"
+            echo "frontend=$frontend"
+            echo "openapi=$openapi"
+            echo "integration=$integration"
+          } | tee -a "$GITHUB_OUTPUT"
+
   go-lint:
+    needs: changes
+    if: needs.changes.outputs.go == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -49,6 +132,8 @@ jobs:
           args: --config .golangci.yml
 
   go-test:
+    needs: changes
+    if: needs.changes.outputs.go == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     services:
@@ -114,7 +199,10 @@ jobs:
     #   - a running API on API_BASE_URL for the api/ suite;
     #   - its migration loader updated for golang-migrate file names
     #     (it globs migrations/*.sql, which would also run *.down.sql).
-    # When fixed, drop continue-on-error and add a localstack service.
+    # When fixed, drop continue-on-error and add a localstack service. Until
+    # then it runs only when its own files change, or on a full run.
+    needs: changes
+    if: needs.changes.outputs.integration == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     continue-on-error: true
@@ -176,6 +264,8 @@ jobs:
     # setup-go treats an exact `go 1.24.0` in go.mod as an exact version, so
     # backend/go.mod should carry a current patch (a `toolchain` line or a
     # bumped `go` directive) for this gate to track patch releases.
+    needs: changes
+    if: needs.changes.outputs.go == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -199,6 +289,8 @@ jobs:
     # Regenerate the OpenAPI spec (swag, pinned to backend/go.mod) and the
     # frontend TypeScript types, and fail if either differs from what's
     # committed. Fix locally with `make docs` and commit the result.
+    needs: changes
+    if: needs.changes.outputs.openapi == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -225,6 +317,8 @@ jobs:
           fi
 
   frontend:
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -272,6 +366,8 @@ jobs:
     # Build the production backend/Dockerfile on every PR/push so a broken
     # image surfaces here, not at release time when scripts/deploy-cloudrun.sh
     # builds the same file. push: false — no registry credentials needed.
+    needs: changes
+    if: needs.changes.outputs.go == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
