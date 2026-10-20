@@ -1,7 +1,7 @@
 name: Security scan
 
 # Re-runs the security scanners weekly so CVEs disclosed during quiet periods
-# (no commits to master) still surface within ~7 days. ci.yml's go-vuln and
+# (no commits to master) still surface within ~7 days. ci.yml's govulncheck (in go-lint) and
 # npm audit only fire on push/PR. Dependabot covers most module CVEs with a
 # PR; Go standard-library CVEs never get one — this is the backstop.
 

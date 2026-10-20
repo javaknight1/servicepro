@@ -13,6 +13,9 @@ name: CI
 # job below skips the jobs for areas a push or PR didn't touch. A manual or
 # dependabot-automerge dispatch always runs everything — that is the release
 # gate. A skipped job counts as passing, so auto-merge still sees CI succeed.
+# Every job bills at least one minute, so related checks share a job
+# (govulncheck runs inside go-lint) and docker-build runs only when the image
+# inputs change (2026-10-19, ~3 minutes saved per Go push).
 
 on:
   push:
@@ -61,6 +64,7 @@ jobs:
       frontend: ${{ steps.areas.outputs.frontend }}
       openapi: ${{ steps.areas.outputs.openapi }}
       integration: ${{ steps.areas.outputs.integration }}
+      docker: ${{ steps.areas.outputs.docker }}
     steps:
       - id: areas
         env:
@@ -72,7 +76,7 @@ jobs:
           PR: ${{ github.event.pull_request.number }}
         run: |
           set -uo pipefail
-          go=false frontend=false openapi=false integration=false all=false
+          go=false frontend=false openapi=false integration=false docker=false all=false
           files=""
           case "$EVENT" in
             push)
@@ -92,6 +96,7 @@ jobs:
               '') ;;
               *.md|docs/*|help/*|training/*|grafana/*) ;;
               backend/tests/integration/*) go=true; integration=true ;;
+              backend/Dockerfile|backend/.dockerignore|backend/go.mod|backend/go.sum) go=true; docker=true ;;
               backend/*) go=true ;;
               frontend/src/types/api.generated.ts|frontend/package.json|frontend/package-lock.json)
                 frontend=true; openapi=true ;;
@@ -100,13 +105,15 @@ jobs:
             esac
           done <<<"$files"
 
-          if [ "$all" = true ]; then go=true frontend=true openapi=true integration=true; fi
+          # A full run skips db-integration: it is broken and non-blocking (see that job).
+          if [ "$all" = true ]; then go=true frontend=true openapi=true docker=true; fi
           [ "$go" = true ] && openapi=true
           {
             echo "go=$go"
             echo "frontend=$frontend"
             echo "openapi=$openapi"
             echo "integration=$integration"
+            echo "docker=$docker"
           } | tee -a "$GITHUB_OUTPUT"
 
   go-lint:
@@ -120,7 +127,7 @@ jobs:
         with:
           go-version-file: backend/go.mod
           # Resolve the newest matching patch rather than the runner's
-          # preinstalled Go — see the note on the go-vuln job.
+          # preinstalled Go — see the govulncheck note in go-lint.
           check-latest: true
           cache-dependency-path: backend/go.sum
       - name: golangci-lint
@@ -130,6 +137,26 @@ jobs:
           # Keep in sync with GOLANGCI_LINT_VERSION in the root Makefile.
           version: v2.14.0
           args: --config .golangci.yml
+      # govulncheck against the backend module (was its own go-vuln job; it
+      # shares this job's setup to save a billed minute). Fails on any known
+      # CVE in code actually reachable from the binary (call-graph analysis).
+      #
+      # `check-latest: true` on every setup-go step exists for this check:
+      # without it setup-go accepts the runner's preinstalled Go, and most
+      # findings are standard-library CVEs already fixed in a newer patch
+      # release. NOTE: setup-go treats an exact `go 1.24.0` in go.mod as an
+      # exact version, so backend/go.mod should carry a current patch (a
+      # `toolchain` line or a bumped `go` directive) for this gate to track
+      # patch releases.
+      - name: Install govulncheck
+        # GOTOOLCHAIN=auto for this step only: govulncheck@latest may need a
+        # newer Go to BUILD. The scanner is a tool, not a dependency.
+        env:
+          GOTOOLCHAIN: auto
+        run: go install golang.org/x/vuln/cmd/govulncheck@latest
+      - name: Run govulncheck
+        working-directory: backend
+        run: govulncheck ./...
 
   go-test:
     needs: changes
@@ -199,8 +226,9 @@ jobs:
     #   - a running API on API_BASE_URL for the api/ suite;
     #   - its migration loader updated for golang-migrate file names
     #     (it globs migrations/*.sql, which would also run *.down.sql).
-    # When fixed, drop continue-on-error and add a localstack service. Until
-    # then it runs only when its own files change, or on a full run.
+    # When fixed, drop continue-on-error, add a localstack service and set
+    # integration=true on full runs again in the `changes` job. Until then it
+    # runs only when its own files change.
     needs: changes
     if: needs.changes.outputs.integration == 'true'
     runs-on: ubuntu-latest
@@ -253,37 +281,6 @@ jobs:
       - name: Database integration tests
         working-directory: backend
         run: go test -tags=integration -count=1 -timeout 10m ./tests/integration/database/...
-
-  go-vuln:
-    # govulncheck against the backend module. Fails on any known CVE in code
-    # actually reachable from the binary (call-graph analysis).
-    #
-    # `check-latest: true` on every setup-go step exists for this job: without
-    # it setup-go accepts the runner's preinstalled Go, and most findings are
-    # standard-library CVEs already fixed in a newer patch release. NOTE:
-    # setup-go treats an exact `go 1.24.0` in go.mod as an exact version, so
-    # backend/go.mod should carry a current patch (a `toolchain` line or a
-    # bumped `go` directive) for this gate to track patch releases.
-    needs: changes
-    if: needs.changes.outputs.go == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
-        with:
-          go-version-file: backend/go.mod
-          check-latest: true
-          cache-dependency-path: backend/go.sum
-      - name: Install govulncheck
-        # GOTOOLCHAIN=auto for this step only: govulncheck@latest may need a
-        # newer Go to BUILD. The scanner is a tool, not a dependency.
-        env:
-          GOTOOLCHAIN: auto
-        run: go install golang.org/x/vuln/cmd/govulncheck@latest
-      - name: Run govulncheck
-        working-directory: backend
-        run: govulncheck ./...
 
   openapi-drift:
     # Regenerate the OpenAPI spec (swag, pinned to backend/go.mod) and the
@@ -366,8 +363,11 @@ jobs:
     # Build the production backend/Dockerfile on every PR/push so a broken
     # image surfaces here, not at release time when scripts/deploy-cloudrun.sh
     # builds the same file. push: false — no registry credentials needed.
+    # Runs only when the image inputs change (Dockerfile, .dockerignore,
+    # go.mod, go.sum) or on a full run: Go code is already compiled by go-test,
+    # and new CVEs are caught by the weekly security-scan and dependabot runs.
     needs: changes
-    if: needs.changes.outputs.go == 'true'
+    if: needs.changes.outputs.docker == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
