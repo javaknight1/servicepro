@@ -2793,6 +2793,9 @@ Validate the beachhead before the Phase 9–10 build-out, then publish positioni
   (`frosty-unit-21038953`, org SharkFins, Free plan) is in **AWS us-east-2 (Ohio)**, Postgres 18; branch
   `production` has Neon Auth (managed Better Auth) enabled. Nearest Cloud Run region: `us-east5` (Columbus, Ohio).
   Local Docker and CI moved to Postgres 18 to match (2026-10-24).
+  Same day: Neon branch `dev` (from `production`) migrated with the squashed baseline + dev seed; the local API
+  ran against its pooled URL — `/health/ready` ok (schema 1/1), login, tenant-scoped customer list and a customer
+  create all worked. `dev` is for trying things on Neon; day-to-day local dev stays on Docker Postgres 18.
 - **OD-9 — Auth provider now that the database is on Neon** (T158). **Decided 2026-10-19: Neon's managed Better
   Auth** (Neon Auth). Users, sessions and OAuth config live in the `neon_auth` schema of our own Neon database;
   included on Neon Free up to 60k MAU (neon.com/pricing, checked 2026-10-18); each Neon branch gets its own auth
