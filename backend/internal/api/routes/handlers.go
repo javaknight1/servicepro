@@ -27,6 +27,14 @@ func SetupHandlers(
 	})
 	h.InviteCode = handlers.NewInviteCodeHandler(svc.InviteCodes)
 
+	// Neon Auth first-sign-in provisioning (T158). A nil verifier must stay an
+	// untyped nil interface, or the handler would think Neon Auth is on.
+	var neonVerifier handlers.NeonTokenVerifier
+	if mw.NeonAuth != nil {
+		neonVerifier = mw.NeonAuth
+	}
+	h.NeonAuth = handlers.NewNeonAuthHandler(neonVerifier, svc.NeonProvisioning)
+
 	// Email verification handler
 	h.EmailVerification = handlers.NewEmailVerificationHandler(svc.EmailVerification)
 

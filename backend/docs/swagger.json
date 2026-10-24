@@ -260,6 +260,80 @@
                 }
             }
         },
+        "/api/v1/auth/neon/provision": {
+            "post": {
+                "description": "Called after signing in with Neon Auth when the API answers 401 account_not_linked. Authenticated by the Neon Auth JWT (Bearer). Links an existing user with the same verified email, or creates one when an invitation for that email or a valid invite code admits it. Idempotent.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Link or create the ServicePro user for a Neon Auth sign-in",
+                "parameters": [
+                    {
+                        "description": "Invite code or invitation token (needed only for a new user)",
+                        "name": "request",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.NeonProvisionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.NeonProvisionResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid_email",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Missing or invalid Neon Auth token",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "email_not_verified, registration_closed, invalid_invite_code or invalid_invitation",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Neon Auth is not enabled",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "identity_conflict: the email is linked to another sign-in",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/v1/auth/refresh": {
             "post": {
                 "description": "Exchange refresh token for new access and refresh tokens",
@@ -12449,6 +12523,34 @@
                     "type": "integer"
                 },
                 "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_javaknight1_servicepro_backend_internal_models.NeonProvisionRequest": {
+            "type": "object",
+            "properties": {
+                "invitation_token": {
+                    "type": "string"
+                },
+                "invite_code": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_javaknight1_servicepro_backend_internal_models.NeonProvisionResponse": {
+            "type": "object",
+            "properties": {
+                "created": {
+                    "type": "boolean"
+                },
+                "invitation_accepted": {
+                    "type": "boolean"
+                },
+                "linked": {
+                    "type": "boolean"
+                },
+                "user_id": {
                     "type": "string"
                 }
             }

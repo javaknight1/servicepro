@@ -1994,6 +1994,24 @@ definitions:
       updated_at:
         type: string
     type: object
+  github_com_javaknight1_servicepro_backend_internal_models.NeonProvisionRequest:
+    properties:
+      invitation_token:
+        type: string
+      invite_code:
+        type: string
+    type: object
+  github_com_javaknight1_servicepro_backend_internal_models.NeonProvisionResponse:
+    properties:
+      created:
+        type: boolean
+      invitation_accepted:
+        type: boolean
+      linked:
+        type: boolean
+      user_id:
+        type: string
+    type: object
   github_com_javaknight1_servicepro_backend_internal_models.PDFExportOptions:
     properties:
       footer_text:
@@ -4176,6 +4194,57 @@ paths:
                 type: string
             type: object
       summary: User logout
+      tags:
+      - auth
+  /api/v1/auth/neon/provision:
+    post:
+      consumes:
+      - application/json
+      description: Called after signing in with Neon Auth when the API answers 401
+        account_not_linked. Authenticated by the Neon Auth JWT (Bearer). Links an
+        existing user with the same verified email, or creates one when an invitation
+        for that email or a valid invite code admits it. Idempotent.
+      parameters:
+      - description: Invite code or invitation token (needed only for a new user)
+        in: body
+        name: request
+        schema:
+          $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.NeonProvisionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.NeonProvisionResponse'
+        "400":
+          description: invalid_email
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "401":
+          description: Missing or invalid Neon Auth token
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "403":
+          description: email_not_verified, registration_closed, invalid_invite_code
+            or invalid_invitation
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "404":
+          description: Neon Auth is not enabled
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "409":
+          description: 'identity_conflict: the email is linked to another sign-in'
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Link or create the ServicePro user for a Neon Auth sign-in
       tags:
       - auth
   /api/v1/auth/refresh:

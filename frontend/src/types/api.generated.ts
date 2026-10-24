@@ -331,6 +331,104 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/neon/provision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Link or create the ServicePro user for a Neon Auth sign-in
+         * @description Called after signing in with Neon Auth when the API answers 401 account_not_linked. Authenticated by the Neon Auth JWT (Bearer). Links an existing user with the same verified email, or creates one when an invitation for that email or a valid invite code admits it. Idempotent.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            /** @description Invite code or invitation token (needed only for a new user) */
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.NeonProvisionRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.NeonProvisionResponse"];
+                    };
+                };
+                /** @description invalid_email */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Missing or invalid Neon Auth token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description email_not_verified, registration_closed, invalid_invite_code or invalid_invitation */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Neon Auth is not enabled */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description identity_conflict: the email is linked to another sign-in */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Internal server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/refresh": {
         parameters: {
             query?: never;
@@ -12384,6 +12482,16 @@ export interface components {
             name?: string;
             sort_order?: number;
             updated_at?: string;
+        };
+        "github_com_javaknight1_servicepro_backend_internal_models.NeonProvisionRequest": {
+            invitation_token?: string;
+            invite_code?: string;
+        };
+        "github_com_javaknight1_servicepro_backend_internal_models.NeonProvisionResponse": {
+            created?: boolean;
+            invitation_accepted?: boolean;
+            linked?: boolean;
+            user_id?: string;
         };
         "github_com_javaknight1_servicepro_backend_internal_models.PDFExportOptions": {
             footer_text?: string;

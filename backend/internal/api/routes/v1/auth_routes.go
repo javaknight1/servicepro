@@ -14,6 +14,7 @@ func SetupAuthRoutes(router *gin.RouterGroup, cfg *routeconfigs.RouteConfig) {
 		auth.POST("/refresh", cfg.Handlers.Auth.RefreshToken)
 		auth.POST("/logout", cfg.Handlers.Auth.Logout)
 		auth.POST("/register", cfg.Handlers.Registration.Register)
+		auth.POST("/neon/provision", cfg.Handlers.NeonAuth.Provision)
 		auth.POST("/reset-request", cfg.Middleware.RateLimiter.PasswordResetRateLimit(), cfg.Handlers.PasswordReset.RequestPasswordReset)
 		auth.POST("/reset-password", cfg.Handlers.PasswordReset.ResetPassword)
 		auth.GET("/verify", cfg.Handlers.EmailVerification.VerifyEmail)

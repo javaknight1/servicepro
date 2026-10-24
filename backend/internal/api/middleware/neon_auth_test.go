@@ -84,7 +84,7 @@ func TestRequireAuth_NeonAuth(t *testing.T) {
 		}}, pm.authUsers)
 		w := call(unlinked)
 		assert.Equal(t, http.StatusUnauthorized, w.Code)
-		assert.Contains(t, w.Body.String(), "No ServicePro account is linked")
+		assert.Contains(t, w.Body.String(), "account_not_linked")
 	})
 
 	t.Run("the API's own JWTs still work", func(t *testing.T) {

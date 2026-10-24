@@ -178,6 +178,13 @@ func SetupServices(
 	// Platform invite codes (REGISTRATION_MODE=invite_only)
 	svc.InviteCodes = services.NewInviteCodeService(db)
 
+	// First Neon Auth sign-in → ServicePro user, same invite-only gate as /auth/register (T158)
+	svc.NeonProvisioning = services.NewNeonProvisioningService(db, &services.RegistrationGate{
+		Mode:        cfg.Auth.RegistrationMode,
+		InviteCodes: svc.InviteCodes,
+		Invitations: svc.Invitation,
+	}, svc.Invitation)
+
 	// Payment reminder service
 	svc.PaymentReminder = services.NewPaymentReminderService(db, &services.PaymentReminderServiceConfig{
 		EmailClient: emailClient,

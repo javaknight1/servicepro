@@ -13,6 +13,7 @@ import (
 	permissionsSvc "github.com/javaknight1/servicepro/backend/internal/services/permissions"
 	stripeService "github.com/javaknight1/servicepro/backend/internal/services/stripe"
 	"github.com/javaknight1/servicepro/backend/pkg/auth"
+	"github.com/javaknight1/servicepro/backend/pkg/auth/neonauth"
 	analyticsclient "github.com/javaknight1/servicepro/backend/pkg/clients/analytics"
 	emailclient "github.com/javaknight1/servicepro/backend/pkg/clients/email"
 	smsclient "github.com/javaknight1/servicepro/backend/pkg/clients/sms"
@@ -66,6 +67,7 @@ type Services struct {
 	Tenant            *services.TenantService
 	Invitation        *services.InvitationService
 	InviteCodes       *services.InviteCodeService
+	NeonProvisioning  *services.NeonProvisioningService
 	Membership        *services.MembershipService
 	Stripe            *services.StripeService
 	ProfilePicture    *services.ProfilePictureService
@@ -92,6 +94,8 @@ type Middleware struct {
 	TenantMW       *middleware.TenantMiddleware
 	RateLimiter    *middleware.RateLimiter
 	APIRateLimiter *middleware.APIRateLimiter
+	// NeonAuth verifies Neon Auth JWTs; nil when NEON_AUTH_BASE_URL is unset.
+	NeonAuth *neonauth.Verifier
 }
 
 // Handlers holds all handler instances
@@ -123,4 +127,5 @@ type Handlers struct {
 	TaxRate           *handlers.TaxRateHandler
 	Conflict          *handlers.ConflictHandler
 	PaymentReminder   *handlers.PaymentReminderHandler
+	NeonAuth          *handlers.NeonAuthHandler
 }

@@ -186,10 +186,10 @@ func (pm *PermissionMiddleware) authenticateNeon(c *gin.Context, token string) {
 	}
 	userID, err := pm.authUsers(claims.Subject)
 	if err != nil {
-		// Signed in with Neon Auth, but no ServicePro user is linked yet
-		// (first-sign-in provisioning is a later T158 step).
+		// Signed in with Neon Auth, but no ServicePro user is linked yet: the
+		// client calls POST /auth/neon/provision, then retries.
 		apierror.WriteResponse(c, http.StatusUnauthorized, models.ErrorResponse{
-			Error:   "unauthorized",
+			Error:   "account_not_linked",
 			Message: "No ServicePro account is linked to this sign-in",
 		})
 		c.Abort()

@@ -87,6 +87,7 @@ func SetupMiddleware(
 		TenantMW:       tenantMW,
 		RateLimiter:    rateLimiter,
 		APIRateLimiter: apiRateLimiter,
+		NeonAuth:       neonVerifier,
 	}
 }
 

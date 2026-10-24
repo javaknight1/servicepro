@@ -120,3 +120,18 @@ type ErrorResponse struct {
 type ProfilePictureUploadResponse struct {
 	ProfilePictureURL string `json:"profile_picture_url"`
 }
+
+// NeonProvisionRequest is the optional body of POST /auth/neon/provision.
+// Only a brand-new user needs one of the two (invite-only registration).
+type NeonProvisionRequest struct {
+	InviteCode      *string `json:"invite_code,omitempty"`
+	InvitationToken *string `json:"invitation_token,omitempty"`
+}
+
+// NeonProvisionResponse reports what POST /auth/neon/provision did.
+type NeonProvisionResponse struct {
+	UserID             string `json:"user_id"`
+	Created            bool   `json:"created"`
+	Linked             bool   `json:"linked"`
+	InvitationAccepted bool   `json:"invitation_accepted"`
+}
