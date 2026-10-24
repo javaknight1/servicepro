@@ -2789,7 +2789,10 @@ Validate the beachhead before the Phase 9–10 build-out, then publish positioni
   cost and lead time; whether ServicePro registers on tenants' behalf.
 - **OD-7 — Beachhead confirmation** (T218). Confirm or change the commercial/B2B beachhead and the $99 Team price
   after 10 interviews; re-scope Phases 9–10 accordingly.
-- **OD-8 — Cloud Run region.** Follows the Neon project's region (OD-1); pick it when creating the Neon project.
+- **OD-8 — Cloud Run region.** Follows the Neon project's region (OD-1). 2026-10-24: the Neon project
+  (`frosty-unit-21038953`, org SharkFins, Free plan) is in **AWS us-east-2 (Ohio)**, Postgres 18; branch
+  `production` has Neon Auth (managed Better Auth) enabled. Nearest Cloud Run region: `us-east5` (Columbus, Ohio).
+  Local Docker and CI still run Postgres 16 — move them to 18 so dev matches production (T203).
 - **OD-9 — Auth provider now that the database is on Neon** (T158). **Decided 2026-10-19: Neon's managed Better
   Auth** (Neon Auth). Users, sessions and OAuth config live in the `neon_auth` schema of our own Neon database;
   included on Neon Free up to 60k MAU (neon.com/pricing, checked 2026-10-18); each Neon branch gets its own auth
