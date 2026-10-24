@@ -333,8 +333,8 @@ The minimum subset that must be done before real (paying) customers: **39 tasks,
 | T200     | 13     | Legal          | 6      | Account/tenant deletion + data retention policy                                                          |
 | T201     | 13     | Legal          | 3      | Privacy/CCPA handling SOP                                                                                |
 | T231     | 13     | Auth           | 1      | Owner decision: may a tenant's owner/admin delete their own organization? (Deferred)                     |
-| T203     | 14     | Deploy         | 4      | GCP project + WIF + Artifact Registry + Cloud Run service                                                |
-| T204     | 14     | Deploy         | 2      | Deploy the Worker + DNS for servicepro.sharkfins.xyz                                                     |
+| ~~T203~~ | ~~14~~ | ~~Deploy~~     | ~~4~~  | ~~GCP project + WIF + Artifact Registry + Cloud Run service~~                                            |
+| ~~T204~~ | ~~14~~ | ~~Deploy~~     | ~~2~~  | ~~Deploy the Worker + DNS for servicepro.sharkfins.xyz~~                                                 |
 | T205     | 14     | Deploy         | 2      | Invite-gated preview launch                                                                              |
 | T206     | 14     | Email          | 2      | Production email domain on Resend (SPF/DKIM/DMARC)                                                       |
 | T207     | 14     | Legal          | 4      | Terms of Service + Privacy Policy legal review                                                           |
@@ -2472,8 +2472,8 @@ Remaining roles, audit logging, MFA, and the export/deletion promises that back 
 Provision and launch. Database: Neon (T202, decided 2026-10-18). ServicePro stays local-only until these land. **11 open tasks, ~34h.** 1 done.
 
 - [x] T202 — Decide production database hosting (OWNER DECISION) ✓ (2026-10-18)
-- [ ] T203 — GCP project + WIF + Artifact Registry + Cloud Run service
-- [ ] T204 — Deploy the Worker + DNS for servicepro.sharkfins.xyz
+- [x] T203 — GCP project + WIF + Artifact Registry + Cloud Run service ✓ (2026-10-24)
+- [x] T204 — Deploy the Worker + DNS for servicepro.sharkfins.xyz ✓ (2026-10-24)
 - [ ] T205 — Invite-gated preview launch
 - [ ] T206 — Production email domain on Resend (SPF/DKIM/DMARC)
 - [ ] T207 — Terms of Service + Privacy Policy legal review
@@ -3052,3 +3052,5 @@ Dated history from the original "Completed Items" list:
 - **T239** — Access log drops query strings. Access log logs the path plus sorted query KEYS only (`middleware.QueryKeys`); same for the unused request loggers, `AccessLogger` and the panic handler's Sentry extra; test asserts `?token=secret123` never reaches a log line (9cc9f5e).
 - **T245** — Repair the Postgres repository tests so CI go-test is green. Repository tests run in a seeded tenant against the migrated DB: shared fixture (`openTestDB` with the tenancy plugin, `createTestTenant`, `addMember`, cleanup), valid fixtures, exact counts, new cross-tenant and non-member assignment tests (18 pass); customer bench seeds its own tenant; CI migrates TEST_DATABASE_URL first and runs the Postgres race tests (4e7e3c8, ae193e0).
 - **T250** — Footer build stamp (League Looper parity). `useVersion` (React Query, GET /version via `resolveVersionUrl`), `BuildStamp` shows WEB/API versions with short-SHA tooltips, em dash when unknown, warning on drift; in the public footer, pricing footer and a new dashboard footer; Vite dev proxy for /version; 9 vitest tests. Same day: Sentry release set to the git SHA (matches CI's release + source maps) and the nightly backup now includes `neon_auth`.
+- **T203** — GCP project `service-pro-512609` (owner-created; billing temporarily on the League Looper billing account until the new "Service Pro Billing Account" is reopened by Google support), APIs, Artifact Registry `servicepro` (us-east5, keep 20 / delete >90d), runtime SA `servicepro-api` + deploy SA `gh-deploy`, Secret Manager (DATABASE_URL = Neon production pooled; JWT/INTERNAL_JOBS/EDGE_PROXY generated, copies in Bitwarden "ServicePro production secrets"), WIF pool `github` limited to javaknight1/servicepro, Cloud Run `servicepro-api` (us-east5, 0–4 instances, invite_only, NEON_AUTH_BASE_URL = production branch). GitHub vars/secrets set; v0.9.0 released through the full pipeline (migrate → api → web → release) on 2026-10-24.
+- **T204** — Worker `servicepro-web` deployed with custom domain `servicepro.sharkfins.xyz`, API_ORIGIN = Cloud Run, EDGE_PROXY_SECRET set; CI deploys it with the `CLOUDFLARE_API_TOKEN` secret (Bitwarden: Cloudflare → servicepro-ci-token). Verified: site 200, /version through the Worker = v0.9.0 commit, direct run.app /api → 403 (edge enforcement), via Worker /api → 401. Blog INFRA.md updated.
