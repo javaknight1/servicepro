@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:16-alpine
+    image: postgres:18-alpine
     container_name: servicepro-postgres
     environment:
       POSTGRES_USER: postgres
@@ -9,7 +9,9 @@ services:
     ports:
       - '5432:5432'
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      # Postgres 18 images keep data in a versioned subdirectory (/var/lib/postgresql/18/docker),
+      # so mount the parent. New volume name: the old postgres_data (16) volume is not compatible.
+      - postgres18_data:/var/lib/postgresql
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U postgres']
       interval: 10s
@@ -209,7 +211,7 @@ services:
     restart: on-failure # Restart if STRIPE_SECRET_KEY is missing initially
 
 volumes:
-  postgres_data:
+  postgres18_data:
   redis_data:
   minio_data:
   grafana_data:

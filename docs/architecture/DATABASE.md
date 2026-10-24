@@ -2,7 +2,7 @@
 
 > **Version**: 1.0
 > **Last Updated**: January 2026
-> **Database**: PostgreSQL 16
+> **Database**: PostgreSQL 18
 
 ## Table of Contents
 

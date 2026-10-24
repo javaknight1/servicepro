@@ -257,7 +257,7 @@ test:
   runs-on: ubuntu-latest
   services:
     postgres:
-      image: postgres:16
+      image: postgres:18
       env:
         POSTGRES_DB: servicepro_test
         POSTGRES_USER: test_user

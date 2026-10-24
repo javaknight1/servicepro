@@ -22,7 +22,7 @@ its **customers** are the people/companies it does work for.
 
 | Layer    | Today                                                              | Target (TODO Phase 4, League Looper parity)                       |
 | -------- | ------------------------------------------------------------------ | ----------------------------------------------------------------- |
-| API      | Go 1.26, Gin, GORM, Postgres 16, Redis (optional)                  | chi, pgx/sqlc, Postgres RLS backstop, Upstash (if Redis needed)   |
+| API      | Go 1.26, Gin, GORM, Postgres 18, Redis (optional)                  | chi, pgx/sqlc, Postgres RLS backstop, Upstash (if Redis needed)   |
 | Auth     | Own JWT (httpOnly cookies) + bcrypt                                | Neon's managed Better Auth, JWKS-verified in the API (T158, OD-9) |
 | Web      | React 19, Vite 8, TS strict, Zustand + React Query, Tailwind v4    | React 19, TanStack Query for all server state, Tailwind v4 tokens |
 | Email    | Resend / SES / SMTP (Mailpit locally)                              | Resend only                                                       |
@@ -30,7 +30,7 @@ its **customers** are the people/companies it does work for.
 | Payments | Stripe (platform account)                                          | Stripe Connect — money goes to the tenant (T169)                  |
 | Obs.     | Sentry, PostHog, Prometheus `/metrics`, Grafana (local only)       | + Better Stack uptime/status                                      |
 | Hosting  | none                                                               | Cloudflare Worker (static assets + `/api` proxy) → Cloud Run      |
-| Database | Postgres 16 (Docker locally)                                       | Neon Postgres (T202), Cloud Run in the same region                |
+| Database | Postgres 18 (Docker locally)                                       | Neon Postgres (T202), Cloud Run in the same region                |
 
 Decision record: TODO.md "Architecture decisions" (D1–D6). **Stay Go API + React SPA — not Next.js**
 (D1). Migrate incrementally; the app must keep working at every step. Don't introduce a new vendor or

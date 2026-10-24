@@ -122,7 +122,7 @@ docker compose exec postgres psql -U postgres -d servicepro -c "SELECT 1"
 
 # 4. Reset database container
 docker compose down postgres
-docker volume rm servicepro_postgres_data
+docker volume rm servicepro_postgres18_data
 docker compose up -d postgres
 ```
 

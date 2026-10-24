@@ -21,7 +21,7 @@ ServicePro provides tools for managing:
 
 - **Language**: Go (version in `backend/go.mod`, currently 1.24)
 - **Framework**: Gin
-- **Database**: PostgreSQL 16 with GORM; golang-migrate migrations in `backend/migrations/`
+- **Database**: PostgreSQL 18 (Neon in production) with GORM; golang-migrate migrations in `backend/migrations/`
 - **Cache**: Redis 7
 - **Authentication**: JWT with bcrypt
 

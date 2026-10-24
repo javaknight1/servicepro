@@ -47,7 +47,7 @@ aws s3 cp s3://servicepro-backups/2026/10/16/public.dump ./restore/ --endpoint-u
 ```
 
 Use `pg_restore` at (at least) the server's major version, e.g.
-`docker run --rm -v "$PWD/restore:/r" postgres:16 pg_restore ...`.
+`docker run --rm -v "$PWD/restore:/r" postgres:18 pg_restore ...`.
 
 **Into an empty database** (session/direct URL, port 5432):
 
@@ -65,7 +65,7 @@ database (see [`cloud-run-setup.md`](./cloud-run-setup.md) §5, §8).
 **Local drill** (once a quarter — a backup nobody has restored is a guess):
 
 ```bash
-docker run -d --name sp-restore -e POSTGRES_PASSWORD=x -p 5433:5432 postgres:16
+docker run -d --name sp-restore -e POSTGRES_PASSWORD=x -p 5433:5432 postgres:18
 pg_restore --no-owner --no-privileges \
   --dbname "postgresql://postgres:x@localhost:5433/postgres" restore/public.dump
 psql "postgresql://postgres:x@localhost:5433/postgres" -c "select count(*) from customers"
