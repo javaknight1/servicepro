@@ -8,11 +8,12 @@ Nightly at 08:00 UTC, `.github/workflows/db-backup.yml` dumps production to the
 Cloudflare R2 bucket **`servicepro-backups`**:
 
 ```
-YYYY/MM/DD/public.dump    schema + data of the public schema (pg_dump -Fc)
+YYYY/MM/DD/public.dump    schema + data of the public and neon_auth schemas (pg_dump -Fc)
 ```
 
-ServicePro keeps its own `users` table and JWT auth in `public`, so unlike
-apps on Supabase Auth there is no separate `auth.*` dump. Run it by hand from
+ServicePro's own tables (including `users`) live in `public`; Neon Auth's users,
+sessions and OAuth config live in `neon_auth` (T158), so the dump includes both.
+Restoring only `public` would leave app users with no way to sign in. Run it by hand from
 Actions → "Database backup" → Run workflow.
 
 Retention is the bucket's job — the workflow never deletes. Give the bucket a

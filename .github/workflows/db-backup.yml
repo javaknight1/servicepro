@@ -6,8 +6,9 @@
 #
 # Each run writes one pg_dump custom-format archive under YYYY/MM/DD/:
 #   public.dump   schema + data of the app's own tables (what migrations own)
-# ServicePro has its own users table and JWT auth in `public`, so there is no
-# separate auth-schema dump.
+#                 plus the neon_auth schema (Neon Auth users, sessions, OAuth
+#                 config — T158), so a restore keeps sign-ins working. The
+#                 file name predates neon_auth and is kept for continuity.
 #
 # Retention is the bucket's job: give `servicepro-backups` a lifecycle rule
 # (e.g. expire after 30 days). This workflow never deletes anything.
@@ -98,7 +99,7 @@ jobs:
           pg_dump --version
           mkdir -p out
           pg_dump "$DATABASE_URL" --format=custom --compress=9 \
-            --schema=public --no-owner --no-privileges \
+            --schema=public --schema=neon_auth --no-owner --no-privileges \
             --file=out/public.dump
           # A truncated or corrupt archive fails here, not on the day it's needed.
           pg_restore --list out/public.dump >/dev/null
