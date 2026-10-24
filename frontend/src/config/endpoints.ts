@@ -30,3 +30,19 @@ export function resolveApiBaseUrl(value: string | undefined): string {
 }
 
 export const API_BASE_URL = resolveApiBaseUrl(import.meta.env.VITE_API_URL);
+
+/**
+ * URL of the API's build-identity endpoint, GET /version.
+ *
+ * /version is deliberately unversioned and lives at the API's root, not under
+ * "/api" (backend routes.go; the Worker proxies it next to /api/*), so it is
+ * derived from the API base by dropping a trailing "/api":
+ *
+ * - "/api"                  -> "/version" (same-origin)
+ * - "http://host:8080/api"  -> "http://host:8080/version"
+ */
+export function resolveVersionUrl(apiBaseUrl: string): string {
+  return `${apiBaseUrl.replace(/\/+$/, '').replace(/\/api$/, '')}/version`;
+}
+
+export const VERSION_URL = resolveVersionUrl(API_BASE_URL);

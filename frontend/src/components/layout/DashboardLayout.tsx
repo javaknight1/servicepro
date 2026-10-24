@@ -1,6 +1,7 @@
 import { ReactNode } from 'react';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
+import { BuildStamp } from './BuildStamp';
 import { cn } from '@utils/cn';
 import { useSidebarStore } from '@store/sidebarStore';
 
@@ -22,6 +23,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       >
         <Header />
         <main className="flex-1 overflow-auto">{children}</main>
+        <footer className="border-t border-neutral-200 bg-white px-4 py-1.5">
+          <BuildStamp />
+        </footer>
       </div>
     </div>
   );

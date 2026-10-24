@@ -13,6 +13,10 @@ vi.mock('../Header', () => ({
   Header: () => <div data-testid="header">Header</div>,
 }));
 
+vi.mock('../BuildStamp', () => ({
+  BuildStamp: () => <p data-testid="build-stamp">WEB V0.0.0</p>,
+}));
+
 // Mock the sidebar store
 vi.mock('@store/sidebarStore', () => ({
   useSidebarStore: vi.fn(),
