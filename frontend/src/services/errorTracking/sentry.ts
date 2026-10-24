@@ -20,7 +20,9 @@ export interface ErrorTrackingConfig {
 // Default configuration
 const defaultConfig: Partial<ErrorTrackingConfig> = {
   environment: import.meta.env.MODE || 'development',
-  release: import.meta.env.VITE_APP_VERSION || 'unknown',
+  // The git SHA, matching the Sentry release (and source maps) that
+  // release-deploy.yml uploads under github.sha.
+  release: import.meta.env.VITE_GIT_SHA || 'unknown',
   sampleRate: 1.0,
   tracesSampleRate: 0.1,
   debug: import.meta.env.DEV,

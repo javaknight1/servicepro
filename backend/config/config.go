@@ -554,9 +554,11 @@ func Load() *Config {
 			},
 		},
 		Sentry: SentryConfig{
-			DSN:              getEnv("SENTRY_DSN", ""),
-			Environment:      getEnv("SENTRY_ENVIRONMENT", getEnv("ENV", "development")),
-			Release:          getEnv("SENTRY_RELEASE", getEnv("APP_VERSION", "unknown")),
+			DSN:         getEnv("SENTRY_DSN", ""),
+			Environment: getEnv("SENTRY_ENVIRONMENT", getEnv("ENV", "development")),
+			// The release is the git SHA: release-deploy.yml creates the Sentry
+			// release (commits) under github.sha, so the runtime must match.
+			Release:          getEnv("SENTRY_RELEASE", getEnv("GIT_SHA", "unknown")),
 			SampleRate:       getEnvAsFloat("SENTRY_SAMPLE_RATE", 1.0),
 			TracesSampleRate: getEnvAsFloat("SENTRY_TRACES_SAMPLE_RATE", 0.1),
 			Debug:            getEnvAsBool("SENTRY_DEBUG", false),
