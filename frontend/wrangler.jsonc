@@ -5,15 +5,12 @@
 // Worker in worker/index.ts, which proxies them same-origin to the Go API on
 // Cloud Run, so the browser never makes a cross-origin API call.
 //
-// Not deployed yet. Before the first release:
-//   1. Set vars.API_ORIGIN below (or override it in the release workflow) to
-//      the Cloud Run service URL, e.g. https://servicepro-api-<hash>-uc.a.run.app
-//      While it is empty the Worker answers /api/* and /version with 503.
-//   2. Store the shared edge secret (must match the API's EDGE_PROXY_SECRET):
-//        npx wrangler secret put EDGE_PROXY_SECRET
-//      Deploys fail until it is set (see "secrets" below). For `wrangler dev`,
-//      put EDGE_PROXY_SECRET=... in frontend/.dev.vars (gitignored) instead.
-//   3. Re-run `npm run cf:typegen` after any change to this file.
+// API_ORIGIN is the Cloud Run service servicepro-api (GCP project
+// service-pro-512609, us-east5). EDGE_PROXY_SECRET is a Worker secret set with
+// `npx wrangler secret put EDGE_PROXY_SECRET`; it must match the API's Secret
+// Manager EDGE_PROXY_SECRET (copy in Bitwarden: "ServicePro production
+// secrets"). For `wrangler dev`, put EDGE_PROXY_SECRET=... in frontend/.dev.vars
+// (gitignored). Re-run `npm run cf:typegen` after any change to this file.
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "servicepro-web",
@@ -40,9 +37,9 @@
   },
 
   "vars": {
-    // Cloud Run origin of the Go API, without a trailing slash. Set at
-    // release time; empty means "API not configured" (503).
-    "API_ORIGIN": "",
+    // Cloud Run origin of the Go API, without a trailing slash. Empty means
+    // "API not configured" (503).
+    "API_ORIGIN": "https://servicepro-api-736486908135.us-east5.run.app",
   },
 
   // Secrets: names only, values via `npx wrangler secret put <NAME>`.
