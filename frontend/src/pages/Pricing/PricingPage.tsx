@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@components/shared';
+import { BuildStamp } from '@components/layout/BuildStamp';
 import {
   TierCard,
   TierComparisonTable,
@@ -142,6 +143,7 @@ export function PricingPage() {
           <p>
             &copy; {new Date().getFullYear()} ServicePro. All rights reserved.
           </p>
+          <BuildStamp className="mt-2" />
         </div>
       </footer>
     </div>

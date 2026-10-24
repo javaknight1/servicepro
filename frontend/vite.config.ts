@@ -75,6 +75,11 @@ export default defineConfig(({ mode }) => ({
         target: process.env.VITE_PROXY_TARGET || 'http://localhost:8080',
         changeOrigin: true,
       },
+      // Unversioned build identity (footer build stamp); mirrors the Worker.
+      '/version': {
+        target: process.env.VITE_PROXY_TARGET || 'http://localhost:8080',
+        changeOrigin: true,
+      },
     },
   },
   test: {

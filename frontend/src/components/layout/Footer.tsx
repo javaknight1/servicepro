@@ -1,4 +1,5 @@
 import { Link } from 'react-router';
+import { BuildStamp } from './BuildStamp';
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
@@ -93,6 +94,7 @@ export function Footer() {
           <p className="text-sm text-neutral-600 text-center">
             © {currentYear} ServicePro. All rights reserved.
           </p>
+          <BuildStamp className="mt-2" />
         </div>
       </div>
     </footer>

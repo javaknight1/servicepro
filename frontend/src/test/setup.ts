@@ -96,6 +96,13 @@ vi.mock('../services/errorTracking/sentry', () => ({
   initSentry: vi.fn(),
 }));
 
+// The footer build stamp's GET /version query: stub it out so layout and
+// page tests need no QueryClientProvider and fire no extra request (its
+// "unknown" result hides the stamp). BuildStamp.test.tsx mocks it itself.
+vi.mock('../hooks/useVersion', () => ({
+  useVersion: vi.fn(() => ({ data: undefined })),
+}));
+
 // Cleanup after each test
 afterEach(() => {
   cleanup();
