@@ -202,6 +202,7 @@ The minimum subset that must be done before real (paying) customers: **39 tasks,
 | ~~T238~~ | ~~2~~  | ~~Security~~   | ~~1~~  | ~~Job assignment checks the technician belongs to the tenant~~                                           |
 | ~~T239~~ | ~~2~~  | ~~Security~~   | ~~1~~  | ~~Access log drops query strings~~                                                                       |
 | ~~T245~~ | ~~3~~  | ~~Testing~~    | ~~2~~  | ~~Repair the Postgres repository tests so CI go-test is green~~                                          |
+| ~~T250~~ | ~~3~~  | ~~Frontend~~   | ~~2~~  | ~~Footer build stamp: web + API versions, drift warning~~                                                |
 | T241     | 2      | Bug            | 3      | CSV imports are queued but never processed                                                               |
 | T242     | 2      | Bug            | 1      | PDF header/footer files are deleted before wkhtmltopdf reads them                                        |
 | T243     | 2      | Security       | 1      | A/R aging CSV export: proper CSV writer + formula neutralisation                                         |
@@ -322,6 +323,7 @@ The minimum subset that must be done before real (paying) customers: **39 tasks,
 | T088     | 12     | Reporting      | 4      | Add comparative analysis (vs prior period)                                                               |
 | T198     | 12     | Reporting      | 12     | Job costing / profit per job                                                                             |
 | T246     | 12     | Perf           | 3      | Lazy-load / trim Sentry and PostHog (109 KB gzipped on every page)                                       |
+| T253     | 12     | UX             | 2      | "Report a bug" button and cookie preferences in the footer                                               |
 | T074     | 13     | Auth           | 3      | Create Accountant role                                                                                   |
 | T075     | 13     | Auth           | 12     | Add field-level permission controls                                                                      |
 | T092     | 13     | Auth           | 6      | Implement 2FA (TOTP)                                                                                     |
@@ -342,6 +344,8 @@ The minimum subset that must be done before real (paying) customers: **39 tasks,
 | T211     | 14     | Docs           | 1      | Update Fleet and the blog when ServicePro goes live                                                      |
 | T212     | 14     | Ops            | 2      | Production config review                                                                                 |
 | T213     | 14     | Ops            | 1      | Cost guardrails (Cloud Run max instances × DB pool, budget alerts)                                       |
+| T251     | 14     | Ops            | 3      | Post-deploy smoke check + GCP uptime check and alert                                                     |
+| T252     | 14     | Monitoring     | 1      | Sentry cron check-ins for scheduled jobs and the nightly backup                                          |
 | T214     | 15     | AI             | 24     | AI collections agent                                                                                     |
 | T215     | 15     | AI             | 20     | AI quote drafting from photos, voice or notes against the price book                                     |
 | T216     | 15     | AI             | 12     | "Ask your business" chat over reporting views                                                            |
@@ -351,6 +355,7 @@ The minimum subset that must be done before real (paying) customers: **39 tasks,
 | T220     | 16     | Marketing      | 4      | White-glove migration offer + playbook                                                                   |
 | T221     | 16     | Marketing      | 8      | Comparison / alternative pages (vs Jobber, Housecall Pro, ServiceTitan)                                  |
 | T222     | 16     | Research       | 6      | Validate secondary beachhead (inspection/compliance trades)                                              |
+| T254     | 16     | SEO            | 3      | Prerender marketing pages + generate sitemap                                                             |
 
 ---
 
@@ -514,7 +519,7 @@ Money flows that are wired but broken (payments don't update invoices, reminders
 
 ---
 
-### Phase 3 — Platform & Delivery (T101, T139, T140, T141, T142, T143, T144, T145, T146, T147, T148, T149, T150, T151, T152, T245, T247)
+### Phase 3 — Platform & Delivery (T101, T139, T140, T141, T142, T143, T144, T145, T146, T147, T148, T149, T150, T151, T152, T245, T247, T250)
 
 Migrations, versioning, CI, the release pipeline and the edge setup — League Looper's delivery pattern applied to ServicePro. From `docs/audits/2026-10-16/infra.md`. Deploy jobs stay skipped until Phase 14 provisions GCP. **2 open tasks, ~5h.** 15 done.
 
@@ -535,6 +540,7 @@ Migrations, versioning, CI, the release pipeline and the edge setup — League L
 - [x] T245 — Repair the Postgres repository tests so CI go-test is green ✓ (2026-10-16)
 - [ ] T101 — Upload source maps to Sentry for production builds
 - [ ] T247 — Move S3 uploads from the deprecated feature/s3/manager to feature/s3/transfermanager
+- [x] T250 — Footer build stamp: web + API versions, drift warning ✓ (2026-10-24)
 
 #### T101 — Upload source maps to Sentry for production builds
 
@@ -2075,7 +2081,7 @@ QuickBooks (the #1 B2B buying gate), import mappers, and partner integrations in
 
 ---
 
-### Phase 12 — Reporting & Dashboards (T045, T046, T047, T066, T067, T068, T069, T070, T071, T084, T085, T086, T087, T088, T198, T246)
+### Phase 12 — Reporting & Dashboards (T045, T046, T047, T066, T067, T068, T069, T070, T071, T084, T085, T086, T087, T088, T198, T246, T253)
 
 Dashboard widgets and reports from the old TODO plus job costing. All tenant-scoped and in tenant timezone/currency. **16 open tasks, ~56h.**
 
@@ -2095,6 +2101,7 @@ Dashboard widgets and reports from the old TODO plus job costing. All tenant-sco
 - [ ] T088 — Add comparative analysis (vs prior period)
 - [ ] T198 — Job costing / profit per job
 - [ ] T246 — Lazy-load / trim Sentry and PostHog (109 KB gzipped on every page)
+- [ ] T253 — "Report a bug" button and cookie preferences in the footer
 
 #### T045 — Add aging quotes dashboard widget
 
@@ -2320,6 +2327,15 @@ Dashboard widgets and reports from the old TODO plus job costing. All tenant-sco
 
 ---
 
+#### T253 — "Report a bug" button and cookie preferences in the footer
+
+**Phase**: 12 · **Category**: UX · **Hours**: 2 · **Status**: Open · **v1 Gate**: No · **Depends on**: none
+
+**What it is** — A footer "Report a bug" link that opens a prefilled report (page, web/API build stamp, request id) and a cookie-preferences link.
+**What it does** — Port League Looper's `ReportBugButton.tsx` and privacy helper; include the T250 build stamp in the report; no PII beyond what the user types.
+**Why we need it** — Invite-only preview users need a one-click way to report problems with the build attached.
+**Notes** — LL parity audit 2026-10-24 (gap 4).
+
 ### Phase 13 — Roles, Compliance & Trust (T074, T075, T092, T093, T094, T199, T200, T201, T230, T231)
 
 Remaining roles, audit logging, MFA, and the export/deletion promises that back the trust brand. **9 open tasks, ~49h.** 1 done.
@@ -2451,7 +2467,7 @@ Remaining roles, audit logging, MFA, and the export/deletion promises that back 
 
 ---
 
-### Phase 14 — Hosting & Launch Readiness (T202, T203, T204, T205, T206, T207, T208, T209, T210, T211, T212, T213)
+### Phase 14 — Hosting & Launch Readiness (T202, T203, T204, T205, T206, T207, T208, T209, T210, T211, T212, T213, T251, T252)
 
 Provision and launch. Database: Neon (T202, decided 2026-10-18). ServicePro stays local-only until these land. **11 open tasks, ~34h.** 1 done.
 
@@ -2467,6 +2483,8 @@ Provision and launch. Database: Neon (T202, decided 2026-10-18). ServicePro stay
 - [ ] T211 — Update Fleet and the blog when ServicePro goes live
 - [ ] T212 — Production config review
 - [ ] T213 — Cost guardrails (Cloud Run max instances × DB pool, budget alerts)
+- [ ] T251 — Post-deploy smoke check + GCP uptime check and alert
+- [ ] T252 — Sentry cron check-ins for scheduled jobs and the nightly backup
 
 #### T203 — GCP project + WIF + Artifact Registry + Cloud Run service
 
@@ -2622,6 +2640,24 @@ Provision and launch. Database: Neon (T202, decided 2026-10-18). ServicePro stay
 
 ---
 
+#### T251 — Post-deploy smoke check + GCP uptime check and alert
+
+**Phase**: 14 · **Category**: Ops · **Hours**: 3 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T203
+
+**What it is** — A `make smoke` script (health, /version through the Worker, login page, an authenticated read) run after every release, plus a Google Cloud uptime check on /health/ready with an email alert.
+**What it does** — Port League Looper's `tools/ops` smoke script; call it from release-deploy.yml after the web job; `gcloud monitoring uptime create` against the Worker URL; alert policy to the owner's email.
+**Why we need it** — Without it a broken release or a down API is noticed by a customer first.
+**Notes** — LL parity audit 2026-10-24 (gap 2). Better Stack (T165) can replace the GCP check later; a load-test script is not needed for the preview.
+
+#### T252 — Sentry cron check-ins for scheduled jobs and the nightly backup
+
+**Phase**: 14 · **Category**: Monitoring · **Hours**: 1 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T126
+
+**What it is** — Each scheduled job run (`scheduled-jobs.yml`) and the backup (`db-backup.yml`) checks in to a Sentry cron monitor, so a missed or failed run alerts.
+**What it does** — Add `getsentry` cron check-in steps (in_progress / ok / error) keyed per job, as League Looper does; skip when SENTRY_AUTH_TOKEN is unset.
+**Why we need it** — Invoice reminders and recurring jobs are money-path; a silently skipped run costs tenants money with nobody noticing.
+**Notes** — LL parity audit 2026-10-24 (gap 3).
+
 ### Phase 15 — AI Differentiators (T214, T215, T216, T217)
 
 AI as accelerator and marketing hook, not the moat — aimed at the collections wedge first. **4 open tasks, ~68h.**
@@ -2687,7 +2723,7 @@ AI as accelerator and marketing hook, not the moat — aimed at the collections 
 
 ---
 
-### Phase 16 — Go-to-Market (T218, T219, T220, T221, T222)
+### Phase 16 — Go-to-Market (T218, T219, T220, T221, T222, T254)
 
 Validate the beachhead before the Phase 9–10 build-out, then publish positioning and pricing. **5 open tasks, ~40h.**
 
@@ -2696,6 +2732,7 @@ Validate the beachhead before the Phase 9–10 build-out, then publish positioni
 - [ ] T220 — White-glove migration offer + playbook
 - [ ] T221 — Comparison / alternative pages (vs Jobber, Housecall Pro, ServiceTitan)
 - [ ] T222 — Validate secondary beachhead (inspection/compliance trades)
+- [ ] T254 — Prerender marketing pages + generate sitemap
 
 #### T218 — Customer discovery: interview 10 commercial service contractors
 
@@ -2766,6 +2803,15 @@ Validate the beachhead before the Phase 9–10 build-out, then publish positioni
 **Notes** — `docs/product/competitive-research-2026-10.md` §4.3 "Secondary".
 
 ---
+
+#### T254 — Prerender marketing pages + generate sitemap
+
+**Phase**: 16 · **Category**: SEO · **Hours**: 3 · **Status**: Open · **v1 Gate**: No · **Depends on**: none
+
+**What it is** — Public marketing routes (home, pricing, features) are prerendered to static HTML at build time and a sitemap.xml is generated.
+**What it does** — Port League Looper's Vite prerender step and `generate-sitemap.mjs`; keep the app routes client-rendered.
+**Why we need it** — Search engines and link previews see an empty SPA shell today.
+**Notes** — LL parity audit 2026-10-24 (gap 7). Not needed for the invite-only preview.
 
 ## Open Decisions
 
@@ -3005,3 +3051,4 @@ Dated history from the original "Completed Items" list:
 - **T238** — Job assignment checks the technician belongs to the tenant. Every assignment path (create job with assignees, `POST /jobs/:id/assign`, `POST /assignments`, bulk) requires an active `tenant_users` membership in the job's tenant; unknown/inactive/other-tenant users get a typed 404 (`assignee_not_found` / `technician_not_found`); CreateJob checks before writing; repository backstop `IsActiveTenantMember`; cross-tenant tests (cef9489).
 - **T239** — Access log drops query strings. Access log logs the path plus sorted query KEYS only (`middleware.QueryKeys`); same for the unused request loggers, `AccessLogger` and the panic handler's Sentry extra; test asserts `?token=secret123` never reaches a log line (9cc9f5e).
 - **T245** — Repair the Postgres repository tests so CI go-test is green. Repository tests run in a seeded tenant against the migrated DB: shared fixture (`openTestDB` with the tenancy plugin, `createTestTenant`, `addMember`, cleanup), valid fixtures, exact counts, new cross-tenant and non-member assignment tests (18 pass); customer bench seeds its own tenant; CI migrates TEST_DATABASE_URL first and runs the Postgres race tests (4e7e3c8, ae193e0).
+- **T250** — Footer build stamp (League Looper parity). `useVersion` (React Query, GET /version via `resolveVersionUrl`), `BuildStamp` shows WEB/API versions with short-SHA tooltips, em dash when unknown, warning on drift; in the public footer, pricing footer and a new dashboard footer; Vite dev proxy for /version; 9 vitest tests. Same day: Sentry release set to the git SHA (matches CI's release + source maps) and the nightly backup now includes `neon_auth`.
