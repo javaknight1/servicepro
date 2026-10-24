@@ -6,8 +6,9 @@
 //   - Files are NNNNNN_description.up.sql / NNNNNN_description.down.sql.
 //   - Migrations are additive and append-only: never edit a migration that
 //     has been applied to a shared database; write a new one instead.
-//   - 000001_initial_schema is the baseline snapshot of the former
-//     001_schema.sql.
+//   - 000001_initial_schema is the whole pre-launch schema: the former
+//     001_schema.sql plus 000002–000014, squashed on 2026-10-24 before any
+//     shared database existed. New changes are 000002 onwards.
 //   - Dev-only seed data lives in backend/seeds/ and is NOT a migration.
 package migrations
 

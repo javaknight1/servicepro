@@ -137,8 +137,10 @@ make test-cover   # Run with coverage
 
 Schema changes are numbered, additive golang-migrate files in `migrations/`
 (`NNNNNN_name.up.sql` + `.down.sql`), embedded into both binaries.
-`000001_initial_schema` is the baseline (the former `001_schema.sql`); a
-database built from that old file is adopted at version 1 automatically.
+`000001_initial_schema` is the whole pre-launch schema (the former
+`001_schema.sql` plus 000002–000014, squashed 2026-10-24). A database built
+from the old `001_schema.sql`, or a local one migrated before the squash, is
+refused or out of step — rebuild it with `make db-fresh-seed`.
 
 ```bash
 go run ./cmd/migrate up          # apply pending migrations

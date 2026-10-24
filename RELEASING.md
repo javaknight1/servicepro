@@ -160,7 +160,7 @@ traffic. Locally, docker-compose sets `RUN_MIGRATIONS_ON_STARTUP=true`, and
 `make migrate` runs `go run ./cmd/migrate up` against the compose database.
 
 - Migrations live in `backend/migrations/` as numbered golang-migrate pairs
-  (`000001_initial_schema.up.sql` is the baseline; `make migrate-create NAME=...`
+  (`000001_initial_schema.up.sql` is the whole pre-launch schema, squashed 2026-10-24; `make migrate-create NAME=...`
   makes the next pair). Dev seed data is separate: `backend/seeds/dev_seed.sql`
   (`make seed`), never applied in production.
 - **Additive only** once production exists. Rename/drop = **two releases**

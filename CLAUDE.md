@@ -93,8 +93,9 @@ golang-migrate, files in `backend/migrations/`, embedded into the binary.
 
 - **Never edit a migration that exists on master.** Every schema change is a new pair:
   `make migrate-create NAME=add_foo` → `00000N_add_foo.up.sql` + `.down.sql`. Use `IF [NOT] EXISTS`.
-  (The old "edit `001_schema.sql` in place" rule is retired: `000001_initial_schema` is a one-time
-  baseline snapshot of it, 2026-10-16.)
+  (`000001_initial_schema` is the whole pre-launch schema: 000001–000014 were squashed into it on
+  2026-10-24, owner's call, before any shared database existed. That was a one-off — once Neon holds
+  real data, the rule above is absolute. A local DB from before the squash: `make db-fresh-seed`.)
 - Schema change and the code that needs it ship in the same commit. Update `backend/seeds/dev_seed.sql`
   when you add NOT NULL columns so `make seed` keeps working. Seed `INSERT`s use `ON CONFLICT`.
 - Local: the server self-migrates (`RUN_MIGRATIONS_ON_STARTUP`, default on in development);

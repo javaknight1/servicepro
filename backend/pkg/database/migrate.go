@@ -25,14 +25,14 @@ import (
 
 const migrateLogPrefix = "[MIGRATE]"
 
-// BaselineVersion is the migration that snapshots the schema which existed
-// before golang-migrate was adopted (the former migrations/001_schema.sql).
+// BaselineVersion is the first migration. 000001_initial_schema holds the
+// whole pre-launch schema (the old 000001–000014 were squashed into it on
+// 2026-10-24, before any shared database existed).
 const BaselineVersion = 1
 
 // baselineSentinelTable is a table created by the baseline migration. If it
-// exists while schema_migrations does not, the database was built from the
-// old hand-applied 001_schema.sql and is adopted at BaselineVersion instead of
-// re-running the baseline (which would fail on "already exists").
+// exists while schema_migrations does not, the database was built outside
+// golang-migrate (the retired hand-applied 001_schema.sql) and is refused.
 const baselineSentinelTable = "public.tenants"
 
 // Schema states reported by SchemaStatus (and surfaced on /health/ready).
@@ -95,18 +95,19 @@ func newMigrator(databaseURL string) (*migrate.Migrate, error) {
 	return m, nil
 }
 
-// adoptLegacySchema baselines a database that was built from the old
-// hand-applied 001_schema.sql: no schema_migrations version yet, but the
-// baseline's tables already exist. It records BaselineVersion without running
-// it. Returns true when the database was adopted.
-func adoptLegacySchema(databaseURL string, m *migrate.Migrate) (bool, error) {
+// refuseUntrackedSchema fails when the baseline's tables exist but
+// schema_migrations has no version: a database built from the retired
+// 001_schema.sql. It used to be adopted at BaselineVersion, but since the
+// squash that version also contains the later changes, so adopting it would
+// silently skip them. Such databases are local-only; rebuild them.
+func refuseUntrackedSchema(databaseURL string, m *migrate.Migrate) error {
 	if _, _, err := m.Version(); !errors.Is(err, migrate.ErrNilVersion) {
-		return false, nil // already tracked (or a real error surfaced later by Up)
+		return nil // already tracked (or a real error surfaced later by Up)
 	}
 
 	db, err := sql.Open("pgx", appendQueryParam(databaseURL, "default_query_exec_mode", "simple_protocol"))
 	if err != nil {
-		return false, fmt.Errorf("open database for baseline probe: %w", err)
+		return fmt.Errorf("open database for baseline probe: %w", err)
 	}
 	defer func() { _ = db.Close() }()
 
@@ -115,21 +116,16 @@ func adoptLegacySchema(databaseURL string, m *migrate.Migrate) (bool, error) {
 
 	var exists bool
 	if err := db.QueryRowContext(ctx, "SELECT to_regclass($1) IS NOT NULL", baselineSentinelTable).Scan(&exists); err != nil {
-		return false, fmt.Errorf("baseline probe: %w", err)
+		return fmt.Errorf("baseline probe: %w", err)
 	}
-	if !exists {
-		return false, nil
+	if exists {
+		return errors.New("schema exists without migration history (built from the retired 001_schema.sql); rebuild it with `make db-fresh-seed`")
 	}
-
-	if err := m.Force(BaselineVersion); err != nil {
-		return false, fmt.Errorf("baseline existing schema at version %d: %w", BaselineVersion, err)
-	}
-	logging.Warn(ctx, fmt.Sprintf("%s Existing schema without migration history detected; recorded baseline version %d without re-running it", migrateLogPrefix, BaselineVersion), nil)
-	return true, nil
+	return nil
 }
 
 // RunMigrations applies all pending embedded migrations. A database created
-// from the legacy 001_schema.sql is first adopted at BaselineVersion.
+// from the legacy 001_schema.sql is refused (refuseUntrackedSchema).
 func RunMigrations(databaseURL string) error {
 	ctx := context.Background()
 	m, err := newMigrator(databaseURL)
@@ -138,7 +134,7 @@ func RunMigrations(databaseURL string) error {
 	}
 	defer func() { _, _ = m.Close() }()
 
-	if _, err := adoptLegacySchema(databaseURL, m); err != nil {
+	if err := refuseUntrackedSchema(databaseURL, m); err != nil {
 		return err
 	}
 

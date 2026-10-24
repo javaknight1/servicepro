@@ -1,2 +1,0 @@
-ALTER TABLE quotes DROP COLUMN IF EXISTS currency;
-ALTER TABLE invoices DROP COLUMN IF EXISTS currency;

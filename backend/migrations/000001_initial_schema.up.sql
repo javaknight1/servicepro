@@ -1991,3 +1991,491 @@ DO $$
 BEGIN
     RAISE NOTICE 'ServicePro database schema created successfully.';
 END $$;
+
+-- ============================================================================
+-- Folded in from 000002_fix_ar_aging_summary_view (pre-launch squash, 2026-10-24)
+-- ============================================================================
+
+-- ============================================================================
+-- 000002_fix_ar_aging_summary_view
+--
+-- The v_ar_aging_summary view in the original 001_schema.sql never applied:
+-- its ORDER BY used the output alias age_bucket inside a CASE expression,
+-- which Postgres rejects, and psql simply skipped the error. 000001 now
+-- carries the corrected definition, but databases adopted at the baseline
+-- (built from the old file) still lack the view. This (re)creates it;
+-- CREATE OR REPLACE makes it a no-op for databases built from 000001.
+-- ============================================================================
+
+CREATE OR REPLACE VIEW v_ar_aging_summary AS
+SELECT
+    age_bucket,
+    COUNT(*) AS invoice_count,
+    COALESCE(SUM(amount_due), 0) AS outstanding_amount
+FROM (
+    SELECT
+        CASE
+            WHEN due_date >= CURRENT_DATE THEN 'Current'
+            WHEN due_date >= CURRENT_DATE - INTERVAL '30 days' THEN '1-30 days'
+            WHEN due_date >= CURRENT_DATE - INTERVAL '60 days' THEN '31-60 days'
+            WHEN due_date >= CURRENT_DATE - INTERVAL '90 days' THEN '61-90 days'
+            ELSE '90+ days'
+        END AS age_bucket,
+        amount_due
+    FROM invoices
+    WHERE deleted_at IS NULL
+      AND status NOT IN ('paid', 'cancelled', 'refunded')
+      AND amount_due > 0
+) aged
+GROUP BY age_bucket
+ORDER BY
+    CASE age_bucket
+        WHEN 'Current' THEN 1
+        WHEN '1-30 days' THEN 2
+        WHEN '31-60 days' THEN 3
+        WHEN '61-90 days' THEN 4
+        WHEN '90+ days' THEN 5
+    END;
+
+-- ============================================================================
+-- Folded in from 000003_tenant_scoping (pre-launch squash, 2026-10-24)
+-- ============================================================================
+
+-- ============================================================================
+-- 000003_tenant_scoping (T102 / audit F-3)
+--
+-- Business tables got a nullable tenant_id in 000001 but nothing wrote it.
+-- The application now sets and filters tenant_id on every query
+-- (internal/tenancy). This migration:
+--   1. backfills tenant_id where it can be derived from a parent row,
+--   2. makes tenant_id NOT NULL on tenant-owned tables,
+--   3. adds tenant_id to revenue_transactions / revenue_summary_cache,
+--   4. makes document numbers and customer emails unique PER TENANT
+--      (global uniqueness leaked other tenants' data and collided once
+--      numbering became per tenant),
+--   5. adds composite (tenant_id, ...) indexes for the common filters.
+--
+-- There is no production data. Rows whose tenant cannot be derived make the
+-- NOT NULL step fail loudly instead of being deleted.
+-- ============================================================================
+
+-- 1. Backfill from parents ----------------------------------------------------
+UPDATE jobs j SET tenant_id = c.tenant_id
+FROM customers c WHERE j.tenant_id IS NULL AND c.id = j.customer_id AND c.tenant_id IS NOT NULL;
+
+UPDATE quotes q SET tenant_id = c.tenant_id
+FROM customers c WHERE q.tenant_id IS NULL AND c.id = q.customer_id AND c.tenant_id IS NOT NULL;
+
+UPDATE invoices i SET tenant_id = c.tenant_id
+FROM customers c WHERE i.tenant_id IS NULL AND c.id = i.customer_id AND c.tenant_id IS NOT NULL;
+
+UPDATE payments p SET tenant_id = i.tenant_id
+FROM invoices i WHERE p.tenant_id IS NULL AND i.id = p.invoice_id AND i.tenant_id IS NOT NULL;
+
+UPDATE schedules s SET tenant_id = j.tenant_id
+FROM jobs j WHERE s.tenant_id IS NULL AND j.id = s.job_id AND j.tenant_id IS NOT NULL;
+
+-- Exports/imports/recurring schedules: the requesting user's earliest tenant.
+UPDATE export_jobs e SET tenant_id = (
+    SELECT tu.tenant_id FROM tenant_users tu WHERE tu.user_id = e.user_id ORDER BY tu.created_at LIMIT 1)
+WHERE e.tenant_id IS NULL;
+
+UPDATE import_jobs im SET tenant_id = (
+    SELECT tu.tenant_id FROM tenant_users tu WHERE tu.user_id = im.user_id ORDER BY tu.created_at LIMIT 1)
+WHERE im.tenant_id IS NULL;
+
+-- Expired/finished export and import jobs with no derivable tenant are
+-- disposable history; drop them rather than block the migration.
+DELETE FROM export_jobs WHERE tenant_id IS NULL;
+DELETE FROM import_jobs WHERE tenant_id IS NULL;
+
+-- 2. NOT NULL on tenant-owned tables ------------------------------------------
+ALTER TABLE customers           ALTER COLUMN tenant_id SET NOT NULL;
+ALTER TABLE jobs                ALTER COLUMN tenant_id SET NOT NULL;
+ALTER TABLE quotes              ALTER COLUMN tenant_id SET NOT NULL;
+ALTER TABLE invoices            ALTER COLUMN tenant_id SET NOT NULL;
+ALTER TABLE payments            ALTER COLUMN tenant_id SET NOT NULL;
+ALTER TABLE schedules           ALTER COLUMN tenant_id SET NOT NULL;
+ALTER TABLE recurring_schedules ALTER COLUMN tenant_id SET NOT NULL;
+ALTER TABLE export_jobs         ALTER COLUMN tenant_id SET NOT NULL;
+ALTER TABLE import_jobs         ALTER COLUMN tenant_id SET NOT NULL;
+-- payment_terms, tax_rates, invoice_templates stay nullable: NULL = global default.
+
+-- 3. Revenue tables -------------------------------------------------------------
+ALTER TABLE revenue_transactions ADD COLUMN IF NOT EXISTS tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE;
+UPDATE revenue_transactions r SET tenant_id = i.tenant_id
+FROM invoices i WHERE r.tenant_id IS NULL AND i.id = r.invoice_id;
+ALTER TABLE revenue_transactions ALTER COLUMN tenant_id SET NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_revenue_transactions_tenant_date ON revenue_transactions(tenant_id, transaction_date);
+
+-- The summary cache was global (one tenant's totals were served to all);
+-- it is only a cache, so start it over per tenant.
+DELETE FROM revenue_summary_cache;
+ALTER TABLE revenue_summary_cache ADD COLUMN IF NOT EXISTS tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE;
+ALTER TABLE revenue_summary_cache
+    DROP CONSTRAINT IF EXISTS revenue_summary_cache_period_type_period_start_period_end_c_key;
+DO $$
+DECLARE c record;
+BEGIN
+    -- Drop the original (unnamed) UNIQUE(period_type, period_start, period_end, currency).
+    FOR c IN
+        SELECT conname FROM pg_constraint
+        WHERE conrelid = 'revenue_summary_cache'::regclass AND contype = 'u'
+    LOOP
+        EXECUTE format('ALTER TABLE revenue_summary_cache DROP CONSTRAINT %I', c.conname);
+    END LOOP;
+END $$;
+ALTER TABLE revenue_summary_cache
+    ADD CONSTRAINT revenue_summary_cache_tenant_period_key
+    UNIQUE (tenant_id, period_type, period_start, period_end, currency);
+
+-- 4. Per-tenant uniqueness ------------------------------------------------------
+ALTER TABLE jobs     DROP CONSTRAINT IF EXISTS jobs_job_number_key;
+ALTER TABLE quotes   DROP CONSTRAINT IF EXISTS quotes_quote_number_key;
+ALTER TABLE invoices DROP CONSTRAINT IF EXISTS invoices_invoice_number_key;
+ALTER TABLE jobs     ADD CONSTRAINT jobs_tenant_job_number_key         UNIQUE (tenant_id, job_number);
+ALTER TABLE quotes   ADD CONSTRAINT quotes_tenant_quote_number_key     UNIQUE (tenant_id, quote_number);
+ALTER TABLE invoices ADD CONSTRAINT invoices_tenant_invoice_number_key UNIQUE (tenant_id, invoice_number);
+
+DROP INDEX IF EXISTS idx_customers_email;
+CREATE UNIQUE INDEX idx_customers_tenant_email ON customers(tenant_id, LOWER(email)) WHERE deleted_at IS NULL;
+
+-- One default payment term / invoice template per tenant (plus one global).
+DROP INDEX IF EXISTS idx_payment_terms_one_default;
+CREATE UNIQUE INDEX idx_payment_terms_one_default
+    ON payment_terms ((COALESCE(tenant_id, '00000000-0000-0000-0000-000000000000'::uuid)))
+    WHERE is_default = TRUE;
+
+DROP INDEX IF EXISTS idx_invoice_templates_one_default;
+CREATE UNIQUE INDEX idx_invoice_templates_one_default
+    ON invoice_templates ((COALESCE(tenant_id, '00000000-0000-0000-0000-000000000000'::uuid)))
+    WHERE is_default = TRUE AND status = 'active';
+
+-- 5. Composite indexes for tenant-scoped filters --------------------------------
+CREATE INDEX IF NOT EXISTS idx_customers_tenant_status    ON customers(tenant_id, status) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_customers_tenant_created   ON customers(tenant_id, created_at DESC) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_jobs_tenant_status         ON jobs(tenant_id, status) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_jobs_tenant_customer       ON jobs(tenant_id, customer_id) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_jobs_tenant_scheduled      ON jobs(tenant_id, scheduled_start_at) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_quotes_tenant_status       ON quotes(tenant_id, status) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_quotes_tenant_customer     ON quotes(tenant_id, customer_id) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_invoices_tenant_status     ON invoices(tenant_id, status) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_invoices_tenant_due        ON invoices(tenant_id, due_date) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_invoices_tenant_customer   ON invoices(tenant_id, customer_id) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_payments_tenant_created    ON payments(tenant_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_schedules_tenant_start     ON schedules(tenant_id, start_time) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_export_jobs_tenant_user    ON export_jobs(tenant_id, user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_import_jobs_tenant_user    ON import_jobs(tenant_id, user_id, created_at DESC);
+
+-- ============================================================================
+-- Folded in from 000004_invite_codes (pre-launch squash, 2026-10-24)
+-- ============================================================================
+
+-- ============================================================================
+-- 000004_invite_codes (T106 / audit F-6)
+--
+-- Platform invite codes for REGISTRATION_MODE=invite_only. Codes are stored
+-- as SHA-256 hashes (the plaintext is shown once, when the code is created
+-- via POST /api/v1/admin/invite-codes or `go run ./cmd/invite create`).
+-- max_uses = 0 means unlimited; expires_at NULL means no expiry.
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS invite_codes (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    code_hash VARCHAR(64) NOT NULL UNIQUE,
+    max_uses INTEGER NOT NULL DEFAULT 1 CHECK (max_uses >= 0),
+    uses INTEGER NOT NULL DEFAULT 0 CHECK (uses >= 0),
+    expires_at TIMESTAMP WITH TIME ZONE,
+    revoked_at TIMESTAMP WITH TIME ZONE,
+    note VARCHAR(255),
+    created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_invite_codes_created_at ON invite_codes(created_at DESC);
+
+-- ============================================================================
+-- Folded in from 000005_user_token_version (pre-launch squash, 2026-10-24)
+-- ============================================================================
+
+-- ============================================================================
+-- 000005_user_token_version (T110 / audit F-11)
+--
+-- Every JWT carries the user's token_version ("tv" claim). Logout and
+-- password reset increment it, which revokes all outstanding access and
+-- refresh tokens for that user.
+-- ============================================================================
+
+ALTER TABLE users ADD COLUMN IF NOT EXISTS token_version INTEGER NOT NULL DEFAULT 0;
+
+-- ============================================================================
+-- Folded in from 000006_stripe_webhook_events (pre-launch squash, 2026-10-24)
+-- ============================================================================
+
+-- ============================================================================
+-- 000006_stripe_webhook_events (T109 / audit F-10)
+--
+-- Persistent, cross-instance dedupe for POST /api/v1/stripe/webhooks.
+-- The handler INSERTs the Stripe event ID with ON CONFLICT DO NOTHING before
+-- processing, marks it processed afterwards, and deletes the claim when
+-- processing fails so Stripe's retry is processed again.
+--
+-- Also: a Checkout session can only ever be applied to one invoice once.
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS stripe_webhook_events (
+    event_id VARCHAR(255) PRIMARY KEY,
+    event_type VARCHAR(100) NOT NULL,
+    status VARCHAR(20) NOT NULL CHECK (status IN ('processing', 'processed')),
+    received_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    processed_at TIMESTAMP WITH TIME ZONE
+);
+
+CREATE INDEX IF NOT EXISTS idx_stripe_webhook_events_received ON stripe_webhook_events(received_at);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_invoices_stripe_checkout_session
+    ON invoices(stripe_checkout_session_id)
+    WHERE stripe_checkout_session_id IS NOT NULL AND stripe_checkout_session_id <> '';
+
+-- ============================================================================
+-- Folded in from 000007_invoice_payment_ledger (pre-launch squash, 2026-10-24)
+-- ============================================================================
+
+-- ============================================================================
+-- 000007_invoice_payment_ledger (T118 / correctness audit 7.C1, 7.H4)
+--
+-- Every payment (manual or Stripe) is now a row in invoice_payments, written
+-- in the same transaction that updates invoices.amount_paid / status under a
+-- row lock. Stripe payments carry their checkout session and payment intent
+-- so a session can be applied at most once and refunds (T125) can find the
+-- payment they reverse. Webhook-recorded payments have no staff user, so
+-- created_by becomes nullable.
+-- ============================================================================
+
+ALTER TABLE invoice_payments ADD COLUMN IF NOT EXISTS stripe_checkout_session_id VARCHAR(255);
+ALTER TABLE invoice_payments ADD COLUMN IF NOT EXISTS stripe_payment_intent_id VARCHAR(255);
+ALTER TABLE invoice_payments ALTER COLUMN created_by DROP NOT NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_invoice_payments_stripe_session
+    ON invoice_payments(stripe_checkout_session_id)
+    WHERE stripe_checkout_session_id IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_invoice_payments_stripe_payment_intent
+    ON invoice_payments(stripe_payment_intent_id)
+    WHERE stripe_payment_intent_id IS NOT NULL;
+
+-- Backfill: Stripe payments applied before this migration only updated the
+-- invoice. Give each such invoice its ledger row so amount_paid = SUM(payments).
+INSERT INTO invoice_payments (invoice_id, amount, payment_date, payment_method, reference_number,
+                              notes, stripe_checkout_session_id, stripe_payment_intent_id)
+SELECT i.id,
+       i.amount_paid - COALESCE((SELECT SUM(p.amount) FROM invoice_payments p WHERE p.invoice_id = i.id), 0),
+       COALESCE(i.paid_date::date, CURRENT_DATE),
+       'stripe',
+       NULLIF(i.stripe_payment_intent_id, ''),
+       'Backfilled by migration 000007',
+       i.stripe_checkout_session_id,
+       NULLIF(i.stripe_payment_intent_id, '')
+FROM invoices i
+WHERE i.stripe_checkout_session_id IS NOT NULL AND i.stripe_checkout_session_id <> ''
+  AND i.amount_paid > COALESCE((SELECT SUM(p.amount) FROM invoice_payments p WHERE p.invoice_id = i.id), 0)
+ON CONFLICT DO NOTHING;
+
+-- ============================================================================
+-- Folded in from 000008_tenant_counters (pre-launch squash, 2026-10-24)
+-- ============================================================================
+
+-- ============================================================================
+-- 000008_tenant_counters (T120 / correctness audit 7.C3, 7.C4)
+--
+-- Invoice, quote and job numbers come from one counter row per tenant and
+-- kind, incremented with an upsert inside the create transaction
+-- (models.NextDocumentNumber). The old schemes read MAX(number)+1 or
+-- COUNT(today)+1 through the soft-delete scope while the unique constraint
+-- includes deleted rows, so deleting the newest document made every later
+-- create fail; they also raced and (before 000003) were global.
+--
+-- Numbers are unique per tenant already (000003). The never-firing invoice
+-- number trigger and the global quote number function/sequence are dropped.
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS tenant_counters (
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    kind VARCHAR(20) NOT NULL CHECK (kind IN ('invoice', 'quote', 'job')),
+    next_value BIGINT NOT NULL DEFAULT 1 CHECK (next_value > 0),
+    PRIMARY KEY (tenant_id, kind)
+);
+
+-- Start each existing tenant after its highest number in the new format
+-- (deleted rows included). Numbers in older formats (JOB-YYYYMMDD-NNNN,
+-- QUO-YYYY-NNNN) can't collide with PREFIX-NNNNNN; any that do are skipped
+-- by the allocator.
+INSERT INTO tenant_counters (tenant_id, kind, next_value)
+SELECT tenant_id, 'invoice', MAX(CAST(SUBSTRING(invoice_number FROM 5) AS BIGINT)) + 1
+FROM invoices WHERE invoice_number ~ '^INV-[0-9]{1,18}$'
+GROUP BY tenant_id
+ON CONFLICT (tenant_id, kind) DO UPDATE SET next_value = GREATEST(tenant_counters.next_value, EXCLUDED.next_value);
+
+INSERT INTO tenant_counters (tenant_id, kind, next_value)
+SELECT tenant_id, 'quote', MAX(CAST(SUBSTRING(quote_number FROM 5) AS BIGINT)) + 1
+FROM quotes WHERE quote_number ~ '^QUO-[0-9]{1,18}$'
+GROUP BY tenant_id
+ON CONFLICT (tenant_id, kind) DO UPDATE SET next_value = GREATEST(tenant_counters.next_value, EXCLUDED.next_value);
+
+INSERT INTO tenant_counters (tenant_id, kind, next_value)
+SELECT tenant_id, 'job', MAX(CAST(SUBSTRING(job_number FROM 5) AS BIGINT)) + 1
+FROM jobs WHERE job_number ~ '^JOB-[0-9]{1,18}$'
+GROUP BY tenant_id
+ON CONFLICT (tenant_id, kind) DO UPDATE SET next_value = GREATEST(tenant_counters.next_value, EXCLUDED.next_value);
+
+DROP TRIGGER IF EXISTS trigger_generate_invoice_number ON invoices;
+DROP FUNCTION IF EXISTS generate_invoice_number();
+DROP FUNCTION IF EXISTS generate_quote_number();
+DROP SEQUENCE IF EXISTS quote_number_seq;
+
+-- ============================================================================
+-- Folded in from 000009_invoice_refunds (pre-launch squash, 2026-10-24)
+-- ============================================================================
+
+-- ============================================================================
+-- 000009_invoice_refunds (T125 / correctness audit 7.H5)
+--
+-- Refunds were ignored: charge.refunded was only logged, amount_paid never
+-- went down and "refunded" was never set. Each refund is now a row here,
+-- written in the same transaction that lowers invoices.amount_paid under the
+-- invoice row lock. A child of invoices like invoice_payments (no tenant_id;
+-- reached through the tenant-scoped invoice).
+--
+-- Named invoice_refunds, not payment_refunds: the latter belongs to the dead
+-- models.Payment/PaymentRefund code (removed in T129) and never existed.
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS invoice_refunds (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    invoice_id UUID NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,
+    amount DECIMAL(12, 2) NOT NULL CHECK (amount > 0),
+    refund_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    method VARCHAR(50),
+    reason TEXT,
+    stripe_payment_intent_id VARCHAR(255),
+    stripe_charge_id VARCHAR(255),
+    created_by UUID REFERENCES users(id),
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_invoice_refunds_invoice ON invoice_refunds(invoice_id);
+CREATE INDEX IF NOT EXISTS idx_invoice_refunds_stripe_payment_intent
+    ON invoice_refunds(stripe_payment_intent_id) WHERE stripe_payment_intent_id IS NOT NULL;
+
+DROP TRIGGER IF EXISTS trigger_invoice_refunds_updated_at ON invoice_refunds;
+CREATE TRIGGER trigger_invoice_refunds_updated_at BEFORE UPDATE ON invoice_refunds
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- ============================================================================
+-- Folded in from 000010_payment_reminder_kinds (pre-launch squash, 2026-10-24)
+-- ============================================================================
+
+-- ============================================================================
+-- 000010_payment_reminder_kinds (T121 / audit 7.M8)
+--
+-- Manual reminders get their own numbering so they no longer take the
+-- automatic schedule's (invoice_id, reminder_number) slots: a manual reminder
+-- sent before day 7 used to become "#1" and the automatic first reminder was
+-- skipped forever.
+-- ============================================================================
+
+ALTER TABLE payment_reminders ADD COLUMN IF NOT EXISTS is_manual BOOLEAN NOT NULL DEFAULT false;
+
+ALTER TABLE payment_reminders DROP CONSTRAINT IF EXISTS unique_reminder_per_invoice;
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_payment_reminders_invoice_kind_number
+    ON payment_reminders(invoice_id, is_manual, reminder_number);
+
+-- ============================================================================
+-- Folded in from 000011_customer_search_trgm (pre-launch squash, 2026-10-24)
+-- ============================================================================
+
+-- ============================================================================
+-- 000011_customer_search_trgm (T123 / audit index list item 2)
+--
+-- Customer search, advanced search and autocomplete filter with
+-- LOWER(col) LIKE '%term%' / 'term%'. Trigram GIN indexes on the same
+-- expressions let Postgres use an index instead of scanning every customer.
+-- ============================================================================
+
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+CREATE INDEX IF NOT EXISTS idx_customers_first_name_trgm
+    ON customers USING gin (LOWER(first_name) gin_trgm_ops) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_customers_last_name_trgm
+    ON customers USING gin (LOWER(last_name) gin_trgm_ops) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_customers_email_trgm
+    ON customers USING gin (LOWER(email) gin_trgm_ops) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_customers_company_name_trgm
+    ON customers USING gin (LOWER(company_name) gin_trgm_ops) WHERE deleted_at IS NULL;
+
+-- ============================================================================
+-- Folded in from 000012_live_uniqueness (pre-launch squash, 2026-10-24)
+-- ============================================================================
+
+-- ============================================================================
+-- 000012_live_uniqueness (T226 / audit 4.2, 7.M12, 7.M13)
+--
+-- * Tenant slugs are unique among live tenants only. The global UNIQUE (slug)
+--   kept the slug of a soft-deleted tenant (e.g. a failed signup) taken
+--   forever.
+-- * Only one *pending* invitation per (tenant, email). The old
+--   UNIQUE (tenant_id, email) covered every status, so re-inviting someone
+--   after a cancelled, expired or accepted invitation failed with a
+--   duplicate-key error.
+--
+-- Customer email, the one-default payment term and the one-default invoice
+-- template were already made per-tenant in 000003.
+-- ============================================================================
+
+ALTER TABLE tenants DROP CONSTRAINT IF EXISTS tenants_slug_key;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_tenants_slug_live
+    ON tenants(slug) WHERE deleted_at IS NULL;
+
+ALTER TABLE organization_invitations DROP CONSTRAINT IF EXISTS unique_pending_invitation;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_org_invitations_pending
+    ON organization_invitations(tenant_id, LOWER(email)) WHERE status = 'pending';
+
+-- ============================================================================
+-- Folded in from 000013_document_currency (pre-launch squash, 2026-10-24)
+-- ============================================================================
+
+-- T127: invoices and quotes carry the currency they are billed in, taken
+-- from the tenant's currency setting when the document is created. Existing
+-- documents were always charged in USD.
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS currency VARCHAR(3) NOT NULL DEFAULT 'USD';
+ALTER TABLE quotes ADD COLUMN IF NOT EXISTS currency VARCHAR(3) NOT NULL DEFAULT 'USD';
+
+-- ============================================================================
+-- Folded in from 000014_tax_rate_permissions (pre-launch squash, 2026-10-24)
+-- ============================================================================
+
+-- T237: tax rates API permissions.
+--   tax_rates.read   list/get the tenant's rates and the global defaults (every role)
+--   tax_rates.manage create/update/delete the tenant's own rates (super_admin, admin)
+INSERT INTO permissions (id, name, description, resource, action) VALUES
+    ('41000000-0000-0000-0000-000000000001', 'tax_rates.read', 'View tax rates', 'tax_rates', 'read'),
+    ('41000000-0000-0000-0000-000000000002', 'tax_rates.manage', 'Create, update and delete tax rates', 'tax_rates', 'manage')
+ON CONFLICT (name) DO NOTHING;
+
+-- super_admin and admin: read + manage
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT r.id, p.id FROM roles r CROSS JOIN permissions p
+WHERE r.name IN ('super_admin', 'admin') AND p.name IN ('tax_rates.read', 'tax_rates.manage')
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
+-- manager, user, guest: read (they pick rates on invoices and quotes)
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT r.id, p.id FROM roles r CROSS JOIN permissions p
+WHERE r.name IN ('manager', 'user', 'guest') AND p.name = 'tax_rates.read'
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
+-- Tenant rates are listed by tenant and name.
+CREATE INDEX IF NOT EXISTS idx_tax_rates_tenant_name ON tax_rates (tenant_id, name);
