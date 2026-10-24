@@ -2775,7 +2775,8 @@ Validate the beachhead before the Phase 9–10 build-out, then publish positioni
   backstop needs Postgres.
 - **OD-2 — Make the GitHub repo private?** It is **public** and contains the 2026-10-16 audit and the product
   strategy/pricing docs. The audit's flaws are fixed (Phase 1). Owner, 2026-10-18: leave it public for now.
-  **Owner, 2026-10-19: make it private once CI is trimmed.** Blocker is Actions minutes: private repos share 2,000
+  **Owner, 2026-10-24: skip — stays public; not a priority.** (CI trim landed anyway: ~450 billed min/month, so
+  going private later would fit the free 2,000.) Earlier, 2026-10-19: make it private once CI is trimmed. Blocker is Actions minutes: private repos share 2,000
   free minutes a month, and this repo billed ~1,880 in the 30 days to 2026-10-19 (CI ~1,680; Dependabot PRs ~720 of
   that). League Looper + Thresher already use ~1,130. `ci.yml` now skips docs-only changes and runs only the jobs
   for the areas a change touches (est. ~30% less). Going private also drops free secret scanning + push protection.
