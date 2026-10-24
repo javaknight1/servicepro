@@ -41,6 +41,7 @@ func setupTestDB(t *testing.T) *gorm.DB {
 			failed_login_count INTEGER DEFAULT 0,
 			last_failed_login_at DATETIME,
 			locked_until DATETIME,
+			auth_user_id TEXT,
 			created_at DATETIME,
 			updated_at DATETIME,
 			deleted_at DATETIME

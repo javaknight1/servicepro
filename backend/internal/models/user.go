@@ -39,10 +39,13 @@ type User struct {
 	// TokenVersion is embedded in every JWT; bumping it (logout, password
 	// reset) revokes all outstanding access and refresh tokens. Read-only
 	// for GORM writes: it is only changed by explicit UPDATEs.
-	TokenVersion int            `json:"-" gorm:"->;column:token_version"`
-	CreatedAt    time.Time      `json:"created_at"`
-	UpdatedAt    time.Time      `json:"updated_at"`
-	DeletedAt    gorm.DeletedAt `json:"-" gorm:"index"`
+	TokenVersion int `json:"-" gorm:"->;column:token_version"`
+	// AuthUserID is the Neon Auth (managed Better Auth) user id — the `sub`
+	// of its JWTs (T158). Nil until the user signs in through Neon Auth.
+	AuthUserID *string        `json:"-" gorm:"column:auth_user_id"`
+	CreatedAt  time.Time      `json:"created_at"`
+	UpdatedAt  time.Time      `json:"updated_at"`
+	DeletedAt  gorm.DeletedAt `json:"-" gorm:"index"`
 }
 
 // IsLocked checks if the user account is currently locked

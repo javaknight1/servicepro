@@ -201,6 +201,20 @@ func (r *UserRepositoryGorm) IncrementTokenVersion(userID uuid.UUID) error {
 	return r.db.Exec("UPDATE users SET token_version = token_version + 1, updated_at = ? WHERE id = ?", time.Now(), userID).Error
 }
 
+// GetIDByAuthUserID returns the live user linked to a Neon Auth identity
+// (users.auth_user_id = the JWT's sub). gorm.ErrRecordNotFound when none is.
+func (r *UserRepositoryGorm) GetIDByAuthUserID(authUserID string) (uuid.UUID, error) {
+	var ids []uuid.UUID
+	err := r.db.Raw("SELECT id FROM users WHERE auth_user_id = ? AND deleted_at IS NULL", authUserID).Scan(&ids).Error
+	if err != nil {
+		return uuid.Nil, err
+	}
+	if len(ids) == 0 {
+		return uuid.Nil, gorm.ErrRecordNotFound
+	}
+	return ids[0], nil
+}
+
 // GetTokenVersion returns the user's current token version.
 func (r *UserRepositoryGorm) GetTokenVersion(userID uuid.UUID) (int, error) {
 	var version int
