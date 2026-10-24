@@ -2792,7 +2792,7 @@ Validate the beachhead before the Phase 9–10 build-out, then publish positioni
 - **OD-8 — Cloud Run region.** Follows the Neon project's region (OD-1). 2026-10-24: the Neon project
   (`frosty-unit-21038953`, org SharkFins, Free plan) is in **AWS us-east-2 (Ohio)**, Postgres 18; branch
   `production` has Neon Auth (managed Better Auth) enabled. Nearest Cloud Run region: `us-east5` (Columbus, Ohio).
-  Local Docker and CI still run Postgres 16 — move them to 18 so dev matches production (T203).
+  Local Docker and CI still run Postgres 16 — move them to 18 so dev matches production (before Phase 14 provisioning).
 - **OD-9 — Auth provider now that the database is on Neon** (T158). **Decided 2026-10-19: Neon's managed Better
   Auth** (Neon Auth). Users, sessions and OAuth config live in the `neon_auth` schema of our own Neon database;
   included on Neon Free up to 60k MAU (neon.com/pricing, checked 2026-10-18); each Neon branch gets its own auth
