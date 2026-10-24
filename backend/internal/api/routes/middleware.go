@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"context"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -11,6 +12,8 @@ import (
 	"github.com/javaknight1/servicepro/backend/internal/api/middleware"
 	permissionsSvc "github.com/javaknight1/servicepro/backend/internal/services/permissions"
 	"github.com/javaknight1/servicepro/backend/pkg/auth"
+	"github.com/javaknight1/servicepro/backend/pkg/auth/neonauth"
+	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"
 )
 
 // SetupMiddleware initializes all middleware instances
@@ -36,6 +39,13 @@ func SetupMiddleware(
 	}); ok {
 		permMiddleware.SetTokenVersionLookup(versions.GetTokenVersion)
 	}
+	// Neon Auth (T158): also accept Neon Auth JWTs for linked users.
+	neonVerifier := newNeonAuthVerifier(cfg)
+	if authUsers, ok := repos.User.(interface {
+		GetIDByAuthUserID(string) (uuid.UUID, error)
+	}); ok && neonVerifier != nil {
+		permMiddleware.SetNeonAuth(neonVerifier, authUsers.GetIDByAuthUserID)
+	}
 
 	// Tenant middleware
 	tenantMW := middleware.NewTenantMiddleware(repos.Tenant)
@@ -55,6 +65,13 @@ func SetupMiddleware(
 		if token == "" {
 			return "", false
 		}
+		if neonVerifier != nil && neonauth.IsNeonToken(token) {
+			claims, err := neonVerifier.Verify(c.Request.Context(), token)
+			if err != nil {
+				return "", false
+			}
+			return "neon:" + claims.Subject, true
+		}
 		claims, err := jwtManager.ValidateToken(token)
 		if err != nil || claims.Type != auth.AccessToken {
 			return "", false
@@ -71,4 +88,18 @@ func SetupMiddleware(
 		RateLimiter:    rateLimiter,
 		APIRateLimiter: apiRateLimiter,
 	}
+}
+
+// newNeonAuthVerifier returns the Neon Auth verifier when NEON_AUTH_BASE_URL
+// is set, else nil (Neon Auth tokens are then not accepted).
+func newNeonAuthVerifier(cfg *config.Config) *neonauth.Verifier {
+	if cfg.Auth.NeonAuthBaseURL == "" {
+		return nil
+	}
+	v, err := neonauth.New(cfg.Auth.NeonAuthBaseURL, cfg.Auth.NeonAuthJWKSURL)
+	if err != nil {
+		logging.Error(context.Background(), "[AUTH] Invalid NEON_AUTH_BASE_URL; Neon Auth tokens will be rejected", map[string]any{"error": err.Error()})
+		return nil
+	}
+	return v
 }

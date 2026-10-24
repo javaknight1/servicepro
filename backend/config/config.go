@@ -232,6 +232,11 @@ type AuthConfig struct {
 	LockoutDuration   time.Duration
 	RateLimitWindow   time.Duration
 	RateLimitAttempts int
+	// NeonAuthBaseURL is the branch's Neon Auth URL (NEON_AUTH_BASE_URL).
+	// When set, RequireAuth also accepts Neon Auth JWTs (T158). Empty = off.
+	NeonAuthBaseURL string
+	// NeonAuthJWKSURL overrides <NeonAuthBaseURL>/.well-known/jwks.json.
+	NeonAuthJWKSURL string
 }
 
 // CookieConfig holds HTTP cookie configuration for JWT tokens
@@ -462,6 +467,8 @@ func Load() *Config {
 			LockoutDuration:   time.Minute * 30, // 30 minutes lockout
 			RateLimitWindow:   time.Minute * 15, // 15 minutes window
 			RateLimitAttempts: 5,                // 5 attempts per window
+			NeonAuthBaseURL:   getEnv("NEON_AUTH_BASE_URL", ""),
+			NeonAuthJWKSURL:   getEnv("NEON_AUTH_JWKS_URL", ""),
 		},
 		Cookie: CookieConfig{
 			Domain:           getEnv("COOKIE_DOMAIN", ""),           // Empty for development (localhost)

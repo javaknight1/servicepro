@@ -15,6 +15,7 @@ import (
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/services/permissions"
 	"github.com/javaknight1/servicepro/backend/pkg/auth"
+	"github.com/javaknight1/servicepro/backend/pkg/auth/neonauth"
 )
 
 const (
@@ -27,6 +28,8 @@ const (
 // PermissionMiddleware handles permission checking for routes
 type PermissionMiddleware struct {
 	tokenVersions   TokenVersionLookup
+	neonAuth        NeonTokenVerifier
+	authUsers       AuthUserLookup
 	checker         *permissions.PermissionChecker
 	jwtManager      *auth.JWTManager
 	cookieManager   *auth.CookieManager
@@ -41,6 +44,24 @@ type TokenVersionLookup func(userID uuid.UUID) (int, error)
 // reset) are rejected.
 func (pm *PermissionMiddleware) SetTokenVersionLookup(lookup TokenVersionLookup) {
 	pm.tokenVersions = lookup
+}
+
+// NeonTokenVerifier verifies Neon Auth JWTs (*neonauth.Verifier).
+type NeonTokenVerifier interface {
+	Verify(ctx context.Context, token string) (*neonauth.Claims, error)
+}
+
+// AuthUserLookup resolves a Neon Auth user id (the JWT sub) to the linked
+// ServicePro user (users.auth_user_id).
+type AuthUserLookup func(authUserID string) (uuid.UUID, error)
+
+// SetNeonAuth makes RequireAuth also accept Neon Auth bearer tokens (T158),
+// alongside the API's own JWTs. A Neon token authenticates only a user whose
+// users.auth_user_id matches its sub; there is no token-version revocation
+// for these (Neon tokens live 15 minutes).
+func (pm *PermissionMiddleware) SetNeonAuth(verifier NeonTokenVerifier, lookup AuthUserLookup) {
+	pm.neonAuth = verifier
+	pm.authUsers = lookup
 }
 
 // NewPermissionMiddleware creates a new permission middleware
@@ -91,6 +112,11 @@ func (pm *PermissionMiddleware) RequireAuth() gin.HandlerFunc {
 			}
 
 			tokenString = parts[1]
+		}
+
+		if pm.neonAuth != nil && neonauth.IsNeonToken(tokenString) {
+			pm.authenticateNeon(c, tokenString)
+			return
 		}
 
 		// Validate token
@@ -145,6 +171,33 @@ func (pm *PermissionMiddleware) RequireAuth() gin.HandlerFunc {
 
 		c.Next()
 	}
+}
+
+// authenticateNeon finishes RequireAuth for a Neon Auth token.
+func (pm *PermissionMiddleware) authenticateNeon(c *gin.Context, token string) {
+	claims, err := pm.neonAuth.Verify(c.Request.Context(), token)
+	if err != nil {
+		apierror.WriteResponse(c, http.StatusUnauthorized, models.ErrorResponse{
+			Error:   "unauthorized",
+			Message: "Invalid or expired token",
+		})
+		c.Abort()
+		return
+	}
+	userID, err := pm.authUsers(claims.Subject)
+	if err != nil {
+		// Signed in with Neon Auth, but no ServicePro user is linked yet
+		// (first-sign-in provisioning is a later T158 step).
+		apierror.WriteResponse(c, http.StatusUnauthorized, models.ErrorResponse{
+			Error:   "unauthorized",
+			Message: "No ServicePro account is linked to this sign-in",
+		})
+		c.Abort()
+		return
+	}
+	c.Set(userIDKey, userID)
+	c.Set(userEmailKey, claims.Email)
+	c.Next()
 }
 
 // RequirePermission creates middleware that checks for a specific permission
