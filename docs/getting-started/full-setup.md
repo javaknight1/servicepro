@@ -8,13 +8,13 @@ Complete instructions for setting up the ServicePro development environment with
 
 | Software       | Minimum Version | Recommended | Purpose                       |
 | -------------- | --------------- | ----------- | ----------------------------- |
-| Go             | 1.21.0          | 1.22+       | Backend development           |
-| Node.js        | 18.0.0          | 20.x LTS    | Frontend development          |
+| Go             | `go 1.26` (go.mod) | toolchain go1.27.3 | Backend development      |
+| Node.js        | 24 (`frontend/.nvmrc`) | 24.x    | Frontend development          |
 | npm            | 9.0.0           | 10.x        | Package management            |
 | Docker         | 24.0.0          | Latest      | Containerization              |
 | Docker Compose | 2.20.0          | Latest      | Multi-container orchestration |
-| PostgreSQL     | 15.0            | 15.x        | Database (or use Docker)      |
-| Redis          | 7.0             | 7.x         | Caching (or use Docker)       |
+| PostgreSQL     | 18              | 18 (Docker) | Database (production: Neon Postgres 18) |
+| Redis          | optional        | Docker      | Caching (in-memory fallback without it) |
 | Git            | 2.40.0          | Latest      | Version control               |
 | Make           | 4.0             | Latest      | Build automation              |
 
@@ -22,7 +22,7 @@ Complete instructions for setting up the ServicePro development environment with
 
 | Software      | Version | Purpose                |
 | ------------- | ------- | ---------------------- |
-| AWS CLI       | 2.x     | AWS deployment         |
+| gcloud CLI    | latest  | Cloud Run (ops only)   |
 | golangci-lint | 1.55+   | Go linting             |
 | k6            | Latest  | Load testing           |
 | mkcert        | Latest  | Local SSL certificates |
@@ -36,17 +36,17 @@ Complete instructions for setting up the ServicePro development environment with
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
 # Install required software
-brew install go node docker docker-compose postgresql@15 redis git make
+brew install go node docker docker-compose git make   # Postgres 18 + Redis run in Docker
 
 # Install optional tools
-brew install awscli golangci-lint k6 mkcert
+brew install golangci-lint k6 mkcert
 
 # Start Docker Desktop
 open -a Docker
 
 # Verify installations
-go version          # Should show go1.21+
-node --version      # Should show v18+
+go version          # Should match backend/go.mod
+node --version      # Should show v24
 docker --version    # Should show 24+
 docker compose version
 ```
@@ -61,7 +61,7 @@ sudo apt update && sudo apt upgrade -y
 sudo apt install -y curl wget git make build-essential
 
 # Install Go
-GO_VERSION=1.22.0
+GO_VERSION=1.27.3   # the toolchain in backend/go.mod
 wget https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz
 sudo rm -rf /usr/local/go
 sudo tar -C /usr/local -xzf go${GO_VERSION}.linux-amd64.tar.gz
@@ -69,7 +69,7 @@ echo 'export PATH=$PATH:/usr/local/go/bin:$HOME/go/bin' >> ~/.bashrc
 source ~/.bashrc
 
 # Install Node.js (via NodeSource)
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+curl -fsSL https://deb.nodesource.com/setup_24.x | sudo -E bash -
 sudo apt install -y nodejs
 
 # Install Docker
@@ -244,7 +244,7 @@ sudo -u postgres createuser --interactive --pwprompt servicepro
 sudo -u postgres createdb -O servicepro servicepro_dev
 
 # Run migrations
-cd backend && go run cmd//main.go migrate up
+cd backend && go run ./cmd/migrate up
 ```
 
 ## Running the Application
@@ -367,7 +367,7 @@ make clean             # Clean build artifacts
 | Service    | Username               | Password  |
 | ---------- | ---------------------- | --------- |
 | PostgreSQL | postgres               | password  |
-| Admin User | admin@servicepro.local | Admin123! |
+| Dev user (`make seed`) | dev@servicepro.local | password123 |
 
 ## Next Steps
 

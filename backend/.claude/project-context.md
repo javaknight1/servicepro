@@ -1,5 +1,15 @@
 # ServicePro Project Context
 
+> **Historical — superseded.** This file predates the 2026-10 audit, the move
+> to Neon + Cloud Run and the MVP refocus. Its stack (AWS SES/RDS, Go 1.21,
+> React 18, Postgres 15, Redis required), target market and feature status are
+> out of date. Read the root `CLAUDE.md` (rules, stack, hosting) and `TODO.md`
+> (plan, decisions) instead. Current facts: live since v0.9.0 (2026-10-24) at
+> https://servicepro.sharkfins.xyz — Cloudflare Worker → Cloud Run (us-east5) →
+> Neon Postgres 18 (AWS us-east-2); Go 1.26, React 19, Vite 8, Tailwind 4;
+> Redis optional; email target Resend (T159); MVP for commercial cleaning and
+> facility-maintenance companies billing on net terms.
+
 This file provides consistent context for Claude Code sessions.
 
 ## What We're Building

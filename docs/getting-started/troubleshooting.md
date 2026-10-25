@@ -130,11 +130,11 @@ docker compose up -d postgres
 
 ```bash
 # Check migration status
-cd backend && go run cmd//main.go migrate status
+cd backend && go run ./cmd/migrate version
 
 # Reset migrations (WARNING: deletes all data)
 go run ./cmd/migrate down -all   # from backend/; or: make migrate-down STEPS=-all
-go run cmd//main.go migrate up
+go run ./cmd/migrate up
 
 # Or reset entire database
 make db-reset
@@ -181,7 +181,7 @@ lsof -i :8080
 kill -9 <PID>
 
 # Or use a different port
-APP_PORT=8081 go run cmd//main.go
+PORT=8081 go run ./cmd
 ```
 
 ### Environment variables not loading
@@ -283,29 +283,26 @@ npm run dev
 ```bash
 # Verify user exists in database
 docker compose exec postgres psql -U postgres -c \
-  "SELECT email, email_verified FROM users WHERE email = 'admin@servicepro.local';"
+  "SELECT email, email_verified FROM users WHERE email = 'dev@servicepro.local';"
 
-# Reset password or create user
-cd backend && go run cmd//main.go seed
+# Reload the dev seed (dev@servicepro.local / password123)
+make seed
 ```
 
 ### Token not persisting
 
 ```bash
-# Check localStorage in browser
-# Developer Tools > Application > Local Storage
-
-# In browser console:
-console.log(localStorage.getItem('auth_token'))
-
-# Check token expiration
-# Decode JWT at jwt.io to check exp claim
+# Tokens are httpOnly cookies (access_token, refresh_token), not localStorage.
+# Developer Tools > Application > Cookies > http://localhost:3000
+# They must be sent on same-origin /api requests (axios uses withCredentials).
+# If they're missing, check COOKIE_SECURE=false locally (HTTPS-only cookies
+# are dropped on http://localhost) and that the SPA calls /api, not :8080.
 ```
 
 ### Email verification not working
 
 ```bash
-# Check MailHog for local development
+# Check Mailpit for local development
 open http://localhost:8025
 
 # Check verification token in database
