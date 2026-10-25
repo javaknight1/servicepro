@@ -20,16 +20,16 @@ Welcome to the ServicePro documentation. This guide covers everything you need t
 
 ### API Reference
 
-| Document                                  | Description                           |
-| ----------------------------------------- | ------------------------------------- |
-| [API Overview](./api/README.md)           | API conventions and authentication    |
-| [Authentication](./api/authentication.md) | Registration, login, password reset   |
-| [Customers](./api/customers.md)           | Customer management endpoints         |
-| [Jobs](./api/jobs.md)                     | Jobs, status, assignments, conflicts  |
-| [Invoices](./api/invoices.md)             | Invoice management and billing        |
-| [Payments](./api/payments.md)             | Invoice payments, Stripe, billing     |
-| [Quotes](./api/quotes.md)                 | Quote status and workflows            |
-| [Errors](./api/errors.md)                 | Error envelope and status codes       |
+| Document                                  | Description                          |
+| ----------------------------------------- | ------------------------------------ |
+| [API Overview](./api/README.md)           | API conventions and authentication   |
+| [Authentication](./api/authentication.md) | Registration, login, password reset  |
+| [Customers](./api/customers.md)           | Customer management endpoints        |
+| [Jobs](./api/jobs.md)                     | Jobs, status, assignments, conflicts |
+| [Invoices](./api/invoices.md)             | Invoice management and billing       |
+| [Payments](./api/payments.md)             | Invoice payments, Stripe, billing    |
+| [Quotes](./api/quotes.md)                 | Quote status and workflows           |
+| [Errors](./api/errors.md)                 | Error envelope and status codes      |
 
 ### Architecture
 

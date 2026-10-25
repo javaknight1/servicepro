@@ -6,9 +6,9 @@ route files in `backend/internal/api/routes/`. These pages summarise it.
 
 ## Base URL
 
-| Environment | Base URL                                          |
-| ----------- | ------------------------------------------------- |
-| Local       | `http://localhost:8080/api/v1`                    |
+| Environment | Base URL                                                                                        |
+| ----------- | ----------------------------------------------------------------------------------------------- |
+| Local       | `http://localhost:8080/api/v1`                                                                  |
 | Production  | `https://servicepro.sharkfins.xyz/api/v1` (proxied by the `servicepro-web` Worker to Cloud Run) |
 
 In production the API only accepts `/api/*` traffic that came through the
@@ -29,37 +29,37 @@ All paths below are relative to `/api/v1`.
 
 ### Auth and users
 
-| Method | Endpoint                                          | Description                         |
-| ------ | ------------------------------------------------- | ----------------------------------- |
-| POST   | `/auth/register`, `/auth/login`, `/auth/refresh`, `/auth/logout` | Account and session   |
-| POST   | `/auth/reset-request`, `/auth/reset-password`     | Password reset                      |
-| GET    | `/auth/verify?token=…`                            | Verify email                        |
-| POST   | `/auth/resend-verification`                       | Resend verification email           |
-| POST   | `/auth/neon/provision`                            | Link a Neon Auth sign-in            |
-| GET    | `/users/me`                                       | Current user                        |
-| PATCH  | `/users/me/profile`                               | Update profile                      |
-| POST/DELETE | `/users/me/profile-picture`                  | Profile picture                     |
+| Method      | Endpoint                                                         | Description               |
+| ----------- | ---------------------------------------------------------------- | ------------------------- |
+| POST        | `/auth/register`, `/auth/login`, `/auth/refresh`, `/auth/logout` | Account and session       |
+| POST        | `/auth/reset-request`, `/auth/reset-password`                    | Password reset            |
+| GET         | `/auth/verify?token=…`                                           | Verify email              |
+| POST        | `/auth/resend-verification`                                      | Resend verification email |
+| POST        | `/auth/neon/provision`                                           | Link a Neon Auth sign-in  |
+| GET         | `/users/me`                                                      | Current user              |
+| PATCH       | `/users/me/profile`                                              | Update profile            |
+| POST/DELETE | `/users/me/profile-picture`                                      | Profile picture           |
 
 See [authentication.md](./authentication.md).
 
 ### Tenants, members, roles
 
-| Method | Endpoint                                              | Description                        |
-| ------ | ----------------------------------------------------- | ---------------------------------- |
-| GET/POST | `/tenants`                                          | List my tenants / create a tenant  |
-| GET/PUT/DELETE | `/tenants/:id`                                | Tenant                             |
-| GET    | `/tenants/:id/me`                                     | My membership in the tenant        |
-| GET/POST | `/tenants/:id/members`                              | Members                            |
-| DELETE | `/tenants/:id/members/:userId`                        | Remove member                      |
-| PUT    | `/tenants/:id/members/:userId/role`                   | Change a member's role             |
-| GET/POST | `/tenants/:id/invitations`                          | Invitations                        |
-| DELETE | `/tenants/:id/invitations/:invitation_id`             | Cancel invitation                  |
-| POST   | `/tenants/:id/invitations/:invitation_id/resend`      | Resend invitation                  |
-| GET    | `/invitations/:token`                                 | Look up an invitation              |
-| POST   | `/invitations/:token/accept`                          | Accept an invitation               |
-| GET    | `/roles`, `/roles/:id/permissions`, `/permissions`    | Roles and permissions              |
-| POST/GET | `/admin/invite-codes`                               | Invite codes (platform super admin)|
-| DELETE | `/admin/invite-codes/:id`                             | Revoke an invite code              |
+| Method         | Endpoint                                           | Description                         |
+| -------------- | -------------------------------------------------- | ----------------------------------- |
+| GET/POST       | `/tenants`                                         | List my tenants / create a tenant   |
+| GET/PUT/DELETE | `/tenants/:id`                                     | Tenant                              |
+| GET            | `/tenants/:id/me`                                  | My membership in the tenant         |
+| GET/POST       | `/tenants/:id/members`                             | Members                             |
+| DELETE         | `/tenants/:id/members/:userId`                     | Remove member                       |
+| PUT            | `/tenants/:id/members/:userId/role`                | Change a member's role              |
+| GET/POST       | `/tenants/:id/invitations`                         | Invitations                         |
+| DELETE         | `/tenants/:id/invitations/:invitation_id`          | Cancel invitation                   |
+| POST           | `/tenants/:id/invitations/:invitation_id/resend`   | Resend invitation                   |
+| GET            | `/invitations/:token`                              | Look up an invitation               |
+| POST           | `/invitations/:token/accept`                       | Accept an invitation                |
+| GET            | `/roles`, `/roles/:id/permissions`, `/permissions` | Roles and permissions               |
+| POST/GET       | `/admin/invite-codes`                              | Invite codes (platform super admin) |
+| DELETE         | `/admin/invite-codes/:id`                          | Revoke an invite code               |
 
 ### Customers
 
@@ -87,26 +87,26 @@ under `/public/invoices/*`; `POST /stripe/webhooks`. See
 
 ### Payment terms and tax rates
 
-| Method | Endpoint                                              | Description                     |
-| ------ | ----------------------------------------------------- | ------------------------------- |
-| GET    | `/payment-terms`, `/payment-terms/default`, `/payment-terms/:id` | Payment terms        |
-| POST/PUT/DELETE | `/payment-terms`, `/payment-terms/:id`        | Manage payment terms            |
-| POST   | `/payment-terms/calculate/{due-date,discount,late-fee,status,details}` | Term calculations |
-| GET/POST | `/tax-rates`                                        | Tax rates                       |
-| GET/PUT/DELETE | `/tax-rates/:id`                              | Tax rate                        |
+| Method          | Endpoint                                                               | Description          |
+| --------------- | ---------------------------------------------------------------------- | -------------------- |
+| GET             | `/payment-terms`, `/payment-terms/default`, `/payment-terms/:id`       | Payment terms        |
+| POST/PUT/DELETE | `/payment-terms`, `/payment-terms/:id`                                 | Manage payment terms |
+| POST            | `/payment-terms/calculate/{due-date,discount,late-fee,status,details}` | Term calculations    |
+| GET/POST        | `/tax-rates`                                                           | Tax rates            |
+| GET/PUT/DELETE  | `/tax-rates/:id`                                                       | Tax rate             |
 
 See [tax rates](../features/tax-service.md).
 
 ### Reports and exports
 
-| Method | Endpoint                                              | Description                      |
-| ------ | ----------------------------------------------------- | -------------------------------- |
-| GET    | `/reports/revenue`, `/revenue/time-series`, `/revenue/categories`, `/revenue/customers`, `/revenue/chart-data` | Revenue |
-| GET    | `/reports/customers`, `/customers/{segments,types,geography,acquisition,top,at-risk,cohorts,chart-data}` | Customers |
-| GET    | `/reports/ar-aging`, `/ar-aging/buckets`, `/ar-aging/buckets/:bucket/invoices`, `/ar-aging/customers` | AR aging |
-| POST   | `/reports/{revenue,customers,ar-aging}/export`        | Report exports                   |
-| POST   | `/reports/{revenue,customers}/cache/refresh`          | Refresh report caches            |
-| GET/POST | `/exports`, `/exports/quick`, `/exports/:id{,/progress,/stream,/download,/cancel}`, `/exports/formats` | Export jobs |
+| Method   | Endpoint                                                                                                       | Description           |
+| -------- | -------------------------------------------------------------------------------------------------------------- | --------------------- |
+| GET      | `/reports/revenue`, `/revenue/time-series`, `/revenue/categories`, `/revenue/customers`, `/revenue/chart-data` | Revenue               |
+| GET      | `/reports/customers`, `/customers/{segments,types,geography,acquisition,top,at-risk,cohorts,chart-data}`       | Customers             |
+| GET      | `/reports/ar-aging`, `/ar-aging/buckets`, `/ar-aging/buckets/:bucket/invoices`, `/ar-aging/customers`          | AR aging              |
+| POST     | `/reports/{revenue,customers,ar-aging}/export`                                                                 | Report exports        |
+| POST     | `/reports/{revenue,customers}/cache/refresh`                                                                   | Refresh report caches |
+| GET/POST | `/exports`, `/exports/quick`, `/exports/:id{,/progress,/stream,/download,/cancel}`, `/exports/formats`         | Export jobs           |
 
 See [import-export.md](../features/import-export.md).
 
@@ -118,13 +118,13 @@ See [import-export.md](../features/import-export.md).
 
 ### Outside `/api/v1`
 
-| Method | Endpoint                          | Description                                                      |
-| ------ | --------------------------------- | ---------------------------------------------------------------- |
-| GET    | `/version`                        | Build identity (`git_sha`, `app_version`)                        |
-| GET    | `/health`, `/health/live`, `/health/ready` | Health; `ready` is 503 when the DB schema is behind/dirty |
+| Method | Endpoint                                                          | Description                                                         |
+| ------ | ----------------------------------------------------------------- | ------------------------------------------------------------------- |
+| GET    | `/version`                                                        | Build identity (`git_sha`, `app_version`)                           |
+| GET    | `/health`, `/health/live`, `/health/ready`                        | Health; `ready` is 503 when the DB schema is behind/dirty           |
 | POST   | `/internal/jobs/payment-reminders`, `/internal/jobs/quote-expiry` | Scheduled jobs (`X-Internal-Jobs-Token`); not proxied by the Worker |
-| GET    | `/metrics`                        | Prometheus (bearer token outside development)                    |
-| GET    | `/api/docs/*`                     | Swagger UI                                                       |
+| GET    | `/metrics`                                                        | Prometheus (bearer token outside development)                       |
+| GET    | `/api/docs/*`                                                     | Swagger UI                                                          |
 
 ## Request/Response Format
 
@@ -154,30 +154,30 @@ rules and the common codes. Every response carries an `X-Request-ID` header.
 
 ## HTTP Status Codes
 
-| Code | Status                | Description                                           |
-| ---- | --------------------- | ----------------------------------------------------- |
-| 200  | OK                    | Request successful                                    |
-| 201  | Created               | Resource created                                      |
-| 204  | No Content            | Request successful, no content                        |
-| 400  | Bad Request           | Invalid request data                                  |
-| 401  | Unauthorized          | Authentication required                               |
-| 403  | Forbidden             | Insufficient permissions, CSRF header missing         |
-| 404  | Not Found             | Resource not found — including another tenant's rows  |
-| 409  | Conflict              | Duplicate, or an invalid state transition             |
-| 410  | Gone                  | Deprecated endpoint (`GET /customers/export`)         |
-| 429  | Too Many Requests     | Rate limit exceeded                                   |
-| 500  | Internal Server Error | Server error (logged; generic message)                |
+| Code | Status                | Description                                          |
+| ---- | --------------------- | ---------------------------------------------------- |
+| 200  | OK                    | Request successful                                   |
+| 201  | Created               | Resource created                                     |
+| 204  | No Content            | Request successful, no content                       |
+| 400  | Bad Request           | Invalid request data                                 |
+| 401  | Unauthorized          | Authentication required                              |
+| 403  | Forbidden             | Insufficient permissions, CSRF header missing        |
+| 404  | Not Found             | Resource not found — including another tenant's rows |
+| 409  | Conflict              | Duplicate, or an invalid state transition            |
+| 410  | Gone                  | Deprecated endpoint (`GET /customers/export`)        |
+| 429  | Too Many Requests     | Rate limit exceeded                                  |
+| 500  | Internal Server Error | Server error (logged; generic message)               |
 
 ## Rate Limiting
 
 Defaults per window of `RATE_LIMIT_WINDOW` (1 minute), configurable in
 `backend/.env.example`:
 
-| Caller            | Limit (`RATE_LIMIT_*`)          |
-| ----------------- | ------------------------------- |
-| Anonymous         | 100 requests (`ANONYMOUS`)      |
-| Authenticated     | 1000 requests (`AUTHENTICATED`) |
-| Admin endpoints   | 50 requests (`ADMIN`)           |
+| Caller          | Limit (`RATE_LIMIT_*`)          |
+| --------------- | ------------------------------- |
+| Anonymous       | 100 requests (`ANONYMOUS`)      |
+| Authenticated   | 1000 requests (`AUTHENTICATED`) |
+| Admin endpoints | 50 requests (`ADMIN`)           |
 
 Login and password-reset requests have their own stricter throttles.
 `/health` and `/version` are excluded. Responses carry:
@@ -198,12 +198,12 @@ they're per instance.
 GET /api/v1/invoices?status=sent&customer_id=<uuid>&page=1&page_size=20&sort_by=created_at&sort_order=desc
 ```
 
-| Parameter  | Type    | Description                     |
-| ---------- | ------- | ------------------------------- |
-| page       | integer | Page number (default: 1)        |
-| page_size  | integer | Items per page (default: 20)    |
-| sort_by    | string  | Field to sort by                |
-| sort_order | string  | `asc` or `desc`                 |
+| Parameter  | Type    | Description                  |
+| ---------- | ------- | ---------------------------- |
+| page       | integer | Page number (default: 1)     |
+| page_size  | integer | Items per page (default: 20) |
+| sort_by    | string  | Field to sort by             |
+| sort_order | string  | `asc` or `desc`              |
 
 Filters differ per resource — check the endpoint page or Swagger.
 

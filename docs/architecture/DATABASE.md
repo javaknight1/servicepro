@@ -29,13 +29,13 @@
 
 Counted from `000001_initial_schema.up.sql` (2026-10-25):
 
-| Metric      | Value                                                       |
-| ----------- | ----------------------------------------------------------- |
-| Tables      | 53 (51 in `public`, 2 in `analytics`)                       |
-| Views       | 8 (`v_*` reporting views, no materialized views)            |
-| Functions   | 15                                                          |
-| Enum types  | 16                                                          |
-| Triggers    | 19 (17 `updated_at`, quote item totals, invoice numbering)  |
+| Metric     | Value                                                      |
+| ---------- | ---------------------------------------------------------- |
+| Tables     | 53 (51 in `public`, 2 in `analytics`)                      |
+| Views      | 8 (`v_*` reporting views, no materialized views)           |
+| Functions  | 15                                                         |
+| Enum types | 16                                                         |
+| Triggers   | 19 (17 `updated_at`, quote item totals, invoice numbering) |
 
 ### 1.2 Naming Conventions
 
@@ -61,10 +61,10 @@ All tables include:
 
 golang-migrate, embedded in the binary, **always additive** (CLAUDE.md).
 
-| Migration                   | What                                                                                                   |
-| --------------------------- | ------------------------------------------------------------------------------------------------------ |
+| Migration                   | What                                                                                                                                      |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
 | `000001_initial_schema`     | The whole pre-launch schema. Migrations 000001–000014 were squashed into it on 2026-10-24, before any shared database held data (one-off) |
-| `000002_users_auth_user_id` | `users.auth_user_id` — links a user to its Neon Auth identity (T158)                                   |
+| `000002_users_auth_user_id` | `users.auth_user_id` — links a user to its Neon Auth identity (T158)                                                                      |
 
 Production migrations run in the release pipeline's `migrate` job, never at
 server startup. Locally: `make migrate`, `make db-fresh-seed`.
@@ -849,16 +849,16 @@ CREATE INDEX idx_invoice_audit_created_at ON invoice_audit_log(created_at);
 
 Eight plain (non-materialized) reporting views:
 
-| View                      | Purpose                                   |
-| ------------------------- | ----------------------------------------- |
-| `v_platform_overview`     | Platform-wide totals (admin)              |
-| `v_tenant_growth_daily`   | New tenants per day                       |
-| `v_feature_adoption`      | Feature usage across tenants              |
-| `v_job_metrics_daily`     | Job counts/status per day                 |
-| `v_invoice_metrics_daily` | Invoice counts/amounts per day            |
-| `v_quote_conversion`      | Quote → accepted conversion               |
-| `v_revenue_daily`         | Revenue per day                           |
-| `v_ar_aging_summary`      | Accounts-receivable aging buckets         |
+| View                      | Purpose                           |
+| ------------------------- | --------------------------------- |
+| `v_platform_overview`     | Platform-wide totals (admin)      |
+| `v_tenant_growth_daily`   | New tenants per day               |
+| `v_feature_adoption`      | Feature usage across tenants      |
+| `v_job_metrics_daily`     | Job counts/status per day         |
+| `v_invoice_metrics_daily` | Invoice counts/amounts per day    |
+| `v_quote_conversion`      | Quote → accepted conversion       |
+| `v_revenue_daily`         | Revenue per day                   |
+| `v_ar_aging_summary`      | Accounts-receivable aging buckets |
 
 Report endpoints that need caching use cache tables (`revenue_summary_cache`,
 `customer_metrics_cache`) with explicit refresh endpoints, not materialized
@@ -866,15 +866,15 @@ views.
 
 ### 6.2 Functions
 
-| Function                                                          | Purpose                                         |
-| ----------------------------------------------------------------- | ----------------------------------------------- |
-| `update_updated_at_column()`                                      | Trigger: keep `updated_at` current (17 tables)  |
-| `validate_email`, `validate_phone`, `validate_state_code`, `validate_zip_code` | Check-constraint helpers           |
-| `calculate_quote_item_total()`                                    | Trigger: quote line totals                      |
-| `generate_quote_number`, `generate_invoice_number`                | Document numbering                              |
-| `get_user_tenant_ids`, `user_belongs_to_tenant`, `get_user_tenant_role` | Tenant membership helpers                 |
-| `get_tenant_subscription`, `check_tenant_limit`                   | Membership tier limits                          |
-| `set_default_payment_method`, `get_default_payment_method`        | Tenant billing payment methods                  |
+| Function                                                                       | Purpose                                        |
+| ------------------------------------------------------------------------------ | ---------------------------------------------- |
+| `update_updated_at_column()`                                                   | Trigger: keep `updated_at` current (17 tables) |
+| `validate_email`, `validate_phone`, `validate_state_code`, `validate_zip_code` | Check-constraint helpers                       |
+| `calculate_quote_item_total()`                                                 | Trigger: quote line totals                     |
+| `generate_quote_number`, `generate_invoice_number`                             | Document numbering                             |
+| `get_user_tenant_ids`, `user_belongs_to_tenant`, `get_user_tenant_role`        | Tenant membership helpers                      |
+| `get_tenant_subscription`, `check_tenant_limit`                                | Membership tier limits                         |
+| `set_default_payment_method`, `get_default_payment_method`                     | Tenant billing payment methods                 |
 
 Quote expiry runs in the API (`POST /internal/jobs/quote-expiry`, hourly from
 `scheduled-jobs.yml`), not as a database function.
@@ -1089,9 +1089,9 @@ WHERE idx_scan = 0 AND indexrelid::regclass::text NOT LIKE '%_pkey';
 
 ## Document History
 
-| Version | Date    | Author           | Changes               |
-| ------- | ------- | ---------------- | --------------------- |
-| 1.0     | 2026-01 | Engineering Team | Initial documentation |
+| Version | Date    | Author           | Changes                                                                         |
+| ------- | ------- | ---------------- | ------------------------------------------------------------------------------- |
+| 1.0     | 2026-01 | Engineering Team | Initial documentation                                                           |
 | 1.1     | 2026-10 | Engineering Team | Real counts, views, functions; migrations squash; Neon pooling; no partitioning |
 
 ---

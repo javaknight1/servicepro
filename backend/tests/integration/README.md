@@ -73,12 +73,12 @@ The targets point the tests at the compose stack (`TEST_DATABASE_URL`,
 
 The tests run against the root `docker-compose.yml` stack:
 
-| Service    | Port | Description                             |
-| ---------- | ---- | --------------------------------------- |
-| PostgreSQL | 5432 | Database (`servicepro`)                 |
-| Redis      | 6379 | Cache (optional for the app)            |
-| Mailpit    | 8025 | Email testing (MailHog-compatible API)  |
-| API        | 8080 | Backend under test                      |
+| Service    | Port | Description                            |
+| ---------- | ---- | -------------------------------------- |
+| PostgreSQL | 5432 | Database (`servicepro`)                |
+| Redis      | 6379 | Cache (optional for the app)           |
+| Mailpit    | 8025 | Email testing (MailHog-compatible API) |
+| API        | 8080 | Backend under test                     |
 
 Stripe is mocked in-process (`mocks/stripe_mock.go`, an `httptest` server). `mocks/aws_mock.go` expects LocalStack on `localhost:4566` (`AWS_ENDPOINT_URL`), which is not part of the compose stack.
 
@@ -231,12 +231,12 @@ source .env.test
 
 Key variables:
 
-| Variable          | Default         | Description   |
-| ----------------- | --------------- | ------------- |
-| TEST_DATABASE_URL | localhost:5432  | Test database |
-| REDIS_URL         | localhost:6379  | Redis         |
-| MAILHOG_API       | localhost:8025  | Mailpit API   |
-| API_BASE_URL      | localhost:8080  | API under test |
+| Variable          | Default        | Description    |
+| ----------------- | -------------- | -------------- |
+| TEST_DATABASE_URL | localhost:5432 | Test database  |
+| REDIS_URL         | localhost:6379 | Redis          |
+| MAILHOG_API       | localhost:8025 | Mailpit API    |
+| API_BASE_URL      | localhost:8080 | API under test |
 
 ### Test Configuration
 

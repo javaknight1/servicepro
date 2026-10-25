@@ -12,19 +12,19 @@ Registration, login, sessions, password reset and email verification.
 
 ## Endpoints
 
-| Method | Endpoint                            | Description                                                        |
-| ------ | ----------------------------------- | ------------------------------------------------------------------ |
-| POST   | `/api/v1/auth/register`             | Register (invite code or invitation needed in `invite_only` mode)  |
-| POST   | `/api/v1/auth/login`                | Log in; sets the access + refresh cookies                          |
-| POST   | `/api/v1/auth/refresh`              | Rotate tokens from the refresh cookie                              |
-| POST   | `/api/v1/auth/logout`               | Revoke all of the user's tokens and clear the cookies              |
-| POST   | `/api/v1/auth/reset-request`        | Email a password-reset link (rate limited)                         |
-| POST   | `/api/v1/auth/reset-password`       | Set a new password with the reset token                            |
-| GET    | `/api/v1/auth/verify?token=…`       | Verify an email address (link from the verification email)        |
-| POST   | `/api/v1/auth/resend-verification`  | Resend the verification email                                      |
-| POST   | `/api/v1/auth/neon/provision`       | Link or create the ServicePro user for a Neon Auth sign-in         |
-| GET    | `/api/v1/users/me`                  | The signed-in user                                                 |
-| PATCH  | `/api/v1/users/me/profile`          | Update first/last name                                             |
+| Method | Endpoint                           | Description                                                       |
+| ------ | ---------------------------------- | ----------------------------------------------------------------- |
+| POST   | `/api/v1/auth/register`            | Register (invite code or invitation needed in `invite_only` mode) |
+| POST   | `/api/v1/auth/login`               | Log in; sets the access + refresh cookies                         |
+| POST   | `/api/v1/auth/refresh`             | Rotate tokens from the refresh cookie                             |
+| POST   | `/api/v1/auth/logout`              | Revoke all of the user's tokens and clear the cookies             |
+| POST   | `/api/v1/auth/reset-request`       | Email a password-reset link (rate limited)                        |
+| POST   | `/api/v1/auth/reset-password`      | Set a new password with the reset token                           |
+| GET    | `/api/v1/auth/verify?token=…`      | Verify an email address (link from the verification email)        |
+| POST   | `/api/v1/auth/resend-verification` | Resend the verification email                                     |
+| POST   | `/api/v1/auth/neon/provision`      | Link or create the ServicePro user for a Neon Auth sign-in        |
+| GET    | `/api/v1/users/me`                 | The signed-in user                                                |
+| PATCH  | `/api/v1/users/me/profile`         | Update first/last name                                            |
 
 ## Register
 

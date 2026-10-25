@@ -33,38 +33,38 @@ GitHub Actions: v* tag ──► migrate (Neon) ──► deploy API ──► d
 
 ### Frontend
 
-| Technology           | Purpose                       |
-| -------------------- | ----------------------------- |
-| React 19             | UI framework                  |
-| TypeScript (strict)  | Type safety                   |
-| Vite 8               | Build tool                    |
-| React Router 7       | Routing                       |
-| Zustand              | Client state                  |
-| TanStack React Query | Server state                  |
-| Tailwind CSS 4       | Styling                       |
-| Cloudflare Worker    | Static assets + `/api` proxy  |
+| Technology           | Purpose                      |
+| -------------------- | ---------------------------- |
+| React 19             | UI framework                 |
+| TypeScript (strict)  | Type safety                  |
+| Vite 8               | Build tool                   |
+| React Router 7       | Routing                      |
+| Zustand              | Client state                 |
+| TanStack React Query | Server state                 |
+| Tailwind CSS 4       | Styling                      |
+| Cloudflare Worker    | Static assets + `/api` proxy |
 
 ### Backend
 
-| Technology                 | Purpose                                                   |
-| -------------------------- | --------------------------------------------------------- |
-| Go 1.26 (toolchain 1.27.3) | Language                                                  |
-| Gin                        | HTTP framework                                            |
-| GORM                       | ORM (pgx/sqlc is the target)                              |
-| golang-migrate             | Always-additive migrations, embedded in the binary        |
-| JWT (httpOnly cookies)     | Own authentication today; Neon Auth JWTs also accepted    |
-| bcrypt                     | Password hashing (cost 12)                                |
-| shopspring/decimal         | Money                                                     |
+| Technology                 | Purpose                                                |
+| -------------------------- | ------------------------------------------------------ |
+| Go 1.26 (toolchain 1.27.3) | Language                                               |
+| Gin                        | HTTP framework                                         |
+| GORM                       | ORM (pgx/sqlc is the target)                           |
+| golang-migrate             | Always-additive migrations, embedded in the binary     |
+| JWT (httpOnly cookies)     | Own authentication today; Neon Auth JWTs also accepted |
+| bcrypt                     | Password hashing (cost 12)                             |
+| shopspring/decimal         | Money                                                  |
 
 ### Data and services
 
-| Technology                 | Purpose                                                          |
-| -------------------------- | ---------------------------------------------------------------- |
-| PostgreSQL 18              | Primary database (Neon in production, Docker locally)            |
-| Redis (optional)           | Rate limits, short-lived tokens; in-memory fallback without it   |
-| Resend                     | Email (target, T159); Mailpit locally                            |
-| S3-compatible storage      | Files (Cloudflare R2 target; MinIO locally)                      |
-| Stripe                     | Payments (Stripe Connect planned, T169)                          |
+| Technology            | Purpose                                                        |
+| --------------------- | -------------------------------------------------------------- |
+| PostgreSQL 18         | Primary database (Neon in production, Docker locally)          |
+| Redis (optional)      | Rate limits, short-lived tokens; in-memory fallback without it |
+| Resend                | Email (target, T159); Mailpit locally                          |
+| S3-compatible storage | Files (Cloudflare R2 target; MinIO locally)                    |
+| Stripe                | Payments (Stripe Connect planned, T169)                        |
 
 ## Backend Architecture
 

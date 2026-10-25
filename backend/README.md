@@ -89,17 +89,17 @@ See `.env.example` for full list.
 
 Base URL: `http://localhost:8080/api/v1`
 
-| Method | Endpoint              | Description            |
-| ------ | --------------------- | ---------------------- |
-| POST   | /auth/register        | User registration      |
-| POST   | /auth/login           | User login             |
-| POST   | /auth/reset-request   | Request password reset |
-| GET    | /customers            | List customers         |
-| POST   | /customers            | Create customer        |
-| GET    | /jobs                 | List jobs              |
-| POST   | /jobs                 | Create job             |
-| GET    | /invoices             | List invoices          |
-| POST   | /invoices             | Create invoice         |
+| Method | Endpoint            | Description            |
+| ------ | ------------------- | ---------------------- |
+| POST   | /auth/register      | User registration      |
+| POST   | /auth/login         | User login             |
+| POST   | /auth/reset-request | Request password reset |
+| GET    | /customers          | List customers         |
+| POST   | /customers          | Create customer        |
+| GET    | /jobs               | List jobs              |
+| POST   | /jobs               | Create job             |
+| GET    | /invoices           | List invoices          |
+| POST   | /invoices           | Create invoice         |
 
 For full API documentation, see [API Reference](/docs/api/).
 
@@ -158,9 +158,9 @@ behind or dirty.
 
 ## System endpoints
 
-| Method | Path                               | Notes                                                    |
-| ------ | ---------------------------------- | -------------------------------------------------------- |
-| GET    | /version                           | `{"git_sha","app_version"}` from GIT_SHA / APP_VERSION   |
-| GET    | /health, /health/live, /health/ready | readiness includes schema and redis state              |
-| POST   | /internal/jobs/payment-reminders   | header `X-Internal-Jobs-Token: $INTERNAL_JOBS_SECRET`   |
-| POST   | /internal/jobs/quote-expiry        | same header; sent/viewed quotes past valid_until → expired |
+| Method | Path                                 | Notes                                                      |
+| ------ | ------------------------------------ | ---------------------------------------------------------- |
+| GET    | /version                             | `{"git_sha","app_version"}` from GIT_SHA / APP_VERSION     |
+| GET    | /health, /health/live, /health/ready | readiness includes schema and redis state                  |
+| POST   | /internal/jobs/payment-reminders     | header `X-Internal-Jobs-Token: $INTERNAL_JOBS_SECRET`      |
+| POST   | /internal/jobs/quote-expiry          | same header; sent/viewed quotes past valid_until → expired |

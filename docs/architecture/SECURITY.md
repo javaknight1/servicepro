@@ -47,14 +47,14 @@ graph TB
 
 ### 1.2 Security Domains
 
-| Domain                      | Responsibility             | Key Controls                |
-| --------------------------- | -------------------------- | --------------------------- |
-| **Identity & Access**       | Who can access what        | JWT, RBAC, MFA              |
-| **Data Protection**         | Protecting sensitive data  | Encryption, Masking, Backup |
-| **Network Security**        | Secure communications      | TLS, edge-only API access   |
-| **Application Security**    | Secure code practices      | Input validation, OWASP     |
+| Domain                      | Responsibility             | Key Controls                 |
+| --------------------------- | -------------------------- | ---------------------------- |
+| **Identity & Access**       | Who can access what        | JWT, RBAC, MFA               |
+| **Data Protection**         | Protecting sensitive data  | Encryption, Masking, Backup  |
+| **Network Security**        | Secure communications      | TLS, edge-only API access    |
+| **Application Security**    | Secure code practices      | Input validation, OWASP      |
 | **Infrastructure Security** | Secure hosting environment | GCP IAM, WIF, image scanning |
-| **Operations Security**     | Secure operations          | Logging, Monitoring, IR     |
+| **Operations Security**     | Secure operations          | Logging, Monitoring, IR      |
 
 ---
 
@@ -304,21 +304,21 @@ sequenceDiagram
 
 #### At Rest
 
-| Data             | Where                         | Encryption                      |
-| ---------------- | ----------------------------- | ------------------------------- |
-| Database         | Neon Postgres (AWS us-east-2) | Provider-managed at rest        |
-| Secrets          | GCP Secret Manager            | Google-managed keys             |
-| Backups          | Cloudflare R2 (T209, not active yet) | Provider-managed at rest |
-| Passwords        | `users.password_hash`         | bcrypt, cost 12 (not reversible) |
+| Data      | Where                                | Encryption                       |
+| --------- | ------------------------------------ | -------------------------------- |
+| Database  | Neon Postgres (AWS us-east-2)        | Provider-managed at rest         |
+| Secrets   | GCP Secret Manager                   | Google-managed keys              |
+| Backups   | Cloudflare R2 (T209, not active yet) | Provider-managed at rest         |
+| Passwords | `users.password_hash`                | bcrypt, cost 12 (not reversible) |
 
 #### In Transit
 
-| Connection             | Protection                                                   |
-| ---------------------- | ------------------------------------------------------------ |
-| Browser → Worker       | HTTPS (Cloudflare certificate for `servicepro.sharkfins.xyz`), HSTS |
-| Worker → Cloud Run     | HTTPS to the `*.run.app` URL, plus `X-SP-Edge-Secret`        |
-| Cloud Run → Neon       | TLS (`sslmode=require` in the connection string)             |
-| Cloud Run → Redis      | `rediss://` (TLS) when Redis is configured                   |
+| Connection         | Protection                                                          |
+| ------------------ | ------------------------------------------------------------------- |
+| Browser → Worker   | HTTPS (Cloudflare certificate for `servicepro.sharkfins.xyz`), HSTS |
+| Worker → Cloud Run | HTTPS to the `*.run.app` URL, plus `X-SP-Edge-Secret`               |
+| Cloud Run → Neon   | TLS (`sslmode=require` in the connection string)                    |
+| Cloud Run → Redis  | `rediss://` (TLS) when Redis is configured                          |
 
 ### 4.2 Sensitive Data Handling
 
@@ -451,14 +451,14 @@ type CreateCustomerRequest struct {
 Defaults (configurable with `RATE_LIMIT_*`, 1-minute window; Redis-backed when
 configured, otherwise per instance):
 
-| Caller / endpoint      | Limit                                  | Key              |
-| ---------------------- | -------------------------------------- | ---------------- |
-| Anonymous              | 100 requests / minute                  | IP               |
-| Authenticated          | 1000 requests / minute                 | User (Neon `sub` for Neon Auth tokens) |
-| Admin endpoints        | 50 requests / minute                   | User             |
-| Login                  | Throttled with backoff                 | Email + IP       |
-| Password reset request | Throttled                              | Email + IP       |
-| Public invoice pay links (`/public/invoices/*`) | 20 requests / minute | IP |
+| Caller / endpoint                               | Limit                  | Key                                    |
+| ----------------------------------------------- | ---------------------- | -------------------------------------- |
+| Anonymous                                       | 100 requests / minute  | IP                                     |
+| Authenticated                                   | 1000 requests / minute | User (Neon `sub` for Neon Auth tokens) |
+| Admin endpoints                                 | 50 requests / minute   | User                                   |
+| Login                                           | Throttled with backoff | Email + IP                             |
+| Password reset request                          | Throttled              | Email + IP                             |
+| Public invoice pay links (`/public/invoices/*`) | 20 requests / minute   | IP                                     |
 
 ### 6.4 Security Headers
 
@@ -478,22 +478,22 @@ Permissions-Policy: geolocation=(), microphone=(), camera=()
 
 ### 7.1 Platform
 
-| Control                    | Implementation                                                                  |
-| -------------------------- | ------------------------------------------------------------------------------- |
-| Deploy credentials         | GitHub Actions → Workload Identity Federation (no stored GCP keys), pinned to this repo |
-| Service accounts           | `gh-deploy` (push images, roll revisions) and `servicepro-api` runtime SA (read its secrets only) |
-| Image scanning             | CI builds the Docker image and scans it with Trivy; `govulncheck` and `npm audit` in CI and weekly |
-| Releases                   | Only `v*` tags deploy; migrations run before the new revision takes traffic     |
-| Dependencies               | Dependabot; patch/minor auto-merged after green CI                               |
+| Control            | Implementation                                                                                     |
+| ------------------ | -------------------------------------------------------------------------------------------------- |
+| Deploy credentials | GitHub Actions → Workload Identity Federation (no stored GCP keys), pinned to this repo            |
+| Service accounts   | `gh-deploy` (push images, roll revisions) and `servicepro-api` runtime SA (read its secrets only)  |
+| Image scanning     | CI builds the Docker image and scans it with Trivy; `govulncheck` and `npm audit` in CI and weekly |
+| Releases           | Only `v*` tags deploy; migrations run before the new revision takes traffic                        |
+| Dependencies       | Dependabot; patch/minor auto-merged after green CI                                                 |
 
 ### 7.2 Secrets Management
 
-| Secret                                   | Storage                                   |
-| ---------------------------------------- | ----------------------------------------- |
-| `DATABASE_URL`, `JWT_SECRET`             | GCP Secret Manager (mounted into Cloud Run) |
-| Stripe, Resend, Sentry, PostHog, Redis, `INTERNAL_JOBS_SECRET`, `EDGE_PROXY_SECRET` | GCP Secret Manager (attached when present) |
-| `EDGE_PROXY_SECRET` (edge side)          | Cloudflare Worker secret                  |
-| `MIGRATION_DATABASE_URL`, Cloudflare and R2 tokens | GitHub Actions secrets          |
+| Secret                                                                              | Storage                                     |
+| ----------------------------------------------------------------------------------- | ------------------------------------------- |
+| `DATABASE_URL`, `JWT_SECRET`                                                        | GCP Secret Manager (mounted into Cloud Run) |
+| Stripe, Resend, Sentry, PostHog, Redis, `INTERNAL_JOBS_SECRET`, `EDGE_PROXY_SECRET` | GCP Secret Manager (attached when present)  |
+| `EDGE_PROXY_SECRET` (edge side)                                                     | Cloudflare Worker secret                    |
+| `MIGRATION_DATABASE_URL`, Cloudflare and R2 tokens                                  | GitHub Actions secrets                      |
 
 Secrets never live in the repository (it is public); `.env` files are
 gitignored. Rotation is manual today. Setup details:
@@ -529,24 +529,24 @@ gitignored. Rotation is manual today. Setup details:
 
 ### 9.1 Monitoring
 
-| Source                    | Where it goes                                                        |
-| ------------------------- | -------------------------------------------------------------------- |
-| API logs (structured, with `request_id`, no PII/tokens) | Cloud Run → Google Cloud Logging        |
-| API and SPA errors        | Sentry (when `SENTRY_DSN` is set)                                    |
-| Product analytics         | PostHog (tokens, emails and query strings stripped)                  |
-| Metrics                   | Prometheus `/metrics` (token-protected); Grafana locally only        |
-| Uptime / status page      | Better Stack — planned                                               |
-| Failed scheduled jobs / backups | GitHub Actions failure emails                                  |
+| Source                                                  | Where it goes                                                 |
+| ------------------------------------------------------- | ------------------------------------------------------------- |
+| API logs (structured, with `request_id`, no PII/tokens) | Cloud Run → Google Cloud Logging                              |
+| API and SPA errors                                      | Sentry (when `SENTRY_DSN` is set)                             |
+| Product analytics                                       | PostHog (tokens, emails and query strings stripped)           |
+| Metrics                                                 | Prometheus `/metrics` (token-protected); Grafana locally only |
+| Uptime / status page                                    | Better Stack — planned                                        |
+| Failed scheduled jobs / backups                         | GitHub Actions failure emails                                 |
 
 ### 9.2 Security-Relevant Signals
 
-| Signal                         | Control today                                         |
-| ------------------------------ | ----------------------------------------------------- |
-| Repeated failed logins         | Login throttling (429) and account lockout            |
-| Cross-tenant access attempts   | 404 (tenant-scoped queries), 403 for non-members      |
-| Role escalation attempts       | Rejected; `super_admin` is never assignable via API   |
-| Forged cross-site requests     | 403 `csrf_check_failed`                               |
-| Direct-to-Cloud-Run API calls  | 403 without the edge secret                           |
+| Signal                        | Control today                                       |
+| ----------------------------- | --------------------------------------------------- |
+| Repeated failed logins        | Login throttling (429) and account lockout          |
+| Cross-tenant access attempts  | 404 (tenant-scoped queries), 403 for non-members    |
+| Role escalation attempts      | Rejected; `super_admin` is never assignable via API |
+| Forged cross-site requests    | 403 `csrf_check_failed`                             |
+| Direct-to-Cloud-Run API calls | 403 without the edge secret                         |
 
 ### 9.3 Audit Logging
 
@@ -609,9 +609,9 @@ stateDiagram-v2
 
 ### 10.3 Contact Information
 
-| Role                      | Contact                        | Escalation Path |
-| ------------------------- | ------------------------------ | --------------- |
-| Security / support        | support@sharkfins.xyz          | Owner (direct)  |
+| Role               | Contact               | Escalation Path |
+| ------------------ | --------------------- | --------------- |
+| Security / support | support@sharkfins.xyz | Owner (direct)  |
 
 ServicePro is run by a single owner today; there is no on-call rotation.
 

@@ -16,26 +16,26 @@ The Invoice API provides endpoints for:
 
 All under `/api/v1`, authenticated and tenant-scoped unless marked public.
 
-| Method | Endpoint                             | Description                                         |
-| ------ | ------------------------------------ | --------------------------------------------------- |
-| GET    | `/invoices`                          | List invoices with filters                          |
-| GET    | `/invoices/:id`                      | Get invoice details                                 |
-| POST   | `/invoices`                          | Create invoice (optionally from a job or quote)     |
-| PUT    | `/invoices/:id`                      | Update invoice                                      |
-| DELETE | `/invoices/:id`                      | Delete invoice (soft delete)                        |
-| POST   | `/invoices/:id/send`                 | Email the invoice (with a pay link) to the customer |
-| POST   | `/invoices/:id/payments`             | Record an offline payment                           |
-| POST   | `/invoices/:id/refunds`              | Record a refund made outside Stripe                 |
-| POST   | `/invoices/:id/cancel`               | Cancel invoice                                      |
-| GET    | `/invoices/:id/pdf`                  | Invoice PDF                                         |
-| GET    | `/invoices/:id/receipt/pdf`          | Payment receipt PDF                                 |
-| GET    | `/invoices/:id/reminders`            | Reminder history                                    |
-| POST   | `/invoices/:id/reminders`            | Send a manual payment reminder                      |
-| GET    | `/settings/payment-reminders`        | Tenant reminder settings                            |
-| PUT    | `/settings/payment-reminders`        | Update reminder settings                            |
-| GET    | `/public/invoices/pay/:token`        | Public: redirect to Stripe Checkout for the invoice  |
-| GET    | `/public/invoices/details/:token`    | Public: invoice details for the pay page            |
-| GET    | `/public/invoices/validate/:token`   | Public: check a pay-link token                      |
+| Method | Endpoint                           | Description                                         |
+| ------ | ---------------------------------- | --------------------------------------------------- |
+| GET    | `/invoices`                        | List invoices with filters                          |
+| GET    | `/invoices/:id`                    | Get invoice details                                 |
+| POST   | `/invoices`                        | Create invoice (optionally from a job or quote)     |
+| PUT    | `/invoices/:id`                    | Update invoice                                      |
+| DELETE | `/invoices/:id`                    | Delete invoice (soft delete)                        |
+| POST   | `/invoices/:id/send`               | Email the invoice (with a pay link) to the customer |
+| POST   | `/invoices/:id/payments`           | Record an offline payment                           |
+| POST   | `/invoices/:id/refunds`            | Record a refund made outside Stripe                 |
+| POST   | `/invoices/:id/cancel`             | Cancel invoice                                      |
+| GET    | `/invoices/:id/pdf`                | Invoice PDF                                         |
+| GET    | `/invoices/:id/receipt/pdf`        | Payment receipt PDF                                 |
+| GET    | `/invoices/:id/reminders`          | Reminder history                                    |
+| POST   | `/invoices/:id/reminders`          | Send a manual payment reminder                      |
+| GET    | `/settings/payment-reminders`      | Tenant reminder settings                            |
+| PUT    | `/settings/payment-reminders`      | Update reminder settings                            |
+| GET    | `/public/invoices/pay/:token`      | Public: redirect to Stripe Checkout for the invoice |
+| GET    | `/public/invoices/details/:token`  | Public: invoice details for the pay page            |
+| GET    | `/public/invoices/validate/:token` | Public: check a pay-link token                      |
 
 Payment terms (`/payment-terms`, `/payment-terms/calculate/*`) and tax rates
 (`/tax-rates`) are separate resources; see the [API overview](./README.md).
@@ -395,7 +395,12 @@ DELETE /api/v1/tax-rates/:id                # tax_rates.manage
 - A rate an invoice uses can't be deleted (`409 tax_rate_in_use`); set `is_active: false` instead.
 
 ```json
-{ "name": "Springfield Sales Tax", "rate": "0.0825", "tax_type": "sales_tax", "region": "Springfield, IL" }
+{
+  "name": "Springfield Sales Tax",
+  "rate": "0.0825",
+  "tax_type": "sales_tax",
+  "region": "Springfield, IL"
+}
 ```
 
 ## Invoice Status

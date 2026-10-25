@@ -97,8 +97,8 @@ Create job types for your services:
 
 **Settings > Integrations**
 
-| Integration     | Purpose                |
-| --------------- | ---------------------- |
-| Stripe          | Accept online payments |
+| Integration | Purpose                |
+| ----------- | ---------------------- |
+| Stripe      | Accept online payments |
 
 QuickBooks Online sync is planned; calendar sync is not available yet.

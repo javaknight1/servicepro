@@ -14,29 +14,29 @@ succeeded through a webhook.
 
 ## Endpoints
 
-| Method | Endpoint                                      | Auth            | Description                                                   |
-| ------ | --------------------------------------------- | --------------- | ------------------------------------------------------------- |
-| POST   | `/api/v1/invoices/:id/send`                   | user            | Email the invoice with a fresh pay link (token)               |
-| GET    | `/api/v1/public/invoices/validate/:token`     | public          | Is the pay-link token valid?                                  |
-| GET    | `/api/v1/public/invoices/details/:token`      | public          | Invoice details for the pay page                              |
-| GET    | `/api/v1/public/invoices/pay/:token`          | public          | Create a Stripe Checkout session and redirect (303) to it     |
-| POST   | `/api/v1/stripe/webhooks`                     | Stripe signature| Stripe events (payments, refunds, subscriptions)              |
-| POST   | `/api/v1/invoices/:id/payments`               | user            | Record an offline payment (cash, check, bank transfer, …)     |
-| POST   | `/api/v1/invoices/:id/refunds`                | user            | Record a refund made outside Stripe                           |
-| GET    | `/api/v1/invoices/:id/receipt/pdf`            | user            | Payment receipt PDF                                           |
+| Method | Endpoint                                  | Auth             | Description                                               |
+| ------ | ----------------------------------------- | ---------------- | --------------------------------------------------------- |
+| POST   | `/api/v1/invoices/:id/send`               | user             | Email the invoice with a fresh pay link (token)           |
+| GET    | `/api/v1/public/invoices/validate/:token` | public           | Is the pay-link token valid?                              |
+| GET    | `/api/v1/public/invoices/details/:token`  | public           | Invoice details for the pay page                          |
+| GET    | `/api/v1/public/invoices/pay/:token`      | public           | Create a Stripe Checkout session and redirect (303) to it |
+| POST   | `/api/v1/stripe/webhooks`                 | Stripe signature | Stripe events (payments, refunds, subscriptions)          |
+| POST   | `/api/v1/invoices/:id/payments`           | user             | Record an offline payment (cash, check, bank transfer, …) |
+| POST   | `/api/v1/invoices/:id/refunds`            | user             | Record a refund made outside Stripe                       |
+| GET    | `/api/v1/invoices/:id/receipt/pdf`        | user             | Payment receipt PDF                                       |
 
 Tenant billing (the tenant paying for its ServicePro plan) is separate:
 
-| Method | Endpoint                                                  | Description                         |
-| ------ | --------------------------------------------------------- | ----------------------------------- |
-| GET    | `/api/v1/billing/config`                                  | Is Stripe enabled? Publishable key  |
-| POST   | `/api/v1/tenants/:id/billing/setup-intent`                | SetupIntent to add a card           |
-| GET    | `/api/v1/tenants/:id/billing/payment-methods`             | List saved payment methods          |
-| POST   | `/api/v1/tenants/:id/billing/payment-methods`             | Attach a payment method             |
-| PUT    | `/api/v1/tenants/:id/billing/payment-methods/:pmId/default` | Make it the default               |
-| DELETE | `/api/v1/tenants/:id/billing/payment-methods/:pmId`       | Remove it                           |
-| GET    | `/api/v1/tenants/:id/billing/history`                     | Billing history                     |
-| GET    | `/api/v1/membership-tiers`, `/api/v1/tenants/:id/membership*` | Plans and the tenant's plan     |
+| Method | Endpoint                                                      | Description                        |
+| ------ | ------------------------------------------------------------- | ---------------------------------- |
+| GET    | `/api/v1/billing/config`                                      | Is Stripe enabled? Publishable key |
+| POST   | `/api/v1/tenants/:id/billing/setup-intent`                    | SetupIntent to add a card          |
+| GET    | `/api/v1/tenants/:id/billing/payment-methods`                 | List saved payment methods         |
+| POST   | `/api/v1/tenants/:id/billing/payment-methods`                 | Attach a payment method            |
+| PUT    | `/api/v1/tenants/:id/billing/payment-methods/:pmId/default`   | Make it the default                |
+| DELETE | `/api/v1/tenants/:id/billing/payment-methods/:pmId`           | Remove it                          |
+| GET    | `/api/v1/tenants/:id/billing/history`                         | Billing history                    |
+| GET    | `/api/v1/membership-tiers`, `/api/v1/tenants/:id/membership*` | Plans and the tenant's plan        |
 
 `:pmId` is looked up in our own tenant-scoped rows; raw Stripe IDs from the
 client are never trusted.

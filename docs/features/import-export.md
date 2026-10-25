@@ -30,18 +30,18 @@ PDFs are `GET /api/v1/invoices/:id/pdf` and `GET /api/v1/quotes/:id/pdf`.
 
 All under `/api/v1`, authenticated and tenant-scoped.
 
-| Method | Endpoint                 | Description                                         |
-| ------ | ------------------------ | --------------------------------------------------- |
-| GET    | `/exports/formats`       | Supported formats and export types (public)         |
-| POST   | `/exports`               | Start an async export job                           |
-| POST   | `/exports/quick`         | Small export, returned directly                     |
-| GET    | `/exports`               | List recent export jobs (`?limit=20`)               |
-| GET    | `/exports/:id`           | Export job status                                   |
-| GET    | `/exports/:id/progress`  | Progress                                            |
-| GET    | `/exports/:id/stream`    | Progress as a server-sent event stream              |
-| GET    | `/exports/:id/download`  | Download the finished file                          |
-| POST   | `/exports/:id/cancel`    | Cancel a running export                             |
-| POST   | `/reports/revenue/export`, `/reports/customers/export`, `/reports/ar-aging/export` | Report exports |
+| Method | Endpoint                                                                           | Description                                 |
+| ------ | ---------------------------------------------------------------------------------- | ------------------------------------------- |
+| GET    | `/exports/formats`                                                                 | Supported formats and export types (public) |
+| POST   | `/exports`                                                                         | Start an async export job                   |
+| POST   | `/exports/quick`                                                                   | Small export, returned directly             |
+| GET    | `/exports`                                                                         | List recent export jobs (`?limit=20`)       |
+| GET    | `/exports/:id`                                                                     | Export job status                           |
+| GET    | `/exports/:id/progress`                                                            | Progress                                    |
+| GET    | `/exports/:id/stream`                                                              | Progress as a server-sent event stream      |
+| GET    | `/exports/:id/download`                                                            | Download the finished file                  |
+| POST   | `/exports/:id/cancel`                                                              | Cancel a running export                     |
+| POST   | `/reports/revenue/export`, `/reports/customers/export`, `/reports/ar-aging/export` | Report exports                              |
 
 `GET /customers/export` is deprecated and returns **410 Gone** — use
 `POST /exports` with `export_type: "customers"`.
@@ -88,12 +88,12 @@ Content-Type: multipart/form-data
 
 Form fields:
 
-| Field                | Required | Description                                                  |
-| -------------------- | -------- | ------------------------------------------------------------ |
-| `file`               | yes      | The CSV file                                                 |
-| `format`             | yes      | `csv`                                                        |
-| `duplicate_handling` | no       | `error` (default), `skip` or `update` — matched by email      |
-| `dry_run`            | no       | `true` to validate and preview without saving                |
+| Field                | Required | Description                                              |
+| -------------------- | -------- | -------------------------------------------------------- |
+| `file`               | yes      | The CSV file                                             |
+| `format`             | yes      | `csv`                                                    |
+| `duplicate_handling` | no       | `error` (default), `skip` or `update` — matched by email |
+| `dry_run`            | no       | `true` to validate and preview without saving            |
 
 ### Get Import Template
 

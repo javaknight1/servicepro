@@ -44,14 +44,14 @@ Two service accounts on purpose: the **deploy SA** is what CI impersonates
 
 ## 0. Decisions (made)
 
-| Decision       | Choice                                       | Notes                                                                                                   |
-| -------------- | -------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| Postgres host  | Neon Postgres 18, AWS `us-east-2` (T202)     | Free plan today; Launch plan before the first paying tenant                                             |
-| Region         | `us-east5` (Columbus)                        | Closest Cloud Run region to Neon's `aws-us-east-2` (Ohio)                                               |
-| Auth           | Neon's managed Better Auth (OD-9)            | The API verifies its JWTs (`NEON_AUTH_BASE_URL`); the SPA still uses the API's own JWT cookies (T158)   |
-| Redis          | Optional: Upstash (`rediss://`) or none      | Without `REDIS_URL` the API boots with an in-memory, per-instance store                                 |
-| Object storage | Cloudflare R2 (S3 API)                       | Local dev uses MinIO                                                                                    |
-| Email          | Resend (T159)                                | `RESEND_API_KEY` secret                                                                                 |
+| Decision       | Choice                                   | Notes                                                                                                 |
+| -------------- | ---------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Postgres host  | Neon Postgres 18, AWS `us-east-2` (T202) | Free plan today; Launch plan before the first paying tenant                                           |
+| Region         | `us-east5` (Columbus)                    | Closest Cloud Run region to Neon's `aws-us-east-2` (Ohio)                                             |
+| Auth           | Neon's managed Better Auth (OD-9)        | The API verifies its JWTs (`NEON_AUTH_BASE_URL`); the SPA still uses the API's own JWT cookies (T158) |
+| Redis          | Optional: Upstash (`rediss://`) or none  | Without `REDIS_URL` the API boots with an in-memory, per-instance store                               |
+| Object storage | Cloudflare R2 (S3 API)                   | Local dev uses MinIO                                                                                  |
+| Email          | Resend (T159)                            | `RESEND_API_KEY` secret                                                                               |
 
 ---
 
@@ -149,7 +149,7 @@ openssl rand -hex 32 | gcloud secrets versions add JWT_SECRET --data-file=-
   host suits a scale-to-zero service. If prepared statements fail behind the
   pooler, set `DB_SIMPLE_PROTOCOL=true` (a URL on port 6543 turns it on
   automatically; Neon's pooler is on 5432). Keep `max-instances ×
-  DB_MAX_OPEN_CONNS` under the database's limit.
+DB_MAX_OPEN_CONNS` under the database's limit.
 - `MIGRATION_DATABASE_URL` (GitHub secret, §8) is a **different** value: Neon's
   direct (non-pooler) host, port 5432 — golang-migrate and `pg_dump` need a
   session.

@@ -6,17 +6,17 @@ Complete instructions for setting up the ServicePro development environment with
 
 ### Required Software
 
-| Software       | Minimum Version | Recommended | Purpose                       |
-| -------------- | --------------- | ----------- | ----------------------------- |
-| Go             | `go 1.26` (go.mod) | toolchain go1.27.3 | Backend development      |
-| Node.js        | 24 (`frontend/.nvmrc`) | 24.x    | Frontend development          |
-| npm            | 9.0.0           | 10.x        | Package management            |
-| Docker         | 24.0.0          | Latest      | Containerization              |
-| Docker Compose | 2.20.0          | Latest      | Multi-container orchestration |
-| PostgreSQL     | 18              | 18 (Docker) | Database (production: Neon Postgres 18) |
-| Redis          | optional        | Docker      | Caching (in-memory fallback without it) |
-| Git            | 2.40.0          | Latest      | Version control               |
-| Make           | 4.0             | Latest      | Build automation              |
+| Software       | Minimum Version        | Recommended        | Purpose                                 |
+| -------------- | ---------------------- | ------------------ | --------------------------------------- |
+| Go             | `go 1.26` (go.mod)     | toolchain go1.27.3 | Backend development                     |
+| Node.js        | 24 (`frontend/.nvmrc`) | 24.x               | Frontend development                    |
+| npm            | 9.0.0                  | 10.x               | Package management                      |
+| Docker         | 24.0.0                 | Latest             | Containerization                        |
+| Docker Compose | 2.20.0                 | Latest             | Multi-container orchestration           |
+| PostgreSQL     | 18                     | 18 (Docker)        | Database (production: Neon Postgres 18) |
+| Redis          | optional               | Docker             | Caching (in-memory fallback without it) |
+| Git            | 2.40.0                 | Latest             | Version control                         |
+| Make           | 4.0                    | Latest             | Build automation                        |
 
 ### Optional Software
 
@@ -364,9 +364,9 @@ make clean             # Clean build artifacts
 
 ### Default Credentials
 
-| Service    | Username               | Password  |
-| ---------- | ---------------------- | --------- |
-| PostgreSQL | postgres               | password  |
+| Service                | Username             | Password    |
+| ---------------------- | -------------------- | ----------- |
+| PostgreSQL             | postgres             | password    |
 | Dev user (`make seed`) | dev@servicepro.local | password123 |
 
 ## Next Steps

@@ -8,21 +8,21 @@ an accepted quote into an invoice. The OpenAPI spec (Swagger UI at
 
 All under `/api/v1`, authenticated and tenant-scoped.
 
-| Method | Endpoint                      | Description                                       |
-| ------ | ----------------------------- | ------------------------------------------------- |
-| GET    | `/quotes`                     | List quotes (pagination, filters, sorting)        |
-| GET    | `/quotes/stats`               | Counts by status                                  |
-| GET    | `/quotes/number/:quoteNumber` | Get a quote by its number                         |
-| GET    | `/quotes/:id`                 | Get a quote with its line items                   |
-| POST   | `/quotes`                     | Create a quote (totals computed server-side)      |
-| PUT    | `/quotes/:id`                 | Update a draft quote                              |
-| DELETE | `/quotes/:id`                 | Soft delete (drafts only)                         |
-| POST   | `/quotes/:id/send`            | draft → sent (generates the PDF, emails it)       |
-| POST   | `/quotes/:id/accept`          | sent/viewed → accepted                            |
-| POST   | `/quotes/:id/reject`          | sent/viewed → declined                            |
-| POST   | `/quotes/:id/revise`          | sent/viewed/expired/declined → draft              |
-| GET    | `/quotes/:id/pdf`             | Quote PDF                                         |
-| GET    | `/customers/:id/quotes`       | A customer's quotes                               |
+| Method | Endpoint                      | Description                                  |
+| ------ | ----------------------------- | -------------------------------------------- |
+| GET    | `/quotes`                     | List quotes (pagination, filters, sorting)   |
+| GET    | `/quotes/stats`               | Counts by status                             |
+| GET    | `/quotes/number/:quoteNumber` | Get a quote by its number                    |
+| GET    | `/quotes/:id`                 | Get a quote with its line items              |
+| POST   | `/quotes`                     | Create a quote (totals computed server-side) |
+| PUT    | `/quotes/:id`                 | Update a draft quote                         |
+| DELETE | `/quotes/:id`                 | Soft delete (drafts only)                    |
+| POST   | `/quotes/:id/send`            | draft → sent (generates the PDF, emails it)  |
+| POST   | `/quotes/:id/accept`          | sent/viewed → accepted                       |
+| POST   | `/quotes/:id/reject`          | sent/viewed → declined                       |
+| POST   | `/quotes/:id/revise`          | sent/viewed/expired/declined → draft         |
+| GET    | `/quotes/:id/pdf`             | Quote PDF                                    |
+| GET    | `/customers/:id/quotes`       | A customer's quotes                          |
 
 There is no `/quotes/:id/convert`, `/decline`, `/view` or `/history` endpoint
 and no WebSocket feed. To invoice an accepted quote, create an invoice with its
@@ -39,14 +39,14 @@ draft ──send──► sent ──accept──► accepted   (then: POST /inv
   └──revise── sent / viewed / declined / expired
 ```
 
-| Status   | Meaning                                                    |
-| -------- | ---------------------------------------------------------- |
-| draft    | Being edited — the only editable/deletable status          |
-| sent     | Sent to the customer                                       |
-| viewed   | Customer viewed it (status exists; nothing sets it yet)    |
-| accepted | Accepted — can be invoiced once                            |
-| declined | Rejected via `POST /quotes/:id/reject`                     |
-| expired  | `valid_until` passed while sent/viewed                     |
+| Status   | Meaning                                                 |
+| -------- | ------------------------------------------------------- |
+| draft    | Being edited — the only editable/deletable status       |
+| sent     | Sent to the customer                                    |
+| viewed   | Customer viewed it (status exists; nothing sets it yet) |
+| accepted | Accepted — can be invoiced once                         |
+| declined | Rejected via `POST /quotes/:id/reject`                  |
+| expired  | `valid_until` passed while sent/viewed                  |
 
 Expiry runs as `POST /internal/jobs/quote-expiry` (hourly from
 `scheduled-jobs.yml`): one conditional update that moves sent/viewed quotes past
@@ -67,8 +67,18 @@ POST /api/v1/quotes
   "notes": "Nightly janitorial, Building A",
   "terms": "Net 30",
   "items": [
-    { "description": "Nightly cleaning (Mon–Fri)", "quantity": "22", "unit_price": "95.00", "sort_order": 1 },
-    { "description": "Supplies", "quantity": "1", "unit_price": "120.00", "sort_order": 2 }
+    {
+      "description": "Nightly cleaning (Mon–Fri)",
+      "quantity": "22",
+      "unit_price": "95.00",
+      "sort_order": 1
+    },
+    {
+      "description": "Supplies",
+      "quantity": "1",
+      "unit_price": "120.00",
+      "sort_order": 2
+    }
   ]
 }
 ```
