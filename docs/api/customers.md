@@ -20,9 +20,21 @@ The Customers API provides:
 | GET    | `/customers/:id`          | Get customer     | customers.read   |
 | GET    | `/customers/email/:email` | Get by email     | customers.read   |
 | GET    | `/customers/search`       | Search customers | customers.list   |
+| GET    | `/customers/advanced-search` | Full-text search (ranked) | customers.list |
+| GET    | `/customers/autocomplete` | Name/email suggestions | customers.list |
+| GET    | `/customers/stats`        | Search statistics | customers.list  |
 | POST   | `/customers`              | Create customer  | customers.create |
 | PUT    | `/customers/:id`          | Update customer  | customers.update |
 | DELETE | `/customers/:id`          | Delete customer  | customers.delete |
+| GET    | `/customers/:id/jobs`     | Customer's jobs  | customers.read   |
+| GET    | `/customers/:id/quotes`   | Customer's quotes | customers.read  |
+| POST   | `/customers/import`       | CSV import       | customers.create |
+| GET    | `/customers/import/:job_id` | Import status  | customers.list   |
+| GET    | `/customers/import/template` | CSV template  | customers.list   |
+| GET    | `/customers/export`       | Deprecated — 410; use `POST /exports` | customers.list |
+
+All routes need auth and a tenant; a customer in another tenant is a 404.
+Import and export: [import-export.md](../features/import-export.md).
 
 ## List Customers
 
@@ -38,7 +50,8 @@ GET /api/v1/customers
 | ---------- | ------- | -------------------------------------------- |
 | page       | integer | Page number (default: 1)                     |
 | page_size  | integer | Items per page (default: 20, max: 100)       |
-| type       | string  | Filter by type: residential, commercial      |
+| search     | string  | Search term                                  |
+| customer_type | string | Filter by type: residential, commercial    |
 | status     | string  | Filter by status: active, inactive, prospect |
 | state      | string  | Filter by state code (e.g., CA)              |
 | city       | string  | Filter by city                               |
@@ -330,9 +343,10 @@ curl "http://localhost:8080/api/v1/customers/search?q=smith" \
 | Column             | Type         | Description                |
 | ------------------ | ------------ | -------------------------- |
 | id                 | UUID         | Primary key                |
+| tenant_id          | UUID         | Owning tenant (every query filters it) |
 | first_name         | VARCHAR(100) | Customer first name        |
 | last_name          | VARCHAR(100) | Customer last name         |
-| email              | VARCHAR(255) | Unique email address       |
+| email              | VARCHAR(255) | Unique per tenant (case-insensitive) |
 | phone_primary      | VARCHAR(20)  | Primary phone              |
 | phone_secondary    | VARCHAR(20)  | Secondary phone            |
 | company_name       | VARCHAR(200) | Company name (commercial)  |
@@ -347,7 +361,8 @@ curl "http://localhost:8080/api/v1/customers/search?q=smith" \
 
 ### Indexes
 
-- Unique index on email
+- Unique index on (tenant_id, LOWER(email)) for live rows
+- Index on tenant_id
 - Index on customer_type
 - Index on status
 - Composite index on state, city

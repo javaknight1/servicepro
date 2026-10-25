@@ -1,460 +1,171 @@
 # Authentication API
 
-User authentication endpoints including registration, login, password reset, and email verification.
+Registration, login, sessions, password reset and email verification.
 
-## Overview
-
-The Authentication API provides:
-
-- User registration with email validation
-- JWT-based authentication
-- Password reset via email
-- Email verification
-- Strong password enforcement
+> **Two sign-in paths today.** The SPA signs in with the API's **own JWTs in
+> httpOnly cookies** (below). The API also accepts **Neon Auth (Neon's managed
+> Better Auth) JWTs** as `Authorization: Bearer` tokens for users linked to a
+> Neon identity (`users.auth_user_id`), verified against Neon's JWKS when
+> `NEON_AUTH_BASE_URL` is set. The SPA moves to Neon Auth in T158, after which
+> the in-house password/JWT code is retired. Swagger UI (`/api/docs`) is the
+> source of truth for request/response shapes.
 
 ## Endpoints
 
-| Method | Endpoint               | Description               |
-| ------ | ---------------------- | ------------------------- |
-| POST   | `/auth/register`       | Register new account      |
-| POST   | `/auth/login`          | Login and get JWT token   |
-| POST   | `/auth/logout`         | Logout (invalidate token) |
-| POST   | `/auth/reset-request`  | Request password reset    |
-| POST   | `/auth/reset-password` | Reset password with token |
-| POST   | `/auth/verify-email`   | Verify email address      |
-| POST   | `/auth/refresh`        | Refresh JWT token         |
+| Method | Endpoint                            | Description                                                        |
+| ------ | ----------------------------------- | ------------------------------------------------------------------ |
+| POST   | `/api/v1/auth/register`             | Register (invite code or invitation needed in `invite_only` mode)  |
+| POST   | `/api/v1/auth/login`                | Log in; sets the access + refresh cookies                          |
+| POST   | `/api/v1/auth/refresh`              | Rotate tokens from the refresh cookie                              |
+| POST   | `/api/v1/auth/logout`               | Revoke all of the user's tokens and clear the cookies              |
+| POST   | `/api/v1/auth/reset-request`        | Email a password-reset link (rate limited)                         |
+| POST   | `/api/v1/auth/reset-password`       | Set a new password with the reset token                            |
+| GET    | `/api/v1/auth/verify?token=…`       | Verify an email address (link from the verification email)        |
+| POST   | `/api/v1/auth/resend-verification`  | Resend the verification email                                      |
+| POST   | `/api/v1/auth/neon/provision`       | Link or create the ServicePro user for a Neon Auth sign-in         |
+| GET    | `/api/v1/users/me`                  | The signed-in user                                                 |
+| PATCH  | `/api/v1/users/me/profile`          | Update first/last name                                             |
 
 ## Register
-
-Create a new user account.
 
 ```http
 POST /api/v1/auth/register
 ```
 
-### Request Body
-
 ```json
 {
   "email": "user@example.com",
-  "password": "SecurePass123!"
+  "password": "SecurePass123!",
+  "invite_code": "optional",
+  "invitation_token": "optional"
 }
 ```
 
-### Password Requirements
-
-Passwords must meet ALL criteria:
-
-- Minimum 8 characters
-- At least one uppercase letter (A-Z)
-- At least one lowercase letter (a-z)
-- At least one number (0-9)
-- At least one special character (!@#$%^&\*()\_+-=[]{}|;:,.<>?)
-
-### Response (201 Created)
-
-```json
-{
-  "id": "550e8400-e29b-41d4-a716-446655440000",
-  "email": "user@example.com",
-  "role": "user",
-  "createdAt": "2025-01-23T10:30:00Z"
-}
-```
-
-### Error Responses
-
-**Invalid Email (400):**
-
-```json
-{
-  "error": "invalid_email",
-  "message": "Invalid email format"
-}
-```
-
-**Weak Password (400):**
-
-```json
-{
-  "error": "weak_password",
-  "message": "Password must be at least 8 characters with uppercase, lowercase, number, and special character"
-}
-```
-
-**Email Exists (409):**
-
-```json
-{
-  "error": "email_exists",
-  "message": "An account with this email already exists"
-}
-```
+Passwords need at least 8 characters with an uppercase letter, a lowercase
+letter, a number and a special character. `REGISTRATION_MODE` is `open` in
+development and `invite_only` elsewhere: without a valid `invite_code` or an
+`invitation_token` for that email, registration returns **403**
+`registration_closed` (or `invalid_invite_code` / `invalid_invitation`). An
+existing email is **409**. Success is **201** with `id`, `email`, `role`,
+`createdAt`; the user must verify their email before logging in.
 
 ## Login
 
-Authenticate and receive a JWT token.
-
 ```http
 POST /api/v1/auth/login
+X-Requested-With: XMLHttpRequest
 ```
-
-### Request Body
 
 ```json
-{
-  "email": "user@example.com",
-  "password": "SecurePass123!"
-}
+{ "email": "user@example.com", "password": "SecurePass123!" }
 ```
 
-### Response (200 OK)
+Response **200**:
 
 ```json
-{
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "user": {
-    "id": "550e8400-e29b-41d4-a716-446655440000",
-    "email": "user@example.com",
-    "role": "user"
-  },
-  "expires_at": "2025-01-24T10:30:00Z"
-}
+{ "message": "Login successful", "expiresIn": 3600 }
 ```
 
-### Error Responses
+The tokens are **not** in the body: they're set as httpOnly cookies
+(`access_token`, `refresh_token` by default; `COOKIE_ACCESS_TOKEN_NAME` /
+`COOKIE_REFRESH_TOKEN_NAME`). Access tokens last 1 hour, refresh tokens 7 days.
 
-**Invalid Credentials (401):**
+Errors: unknown email, wrong password and locked accounts all return **401**
+`invalid_credentials` (no account enumeration); `email_not_verified` (**403**)
+is only revealed after a correct password; repeated failures are throttled
+(**429**, with backoff per email and IP).
 
-```json
-{
-  "error": "invalid_credentials",
-  "message": "Invalid email or password"
-}
-```
+## Refresh and Logout
 
-**Account Locked (423):**
+`POST /auth/refresh` reads the refresh cookie and sets new cookies (**401**
+`invalid_token` when missing/expired/revoked). `POST /auth/logout` bumps the
+user's token version — invalidating every access and refresh token issued so
+far — and clears the cookies.
 
-```json
-{
-  "error": "account_locked",
-  "message": "Account is locked. Try again in 15 minutes"
-}
-```
-
-**Email Not Verified (403):**
-
-```json
-{
-  "error": "email_not_verified",
-  "message": "Please verify your email before logging in"
-}
-```
-
-## Logout
-
-Invalidate the current JWT token.
-
-```http
-POST /api/v1/auth/logout
-Authorization: Bearer <token>
-```
-
-### Response (200 OK)
-
-```json
-{
-  "message": "Successfully logged out"
-}
-```
-
-## Request Password Reset
-
-Initiate a password reset request.
+## Password Reset
 
 ```http
 POST /api/v1/auth/reset-request
+{ "email": "user@example.com" }
 ```
 
-### Request Body
-
-```json
-{
-  "email": "user@example.com"
-}
-```
-
-### Response (200 OK)
-
-```json
-{
-  "message": "If an account with that email exists, a password reset link has been sent."
-}
-```
-
-**Note:** The response is intentionally generic to prevent email enumeration attacks.
-
-### Security Features
-
-- Rate limited: 3 requests per 15 minutes per email/IP
-- Token expires in 1 hour
-- Tokens are single-use
-
-## Reset Password
-
-Reset password using the token from email.
+Always answers **200** with a generic message (no enumeration); rate limited.
+The emailed token is single-use and expires after 1 hour.
 
 ```http
 POST /api/v1/auth/reset-password
+{ "token": "token-from-email", "newPassword": "NewStrongP@ssw0rd" }
 ```
 
-### Request Body
+**401** for an invalid/expired token, **400** for a weak password.
 
-```json
-{
-  "token": "secure-reset-token-from-email",
-  "newPassword": "NewStrongP@ssw0rd"
-}
-```
+## Email Verification
 
-### Response (200 OK)
-
-```json
-{
-  "message": "Password has been successfully reset. You can now log in with your new password."
-}
-```
-
-### Error Responses
-
-**Invalid Token (401):**
-
-```json
-{
-  "error": "invalid_token",
-  "message": "Invalid or expired reset token"
-}
-```
-
-**Weak Password (400):**
-
-```json
-{
-  "error": "weak_password",
-  "message": "Password must be at least 8 characters with uppercase, lowercase, number, and special character"
-}
-```
-
-## Verify Email
-
-Verify email address using the token from verification email.
+The verification email links to the app, which calls:
 
 ```http
-POST /api/v1/auth/verify-email
+GET /api/v1/auth/verify?token=<token>
 ```
 
-### Request Body
+Tokens expire after 24 hours. `POST /auth/resend-verification` with
+`{"email": "…"}` sends a new one.
 
-```json
-{
-  "token": "verification-token-from-email"
-}
+## Neon Auth Provisioning
+
+After a Neon Auth sign-in, a user the API doesn't know yet gets **401**
+`account_not_linked`. The client then calls:
+
+```http
+POST /api/v1/auth/neon/provision
+Authorization: Bearer <Neon Auth JWT>
+
+{ "invite_code": "optional", "invitation_token": "optional" }
 ```
 
-### Response (200 OK)
+It links the existing user with the same **verified** email, or creates one
+when an invitation or invite code admits it. Idempotent. **403**
+`email_not_verified` / `registration_closed` / `invalid_invite_code` /
+`invalid_invitation`, **409** `identity_conflict`, **404** when Neon Auth isn't
+enabled.
 
-```json
-{
-  "message": "Email verified successfully"
-}
-```
+## Making Authenticated Requests
 
-## Using the JWT Token
-
-Include the token in the Authorization header for authenticated requests:
-
-```
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-```
-
-### Token Format
-
-The JWT contains:
-
-```json
-{
-  "user_id": "550e8400-e29b-41d4-a716-446655440000",
-  "email": "user@example.com",
-  "role": "user",
-  "exp": 1234567890
-}
-```
-
-### Token Expiration
-
-- Access tokens expire in 1 hour (configurable)
-- Use the refresh endpoint to get a new token
-
-## Email Validation
-
-Emails are validated using RFC 5322 compliant regex:
-
-**Valid Examples:**
-
-- `user@example.com`
-- `john.doe@company.co.uk`
-- `test+tag@domain.com`
-
-**Invalid Examples:**
-
-- `notanemail`
-- `@example.com`
-- `user@.com`
-
-## Rate Limiting
-
-| Endpoint       | Limit       | Window                   |
-| -------------- | ----------- | ------------------------ |
-| Register       | 5 requests  | per minute per IP        |
-| Login          | 10 requests | per minute per IP        |
-| Password Reset | 3 requests  | per 15 minutes per email |
-
-## Security Best Practices
-
-### Password Security
-
-- Passwords are hashed using bcrypt (cost factor 12)
-- Password hash is never returned in responses
-- Failed login attempts are tracked
-- Account locks after 5 failed attempts
-
-### Token Security
-
-- Use HTTPS in production
-- Tokens are stateless JWT
-- Short expiration times
-- Secure storage in frontend
-
-### Account Protection
-
-- Email verification required for login
-- Account lockout after failed attempts
-- Password reset confirmation email
-- Rate limiting on all auth endpoints
-
-## Examples
-
-### Register New User
-
-```bash
-curl -X POST http://localhost:8080/api/v1/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "newuser@example.com",
-    "password": "SecurePass123!"
-  }'
-```
-
-### Login
-
-```bash
-curl -X POST http://localhost:8080/api/v1/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "user@example.com",
-    "password": "SecurePass123!"
-  }'
-```
-
-### Request Password Reset
-
-```bash
-curl -X POST http://localhost:8080/api/v1/auth/reset-request \
-  -H "Content-Type: application/json" \
-  -d '{"email":"user@example.com"}'
-```
-
-### Use Token
+- **Browser (SPA):** cookies are sent automatically on same-origin `/api`
+  calls. Every `POST`/`PUT`/`PATCH`/`DELETE` carrying an auth cookie must send
+  `X-Requested-With: XMLHttpRequest` or it gets **403** `csrf_check_failed`
+  (the axios client in `frontend/src/services/api.ts` does this).
+- **Scripts / API clients:** `Authorization: Bearer <token>` also works (an
+  API-issued access token, or a Neon Auth JWT for a linked user). Bearer
+  requests need no CSRF header.
+- **Tenant:** tenant-scoped routes use the caller's membership. With several
+  tenants, send `X-Tenant-ID: <uuid>` to pick one — it only selects among
+  tenants the caller belongs to and never grants access.
 
 ```bash
 curl http://localhost:8080/api/v1/customers \
-  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  -H "Authorization: Bearer <access token>" \
+  -H "X-Tenant-ID: <tenant uuid>"
 ```
 
-## Frontend Integration
+## Security Notes
 
-### JavaScript Example
-
-```javascript
-// Register
-const register = async (email, password) => {
-  const response = await fetch('/api/v1/auth/register', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password }),
-  });
-  return response.json();
-};
-
-// Login
-const login = async (email, password) => {
-  const response = await fetch('/api/v1/auth/login', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password }),
-  });
-  const data = await response.json();
-  localStorage.setItem('token', data.token);
-  return data;
-};
-
-// Authenticated request
-const fetchCustomers = async () => {
-  const token = localStorage.getItem('token');
-  const response = await fetch('/api/v1/customers', {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  return response.json();
-};
-```
+- bcrypt (cost 12); password hashes are never returned
+- Account lockout and login throttling; generic login errors
+- Email verification required before login
+- Tokens revoked server-side on logout (token version)
+- Rate limits: [README.md](./README.md#rate-limiting)
 
 ## Configuration
 
-### Environment Variables
+See `backend/.env.example`: `JWT_SECRET`, cookie settings (`COOKIE_*`),
+`REGISTRATION_MODE`, `NEON_AUTH_BASE_URL`, `FRONTEND_URL` (links in emails),
+and the email provider (Resend in production — T159; Mailpit/SMTP locally).
+Redis is optional; without `REDIS_URL` tokens and rate limits use an in-memory,
+per-instance store.
 
-```bash
-# JWT Configuration
-JWT_SECRET=your-super-secret-key
-JWT_EXPIRY=3600  # seconds (1 hour)
+## Database
 
-# AWS Configuration (shared credentials)
-AWS_REGION=us-east-1
-AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE
-AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYxxxxxxxxxx
-
-# AWS SES Email Configuration
-AWS_SES_FROM_EMAIL=noreply@servicepro.com
-AWS_SES_FROM_NAME=ServicePro
-
-# Password Reset
-RESET_PASSWORD_URL=http://localhost:3000/reset-password
-
-# Redis (for token storage)
-REDIS_URL=redis://localhost:6379/0
-```
-
-## Database Schema
-
-### users table
-
-| Column             | Type         | Description               |
-| ------------------ | ------------ | ------------------------- |
-| id                 | UUID         | Primary key               |
-| email              | VARCHAR(255) | Unique email address      |
-| password_hash      | VARCHAR(255) | Bcrypt hash               |
-| role               | VARCHAR(50)  | User role (user, admin)   |
-| email_verified     | BOOLEAN      | Email verification status |
-| failed_login_count | INTEGER      | Failed login attempts     |
-| locked_until       | TIMESTAMP    | Account lock expiry       |
-| created_at         | TIMESTAMP    | Account creation time     |
-| updated_at         | TIMESTAMP    | Last update time          |
+`users` (email, `password_hash`, verification and lockout fields,
+`auth_user_id` for the Neon Auth link — migration `000002`). Tenancy lives in
+`tenants` / `tenant_users`, roles in `roles` / `user_roles`; see
+[DATABASE.md](../architecture/DATABASE.md).

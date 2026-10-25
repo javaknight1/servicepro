@@ -14,16 +14,34 @@ The Invoice API provides endpoints for:
 
 ## Endpoints
 
-| Method | Endpoint                 | Description                  |
-| ------ | ------------------------ | ---------------------------- |
-| GET    | `/invoices`              | List invoices with filters   |
-| GET    | `/invoices/:id`          | Get invoice details          |
-| POST   | `/invoices`              | Create invoice               |
-| PUT    | `/invoices/:id`          | Update invoice               |
-| DELETE | `/invoices/:id`          | Delete invoice (soft delete) |
-| POST   | `/invoices/:id/send`     | Send invoice to customer     |
-| POST   | `/invoices/:id/payments` | Record payment               |
-| POST   | `/invoices/:id/cancel`   | Cancel invoice               |
+All under `/api/v1`, authenticated and tenant-scoped unless marked public.
+
+| Method | Endpoint                             | Description                                         |
+| ------ | ------------------------------------ | --------------------------------------------------- |
+| GET    | `/invoices`                          | List invoices with filters                          |
+| GET    | `/invoices/:id`                      | Get invoice details                                 |
+| POST   | `/invoices`                          | Create invoice (optionally from a job or quote)     |
+| PUT    | `/invoices/:id`                      | Update invoice                                      |
+| DELETE | `/invoices/:id`                      | Delete invoice (soft delete)                        |
+| POST   | `/invoices/:id/send`                 | Email the invoice (with a pay link) to the customer |
+| POST   | `/invoices/:id/payments`             | Record an offline payment                           |
+| POST   | `/invoices/:id/refunds`              | Record a refund made outside Stripe                 |
+| POST   | `/invoices/:id/cancel`               | Cancel invoice                                      |
+| GET    | `/invoices/:id/pdf`                  | Invoice PDF                                         |
+| GET    | `/invoices/:id/receipt/pdf`          | Payment receipt PDF                                 |
+| GET    | `/invoices/:id/reminders`            | Reminder history                                    |
+| POST   | `/invoices/:id/reminders`            | Send a manual payment reminder                      |
+| GET    | `/settings/payment-reminders`        | Tenant reminder settings                            |
+| PUT    | `/settings/payment-reminders`        | Update reminder settings                            |
+| GET    | `/public/invoices/pay/:token`        | Public: redirect to Stripe Checkout for the invoice  |
+| GET    | `/public/invoices/details/:token`    | Public: invoice details for the pay page            |
+| GET    | `/public/invoices/validate/:token`   | Public: check a pay-link token                      |
+
+Payment terms (`/payment-terms`, `/payment-terms/calculate/*`) and tax rates
+(`/tax-rates`) are separate resources; see the [API overview](./README.md).
+Card payments are confirmed only by the signature-verified Stripe webhook
+(`POST /api/v1/stripe/webhooks`), never by the redirect — see
+[payments.md](./payments.md).
 
 ## List Invoices
 
@@ -304,6 +322,26 @@ POST /api/v1/invoices/:id/payments
 
 - Full payment: Status changes to `paid`
 - Partial payment: Status changes to `partially_paid`
+
+## Record Refund
+
+Record money returned to the customer outside Stripe (cash, check, or a refund
+issued elsewhere). Lowers `amount_paid`; a refund to zero marks the invoice
+`refunded`. Stripe refunds are recorded automatically from the
+`charge.refunded` webhook.
+
+```http
+POST /api/v1/invoices/:id/refunds
+```
+
+```json
+{
+  "amount": "100.00",
+  "refund_date": "2024-01-25T00:00:00Z",
+  "method": "check",
+  "reason": "Overbilled"
+}
+```
 
 ## Cancel Invoice
 

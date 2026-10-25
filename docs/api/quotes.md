@@ -1,66 +1,57 @@
 # Quotes API
 
-REST API for quote management with state machine workflow and real-time notifications.
-
-## Overview
-
-The Quotes API provides:
-
-- Quote creation and management
-- State machine for status transitions
-- WebSocket notifications for real-time updates
-- Status history tracking
-- Automatic expiration handling
+REST API for quotes: create, send, accept or reject, revise, expire, and turn
+an accepted quote into an invoice. The OpenAPI spec (Swagger UI at
+`/api/docs`) is the source of truth for request/response shapes.
 
 ## Endpoints
 
-| Method | Endpoint              | Description        |
-| ------ | --------------------- | ------------------ |
-| GET    | `/quotes`             | List quotes        |
-| GET    | `/quotes/:id`         | Get quote details  |
-| POST   | `/quotes`             | Create quote       |
-| PUT    | `/quotes/:id`         | Update quote       |
-| DELETE | `/quotes/:id`         | Delete quote       |
-| POST   | `/quotes/:id/send`    | Send to customer   |
-| GET    | `/quotes/:id/view`    | Mark as viewed     |
-| POST   | `/quotes/:id/accept`  | Accept quote       |
-| POST   | `/quotes/:id/decline` | Decline quote      |
-| GET    | `/quotes/:id/history` | Get status history |
-| POST   | `/quotes/:id/convert` | Convert to invoice |
+All under `/api/v1`, authenticated and tenant-scoped.
 
-## Quote Status Flow
+| Method | Endpoint                      | Description                                       |
+| ------ | ----------------------------- | ------------------------------------------------- |
+| GET    | `/quotes`                     | List quotes (pagination, filters, sorting)        |
+| GET    | `/quotes/stats`               | Counts by status                                  |
+| GET    | `/quotes/number/:quoteNumber` | Get a quote by its number                         |
+| GET    | `/quotes/:id`                 | Get a quote with its line items                   |
+| POST   | `/quotes`                     | Create a quote (totals computed server-side)      |
+| PUT    | `/quotes/:id`                 | Update a draft quote                              |
+| DELETE | `/quotes/:id`                 | Soft delete (drafts only)                         |
+| POST   | `/quotes/:id/send`            | draft → sent (generates the PDF, emails it)       |
+| POST   | `/quotes/:id/accept`          | sent/viewed → accepted                            |
+| POST   | `/quotes/:id/reject`          | sent/viewed → declined                            |
+| POST   | `/quotes/:id/revise`          | sent/viewed/expired/declined → draft              |
+| GET    | `/quotes/:id/pdf`             | Quote PDF                                         |
+| GET    | `/customers/:id/quotes`       | A customer's quotes                               |
+
+There is no `/quotes/:id/convert`, `/decline`, `/view` or `/history` endpoint
+and no WebSocket feed. To invoice an accepted quote, create an invoice with its
+`quote_id` (below).
+
+## Status Flow
 
 ```
-┌─────────┐     send      ┌─────────┐     view      ┌─────────┐
-│  DRAFT  │──────────────>│  SENT   │──────────────>│  VIEWED │
-└─────────┘               └─────────┘               └─────────┘
-                              │  │                       │  │
-                          accept│  │decline          accept│  │decline
-                              │  │                       │  │
-                              ▼  ▼                       ▼  ▼
-                          ┌──────────┐              ┌──────────┐
-                          │ ACCEPTED │              │ DECLINED │
-                          └──────────┘              └──────────┘
-                              │
-                              │ expire
-                              ▼
-                          ┌──────────┐
-                          │ EXPIRED  │
-                          └──────────┘
+draft ──send──► sent ──accept──► accepted   (then: POST /invoices with quote_id, once)
+  ▲              │  └──reject──► declined
+  │              │
+  │              └──(valid_until passed, hourly job)──► expired
+  │
+  └──revise── sent / viewed / declined / expired
 ```
 
-### Status Definitions
+| Status   | Meaning                                                    |
+| -------- | ---------------------------------------------------------- |
+| draft    | Being edited — the only editable/deletable status          |
+| sent     | Sent to the customer                                       |
+| viewed   | Customer viewed it (status exists; nothing sets it yet)    |
+| accepted | Accepted — can be invoiced once                            |
+| declined | Rejected via `POST /quotes/:id/reject`                     |
+| expired  | `valid_until` passed while sent/viewed                     |
 
-| Status   | Description          | Terminal |
-| -------- | -------------------- | -------- |
-| draft    | Being created/edited | No       |
-| sent     | Sent to customer     | No       |
-| viewed   | Customer viewed      | No       |
-| accepted | Customer accepted    | Yes\*    |
-| declined | Customer declined    | Yes      |
-| expired  | Past valid date      | Yes      |
-
-\*Accepted quotes can only transition to expired.
+Expiry runs as `POST /internal/jobs/quote-expiry` (hourly from
+`scheduled-jobs.yml`): one conditional update that moves sent/viewed quotes past
+`valid_until` to `expired`, so a quote accepted or declined in the meantime is
+untouched.
 
 ## Create Quote
 
@@ -68,379 +59,54 @@ The Quotes API provides:
 POST /api/v1/quotes
 ```
 
-### Request Body
-
 ```json
 {
   "customer_id": "uuid",
-  "valid_until": "2024-02-15",
-  "notes": "Quote for HVAC installation",
-  "terms_and_conditions": "Valid for 30 days",
+  "valid_until": "2026-11-30T00:00:00Z",
+  "tax_rate": "0.0725",
+  "notes": "Nightly janitorial, Building A",
+  "terms": "Net 30",
   "items": [
-    {
-      "description": "HVAC System Installation",
-      "quantity": 1,
-      "unit_price": "2500.00",
-      "taxable": true
-    },
-    {
-      "description": "Labor (8 hours)",
-      "quantity": 8,
-      "unit_price": "75.00",
-      "taxable": true
-    }
+    { "description": "Nightly cleaning (Mon–Fri)", "quantity": "22", "unit_price": "95.00", "sort_order": 1 },
+    { "description": "Supplies", "quantity": "1", "unit_price": "120.00", "sort_order": 2 }
   ]
 }
 ```
 
-### Response (201 Created)
+Required: `customer_id`, `valid_until`, at least one item (`description`,
+`quantity`, `unit_price`). `tax_rate` is a fraction; omitted on create, the
+tenant's default tax rate applies; omitted on update, the quote keeps its rate.
+The response is the quote with `quote_number`, `status: "draft"`, `subtotal`,
+tax, total and `is_expired`.
 
-```json
-{
-  "id": "uuid",
-  "quote_number": "QTE-2024-00001",
-  "customer_id": "uuid",
-  "status": "draft",
-  "subtotal": "3100.00",
-  "tax_amount": "255.75",
-  "total_amount": "3355.75",
-  "valid_until": "2024-02-15",
-  "items": [...],
-  "created_at": "2024-01-15T10:00:00Z"
-}
-```
-
-## Send Quote
-
-Send a quote to the customer via email.
+## Send, Accept, Reject, Revise
 
 ```http
 POST /api/v1/quotes/:id/send
-```
-
-### Validation
-
-Before sending, the quote is validated:
-
-- Must have at least one line item
-- Customer must have valid email
-- Valid until date must be in the future
-
-### Response
-
-```json
-{
-  "id": "uuid",
-  "quote_number": "QTE-2024-00001",
-  "status": "sent",
-  "sent_at": "2024-01-15T10:30:00Z"
-}
-```
-
-## Mark as Viewed
-
-Called when customer opens the quote.
-
-```http
-GET /api/v1/quotes/:id/view
-```
-
-### Response
-
-```json
-{
-  "id": "uuid",
-  "status": "viewed",
-  "viewed_at": "2024-01-16T09:00:00Z"
-}
-```
-
-## Accept Quote
-
-Customer accepts the quote.
-
-```http
 POST /api/v1/quotes/:id/accept
+POST /api/v1/quotes/:id/reject
+POST /api/v1/quotes/:id/revise
 ```
 
-### Request Body
+No request body. An invalid transition (e.g. accepting a draft) returns
+**409** with the standard error envelope ([errors.md](./errors.md)); an
+unknown or other-tenant quote is 404.
 
-```json
-{
-  "acceptance_notes": "Looks good, proceed with installation"
-}
-```
-
-### Response
-
-```json
-{
-  "id": "uuid",
-  "status": "accepted",
-  "accepted_at": "2024-01-17T14:00:00Z"
-}
-```
-
-## Decline Quote
-
-Customer declines the quote.
+## Invoice an Accepted Quote
 
 ```http
-POST /api/v1/quotes/:id/decline
+POST /api/v1/invoices
 ```
-
-### Request Body
 
 ```json
-{
-  "reason": "Found a better price elsewhere"
-}
+{ "customer_id": "uuid", "quote_id": "uuid", "lines": [ ... ] }
 ```
 
-### Response
+Only an accepted quote can be invoiced, and only once. See
+[invoices.md](./invoices.md).
 
-```json
-{
-  "id": "uuid",
-  "status": "declined",
-  "declined_at": "2024-01-17T14:00:00Z"
-}
-```
+## Database
 
-## Get Status History
-
-Get the complete status change history for a quote.
-
-```http
-GET /api/v1/quotes/:id/history
-```
-
-### Response
-
-```json
-[
-  {
-    "id": "uuid",
-    "from_status": null,
-    "to_status": "draft",
-    "event": "quote.created",
-    "changed_by_id": "user-uuid",
-    "changed_by_type": "user",
-    "created_at": "2024-01-15T10:00:00Z"
-  },
-  {
-    "id": "uuid",
-    "from_status": "draft",
-    "to_status": "sent",
-    "event": "quote.sent",
-    "changed_by_id": "user-uuid",
-    "changed_by_type": "user",
-    "created_at": "2024-01-15T10:30:00Z"
-  },
-  {
-    "id": "uuid",
-    "from_status": "sent",
-    "to_status": "viewed",
-    "event": "quote.viewed",
-    "changed_by_id": "customer-uuid",
-    "changed_by_type": "customer",
-    "created_at": "2024-01-16T09:00:00Z"
-  }
-]
-```
-
-## Convert to Invoice
-
-Convert an accepted quote to an invoice.
-
-```http
-POST /api/v1/quotes/:id/convert
-```
-
-### Validation
-
-- Quote must have status `accepted`
-- Quote must not be expired
-
-### Response
-
-```json
-{
-  "quote_id": "uuid",
-  "invoice_id": "new-invoice-uuid",
-  "invoice_number": "INV-2024-00001",
-  "message": "Quote successfully converted to invoice"
-}
-```
-
-## WebSocket Notifications
-
-Connect to receive real-time quote status updates.
-
-```
-WS /api/v1/ws
-```
-
-### Subscribe to Quote
-
-```json
-{
-  "action": "subscribe",
-  "quote_id": "uuid"
-}
-```
-
-### Status Change Notification
-
-```json
-{
-  "type": "status_change",
-  "quote_id": "uuid",
-  "event": "quote.accepted",
-  "status": "accepted",
-  "timestamp": "2024-01-17T14:00:00Z",
-  "data": {
-    "from_status": "viewed",
-    "reason": "Looks good!"
-  }
-}
-```
-
-## Events
-
-| Event          | Trigger           | Status Change          |
-| -------------- | ----------------- | ---------------------- |
-| quote.created  | Quote created     | → draft                |
-| quote.sent     | User sends quote  | draft → sent           |
-| quote.viewed   | Customer views    | sent → viewed          |
-| quote.accepted | Customer accepts  | sent/viewed → accepted |
-| quote.declined | Customer declines | sent/viewed → declined |
-| quote.expired  | System expires    | any → expired          |
-| quote.updated  | Quote modified    | No status change       |
-
-## Allowed Transitions
-
-### From Draft
-
-- → sent (requires line items, customer email)
-
-### From Sent
-
-- → viewed (automatic when customer opens)
-- → accepted
-- → declined
-- → draft (back to editing)
-
-### From Viewed
-
-- → accepted
-- → declined
-
-### From Accepted
-
-- → expired (only via expiration)
-
-### Terminal States
-
-- declined: No further transitions
-- expired: No further transitions
-
-## Error Responses
-
-### Invalid Transition (400)
-
-```json
-{
-  "error": "invalid_transition",
-  "message": "Cannot accept quote with status 'draft'"
-}
-```
-
-### Quote Expired (409)
-
-```json
-{
-  "error": "quote_expired",
-  "message": "This quote has expired"
-}
-```
-
-### Missing Line Items (400)
-
-```json
-{
-  "error": "validation_error",
-  "message": "Cannot send quote without line items"
-}
-```
-
-## Examples
-
-### Create and Send Quote
-
-```bash
-# Create quote
-curl -X POST http://localhost:8080/api/v1/quotes \
-  -H "Authorization: Bearer <token>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "customer_id": "customer-uuid",
-    "valid_until": "2024-02-15",
-    "items": [
-      {"description": "Service", "quantity": 1, "unit_price": "500.00"}
-    ]
-  }'
-
-# Send quote
-curl -X POST http://localhost:8080/api/v1/quotes/{id}/send \
-  -H "Authorization: Bearer <token>"
-```
-
-### Frontend WebSocket Integration
-
-```typescript
-const { lastMessage, isConnected } = useQuoteStatusUpdates(
-  quoteId,
-  (message) => {
-    console.log('Status changed to:', message.status);
-    refetchQuote();
-  }
-);
-```
-
-## Database Schema
-
-### quotes table
-
-| Column               | Type          | Description                     |
-| -------------------- | ------------- | ------------------------------- |
-| id                   | UUID          | Primary key                     |
-| quote_number         | VARCHAR       | Auto-generated (QTE-YYYY-NNNNN) |
-| customer_id          | UUID          | Foreign key to customers        |
-| status               | VARCHAR(20)   | Current status                  |
-| subtotal             | DECIMAL(12,2) | Sum of line items               |
-| tax_amount           | DECIMAL(12,2) | Calculated tax                  |
-| total_amount         | DECIMAL(12,2) | Final amount                    |
-| valid_until          | DATE          | Expiration date                 |
-| sent_at              | TIMESTAMP     | When sent                       |
-| viewed_at            | TIMESTAMP     | When viewed                     |
-| accepted_at          | TIMESTAMP     | When accepted                   |
-| declined_at          | TIMESTAMP     | When declined                   |
-| notes                | TEXT          | Quote notes                     |
-| terms_and_conditions | TEXT          | Terms                           |
-| created_at           | TIMESTAMP     | Creation timestamp              |
-| updated_at           | TIMESTAMP     | Last update                     |
-
-### quote_status_history table
-
-| Column          | Type        | Description               |
-| --------------- | ----------- | ------------------------- |
-| id              | UUID        | Primary key               |
-| quote_id        | UUID        | Foreign key to quotes     |
-| from_status     | VARCHAR(20) | Previous status           |
-| to_status       | VARCHAR(20) | New status                |
-| event           | VARCHAR(50) | Event type                |
-| changed_by_id   | UUID        | User/customer who changed |
-| changed_by_type | VARCHAR(20) | user, customer, system    |
-| reason          | TEXT        | Reason for change         |
-| created_at      | TIMESTAMP   | When changed              |
+`quotes` and `quote_items` (see [DATABASE.md](../architecture/DATABASE.md)).
+Quote numbers are per tenant (`tenant_counters`); totals are computed in the
+service with `shopspring/decimal`.

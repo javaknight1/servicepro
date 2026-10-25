@@ -25,26 +25,26 @@ Welcome to the ServicePro documentation. This guide covers everything you need t
 | [API Overview](./api/README.md)           | API conventions and authentication    |
 | [Authentication](./api/authentication.md) | Registration, login, password reset   |
 | [Customers](./api/customers.md)           | Customer management endpoints         |
-| [Jobs](./api/jobs.md)                     | Job scheduling and conflict detection |
+| [Jobs](./api/jobs.md)                     | Jobs, status, assignments, conflicts  |
 | [Invoices](./api/invoices.md)             | Invoice management and billing        |
-| [Payments](./api/payments.md)             | Payment processing with Stripe        |
+| [Payments](./api/payments.md)             | Invoice payments, Stripe, billing     |
 | [Quotes](./api/quotes.md)                 | Quote status and workflows            |
-| [Templates](./api/templates.md)           | Invoice and document templates        |
+| [Errors](./api/errors.md)                 | Error envelope and status codes       |
 
 ### Architecture
 
 | Document                               | Description                           |
 | -------------------------------------- | ------------------------------------- |
 | [Overview](./architecture/overview.md) | System architecture and services      |
-| [Database](./architecture/database.md) | Database schema and design            |
-| [Security](./architecture/security.md) | Security practices and implementation |
+| [Database](./architecture/DATABASE.md) | Database schema and design            |
+| [Security](./architecture/SECURITY.md) | Security practices and implementation |
 
 ### Features
 
 | Document                                       | Description               |
 | ---------------------------------------------- | ------------------------- |
-| [Recurring Jobs](./features/recurring-jobs.md) | Recurring job scheduling  |
-| [Tax Service](./features/tax-service.md)       | Tax calculation and rates |
+| [Recurring Jobs](./features/recurring-jobs.md) | Not built yet — T167 plan |
+| [Tax Rates](./features/tax-service.md)         | Flat per-tenant tax rates |
 | [Import/Export](./features/import-export.md)   | Data import and export    |
 
 ### Observability
