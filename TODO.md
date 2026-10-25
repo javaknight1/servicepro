@@ -1196,7 +1196,7 @@ The quote → job → invoice loop, roles for field and office staff, recurring 
 
 **Why we need it** — Commercial cleaning and maintenance work is recurring by nature; recurring schedules are half of the lock-in moat.
 
-**Notes** — `docs/product/competitive-research-2026-10.md` §2 row 8, §4.2, §5 MVP #7; correctness audit 5.1, 7.L5. Autopay agreements are T191. MVP plan (2026-10-25): "service agreements" — per site (T186), frequency, price, contact; an internal job generates visits (idempotent). Property tests for time zones, month ends and DST before agreements go live (builds on T133).
+**Notes** — `docs/product/competitive-research-2026-10.md` §2 row 8, §4.2, §5 MVP #7; correctness audit 5.1, 7.L5. Autopay agreements are T191. MVP plan (2026-10-25): "service agreements" — per site (T186), frequency, price, contact; an internal job generates visits (idempotent). Property tests for time zones, month ends and DST before agreements go live (builds on T133). `recurring_schedules` has **no `tenant_id` column** — add it (NOT NULL + index + cross-tenant test, additive migration) or replace the table before building on it.
 
 ---
 
@@ -2792,7 +2792,7 @@ Provision and launch. Live since 2026-10-24 (Neon us-east-2 + Cloud Run us-east5
 
 **Why we need it** — Provider backups alone aren't enough for a system holding customers' invoices and payment history.
 
-**Notes** — infra audit §5 `db-backup.yml`. MVP plan (2026-10-25, D14): move Neon to the Launch plan (Free keeps only 6 hours of restore history) before the first paying tenant.
+**Notes** — infra audit §5 `db-backup.yml`. MVP plan (2026-10-25, D14): move Neon to the Launch plan (Free keeps only 6 hours of restore history) before the first paying tenant. **Since 2026-10-24 the nightly `db-backup.yml` run fails**: `MIGRATION_DATABASE_URL` is set so it no longer skips, but the R2 bucket and `R2_*` secrets don't exist yet — create them first.
 
 ---
 
