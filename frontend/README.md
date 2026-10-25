@@ -1,62 +1,49 @@
 # ServicePro Frontend
 
-Modern React frontend application for ServicePro platform built with TypeScript, Vite, and Tailwind CSS.
+React SPA for ServicePro, built with TypeScript, Vite and Tailwind CSS, served
+in production by the Cloudflare Worker `servicepro-web` at
+<https://servicepro.sharkfins.xyz> (static assets + `/api/*` and `/version`
+proxy to Cloud Run — see `worker/` and `wrangler.jsonc`).
 
 ## Tech Stack
 
-- **Framework**: React 18 + TypeScript
-- **Build Tool**: Vite
-- **Styling**: Tailwind CSS
-- **Routing**: React Router v6
-- **State Management**: Zustand
+- **Framework**: React 19 + TypeScript (strict)
+- **Build Tool**: Vite 8
+- **Styling**: Tailwind CSS 4 (CSS-first `@theme` tokens in `src/index.css`)
+- **Routing**: React Router 7
+- **State Management**: Zustand (client state) + TanStack React Query (server state)
 - **Forms**: React Hook Form + Zod
-- **HTTP Client**: Axios
-- **UI Components**: Headless UI + Custom Components
+- **HTTP Client**: Axios (`src/services/api.ts`, same-origin `/api`)
+- **UI Components**: Headless UI + custom shared components
 - **Icons**: Lucide React
+- **Edge**: Cloudflare Worker (`worker/`, `wrangler.jsonc`)
 
 ## Project Structure
 
 ```
 src/
 ├── components/
-│   ├── shared/          # Reusable UI components
-│   │   ├── Button/
-│   │   ├── Input/
-│   │   ├── Card/
-│   │   └── Modal/
-│   └── layout/          # Layout components
-│       ├── Header.tsx
-│       ├── Footer.tsx
-│       ├── MainLayout.tsx
-│       ├── ProtectedRoute.tsx
-│       └── PublicRoute.tsx
+│   ├── shared/          # Reusable UI (Button, Input, Card, Modal, DataTable, TaxRatePicker, …)
+│   ├── layout/          # MainLayout, DashboardLayout, Header, Sidebar, Protected/PublicRoute
+│   └── calendar/, invoices/, jobs/, quotes/, reports/, settings/, tenants/, …
 ├── pages/               # Page components
-│   ├── Landing/
-│   ├── Login/
-│   ├── Register/
-│   ├── Dashboard/
-│   ├── Settings/
-│   └── ...
-├── services/            # API services
-│   └── api.ts
-├── store/               # Zustand stores
-│   └── authStore.ts
-├── theme/               # Design system
-│   ├── colors.ts
-│   ├── typography.ts
-│   └── spacing.ts
-├── types/               # TypeScript types
+├── services/            # API services (api.ts axios instance)
+├── store/               # Zustand stores (auth, tenant, billing, membership, sidebar)
+├── config/              # endpoints, cache config, support contact
+├── types/               # TypeScript types (api.generated.ts from the OpenAPI spec)
+├── hooks/               # Custom React hooks (React Query hooks)
 ├── utils/               # Utility functions
-├── hooks/               # Custom React hooks
 └── routes/              # Route configuration
+worker/                  # Cloudflare Worker: /api/* + /version proxy
+public/_headers          # CSP / HSTS / cache headers for static assets
 ```
 
 ## Getting Started
 
 ### Prerequisites
 
-- Node.js 18+
-- npm or yarn
+- Node.js 24 (`.nvmrc`)
+- npm
 
 ### Installation
 
@@ -100,7 +87,8 @@ npm run preview
 
 The application uses a comprehensive design system with:
 
-- **Colors**: Primary, secondary, success, warning, error, and neutral palettes
+- **Colors**: orange primary (`primary-600` = `#ea580c`), teal secondary
+  (`secondary-600` = `#0d9488`), plus success, warning, error and neutral palettes
 - **Typography**: Consistent font sizes, weights, and line heights
 - **Spacing**: Standardized spacing scale
 - **Components**: Reusable UI components following consistent patterns
@@ -173,7 +161,10 @@ import { Modal } from '@components/shared';
 
 ## Authentication
 
-The app uses JWT-based authentication with automatic token refresh:
+The API sets httpOnly cookies on login; the SPA never stores tokens. The axios
+client sends `X-Requested-With: XMLHttpRequest` (required on mutating cookie
+requests) and refreshes the session on 401. Moving sign-in to Neon Auth
+(managed Better Auth) is T158.
 
 ```tsx
 import { useAuthStore } from '@store';
@@ -191,7 +182,7 @@ function MyComponent() {
 
 ## API Service
 
-API calls are handled through Axios with automatic token injection:
+API calls go through the shared axios instance (cookies, CSRF header, refresh on 401):
 
 ```tsx
 import { authApi, userApi } from '@services';
@@ -205,10 +196,10 @@ const user = await userApi.getCurrentUser();
 
 ## Routing
 
-The app uses React Router v6 with protected routes:
+The app uses React Router 7 with protected routes (`src/routes/index.tsx`):
 
 - **Public Routes**: Accessible by unauthenticated users (Login, Register, Landing)
-- **Protected Routes**: Require authentication (Dashboard, Settings)
+- **Protected Routes**: Require authentication (dashboard, customers, jobs, quotes, invoices, reports, team, settings)
 
 Protected routes automatically redirect to login if not authenticated.
 
@@ -253,12 +244,24 @@ import { cn } from '@utils';
 - `npm run build` - Build for production
 - `npm run preview` - Preview production build
 - `npm run lint` - Run ESLint
-- `npm run type-check` - Run TypeScript type checking
+- `npm run type-check` - Run TypeScript type checking (app + worker)
+- `npm run test` / `npm run test:run` - Vitest
+- `npm run cf:dev` - Build and run the Worker locally (`wrangler dev`)
+- `npm run generate:api` - Regenerate `src/types/api.generated.ts` (or `make docs` from the root)
+
+From the repo root, prefer the `make frontend-*` targets (`make help`).
 
 ## Environment Variables
 
-- `VITE_API_URL` - Backend API URL (default: http://localhost:8080/api)
+See `.env.example` (`VITE_*` values are baked in at build time). Key ones:
+
+- `VITE_API_URL` - API base; empty means same-origin `/api` (the Vite dev
+  proxy locally, the Worker in production)
+- `VITE_SUPPORT_EMAIL` - support address shown in the app (default `support@sharkfins.xyz`)
 - `VITE_ENV` - Environment (development, staging, production)
+
+Worker settings live in `wrangler.jsonc` (`API_ORIGIN`) and Worker secrets
+(`EDGE_PROXY_SECRET`).
 
 ## Contributing
 
