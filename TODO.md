@@ -1,57 +1,69 @@
 # ServicePro — Roadmap
 
-**Last Updated**: 2026-10-24 (TODO reformatted from the P0–P3/sprint layout to League Looper's indexed phase format: Task Index with ID/Phase/Category/Hours, one detailed section per open task, a v1 Launch Gate and Verified Complete. A full audit of the repo (backend security, backend correctness, frontend, infra — stored in `docs/audits/2026-10-16/`) is filed as Phases 1–3 (T102–T152, T223–T226). The stack-convergence plan towards League Looper's stack is Phase 4 (T153–T166). Competitive research (`docs/product/competitive-research-2026-10.md`) became product Phases 5–16, merging the open T027–T101 tasks with new T167–T222. Hosting is deferred: ServicePro stays local-only until the production database decision (T202). Old IDs T001–T101 are kept; T011 never existed. Same day: Phase 3 platform work T139–T152 landed — golang-migrate, /version + schema-aware readiness, internal job endpoints, optional Redis, Cloud Run image, LL-style CI/release/hooks, Cloudflare Worker edge (not deployed); frontend fixes T130–T138; all of Phase 1 security (T102–T117) — tenant isolation plugin, per-tenant authz, invite-only registration, token/login/webhook/CSRF hardening, no known Go vulns; T227 added for the frontend follow-through. Same day: Phase 2 correctness work landed (T118–T129, T223–T239 — money path, numbering, status machines, refunds, quotes, tenant settings, error envelope + request IDs, ~39k lines of dead backend code removed, stricter golangci-lint); follow-ups T241–T244 filed. 2026-10-18: T231 (org deletion) deferred; Dependabot security-fix PRs enabled; SQLite ruled out for OD-1; Go deps bumped, T247 filed; T202 decided — Neon; OD-9 (auth provider) opened, then decided 2026-10-19 — Neon's managed Better Auth; 2026-10-24: Neon project linked, Neon agent skills + MCP server added, managed MFA confirmed on Neon's roadmap (T092); T164 frontend majors done (React 19, Router 7, Vite 8, ESLint 10, zod 4, Headless UI 2), T248/T249 filed; Tailwind 4 engine landed (T163 tokens + dark mode remain); 0 open Dependabot alerts.)
+**Last Updated**: 2026-10-25 (MVP re-scope: the owner confirmed the Notion app-upgrade docs — D7–D14 decided, OD-4 closed by D9, OD-12 decided, OD-10/OD-11 opened; the "v1 Launch Gate" became the **MVP Launch Gate** (phases A–G, 46 tasks, ~292h, paid launch 2027-09-07) and every section's gate field is now **MVP Gate**; new tasks T255–T267 from the Technical Requirements N-tasks and the MVP feature table; T169 rewritten for Connect Accounts v2 direct charges; T153/T155–T157/T162 frozen (D12); T048–T050, T061, T063, T081, T183, T101, T243, T244 deferred; T242 Won't Do. Plan: `docs/product/mvp-plan-2026-10.md`.) Earlier — 2026-10-24 (TODO reformatted from the P0–P3/sprint layout to League Looper's indexed phase format: Task Index with ID/Phase/Category/Hours, one detailed section per open task, a launch gate and Verified Complete. A full audit of the repo (backend security, backend correctness, frontend, infra — stored in `docs/audits/2026-10-16/`) is filed as Phases 1–3 (T102–T152, T223–T226). The stack-convergence plan towards League Looper's stack is Phase 4 (T153–T166). Competitive research (`docs/product/competitive-research-2026-10.md`) became product Phases 5–16, merging the open T027–T101 tasks with new T167–T222. Hosting is deferred: ServicePro stays local-only until the production database decision (T202). Old IDs T001–T101 are kept; T011 never existed. Same day: Phase 3 platform work T139–T152 landed — golang-migrate, /version + schema-aware readiness, internal job endpoints, optional Redis, Cloud Run image, LL-style CI/release/hooks, Cloudflare Worker edge (not deployed); frontend fixes T130–T138; all of Phase 1 security (T102–T117) — tenant isolation plugin, per-tenant authz, invite-only registration, token/login/webhook/CSRF hardening, no known Go vulns; T227 added for the frontend follow-through. Same day: Phase 2 correctness work landed (T118–T129, T223–T239 — money path, numbering, status machines, refunds, quotes, tenant settings, error envelope + request IDs, ~39k lines of dead backend code removed, stricter golangci-lint); follow-ups T241–T244 filed. 2026-10-18: T231 (org deletion) deferred; Dependabot security-fix PRs enabled; SQLite ruled out for OD-1; Go deps bumped, T247 filed; T202 decided — Neon; OD-9 (auth provider) opened, then decided 2026-10-19 — Neon's managed Better Auth; 2026-10-24: Neon project linked, Neon agent skills + MCP server added, managed MFA confirmed on Neon's roadmap (T092); T164 frontend majors done (React 19, Router 7, Vite 8, ESLint 10, zod 4, Headless UI 2), T248/T249 filed; Tailwind 4 engine landed (T163 tokens + dark mode remain); 0 open Dependabot alerts.)
 
 > **How to read this file.** Every task has an ID (T###). The **Task Index** lists all of them: completed rows
 > (struck through) first by ID, then open rows by Phase → ID. Each open task has exactly one detailed section under
 > its phase in the **Phase Roadmap** (template: What it is / What it does / Why we need it / Notes). **Phase 0** means
-> work finished before the 2026-10-16 reformat; its history is in **Verified Complete**. The **v1 Launch Gate** is the
-> subset that must be done before real customers. Hours are rough estimates. Audit references like "security audit
+> work finished before the 2026-10-16 reformat; its history is in **Verified Complete**. The **MVP Launch Gate** is the
+> subset that must be done before paid launch. Hours are rough estimates. Audit references like "security audit
 > F-3" or "correctness audit 7.C1" point into `docs/audits/2026-10-16/`. To work a task, see "TODO Task Management"
 > in CLAUDE.md.
 
 ## Product framing
 
-- **Positioning**: for small commercial service contractors (1–10 techs) who bill businesses and property managers
-  on terms, ServicePro is the field service platform that gets you paid — scheduling, work orders, multi-site
-  customers and automated collections at one flat monthly price, unlimited users, no contract, and you can leave with
-  all your data any time.
-- **Beachhead**: small commercial/B2B service contractors (1–10 techs) billing on terms — commercial cleaning,
-  property maintenance/handyman for property managers, small commercial HVAC. Secondary hypothesis: inspection and
-  compliance trades (backflow, fire, hood cleaning) — validate by interviews (T218, T222).
-- **Pricing hypothesis**: Solo $39 / Team $99 (unlimited users) / Pro $199, month-to-month; +0.4% platform fee on
-  Stripe Connect volume; founding offer: Team at $59/mo for life for the first 25 tenants (T210).
-- **Moat**: lock-in through money flow (Connect, saved payment methods) plus recurring schedules in an under-served
-  B2B niche, reinforced by a no-contract, easy-exit trust brand that per-seat incumbents can't copy without hurting
-  their revenue. AI is not the moat.
-- Full research: `docs/product/competitive-research-2026-10.md`.
+Decided 2026-10-25 (owner confirmed the app-upgrade docs: D7–D14, OD-12). Full plan: `docs/product/mvp-plan-2026-10.md`;
+Notion: Apps → All Apps → ServicePro → MVP Proposal, Market & Competition, Technical Requirements, Decisions.
+
+- **Who the MVP is for (D7)**: commercial cleaning and facility-maintenance companies with 1–10 techs that clean and
+  maintain buildings for property managers and multi-site businesses and bill them monthly on net terms. Backflow
+  testing is the first expansion; residential is out. Confirmed or changed by 10 interviews by 2027-01-31 (T218).
+- **Positioning**: the field service software that gets every site's work invoiced and paid — recurring visits, one
+  monthly invoice per customer, POs, proof of service and $10 bank payments, at one flat price with unlimited users
+  and no contract, and you can leave with all your data any time.
+- **Pricing (D10)**: Solo $39 / Team $99 (unlimited users) / Pro $199, month to month. Card payments Stripe's rate +
+  0.4%; bank (ACH) payments 1% capped at $10. Founding offer: Team at $59/mo for life for the first 25 tenants, only
+  while payments stay on (T210).
+- **Moat**: money flow (customers' saved bank details and payment history live in the tenant's connected account) plus
+  recurring agreements and site history, and pricing per-seat/1%-ACH incumbents can't match without hurting
+  themselves. Not features, not AI, not the stack.
+- **Goal and gates (D8)**: five design partners each run a full month (visits → proof of service → one invoice per
+  customer → paid by bank → QuickBooks) with no manual fixes by 2027-06-30; paid launch 2027-09-07. Checkpoints from
+  paid launch: month 6 (2028-03-07) ≥10 paying tenants, ≥50% taking payments, churn <5%/mo, else stop selling and keep
+  it as a portfolio piece; month 12 ≥$3k MRR, churn <4%; month 24 $5–10k MRR — keep running it or list it for sale.
+- **"ServicePro" is a working name** (OD-10): two live US trademarks cover field-service software. A new name is
+  chosen and cleared by 2027-03-01, before the beta.
+- Research: `docs/product/competitive-research-2026-10.md` (2026-10-16) and the Notion Market & Competition page
+  (2026-10-24).
 
 ## Status at a glance
 
-- **Local-only.** Not hosted anywhere; the old Fly.io/Pages workflows were replaced (Phase 3, done 2026-10-16). The
-  database host is decided (Neon, T202, 2026-10-18); provisioning is Phase 14 (T203+).
-- **Backend has critical tenant-isolation and auth-escalation flaws** (security audit F-1–F-4). Phase 1 blocks any
-  hosting, even invite-only.
-- **Money flows are partially broken** (recording a payment doesn't update the invoice, reminders have never sent,
-  Checkout charges the wrong amount, invoice numbering wedges) — Phase 2.
-- The back office and A/R side is strong for a pre-launch product; the field side, customer-facing side and
-  integrations are thin (Phases 5–11).
+- **Live since 2026-10-24** (v0.9.0) at https://servicepro.sharkfins.xyz: Worker `servicepro-web` → Cloud Run
+  `servicepro-api` (us-east5) → Neon Postgres 18 (us-east-2, Free plan). Registration is invite-only. Deploys run on
+  `v*` tags (T203, T204).
+- **Honesty gate due 2026-11-08 (D11)**: the live site still makes false claims (T255), invoice pay links would settle
+  to the platform's Stripe account (T261), and SMS/storage fall back to mocks (T256).
+- Phase 1 security is done (tenant isolation, per-tenant authz, invite-only registration). Neon Auth is half done
+  (backend accepts its tokens; the SPA still uses our own JWTs — T158).
+- The back office and A/R side works; the MVP adds sites, service agreements, consolidated invoices, proof of service,
+  Stripe Connect payments and QuickBooks sync (the **MVP Launch Gate** below).
 
-## Architecture decisions (recorded 2026-10-16)
+## Architecture & product decisions
 
-1. **D1 — Stay Go API + React (Vite) SPA; not Next.js.** The 95K-line React app is healthy; field service is job-
-   and worker-heavy (reminders, recurring jobs, exports, webhooks), which suits a long-running Go service better than
-   serverless; a technician mobile app needs a standalone API anyway; the broken part is the data layer, which Phase 4
-   rebuilds.
+D1–D6 recorded 2026-10-16; D7–D14 decided 2026-10-25 (proposed 2026-10-24 in the app-upgrade docs, confirmed by the
+owner).
+
+1. **D1 — Stay Go API + React (Vite) SPA; not Next.js.** The React app (~31K lines of hand-written TS/TSX, ~82K with
+   generated types and tests) is healthy; field service is job- and worker-heavy (reminders, recurring jobs, exports,
+   webhooks), which suits a long-running Go service better than serverless; a technician mobile app needs a
+   standalone API anyway; the broken part is the data layer, which Phase 4 rebuilds.
 2. **D2 — Converge on League Looper's stack incrementally (strangler; the app keeps working).** chi; pgx/sqlc;
    golang-migrate with always-additive migrations; Neon's managed Better Auth (OD-9; was Supabase Auth) with our own
-   `users` table keyed by `auth_user_id`;
-   Postgres RLS backstop on `tenant_id`; Resend; Cloudflare R2; Upstash (optional Redis); Sentry; PostHog;
-   Better Stack.
-3. **D3 — Hosting target.** Frontend on Cloudflare Workers static assets with an edge Worker proxying `/api/*` and
-   `/version` to Cloud Run at `servicepro.sharkfins.xyz`; API on Cloud Run; database **Neon Postgres** (owner decision
-   2026-10-18, T202; free tier to start). Cloud Run runs in the Neon project's region (OD-8). Still local-only until
-   Phase 14 provisions it.
+   `users` table keyed by `auth_user_id`; Postgres RLS backstop on `tenant_id`; Resend; Cloudflare R2; Upstash
+   (optional Redis); Sentry; PostHog; Better Stack. **Paced by D12.**
+3. **D3 — Hosting.** Frontend on Cloudflare Workers static assets with an edge Worker proxying `/api/*` and `/version`
+   to Cloud Run at `servicepro.sharkfins.xyz`; API on Cloud Run us-east5; database **Neon Postgres** us-east-2 (T202,
+   OD-8). **Live since 2026-10-24** (T203, T204). Plan tier per D14.
 4. **D4 — Commit convention = League Looper's.** `feat:`/`fix:` are user-facing; `deps`, `chore`, `docs`, `ci`,
    `build`, `test`, `style`, `refactor`, `perf`, `release` are filtered from release notes. Commits are the changelog;
    releases are tag-driven from `VERSION` (T146, T148). The historic `minor:`/`major:` prefixes are retired.
@@ -59,43 +71,63 @@
    repositories (T102, T153) **and** by RLS (T154).
 6. **D6 — Money as decimal (shopspring) today.** Evaluate integer cents during the pgx port (the Travelify rule) —
    open question OD-5 / T166.
+7. **D7 — MVP buyer.** Commercial cleaning and facility-maintenance companies serving property managers and
+   multi-site businesses, 1–10 techs, billing on net terms. Backflow testing is the first expansion; residential is
+   out. Confirmed or changed by T218. Narrows OD-7.
+8. **D8 — Horizon.** A real SaaS with checkpoints from paid launch (month 6 / 12 / 24, see Product framing). Missing
+   month 6 freezes it as a portfolio piece.
+9. **D9 — Stripe Connect model.** Accounts v2, **direct charges**, Stripe collects its fees from the tenant ("Stripe
+   handles pricing"); ServicePro takes an `application_fee_amount` and pays no Connect fees. Not Express, not
+   destination charges. Closes OD-4; rewrites T169.
+10. **D10 — Payment pricing.** Cards: Stripe's rate + 0.4%. ACH: 1% capped at $10 total. Founding offer only while
+    payments stay on. Tiers Solo $39 / Team $99 / Pro $199 (T210).
+11. **D11 — Production honesty gate (by 2026-11-08).** Invoice payments off until D9 ships (T261); remove "thousands of
+    businesses", the 14-day trial, "99.9% uptime" and "Get Started Free" (T255); SMS and storage refuse mocks in
+    production (T256); public pricing page hidden until plans match D10.
+12. **D12 — Stack rewrites frozen** until the month-6 checkpoint: T153, T155, T156, T157, T162 (~250h). Kept in the
+    MVP: Neon Auth (T158), Resend only (T159), R2 (T160), RLS backstop (T154).
+13. **D13 — One PDF engine.** Remove the wkhtmltopdf export path (T260); gofpdf renders every PDF until a maintained
+    replacement is chosen.
+14. **D14 — Production data safety.** Move Neon to the Launch plan and activate nightly R2 backups with a restore drill
+    (T209) before the first paying tenant.
 
 ---
 
-## v1 Launch Gate
+## MVP Launch Gate
 
-The minimum subset that must be done before real (paying) customers: **39 tasks, ~320h**. Everything else is post-launch growth or depth. The invite-gated preview (T205) needs only Phase 1 plus T106/T204/T206; the gate below is for opening to paying customers. Phase 4's gating subset is the parts of the stack that touch auth, tenancy, email and storage; the chi and pgx ports are not gating.
+"MVP" = everything before paid launch (2027-09-07). "V1" = after launch, by checkpoint (SMS, PM approval inbox,
+statements portal, quote approval page, custom roles); "Later" = backflow reports, offline tech app, Zapier, payroll,
+financing, AI collections. The MVP is **46 tasks, ~292h** in phases A–G, about 12 hours a week from 2026-11-02. Each
+gated task's section says **MVP Gate: Yes**.
 
-| Phase                                                | Gating tasks                                                                                                                                                                                                       |
-|------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Phase 1 — Security Remediation                       | **All** — ~~T102~~, ~~T103~~, ~~T104~~, ~~T105~~, ~~T106~~, ~~T107~~, ~~T108~~, ~~T109~~, ~~T110~~, ~~T111~~, ~~T112~~, ~~T113~~, ~~T114~~, ~~T115~~, ~~T116~~, ~~T117~~                                           |
-| Phase 2 — Correctness & Cleanup                      | ~~T118~~, ~~T119~~, ~~T120~~, ~~T121~~, ~~T122~~, ~~T123~~, ~~T124~~, ~~T126~~, ~~T130~~, ~~T131~~, ~~T132~~, ~~T133~~, ~~T136~~, ~~T224~~, ~~T225~~, ~~T227~~, ~~T232~~, ~~T234~~, ~~T238~~, ~~T239~~, T241, T243 |
-| Phase 3 — Platform & Delivery                        | ~~T139~~, ~~T140~~, ~~T141~~, ~~T142~~, ~~T143~~, ~~T144~~, ~~T145~~, ~~T146~~, ~~T150~~, ~~T151~~, ~~T245~~                                                                                                       |
-| Phase 4 — Stack Convergence (LL parity; incremental) | T153, T154, T158, T159, T160                                                                                                                                                                                       |
-| Phase 5 — Core Workflow & Quoting                    | T028, T029, T030, T035, T167                                                                                                                                                                                       |
-| Phase 6 — Payments to the Business                   | T169, T170, T061, T063                                                                                                                                                                                             |
-| Phase 7 — Dispatch & Field                           | T173, T174, T176                                                                                                                                                                                                   |
-| Phase 8 — Customer Communications                    | T048, T049, T050                                                                                                                                                                                                   |
-| Phase 9 — Customer Self-Service                      | T183, T081                                                                                                                                                                                                         |
-| Phase 10 — Commercial/B2B Wedge                      | T186                                                                                                                                                                                                               |
-| Phase 11 — Integrations & Migration                  | T192, T193                                                                                                                                                                                                         |
-| Phase 14 — Hosting & Launch Readiness                | ~~T202~~, T203, T204, T205, T206, T207, T208, T209, T210, T211, T212, T213                                                                                                                                         |
-| Phase 16 — Go-to-Market                              | T218                                                                                                                                                                                                               |
+| MVP phase                          | Window                     | Tasks                                                                                       | Hours | Done when                                                              |
+|------------------------------------|----------------------------|---------------------------------------------------------------------------------------------|-------|------------------------------------------------------------------------|
+| A. Honesty and fixes               | 2026-11-02 → 2026-11-22    | T255, T256, T261 (honesty gate, by 2026-11-08), T257, T258, T259, T260, T262, T266, T267     | 22    | No false claims, no mocks in prod, dashboard numbers right             |
+| B. Platform                        | 2026-11-23 → 2027-01-03    | T158 (rest), T159, T160, T154, T241, T263                                                   | 51    | Neon Auth sign-in live; RLS on; files in R2                            |
+| C. Getting paid                    | 2027-01-04 → 2027-02-14    | T264, T169, T170, T210, T265                                                                | 50    | A test tenant is paid by ACH into its own Stripe account               |
+| D. Commercial wedge                | 2027-02-15 → 2027-03-31    | T167, T186, T187, T188, T028, T029, T030, T035, T235                                        | 59    | Agreements generate visits; one consolidated invoice per customer      |
+| E. Proof of service                | 2027-04-01 → 2027-05-01    | T173, T174, T176                                                                            | 40    | A tech completes a visit on a phone; the report is emailed             |
+| F. Integrations                    | 2027-05-02 → 2027-06-13    | T192, T193                                                                                  | 40    | QuickBooks sync and Jobber/HCP import used by design partners          |
+| G. Launch readiness (alongside)    | 2026-11 → 2027-08          | T218, T205, T206, T207, T208, T209, T211, T212, T213, T251, T252                            | 30    | Interviews by 2027-01-31; backups, legal, monitoring before 2027-09-07 |
 
-**Explicitly NOT in the launch gate** (ship without them):
+**Gates:** 2026-11-08 honesty gate (D11) · 2027-01-31 interviews done (T218; confirm the buyer and the $99 price or
+change the plan before phase D) · 2027-03-01 new name chosen and cleared (OD-10) · 2027-04-05 design-partner beta
+starts (5 companies) · 2027-06-30 beta gate: each partner runs a full month with no manual fixes, ≥3 take a bank
+payment · 2027-09-07 paid launch (backups, monitoring, legal review, support inbox in place). OD-11 (entity, Hawaii
+GET license, employer approval) must be settled before the first real payment.
 
-- Phase 2 remainder (T125, T127–T129, T134, T135, T137, T138, T223, T226) — fix soon after launch
-- Phase 3 remainder (T101, T147–T149, T152) — delivery polish
-- Phase 4 ports: Gin → chi (T155), GORM → pgx/sqlc (T156), GORM/sqlite removal (T157), production Redis (T161 — T142 makes Redis optional, which is gated), frontend modernisation (T162–T164), T165, T166
-- Phase 5 remainder (T033, T041, T042, T051, T052, T058, T060, T062, T076, T080, T082, T168)
-- Phase 6: saved methods/autopay (T171), Tap to Pay (T172), late fees (T083)
-- Phase 7 remainder (checklists, time clock, map, offline, store apps, scheduling extras)
-- Phase 8 remainder (templates, delivery tracking, CRM log/timeline, two-way SMS, reviews)
-- Phase 9: customer portal (T184), booking widget (T185)
-- Phase 10 remainder (POs, consolidated invoicing, statements, PM approvals, agreements autopay, collections suite)
-- Phase 11 remainder (Zapier, Wisetack, Gusto, AI receptionist, webhooks, public API)
-- Phases 12, 13 and 15 (reporting, roles/compliance/trust, AI)
-- Phase 16 remainder (T219–T222) — T218 interviews are gated, the marketing build-out is not
+**Spikes first:** the first 4h of T169 (Connect on Accounts v2: onboarding, direct charge with
+`application_fee_amount`, ACH via the Payment Element, refunds/disputes against the tenant's balance; confirm
+stripe-go v87 supports v2 accounts) and the first 4h of T192 (QuickBooks OAuth, create calls, Intuit review lead time).
+
+**Not in the MVP:**
+
+- **Frozen (D12)**: T153, T155, T156, T157, T162 — until the month-6 checkpoint.
+- **Deferred (2026-10-25)**: SMS and on-my-way (T048, T049, T050 — OD-12), deposits (T061, T063), e-signed quote
+  approval (T081, T183 — quotes stay emailed PDFs; don't advertise e-signature), T101, T243, T244. T242 is Won't Do
+  (superseded by T260).
+- Everything else without **MVP Gate: Yes** — Phase 2/3 leftovers, Phase 4 T161/T163–T166/T248/T249, the rest of
+  Phases 5–13, AI (Phase 15), and the marketing build-out T219–T222/T254 (after the rename).
 
 ---
 
@@ -207,6 +239,12 @@ The minimum subset that must be done before real (paying) customers: **39 tasks,
 | T242     | 2      | Bug            | 1      | PDF header/footer files are deleted before wkhtmltopdf reads them                                        |
 | T243     | 2      | Security       | 1      | A/R aging CSV export: proper CSV writer + formula neutralisation                                         |
 | T244     | 2      | Bug            | 3      | Handle the discarded GORM .Error results                                                                 |
+| T256     | 2      | Security       | 2      | SMS and storage refuse mock providers in production; SMS off                                             |
+| T257     | 2      | Bug            | 3      | Dashboard numbers right: add /invoices/stats, fix job and customer stats shapes, delete dead API calls   |
+| T259     | 2      | UX             | 3      | Hide unfinished settings and screens (account security, business hours, export jobs)                     |
+| T260     | 2      | Cleanup        | 3      | Remove the wkhtmltopdf/raymond export path; gofpdf renders every PDF                                     |
+| T263     | 2      | DB             | 2      | Additive migration dropping 7 unused tables                                                              |
+| T267     | 2      | Cleanup        | 3      | One job status machine; remove the duplicate per-action job endpoints                                    |
 | T101     | 3      | Monitoring     | 2      | Upload source maps to Sentry for production builds                                                       |
 | T247     | 3      | Platform       | 3      | Move S3 uploads from the deprecated feature/s3/manager to feature/s3/transfermanager                     |
 | T153     | 4      | Backend        | 24     | Repositories take ctx + tenantID; services stop taking *gorm.DB; transaction manager                     |
@@ -224,6 +262,7 @@ The minimum subset that must be done before real (paying) customers: **39 tasks,
 | T166     | 4      | Research       | 2      | Decide money representation (decimal vs integer cents) before the pgx port                               |
 | T248     | 4      | Monitoring     | 3      | Upgrade @sentry/react to 11 with an explicit data-collection config                                      |
 | T249     | 4      | Frontend       | 2      | Drop Vite's legacy.inconsistentCjsInterop flag and ready the config for Vite's native loader             |
+| T264     | 4      | Backend        | 4      | Upgrade stripe-go v76 → v87; replace archived nfnt/resize                                                |
 | T028     | 5      | Feature        | 3      | Add "Convert Quote to Job" button                                                                        |
 | T029     | 5      | Feature        | 2      | Add "Generate Invoice from Job" button                                                                   |
 | T030     | 5      | Feature        | 4      | Auto-populate invoice from job data                                                                      |
@@ -247,10 +286,11 @@ The minimum subset that must be done before real (paying) customers: **39 tasks,
 | T061     | 6      | Payments       | 6      | Add required deposit to accept quote                                                                     |
 | T063     | 6      | Payments       | 6      | Add deposit tracking and application                                                                     |
 | T083     | 6      | Payments       | 4      | Implement late fee calculation                                                                           |
-| T169     | 6      | Payments       | 24     | Stripe Connect Express onboarding; invoice payments routed to the tenant                                 |
+| T169     | 6      | Payments       | 24     | Stripe Connect (Accounts v2, direct charges); invoice payments routed to the tenant                      |
 | T170     | 6      | Payments       | 6      | Card + ACH invoice payments, ACH preferred for B2B                                                       |
 | T171     | 6      | Payments       | 10     | Saved payment methods + autopay                                                                          |
 | T172     | 6      | Payments       | 16     | Tap to Pay via Stripe Terminal                                                                           |
+| T261     | 6      | Payments       | 1      | Turn off invoice pay links until Stripe Connect ships                                                    |
 | T027     | 7      | Feature        | 8      | Add drag-and-drop rescheduling to job calendar                                                           |
 | T038     | 7      | Feature        | 6      | Add technician availability management UI                                                                |
 | T039     | 7      | Feature        | 8      | Create emergency job insertion workflow                                                                  |
@@ -284,6 +324,7 @@ The minimum subset that must be done before real (paying) customers: **39 tasks,
 | T091     | 8      | Feature        | 4      | Add notification preferences per customer                                                                |
 | T181     | 8      | SMS            | 20     | Two-way SMS inbox (Twilio + 10DLC)                                                                       |
 | T182     | 8      | Marketing      | 4      | Review request automation                                                                                |
+| T265     | 8      | Email          | 4      | Tenant-branded, compliant emails: "Tenant via ServicePro", DoNotEmail everywhere, daytime send window    |
 | T081     | 9      | Feature        | 4      | Add e-signature for quote acceptance                                                                     |
 | T183     | 9      | Feature        | 10     | Public quote approval page (approve/decline, e-sign, optional deposit)                                   |
 | T184     | 9      | Feature        | 24     | Customer portal / client hub                                                                             |
@@ -324,6 +365,7 @@ The minimum subset that must be done before real (paying) customers: **39 tasks,
 | T198     | 12     | Reporting      | 12     | Job costing / profit per job                                                                             |
 | T246     | 12     | Perf           | 3      | Lazy-load / trim Sentry and PostHog (109 KB gzipped on every page)                                       |
 | T253     | 12     | UX             | 2      | "Report a bug" button and cookie preferences in the footer                                               |
+| T266     | 12     | Cleanup        | 2      | Cut the customers report (segments, cohorts) and the outgoing-webhooks plan flag                         |
 | T074     | 13     | Auth           | 3      | Create Accountant role                                                                                   |
 | T075     | 13     | Auth           | 12     | Add field-level permission controls                                                                      |
 | T092     | 13     | Auth           | 6      | Implement 2FA (TOTP)                                                                                     |
@@ -335,6 +377,7 @@ The minimum subset that must be done before real (paying) customers: **39 tasks,
 | T231     | 13     | Auth           | 1      | Owner decision: may a tenant's owner/admin delete their own organization? (Deferred)                     |
 | ~~T203~~ | ~~14~~ | ~~Deploy~~     | ~~4~~  | ~~GCP project + WIF + Artifact Registry + Cloud Run service~~                                            |
 | ~~T204~~ | ~~14~~ | ~~Deploy~~     | ~~2~~  | ~~Deploy the Worker + DNS for servicepro.sharkfins.xyz~~                                                 |
+| T262     | 13     | Security       | 1      | Privacy hardening: Sentry replay on errors only, self-host Inter, tighten CSP                            |
 | T205     | 14     | Deploy         | 2      | Invite-gated preview launch                                                                              |
 | T206     | 14     | Email          | 2      | Production email domain on Resend (SPF/DKIM/DMARC)                                                       |
 | T207     | 14     | Legal          | 4      | Terms of Service + Privacy Policy legal review                                                           |
@@ -346,6 +389,8 @@ The minimum subset that must be done before real (paying) customers: **39 tasks,
 | T213     | 14     | Ops            | 1      | Cost guardrails (Cloud Run max instances × DB pool, budget alerts)                                       |
 | T251     | 14     | Ops            | 3      | Post-deploy smoke check + GCP uptime check and alert                                                     |
 | T252     | 14     | Monitoring     | 1      | Sentry cron check-ins for scheduled jobs and the nightly backup                                          |
+| T255     | 14     | Content        | 3      | Honest public site: remove false claims, invite-only CTA, hide pricing, Terms/Privacy at sign-up         |
+| T258     | 14     | Cleanup        | 1      | Replace servicepro.com defaults; complete the .env.example files                                         |
 | T214     | 15     | AI             | 24     | AI collections agent                                                                                     |
 | T215     | 15     | AI             | 20     | AI quote drafting from photos, voice or notes against the price book                                     |
 | T216     | 15     | AI             | 12     | "Ask your business" chat over reporting views                                                            |
@@ -420,9 +465,9 @@ Work completed under the old P0–P3/sprint TODO. Details are in Verified Comple
 - [x] T116 — Low-severity security sweep ✓ (2026-10-16)
 - [x] T117 — Remediate dependency vulnerabilities and bump the Go toolchain ✓ (2026-10-16)
 
-### Phase 2 — Correctness & Cleanup (T118, T119, T120, T121, T122, T123, T124, T125, T126, T127, T128, T129, T130, T131, T132, T133, T134, T135, T136, T137, T138, T223, T224, T225, T226, T227, T228, T229, T232, T233, T234, T237, T238, T239, T241, T242, T243, T244)
+### Phase 2 — Correctness & Cleanup (T118, T119, T120, T121, T122, T123, T124, T125, T126, T127, T128, T129, T130, T131, T132, T133, T134, T135, T136, T137, T138, T223, T224, T225, T226, T227, T228, T229, T232, T233, T234, T237, T238, T239, T241, T242, T243, T244, T256, T257, T259, T260, T263, T267)
 
-Money flows that are wired but broken (payments don't update invoices, reminders never sent, numbering wedges, a panicking webhook), frontend bugs users would hit in the preview, and dead code. From `docs/audits/2026-10-16/backend-correctness.md` and `docs/audits/2026-10-16/frontend.md`. **4 open tasks, ~8h.** 34 done.
+Money flows that are wired but broken (payments don't update invoices, reminders never sent, numbering wedges, a panicking webhook), frontend bugs users would hit in the preview, and dead code. From `docs/audits/2026-10-16/backend-correctness.md` and `docs/audits/2026-10-16/frontend.md`. **7 open tasks, ~19h.** 34 done.
 
 - [x] T118 — Recording a payment updates the invoice balance and status ✓ (2026-10-16)
 - [x] T119 — Stripe Checkout charges the true balance due ✓ (2026-10-16)
@@ -462,10 +507,16 @@ Money flows that are wired but broken (payments don't update invoices, reminders
 - [ ] T242 — PDF header/footer files are deleted before wkhtmltopdf reads them
 - [ ] T243 — A/R aging CSV export: proper CSV writer + formula neutralisation
 - [ ] T244 — Handle the discarded GORM .Error results
+- [ ] T256 — SMS and storage refuse mock providers in production; SMS off
+- [ ] T257 — Dashboard numbers right: add /invoices/stats, fix job and customer stats shapes, delete dead API calls
+- [ ] T259 — Hide unfinished settings and screens (account security, business hours, export jobs)
+- [ ] T260 — Remove the wkhtmltopdf/raymond export path; gofpdf renders every PDF
+- [ ] T263 — Additive migration dropping 7 unused tables
+- [ ] T267 — One job status machine; remove the duplicate per-action job endpoints
 
 #### T241 — CSV imports are queued but never processed
 
-**Phase**: 2 · **Category**: Bug · **Hours**: 3 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T102
+**Phase**: 2 · **Category**: Bug · **Hours**: 3 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: T102
 
 **What it is** — An uploaded import actually runs and reports per-row results.
 
@@ -479,7 +530,7 @@ Money flows that are wired but broken (payments don't update invoices, reminders
 
 #### T242 — PDF header/footer files are deleted before wkhtmltopdf reads them
 
-**Phase**: 2 · **Category**: Bug · **Hours**: 1 · **Status**: Open · **v1 Gate**: No · **Depends on**: none
+**Phase**: 2 · **Category**: Bug · **Hours**: 1 · **Status**: Won't Do · **MVP Gate**: No · **Depends on**: none
 
 **What it is** — Export PDFs get their header/footer (page numbers).
 
@@ -487,13 +538,13 @@ Money flows that are wired but broken (payments don't update invoices, reminders
 
 **Why we need it** — Export PDFs silently lose page-number footers.
 
-**Notes** — Found during T129 (2026-10-16).
+**Notes** — Found during T129 (2026-10-16). **Won't Do 2026-10-25** — superseded by T260, which removes the wkhtmltopdf export path (D13).
 
 ---
 
 #### T243 — A/R aging CSV export: proper CSV writer + formula neutralisation
 
-**Phase**: 2 · **Category**: Security · **Hours**: 1 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T112
+**Phase**: 2 · **Category**: Security · **Hours**: 1 · **Status**: Deferred · **MVP Gate**: No · **Depends on**: T112
 
 **What it is** — The A/R aging export is valid CSV and safe to open in Excel.
 
@@ -501,13 +552,13 @@ Money flows that are wired but broken (payments don't update invoices, reminders
 
 **Why we need it** — Formula injection (T112) is still open on this one export.
 
-**Notes** — Found during T129 (2026-10-16).
+**Notes** — Found during T129 (2026-10-16). **Deferred 2026-10-25 (MVP plan)** — moved out of the launch gate by the MVP re-scope (`docs/product/mvp-plan-2026-10.md`). Revisit after paid launch (V1), or earlier if design partners ask for it.
 
 ---
 
 #### T244 — Handle the discarded GORM .Error results
 
-**Phase**: 2 · **Category**: Bug · **Hours**: 3 · **Status**: Open · **v1 Gate**: No · **Depends on**: none
+**Phase**: 2 · **Category**: Bug · **Hours**: 3 · **Status**: Deferred · **MVP Gate**: No · **Depends on**: none
 
 **What it is** — No database write silently fails.
 
@@ -515,13 +566,97 @@ Money flows that are wired but broken (payments don't update invoices, reminders
 
 **Why we need it** — A failed write currently reports success.
 
-**Notes** — Left over from T129 (2026-10-16).
+**Notes** — Left over from T129 (2026-10-16). **Deferred 2026-10-25 (MVP plan)** — moved out of the launch gate by the MVP re-scope (`docs/product/mvp-plan-2026-10.md`). Revisit after paid launch (V1), or earlier if design partners ask for it.
+
+---
+
+#### T256 — SMS and storage refuse mock providers in production; SMS off
+
+**Phase**: 2 · **Category**: Security · **Hours**: 2 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: none
+
+**What it is** — Production never pretends a text was sent or a file was stored.
+
+**What it does** — Same rule as the email factory: in production, the storage factory fails startup without real object storage (R2, T160), and the SMS factory returns a typed `sms_disabled` error instead of the mock (nothing recorded as sent). The SMS mock stops logging phone numbers and message bodies. SMS stays off in production until OD-6/T049 (OD-12).
+
+**Why we need it** — Today texts are recorded as sent and uploaded files vanish on restart (launch blocker 3); the mock logs PII.
+
+**Notes** — Technical Requirements N2; D11. Added 2026-10-25 from the MVP plan (`docs/product/mvp-plan-2026-10.md`).
+
+---
+
+#### T257 — Dashboard numbers right: add /invoices/stats, fix job and customer stats shapes, delete dead API calls
+
+**Phase**: 2 · **Category**: Bug · **Hours**: 3 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: none
+
+**What it is** — The dashboard shows real outstanding money and active jobs.
+
+**What it does** — Add `GET /invoices/stats` (outstanding, overdue, collected this month; tenant-scoped; registered before `/invoices/:id`, which currently swallows the call with a 400); make `GET /jobs/stats` return the fields the UI reads (`in_progress_jobs`, `scheduled_jobs`, `pending_jobs`) or change the UI to read `by_status`; add `active_customers` to `GET /customers/stats`; delete the ~13 calls in `services/roleApi.ts` to endpoints that never existed and the `PUT /users/:id` call. Swag annotations + `make docs`; tests.
+
+**Why we need it** — The dashboard always shows $0 outstanding and 0 active jobs (launch blocker 5).
+
+**Notes** — Technical Requirements N3. Added 2026-10-25 from the MVP plan (`docs/product/mvp-plan-2026-10.md`).
+
+---
+
+#### T259 — Hide unfinished settings and screens (account security, business hours, export jobs)
+
+**Phase**: 2 · **Category**: UX · **Hours**: 3 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: none
+
+**What it is** — Nothing in the UI looks like it works when it doesn't.
+
+**What it does** — Hide the account-settings password, notification and 2FA controls (they do nothing) until Neon Auth supplies them (T158); hide the "coming soon" business-hours setting (nothing reads it); turn off the 9 export-job routes (backend only, no screen) — report CSV downloads stay.
+
+**Why we need it** — Dead buttons break trust with the first design partners.
+
+**Notes** — Technical Requirements N5; MVP proposal feature table (Hide rows). Added 2026-10-25 from the MVP plan (`docs/product/mvp-plan-2026-10.md`).
+
+---
+
+#### T260 — Remove the wkhtmltopdf/raymond export path; gofpdf renders every PDF
+
+**Phase**: 2 · **Category**: Cleanup · **Hours**: 3 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: none
+
+**What it is** — One PDF engine.
+
+**What it does** — Delete the wkhtmltopdf export engine (binary isn't in the production image; project archived 2023) and the raymond template path; export PDFs use gofpdf like quotes, invoices and receipts; drop the dependencies.
+
+**Why we need it** — The second engine fails in production (D13).
+
+**Notes** — Technical Requirements N6; D13. Supersedes T242. Added 2026-10-25 from the MVP plan (`docs/product/mvp-plan-2026-10.md`).
+
+---
+
+#### T263 — Additive migration dropping 7 unused tables
+
+**Phase**: 2 · **Category**: DB · **Hours**: 2 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: T266
+
+**What it is** — The schema only holds tables the code uses.
+
+**What it does** — A new migration drops `subscription_plans`, `plan_features`, `analytics.aggregated_metrics`, `revenue_alerts`, `schedule_exceptions`, `holidays` (seeded with 2025 dates) and `customer_segments` with `IF EXISTS`, after confirming no Go references; the down migration recreates them empty; update the dev seed.
+
+**Why we need it** — Dead schema misleads agents and adds work to RLS (T154).
+
+**Notes** — Technical Requirements N9. Never edit the 000001 baseline. Added 2026-10-25 from the MVP plan (`docs/product/mvp-plan-2026-10.md`).
+
+---
+
+#### T267 — One job status machine; remove the duplicate per-action job endpoints
+
+**Phase**: 2 · **Category**: Cleanup · **Hours**: 3 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: none
+
+**What it is** — Job status rules live in one place.
+
+**What it does** — Keep the backend state machine and `POST /jobs/:id/transition` (what the UI uses); remove the start/complete/cancel/hold/resume duplicates; the frontend reads allowed transitions from the API instead of its own copy. Swag + `make docs`.
+
+**Why we need it** — Two copies of the rules drift (MVP proposal: Jobs → Simplify).
+
+**Notes** — MVP proposal feature table; Technical Requirements "API surface". Added 2026-10-25 from the MVP plan (`docs/product/mvp-plan-2026-10.md`).
 
 ---
 
 ### Phase 3 — Platform & Delivery (T101, T139, T140, T141, T142, T143, T144, T145, T146, T147, T148, T149, T150, T151, T152, T245, T247, T250)
 
-Migrations, versioning, CI, the release pipeline and the edge setup — League Looper's delivery pattern applied to ServicePro. From `docs/audits/2026-10-16/infra.md`. Deploy jobs stay skipped until Phase 14 provisions GCP. **2 open tasks, ~5h.** 15 done.
+Migrations, versioning, CI, the release pipeline and the edge setup — League Looper's delivery pattern applied to ServicePro. From `docs/audits/2026-10-16/infra.md`. Deploy jobs run on `v*` tags since GCP was provisioned (T203, 2026-10-24). **1 open task, ~3h.** 15 done.
 
 - [x] T139 — golang-migrate baseline (000001), cmd/migrate, dev-only startup migrations ✓ (2026-10-16)
 - [x] T140 — /version endpoint and schema-aware readiness ✓ (2026-10-16)
@@ -544,7 +679,7 @@ Migrations, versioning, CI, the release pipeline and the edge setup — League L
 
 #### T101 — Upload source maps to Sentry for production builds
 
-**Phase**: 3 · **Category**: Monitoring · **Hours**: 2 · **Status**: Open · **v1 Gate**: No · **Depends on**: T146
+**Phase**: 3 · **Category**: Monitoring · **Hours**: 2 · **Status**: Deferred · **MVP Gate**: No · **Depends on**: T146
 
 **What it is** — Production frontend errors in Sentry show original file and line instead of minified code.
 
@@ -552,13 +687,13 @@ Migrations, versioning, CI, the release pipeline and the edge setup — League L
 
 **Why we need it** — Minified stack traces make frontend errors from real users hard to act on.
 
-**Notes** — Old task (P2, Feb 2026). GlitchTip stays for local dev; production is Sentry SaaS. infra audit §5 CHANGE `vite.config.ts`.
+**Notes** — Old task (P2, Feb 2026). GlitchTip stays for local dev; production is Sentry SaaS. infra audit §5 CHANGE `vite.config.ts`. **Deferred 2026-10-25 (MVP plan)** — moved out of the launch gate by the MVP re-scope (`docs/product/mvp-plan-2026-10.md`). Revisit after paid launch (V1), or earlier if design partners ask for it.
 
 ---
 
 #### T247 — Move S3 uploads from the deprecated feature/s3/manager to feature/s3/transfermanager
 
-**Phase**: 3 · **Category**: Platform · **Hours**: 3 · **Status**: Open · **v1 Gate**: No · **Depends on**: none
+**Phase**: 3 · **Category**: Platform · **Hours**: 3 · **Status**: Open · **MVP Gate**: No · **Depends on**: none
 
 **What it is** — Object storage uploads use the AWS SDK's supported transfer manager instead of the deprecated `manager.Uploader`.
 
@@ -570,9 +705,9 @@ Migrations, versioning, CI, the release pipeline and the edge setup — League L
 
 ---
 
-### Phase 4 — Stack Convergence (LL parity; incremental) (T153, T154, T155, T156, T157, T158, T159, T160, T161, T162, T163, T164, T165, T166, T248, T249)
+### Phase 4 — Stack Convergence (LL parity; incremental) (T153, T154, T155, T156, T157, T158, T159, T160, T161, T162, T163, T164, T165, T166, T248, T249, T264)
 
-D2: move to League Looper's stack one strangler step at a time while the app keeps working. Gating subset: the repository/tenant boundary, RLS, Neon Auth (managed Better Auth), Resend, R2 and production Redis must be on the target stack before real customers; the chi and pgx ports are not gating. **15 open tasks, ~357h.** 1 done.
+D2: move to League Looper's stack one strangler step at a time while the app keeps working. MVP subset (D12, 2026-10-25): Neon Auth (T158), Resend only (T159), R2 (T160) and the RLS backstop (T154), plus the stripe-go upgrade (T264). The repository refactor, chi, pgx/sqlc, GORM removal and TanStack Query ports (T153, T155–T157, T162) are frozen until the month-6 checkpoint. **11 open tasks, ~113h.** 1 done.
 
 - [x] T164 — React 19, React Router 7, Vite major, ESLint 9, Headless UI 2 ✓ (2026-10-18)
 - [ ] T153 — Repositories take ctx + tenantID; services stop taking *gorm.DB; transaction manager
@@ -590,10 +725,11 @@ D2: move to League Looper's stack one strangler step at a time while the app kee
 - [ ] T166 — Decide money representation (decimal vs integer cents) before the pgx port
 - [ ] T248 — Upgrade @sentry/react to 11 with an explicit data-collection config
 - [ ] T249 — Drop Vite's legacy.inconsistentCjsInterop flag and ready the config for Vite's native loader
+- [ ] T264 — Upgrade stripe-go v76 → v87; replace archived nfnt/resize
 
 #### T153 — Repositories take ctx + tenantID; services stop taking *gorm.DB; transaction manager
 
-**Phase**: 4 · **Category**: Backend · **Hours**: 24 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T102
+**Phase**: 4 · **Category**: Backend · **Hours**: 24 · **Status**: Deferred · **MVP Gate**: No · **Depends on**: T102
 
 **What it is** — Every data access goes through a repository method that takes `context.Context` and the tenant ID, and multi-step writes run through one `TxManager`.
 
@@ -601,13 +737,13 @@ D2: move to League Looper's stack one strangler step at a time while the app kee
 
 **Why we need it** — It's the boundary everything after depends on: tenant filtering can't be forgotten, request cancellation propagates, the transactions needed by T118/T225/T226 have one shape, RLS (T154) needs a per-transaction hook, and the pgx port (T156) can happen one repository at a time behind it.
 
-**Notes** — correctness audit §8 "Is there a repository boundary already?" and "Suggested sequencing" step 2. D2, D5. Much smaller after T129 deletes the dead repositories and services — do that first if time allows.
+**Notes** — correctness audit §8 "Is there a repository boundary already?" and "Suggested sequencing" step 2. D2, D5. Much smaller after T129 deletes the dead repositories and services — do that first if time allows. **Frozen 2026-10-25 (D12)** — stack port paused until the month-6 checkpoint after paid launch (D8). Revisit then; nothing in the MVP depends on it.
 
 ---
 
 #### T154 — Postgres RLS backstop keyed on a per-transaction tenant GUC + isolation tests
 
-**Phase**: 4 · **Category**: Security · **Hours**: 12 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T153, T139
+**Phase**: 4 · **Category**: Security · **Hours**: 12 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: T153, T139
 
 **What it is** — Postgres itself refuses to return or modify another tenant's rows, even if application code forgets a filter.
 
@@ -615,13 +751,13 @@ D2: move to League Looper's stack one strangler step at a time while the app kee
 
 **Why we need it** — Defence in depth for the bug class that F-3 showed is catastrophic here; it's how League Looper is set up.
 
-**Notes** — security audit F-3 "Defence in depth"; D5. As a migration (T139), not an edit to the baseline.
+**Notes** — security audit F-3 "Defence in depth"; D5. As a migration (T139), not an edit to the baseline. MVP plan (2026-10-25): stays in the MVP (D12) — the RLS backstop is not frozen.
 
 ---
 
 #### T155 — Gin → chi
 
-**Phase**: 4 · **Category**: Backend · **Hours**: 40 · **Status**: Open · **v1 Gate**: No · **Depends on**: T129
+**Phase**: 4 · **Category**: Backend · **Hours**: 40 · **Status**: Deferred · **MVP Gate**: No · **Depends on**: T129
 
 **What it is** — The HTTP layer runs on chi and `net/http` handlers instead of Gin.
 
@@ -629,13 +765,13 @@ D2: move to League Looper's stack one strangler step at a time while the app kee
 
 **Why we need it** — LL parity (D2) and no Gin-specific traps (`ShouldBindJSON` ignoring Content-Type, `ClientIP` proxy trust). Not gating: the security fixes land on Gin first.
 
-**Notes** — correctness audit §8 coupling counts and estimate (4–6 days; ~30% less after T129).
+**Notes** — correctness audit §8 coupling counts and estimate (4–6 days; ~30% less after T129). **Frozen 2026-10-25 (D12)** — stack port paused until the month-6 checkpoint after paid launch (D8). Revisit then; nothing in the MVP depends on it.
 
 ---
 
 #### T156 — GORM → pgx/sqlc, one repository at a time
 
-**Phase**: 4 · **Category**: Backend · **Hours**: 120 · **Status**: Open · **v1 Gate**: No · **Depends on**: T153, T166
+**Phase**: 4 · **Category**: Backend · **Hours**: 120 · **Status**: Deferred · **MVP Gate**: No · **Depends on**: T153, T166
 
 **What it is** — Repositories use pgx with sqlc-generated queries instead of GORM, ported incrementally behind the T153 interfaces.
 
@@ -643,13 +779,13 @@ D2: move to League Looper's stack one strangler step at a time while the app kee
 
 **Why we need it** — GORM hides the bugs the audit found (association saves resetting FKs, `default:true` flips, discarded errors) and blocks LL parity (D2).
 
-**Notes** — correctness audit §8 (3–5 weeks estimate, sequencing step 4). Keep pgx at ≥ v5.9.2 (T117).
+**Notes** — correctness audit §8 (3–5 weeks estimate, sequencing step 4). Keep pgx at ≥ v5.9.2 (T117). **Frozen 2026-10-25 (D12)** — stack port paused until the month-6 checkpoint after paid launch (D8). Revisit then; nothing in the MVP depends on it.
 
 ---
 
 #### T157 — Drop GORM and sqlite; backend tests on Postgres via testcontainers
 
-**Phase**: 4 · **Category**: Testing · **Hours**: 16 · **Status**: Open · **v1 Gate**: No · **Depends on**: T156
+**Phase**: 4 · **Category**: Testing · **Hours**: 16 · **Status**: Deferred · **MVP Gate**: No · **Depends on**: T156
 
 **What it is** — No GORM or sqlite left in the module, and backend tests run against real Postgres, including end-to-end tests of the critical workflows.
 
@@ -657,13 +793,13 @@ D2: move to League Looper's stack one strangler step at a time while the app kee
 
 **Why we need it** — sqlite + AutoMigrate tests can't catch the Postgres-only bugs the audit found (missing functions, enum NOT NULL, ambiguous columns).
 
-**Notes** — Folds in old P1 "Integration Tests for Critical Workflows" (backend list), old P2 "Email Service Tests" and "Stripe/Payment Flow Tests", and drops "Target 80% Backend Test Coverage" as a metric in favour of these flows. correctness audit §8 step 5.
+**Notes** — Folds in old P1 "Integration Tests for Critical Workflows" (backend list), old P2 "Email Service Tests" and "Stripe/Payment Flow Tests", and drops "Target 80% Backend Test Coverage" as a metric in favour of these flows. correctness audit §8 step 5. **Frozen 2026-10-25 (D12)** — stack port paused until the month-6 checkpoint after paid launch (D8). Revisit then; nothing in the MVP depends on it.
 
 ---
 
 #### T158 — Neon Auth (managed Better Auth): own sign-in screens, JWKS verification, users.auth_user_id, invite flow
 
-**Phase**: 4 · **Category**: Auth · **Hours**: 40 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T202, T153
+**Phase**: 4 · **Category**: Auth · **Hours**: 40 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: T202, T153
 
 **What it is** — Authentication moves to Neon's managed Better Auth (Neon Auth) while ServicePro keeps its own `users` table (keyed by `auth_user_id`), its own sign-in screens and its invite-only rules.
 
@@ -671,13 +807,13 @@ D2: move to League Looper's stack one strangler step at a time while the app kee
 
 **Why we need it** — D2: one auth system across the fleet, no in-house password and token code to keep secure, and Google sign-in/MFA for free.
 
-**Notes** — frontend audit §6 "Supabase Auth client" (3–5 days frontend; check where the Better Auth client keeps the session — no regression vs today's httpOnly cookies without deciding it knowingly). LL `docs/auth-migration.md` is still a useful reference for the shape (own `users` table, JWKS middleware, invite rules). 2026-10-19: provider decided — Neon's managed Better Auth (OD-9), replacing Supabase Auth from D2. Managed means some Better Auth server settings are fixed by Neon; confirm email+password sign-in and the Organization plugin fit before building, and keep tenants/memberships in our own tables either way. Backups must include the `neon_auth` schema (T151). Each Neon branch has its own auth environment, so preview/CI branches can test sign-in safely. **Progress 2026-10-24 (step 1 of the backend half):** `users.auth_user_id` (migration 000002); `pkg/auth/neonauth` verifier (EdDSA via cached JWKS, iss/aud = Neon Auth origin, exp required, banned rejected); `RequireAuth` accepts Neon Auth bearer tokens for linked users next to the API's own JWTs, on when `NEON_AUTH_BASE_URL` is set; rate limiter keys Neon callers by `sub`. Verified live on the Neon `dev` branch (real token 200, tampered 401). **Step 2 done 2026-10-24:** `POST /api/v1/auth/neon/provision` — an unlinked Neon sign-in (RequireAuth → 401 `account_not_linked`) links the existing user with the same email or creates one only via invitation/invite code; requires a **verified** Neon email (Neon allows unverified sign-ups — linking by email otherwise is an account takeover). Verified live on Neon `dev`. Next: the frontend sign-in screens on `@neondatabase/auth` (email verification code step included), then retiring the in-house JWT/password code.
+**Notes** — frontend audit §6 "Supabase Auth client" (3–5 days frontend; check where the Better Auth client keeps the session — no regression vs today's httpOnly cookies without deciding it knowingly). LL `docs/auth-migration.md` is still a useful reference for the shape (own `users` table, JWKS middleware, invite rules). 2026-10-19: provider decided — Neon's managed Better Auth (OD-9), replacing Supabase Auth from D2. Managed means some Better Auth server settings are fixed by Neon; confirm email+password sign-in and the Organization plugin fit before building, and keep tenants/memberships in our own tables either way. Backups must include the `neon_auth` schema (T151). Each Neon branch has its own auth environment, so preview/CI branches can test sign-in safely. **Progress 2026-10-24 (step 1 of the backend half):** `users.auth_user_id` (migration 000002); `pkg/auth/neonauth` verifier (EdDSA via cached JWKS, iss/aud = Neon Auth origin, exp required, banned rejected); `RequireAuth` accepts Neon Auth bearer tokens for linked users next to the API's own JWTs, on when `NEON_AUTH_BASE_URL` is set; rate limiter keys Neon callers by `sub`. Verified live on the Neon `dev` branch (real token 200, tampered 401). **Step 2 done 2026-10-24:** `POST /api/v1/auth/neon/provision` — an unlinked Neon sign-in (RequireAuth → 401 `account_not_linked`) links the existing user with the same email or creates one only via invitation/invite code; requires a **verified** Neon email (Neon allows unverified sign-ups — linking by email otherwise is an account takeover). Verified live on Neon `dev`. Next: the frontend sign-in screens on `@neondatabase/auth` (email verification code step included), then retiring the in-house JWT/password code. MVP plan (2026-10-25): backend half done (JWKS verification, `users.auth_user_id`, `POST /auth/neon/provision`); ~24h left — SPA sign-in/sign-up/reset/invite screens on Neon Auth, retire own JWT login/refresh/bcrypt and the default `JWT_SECRET`, Neon production checklist (Resend as sender, trusted domain, localhost off). Linking by email must stay invite-gated and verified-email-only.
 
 ---
 
 #### T159 — Email → Resend only (remove SES/SNS/CloudWatch and the AWS email SDKs)
 
-**Phase**: 4 · **Category**: Email · **Hours**: 6 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T113
+**Phase**: 4 · **Category**: Email · **Hours**: 6 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: T113
 
 **What it is** — Resend is the only email provider (Mailpit/SMTP for local dev), with bounce/complaint webhooks and retries.
 
@@ -685,13 +821,13 @@ D2: move to League Looper's stack one strangler step at a time while the app kee
 
 **Why we need it** — SES is configured by accident (default env) and unused; one provider means one set of webhooks, one domain setup (T206) and fewer vulnerable modules.
 
-**Notes** — correctness audit §2 "Resend migration notes", §5.5 step 3. Folds in old P1 "Email Retry Logic with Exponential Backoff"; the old "Email Client Enhancements" (SES) section is dropped.
+**Notes** — correctness audit §2 "Resend migration notes", §5.5 step 3. Folds in old P1 "Email Retry Logic with Exponential Backoff"; the old "Email Client Enhancements" (SES) section is dropped. MVP plan (2026-10-25): also remove the AWS SES defaults (`AWS_REGION`, `AWS_SES_FROM_EMAIL=noreply@servicepro.com`) that make SES look configured and defeat the email guard. Move Resend to Pro ($20/mo, 100/day cap on Free) before the design-partner beta.
 
 ---
 
 #### T160 — Storage → Cloudflare R2 (fix presign host rewrite)
 
-**Phase**: 4 · **Category**: Infra · **Hours**: 4 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T113
+**Phase**: 4 · **Category**: Infra · **Hours**: 4 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: T113
 
 **What it is** — Files (PDFs, avatars, job photos, exports) live in R2, and presigned links work.
 
@@ -699,13 +835,13 @@ D2: move to League Looper's stack one strangler step at a time while the app kee
 
 **Why we need it** — Following `.env.example` today breaks every invoice and quote PDF link (`document_pdf_service.go:250`).
 
-**Notes** — correctness audit §2 "R2 migration notes". D2. Drops the old "Storage Client Enhancements" section except MIME/size validation, folded here.
+**Notes** — correctness audit §2 "R2 migration notes". D2. Drops the old "Storage Client Enhancements" section except MIME/size validation, folded here. MVP plan (2026-10-25): the uploads bucket isn't created yet; production must refuse the in-memory mock (T256).
 
 ---
 
 #### T161 — Production Redis: Upstash for rate limits/lockout/cache, or move them to Postgres
 
-**Phase**: 4 · **Category**: Infra · **Hours**: 4 · **Status**: Open · **v1 Gate**: No · **Depends on**: T142
+**Phase**: 4 · **Category**: Infra · **Hours**: 4 · **Status**: Open · **MVP Gate**: No · **Depends on**: T142
 
 **What it is** — A decided, working production setup for whatever still uses Redis after T142.
 
@@ -719,7 +855,7 @@ D2: move to League Looper's stack one strangler step at a time while the app kee
 
 #### T162 — Frontend server state → TanStack Query v5 (~26 pages)
 
-**Phase**: 4 · **Category**: Frontend · **Hours**: 48 · **Status**: Open · **v1 Gate**: No · **Depends on**: T137
+**Phase**: 4 · **Category**: Frontend · **Hours**: 48 · **Status**: Deferred · **MVP Gate**: No · **Depends on**: T137
 
 **What it is** — All server data on live pages comes from `useQuery`/`useMutation` with tenant-scoped key factories; Zustand holds only UI and session state.
 
@@ -727,13 +863,13 @@ D2: move to League Looper's stack one strangler step at a time while the app kee
 
 **Why we need it** — Fixes errors-as-empty-states, double requests and out-of-order responses (3.5, 3.7) at the root and matches LL (D2).
 
-**Notes** — frontend audit §6 (5–8 days). Today React Query is installed but used almost only by dead code. 2026-10-18: when a page moves, delete its setState-in-useEffect loader; once the last one goes, turn `react-hooks/set-state-in-effect` back on in `frontend/eslint.config.mjs` (off since T164: 41 violations in 28 files).
+**Notes** — frontend audit §6 (5–8 days). Today React Query is installed but used almost only by dead code. 2026-10-18: when a page moves, delete its setState-in-useEffect loader; once the last one goes, turn `react-hooks/set-state-in-effect` back on in `frontend/eslint.config.mjs` (off since T164: 41 violations in 28 files). **Frozen 2026-10-25 (D12)** — stack port paused until the month-6 checkpoint after paid launch (D8). Revisit then; nothing in the MVP depends on it.
 
 ---
 
 #### T163 — Tailwind v4 + semantic theme tokens + dark mode
 
-**Phase**: 4 · **Category**: Frontend · **Hours**: 32 · **Status**: Open · **v1 Gate**: No · **Depends on**: T137, T164
+**Phase**: 4 · **Category**: Frontend · **Hours**: 32 · **Status**: Open · **MVP Gate**: No · **Depends on**: T137, T164
 
 **What it is** — Styling uses Tailwind v4 with ~15 semantic CSS-variable tokens defined in one file, switching light/dark from `prefers-color-scheme` or `[data-theme]`.
 
@@ -747,7 +883,7 @@ D2: move to League Looper's stack one strangler step at a time while the app kee
 
 #### T165 — Better Stack uptime/status + PostHog server-side events parity
 
-**Phase**: 4 · **Category**: Monitoring · **Hours**: 4 · **Status**: Open · **v1 Gate**: No · **Depends on**: T204
+**Phase**: 4 · **Category**: Monitoring · **Hours**: 4 · **Status**: Open · **MVP Gate**: No · **Depends on**: T204
 
 **What it is** — External uptime checks on the user path and the API, a public status page, and server-side PostHog events for the business milestones.
 
@@ -761,7 +897,7 @@ D2: move to League Looper's stack one strangler step at a time while the app kee
 
 #### T166 — Decide money representation (decimal vs integer cents) before the pgx port
 
-**Phase**: 4 · **Category**: Research · **Hours**: 2 · **Status**: Open · **v1 Gate**: No · **Depends on**: none
+**Phase**: 4 · **Category**: Research · **Hours**: 2 · **Status**: Open · **MVP Gate**: No · **Depends on**: none
 
 **What it is** — A recorded decision (new D-item) on how money is stored and passed — shopspring decimal as today, or integer cents (the Travelify rule) — with a conversion plan.
 
@@ -775,7 +911,7 @@ D2: move to League Looper's stack one strangler step at a time while the app kee
 
 #### T248 — Upgrade @sentry/react to 11 with an explicit data-collection config
 
-**Phase**: 4 · **Category**: Monitoring · **Hours**: 3 · **Status**: Open · **v1 Gate**: No · **Depends on**: none
+**Phase**: 4 · **Category**: Monitoring · **Hours**: 3 · **Status**: Open · **MVP Gate**: No · **Depends on**: none
 
 **What it is** — The frontend is on the current Sentry SDK, and what it collects is a written decision instead of the SDK default.
 
@@ -789,7 +925,7 @@ D2: move to League Looper's stack one strangler step at a time while the app kee
 
 #### T249 — Drop Vite's legacy.inconsistentCjsInterop flag and ready the config for Vite's native loader
 
-**Phase**: 4 · **Category**: Frontend · **Hours**: 2 · **Status**: Open · **v1 Gate**: No · **Depends on**: none
+**Phase**: 4 · **Category**: Frontend · **Hours**: 2 · **Status**: Open · **MVP Gate**: No · **Depends on**: none
 
 **What it is** — The Vite 8 build no longer relies on the legacy CommonJS default-import behaviour, and `vite.config.ts` loads under Vite's native config loader.
 
@@ -798,6 +934,20 @@ D2: move to League Looper's stack one strangler step at a time while the app kee
 **Why we need it** — The flag is a migration crutch Vite will remove; when it goes, the calendar breaks only in production builds.
 
 **Notes** — Follow-up from the Vite 8 upgrade (T164, 2026-10-18).
+
+---
+
+#### T264 — Upgrade stripe-go v76 → v87; replace archived nfnt/resize
+
+**Phase**: 4 · **Category**: Backend · **Hours**: 4 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: none
+
+**What it is** — Current Stripe SDK and no archived image library.
+
+**What it does** — Bump `stripe-go` to v87 (Accounts v2 support, D9) and fix API changes and the webhook API version; replace `nfnt/resize` with `golang.org/x/image/draw`. Commit as `deps(go):`.
+
+**Why we need it** — Connect on Accounts v2 needs a current SDK (T169).
+
+**Notes** — Technical Requirements N10. Added 2026-10-25 from the MVP plan (`docs/product/mvp-plan-2026-10.md`).
 
 ---
 
@@ -828,7 +978,7 @@ The quote → job → invoice loop, roles for field and office staff, recurring 
 
 #### T028 — Add "Convert Quote to Job" button
 
-**Phase**: 5 · **Category**: Feature · **Hours**: 3 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T224
+**Phase**: 5 · **Category**: Feature · **Hours**: 3 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: T224
 
 **What it is** — One-click conversion from an accepted quote to a job ready to schedule.
 
@@ -842,7 +992,7 @@ The quote → job → invoice loop, roles for field and office staff, recurring 
 
 #### T029 — Add "Generate Invoice from Job" button
 
-**Phase**: 5 · **Category**: Feature · **Hours**: 2 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T225, T124
+**Phase**: 5 · **Category**: Feature · **Hours**: 2 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: T225, T124
 
 **What it is** — One-click invoice generation from a completed job.
 
@@ -856,7 +1006,7 @@ The quote → job → invoice loop, roles for field and office staff, recurring 
 
 #### T030 — Auto-populate invoice from job data
 
-**Phase**: 5 · **Category**: Feature · **Hours**: 4 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T029
+**Phase**: 5 · **Category**: Feature · **Hours**: 4 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: T029
 
 **What it is** — The invoice generated from a job already contains the labor, materials, notes and photo links the tech recorded.
 
@@ -870,7 +1020,7 @@ The quote → job → invoice loop, roles for field and office staff, recurring 
 
 #### T033 — Add "Jobs Needing Invoice" dashboard widget
 
-**Phase**: 5 · **Category**: Reporting · **Hours**: 2 · **Status**: Open · **v1 Gate**: No · **Depends on**: T029
+**Phase**: 5 · **Category**: Reporting · **Hours**: 2 · **Status**: Open · **MVP Gate**: No · **Depends on**: T029
 
 **What it is** — A dashboard count and list of completed jobs without an invoice.
 
@@ -884,7 +1034,7 @@ The quote → job → invoice loop, roles for field and office staff, recurring 
 
 #### T035 — Create Technician role
 
-**Phase**: 5 · **Category**: Auth · **Hours**: 4 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T104
+**Phase**: 5 · **Category**: Auth · **Hours**: 4 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: T104
 
 **What it is** — A role for field workers that sees and updates only their own assigned jobs and never sees customer financials.
 
@@ -892,13 +1042,13 @@ The quote → job → invoice loop, roles for field and office staff, recurring 
 
 **Why we need it** — Techs need their jobs, notes, photos and status buttons in the field (T173), but owners won't hand them "customer owes $5,000".
 
-**Notes** — Old task (Feb 2026 TODO P0 "Roles – Critical"). Acceptance: role created with correct permissions; financial data hidden; tech sees only their assignments. Per-tenant permission evaluation (T104) must land first or the role leaks across tenants.
+**Notes** — Old task (Feb 2026 TODO P0 "Roles – Critical"). Acceptance: role created with correct permissions; financial data hidden; tech sees only their assignments. Per-tenant permission evaluation (T104) must land first or the role leaks across tenants. MVP plan (2026-10-25): tenants see three roles — Owner (admin), Office manager (manager), Technician (new). Technicians see only their own schedule, checklists, photos and signatures; never prices, invoices or payments. The frontend drops its fallback permission map and reads `GET /tenants/:id/me` (T230). `user`/`guest` stay in the schema but aren't offered in the invite UI; the Roles page becomes a Team page.
 
 ---
 
 #### T041 — Implement quote auto follow-ups
 
-**Phase**: 5 · **Category**: Feature · **Hours**: 6 · **Status**: Open · **v1 Gate**: No · **Depends on**: T141, T159
+**Phase**: 5 · **Category**: Feature · **Hours**: 6 · **Status**: Open · **MVP Gate**: No · **Depends on**: T141, T159
 
 **What it is** — Automated follow-up messages for sent quotes that haven't been answered.
 
@@ -912,7 +1062,7 @@ The quote → job → invoice loop, roles for field and office staff, recurring 
 
 #### T042 — Build follow-up queue UI
 
-**Phase**: 5 · **Category**: UX · **Hours**: 4 · **Status**: Open · **v1 Gate**: No · **Depends on**: T062
+**Phase**: 5 · **Category**: UX · **Hours**: 4 · **Status**: Open · **MVP Gate**: No · **Depends on**: T062
 
 **What it is** — A list of quotes needing a manual follow-up today.
 
@@ -926,7 +1076,7 @@ The quote → job → invoice loop, roles for field and office staff, recurring 
 
 #### T051 — Implement quote follow-up email sequence
 
-**Phase**: 5 · **Category**: Email · **Hours**: 4 · **Status**: Open · **v1 Gate**: No · **Depends on**: T041, T072
+**Phase**: 5 · **Category**: Email · **Hours**: 4 · **Status**: Open · **MVP Gate**: No · **Depends on**: T041, T072
 
 **What it is** — The content and rules of the multi-touch quote follow-up sequence.
 
@@ -940,7 +1090,7 @@ The quote → job → invoice loop, roles for field and office staff, recurring 
 
 #### T052 — Create Dispatcher role
 
-**Phase**: 5 · **Category**: Auth · **Hours**: 3 · **Status**: Open · **v1 Gate**: No · **Depends on**: T104
+**Phase**: 5 · **Category**: Auth · **Hours**: 3 · **Status**: Open · **MVP Gate**: No · **Depends on**: T104
 
 **What it is** — A role for office staff who schedule and assign but don't see money.
 
@@ -954,7 +1104,7 @@ The quote → job → invoice loop, roles for field and office staff, recurring 
 
 #### T058 — Add required fields validation by job stage
 
-**Phase**: 5 · **Category**: Feature · **Hours**: 4 · **Status**: Open · **v1 Gate**: No · **Depends on**: T124
+**Phase**: 5 · **Category**: Feature · **Hours**: 4 · **Status**: Open · **MVP Gate**: No · **Depends on**: T124
 
 **What it is** — Configurable data that must exist before a job can move to a given status (e.g. completion requires notes, photos and time logged).
 
@@ -968,7 +1118,7 @@ The quote → job → invoice loop, roles for field and office staff, recurring 
 
 #### T060 — Create quote template system (good/better/best)
 
-**Phase**: 5 · **Category**: Feature · **Hours**: 8 · **Status**: Open · **v1 Gate**: No · **Depends on**: T168
+**Phase**: 5 · **Category**: Feature · **Hours**: 8 · **Status**: Open · **MVP Gate**: No · **Depends on**: T168
 
 **What it is** — Reusable quote templates with tiered options the customer chooses between.
 
@@ -982,7 +1132,7 @@ The quote → job → invoice loop, roles for field and office staff, recurring 
 
 #### T062 — Add quote aging tracking
 
-**Phase**: 5 · **Category**: Feature · **Hours**: 2 · **Status**: Open · **v1 Gate**: No · **Depends on**: none
+**Phase**: 5 · **Category**: Feature · **Hours**: 2 · **Status**: Open · **MVP Gate**: No · **Depends on**: none
 
 **What it is** — Every pending quote shows how long it has been waiting.
 
@@ -996,7 +1146,7 @@ The quote → job → invoice loop, roles for field and office staff, recurring 
 
 #### T076 — Add "Recreate Last Quote" button
 
-**Phase**: 5 · **Category**: Feature · **Hours**: 1 · **Status**: Open · **v1 Gate**: No · **Depends on**: none
+**Phase**: 5 · **Category**: Feature · **Hours**: 1 · **Status**: Open · **MVP Gate**: No · **Depends on**: none
 
 **What it is** — One click on the customer page clones that customer's most recent quote.
 
@@ -1010,7 +1160,7 @@ The quote → job → invoice loop, roles for field and office staff, recurring 
 
 #### T080 — Create terms & conditions templates
 
-**Phase**: 5 · **Category**: Feature · **Hours**: 3 · **Status**: Open · **v1 Gate**: No · **Depends on**: none
+**Phase**: 5 · **Category**: Feature · **Hours**: 3 · **Status**: Open · **MVP Gate**: No · **Depends on**: none
 
 **What it is** — Reusable legal text blocks selectable on quotes and invoices.
 
@@ -1024,7 +1174,7 @@ The quote → job → invoice loop, roles for field and office staff, recurring 
 
 #### T082 — Add "Create Quote from Job" button
 
-**Phase**: 5 · **Category**: Feature · **Hours**: 2 · **Status**: Open · **v1 Gate**: No · **Depends on**: none
+**Phase**: 5 · **Category**: Feature · **Hours**: 2 · **Status**: Open · **MVP Gate**: No · **Depends on**: none
 
 **What it is** — Generate a new quote from a job, e.g. "how much to replace the whole unit?" after a repair visit.
 
@@ -1038,7 +1188,7 @@ The quote → job → invoice loop, roles for field and office staff, recurring 
 
 #### T167 — Recurring service agreements UI wired to the recurrence engine
 
-**Phase**: 5 · **Category**: Feature · **Hours**: 12 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T141, T102
+**Phase**: 5 · **Category**: Feature · **Hours**: 12 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: T141, T102
 
 **What it is** — Customers can have service agreements (e.g. "nightly cleaning Mon–Fri", "quarterly HVAC PM") that generate jobs automatically, managed from the UI.
 
@@ -1046,13 +1196,13 @@ The quote → job → invoice loop, roles for field and office staff, recurring 
 
 **Why we need it** — Commercial cleaning and maintenance work is recurring by nature; recurring schedules are half of the lock-in moat.
 
-**Notes** — `docs/product/competitive-research-2026-10.md` §2 row 8, §4.2, §5 MVP #7; correctness audit 5.1, 7.L5. Autopay agreements are T191.
+**Notes** — `docs/product/competitive-research-2026-10.md` §2 row 8, §4.2, §5 MVP #7; correctness audit 5.1, 7.L5. Autopay agreements are T191. MVP plan (2026-10-25): "service agreements" — per site (T186), frequency, price, contact; an internal job generates visits (idempotent). Property tests for time zones, month ends and DST before agreements go live (builds on T133).
 
 ---
 
 #### T168 — Price book (services and materials catalog with flat-rate pricing)
 
-**Phase**: 5 · **Category**: Feature · **Hours**: 12 · **Status**: Open · **v1 Gate**: No · **Depends on**: none
+**Phase**: 5 · **Category**: Feature · **Hours**: 12 · **Status**: Open · **MVP Gate**: No · **Depends on**: none
 
 **What it is** — A per-tenant catalog of services and materials with unit, cost, flat-rate price and tax flag, picked into quotes, jobs and invoices.
 
@@ -1066,7 +1216,7 @@ The quote → job → invoice loop, roles for field and office staff, recurring 
 
 #### T235 — Tenant settings UI for currency, number prefixes, default payment term and tax rate; validate on save
 
-**Phase**: 5 · **Category**: Feature · **Hours**: 4 · **Status**: Open · **v1 Gate**: No · **Depends on**: T127, T237
+**Phase**: 5 · **Category**: Feature · **Hours**: 4 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: T127, T237
 
 **What it is** — Owners can set the business settings the backend now honours, and invalid values are rejected when saved.
 
@@ -1074,13 +1224,13 @@ The quote → job → invoice loop, roles for field and office staff, recurring 
 
 **Why we need it** — T127 made the backend read these settings, but there is no UI to set them, so every tenant is stuck on USD / INV- / no defaults.
 
-**Notes** — Follow-up from the T127 report (2026-10-16).
+**Notes** — Follow-up from the T127 report (2026-10-16). MVP plan (2026-10-25): part of the onboarding wizard — 1) your business (name, trade, techs, time zone), 2) how you bill (consolidated invoices, Net terms, flat tax rate, PO rule), 3) get paid (Connect onboarding T169, QuickBooks T192, import T193).
 
 ---
 
 #### T236 — Currency-aware money display in the UI, emails and PDFs
 
-**Phase**: 5 · **Category**: Feature · **Hours**: 3 · **Status**: Open · **v1 Gate**: No · **Depends on**: T127
+**Phase**: 5 · **Category**: Feature · **Hours**: 3 · **Status**: Open · **MVP Gate**: No · **Depends on**: T127
 
 **What it is** — Amounts show in the document's currency everywhere, not a hard-coded "$".
 
@@ -1094,7 +1244,7 @@ The quote → job → invoice loop, roles for field and office staff, recurring 
 
 #### T240 — Forms show the API's per-field validation errors
 
-**Phase**: 5 · **Category**: UX · **Hours**: 3 · **Status**: Open · **v1 Gate**: No · **Depends on**: T223
+**Phase**: 5 · **Category**: UX · **Hours**: 3 · **Status**: Open · **MVP Gate**: No · **Depends on**: T223
 
 **What it is** — When the API rejects a form, each problem appears next to its input.
 
@@ -1106,21 +1256,22 @@ The quote → job → invoice loop, roles for field and office staff, recurring 
 
 ---
 
-### Phase 6 — Payments to the Business (T061, T063, T083, T169, T170, T171, T172)
+### Phase 6 — Payments to the Business (T061, T063, T083, T169, T170, T171, T172, T261)
 
-Stripe Connect so tenants actually receive the money, ACH for B2B, deposits, autopay and in-person payments. **7 open tasks, ~72h.**
+Stripe Connect so tenants actually receive the money, ACH for B2B, deposits, autopay and in-person payments. **6 open tasks, ~61h.**
 
 - [ ] T061 — Add required deposit to accept quote
 - [ ] T063 — Add deposit tracking and application
 - [ ] T083 — Implement late fee calculation
-- [ ] T169 — Stripe Connect Express onboarding; invoice payments routed to the tenant
+- [ ] T169 — Stripe Connect (Accounts v2, direct charges); invoice payments routed to the tenant
 - [ ] T170 — Card + ACH invoice payments, ACH preferred for B2B
 - [ ] T171 — Saved payment methods + autopay
 - [ ] T172 — Tap to Pay via Stripe Terminal
+- [ ] T261 — Turn off invoice pay links until Stripe Connect ships
 
 #### T061 — Add required deposit to accept quote
 
-**Phase**: 6 · **Category**: Payments · **Hours**: 6 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T169, T183
+**Phase**: 6 · **Category**: Payments · **Hours**: 6 · **Status**: Deferred · **MVP Gate**: No · **Depends on**: T169, T183
 
 **What it is** — A quote can require a deposit (fixed amount or percentage), paid by the customer as part of accepting it.
 
@@ -1128,13 +1279,13 @@ Stripe Connect so tenants actually receive the money, ACH for B2B, deposits, aut
 
 **Why we need it** — Common for big jobs ("pay $200 to confirm") and secures commitment before materials are ordered.
 
-**Notes** — Old task (Feb 2026 TODO P2). Acceptance: configurable amount/percentage; acceptance triggers payment; deposit tracked separately.
+**Notes** — Old task (Feb 2026 TODO P2). Acceptance: configurable amount/percentage; acceptance triggers payment; deposit tracked separately. **Deferred 2026-10-25 (MVP plan)** — moved out of the launch gate by the MVP re-scope (`docs/product/mvp-plan-2026-10.md`). Revisit after paid launch (V1), or earlier if design partners ask for it.
 
 ---
 
 #### T063 — Add deposit tracking and application
 
-**Phase**: 6 · **Category**: Payments · **Hours**: 6 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T061, T118
+**Phase**: 6 · **Category**: Payments · **Hours**: 6 · **Status**: Deferred · **MVP Gate**: No · **Depends on**: T061, T118
 
 **What it is** — Deposits are tracked on the customer/quote and applied to the final invoice automatically.
 
@@ -1142,13 +1293,13 @@ Stripe Connect so tenants actually receive the money, ACH for B2B, deposits, aut
 
 **Why we need it** — Correct accounting for deposits and a clear invoice for the customer.
 
-**Notes** — Old task (Feb 2026 TODO P2). Acceptance: tracked separately; applied automatically; clear on the invoice.
+**Notes** — Old task (Feb 2026 TODO P2). Acceptance: tracked separately; applied automatically; clear on the invoice. **Deferred 2026-10-25 (MVP plan)** — moved out of the launch gate by the MVP re-scope (`docs/product/mvp-plan-2026-10.md`). Revisit after paid launch (V1), or earlier if design partners ask for it.
 
 ---
 
 #### T083 — Implement late fee calculation
 
-**Phase**: 6 · **Category**: Payments · **Hours**: 4 · **Status**: Open · **v1 Gate**: No · **Depends on**: T141
+**Phase**: 6 · **Category**: Payments · **Hours**: 4 · **Status**: Open · **MVP Gate**: No · **Depends on**: T141
 
 **What it is** — Automatic late fees on overdue invoices according to tenant rules.
 
@@ -1160,23 +1311,23 @@ Stripe Connect so tenants actually receive the money, ACH for B2B, deposits, aut
 
 ---
 
-#### T169 — Stripe Connect Express onboarding; invoice payments routed to the tenant
+#### T169 — Stripe Connect (Accounts v2, direct charges); invoice payments routed to the tenant
 
-**Phase**: 6 · **Category**: Payments · **Hours**: 24 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T105, T109, T118, T119
+**Phase**: 6 · **Category**: Payments · **Hours**: 24 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: T105, T109, T118, T119, T264
 
-**What it is** — Each tenant onboards a Stripe Connect Express account, and their customers' invoice payments go to that account, with ServicePro's platform fee taken automatically.
+**What it is** — Each tenant connects its own Stripe account (Accounts v2), and its customers' invoice payments are direct charges on that account, with ServicePro's application fee taken automatically.
 
-**What it does** — Onboarding via Account Links from org settings; `tenants.stripe_account_id` + capability status; `account.updated` webhook on a Connect endpoint. Invoice Checkout/PaymentIntents created for the connected account per the charge-model decision (OD-4: direct charges make the tenant merchant of record and liable for disputes; destination charges keep liability on the platform). `application_fee_amount` = platform fee (0.4% default, configurable per plan, T210). Replace the platform-account Checkout in `invoice_payment_service.go`. Payouts, disputes and refunds visible in the tenant's Express dashboard.
+**What it does** — Starts with a 4h test-mode spike: onboarding, a direct charge with `application_fee_amount`, ACH via the Payment Element, Stripe as fee and loss collector, refund/dispute flow against the tenant's balance; confirm stripe-go v87 (T264) supports v2 accounts. Then: onboarding link from org settings and the onboarding wizard's "Get paid" step (T235); a tenant-scoped connected-account record (account ID, capability status — never accepted from the client); `account.updated` on a Connect webhook endpoint (signature-verified, deduplicated); invoice Checkout/PaymentIntents created **on the connected account** (direct charges) with `application_fee_amount` = 0.4% on cards and 1% capped at $10 on ACH (D10, configurable per plan, T210); pay links only when the account has `charges_enabled` (turns T261's switch on per tenant); every Stripe write carries an idempotency key. Replace the platform-account Checkout in `invoice_payment_service.go`. Payouts, disputes and refunds live in the tenant's Stripe Dashboard.
 
-**Why we need it** — Today invoice payments land in the platform's Stripe account — no tenant can actually get paid. It blocks launch, and holding the money flow is the core of the moat and the business model (platform fee).
+**Why we need it** — Today invoice payments land in the platform's Stripe account — no tenant can actually get paid, and taking live payments that way breaks Stripe's restricted-business terms (launch blocker 1). Holding the money flow is the core of the moat and about half of revenue per tenant.
 
-**Notes** — `docs/product/competitive-research-2026-10.md` §0, §2 row 9, §4.2 (1, 4), §5 MVP #1. Use the `stripe:connect-recommend` / `stripe-best-practices` skills when designing. Supersedes the old "Removed Features → Payment System" restore list.
+**Notes** — D9 (decided 2026-10-25; closes OD-4): Accounts v2 + direct charges, "Stripe handles pricing" so ServicePro pays no Connect fees — **not Express, not destination charges** (Express is legacy for new platforms; destination charges would cost ~0.51% of volume in Connect fees). Was "Stripe Connect Express onboarding" until 2026-10-25. Use the `stripe:connect-recommend` / `stripe-best-practices` skills when designing. `docs/product/competitive-research-2026-10.md` §0, §2 row 9, §4.2 (1, 4), §5 MVP #1; `docs/product/mvp-plan-2026-10.md`.
 
 ---
 
 #### T170 — Card + ACH invoice payments, ACH preferred for B2B
 
-**Phase**: 6 · **Category**: Payments · **Hours**: 6 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T169
+**Phase**: 6 · **Category**: Payments · **Hours**: 6 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: T169
 
 **What it is** — Customers can pay invoices by card or US bank account (ACH), with ACH presented first for business customers.
 
@@ -1184,13 +1335,13 @@ Stripe Connect so tenants actually receive the money, ACH for B2B, deposits, aut
 
 **Why we need it** — B2B customers pay large invoices by ACH; card fees on a $5k invoice are a reason to keep paying by check.
 
-**Notes** — `docs/product/competitive-research-2026-10.md` §4.5 "Payments" (lower ACH fee to push B2B to ACH).
+**Notes** — `docs/product/competitive-research-2026-10.md` §4.5 "Payments" (lower ACH fee to push B2B to ACH). MVP plan (2026-10-25, D10): ACH fee is 1% capped at $10 total; cards are Stripe's rate + 0.4%. Customers accept the ACH mandate on the pay page and get Stripe's mandate email. No card surcharging in v1.
 
 ---
 
 #### T171 — Saved payment methods + autopay
 
-**Phase**: 6 · **Category**: Payments · **Hours**: 10 · **Status**: Open · **v1 Gate**: No · **Depends on**: T169, T170
+**Phase**: 6 · **Category**: Payments · **Hours**: 10 · **Status**: Open · **MVP Gate**: No · **Depends on**: T169, T170
 
 **What it is** — End customers can save a card or bank account with the tenant and opt into automatic payment of invoices on their due date.
 
@@ -1204,7 +1355,7 @@ Stripe Connect so tenants actually receive the money, ACH for B2B, deposits, aut
 
 #### T172 — Tap to Pay via Stripe Terminal
 
-**Phase**: 6 · **Category**: Payments · **Hours**: 16 · **Status**: Open · **v1 Gate**: No · **Depends on**: T180, T169
+**Phase**: 6 · **Category**: Payments · **Hours**: 16 · **Status**: Open · **MVP Gate**: No · **Depends on**: T180, T169
 
 **What it is** — Techs collect in-person card payments on their phone with Tap to Pay on iPhone/Android.
 
@@ -1213,6 +1364,20 @@ Stripe Connect so tenants actually receive the money, ACH for B2B, deposits, aut
 **Why we need it** — In-person collection at job completion; competitors offer it.
 
 **Notes** — `docs/product/competitive-research-2026-10.md` §2 row 10. Needs the native app — judgment call: the brief said "depends on store app T181", but the store app is T180.
+
+---
+
+#### T261 — Turn off invoice pay links until Stripe Connect ships
+
+**Phase**: 6 · **Category**: Payments · **Hours**: 1 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: none
+
+**What it is** — Customers can't pay an invoice into the platform's Stripe account.
+
+**What it does** — A config flag (off by default in production) hides "Pay now" on invoices, invoice emails and the public invoice page, and makes the checkout endpoint return a typed feature-disabled error; on in development/test keys. T169 turns payments on per tenant once its connected account has `charges_enabled`. New env var → `.env.example`, `.env`, `config.go`.
+
+**Why we need it** — Payments settle to the platform's account today (launch blocker 1): Stripe restricted-business terms and money-transmission exposure.
+
+**Notes** — Technical Requirements N7; D11. Added 2026-10-25 from the MVP plan (`docs/product/mvp-plan-2026-10.md`).
 
 ---
 
@@ -1242,7 +1407,7 @@ The technician experience (the product's weakest area) and the remaining schedul
 
 #### T027 — Add drag-and-drop rescheduling to job calendar
 
-**Phase**: 7 · **Category**: Feature · **Hours**: 8 · **Status**: Open · **v1 Gate**: No · **Depends on**: T099
+**Phase**: 7 · **Category**: Feature · **Hours**: 8 · **Status**: Open · **MVP Gate**: No · **Depends on**: T099
 
 **What it is** — Drag a job to a new slot (or resize it) on the calendar to reschedule, with conflict warnings before saving.
 
@@ -1256,7 +1421,7 @@ The technician experience (the product's weakest area) and the remaining schedul
 
 #### T038 — Add technician availability management UI
 
-**Phase**: 7 · **Category**: Feature · **Hours**: 6 · **Status**: Open · **v1 Gate**: No · **Depends on**: none
+**Phase**: 7 · **Category**: Feature · **Hours**: 6 · **Status**: Open · **MVP Gate**: No · **Depends on**: none
 
 **What it is** — Techs (or managers) set working hours; dispatchers see availability when scheduling.
 
@@ -1270,7 +1435,7 @@ The technician experience (the product's weakest area) and the remaining schedul
 
 #### T039 — Create emergency job insertion workflow
 
-**Phase**: 7 · **Category**: Feature · **Hours**: 8 · **Status**: Open · **v1 Gate**: No · **Depends on**: T099
+**Phase**: 7 · **Category**: Feature · **Hours**: 8 · **Status**: Open · **MVP Gate**: No · **Depends on**: T099
 
 **What it is** — A flow for urgent jobs that finds the soonest slot and can bump non-emergency work.
 
@@ -1284,7 +1449,7 @@ The technician experience (the product's weakest area) and the remaining schedul
 
 #### T040 — Add auto-notify on emergency insertion
 
-**Phase**: 7 · **Category**: SMS · **Hours**: 3 · **Status**: Open · **v1 Gate**: No · **Depends on**: T039, T049
+**Phase**: 7 · **Category**: SMS · **Hours**: 3 · **Status**: Open · **MVP Gate**: No · **Depends on**: T039, T049
 
 **What it is** — Customers and techs affected by an emergency reshuffle are told automatically.
 
@@ -1298,7 +1463,7 @@ The technician experience (the product's weakest area) and the remaining schedul
 
 #### T056 — Add workload capacity warnings
 
-**Phase**: 7 · **Category**: Feature · **Hours**: 3 · **Status**: Open · **v1 Gate**: No · **Depends on**: T099
+**Phase**: 7 · **Category**: Feature · **Hours**: 3 · **Status**: Open · **MVP Gate**: No · **Depends on**: T099
 
 **What it is** — A warning when a technician would exceed their daily capacity.
 
@@ -1312,7 +1477,7 @@ The technician experience (the product's weakest area) and the remaining schedul
 
 #### T057 — Add double-booking override with reason
 
-**Phase**: 7 · **Category**: Feature · **Hours**: 2 · **Status**: Open · **v1 Gate**: No · **Depends on**: T099
+**Phase**: 7 · **Category**: Feature · **Hours**: 2 · **Status**: Open · **MVP Gate**: No · **Depends on**: T099
 
 **What it is** — Schedulers can deliberately override a conflict, with a required reason that's logged.
 
@@ -1326,7 +1491,7 @@ The technician experience (the product's weakest area) and the remaining schedul
 
 #### T059 — Add technician skill tags
 
-**Phase**: 7 · **Category**: Feature · **Hours**: 3 · **Status**: Open · **v1 Gate**: No · **Depends on**: none
+**Phase**: 7 · **Category**: Feature · **Hours**: 3 · **Status**: Open · **MVP Gate**: No · **Depends on**: none
 
 **What it is** — Technicians carry skill tags (HVAC, refrigeration, electrical, floor care…).
 
@@ -1340,7 +1505,7 @@ The technician experience (the product's weakest area) and the remaining schedul
 
 #### T077 — Add time-off request UI
 
-**Phase**: 7 · **Category**: Feature · **Hours**: 4 · **Status**: Open · **v1 Gate**: No · **Depends on**: T038
+**Phase**: 7 · **Category**: Feature · **Hours**: 4 · **Status**: Open · **MVP Gate**: No · **Depends on**: T038
 
 **What it is** — Techs request time off; managers approve; approved time off blocks scheduling.
 
@@ -1354,7 +1519,7 @@ The technician experience (the product's weakest area) and the remaining schedul
 
 #### T078 — Add skill-based job matching suggestions
 
-**Phase**: 7 · **Category**: Feature · **Hours**: 4 · **Status**: Open · **v1 Gate**: No · **Depends on**: T059
+**Phase**: 7 · **Category**: Feature · **Hours**: 4 · **Status**: Open · **MVP Gate**: No · **Depends on**: T059
 
 **What it is** — When assigning a job, suggest techs whose skills match the job type and who are available.
 
@@ -1368,7 +1533,7 @@ The technician experience (the product's weakest area) and the remaining schedul
 
 #### T079 — Add travel time notes field
 
-**Phase**: 7 · **Category**: Feature · **Hours**: 1 · **Status**: Open · **v1 Gate**: No · **Depends on**: none
+**Phase**: 7 · **Category**: Feature · **Hours**: 1 · **Status**: Open · **MVP Gate**: No · **Depends on**: none
 
 **What it is** — A field on scheduled jobs for expected travel time.
 
@@ -1382,7 +1547,7 @@ The technician experience (the product's weakest area) and the remaining schedul
 
 #### T099 — Add tenant timezone support for conflict detection
 
-**Phase**: 7 · **Category**: Backend · **Hours**: 4 · **Status**: Open · **v1 Gate**: No · **Depends on**: none
+**Phase**: 7 · **Category**: Backend · **Hours**: 4 · **Status**: Open · **MVP Gate**: No · **Depends on**: none
 
 **What it is** — Conflict detection and other date logic use the tenant's timezone and configured business hours, and actually see scheduled jobs.
 
@@ -1396,7 +1561,7 @@ The technician experience (the product's weakest area) and the remaining schedul
 
 #### T173 — Technician "My Day" mobile-first view
 
-**Phase**: 7 · **Category**: Mobile · **Hours**: 24 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T035, T124, T133
+**Phase**: 7 · **Category**: Mobile · **Hours**: 24 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: T035, T124, T133
 
 **What it is** — A phone-first screen where a technician sees today's assigned jobs and works them: directions, call, status, notes.
 
@@ -1404,13 +1569,13 @@ The technician experience (the product's weakest area) and the remaining schedul
 
 **Why we need it** — Techs must use it in the field or owners won't buy; the field side is the product's weakest area.
 
-**Notes** — `docs/product/competitive-research-2026-10.md` §2 row 15, §5 MVP #3. Offline support is T179; store-listed app is T180.
+**Notes** — `docs/product/competitive-research-2026-10.md` §2 row 15, §5 MVP #3. Offline support is T179; store-listed app is T180. MVP plan (2026-10-25): the technician's day on a phone — stops, start/complete, checklist (12 of 12 tasks), photos, then signature (T174, T176).
 
 ---
 
 #### T174 — Job photos and attachments (R2)
 
-**Phase**: 7 · **Category**: Feature · **Hours**: 8 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T160
+**Phase**: 7 · **Category**: Feature · **Hours**: 8 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: T160
 
 **What it is** — Techs and office staff attach photos and files to jobs (and quotes/invoices), stored in R2.
 
@@ -1424,7 +1589,7 @@ The technician experience (the product's weakest area) and the remaining schedul
 
 #### T175 — Job checklists / forms
 
-**Phase**: 7 · **Category**: Feature · **Hours**: 12 · **Status**: Open · **v1 Gate**: No · **Depends on**: T173
+**Phase**: 7 · **Category**: Feature · **Hours**: 12 · **Status**: Open · **MVP Gate**: No · **Depends on**: T173
 
 **What it is** — Per-job-type checklists and simple forms techs complete on the job.
 
@@ -1438,7 +1603,7 @@ The technician experience (the product's weakest area) and the remaining schedul
 
 #### T176 — Customer signature on completion + service report PDF emailed
 
-**Phase**: 7 · **Category**: Feature · **Hours**: 8 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T173, T174, T159
+**Phase**: 7 · **Category**: Feature · **Hours**: 8 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: T173, T174, T159
 
 **What it is** — At completion the customer signs on the tech's device, and a service report PDF is emailed to the customer's contacts.
 
@@ -1446,13 +1611,13 @@ The technician experience (the product's weakest area) and the remaining schedul
 
 **Why we need it** — Commercial customers and property managers need proof of service before they approve an invoice.
 
-**Notes** — `docs/product/competitive-research-2026-10.md` §5 v1 "Job checklists and service report PDF".
+**Notes** — `docs/product/competitive-research-2026-10.md` §5 v1 "Job checklists and service report PDF". MVP plan (2026-10-25): the service report is emailed to the property manager as proof of service.
 
 ---
 
 #### T177 — Time clock per job + timesheet export
 
-**Phase**: 7 · **Category**: Feature · **Hours**: 12 · **Status**: Open · **v1 Gate**: No · **Depends on**: T173
+**Phase**: 7 · **Category**: Feature · **Hours**: 12 · **Status**: Open · **MVP Gate**: No · **Depends on**: T173
 
 **What it is** — Techs clock in/out per job (and for the day), and owners export timesheets.
 
@@ -1466,7 +1631,7 @@ The technician experience (the product's weakest area) and the remaining schedul
 
 #### T178 — Map / route view of the day
 
-**Phase**: 7 · **Category**: Feature · **Hours**: 8 · **Status**: Open · **v1 Gate**: No · **Depends on**: T173
+**Phase**: 7 · **Category**: Feature · **Hours**: 8 · **Status**: Open · **MVP Gate**: No · **Depends on**: T173
 
 **What it is** — A map of the day's jobs per technician for office and tech.
 
@@ -1480,7 +1645,7 @@ The technician experience (the product's weakest area) and the remaining schedul
 
 #### T179 — Offline-capable tech app (queue + sync)
 
-**Phase**: 7 · **Category**: Mobile · **Hours**: 40 · **Status**: Open · **v1 Gate**: No · **Depends on**: T173
+**Phase**: 7 · **Category**: Mobile · **Hours**: 40 · **Status**: Open · **MVP Gate**: No · **Depends on**: T173
 
 **What it is** — The tech view keeps working without signal and syncs when back online.
 
@@ -1494,7 +1659,7 @@ The technician experience (the product's weakest area) and the remaining schedul
 
 #### T180 — Capacitor-wrapped iOS/Android apps in the stores
 
-**Phase**: 7 · **Category**: Mobile · **Hours**: 24 · **Status**: Open · **v1 Gate**: No · **Depends on**: T173
+**Phase**: 7 · **Category**: Mobile · **Hours**: 24 · **Status**: Open · **MVP Gate**: No · **Depends on**: T173
 
 **What it is** — ServicePro is installable from the App Store and Google Play as a Capacitor wrapper around the web app.
 
@@ -1506,9 +1671,9 @@ The technician experience (the product's weakest area) and the remaining schedul
 
 ---
 
-### Phase 8 — Customer Communications (T036, T037, T048, T049, T050, T054, T055, T072, T073, T089, T090, T091, T181, T182)
+### Phase 8 — Customer Communications (T036, T037, T048, T049, T050, T054, T055, T072, T073, T089, T090, T091, T181, T182, T265)
 
-Confirmations, reminders, on-my-way, two-way SMS, templates and the customer activity record. **14 open tasks, ~75h.**
+Confirmations, reminders, on-my-way, two-way SMS, templates and the customer activity record. **12 open tasks, ~70h.**
 
 - [ ] T036 — Add manual Call Log entry
 - [ ] T037 — Auto-log system messages to customer activity
@@ -1524,10 +1689,11 @@ Confirmations, reminders, on-my-way, two-way SMS, templates and the customer act
 - [ ] T091 — Add notification preferences per customer
 - [ ] T181 — Two-way SMS inbox (Twilio + 10DLC)
 - [ ] T182 — Review request automation
+- [ ] T265 — Tenant-branded, compliant emails: "Tenant via ServicePro", DoNotEmail everywhere, daytime send window
 
 #### T036 — Add manual Call Log entry
 
-**Phase**: 8 · **Category**: Feature · **Hours**: 3 · **Status**: Open · **v1 Gate**: No · **Depends on**: none
+**Phase**: 8 · **Category**: Feature · **Hours**: 3 · **Status**: Open · **MVP Gate**: No · **Depends on**: none
 
 **What it is** — Staff log phone calls with customers (date, duration, notes, outcome).
 
@@ -1541,7 +1707,7 @@ Confirmations, reminders, on-my-way, two-way SMS, templates and the customer act
 
 #### T037 — Auto-log system messages to customer activity
 
-**Phase**: 8 · **Category**: Feature · **Hours**: 4 · **Status**: Open · **v1 Gate**: No · **Depends on**: T096
+**Phase**: 8 · **Category**: Feature · **Hours**: 4 · **Status**: Open · **MVP Gate**: No · **Depends on**: T096
 
 **What it is** — Every outbound message, payment and status change is automatically logged to the customer's activity.
 
@@ -1555,7 +1721,7 @@ Confirmations, reminders, on-my-way, two-way SMS, templates and the customer act
 
 #### T048 — Add appointment confirmation emails
 
-**Phase**: 8 · **Category**: Email · **Hours**: 3 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T159
+**Phase**: 8 · **Category**: Email · **Hours**: 3 · **Status**: Deferred · **MVP Gate**: No · **Depends on**: T159
 
 **What it is** — An email to the customer when a job is scheduled or rescheduled.
 
@@ -1563,13 +1729,13 @@ Confirmations, reminders, on-my-way, two-way SMS, templates and the customer act
 
 **Why we need it** — Sets expectations and reduces no-shows — the cheapest visible "wow".
 
-**Notes** — Old task (Feb 2026 TODO P1). Acceptance: sent when scheduled; contains date, time, service; professional template. `docs/product/competitive-research-2026-10.md` §5 MVP #5. Folds in the old "Email Templates Expansion" item's job-completion and payment-received emails as sibling templates.
+**Notes** — Old task (Feb 2026 TODO P1). Acceptance: sent when scheduled; contains date, time, service; professional template. `docs/product/competitive-research-2026-10.md` §5 MVP #5. Folds in the old "Email Templates Expansion" item's job-completion and payment-received emails as sibling templates. **Deferred 2026-10-25 (MVP plan)** — moved out of the launch gate by the MVP re-scope (`docs/product/mvp-plan-2026-10.md`). Revisit after paid launch (V1), or earlier if design partners ask for it.
 
 ---
 
 #### T049 — Add appointment reminder emails/SMS
 
-**Phase**: 8 · **Category**: SMS · **Hours**: 4 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T141, T048
+**Phase**: 8 · **Category**: SMS · **Hours**: 4 · **Status**: Deferred · **MVP Gate**: No · **Depends on**: T141, T048
 
 **What it is** — Automatic reminders before appointments by email and SMS.
 
@@ -1577,13 +1743,13 @@ Confirmations, reminders, on-my-way, two-way SMS, templates and the customer act
 
 **Why we need it** — Reduces no-shows (the old TODO cited 25–30%).
 
-**Notes** — Old task (Feb 2026 TODO P1). Acceptance: automatic, configurable timing, customer can opt out.
+**Notes** — Old task (Feb 2026 TODO P1). Acceptance: automatic, configurable timing, customer can opt out. **Deferred 2026-10-25 (MVP plan)** — moved out of the launch gate by the MVP re-scope (`docs/product/mvp-plan-2026-10.md`). Revisit after paid launch (V1), or earlier if design partners ask for it. MVP plan (2026-10-25, OD-12): no SMS in the MVP — email-only reminders; SMS (10DLC, consent, STOP/HELP) moves to V1.
 
 ---
 
 #### T050 — Add "Tech on the way" manual trigger
 
-**Phase**: 8 · **Category**: SMS · **Hours**: 2 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T049
+**Phase**: 8 · **Category**: SMS · **Hours**: 2 · **Status**: Deferred · **MVP Gate**: No · **Depends on**: T049
 
 **What it is** — A button the tech taps to text the customer that they're on the way.
 
@@ -1591,13 +1757,13 @@ Confirmations, reminders, on-my-way, two-way SMS, templates and the customer act
 
 **Why we need it** — Customers know to be ready; on-site contacts at commercial sites can unlock doors.
 
-**Notes** — Old task (Feb 2026 TODO P1). Acceptance: one-click send; SMS delivered; logged in job history.
+**Notes** — Old task (Feb 2026 TODO P1). Acceptance: one-click send; SMS delivered; logged in job history. **Deferred 2026-10-25 (MVP plan)** — moved out of the launch gate by the MVP re-scope (`docs/product/mvp-plan-2026-10.md`). Revisit after paid launch (V1), or earlier if design partners ask for it. MVP plan (2026-10-25, OD-12): deferred with SMS.
 
 ---
 
 #### T054 — Create Communication Log component
 
-**Phase**: 8 · **Category**: UX · **Hours**: 4 · **Status**: Open · **v1 Gate**: No · **Depends on**: T037
+**Phase**: 8 · **Category**: UX · **Hours**: 4 · **Status**: Open · **MVP Gate**: No · **Depends on**: T037
 
 **What it is** — A unified, chronological view of all emails, SMS and calls with a customer.
 
@@ -1611,7 +1777,7 @@ Confirmations, reminders, on-my-way, two-way SMS, templates and the customer act
 
 #### T055 — Unified Customer Timeline view
 
-**Phase**: 8 · **Category**: UX · **Hours**: 8 · **Status**: Open · **v1 Gate**: No · **Depends on**: T037
+**Phase**: 8 · **Category**: UX · **Hours**: 8 · **Status**: Open · **MVP Gate**: No · **Depends on**: T037
 
 **What it is** — One scrollable timeline of a customer's jobs, quotes, invoices, payments and communications.
 
@@ -1625,7 +1791,7 @@ Confirmations, reminders, on-my-way, two-way SMS, templates and the customer act
 
 #### T072 — Create message template management UI
 
-**Phase**: 8 · **Category**: Feature · **Hours**: 6 · **Status**: Open · **v1 Gate**: No · **Depends on**: T073
+**Phase**: 8 · **Category**: Feature · **Hours**: 6 · **Status**: Open · **MVP Gate**: No · **Depends on**: T073
 
 **What it is** — Tenants edit their own email/SMS templates for every automated message.
 
@@ -1639,7 +1805,7 @@ Confirmations, reminders, on-my-way, two-way SMS, templates and the customer act
 
 #### T073 — Add rich variable system for templates
 
-**Phase**: 8 · **Category**: Feature · **Hours**: 4 · **Status**: Open · **v1 Gate**: No · **Depends on**: none
+**Phase**: 8 · **Category**: Feature · **Hours**: 4 · **Status**: Open · **MVP Gate**: No · **Depends on**: none
 
 **What it is** — Templates use documented variables like `{{customer_first_name}}`, `{{job_date}}`, `{{tech_name}}`, `{{invoice_balance}}`.
 
@@ -1653,7 +1819,7 @@ Confirmations, reminders, on-my-way, two-way SMS, templates and the customer act
 
 #### T089 — Add email/SMS delivery tracking
 
-**Phase**: 8 · **Category**: Email · **Hours**: 6 · **Status**: Open · **v1 Gate**: No · **Depends on**: T159, T181
+**Phase**: 8 · **Category**: Email · **Hours**: 6 · **Status**: Open · **MVP Gate**: No · **Depends on**: T159, T181
 
 **What it is** — Every outbound message shows sent/delivered/bounced/failed.
 
@@ -1667,7 +1833,7 @@ Confirmations, reminders, on-my-way, two-way SMS, templates and the customer act
 
 #### T090 — Add communication failure alerts
 
-**Phase**: 8 · **Category**: Monitoring · **Hours**: 3 · **Status**: Open · **v1 Gate**: No · **Depends on**: T089
+**Phase**: 8 · **Category**: Monitoring · **Hours**: 3 · **Status**: Open · **MVP Gate**: No · **Depends on**: T089
 
 **What it is** — Admins are alerted when messages fail.
 
@@ -1681,7 +1847,7 @@ Confirmations, reminders, on-my-way, two-way SMS, templates and the customer act
 
 #### T091 — Add notification preferences per customer
 
-**Phase**: 8 · **Category**: Feature · **Hours**: 4 · **Status**: Open · **v1 Gate**: No · **Depends on**: none
+**Phase**: 8 · **Category**: Feature · **Hours**: 4 · **Status**: Open · **MVP Gate**: No · **Depends on**: none
 
 **What it is** — Customers (and their contacts) opt in or out of each notification type and channel.
 
@@ -1695,7 +1861,7 @@ Confirmations, reminders, on-my-way, two-way SMS, templates and the customer act
 
 #### T181 — Two-way SMS inbox (Twilio + 10DLC)
 
-**Phase**: 8 · **Category**: SMS · **Hours**: 20 · **Status**: Open · **v1 Gate**: No · **Depends on**: T091
+**Phase**: 8 · **Category**: SMS · **Hours**: 20 · **Status**: Open · **MVP Gate**: No · **Depends on**: T091
 
 **What it is** — Each tenant gets a business number and a shared inbox to text customers and see replies.
 
@@ -1709,7 +1875,7 @@ Confirmations, reminders, on-my-way, two-way SMS, templates and the customer act
 
 #### T182 — Review request automation
 
-**Phase**: 8 · **Category**: Marketing · **Hours**: 4 · **Status**: Open · **v1 Gate**: No · **Depends on**: T048
+**Phase**: 8 · **Category**: Marketing · **Hours**: 4 · **Status**: Open · **MVP Gate**: No · **Depends on**: T048
 
 **What it is** — After a job is completed (or paid) the customer gets a request to leave a Google review.
 
@@ -1721,9 +1887,23 @@ Confirmations, reminders, on-my-way, two-way SMS, templates and the customer act
 
 ---
 
+#### T265 — Tenant-branded, compliant emails: "Tenant via ServicePro", DoNotEmail everywhere, daytime send window
+
+**Phase**: 8 · **Category**: Email · **Hours**: 4 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: none
+
+**What it is** — Every email to a tenant's customer clearly comes from the tenant and respects opt-outs.
+
+**What it does** — Send as "<Tenant name> via ServicePro" with the tenant as reply-to; honour `DoNotEmail` on every send (invoice and quote sends ignore it today); reminders only go out 8 a.m.–6 p.m. in the tenant's time zone (the hourly job skips otherwise); soften the final-notice "collection activity" wording; quote follow-ups and review requests (commercial email) carry unsubscribe and a postal address.
+
+**Why we need it** — CAN-SPAM, the FDCPA false-name exception and Resend's acceptable-use policy (MVP "Rules it enforces").
+
+**Notes** — Technical Requirements N11. Added 2026-10-25 from the MVP plan (`docs/product/mvp-plan-2026-10.md`).
+
+---
+
 ### Phase 9 — Customer Self-Service (T081, T183, T184, T185)
 
-Public quote approval with e-sign and deposit, the customer portal and online booking. Run T218 interviews before building beyond the gated items. **4 open tasks, ~50h.**
+Public quote approval with e-sign and deposit, the customer portal and online booking. Run T218 interviews before building beyond the gated items. **2 open tasks, ~36h.**
 
 - [ ] T081 — Add e-signature for quote acceptance
 - [ ] T183 — Public quote approval page (approve/decline, e-sign, optional deposit)
@@ -1732,7 +1912,7 @@ Public quote approval with e-sign and deposit, the customer portal and online bo
 
 #### T081 — Add e-signature for quote acceptance
 
-**Phase**: 9 · **Category**: Feature · **Hours**: 4 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T183
+**Phase**: 9 · **Category**: Feature · **Hours**: 4 · **Status**: Deferred · **MVP Gate**: No · **Depends on**: T183
 
 **What it is** — The customer signs to accept a quote, producing a legally useful acceptance record.
 
@@ -1740,13 +1920,13 @@ Public quote approval with e-sign and deposit, the customer portal and online bo
 
 **Why we need it** — A legal acceptance record for larger commercial work.
 
-**Notes** — Old task (Feb 2026 TODO P3; confidence medium — typed name vs signature pad).
+**Notes** — Old task (Feb 2026 TODO P3; confidence medium — typed name vs signature pad). **Deferred 2026-10-25 (MVP plan)** — moved out of the launch gate by the MVP re-scope (`docs/product/mvp-plan-2026-10.md`). Revisit after paid launch (V1), or earlier if design partners ask for it.
 
 ---
 
 #### T183 — Public quote approval page (approve/decline, e-sign, optional deposit)
 
-**Phase**: 9 · **Category**: Feature · **Hours**: 10 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T224
+**Phase**: 9 · **Category**: Feature · **Hours**: 10 · **Status**: Deferred · **MVP Gate**: No · **Depends on**: T224
 
 **What it is** — Customers open a tokenized link to view a quote, pick an option, approve or decline (with reason), sign, and pay a deposit if required.
 
@@ -1754,13 +1934,13 @@ Public quote approval with e-sign and deposit, the customer portal and online bo
 
 **Why we need it** — Gets quotes approved without phone tag and is table stakes (`docs/product/competitive-research-2026-10.md` §2 rows 3–5).
 
-**Notes** — `docs/product/competitive-research-2026-10.md` §5 MVP #4. Customer portal (T184) later wraps the same page.
+**Notes** — `docs/product/competitive-research-2026-10.md` §5 MVP #4. Customer portal (T184) later wraps the same page. **Deferred 2026-10-25 (MVP plan)** — moved out of the launch gate by the MVP re-scope (`docs/product/mvp-plan-2026-10.md`). Revisit after paid launch (V1), or earlier if design partners ask for it.
 
 ---
 
 #### T184 — Customer portal / client hub
 
-**Phase**: 9 · **Category**: Feature · **Hours**: 24 · **Status**: Open · **v1 Gate**: No · **Depends on**: T183, T169
+**Phase**: 9 · **Category**: Feature · **Hours**: 24 · **Status**: Open · **MVP Gate**: No · **Depends on**: T183, T169
 
 **What it is** — A per-customer portal to view and approve quotes, view and pay invoices, request work and see job history.
 
@@ -1774,7 +1954,7 @@ Public quote approval with e-sign and deposit, the customer portal and online bo
 
 #### T185 — Online booking / request widget embeddable on websites
 
-**Phase**: 9 · **Category**: Feature · **Hours**: 12 · **Status**: Open · **v1 Gate**: No · **Depends on**: T184
+**Phase**: 9 · **Category**: Feature · **Hours**: 12 · **Status**: Open · **MVP Gate**: No · **Depends on**: T184
 
 **What it is** — A widget tenants embed on their website so prospects can request work or book.
 
@@ -1802,7 +1982,7 @@ What residential-first tools do poorly and the beachhead needs: multi-site custo
 
 #### T044 — Build collections dashboard
 
-**Phase**: 10 · **Category**: Feature · **Hours**: 8 · **Status**: Open · **v1 Gate**: No · **Depends on**: T064, T065
+**Phase**: 10 · **Category**: Feature · **Hours**: 8 · **Status**: Open · **MVP Gate**: No · **Depends on**: T064, T065
 
 **What it is** — A single place to work overdue accounts.
 
@@ -1816,7 +1996,7 @@ What residential-first tools do poorly and the beachhead needs: multi-site custo
 
 #### T064 — Add last contact date tracking on invoices
 
-**Phase**: 10 · **Category**: Feature · **Hours**: 2 · **Status**: Open · **v1 Gate**: No · **Depends on**: T037
+**Phase**: 10 · **Category**: Feature · **Hours**: 2 · **Status**: Open · **MVP Gate**: No · **Depends on**: T037
 
 **What it is** — Each invoice shows when the customer was last contacted about it.
 
@@ -1830,7 +2010,7 @@ What residential-first tools do poorly and the beachhead needs: multi-site custo
 
 #### T065 — Add promise-to-pay notes
 
-**Phase**: 10 · **Category**: Feature · **Hours**: 3 · **Status**: Open · **v1 Gate**: No · **Depends on**: none
+**Phase**: 10 · **Category**: Feature · **Hours**: 3 · **Status**: Open · **MVP Gate**: No · **Depends on**: none
 
 **What it is** — Record "I'll pay Friday" commitments with date and amount.
 
@@ -1844,7 +2024,7 @@ What residential-first tools do poorly and the beachhead needs: multi-site custo
 
 #### T186 — Multi-site customers (service locations; invoice per site or consolidated)
 
-**Phase**: 10 · **Category**: Feature · **Hours**: 16 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T102
+**Phase**: 10 · **Category**: Feature · **Hours**: 16 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: T102
 
 **What it is** — A customer can have many service locations, and jobs, quotes, agreements and invoices reference a site.
 
@@ -1852,13 +2032,13 @@ What residential-first tools do poorly and the beachhead needs: multi-site custo
 
 **Why we need it** — Commercial and property-manager customers have many properties — one address per customer (today) is a non-starter for the beachhead.
 
-**Notes** — `docs/product/competitive-research-2026-10.md` §0 (gaps), §4.3, §5 MVP #8.
+**Notes** — `docs/product/competitive-research-2026-10.md` §0 (gaps), §4.3, §5 MVP #8. MVP plan (2026-10-25): sites are `service_locations`; jobs gain `site_id`; each site has its own agreement, contact and notes.
 
 ---
 
 #### T187 — PO capture and matching on jobs and invoices
 
-**Phase**: 10 · **Category**: Feature · **Hours**: 6 · **Status**: Open · **v1 Gate**: No · **Depends on**: T186
+**Phase**: 10 · **Category**: Feature · **Hours**: 6 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: T186
 
 **What it is** — Purchase-order numbers captured on jobs/quotes, required where the customer demands it, carried to invoices and tracked against PO amounts.
 
@@ -1866,13 +2046,13 @@ What residential-first tools do poorly and the beachhead needs: multi-site custo
 
 **Why we need it** — B2B customers reject invoices without the right PO.
 
-**Notes** — `docs/product/competitive-research-2026-10.md` §4.3, §5 v1.
+**Notes** — `docs/product/competitive-research-2026-10.md` §4.3, §5 v1. MVP plan (2026-10-25): also the customer's named approver and not-to-exceed limit — extra work over the limit can't be scheduled without the approver's OK; customers marked "PO required" can't be invoiced without one.
 
 ---
 
 #### T188 — Consolidated monthly invoicing
 
-**Phase**: 10 · **Category**: Feature · **Hours**: 8 · **Status**: Open · **v1 Gate**: No · **Depends on**: T186
+**Phase**: 10 · **Category**: Feature · **Hours**: 8 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: T186
 
 **What it is** — One invoice per customer (or site) per period covering all completed jobs.
 
@@ -1880,13 +2060,13 @@ What residential-first tools do poorly and the beachhead needs: multi-site custo
 
 **Why we need it** — Property managers and facilities want one invoice a month, not dozens.
 
-**Notes** — `docs/product/competitive-research-2026-10.md` §5 v1.
+**Notes** — `docs/product/competitive-research-2026-10.md` §5 v1. MVP plan (2026-10-25): `POST /invoices/consolidate` for a customer and period; per-site lines plus approved work orders; a visit can't be billed twice (T225).
 
 ---
 
 #### T189 — Statements of account (portal + email)
 
-**Phase**: 10 · **Category**: Feature · **Hours**: 6 · **Status**: Open · **v1 Gate**: No · **Depends on**: T184
+**Phase**: 10 · **Category**: Feature · **Hours**: 6 · **Status**: Open · **MVP Gate**: No · **Depends on**: T184
 
 **What it is** — A statement per customer listing open invoices, payments and aging, sent monthly and available in the portal.
 
@@ -1900,7 +2080,7 @@ What residential-first tools do poorly and the beachhead needs: multi-site custo
 
 #### T190 — Property-manager approval workflow (NTE limits, multi-approver, email intake)
 
-**Phase**: 10 · **Category**: Feature · **Hours**: 24 · **Status**: Open · **v1 Gate**: No · **Depends on**: T186, T184
+**Phase**: 10 · **Category**: Feature · **Hours**: 24 · **Status**: Open · **MVP Gate**: No · **Depends on**: T186, T184
 
 **What it is** — Property managers set not-to-exceed limits, approve work above them (with multiple approvers if needed), and can send work orders by email.
 
@@ -1914,7 +2094,7 @@ What residential-first tools do poorly and the beachhead needs: multi-site custo
 
 #### T191 — Maintenance agreements with autopay + renewal reminders
 
-**Phase**: 10 · **Category**: Feature · **Hours**: 12 · **Status**: Open · **v1 Gate**: No · **Depends on**: T167, T171
+**Phase**: 10 · **Category**: Feature · **Hours**: 12 · **Status**: Open · **MVP Gate**: No · **Depends on**: T167, T171
 
 **What it is** — Service agreements bill automatically and remind customers before they renew.
 
@@ -1943,7 +2123,7 @@ QuickBooks (the #1 B2B buying gate), import mappers, and partner integrations in
 
 #### T095 — Build outgoing webhooks system
 
-**Phase**: 11 · **Category**: Integration · **Hours**: 12 · **Status**: Open · **v1 Gate**: No · **Depends on**: T096
+**Phase**: 11 · **Category**: Integration · **Hours**: 12 · **Status**: Open · **MVP Gate**: No · **Depends on**: T096
 
 **What it is** — Tenants subscribe URLs to ServicePro events.
 
@@ -1957,7 +2137,7 @@ QuickBooks (the #1 B2B buying gate), import mappers, and partner integrations in
 
 #### T096 — Build event log table
 
-**Phase**: 11 · **Category**: Backend · **Hours**: 4 · **Status**: Open · **v1 Gate**: No · **Depends on**: T102
+**Phase**: 11 · **Category**: Backend · **Hours**: 4 · **Status**: Open · **MVP Gate**: No · **Depends on**: T102
 
 **What it is** — A tenant-scoped append-only table of significant domain events.
 
@@ -1971,7 +2151,7 @@ QuickBooks (the #1 B2B buying gate), import mappers, and partner integrations in
 
 #### T097 — Add webhook retry logic
 
-**Phase**: 11 · **Category**: Integration · **Hours**: 4 · **Status**: Open · **v1 Gate**: No · **Depends on**: T095
+**Phase**: 11 · **Category**: Integration · **Hours**: 4 · **Status**: Open · **MVP Gate**: No · **Depends on**: T095
 
 **What it is** — Failed webhook deliveries are retried with backoff and surfaced to the tenant.
 
@@ -1985,7 +2165,7 @@ QuickBooks (the #1 B2B buying gate), import mappers, and partner integrations in
 
 #### T098 — Document public API (OpenAPI/Swagger)
 
-**Phase**: 11 · **Category**: Docs · **Hours**: 3 · **Status**: Open · **v1 Gate**: No · **Depends on**: T152
+**Phase**: 11 · **Category**: Docs · **Hours**: 3 · **Status**: Open · **MVP Gate**: No · **Depends on**: T152
 
 **What it is** — Published API docs and API keys for integrators.
 
@@ -1999,7 +2179,7 @@ QuickBooks (the #1 B2B buying gate), import mappers, and partner integrations in
 
 #### T192 — QuickBooks Online sync (customers, invoices, payments; one-way first)
 
-**Phase**: 11 · **Category**: Integration · **Hours**: 32 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T118, T102
+**Phase**: 11 · **Category**: Integration · **Hours**: 32 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: T118, T102
 
 **What it is** — Customers, invoices and payments created in ServicePro appear in the tenant's QuickBooks Online.
 
@@ -2007,13 +2187,13 @@ QuickBooks (the #1 B2B buying gate), import mappers, and partner integrations in
 
 **Why we need it** — The #1 buying gate for B2B shops — their accountant lives in QuickBooks.
 
-**Notes** — `docs/product/competitive-research-2026-10.md` §2 row 22, §5 MVP #6.
+**Notes** — `docs/product/competitive-research-2026-10.md` §2 row 22, §5 MVP #6. MVP plan (2026-10-25): start with a 4h spike (OAuth app, customer/invoice/payment create, sales-tax mapping, Intuit production app review lead time).
 
 ---
 
 #### T193 — Import mappers for Jobber / Housecall Pro exports + generic CSV
 
-**Phase**: 11 · **Category**: Integration · **Hours**: 8 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T186, T241
+**Phase**: 11 · **Category**: Integration · **Hours**: 8 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: T186, T241
 
 **What it is** — New tenants import customers, sites, jobs and open invoices from Jobber or Housecall Pro exports, or any CSV.
 
@@ -2021,13 +2201,13 @@ QuickBooks (the #1 B2B buying gate), import mappers, and partner integrations in
 
 **Why we need it** — Switching friction is the main barrier; the white-glove migration offer (T220) relies on it.
 
-**Notes** — `docs/product/competitive-research-2026-10.md` §2 row 26, §5 MVP #9.
+**Notes** — `docs/product/competitive-research-2026-10.md` §2 row 26, §5 MVP #9. MVP plan (2026-10-25): depends on T241 (the import worker actually runs).
 
 ---
 
 #### T194 — Zapier app
 
-**Phase**: 11 · **Category**: Integration · **Hours**: 12 · **Status**: Open · **v1 Gate**: No · **Depends on**: T095, T098
+**Phase**: 11 · **Category**: Integration · **Hours**: 12 · **Status**: Open · **MVP Gate**: No · **Depends on**: T095, T098
 
 **What it is** — A Zapier integration with ServicePro triggers and actions.
 
@@ -2041,7 +2221,7 @@ QuickBooks (the #1 B2B buying gate), import mappers, and partner integrations in
 
 #### T195 — Wisetack consumer financing
 
-**Phase**: 11 · **Category**: Integration · **Hours**: 8 · **Status**: Open · **v1 Gate**: No · **Depends on**: T183
+**Phase**: 11 · **Category**: Integration · **Hours**: 8 · **Status**: Open · **MVP Gate**: No · **Depends on**: T183
 
 **What it is** — Customers can finance larger quotes through Wisetack from the approval page.
 
@@ -2055,7 +2235,7 @@ QuickBooks (the #1 B2B buying gate), import mappers, and partner integrations in
 
 #### T196 — Gusto payroll / timesheets
 
-**Phase**: 11 · **Category**: Integration · **Hours**: 12 · **Status**: Open · **v1 Gate**: No · **Depends on**: T177
+**Phase**: 11 · **Category**: Integration · **Hours**: 12 · **Status**: Open · **MVP Gate**: No · **Depends on**: T177
 
 **What it is** — Approved timesheets flow into Gusto payroll.
 
@@ -2069,7 +2249,7 @@ QuickBooks (the #1 B2B buying gate), import mappers, and partner integrations in
 
 #### T197 — AI receptionist partner integration
 
-**Phase**: 11 · **Category**: Integration · **Hours**: 8 · **Status**: Open · **v1 Gate**: No · **Depends on**: T098, T185
+**Phase**: 11 · **Category**: Integration · **Hours**: 8 · **Status**: Open · **MVP Gate**: No · **Depends on**: T098, T185
 
 **What it is** — An AI answering/receptionist vendor can create requests and book jobs in ServicePro.
 
@@ -2081,9 +2261,9 @@ QuickBooks (the #1 B2B buying gate), import mappers, and partner integrations in
 
 ---
 
-### Phase 12 — Reporting & Dashboards (T045, T046, T047, T066, T067, T068, T069, T070, T071, T084, T085, T086, T087, T088, T198, T246, T253)
+### Phase 12 — Reporting & Dashboards (T045, T046, T047, T066, T067, T068, T069, T070, T071, T084, T085, T086, T087, T088, T198, T246, T253, T266)
 
-Dashboard widgets and reports from the old TODO plus job costing. All tenant-scoped and in tenant timezone/currency. **16 open tasks, ~56h.**
+Dashboard widgets and reports from the old TODO plus job costing. All tenant-scoped and in tenant timezone/currency. **18 open tasks, ~60h.**
 
 - [ ] T045 — Add aging quotes dashboard widget
 - [ ] T046 — Add follow-up queue dashboard widget
@@ -2102,10 +2282,11 @@ Dashboard widgets and reports from the old TODO plus job costing. All tenant-sco
 - [ ] T198 — Job costing / profit per job
 - [ ] T246 — Lazy-load / trim Sentry and PostHog (109 KB gzipped on every page)
 - [ ] T253 — "Report a bug" button and cookie preferences in the footer
+- [ ] T266 — Cut the customers report (segments, cohorts) and the outgoing-webhooks plan flag
 
 #### T045 — Add aging quotes dashboard widget
 
-**Phase**: 12 · **Category**: Reporting · **Hours**: 2 · **Status**: Open · **v1 Gate**: No · **Depends on**: T062
+**Phase**: 12 · **Category**: Reporting · **Hours**: 2 · **Status**: Open · **MVP Gate**: No · **Depends on**: T062
 
 **What it is** — A widget counting quotes pending longer than a threshold.
 
@@ -2119,7 +2300,7 @@ Dashboard widgets and reports from the old TODO plus job costing. All tenant-sco
 
 #### T046 — Add follow-up queue dashboard widget
 
-**Phase**: 12 · **Category**: Reporting · **Hours**: 2 · **Status**: Open · **v1 Gate**: No · **Depends on**: T042
+**Phase**: 12 · **Category**: Reporting · **Hours**: 2 · **Status**: Open · **MVP Gate**: No · **Depends on**: T042
 
 **What it is** — A widget showing quotes and invoices needing follow-up today.
 
@@ -2133,7 +2314,7 @@ Dashboard widgets and reports from the old TODO plus job costing. All tenant-sco
 
 #### T047 — Build "stuck work" report
 
-**Phase**: 12 · **Category**: Reporting · **Hours**: 4 · **Status**: Open · **v1 Gate**: No · **Depends on**: T033
+**Phase**: 12 · **Category**: Reporting · **Hours**: 4 · **Status**: Open · **MVP Gate**: No · **Depends on**: T033
 
 **What it is** — A report of work falling through the cracks.
 
@@ -2147,7 +2328,7 @@ Dashboard widgets and reports from the old TODO plus job costing. All tenant-sco
 
 #### T066 — Add technician utilization widget
 
-**Phase**: 12 · **Category**: Reporting · **Hours**: 4 · **Status**: Open · **v1 Gate**: No · **Depends on**: T038
+**Phase**: 12 · **Category**: Reporting · **Hours**: 4 · **Status**: Open · **MVP Gate**: No · **Depends on**: T038
 
 **What it is** — Scheduled hours vs capacity per tech for today.
 
@@ -2161,7 +2342,7 @@ Dashboard widgets and reports from the old TODO plus job costing. All tenant-sco
 
 #### T067 — Add quote conversion rate metric
 
-**Phase**: 12 · **Category**: Reporting · **Hours**: 2 · **Status**: Open · **v1 Gate**: No · **Depends on**: T102
+**Phase**: 12 · **Category**: Reporting · **Hours**: 2 · **Status**: Open · **MVP Gate**: No · **Depends on**: T102
 
 **What it is** — Quote-to-job conversion rate on the dashboard.
 
@@ -2175,7 +2356,7 @@ Dashboard widgets and reports from the old TODO plus job costing. All tenant-sco
 
 #### T068 — Build job-completion-to-invoice time report
 
-**Phase**: 12 · **Category**: Reporting · **Hours**: 3 · **Status**: Open · **v1 Gate**: No · **Depends on**: T102
+**Phase**: 12 · **Category**: Reporting · **Hours**: 3 · **Status**: Open · **MVP Gate**: No · **Depends on**: T102
 
 **What it is** — Average days from job completed to invoice sent.
 
@@ -2189,7 +2370,7 @@ Dashboard widgets and reports from the old TODO plus job costing. All tenant-sco
 
 #### T069 — Build invoice-to-paid time report (DSO)
 
-**Phase**: 12 · **Category**: Reporting · **Hours**: 3 · **Status**: Open · **v1 Gate**: No · **Depends on**: T118
+**Phase**: 12 · **Category**: Reporting · **Hours**: 3 · **Status**: Open · **MVP Gate**: No · **Depends on**: T118
 
 **What it is** — Days Sales Outstanding — average days to collect.
 
@@ -2203,7 +2384,7 @@ Dashboard widgets and reports from the old TODO plus job costing. All tenant-sco
 
 #### T070 — Build revenue by service type report
 
-**Phase**: 12 · **Category**: Reporting · **Hours**: 3 · **Status**: Open · **v1 Gate**: No · **Depends on**: T118
+**Phase**: 12 · **Category**: Reporting · **Hours**: 3 · **Status**: Open · **MVP Gate**: No · **Depends on**: T118
 
 **What it is** — Revenue broken down by job/service type.
 
@@ -2217,7 +2398,7 @@ Dashboard widgets and reports from the old TODO plus job costing. All tenant-sco
 
 #### T071 — Build collections rate report
 
-**Phase**: 12 · **Category**: Reporting · **Hours**: 3 · **Status**: Open · **v1 Gate**: No · **Depends on**: T118
+**Phase**: 12 · **Category**: Reporting · **Hours**: 3 · **Status**: Open · **MVP Gate**: No · **Depends on**: T118
 
 **What it is** — Percentage of billed revenue collected.
 
@@ -2231,7 +2412,7 @@ Dashboard widgets and reports from the old TODO plus job costing. All tenant-sco
 
 #### T084 — Build quote-to-job conversion report
 
-**Phase**: 12 · **Category**: Reporting · **Hours**: 3 · **Status**: Open · **v1 Gate**: No · **Depends on**: T067
+**Phase**: 12 · **Category**: Reporting · **Hours**: 3 · **Status**: Open · **MVP Gate**: No · **Depends on**: T067
 
 **What it is** — Detailed conversion analysis over time.
 
@@ -2245,7 +2426,7 @@ Dashboard widgets and reports from the old TODO plus job costing. All tenant-sco
 
 #### T085 — Build lead-to-quote time report
 
-**Phase**: 12 · **Category**: Reporting · **Hours**: 3 · **Status**: Open · **v1 Gate**: No · **Depends on**: T102
+**Phase**: 12 · **Category**: Reporting · **Hours**: 3 · **Status**: Open · **MVP Gate**: No · **Depends on**: T102
 
 **What it is** — Average time from new customer/request to first quote.
 
@@ -2259,7 +2440,7 @@ Dashboard widgets and reports from the old TODO plus job costing. All tenant-sco
 
 #### T086 — Build quote-to-acceptance time report
 
-**Phase**: 12 · **Category**: Reporting · **Hours**: 2 · **Status**: Open · **v1 Gate**: No · **Depends on**: T102
+**Phase**: 12 · **Category**: Reporting · **Hours**: 2 · **Status**: Open · **MVP Gate**: No · **Depends on**: T102
 
 **What it is** — Average time for quotes to be accepted.
 
@@ -2273,7 +2454,7 @@ Dashboard widgets and reports from the old TODO plus job costing. All tenant-sco
 
 #### T087 — Build revenue by technician report
 
-**Phase**: 12 · **Category**: Reporting · **Hours**: 3 · **Status**: Open · **v1 Gate**: No · **Depends on**: T102
+**Phase**: 12 · **Category**: Reporting · **Hours**: 3 · **Status**: Open · **MVP Gate**: No · **Depends on**: T102
 
 **What it is** — Revenue attributed to each technician.
 
@@ -2287,7 +2468,7 @@ Dashboard widgets and reports from the old TODO plus job costing. All tenant-sco
 
 #### T088 — Add comparative analysis (vs prior period)
 
-**Phase**: 12 · **Category**: Reporting · **Hours**: 4 · **Status**: Open · **v1 Gate**: No · **Depends on**: T102
+**Phase**: 12 · **Category**: Reporting · **Hours**: 4 · **Status**: Open · **MVP Gate**: No · **Depends on**: T102
 
 **What it is** — Period-over-period comparison on dashboard metrics and reports.
 
@@ -2301,7 +2482,7 @@ Dashboard widgets and reports from the old TODO plus job costing. All tenant-sco
 
 #### T198 — Job costing / profit per job
 
-**Phase**: 12 · **Category**: Reporting · **Hours**: 12 · **Status**: Open · **v1 Gate**: No · **Depends on**: T168, T177
+**Phase**: 12 · **Category**: Reporting · **Hours**: 12 · **Status**: Open · **MVP Gate**: No · **Depends on**: T168, T177
 
 **What it is** — Profit per job: revenue minus labor and materials cost.
 
@@ -2315,7 +2496,7 @@ Dashboard widgets and reports from the old TODO plus job costing. All tenant-sco
 
 #### T246 — Lazy-load / trim Sentry and PostHog (109 KB gzipped on every page)
 
-**Phase**: 12 · **Category**: Perf · **Hours**: 3 · **Status**: Open · **v1 Gate**: No · **Depends on**: none
+**Phase**: 12 · **Category**: Perf · **Hours**: 3 · **Status**: Open · **MVP Gate**: No · **Depends on**: none
 
 **What it is** — Error tracking and analytics stop costing ~109 KB gzipped of JavaScript on first load.
 
@@ -2329,16 +2510,30 @@ Dashboard widgets and reports from the old TODO plus job costing. All tenant-sco
 
 #### T253 — "Report a bug" button and cookie preferences in the footer
 
-**Phase**: 12 · **Category**: UX · **Hours**: 2 · **Status**: Open · **v1 Gate**: No · **Depends on**: none
+**Phase**: 12 · **Category**: UX · **Hours**: 2 · **Status**: Open · **MVP Gate**: No · **Depends on**: none
 
 **What it is** — A footer "Report a bug" link that opens a prefilled report (page, web/API build stamp, request id) and a cookie-preferences link.
 **What it does** — Port League Looper's `ReportBugButton.tsx` and privacy helper; include the T250 build stamp in the report; no PII beyond what the user types.
 **Why we need it** — Invite-only preview users need a one-click way to report problems with the build attached.
 **Notes** — LL parity audit 2026-10-24 (gap 4).
 
-### Phase 13 — Roles, Compliance & Trust (T074, T075, T092, T093, T094, T199, T200, T201, T230, T231)
+#### T266 — Cut the customers report (segments, cohorts) and the outgoing-webhooks plan flag
 
-Remaining roles, audit logging, MFA, and the export/deletion promises that back the trust brand. **9 open tasks, ~49h.** 1 done.
+**Phase**: 12 · **Category**: Cleanup · **Hours**: 2 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: none
+
+**What it is** — Less unused surface.
+
+**What it does** — Remove the customer segmentation/cohort report (~16 backend routes the frontend doesn't use) and its page; remove the outgoing-webhooks plan flag (nothing was built). The revenue report, A/R aging and Who Owes What stay.
+
+**Why we need it** — Not what the commercial-cleaning buyer needs; less to secure and port.
+
+**Notes** — MVP proposal feature table (Cut rows). Added 2026-10-25 from the MVP plan (`docs/product/mvp-plan-2026-10.md`).
+
+---
+
+### Phase 13 — Roles, Compliance & Trust (T074, T075, T092, T093, T094, T199, T200, T201, T230, T231, T262)
+
+Remaining roles, audit logging, MFA, and the export/deletion promises that back the trust brand. **8 open tasks, ~49h.** 1 done.
 
 - [x] T230 — Expose the caller's effective permissions per tenant; decide who can delete an organization ✓ (2026-10-16)
 - [ ] T074 — Create Accountant role
@@ -2349,11 +2544,12 @@ Remaining roles, audit logging, MFA, and the export/deletion promises that back 
 - [ ] T199 — One-click full data export (trust promise)
 - [ ] T200 — Account/tenant deletion + data retention policy
 - [ ] T201 — Privacy/CCPA handling SOP
+- [ ] T262 — Privacy hardening: Sentry replay on errors only, self-host Inter, tighten CSP
 - [~] T231 — Owner decision: may a tenant's owner/admin delete their own organization? (Deferred)
 
 #### T074 — Create Accountant role
 
-**Phase**: 13 · **Category**: Auth · **Hours**: 3 · **Status**: Open · **v1 Gate**: No · **Depends on**: T104
+**Phase**: 13 · **Category**: Auth · **Hours**: 3 · **Status**: Open · **MVP Gate**: No · **Depends on**: T104
 
 **What it is** — A view-only role for bookkeepers/CPAs covering all financial data.
 
@@ -2367,7 +2563,7 @@ Remaining roles, audit logging, MFA, and the export/deletion promises that back 
 
 #### T075 — Add field-level permission controls
 
-**Phase**: 13 · **Category**: Auth · **Hours**: 12 · **Status**: Open · **v1 Gate**: No · **Depends on**: T035
+**Phase**: 13 · **Category**: Auth · **Hours**: 12 · **Status**: Open · **MVP Gate**: No · **Depends on**: T035
 
 **What it is** — Specific fields (prices, balances, costs) are hidden from roles without financial permission, in every API response.
 
@@ -2381,7 +2577,7 @@ Remaining roles, audit logging, MFA, and the export/deletion promises that back 
 
 #### T092 — Implement 2FA (TOTP)
 
-**Phase**: 13 · **Category**: Auth · **Hours**: 6 · **Status**: Open · **v1 Gate**: No · **Depends on**: T158
+**Phase**: 13 · **Category**: Auth · **Hours**: 6 · **Status**: Open · **MVP Gate**: No · **Depends on**: T158
 
 **What it is** — Users can protect their account with an authenticator app; admins can require it.
 
@@ -2395,7 +2591,7 @@ Remaining roles, audit logging, MFA, and the export/deletion promises that back 
 
 #### T093 — Implement comprehensive audit logging
 
-**Phase**: 13 · **Category**: Backend · **Hours**: 12 · **Status**: Open · **v1 Gate**: No · **Depends on**: T096
+**Phase**: 13 · **Category**: Backend · **Hours**: 12 · **Status**: Open · **MVP Gate**: No · **Depends on**: T096
 
 **What it is** — Who changed what, when, and from where, for all business data — searchable and exportable.
 
@@ -2409,7 +2605,7 @@ Remaining roles, audit logging, MFA, and the export/deletion promises that back 
 
 #### T094 — Add Google OAuth sign-in
 
-**Phase**: 13 · **Category**: Auth · **Hours**: 0 · **Status**: Won't Do · **v1 Gate**: No · **Depends on**: none
+**Phase**: 13 · **Category**: Auth · **Hours**: 0 · **Status**: Won't Do · **MVP Gate**: No · **Depends on**: none
 
 **Why we won't do this** — Superseded by T158 — Neon Auth (managed Better Auth) provides Google sign-in. Revisit only if T158 is abandoned.
 
@@ -2417,7 +2613,7 @@ Remaining roles, audit logging, MFA, and the export/deletion promises that back 
 
 #### T199 — One-click full data export (trust promise)
 
-**Phase**: 13 · **Category**: Feature · **Hours**: 6 · **Status**: Open · **v1 Gate**: No · **Depends on**: T128
+**Phase**: 13 · **Category**: Feature · **Hours**: 6 · **Status**: Open · **MVP Gate**: No · **Depends on**: T128
 
 **What it is** — A tenant owner downloads all their data (CSV/JSON per entity plus PDFs and attachments) in one ZIP.
 
@@ -2431,7 +2627,7 @@ Remaining roles, audit logging, MFA, and the export/deletion promises that back 
 
 #### T200 — Account/tenant deletion + data retention policy
 
-**Phase**: 13 · **Category**: Legal · **Hours**: 6 · **Status**: Open · **v1 Gate**: No · **Depends on**: T199
+**Phase**: 13 · **Category**: Legal · **Hours**: 6 · **Status**: Open · **MVP Gate**: No · **Depends on**: T199
 
 **What it is** — Owners can delete their tenant; data is purged on a documented schedule.
 
@@ -2445,7 +2641,7 @@ Remaining roles, audit logging, MFA, and the export/deletion promises that back 
 
 #### T201 — Privacy/CCPA handling SOP
 
-**Phase**: 13 · **Category**: Legal · **Hours**: 3 · **Status**: Open · **v1 Gate**: No · **Depends on**: none
+**Phase**: 13 · **Category**: Legal · **Hours**: 3 · **Status**: Open · **MVP Gate**: No · **Depends on**: none
 
 **What it is** — A written procedure for privacy requests, for ServicePro's own users and for end-customer data held on tenants' behalf.
 
@@ -2459,7 +2655,7 @@ Remaining roles, audit logging, MFA, and the export/deletion promises that back 
 
 #### T231 — Owner decision: may a tenant's owner/admin delete their own organization?
 
-**Phase**: 13 · **Category**: Auth · **Hours**: 1 · **Status**: Deferred · **v1 Gate**: No · **Depends on**: T230
+**Phase**: 13 · **Category**: Auth · **Hours**: 1 · **Status**: Deferred · **MVP Gate**: No · **Depends on**: T230
 
 **What it is** — A deliberate rule for who can delete an organization, implemented as a permission grant.
 
@@ -2467,9 +2663,23 @@ Remaining roles, audit logging, MFA, and the export/deletion promises that back 
 
 ---
 
-### Phase 14 — Hosting & Launch Readiness (T202, T203, T204, T205, T206, T207, T208, T209, T210, T211, T212, T213, T251, T252)
+#### T262 — Privacy hardening: Sentry replay on errors only, self-host Inter, tighten CSP
 
-Provision and launch. Database: Neon (T202, decided 2026-10-18). ServicePro stays local-only until these land. **11 open tasks, ~34h.** 1 done.
+**Phase**: 13 · **Category**: Security · **Hours**: 1 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: none
+
+**What it is** — Visitors aren't recorded or sent to third parties without need.
+
+**What it does** — Sentry `replaysSessionSampleRate` 0 and `replaysOnErrorSampleRate` 1.0; serve the Inter woff2 from our own assets; drop Google Fonts from the CSP in `frontend/public/_headers`.
+
+**Why we need it** — 10% session replay burns the free quota and needs disclosure; hot-linked Google Fonts send visitor IPs to Google.
+
+**Notes** — Technical Requirements N8. Added 2026-10-25 from the MVP plan (`docs/product/mvp-plan-2026-10.md`).
+
+---
+
+### Phase 14 — Hosting & Launch Readiness (T202, T203, T204, T205, T206, T207, T208, T209, T210, T211, T212, T213, T251, T252, T255, T258)
+
+Provision and launch. Live since 2026-10-24 (Neon us-east-2 + Cloud Run us-east5 + Worker; T202–T204). What's left gets the live site honest (T255, T258) and ready for the design-partner beta and paid launch (D11, D14). **15 open tasks, ~42h.** 3 done.
 
 - [x] T202 — Decide production database hosting (OWNER DECISION) ✓ (2026-10-18)
 - [x] T203 — GCP project + WIF + Artifact Registry + Cloud Run service ✓ (2026-10-24)
@@ -2485,10 +2695,12 @@ Provision and launch. Database: Neon (T202, decided 2026-10-18). ServicePro stay
 - [ ] T213 — Cost guardrails (Cloud Run max instances × DB pool, budget alerts)
 - [ ] T251 — Post-deploy smoke check + GCP uptime check and alert
 - [ ] T252 — Sentry cron check-ins for scheduled jobs and the nightly backup
+- [ ] T255 — Honest public site: remove false claims, invite-only CTA, hide pricing, Terms/Privacy at sign-up
+- [ ] T258 — Replace servicepro.com defaults; complete the .env.example files
 
 #### T203 — GCP project + WIF + Artifact Registry + Cloud Run service
 
-**Phase**: 14 · **Category**: Deploy · **Hours**: 4 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T202, T143
+**Phase**: 14 · **Category**: Deploy · **Hours**: 4 · **Status**: Open · **MVP Gate**: No · **Depends on**: T202, T143
 
 **What it is** — A GCP project with keyless GitHub deploys and a capped Cloud Run service `servicepro-api`.
 
@@ -2502,7 +2714,7 @@ Provision and launch. Database: Neon (T202, decided 2026-10-18). ServicePro stay
 
 #### T204 — Deploy the Worker + DNS for servicepro.sharkfins.xyz
 
-**Phase**: 14 · **Category**: Deploy · **Hours**: 2 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T150, T203, T107
+**Phase**: 14 · **Category**: Deploy · **Hours**: 2 · **Status**: Open · **MVP Gate**: No · **Depends on**: T150, T203, T107
 
 **What it is** — `https://servicepro.sharkfins.xyz` serves the frontend and proxies `/api/*` and `/version` to Cloud Run.
 
@@ -2516,7 +2728,7 @@ Provision and launch. Database: Neon (T202, decided 2026-10-18). ServicePro stay
 
 #### T205 — Invite-gated preview launch
 
-**Phase**: 14 · **Category**: Deploy · **Hours**: 2 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T106, T204, T206
+**Phase**: 14 · **Category**: Deploy · **Hours**: 2 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: T106, T204, T206
 
 **What it is** — The first invited tenants can sign up and use ServicePro at the production URL.
 
@@ -2524,13 +2736,13 @@ Provision and launch. Database: Neon (T202, decided 2026-10-18). ServicePro stay
 
 **Why we need it** — Real usage from the T218 interviewees is what validates the beachhead.
 
-**Notes** — Requires every Phase 1 task.
+**Notes** — Requires every Phase 1 task. MVP plan (2026-10-25): the design-partner beta (5 companies, 2027-04-05 → 2027-06-30) runs on production with invite codes; no staging.
 
 ---
 
 #### T206 — Production email domain on Resend (SPF/DKIM/DMARC)
 
-**Phase**: 14 · **Category**: Email · **Hours**: 2 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T159
+**Phase**: 14 · **Category**: Email · **Hours**: 2 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: T159
 
 **What it is** — Transactional email sends from a verified ServicePro domain with SPF, DKIM and DMARC passing.
 
@@ -2538,13 +2750,13 @@ Provision and launch. Database: Neon (T202, decided 2026-10-18). ServicePro stay
 
 **Why we need it** — Reminders and invoices that land in spam defeat the collections wedge.
 
-**Notes** — D2 (Resend).
+**Notes** — D2 (Resend). MVP plan (2026-10-25): replaces the `servicepro.com` sender defaults (T258); the domain changes again with the rename (OD-10).
 
 ---
 
 #### T207 — Terms of Service + Privacy Policy legal review
 
-**Phase**: 14 · **Category**: Legal · **Hours**: 4 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: none
+**Phase**: 14 · **Category**: Legal · **Hours**: 4 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: none
 
 **What it is** — Final Terms and Privacy Policy reviewed and published, replacing the draft placeholders.
 
@@ -2552,13 +2764,13 @@ Provision and launch. Database: Neon (T202, decided 2026-10-18). ServicePro stay
 
 **Why we need it** — Required before charging anyone or processing their customers' data.
 
-**Notes** — frontend audit §7 (placeholders with "Last updated: today"). T138 marks the current pages as drafts in the meantime.
+**Notes** — frontend audit §7 (placeholders with "Last updated: today"). T138 marks the current pages as drafts in the meantime. MVP plan (2026-10-25): include Stripe Connect terms, SMS terms (for later), a subprocessor list (Neon, Google Cloud, Cloudflare, Stripe, Resend, Sentry, PostHog), DPA template and retention policy; record the accepted version at sign-up (T255).
 
 ---
 
 #### T208 — Support inbox + Better Stack status page
 
-**Phase**: 14 · **Category**: Ops · **Hours**: 2 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T204
+**Phase**: 14 · **Category**: Ops · **Hours**: 2 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: T204
 
 **What it is** — A support address that reaches the owner and a public status page.
 
@@ -2572,7 +2784,7 @@ Provision and launch. Database: Neon (T202, decided 2026-10-18). ServicePro stay
 
 #### T209 — Activate nightly backups to R2 + restore drill
 
-**Phase**: 14 · **Category**: Ops · **Hours**: 2 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T151, T202
+**Phase**: 14 · **Category**: Ops · **Hours**: 2 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: T151, T202
 
 **What it is** — Nightly database backups run, are verified, and a restore has been rehearsed.
 
@@ -2580,13 +2792,13 @@ Provision and launch. Database: Neon (T202, decided 2026-10-18). ServicePro stay
 
 **Why we need it** — Provider backups alone aren't enough for a system holding customers' invoices and payment history.
 
-**Notes** — infra audit §5 `db-backup.yml`.
+**Notes** — infra audit §5 `db-backup.yml`. MVP plan (2026-10-25, D14): move Neon to the Launch plan (Free keeps only 6 hours of restore history) before the first paying tenant.
 
 ---
 
 #### T210 — ServicePro plans & billing: Solo/Team/Pro flat, unlimited users, founding offer
 
-**Phase**: 14 · **Category**: Billing · **Hours**: 12 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T122, T169
+**Phase**: 14 · **Category**: Billing · **Hours**: 12 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: T122, T169
 
 **What it is** — ServicePro's own subscription plans match the pricing hypothesis and are sold self-serve.
 
@@ -2594,13 +2806,13 @@ Provision and launch. Database: Neon (T202, decided 2026-10-18). ServicePro stay
 
 **Why we need it** — Flat, unlimited-user, no-contract pricing is the attack on incumbents' #1 complaint, and the business needs revenue.
 
-**Notes** — `docs/product/competitive-research-2026-10.md` §4.5. Relies on the webhook fix in T122.
+**Notes** — `docs/product/competitive-research-2026-10.md` §4.5. Relies on the webhook fix in T122. MVP plan (2026-10-25, D10): Solo $39 / Team $99 unlimited users / Pro $199; cards Stripe + 0.4%, ACH 1% capped at $10; founding offer Team $59/mo for life for the first 25 tenants, only while payments stay on. The public pricing page stays hidden (T255) until this ships.
 
 ---
 
 #### T211 — Update Fleet and the blog when ServicePro goes live
 
-**Phase**: 14 · **Category**: Docs · **Hours**: 1 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T204
+**Phase**: 14 · **Category**: Docs · **Hours**: 1 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: T204
 
 **What it is** — Fleet and the public blog reflect ServicePro's hosting, vendors, costs and URL.
 
@@ -2614,7 +2826,7 @@ Provision and launch. Database: Neon (T202, decided 2026-10-18). ServicePro stay
 
 #### T212 — Production config review
 
-**Phase**: 14 · **Category**: Ops · **Hours**: 2 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T203
+**Phase**: 14 · **Category**: Ops · **Hours**: 2 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: T203
 
 **What it is** — A checklist-driven review that production runs with safe settings.
 
@@ -2628,7 +2840,7 @@ Provision and launch. Database: Neon (T202, decided 2026-10-18). ServicePro stay
 
 #### T213 — Cost guardrails (Cloud Run max instances × DB pool, budget alerts)
 
-**Phase**: 14 · **Category**: Ops · **Hours**: 1 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T203, T144
+**Phase**: 14 · **Category**: Ops · **Hours**: 1 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: T203, T144
 
 **What it is** — Hard ceilings on spend and DB connections.
 
@@ -2636,13 +2848,13 @@ Provision and launch. Database: Neon (T202, decided 2026-10-18). ServicePro stay
 
 **Why we need it** — Without caps a bot or retry loop can exhaust DB connections exactly when traffic is good, or scale the bill silently.
 
-**Notes** — LL T368 is the pattern.
+**Notes** — LL T368 is the pattern. MVP plan (2026-10-25): 4 Cloud Run instances × pool size must stay under Neon's pooler limit.
 
 ---
 
 #### T251 — Post-deploy smoke check + GCP uptime check and alert
 
-**Phase**: 14 · **Category**: Ops · **Hours**: 3 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T203
+**Phase**: 14 · **Category**: Ops · **Hours**: 3 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: T203
 
 **What it is** — A `make smoke` script (health, /version through the Worker, login page, an authenticated read) run after every release, plus a Google Cloud uptime check on /health/ready with an email alert.
 **What it does** — Port League Looper's `tools/ops` smoke script; call it from release-deploy.yml after the web job; `gcloud monitoring uptime create` against the Worker URL; alert policy to the owner's email.
@@ -2651,12 +2863,40 @@ Provision and launch. Database: Neon (T202, decided 2026-10-18). ServicePro stay
 
 #### T252 — Sentry cron check-ins for scheduled jobs and the nightly backup
 
-**Phase**: 14 · **Category**: Monitoring · **Hours**: 1 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: T126
+**Phase**: 14 · **Category**: Monitoring · **Hours**: 1 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: T126
 
 **What it is** — Each scheduled job run (`scheduled-jobs.yml`) and the backup (`db-backup.yml`) checks in to a Sentry cron monitor, so a missed or failed run alerts.
 **What it does** — Add `getsentry` cron check-in steps (in_progress / ok / error) keyed per job, as League Looper does; skip when SENTRY_AUTH_TOKEN is unset.
 **Why we need it** — Invoice reminders and recurring jobs are money-path; a silently skipped run costs tenants money with nobody noticing.
 **Notes** — LL parity audit 2026-10-24 (gap 3).
+
+#### T255 — Honest public site: remove false claims, invite-only CTA, hide pricing, Terms/Privacy at sign-up
+
+**Phase**: 14 · **Category**: Content · **Hours**: 3 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: none
+
+**What it is** — The live marketing pages only say true things.
+
+**What it does** — Remove "Join thousands…" (`LandingPage.tsx:90`, `FeaturesPage.tsx:78`, `AboutPage.tsx:105`), "99.9% uptime" (`AboutPage.tsx:85`), the 14-day trial FAQ (`PricingPage.tsx:128`) and "Get Started Free"; CTAs become "Request beta access" (registration is invite-only, T205); hide the public pricing page and route until T210 ships plans matching D10; add a "working name" note (OD-10); the sign-up form links Terms and Privacy and records the accepted version on the user.
+
+**Why we need it** — The public site makes claims that aren't true while ServicePro is live (D11 honesty gate, due 2026-11-08).
+
+**Notes** — MVP proposal launch blocker 2; Technical Requirements N1; D11. Added 2026-10-25 from the MVP plan (`docs/product/mvp-plan-2026-10.md`).
+
+---
+
+#### T258 — Replace servicepro.com defaults; complete the .env.example files
+
+**Phase**: 14 · **Category**: Cleanup · **Hours**: 1 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: none
+
+**What it is** — No default, address or link points at servicepro.com, a domain someone else owns.
+
+**What it does** — Replace every `servicepro.com` default and address (e.g. `AWS_SES_FROM_EMAIL=noreply@servicepro.com`, help/training links) with `sharkfins.xyz` equivalents or config; add the missing keys to the `.env.example` files (`BACKEND_URL`, TextBelt, `VITE_APP_VERSION`, `VITE_GIT_SHA`).
+
+**Why we need it** — Emails and links would point at another company's domain (launch blocker 6).
+
+**Notes** — Technical Requirements N4. T206 sets up the sending domain; the rename (OD-10) changes it again. Added 2026-10-25 from the MVP plan (`docs/product/mvp-plan-2026-10.md`).
+
+---
 
 ### Phase 15 — AI Differentiators (T214, T215, T216, T217)
 
@@ -2669,7 +2909,7 @@ AI as accelerator and marketing hook, not the moat — aimed at the collections 
 
 #### T214 — AI collections agent
 
-**Phase**: 15 · **Category**: AI · **Hours**: 24 · **Status**: Open · **v1 Gate**: No · **Depends on**: T121, T065, T181
+**Phase**: 15 · **Category**: AI · **Hours**: 24 · **Status**: Open · **MVP Gate**: No · **Depends on**: T121, T065, T181
 
 **What it is** — An agent that runs collections: drafts and sends escalating reminders, reads replies, logs promises-to-pay and suggests calls.
 
@@ -2683,7 +2923,7 @@ AI as accelerator and marketing hook, not the moat — aimed at the collections 
 
 #### T215 — AI quote drafting from photos, voice or notes against the price book
 
-**Phase**: 15 · **Category**: AI · **Hours**: 20 · **Status**: Open · **v1 Gate**: No · **Depends on**: T168, T174
+**Phase**: 15 · **Category**: AI · **Hours**: 20 · **Status**: Open · **MVP Gate**: No · **Depends on**: T168, T174
 
 **What it is** — Techs or owners describe the job (photos, voice memo, notes) and get a draft quote built from the tenant's price book.
 
@@ -2697,7 +2937,7 @@ AI as accelerator and marketing hook, not the moat — aimed at the collections 
 
 #### T216 — "Ask your business" chat over reporting views
 
-**Phase**: 15 · **Category**: AI · **Hours**: 12 · **Status**: Open · **v1 Gate**: No · **Depends on**: T102
+**Phase**: 15 · **Category**: AI · **Hours**: 12 · **Status**: Open · **MVP Gate**: No · **Depends on**: T102
 
 **What it is** — Owners ask questions in plain language ("who owes me the most over 60 days?") and get answers from their data.
 
@@ -2711,7 +2951,7 @@ AI as accelerator and marketing hook, not the moat — aimed at the collections 
 
 #### T217 — MCP server for ServicePro
 
-**Phase**: 15 · **Category**: AI · **Hours**: 12 · **Status**: Open · **v1 Gate**: No · **Depends on**: T098
+**Phase**: 15 · **Category**: AI · **Hours**: 12 · **Status**: Open · **MVP Gate**: No · **Depends on**: T098
 
 **What it is** — Owners connect ServicePro to Claude or ChatGPT through an MCP server.
 
@@ -2725,7 +2965,7 @@ AI as accelerator and marketing hook, not the moat — aimed at the collections 
 
 ### Phase 16 — Go-to-Market (T218, T219, T220, T221, T222, T254)
 
-Validate the beachhead before the Phase 9–10 build-out, then publish positioning and pricing. **5 open tasks, ~40h.**
+Validate the beachhead before the Phase 9–10 build-out, then publish positioning and pricing. **6 open tasks, ~43h.**
 
 - [ ] T218 — Customer discovery: interview 10 commercial service contractors
 - [ ] T219 — Marketing site with positioning + transparent pricing
@@ -2736,7 +2976,7 @@ Validate the beachhead before the Phase 9–10 build-out, then publish positioni
 
 #### T218 — Customer discovery: interview 10 commercial service contractors
 
-**Phase**: 16 · **Category**: Research · **Hours**: 10 · **Status**: Open · **v1 Gate**: Yes · **Depends on**: none
+**Phase**: 16 · **Category**: Research · **Hours**: 10 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: none
 
 **What it is** — Ten structured interviews with owners/office managers of 1–10-tech commercial cleaning, property maintenance and small commercial HVAC shops.
 
@@ -2744,13 +2984,13 @@ Validate the beachhead before the Phase 9–10 build-out, then publish positioni
 
 **Why we need it** — The beachhead, pricing and collections wedge are hypotheses from desk research. Do this BEFORE the Phase 9–10 build-out.
 
-**Notes** — `docs/product/competitive-research-2026-10.md` §4.3, §4.5. OD-7.
+**Notes** — `docs/product/competitive-research-2026-10.md` §4.3, §4.5. OD-7. MVP plan (2026-10-25): 10 interviews by 2027-01-31 (commercial cleaners on Oahu in person; BSCAI/ISSA members). Kill criteria: fewer than 5 of 10 bill any customer for 3+ sites; fewer than 3 of 10 would commit to the $59 founding price. Recruit the 5 design partners.
 
 ---
 
 #### T219 — Marketing site with positioning + transparent pricing
 
-**Phase**: 16 · **Category**: Marketing · **Hours**: 12 · **Status**: Open · **v1 Gate**: No · **Depends on**: T218
+**Phase**: 16 · **Category**: Marketing · **Hours**: 12 · **Status**: Open · **MVP Gate**: No · **Depends on**: T218
 
 **What it is** — Public pages that state the positioning and publish the prices.
 
@@ -2758,13 +2998,13 @@ Validate the beachhead before the Phase 9–10 build-out, then publish positioni
 
 **Why we need it** — Transparent pricing is part of the attack on incumbents' hidden/quote-only pricing.
 
-**Notes** — `docs/product/competitive-research-2026-10.md` §4.4, §4.5.
+**Notes** — `docs/product/competitive-research-2026-10.md` §4.4, §4.5. MVP plan (2026-10-25): waits for the new name (OD-10) — no marketing spend on "ServicePro".
 
 ---
 
 #### T220 — White-glove migration offer + playbook
 
-**Phase**: 16 · **Category**: Marketing · **Hours**: 4 · **Status**: Open · **v1 Gate**: No · **Depends on**: T193
+**Phase**: 16 · **Category**: Marketing · **Hours**: 4 · **Status**: Open · **MVP Gate**: No · **Depends on**: T193
 
 **What it is** — A documented, repeatable "we migrate you for free" service.
 
@@ -2778,7 +3018,7 @@ Validate the beachhead before the Phase 9–10 build-out, then publish positioni
 
 #### T221 — Comparison / alternative pages (vs Jobber, Housecall Pro, ServiceTitan)
 
-**Phase**: 16 · **Category**: Marketing · **Hours**: 8 · **Status**: Open · **v1 Gate**: No · **Depends on**: T219
+**Phase**: 16 · **Category**: Marketing · **Hours**: 8 · **Status**: Open · **MVP Gate**: No · **Depends on**: T219
 
 **What it is** — Honest comparison pages for buyers searching for alternatives.
 
@@ -2792,7 +3032,7 @@ Validate the beachhead before the Phase 9–10 build-out, then publish positioni
 
 #### T222 — Validate secondary beachhead (inspection/compliance trades)
 
-**Phase**: 16 · **Category**: Research · **Hours**: 6 · **Status**: Open · **v1 Gate**: No · **Depends on**: T218
+**Phase**: 16 · **Category**: Research · **Hours**: 6 · **Status**: Open · **MVP Gate**: No · **Depends on**: T218
 
 **What it is** — Interviews with backflow testing, fire extinguisher/sprinkler inspection and hood-cleaning businesses.
 
@@ -2806,7 +3046,7 @@ Validate the beachhead before the Phase 9–10 build-out, then publish positioni
 
 #### T254 — Prerender marketing pages + generate sitemap
 
-**Phase**: 16 · **Category**: SEO · **Hours**: 3 · **Status**: Open · **v1 Gate**: No · **Depends on**: none
+**Phase**: 16 · **Category**: SEO · **Hours**: 3 · **Status**: Open · **MVP Gate**: No · **Depends on**: none
 
 **What it is** — Public marketing routes (home, pricing, features) are prerendered to static HTML at build time and a sitemap.xml is generated.
 **What it does** — Port League Looper's Vite prerender step and `generate-sitemap.mjs`; keep the app routes client-rendered.
@@ -2828,14 +3068,16 @@ Validate the beachhead before the Phase 9–10 build-out, then publish positioni
   for the areas a change touches (est. ~30% less). Going private also drops free secret scanning + push protection.
 - **OD-3 — Redis in production** (T142, T161). Upstash (free tier, TLS) vs moving rate limits, tokens and caches to
   Postgres/in-memory and dropping Redis in production.
-- **OD-4 — Stripe Connect charge model** (T169). Direct charges (tenant is merchant of record and carries dispute
-  liability and Stripe fees) vs destination charges (platform carries dispute liability, more control). Affects
-  Terms (T207) and fee display.
+- **OD-4 — Stripe Connect charge model** (T169). **Decided 2026-10-25 by D9: Accounts v2, direct charges**, Stripe
+  collects its fees from the tenant; ServicePro takes an application fee and pays no Connect fees. The tenant is
+  merchant of record and carries dispute liability (Terms, T207). Built on Express or destination charges, ServicePro
+  would pay ~0.51% of volume in Connect fees and the 0.4% fee would lose money.
 - **OD-5 — Money representation** (T166). Keep shopspring decimal or move to integer cents before the pgx port.
 - **OD-6 — SMS provider and 10DLC** (T049, T181). Twilio vs Telnyx; per-tenant A2P 10DLC brand/campaign registration
-  cost and lead time; whether ServicePro registers on tenants' behalf.
-- **OD-7 — Beachhead confirmation** (T218). Confirm or change the commercial/B2B beachhead and the $99 Team price
-  after 10 interviews; re-scope Phases 9–10 accordingly.
+  cost and lead time; whether ServicePro registers on tenants' behalf. Narrowed by OD-12: not needed
+  before V1.
+- **OD-7 — Beachhead confirmation** (T218). Narrowed by D7 (commercial cleaning and facility maintenance for property
+  managers). Confirm or change it and the $99 Team price after 10 interviews by 2027-01-31, before MVP phase D.
 - **OD-8 — Cloud Run region.** Follows the Neon project's region (OD-1). 2026-10-24: the Neon project
   (`frosty-unit-21038953`, org SharkFins, Free plan) is in **AWS us-east-2 (Ohio)**, Postgres 18; branch
   `production` has Neon Auth (managed Better Auth) enabled. Nearest Cloud Run region: `us-east5` (Columbus, Ohio).
@@ -2851,6 +3093,14 @@ Validate the beachhead before the Phase 9–10 build-out, then publish positioni
   at $25/mo) and keeping our own JWT auth (Fleet decision 3, "never hand-rolled auth"). Fleet is not updated until
   ServicePro is hosted (owner, 2026-10-19).
 
+- **OD-10 — New product name.** "SERVICEPRO" (Reg. 6005498, ServicePro.net LLC, a ServiceTitan subsidiary) and
+  "SERVICE PRO" (Reg. 1924503, MSI Data) are live US marks for field-service software. Run naming with .com checks,
+  then attorney clearance, by 2027-03-01 (before the beta and before T219). No marketing spend on the current name.
+- **OD-11 — Business setup before revenue.** Legal entity; Hawaii General Excise Tax license (4.5% on Oahu covers
+  SaaS); confirm the employer's outside-business and IP terms allow a commercial side SaaS. Settle before the first
+  real payment.
+- **OD-12 — SMS in the MVP?** **Decided 2026-10-25: no.** Email-only reminders in the MVP; SMS (10DLC about $20–65
+  one-time + about $11/month per tenant, weeks to approve; consent records, STOP/HELP) moves to V1 (T048–T050, T181).
 
 ---
 
