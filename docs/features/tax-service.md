@@ -1,394 +1,72 @@
-# Tax Service
+# Tax Rates
 
-Comprehensive tax calculation with rate lookup, caching, and exemption handling.
+How sales tax works in ServicePro today: **flat, per-tenant tax rates** that a
+user picks on a quote or invoice. There is no zip-code or jurisdiction lookup,
+no tax-rate cache and no exemption validation.
 
-## Overview
+## What exists
 
-The Tax Service provides:
+- **Tax rates table** (`tax_rates`): `name`, `description`, `rate` (a fraction:
+  `0.0825` = 8.25%), `tax_type` (`sales_tax`, `vat`, `gst`, `hst`, `exempt`),
+  `region` (free text, informational), `is_compound`, `is_active`,
+  `effective_date` / `expiry_date`.
+- **Ownership:** each tenant manages its own rates and also sees the global
+  defaults (`tenant_id IS NULL`), which are read-only. Every query filters
+  `tenant_id`; another tenant's rate is a 404.
+- **Default rate:** a tenant can set a default tax rate in its settings
+  (`DefaultTaxRateID`); quotes and invoices created without an explicit rate get
+  it. (Settings UI for it: T235.)
+- **Calculation** (`backend/internal/services/invoice_totals.go`, T225) — one
+  server-side calculation, all `shopspring/decimal`, rounded half away from
+  zero to cents:
+  1. line gross = quantity × unit price; line discount (percentage or amount);
+     line net = gross − discount
+  2. subtotal = sum of line nets
+  3. the invoice-level discount is applied **before** tax, allocated to the
+     lines pro rata
+  4. line tax = (line net − its discount share) × rate, taxable lines only
+  5. total = subtotal − discount + tax
 
-- Zip code-based tax rate lookup
-- Multi-jurisdiction support (state, county, city)
-- Automatic tax calculation
-- Exemption handling (nonprofit, government, resale)
-- Redis caching for performance
+A rate that invoices still reference can't be deleted — deactivate it instead.
 
-## Features
+## API
 
-### Tax Rate Lookup
+All routes require auth and a tenant; reads need `tax_rates.read`, writes
+`tax_rates.manage`.
 
-- Zip code-based rates
-- State, county, city, and local rates
-- Combined rate calculation
-- Effective date tracking
+| Method | Endpoint                | Description                                             |
+| ------ | ----------------------- | ------------------------------------------------------- |
+| GET    | `/api/v1/tax-rates`     | List own + global rates (`?active_only=true` to filter) |
+| GET    | `/api/v1/tax-rates/:id` | Get one rate                                            |
+| POST   | `/api/v1/tax-rates`     | Create a rate                                           |
+| PUT    | `/api/v1/tax-rates/:id` | Update a rate (omitted fields unchanged)                |
+| DELETE | `/api/v1/tax-rates/:id` | Delete a rate (409 if invoices still use it)            |
 
-### Tax Calculation
-
-- Precise decimal calculations
-- Automatic rounding (2 decimal places)
-- Tax breakdown by jurisdiction
-- Product category support
-
-### Exemptions
-
-- Nonprofit organizations (EIN validation)
-- Government entities
-- Resale certificates
-- Manufacturing exemptions
-- Educational institutions
-
-### Caching
-
-- Redis caching (24-hour TTL default)
-- Cache hit/miss statistics
-- Manual cache invalidation
-
-## API Endpoints
-
-| Method | Endpoint                  | Description          |
-| ------ | ------------------------- | -------------------- |
-| GET    | `/tax/rate/:zipCode`      | Get tax rate         |
-| POST   | `/tax/calculate`          | Calculate tax        |
-| POST   | `/tax/validate-exemption` | Validate exemption   |
-| GET    | `/tax/stats`              | Get cache statistics |
-
-## Get Tax Rate
-
-```http
-GET /api/v1/tax/rate/90210
-```
-
-### Response
+Create body:
 
 ```json
 {
-  "zip_code": "90210",
-  "state": "CA",
-  "county": "Los Angeles",
-  "city": "Beverly Hills",
-  "state_rate": "0.0725",
-  "county_rate": "0.0100",
-  "city_rate": "0.0050",
-  "local_rate": "0.0000",
-  "combined_rate": "0.0875",
-  "rates": [
-    {
-      "name": "California State Tax",
-      "rate": "0.0725",
-      "jurisdiction": "state"
-    },
-    {
-      "name": "Los Angeles County Tax",
-      "rate": "0.0100",
-      "jurisdiction": "county"
-    },
-    {
-      "name": "Beverly Hills City Tax",
-      "rate": "0.0050",
-      "jurisdiction": "city"
-    }
-  ],
-  "effective_date": "2024-01-01",
-  "last_updated": "2024-01-15T10:00:00Z"
+  "name": "Ohio sales tax",
+  "rate": "0.0725",
+  "tax_type": "sales_tax",
+  "region": "OH",
+  "is_compound": false,
+  "is_active": true
 }
 ```
 
-## Calculate Tax
+`name` and `rate` are required; `tax_type` defaults to `sales_tax` and
+`is_active` to `true`. Full request/response shapes: Swagger UI at
+`/api/docs` (generated from `backend/internal/api/handlers/tax_rate_handler.go`).
 
-```http
-POST /api/v1/tax/calculate
-```
+Invoices and quotes reference a rate with `tax_rate_id` (or pass a direct
+`tax_rate`, which overrides it).
 
-### Basic Calculation
+## Not built
 
-```json
-{
-  "amount": "100.00",
-  "zip_code": "90210"
-}
-```
+- Address- or zip-code-based rate lookup and multi-jurisdiction (state/county/city)
+  breakdowns
+- Exemption certificates (nonprofit, government, resale)
+- Automatic tax via a provider (e.g. Stripe Tax)
 
-### Response
-
-```json
-{
-  "amount": "100.00",
-  "tax_rate": "0.0875",
-  "tax_amount": "8.75",
-  "total": "108.75",
-  "breakdown": [
-    { "name": "State Tax", "rate": "0.0725", "tax_amount": "7.25" },
-    { "name": "County Tax", "rate": "0.0100", "tax_amount": "1.00" },
-    { "name": "City Tax", "rate": "0.0050", "tax_amount": "0.50" }
-  ],
-  "exemption_applied": false
-}
-```
-
-### With Exemption
-
-```json
-{
-  "amount": "100.00",
-  "zip_code": "90210",
-  "exemption_type": "nonprofit",
-  "exemption_number": "12-3456789"
-}
-```
-
-### Response (Exempt)
-
-```json
-{
-  "amount": "100.00",
-  "tax_rate": "0.0875",
-  "tax_amount": "0.00",
-  "total": "100.00",
-  "exemption_applied": true,
-  "exemption_type": "nonprofit"
-}
-```
-
-## Validate Exemption
-
-```http
-POST /api/v1/tax/validate-exemption
-```
-
-### Request
-
-```json
-{
-  "exemption_type": "nonprofit",
-  "exemption_number": "12-3456789"
-}
-```
-
-### Response
-
-```json
-{
-  "valid": true,
-  "exemption_type": "nonprofit",
-  "message": "Valid EIN format"
-}
-```
-
-## Exemption Types
-
-### Nonprofit (EIN Format)
-
-```json
-{
-  "exemption_type": "nonprofit",
-  "exemption_number": "12-3456789"
-}
-```
-
-Format: `XX-XXXXXXX` (9-digit EIN with hyphen after first 2 digits)
-
-### Government
-
-```json
-{
-  "exemption_type": "government",
-  "exemption_number": "GOV123"
-}
-```
-
-Any valid identifier accepted.
-
-### Resale Certificate
-
-```json
-{
-  "exemption_type": "resale",
-  "exemption_number": "RESALE12345"
-}
-```
-
-Format: Alphanumeric, 6-15 characters
-
-### Manufacturing
-
-```json
-{
-  "exemption_type": "manufacture",
-  "exemption_number": "MFG12345"
-}
-```
-
-### Educational
-
-```json
-{
-  "exemption_type": "educational",
-  "exemption_number": "EDU98765"
-}
-```
-
-## State Tax Rates
-
-Sample rates (actual rates may vary):
-
-| State          | Code | Base Rate |
-| -------------- | ---- | --------- |
-| California     | CA   | 7.25%     |
-| New York       | NY   | 4.00%     |
-| Texas          | TX   | 6.25%     |
-| Florida        | FL   | 6.00%     |
-| Illinois       | IL   | 6.25%     |
-| Pennsylvania   | PA   | 6.00%     |
-| Ohio           | OH   | 5.75%     |
-| Georgia        | GA   | 4.00%     |
-| North Carolina | NC   | 4.75%     |
-| Michigan       | MI   | 6.00%     |
-
-Note: County and city rates are added to base state rates.
-
-## Error Responses
-
-### Invalid Zip Code
-
-```json
-{
-  "error": "invalid_zip_code",
-  "message": "Invalid zip code format. Use 5-digit (12345) or 9-digit (12345-6789)"
-}
-```
-
-### Rate Not Found
-
-```json
-{
-  "error": "rate_not_found",
-  "message": "Tax rate not found for zip code 00000"
-}
-```
-
-### Invalid Exemption
-
-```json
-{
-  "error": "invalid_exemption",
-  "message": "Invalid EIN format. Expected XX-XXXXXXX"
-}
-```
-
-### Invalid Amount
-
-```json
-{
-  "error": "invalid_amount",
-  "message": "Amount must be a non-negative number"
-}
-```
-
-## Configuration
-
-### Environment Variables
-
-```bash
-# Redis Configuration
-REDIS_URL=redis://localhost:6379/0
-
-# Tax Service Configuration
-TAX_CACHE_ENABLED=true
-TAX_CACHE_TTL=24h
-TAX_DEFAULT_STATE=CA
-TAX_FALLBACK_RATE=0.0825
-```
-
-### Service Configuration
-
-```go
-config := &TaxServiceConfig{
-    CacheEnabled:  true,
-    CacheTTL:      24 * time.Hour,
-    DefaultState:  "CA",
-    FallbackRate:  decimal.NewFromFloat(0.0825),
-    EnableLogging: true,
-}
-```
-
-## Cache Management
-
-### Get Statistics
-
-```http
-GET /api/v1/tax/stats
-```
-
-```json
-{
-  "cache_hits": 1500,
-  "cache_misses": 50,
-  "hit_rate": 0.9677,
-  "cached_zip_codes": 150
-}
-```
-
-### Invalidate Cache
-
-```http
-DELETE /api/v1/tax/cache/:zipCode
-```
-
-Invalidates cached rate for specific zip code.
-
-## Integration Example
-
-### With Invoice Service
-
-```go
-func (s *InvoiceService) CreateInvoice(req *InvoiceRequest) (*Invoice, error) {
-    // Calculate subtotal from line items
-    subtotal := calculateSubtotal(req.Items)
-
-    // Calculate tax
-    taxReq := &TaxCalculationRequest{
-        Amount:  subtotal,
-        ZipCode: req.CustomerZipCode,
-    }
-
-    taxResult, err := s.taxService.CalculateTax(taxReq)
-    if err != nil {
-        return nil, err
-    }
-
-    // Create invoice
-    invoice := &Invoice{
-        Subtotal:  subtotal,
-        TaxRate:   taxResult.TaxRate,
-        TaxAmount: taxResult.TaxAmount,
-        Total:     taxResult.Total,
-    }
-
-    return invoice, nil
-}
-```
-
-## Performance
-
-### Expected Latency
-
-| Operation            | Cached | Uncached |
-| -------------------- | ------ | -------- |
-| Rate lookup          | ~500ns | ~50μs    |
-| Tax calculation      | ~1μs   | ~50μs    |
-| Exemption validation | ~100ns | ~100ns   |
-
-### Cache Strategy
-
-- Zip code rates cached for 24 hours
-- Cache key: `tax:rate:{zipCode}`
-- Automatic expiration
-- Manual invalidation available
-
-## Best Practices
-
-1. **Always validate zip codes** before calculation
-2. **Cache exemption certificates** to avoid repeated validation
-3. **Log all calculations** for audit purposes
-4. **Update rates periodically** from authoritative sources
-5. **Handle rate not found** gracefully with fallback
-6. **Use decimal precision** for financial calculations
+None of these are scheduled; record a decision in TODO.md before adding one.
