@@ -1,28 +1,34 @@
 # ServicePro Quick Start Guide
 
-Get up and running with ServicePro in 5 minutes.
+Get up and running with ServicePro locally in 5 minutes. (Production lives at
+<https://servicepro.sharkfins.xyz> and ships only from `v*` tags — see
+[RELEASING.md](../../RELEASING.md).)
 
 ## Prerequisites
 
 - Docker & Docker Compose
-- Go 1.23+
-- Node.js 18+
-- Make (optional but recommended)
+- Go matching `backend/go.mod` (`go 1.26`, toolchain go1.27.3)
+- Node.js 24 (`frontend/.nvmrc`; `nvm use` in `frontend/`)
+- Make
+
+Redis is optional — without `REDIS_URL` the API falls back to an in-memory,
+per-instance store. The local compose stack starts one anyway.
 
 ## Fastest Way to Start
 
 ### Option 1: One Command Setup (Recommended)
 
 ```bash
+cp backend/.env.example backend/.env   # first time only
 make setup
 ```
 
 This will:
 
 - Install all dependencies (backend & frontend)
-- Set up pre-commit hooks
-- Start PostgreSQL and Redis
-- Run database migrations
+- Install the versioned hooks (`make install-hooks`)
+- Start PostgreSQL, Redis, MinIO and Mailpit containers
+- Run database migrations and load the dev seed (login `dev@servicepro.local` / `password123`)
 
 Then in **two separate terminals**:
 
@@ -45,45 +51,40 @@ Open http://localhost:3000 in your browser.
 ### Option 2: Docker Compose (Everything in Docker)
 
 ```bash
-# Start all services at once
-docker-compose up
-
-# Or run in background
-docker-compose up -d
+cp backend/.env.example backend/.env   # first time only
+make docker-dev                        # foreground; make docker-dev-d to detach
+make seed                              # optional test data
 ```
 
-This starts:
+This starts PostgreSQL (5432), Redis (6379), Mailpit (8025), MinIO, the backend
+(8080, migrates its own database on startup), the frontend (3000) and Grafana
+(3001).
 
-- PostgreSQL (port 5432)
-- Redis (port 6379)
-- Backend (port 8080)
-- Frontend (port 5173)
-
-Open http://localhost:5173 in your browser.
+Open http://localhost:3000 in your browser.
 
 ---
 
 ### Option 3: Step-by-Step Setup
 
 ```bash
-# 1. Start databases
-docker-compose up -d postgres redis
+# 1. Start databases (PostgreSQL, Redis, MinIO, Mailpit)
+make dev-db
 
 # 2. Install dependencies
-cd frontend && npm install && cd ..
-cd backend && go mod download && cd ..
+make install-deps
 
 # 3. Create backend .env (if not exists)
-cd backend && cp .env.example .env && cd ..
+cp backend/.env.example backend/.env
 
-# 4. Run migrations
+# 4. Run migrations and load seed data
 make migrate
+make seed
 
 # 5. Start backend (in one terminal)
-cd backend && go run cmd//main.go
+make dev-backend
 
 # 6. Start frontend (in another terminal)
-cd frontend && npm run dev
+make dev-frontend
 ```
 
 Open http://localhost:3000 in your browser.
@@ -97,10 +98,11 @@ make help          # Show all available commands
 
 # Development
 make dev           # Start databases (then use dev-backend and dev-frontend)
-make dev-db        # Start only PostgreSQL and Redis
+make dev-db        # Start PostgreSQL, Redis, MinIO and Mailpit
 make dev-backend   # Run backend server
 make dev-frontend  # Run frontend dev server
 make migrate       # Run database migrations
+make seed          # Load backend/seeds/dev_seed.sql
 
 # Docker
 make up            # Start all services with Docker Compose
@@ -116,46 +118,42 @@ make install-deps  # Install all dependencies
 make test          # Run all tests
 make lint          # Run all linters
 make format        # Format all code
+make ci-local      # The core CI gates
 
 # Database
 make db-reset      # Reset database (WARNING: deletes all data)
+make db-fresh-seed # Recreate the local db and load the seed
 ```
 
 ## Testing the Application
 
-### 1. Register a New Account
+### 1. Log in with the seeded account
+
+After `make seed`, log in at http://localhost:3000/login as
+`dev@servicepro.local` / `password123`.
+
+### 2. Or register a new account
+
+Local development defaults to open registration (`REGISTRATION_MODE`; deployed
+environments default to `invite_only`).
 
 1. Go to http://localhost:3000
 2. Click "Get Started" or "Sign Up"
 3. Enter email and password
 4. Click "Create Account"
 
-### 2. Verify Email (Development Mode)
+Locally, email goes to Mailpit: open http://localhost:8025 and click the
+verification link.
 
-In development, verification emails aren't sent. To verify manually:
+### 3. Explore
 
-```bash
-# Connect to database
-docker exec -it servicepro-postgres psql -U postgres -d servicepro
-
-# Get the verification token
-SELECT email, token FROM email_verifications ORDER BY created_at DESC LIMIT 1;
-
-# Copy the token and visit:
-# http://localhost:3000/verify-email?token=<TOKEN>
-```
-
-### 3. Login and Explore
-
-1. Go to http://localhost:3000/login
-2. Enter your credentials
-3. Explore the dashboard, settings, and features
+Explore the dashboard, customers, jobs, quotes, invoices and settings.
 
 ## Check Service Status
 
 ```bash
 # All services
-docker-compose ps
+make ps
 
 # Backend health check
 curl http://localhost:8080/health
@@ -177,6 +175,7 @@ lsof -i :3000   # Frontend
 lsof -i :8080   # Backend
 lsof -i :5432   # PostgreSQL
 lsof -i :6379   # Redis
+lsof -i :8025   # Mailpit
 
 # Stop local services if needed
 brew services stop postgresql  # macOS
@@ -187,13 +186,13 @@ brew services stop redis       # macOS
 
 ```bash
 # Check PostgreSQL is running
-docker-compose ps postgres
+docker compose ps postgres
 
 # View logs
-docker-compose logs postgres
+docker compose logs postgres
 
 # Restart PostgreSQL
-docker-compose restart postgres
+docker compose restart postgres
 ```
 
 ### Frontend Can't Reach Backend?
@@ -203,7 +202,7 @@ docker-compose restart postgres
    ```
    CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173
    ```
-3. Check frontend proxy in `frontend/vite.config.ts`
+3. Check the dev proxy in `frontend/vite.config.ts` (the SPA calls same-origin `/api`)
 
 See [Troubleshooting](./troubleshooting.md) for more solutions.
 
@@ -212,31 +211,38 @@ See [Troubleshooting](./troubleshooting.md) for more solutions.
 ```
 servicepro/
 ├── backend/           # Go backend API
-│   ├── cmd/          # Main applications
+│   ├── cmd/          # main.go (server), migrate/, invite/
 │   ├── internal/     # Private application code
-│   ├── pkg/          # Public libraries
-│   └── migrations/   # Database migrations
-├── frontend/          # React frontend
+│   ├── pkg/          # Clients, auth, database
+│   ├── migrations/   # golang-migrate migrations (always additive)
+│   └── seeds/        # dev_seed.sql
+├── frontend/          # React frontend + Cloudflare Worker
 │   ├── src/
 │   │   ├── components/  # UI components
 │   │   ├── pages/       # Page components
 │   │   ├── services/    # API services
 │   │   └── store/       # State management
+│   ├── worker/          # /api + /version edge proxy
 │   └── public/
 └── docker-compose.yml # Docker services
 ```
 
 ## Service URLs
 
-| Service        | URL                          |
-| -------------- | ---------------------------- |
-| Frontend       | http://localhost:3000        |
-| Backend API    | http://localhost:8080        |
-| Backend Health | http://localhost:8080/health |
-| PostgreSQL     | localhost:5432               |
-| Redis          | localhost:6379               |
+| Service        | URL                            |
+| -------------- | ------------------------------ |
+| Frontend       | http://localhost:3000          |
+| Backend API    | http://localhost:8080          |
+| Backend Health | http://localhost:8080/health   |
+| Swagger UI     | http://localhost:8080/api/docs |
+| Mailpit        | http://localhost:8025          |
+| Grafana        | http://localhost:3001          |
+| PostgreSQL     | localhost:5432                 |
+| Redis          | localhost:6379                 |
 
 ## Default Credentials
+
+**App (after `make seed`):** `dev@servicepro.local` / `password123`
 
 **Database:**
 

@@ -4,74 +4,67 @@ ServicePro system architecture, services, and design patterns.
 
 ## System Architecture
 
+Production (live since v0.9.0, 2026-10-24):
+
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                         Frontend (React)                         │
-│  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────────────────┐ │
-│  │  Pages  │  │ Comps   │  │ Hooks   │  │    State (Zustand)  │ │
-│  └────┬────┘  └────┬────┘  └────┬────┘  └──────────┬──────────┘ │
-│       └────────────┴────────────┴──────────────────┘            │
-│                              │                                   │
-│                    ┌─────────┴─────────┐                        │
-│                    │   API Services    │                        │
-│                    └─────────┬─────────┘                        │
-└──────────────────────────────┼──────────────────────────────────┘
-                               │ HTTP/REST
-                               ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                         Backend (Go/Gin)                         │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐  │
-│  │  Handlers   │──│  Services   │──│      Repositories       │  │
-│  │   (API)     │  │  (Business) │  │       (Data Access)     │  │
-│  └──────┬──────┘  └──────┬──────┘  └───────────┬─────────────┘  │
-│         │                │                     │                 │
-│  ┌──────┴──────┐  ┌──────┴──────┐             │                 │
-│  │ Middleware  │  │  External   │             │                 │
-│  │ Auth, CORS  │  │  Services   │             │                 │
-│  └─────────────┘  └─────────────┘             │                 │
-└───────────────────────────────────────────────┼─────────────────┘
-                                                │
-                    ┌───────────────────────────┼───────────────┐
-                    │                           │               │
-                    ▼                           ▼               ▼
-             ┌──────────┐               ┌──────────┐     ┌──────────┐
-             │PostgreSQL│               │  Redis   │     │   AWS    │
-             │ Database │               │  Cache   │     │   SES    │
-             └──────────┘               └──────────┘     └──────────┘
+Browser ── https://servicepro.sharkfins.xyz
+   │
+   ▼
+Cloudflare Worker "servicepro-web"
+   │  static assets (React SPA, frontend/dist) + SPA fallback
+   │  /api/* and /version ──► proxied with X-SP-Client-IP + X-SP-Edge-Secret
+   ▼
+Cloud Run "servicepro-api" (us-east5) — Go / Gin
+   │  Middleware (request ID, edge check, CORS, CSRF, auth, tenant, permissions, rate limits)
+   │  Handlers ──► Services ──► Repositories (GORM)
+   │
+   ├──► Neon Postgres 18 (AWS us-east-2)        primary database
+   ├──► Neon Auth (managed Better Auth)          JWTs verified via JWKS (SPA switch: T158)
+   ├──► Redis (optional: Upstash or none)        rate limits, tokens; in-memory fallback
+   ├──► Email: Resend (T159); SMTP/Mailpit locally
+   ├──► Object storage: S3 API (Cloudflare R2 target; MinIO locally)
+   └──► Stripe, Sentry, PostHog
+
+GitHub Actions: v* tag ──► migrate (Neon) ──► deploy API ──► deploy Worker
+                hourly ──► POST /internal/jobs/* on the Cloud Run URL
 ```
 
 ## Technology Stack
 
 ### Frontend
 
-| Technology   | Purpose          |
-| ------------ | ---------------- |
-| React 18     | UI framework     |
-| TypeScript   | Type safety      |
-| Vite         | Build tool       |
-| React Router | Routing          |
-| Zustand      | State management |
-| React Query  | Server state     |
-| Tailwind CSS | Styling          |
+| Technology           | Purpose                       |
+| -------------------- | ----------------------------- |
+| React 19             | UI framework                  |
+| TypeScript (strict)  | Type safety                   |
+| Vite 8               | Build tool                    |
+| React Router 7       | Routing                       |
+| Zustand              | Client state                  |
+| TanStack React Query | Server state                  |
+| Tailwind CSS 4       | Styling                       |
+| Cloudflare Worker    | Static assets + `/api` proxy  |
 
 ### Backend
 
-| Technology         | Purpose                |
-| ------------------ | ---------------------- |
-| Go 1.21+           | Language               |
-| Gin                | HTTP framework         |
-| GORM               | ORM                    |
-| JWT                | Authentication         |
-| bcrypt             | Password hashing       |
-| shopspring/decimal | Financial calculations |
+| Technology                 | Purpose                                                   |
+| -------------------------- | --------------------------------------------------------- |
+| Go 1.26 (toolchain 1.27.3) | Language                                                  |
+| Gin                        | HTTP framework                                            |
+| GORM                       | ORM (pgx/sqlc is the target)                              |
+| golang-migrate             | Always-additive migrations, embedded in the binary        |
+| JWT (httpOnly cookies)     | Own authentication today; Neon Auth JWTs also accepted    |
+| bcrypt                     | Password hashing (cost 12)                                |
+| shopspring/decimal         | Money                                                     |
 
-### Data Layer
+### Data and services
 
-| Technology    | Purpose           |
-| ------------- | ----------------- |
-| PostgreSQL 15 | Primary database  |
-| Redis 7       | Caching, sessions |
-| AWS SES       | Email delivery    |
+| Technology                 | Purpose                                                          |
+| -------------------------- | ---------------------------------------------------------------- |
+| PostgreSQL 18              | Primary database (Neon in production, Docker locally)            |
+| Redis (optional)           | Rate limits, short-lived tokens; in-memory fallback without it   |
+| Resend                     | Email (target, T159); Mailpit locally                            |
+| S3-compatible storage      | Files (Cloudflare R2 target; MinIO locally)                      |
+| Stripe                     | Payments (Stripe Connect planned, T169)                          |
 
 ## Backend Architecture
 
@@ -79,7 +72,7 @@ ServicePro system architecture, services, and design patterns.
 
 ```
 backend/
-├── cmd//          # Application entry point
+├── cmd/              # main.go (server), migrate/ (CLI), invite/ (invite codes)
 ├── internal/
 │   ├── api/
 │   │   ├── handlers/     # HTTP handlers (controllers)
@@ -89,9 +82,9 @@ backend/
 │   ├── repository/       # Data access layer
 │   └── services/         # Business logic
 ├── pkg/
-│   ├── auth/             # Authentication utilities
-│   ├── database/         # Database connections
-│   └── email/            # Email services
+│   ├── auth/             # JWT, cookies, passwords, Neon Auth verifier
+│   ├── clients/          # email, storage, sms, analytics, logging, metrics, error tracking
+│   └── database/         # Postgres + Redis connections
 └── migrations/           # Database migrations
 ```
 
@@ -136,12 +129,15 @@ frontend/
 │   ├── components/       # Reusable UI components
 │   ├── pages/            # Page components
 │   ├── hooks/            # Custom React hooks
-│   ├── services/         # API clients
-│   ├── store/            # State management
-│   ├── contexts/         # React contexts
-│   ├── types/            # TypeScript types
+│   ├── services/         # API clients (axios, same-origin /api)
+│   ├── store/            # Zustand stores
+│   ├── providers/        # React providers
+│   ├── routes/           # Route definitions
+│   ├── types/            # TypeScript types (api.generated.ts from OpenAPI)
 │   └── utils/            # Utility functions
-├── public/               # Static assets
+├── public/               # Static assets, _headers (CSP/HSTS/cache)
+├── worker/               # Cloudflare Worker: /api/* + /version proxy
+├── wrangler.jsonc        # Worker config (servicepro-web)
 └── vite.config.ts        # Build configuration
 ```
 
@@ -180,30 +176,30 @@ DELETE /api/v1/{resource}/:id       # Delete
 
 ### Response Format
 
+Single resources are returned as the object itself. Lists return a named array
+plus paging fields, e.g. `GET /api/v1/customers`:
+
 ```json
-{
-  "data": { ... },
-  "message": "Success",
-  "meta": {
-    "page": 1,
-    "total": 100
-  }
-}
+{ "customers": [ ... ], "total": 100, "page": 1, "page_size": 20, "total_pages": 5 }
 ```
+
+Errors use one envelope `{error, message, request_id, fields?}` — see
+[docs/api/errors.md](../api/errors.md). The OpenAPI spec (`backend/docs/`,
+Swagger UI at `/api/docs`) is the source of truth for shapes.
 
 ## Security
 
 ### Authentication
 
-- JWT tokens with short expiry
-- Refresh token rotation
-- bcrypt password hashing (cost 12)
+- Own JWTs in httpOnly cookies (access + refresh), bcrypt password hashing (cost 12)
+- Mutating cookie-authenticated requests must send `X-Requested-With: XMLHttpRequest` (CSRF)
+- Neon Auth (managed Better Auth) bearer JWTs are verified via JWKS; the SPA moves to it in T158
 
 ### Authorization
 
-- Role-based access control (RBAC)
-- Permission-based endpoints
-- Resource-level authorization
+- Per-tenant roles and permissions (a role in tenant A grants nothing in tenant B)
+- Tenant comes from the authenticated membership (`X-Tenant-ID` only selects among the caller's tenants)
+- Every tenant-owned query filters `tenant_id`; cross-tenant reads return 404
 
 ### Data Protection
 
@@ -217,9 +213,9 @@ DELETE /api/v1/{resource}/:id       # Delete
 
 ### Caching Strategy
 
-- Redis for session data
-- Redis for tax rates, permissions
-- HTTP caching headers
+- Redis (when configured) for rate limits and short-lived tokens; in-memory per-instance fallback otherwise
+- Report caches with explicit refresh endpoints
+- HTTP caching headers on static assets (`frontend/public/_headers`)
 
 ### Database Optimization
 
@@ -231,12 +227,11 @@ DELETE /api/v1/{resource}/:id       # Delete
 
 ### Horizontal Scaling
 
-- Stateless backend (JWT auth)
-- Redis for shared state
-- Database connection pooling
+- Stateless API on Cloud Run (scales to zero; `max-instances × DB_MAX_OPEN_CONNS` stays under the DB limit)
+- Background work as idempotent `POST /internal/jobs/<name>` calls from a scheduler, not in-process tickers
+- Static assets served from Cloudflare's edge
 
-### Future Considerations
+### Planned (see TODO.md Phase 4)
 
-- Message queue for async operations
-- CDN for static assets
-- Read replicas for reporting
+- chi + pgx/sqlc, Postgres RLS as a tenant-isolation backstop
+- TanStack Query for all server state

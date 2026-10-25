@@ -1,8 +1,12 @@
 # ServicePro Database Architecture
 
-> **Version**: 1.0
-> **Last Updated**: January 2026
-> **Database**: PostgreSQL 18
+> **Version**: 1.1
+> **Last Updated**: 2026-10-25
+> **Database**: PostgreSQL 18 — Neon in production (AWS us-east-2), Docker locally
+>
+> **Source of truth:** `backend/migrations/` (`000001_initial_schema.up.sql` +
+> later pairs). The diagrams and table sketches below are a guide; where they
+> differ from the migrations, the migrations win.
 
 ## Table of Contents
 
@@ -23,12 +27,15 @@
 
 ### 1.1 Database Statistics
 
-| Metric              | Value            |
-| ------------------- | ---------------- |
-| Total Tables        | 45+              |
-| Total Views         | 15+              |
-| Total Functions     | 20+              |
-| Estimated Data Size | Varies by tenant |
+Counted from `000001_initial_schema.up.sql` (2026-10-25):
+
+| Metric      | Value                                                       |
+| ----------- | ----------------------------------------------------------- |
+| Tables      | 53 (51 in `public`, 2 in `analytics`)                       |
+| Views       | 8 (`v_*` reporting views, no materialized views)            |
+| Functions   | 15                                                          |
+| Enum types  | 16                                                          |
+| Triggers    | 19 (17 `updated_at`, quote item totals, invoice numbering)  |
 
 ### 1.2 Naming Conventions
 
@@ -49,6 +56,18 @@ All tables include:
 - `created_at` - Timestamp of creation
 - `updated_at` - Timestamp of last update
 - `deleted_at` - Soft delete timestamp (nullable)
+
+### 1.4 Migrations
+
+golang-migrate, embedded in the binary, **always additive** (CLAUDE.md).
+
+| Migration                   | What                                                                                                   |
+| --------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `000001_initial_schema`     | The whole pre-launch schema. Migrations 000001–000014 were squashed into it on 2026-10-24, before any shared database held data (one-off) |
+| `000002_users_auth_user_id` | `users.auth_user_id` — links a user to its Neon Auth identity (T158)                                   |
+
+Production migrations run in the release pipeline's `migrate` job, never at
+server startup. Locally: `make migrate`, `make db-fresh-seed`.
 
 ---
 
@@ -769,38 +788,23 @@ $$ LANGUAGE plpgsql;
 ### 5.1 Enum Types
 
 ```sql
--- Customer types
 CREATE TYPE customer_type AS ENUM ('residential', 'commercial');
 CREATE TYPE customer_status AS ENUM ('active', 'inactive', 'prospect');
 
--- Job types
-CREATE TYPE job_type AS ENUM ('installation', 'maintenance', 'repair', 'inspection', 'emergency');
-CREATE TYPE job_status AS ENUM ('scheduled', 'in_progress', 'on_hold', 'completed', 'cancelled');
+CREATE TYPE job_status AS ENUM ('new', 'scheduled', 'en_route', 'in_progress', 'on_hold',
+                                'completed', 'invoiced', 'paid', 'cancelled');
 CREATE TYPE job_priority AS ENUM ('low', 'normal', 'high', 'urgent');
+CREATE TYPE job_type AS ENUM ('installation', 'maintenance', 'repair', 'inspection', 'emergency');
 
--- Quote and Invoice
-CREATE TYPE quote_status AS ENUM ('draft', 'sent', 'accepted', 'rejected', 'expired');
-CREATE TYPE invoice_status AS ENUM (
-    'draft', 'sent', 'viewed', 'paid', 'partially_paid',
-    'overdue', 'cancelled', 'refunded'
-);
+CREATE TYPE quote_status AS ENUM ('draft', 'sent', 'viewed', 'accepted', 'declined', 'expired');
+CREATE TYPE invoice_status AS ENUM ('draft', 'sent', 'viewed', 'paid', 'partially_paid',
+                                    'overdue', 'cancelled', 'refunded');
 
--- Payment
-CREATE TYPE payment_term_type AS ENUM (
-    'due_on_receipt', 'net_7', 'net_10', 'net_15',
-    'net_30', 'net_60', 'net_90', 'custom'
-);
+CREATE TYPE payment_term_type AS ENUM ('due_on_receipt', 'net_7', 'net_10', 'net_15',
+                                       'net_30', 'net_60', 'net_90', 'custom');
 CREATE TYPE tax_type AS ENUM ('sales_tax', 'vat', 'gst', 'hst', 'exempt');
+CREATE TYPE template_status AS ENUM ('draft', 'active', 'archived', 'deprecated');
 
--- Scheduling
-CREATE TYPE conflict_type AS ENUM (
-    'technician_overlap', 'location_overlap',
-    'equipment_overlap', 'time_overlap'
-);
-CREATE TYPE severity_level AS ENUM ('low', 'medium', 'high', 'critical');
-CREATE TYPE exception_type AS ENUM ('skip', 'reschedule', 'modify');
-
--- Notifications
 CREATE TYPE notification_type AS ENUM (
     'payment_due_soon', 'payment_overdue', 'payment_in_grace_period',
     'early_payment_discount_available', 'late_fee_applied',
@@ -808,6 +812,10 @@ CREATE TYPE notification_type AS ENUM (
 );
 CREATE TYPE notification_status AS ENUM ('pending', 'sent', 'failed', 'dismissed');
 CREATE TYPE notification_channel AS ENUM ('email', 'sms', 'push', 'in_app', 'webhook');
+
+CREATE TYPE invitation_status AS ENUM ('pending', 'accepted', 'expired', 'cancelled');
+CREATE TYPE membership_status AS ENUM ('active', 'cancelled', 'expired', 'pending');
+CREATE TYPE billing_cycle AS ENUM ('monthly', 'annual');
 ```
 
 ### 5.2 Audit Log Tables
@@ -837,118 +845,39 @@ CREATE INDEX idx_invoice_audit_created_at ON invoice_audit_log(created_at);
 
 ## 6. Views and Functions
 
-### 6.1 Materialized Views
+### 6.1 Views
 
-```sql
--- Revenue summary by month
-CREATE MATERIALIZED VIEW revenue_by_month AS
-SELECT
-    DATE_TRUNC('month', i.paid_date) AS month,
-    COUNT(*) AS invoice_count,
-    SUM(i.total_amount) AS total_revenue,
-    SUM(i.tax_amount) AS total_tax,
-    AVG(i.total_amount) AS avg_invoice_value
-FROM invoices i
-WHERE i.status = 'paid' AND i.deleted_at IS NULL
-GROUP BY DATE_TRUNC('month', i.paid_date)
-ORDER BY month DESC;
+Eight plain (non-materialized) reporting views:
 
--- Refresh schedule
-CREATE INDEX idx_revenue_by_month ON revenue_by_month(month);
+| View                      | Purpose                                   |
+| ------------------------- | ----------------------------------------- |
+| `v_platform_overview`     | Platform-wide totals (admin)              |
+| `v_tenant_growth_daily`   | New tenants per day                       |
+| `v_feature_adoption`      | Feature usage across tenants              |
+| `v_job_metrics_daily`     | Job counts/status per day                 |
+| `v_invoice_metrics_daily` | Invoice counts/amounts per day            |
+| `v_quote_conversion`      | Quote → accepted conversion               |
+| `v_revenue_daily`         | Revenue per day                           |
+| `v_ar_aging_summary`      | Accounts-receivable aging buckets         |
 
--- Job statistics view
-CREATE VIEW job_statistics AS
-SELECT
-    status,
-    priority,
-    job_type,
-    COUNT(*) AS count,
-    AVG(actual_duration) AS avg_duration,
-    SUM(actual_cost) AS total_cost
-FROM jobs
-WHERE deleted_at IS NULL
-GROUP BY status, priority, job_type;
+Report endpoints that need caching use cache tables (`revenue_summary_cache`,
+`customer_metrics_cache`) with explicit refresh endpoints, not materialized
+views.
 
--- Technician workload view
-CREATE VIEW technician_workload AS
-SELECT
-    u.id AS technician_id,
-    u.email,
-    COUNT(ja.id) AS assigned_jobs,
-    SUM(ja.hours_worked) AS total_hours,
-    COUNT(CASE WHEN j.status = 'in_progress' THEN 1 END) AS active_jobs,
-    COUNT(CASE WHEN j.status = 'completed' THEN 1 END) AS completed_jobs
-FROM users u
-LEFT JOIN job_assignments ja ON ja.user_id = u.id AND ja.deleted_at IS NULL
-LEFT JOIN jobs j ON j.id = ja.job_id AND j.deleted_at IS NULL
-WHERE u.role IN ('technician', 'user')
-GROUP BY u.id, u.email;
-```
+### 6.2 Functions
 
-### 6.2 Utility Functions
+| Function                                                          | Purpose                                         |
+| ----------------------------------------------------------------- | ----------------------------------------------- |
+| `update_updated_at_column()`                                      | Trigger: keep `updated_at` current (17 tables)  |
+| `validate_email`, `validate_phone`, `validate_state_code`, `validate_zip_code` | Check-constraint helpers           |
+| `calculate_quote_item_total()`                                    | Trigger: quote line totals                      |
+| `generate_quote_number`, `generate_invoice_number`                | Document numbering                              |
+| `get_user_tenant_ids`, `user_belongs_to_tenant`, `get_user_tenant_role` | Tenant membership helpers                 |
+| `get_tenant_subscription`, `check_tenant_limit`                   | Membership tier limits                          |
+| `set_default_payment_method`, `get_default_payment_method`        | Tenant billing payment methods                  |
 
-```sql
--- Calculate invoice totals from line items
-CREATE OR REPLACE FUNCTION calculate_invoice_totals(p_invoice_id UUID)
-RETURNS VOID AS $$
-BEGIN
-    UPDATE invoices i
-    SET
-        subtotal = (
-            SELECT COALESCE(SUM(line_total), 0)
-            FROM invoice_lines
-            WHERE invoice_id = p_invoice_id
-        ),
-        tax_amount = (
-            SELECT COALESCE(SUM(tax_amount), 0)
-            FROM invoice_lines
-            WHERE invoice_id = p_invoice_id AND taxable = TRUE
-        ),
-        total_amount = subtotal + tax_amount - discount_amount,
-        updated_at = CURRENT_TIMESTAMP
-    WHERE id = p_invoice_id;
-END;
-$$ LANGUAGE plpgsql;
-
--- Check for schedule conflicts
-CREATE OR REPLACE FUNCTION check_schedule_conflict(
-    p_schedule_id UUID,
-    p_start_time TIMESTAMP,
-    p_end_time TIMESTAMP,
-    p_tech_ids UUID[]
-)
-RETURNS TABLE(conflict_id UUID, conflict_type conflict_type) AS $$
-BEGIN
-    RETURN QUERY
-    SELECT
-        s.id,
-        'technician_overlap'::conflict_type
-    FROM schedules s
-    WHERE s.id != p_schedule_id
-      AND s.deleted_at IS NULL
-      AND s.is_cancelled = FALSE
-      AND s.assigned_tech_ids && p_tech_ids
-      AND (p_start_time, p_end_time) OVERLAPS (s.start_time, s.end_time);
-END;
-$$ LANGUAGE plpgsql;
-
--- Auto-expire quotes
-CREATE OR REPLACE FUNCTION expire_old_quotes()
-RETURNS INTEGER AS $$
-DECLARE
-    expired_count INTEGER;
-BEGIN
-    UPDATE quotes
-    SET status = 'expired', updated_at = CURRENT_TIMESTAMP
-    WHERE status IN ('draft', 'sent')
-      AND valid_until < CURRENT_DATE
-      AND deleted_at IS NULL;
-
-    GET DIAGNOSTICS expired_count = ROW_COUNT;
-    RETURN expired_count;
-END;
-$$ LANGUAGE plpgsql;
-```
+Quote expiry runs in the API (`POST /internal/jobs/quote-expiry`, hourly from
+`scheduled-jobs.yml`), not as a database function.
 
 ---
 
@@ -1006,84 +935,8 @@ CREATE INDEX idx_payments_stripe ON payments(stripe_payment_intent_id);
 
 ## 8. Partitioning
 
-### 8.1 Time-Based Partitioning
-
-For high-volume tables, we use range partitioning by date:
-
-```sql
--- Revenue transactions (partitioned by month)
-CREATE TABLE revenue_transactions (
-    id              UUID NOT NULL DEFAULT gen_random_uuid(),
-    transaction_date DATE NOT NULL,
-    payment_id      UUID,
-    user_id         UUID,
-    invoice_id      UUID,
-    transaction_type VARCHAR(20) NOT NULL,
-    gross_amount    DECIMAL(12,2) NOT NULL,
-    net_amount      DECIMAL(12,2) NOT NULL,
-    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (id, transaction_date)
-) PARTITION BY RANGE (transaction_date);
-
--- Create monthly partitions
-CREATE TABLE revenue_transactions_2025_01
-    PARTITION OF revenue_transactions
-    FOR VALUES FROM ('2025-01-01') TO ('2025-02-01');
-
-CREATE TABLE revenue_transactions_2025_02
-    PARTITION OF revenue_transactions
-    FOR VALUES FROM ('2025-02-01') TO ('2025-03-01');
-
--- Auto-create partitions function
-CREATE OR REPLACE FUNCTION create_revenue_partition(p_date DATE)
-RETURNS VOID AS $$
-DECLARE
-    partition_name TEXT;
-    start_date DATE;
-    end_date DATE;
-BEGIN
-    start_date := DATE_TRUNC('month', p_date);
-    end_date := start_date + INTERVAL '1 month';
-    partition_name := 'revenue_transactions_' || TO_CHAR(p_date, 'YYYY_MM');
-
-    EXECUTE format(
-        'CREATE TABLE IF NOT EXISTS %I PARTITION OF revenue_transactions
-         FOR VALUES FROM (%L) TO (%L)',
-        partition_name, start_date, end_date
-    );
-END;
-$$ LANGUAGE plpgsql;
-```
-
-### 8.2 Partition Maintenance
-
-```sql
--- Drop old partitions (data retention)
-CREATE OR REPLACE FUNCTION drop_old_partitions(
-    retention_months INTEGER DEFAULT 24
-)
-RETURNS INTEGER AS $$
-DECLARE
-    partition_record RECORD;
-    dropped_count INTEGER := 0;
-    cutoff_date DATE;
-BEGIN
-    cutoff_date := DATE_TRUNC('month', CURRENT_DATE - (retention_months || ' months')::INTERVAL);
-
-    FOR partition_record IN
-        SELECT tablename
-        FROM pg_tables
-        WHERE tablename LIKE 'revenue_transactions_____'
-          AND TO_DATE(SUBSTRING(tablename FROM 23), 'YYYY_MM') < cutoff_date
-    LOOP
-        EXECUTE 'DROP TABLE IF EXISTS ' || partition_record.tablename;
-        dropped_count := dropped_count + 1;
-    END LOOP;
-
-    RETURN dropped_count;
-END;
-$$ LANGUAGE plpgsql;
-```
+No table is partitioned today. `revenue_transactions` is a plain table keyed by
+`id`; revisit range partitioning by date only if volume demands it.
 
 ---
 
@@ -1141,41 +994,10 @@ ALTER TABLE jobs ADD CONSTRAINT valid_schedule
 
 ### 9.3 Triggers for Data Integrity
 
-```sql
--- Auto-update updated_at
-CREATE OR REPLACE FUNCTION update_updated_at()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = CURRENT_TIMESTAMP;
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER update_customers_updated_at
-    BEFORE UPDATE ON customers
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-
--- Prevent invalid status transitions
-CREATE OR REPLACE FUNCTION validate_job_status_transition()
-RETURNS TRIGGER AS $$
-BEGIN
-    -- Define valid transitions
-    IF OLD.status = 'completed' AND NEW.status != 'completed' THEN
-        RAISE EXCEPTION 'Cannot change status of completed job';
-    END IF;
-
-    IF OLD.status = 'cancelled' AND NEW.status != 'cancelled' THEN
-        RAISE EXCEPTION 'Cannot change status of cancelled job';
-    END IF;
-
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER validate_job_status
-    BEFORE UPDATE OF status ON jobs
-    FOR EACH ROW EXECUTE FUNCTION validate_job_status_transition();
-```
+19 triggers in the baseline schema: 17 `BEFORE UPDATE` triggers calling
+`update_updated_at_column()`, one calling `calculate_quote_item_total()` and one
+calling `generate_invoice_number()`. Status transitions (jobs, quotes,
+invoices) are enforced in the Go services, not in triggers.
 
 ---
 
@@ -1203,16 +1025,13 @@ WHERE deleted_at IS NULL;
 
 ### 10.2 Connection Pooling
 
-```yaml
-# PgBouncer configuration
-[pgbouncer]
-pool_mode = transaction
-max_client_conn = 1000
-default_pool_size = 25
-min_pool_size = 5
-reserve_pool_size = 5
-reserve_pool_timeout = 3
-```
+Production uses Neon's built-in PgBouncer: the runtime `DATABASE_URL` points at
+the pooled (`-pooler`) host; migrations and `pg_dump` use the direct host
+(`MIGRATION_DATABASE_URL`). The API's own pool is `DB_MAX_OPEN_CONNS` (default
+10 outside development); keep Cloud Run `max-instances × DB_MAX_OPEN_CONNS`
+under Neon's connection limit. `DB_SIMPLE_PROTOCOL=true` (automatic for a
+port-6543 URL) disables server-side prepared statements for transaction
+poolers.
 
 ### 10.3 Maintenance Tasks
 
@@ -1222,9 +1041,6 @@ reserve_pool_timeout = 3
 VACUUM ANALYZE customers;
 VACUUM ANALYZE jobs;
 VACUUM ANALYZE invoices;
-
--- Refresh materialized views
-REFRESH MATERIALIZED VIEW CONCURRENTLY revenue_by_month;
 
 -- Reindex periodically (weekly)
 REINDEX TABLE CONCURRENTLY customers;
@@ -1276,6 +1092,7 @@ WHERE idx_scan = 0 AND indexrelid::regclass::text NOT LIKE '%_pkey';
 | Version | Date    | Author           | Changes               |
 | ------- | ------- | ---------------- | --------------------- |
 | 1.0     | 2026-01 | Engineering Team | Initial documentation |
+| 1.1     | 2026-10 | Engineering Team | Real counts, views, functions; migrations squash; Neon pooling; no partitioning |
 
 ---
 

@@ -3,7 +3,7 @@
 ## Getting Started
 
 1. Clone the repository.
-2. Install the toolchain: Go matching `backend/go.mod`, Node.js 22
+2. Install the toolchain: Go matching `backend/go.mod`, Node.js 24
    (`frontend/.nvmrc`), Docker, and optionally `golangci-lint`
    (`make install-golangci-lint`).
 3. `cp backend/.env.example backend/.env`, then `make setup` (dependencies, git

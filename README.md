@@ -38,7 +38,7 @@ ServicePro provides tools for managing:
 
 ### Frontend
 
-- **Runtime**: Node.js 22 (`frontend/.nvmrc`)
+- **Runtime**: Node.js 24 (`frontend/.nvmrc`)
 - **Framework**: React 19 with TypeScript (strict)
 - **Build Tool**: Vite 8
 - **State**: Zustand + React Query
@@ -50,7 +50,7 @@ ServicePro provides tools for managing:
 
 - Docker & Docker Compose
 - Go matching `backend/go.mod` (for running the backend on the host)
-- Node.js 22 (`nvm use` in `frontend/`)
+- Node.js 24 (`nvm use` in `frontend/`)
 - `golangci-lint` (optional locally; `make install-golangci-lint`)
 
 ### Everything in Docker
