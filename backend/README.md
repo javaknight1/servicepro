@@ -4,12 +4,13 @@ Go backend service for the ServicePro platform.
 
 ## Tech Stack
 
-- **Language**: Go 1.26+
+- **Language**: Go 1.26 (toolchain go1.27.3, see `go.mod`)
 - **Framework**: Gin
-- **Database**: PostgreSQL 15+ with GORM
+- **Database**: PostgreSQL 18 with GORM (Neon in production, AWS us-east-2)
 - **Cache**: Redis (optional; in-memory fallback)
-- **Auth**: JWT with bcrypt
-- **Email**: AWS SES
+- **Auth**: own JWT (httpOnly cookies) with bcrypt; Neon Auth (managed Better Auth) JWTs also verified (T158)
+- **Email**: Resend is the production target (T159); SMTP to Mailpit locally
+- **Hosting**: Cloud Run `servicepro-api` (us-east5), behind the `servicepro-web` Worker
 
 ## Project Structure
 
@@ -27,9 +28,9 @@ backend/
 │   ├── repository/       # Data access layer
 │   └── services/         # Business logic
 ├── pkg/
-│   ├── auth/             # JWT, password utilities
-│   ├── database/         # DB connections
-│   └── email/            # Email service
+│   ├── auth/             # JWT, cookies, passwords, Neon Auth verifier
+│   ├── clients/          # email, storage, sms, analytics, logging, metrics
+│   └── database/         # Postgres + Redis connections
 ├── migrations/           # Numbered golang-migrate migrations (embedded)
 └── seeds/                # Dev-only seed data (not a migration)
 ```
@@ -38,18 +39,18 @@ backend/
 
 ### Prerequisites
 
-- Go 1.26+
-- PostgreSQL 15+
-- Redis 7+
-- Docker (optional)
+- Go matching `go.mod`
+- PostgreSQL 18 (or Docker)
+- Redis (optional)
+- Docker (recommended)
 
 ### With Docker (Recommended)
 
 ```bash
 # From project root
-make dev          # Start all services
-make logs         # View logs
-make stop         # Stop services
+make dev-db       # Start postgres, redis, minio, mailpit
+make dev-backend  # Run the API on :8080
+make down         # Stop containers
 ```
 
 ### Manual Setup
@@ -68,7 +69,7 @@ go run ./cmd/migrate up
 go run ./cmd/migrate version
 
 # Run the application
-go run cmd/main.go
+go run ./cmd
 ```
 
 ## Environment Variables
@@ -92,7 +93,7 @@ Base URL: `http://localhost:8080/api/v1`
 | ------ | --------------------- | ---------------------- |
 | POST   | /auth/register        | User registration      |
 | POST   | /auth/login           | User login             |
-| POST   | /auth/forgot-password | Request password reset |
+| POST   | /auth/reset-request   | Request password reset |
 | GET    | /customers            | List customers         |
 | POST   | /customers            | Create customer        |
 | GET    | /jobs                 | List jobs              |
@@ -107,8 +108,9 @@ For full API documentation, see [API Reference](/docs/api/).
 ### Running Tests
 
 ```bash
-make test         # Run all tests
-make test-cover   # Run with coverage
+make backend-test       # Unit tests (race)
+make test-integration   # Integration tests against the compose stack
+make coverage           # Coverage report
 ```
 
 ### Code Style
@@ -161,3 +163,4 @@ behind or dirty.
 | GET    | /version                           | `{"git_sha","app_version"}` from GIT_SHA / APP_VERSION   |
 | GET    | /health, /health/live, /health/ready | readiness includes schema and redis state              |
 | POST   | /internal/jobs/payment-reminders   | header `X-Internal-Jobs-Token: $INTERNAL_JOBS_SECRET`   |
+| POST   | /internal/jobs/quote-expiry        | same header; sent/viewed quotes past valid_until → expired |

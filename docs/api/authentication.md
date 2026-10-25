@@ -159,7 +159,7 @@ curl http://localhost:8080/api/v1/customers \
 
 See `backend/.env.example`: `JWT_SECRET`, cookie settings (`COOKIE_*`),
 `REGISTRATION_MODE`, `NEON_AUTH_BASE_URL`, `FRONTEND_URL` (links in emails),
-and the email provider (Resend in production — T159; Mailpit/SMTP locally).
+and the email provider (Resend is the production target — T159; Mailpit/SMTP locally).
 Redis is optional; without `REDIS_URL` tokens and rate limits use an in-memory,
 per-instance store.
 

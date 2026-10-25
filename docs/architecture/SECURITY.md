@@ -1,8 +1,15 @@
 # ServicePro Security Architecture
 
 > **Classification**: Internal
-> **Version**: 1.0
-> **Last Updated**: January 2026
+> **Version**: 1.1
+> **Last Updated**: 2026-10-25
+>
+> **Production (live since v0.9.0, 2026-10-24):** Cloudflare Worker
+> `servicepro-web` (edge, TLS, static assets, `/api` proxy) → Google Cloud Run
+> `servicepro-api` (us-east5) → Neon Postgres 18 (AWS us-east-2). There is no
+> AWS account, VPC, WAF ruleset or ECS in this architecture; sections below
+> describe the controls that actually exist. Security findings and fixes are
+> tracked in `docs/audits/2026-10-16/` and TODO.md Phase 1.
 
 ## Table of Contents
 
@@ -28,8 +35,8 @@ ServicePro follows defense-in-depth security principles:
 ```mermaid
 graph TB
     subgraph "Defense in Depth"
-        L1[Layer 1: Edge Security<br/>WAF, DDoS Protection, TLS]
-        L2[Layer 2: Network Security<br/>VPC, Security Groups, NACLs]
+        L1[Layer 1: Edge Security<br/>Cloudflare TLS + DDoS, edge secret]
+        L2[Layer 2: Platform Security<br/>Cloud Run, IAM, Secret Manager]
         L3[Layer 3: Application Security<br/>Authentication, Authorization, Validation]
         L4[Layer 4: Data Security<br/>Encryption, Masking, Access Control]
         L5[Layer 5: Operational Security<br/>Logging, Monitoring, Alerting]
@@ -44,9 +51,9 @@ graph TB
 | --------------------------- | -------------------------- | --------------------------- |
 | **Identity & Access**       | Who can access what        | JWT, RBAC, MFA              |
 | **Data Protection**         | Protecting sensitive data  | Encryption, Masking, Backup |
-| **Network Security**        | Secure communications      | TLS, VPC, Firewalls         |
+| **Network Security**        | Secure communications      | TLS, edge-only API access   |
 | **Application Security**    | Secure code practices      | Input validation, OWASP     |
-| **Infrastructure Security** | Secure hosting environment | AWS security, Patching      |
+| **Infrastructure Security** | Secure hosting environment | GCP IAM, WIF, image scanning |
 | **Operations Security**     | Secure operations          | Logging, Monitoring, IR     |
 
 ---
@@ -297,22 +304,21 @@ sequenceDiagram
 
 #### At Rest
 
-| Data Type  | Encryption       | Key Management |
-| ---------- | ---------------- | -------------- |
-| Database   | AES-256 (RDS)    | AWS KMS        |
-| S3 Objects | AES-256 (SSE-S3) | AWS Managed    |
-| Redis      | In-transit only  | N/A            |
-| Backups    | AES-256          | AWS KMS        |
+| Data             | Where                         | Encryption                      |
+| ---------------- | ----------------------------- | ------------------------------- |
+| Database         | Neon Postgres (AWS us-east-2) | Provider-managed at rest        |
+| Secrets          | GCP Secret Manager            | Google-managed keys             |
+| Backups          | Cloudflare R2 (T209, not active yet) | Provider-managed at rest |
+| Passwords        | `users.password_hash`         | bcrypt, cost 12 (not reversible) |
 
 #### In Transit
 
-| Connection   | Protocol | Cipher Suites          |
-| ------------ | -------- | ---------------------- |
-| Client → CDN | TLS 1.3  | ECDHE+AESGCM           |
-| CDN → ALB    | TLS 1.2+ | AWS ALB default        |
-| ALB → API    | TLS 1.2+ | AWS internal           |
-| API → RDS    | TLS 1.2+ | AWS RDS CA             |
-| API → Redis  | TLS 1.2+ | ElastiCache encryption |
+| Connection             | Protection                                                   |
+| ---------------------- | ------------------------------------------------------------ |
+| Browser → Worker       | HTTPS (Cloudflare certificate for `servicepro.sharkfins.xyz`), HSTS |
+| Worker → Cloud Run     | HTTPS to the `*.run.app` URL, plus `X-SP-Edge-Secret`        |
+| Cloud Run → Neon       | TLS (`sslmode=require` in the connection string)             |
+| Cloud Run → Redis      | `rediss://` (TLS) when Redis is configured                   |
 
 ### 4.2 Sensitive Data Handling
 
@@ -375,94 +381,33 @@ flowchart TB
 
 ## 5. Network Security
 
-### 5.1 Network Architecture
-
-```mermaid
-graph TB
-    subgraph "Internet"
-        USERS[Users]
-        ATTACKERS[Potential Attackers]
-    end
-
-    subgraph "AWS Edge"
-        SHIELD[AWS Shield<br/>DDoS Protection]
-        WAF[AWS WAF<br/>Web Application Firewall]
-        CF[CloudFront<br/>CDN]
-    end
-
-    subgraph "VPC"
-        subgraph "Public Subnets"
-            ALB[Application<br/>Load Balancer]
-            NAT[NAT Gateway]
-        end
-
-        subgraph "Private Subnets"
-            ECS[ECS Fargate<br/>Containers]
-            RDS[(RDS)]
-            REDIS[(ElastiCache)]
-        end
-    end
-
-    USERS --> SHIELD
-    ATTACKERS --> SHIELD
-    SHIELD --> WAF
-    WAF --> CF
-    CF --> ALB
-    ALB --> ECS
-    ECS --> RDS
-    ECS --> REDIS
-    ECS --> NAT
-    NAT --> USERS
-```
-
-### 5.2 Security Groups
+### 5.1 Request Path
 
 ```
-SG: ALB (sg-alb)
-┌────────────────────────────────────────┐
-│ Inbound:                               │
-│   - 443/tcp from 0.0.0.0/0 (HTTPS)    │
-│ Outbound:                              │
-│   - 8080/tcp to sg-api                │
-└────────────────────────────────────────┘
-
-SG: API (sg-api)
-┌────────────────────────────────────────┐
-│ Inbound:                               │
-│   - 8080/tcp from sg-alb only         │
-│ Outbound:                              │
-│   - 5432/tcp to sg-db                 │
-│   - 6379/tcp to sg-redis              │
-│   - 443/tcp to 0.0.0.0/0 (AWS APIs)   │
-└────────────────────────────────────────┘
-
-SG: Database (sg-db)
-┌────────────────────────────────────────┐
-│ Inbound:                               │
-│   - 5432/tcp from sg-api only         │
-│ Outbound:                              │
-│   - None                               │
-└────────────────────────────────────────┘
-
-SG: Redis (sg-redis)
-┌────────────────────────────────────────┐
-│ Inbound:                               │
-│   - 6379/tcp from sg-api only         │
-│ Outbound:                              │
-│   - None                               │
-└────────────────────────────────────────┘
+Browser ──HTTPS──► Cloudflare Worker "servicepro-web"
+                     │ static assets; /api/* and /version proxied
+                     │ sets X-SP-Client-IP + X-SP-Edge-Secret, strips spoofed copies
+                     ▼
+                   Cloud Run "servicepro-api" (us-east5, public *.run.app URL)
+                     │ ENV=production: /api/* without a valid X-SP-Edge-Secret → 403
+                     ▼
+                   Neon Postgres 18 (TLS)
 ```
 
-### 5.3 WAF Rules
+- The `*.run.app` URL is public (Cloud Run `--allow-unauthenticated`; the API
+  does its own auth), but `/api/*` only answers traffic that came through the
+  Worker. `/health/*`, `/version` and `/internal/jobs/*` (own token) are
+  reachable directly.
+- Client IPs come only from `X-SP-Client-IP` with a valid edge secret
+  (`middleware.ClientIP`); `X-Forwarded-For` is never trusted directly.
+- `/internal/jobs/*` requires `X-Internal-Jobs-Token` (404 when the secret is
+  unset) and is never proxied by the Worker.
+- `/metrics` requires a bearer token outside development.
 
-| Rule                                     | Action | Description                                |
-| ---------------------------------------- | ------ | ------------------------------------------ |
-| AWS-AWSManagedRulesCommonRuleSet         | Block  | Common vulnerabilities                     |
-| AWS-AWSManagedRulesSQLiRuleSet           | Block  | SQL injection                              |
-| AWS-AWSManagedRulesKnownBadInputsRuleSet | Block  | Known bad patterns                         |
-| RateLimit-1000                           | Block  | > 1000 requests/5min per IP                |
-| GeoBlock                                 | Block  | Block non-target countries (if applicable) |
-| Custom-APIAbuse                          | Block  | Specific API abuse patterns                |
+### 5.2 Edge Protection
+
+Cloudflare terminates TLS and provides its standard DDoS protection for the
+zone. No custom WAF rules are configured today.
 
 ---
 
@@ -503,14 +448,17 @@ type CreateCustomerRequest struct {
 
 ### 6.3 Rate Limiting
 
-| Endpoint Category     | Limit        | Window    | Key        |
-| --------------------- | ------------ | --------- | ---------- |
-| Login                 | 10 requests  | 1 minute  | IP + Email |
-| Password Reset        | 5 requests   | 1 minute  | IP + Email |
-| API (authenticated)   | 100 requests | 1 minute  | User ID    |
-| API (unauthenticated) | 30 requests  | 1 minute  | IP         |
-| Invoice PDF           | 10 requests  | 1 minute  | User ID    |
-| Export                | 5 requests   | 5 minutes | User ID    |
+Defaults (configurable with `RATE_LIMIT_*`, 1-minute window; Redis-backed when
+configured, otherwise per instance):
+
+| Caller / endpoint      | Limit                                  | Key              |
+| ---------------------- | -------------------------------------- | ---------------- |
+| Anonymous              | 100 requests / minute                  | IP               |
+| Authenticated          | 1000 requests / minute                 | User (Neon `sub` for Neon Auth tokens) |
+| Admin endpoints        | 50 requests / minute                   | User             |
+| Login                  | Throttled with backoff                 | Email + IP       |
+| Password reset request | Throttled                              | Email + IP       |
+| Public invoice pay links (`/public/invoices/*`) | 20 requests / minute | IP |
 
 ### 6.4 Security Headers
 
@@ -528,87 +476,28 @@ Permissions-Policy: geolocation=(), microphone=(), camera=()
 
 ## 7. Infrastructure Security
 
-### 7.1 AWS Security Services
+### 7.1 Platform
 
-```mermaid
-graph TB
-    subgraph "Detection & Response"
-        GD[GuardDuty<br/>Threat Detection]
-        SEC[Security Hub<br/>Compliance]
-        DET[Detective<br/>Investigation]
-    end
+| Control                    | Implementation                                                                  |
+| -------------------------- | ------------------------------------------------------------------------------- |
+| Deploy credentials         | GitHub Actions → Workload Identity Federation (no stored GCP keys), pinned to this repo |
+| Service accounts           | `gh-deploy` (push images, roll revisions) and `servicepro-api` runtime SA (read its secrets only) |
+| Image scanning             | CI builds the Docker image and scans it with Trivy; `govulncheck` and `npm audit` in CI and weekly |
+| Releases                   | Only `v*` tags deploy; migrations run before the new revision takes traffic     |
+| Dependencies               | Dependabot; patch/minor auto-merged after green CI                               |
 
-    subgraph "Protection"
-        WAF[WAF<br/>Web Firewall]
-        SHIELD[Shield<br/>DDoS Protection]
-        FW[Network Firewall]
-    end
+### 7.2 Secrets Management
 
-    subgraph "Identity"
-        IAM[IAM<br/>Access Management]
-        ORG[Organizations<br/>Multi-account]
-        SSO[IAM Identity Center]
-    end
+| Secret                                   | Storage                                   |
+| ---------------------------------------- | ----------------------------------------- |
+| `DATABASE_URL`, `JWT_SECRET`             | GCP Secret Manager (mounted into Cloud Run) |
+| Stripe, Resend, Sentry, PostHog, Redis, `INTERNAL_JOBS_SECRET`, `EDGE_PROXY_SECRET` | GCP Secret Manager (attached when present) |
+| `EDGE_PROXY_SECRET` (edge side)          | Cloudflare Worker secret                  |
+| `MIGRATION_DATABASE_URL`, Cloudflare and R2 tokens | GitHub Actions secrets          |
 
-    subgraph "Data Protection"
-        KMS[KMS<br/>Key Management]
-        SM[Secrets Manager]
-        MACIE[Macie<br/>Data Discovery]
-    end
-
-    subgraph "Logging"
-        CT[CloudTrail<br/>API Logging]
-        CW[CloudWatch<br/>Monitoring]
-        VPC_FL[VPC Flow Logs]
-    end
-
-    GD --> SEC
-    DET --> SEC
-    CT --> GD
-    VPC_FL --> GD
-    KMS --> SM
-```
-
-### 7.2 IAM Policies
-
-```json
-// ECS Task Role - Minimum Required Permissions
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Action": ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"],
-      "Resource": "arn:aws:s3:::servicepro-uploads/*"
-    },
-    {
-      "Effect": "Allow",
-      "Action": ["ses:SendEmail", "ses:SendRawEmail"],
-      "Resource": "*",
-      "Condition": {
-        "StringEquals": {
-          "ses:FromAddress": "noreply@servicepro.com"
-        }
-      }
-    },
-    {
-      "Effect": "Allow",
-      "Action": ["secretsmanager:GetSecretValue"],
-      "Resource": "arn:aws:secretsmanager:*:*:secret:servicepro/*"
-    }
-  ]
-}
-```
-
-### 7.3 Secrets Management
-
-| Secret               | Storage         | Rotation         |
-| -------------------- | --------------- | ---------------- |
-| Database credentials | Secrets Manager | 90 days (auto)   |
-| JWT signing key      | Secrets Manager | Manual           |
-| Stripe API keys      | Secrets Manager | Manual           |
-| AWS SES credentials  | IAM Role        | N/A (role-based) |
-| Redis password       | Secrets Manager | 90 days          |
+Secrets never live in the repository (it is public); `.env` files are
+gitignored. Rotation is manual today. Setup details:
+[docs/ops/cloud-run-setup.md](../ops/cloud-run-setup.md).
 
 ---
 
@@ -638,56 +527,26 @@ graph TB
 
 ## 9. Security Monitoring
 
-### 9.1 Monitoring Architecture
+### 9.1 Monitoring
 
-```mermaid
-graph LR
-    subgraph "Sources"
-        APP[Application Logs]
-        AWS[AWS CloudTrail]
-        VPC[VPC Flow Logs]
-        WAF_LOG[WAF Logs]
-    end
+| Source                    | Where it goes                                                        |
+| ------------------------- | -------------------------------------------------------------------- |
+| API logs (structured, with `request_id`, no PII/tokens) | Cloud Run → Google Cloud Logging        |
+| API and SPA errors        | Sentry (when `SENTRY_DSN` is set)                                    |
+| Product analytics         | PostHog (tokens, emails and query strings stripped)                  |
+| Metrics                   | Prometheus `/metrics` (token-protected); Grafana locally only        |
+| Uptime / status page      | Better Stack — planned                                               |
+| Failed scheduled jobs / backups | GitHub Actions failure emails                                  |
 
-    subgraph "Collection"
-        CW[CloudWatch Logs]
-    end
+### 9.2 Security-Relevant Signals
 
-    subgraph "Analysis"
-        GD[GuardDuty]
-        SIEM[Security Hub]
-    end
-
-    subgraph "Response"
-        SNS[SNS Alerts]
-        LAMBDA[Auto-remediation]
-        ONCALL[On-call Team]
-    end
-
-    APP --> CW
-    AWS --> CW
-    VPC --> CW
-    WAF_LOG --> CW
-
-    CW --> GD
-    CW --> SIEM
-
-    GD --> SNS
-    SIEM --> SNS
-    SNS --> LAMBDA
-    SNS --> ONCALL
-```
-
-### 9.2 Security Alerts
-
-| Alert                             | Severity | Response                           |
-| --------------------------------- | -------- | ---------------------------------- |
-| Multiple failed logins            | Medium   | Monitor, potential account lockout |
-| Successful login from new country | Low      | Email notification to user         |
-| Privilege escalation attempt      | High     | Immediate investigation            |
-| SQL injection detected            | High     | Block IP, investigate              |
-| Data exfiltration pattern         | Critical | Immediate response                 |
-| Unusual API usage pattern         | Medium   | Review and investigate             |
+| Signal                         | Control today                                         |
+| ------------------------------ | ----------------------------------------------------- |
+| Repeated failed logins         | Login throttling (429) and account lockout            |
+| Cross-tenant access attempts   | 404 (tenant-scoped queries), 403 for non-members      |
+| Role escalation attempts       | Rejected; `super_admin` is never assignable via API   |
+| Forged cross-site requests     | 403 `csrf_check_failed`                               |
+| Direct-to-Cloud-Run API calls  | 403 without the edge secret                           |
 
 ### 9.3 Audit Logging
 
@@ -752,10 +611,9 @@ stateDiagram-v2
 
 | Role                      | Contact                        | Escalation Path |
 | ------------------------- | ------------------------------ | --------------- |
-| Security On-Call          | security-oncall@servicepro.com | PagerDuty       |
-| Security Lead             | security-lead@servicepro.com   | Direct          |
-| Legal (for breaches)      | legal@servicepro.com           | Email           |
-| PR (for public incidents) | pr@servicepro.com              | Email           |
+| Security / support        | support@sharkfins.xyz          | Owner (direct)  |
+
+ServicePro is run by a single owner today; there is no on-call rotation.
 
 ---
 

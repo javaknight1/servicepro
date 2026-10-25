@@ -29,26 +29,24 @@ tests/
 │   └── README.md              # This file
 ├── localstack/                # LocalStack initialization
 │   └── init-aws.sh            # AWS resource setup
-├── Makefile                   # Test commands
-└── .env.test.example          # Environment template
 ```
+
+Run everything from the repo root through the root `Makefile` (there is no
+Makefile in this directory).
 
 ## Prerequisites
 
 - Docker and Docker Compose
-- Go 1.21+
-- Make (optional, for using Makefile)
+- Go matching `backend/go.mod` (`go 1.26`, toolchain go1.27.3)
+- Make
 
 ## Quick Start
 
 ### 1. Start Test Environment
 
 ```bash
-# Using Make
-make docker-up
-
-# Or using Docker Compose directly
-docker compose -f docker-compose.test.yml up -d
+# From the repo root: the normal compose stack (postgres, redis, mailpit, minio, api)
+make docker-dev-d
 ```
 
 ### 2. Run Tests
@@ -58,11 +56,8 @@ docker compose -f docker-compose.test.yml up -d
 make test-integration
 
 # Run specific test suites
-make run-api-tests
-make run-db-tests
-
-# Run with coverage
-make test-coverage
+make test-integration-api
+make test-integration-db
 ```
 
 ### 3. Stop Environment
@@ -71,17 +66,21 @@ make test-coverage
 make docker-down
 ```
 
+The targets point the tests at the compose stack (`TEST_DATABASE_URL`,
+`REDIS_URL`, `MAILHOG_API=http://localhost:8025` (Mailpit), `API_BASE_URL`).
+
 ## Test Environment
 
-The test environment includes:
+The tests run against the root `docker-compose.yml` stack:
 
-| Service     | Port  | Description       |
-| ----------- | ----- | ----------------- |
-| PostgreSQL  | 5433  | Test database     |
-| Redis       | 6380  | Test cache        |
-| Stripe Mock | 12111 | Stripe API mock   |
-| LocalStack  | 4566  | AWS services mock |
-| MailHog     | 8025  | Email testing     |
+| Service    | Port | Description                             |
+| ---------- | ---- | --------------------------------------- |
+| PostgreSQL | 5432 | Database (`servicepro`)                 |
+| Redis      | 6379 | Cache (optional for the app)            |
+| Mailpit    | 8025 | Email testing (MailHog-compatible API)  |
+| API        | 8080 | Backend under test                      |
+
+Stripe is mocked in-process (`mocks/stripe_mock.go`, an `httptest` server). `mocks/aws_mock.go` expects LocalStack on `localhost:4566` (`AWS_ENDPOINT_URL`), which is not part of the compose stack.
 
 ## Writing Tests
 
@@ -234,11 +233,10 @@ Key variables:
 
 | Variable          | Default         | Description   |
 | ----------------- | --------------- | ------------- |
-| TEST_DATABASE_URL | localhost:5433  | Test database |
-| REDIS_URL         | localhost:6380  | Test Redis    |
-| STRIPE_API_BASE   | localhost:12111 | Stripe mock   |
-| AWS_ENDPOINT_URL  | localhost:4566  | LocalStack    |
-| MAILHOG_API       | localhost:8025  | MailHog API   |
+| TEST_DATABASE_URL | localhost:5432  | Test database |
+| REDIS_URL         | localhost:6379  | Redis         |
+| MAILHOG_API       | localhost:8025  | Mailpit API   |
+| API_BASE_URL      | localhost:8080  | API under test |
 
 ### Test Configuration
 
@@ -268,13 +266,13 @@ test:
     - uses: actions/checkout@v4
     - uses: actions/setup-go@v5
     - name: Run tests
-      run: make ci-test
+      run: make test-integration
 ```
 
 ### Running in CI
 
 ```bash
-make ci-test
+make test-integration
 ```
 
 ## Troubleshooting
@@ -283,14 +281,14 @@ make ci-test
 
 ```bash
 # Check container status
-docker compose -f docker-compose.test.yml ps
+docker compose ps
 
 # View logs
-docker compose -f docker-compose.test.yml logs postgres
-docker compose -f docker-compose.test.yml logs redis
+docker compose logs postgres
+docker compose logs redis
 
 # Restart specific service
-docker compose -f docker-compose.test.yml restart postgres
+docker compose restart postgres
 ```
 
 ### Database Issues
@@ -300,12 +298,12 @@ docker compose -f docker-compose.test.yml restart postgres
 docker exec -it servicepro-test-postgres psql -U test_user -d servicepro_test
 
 # Reset database
-docker compose -f docker-compose.test.yml down -v
-docker compose -f docker-compose.test.yml up -d
+docker compose down -v
+docker compose up -d
 ```
 
 ### Test Failures
 
 1. **Flaky tests**: Use `-count=1` to disable test caching
 2. **Timeouts**: Increase `TEST_TIMEOUT` or specific test timeouts
-3. **Port conflicts**: Check if ports 5433, 6380, etc. are available
+3. **Port conflicts**: Check if ports 5432, 6379, 8025 and 8080 are available

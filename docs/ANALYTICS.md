@@ -146,7 +146,7 @@ Roll out features to a percentage of users and measure impact before full releas
 - Reporting is marketing-oriented, not product-oriented
 - Session model doesn't map well to SaaS usage patterns
 
-**When to use it:** If ServicePro has a public marketing website (e.g., `www.servicepro.com` with pricing, features, blog), GA4 is great for understanding marketing traffic. For the app itself (`app.servicepro.com`), use a dedicated product analytics tool.
+**When to use it:** If ServicePro has a public marketing website (separate from the app, which today serves its marketing pages itself at `servicepro.sharkfins.xyz`), GA4 is great for understanding marketing traffic. For the app itself, use a dedicated product analytics tool (PostHog is wired in).
 
 **Verdict for ServicePro:** Only needed if you build a separate marketing site. Not useful for the application itself.
 
