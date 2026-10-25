@@ -10,31 +10,35 @@ Multi-tenant field-service management SaaS: CRM, jobs/work orders, scheduling + 
 invoices, payments, collections, reports. A **tenant** is a service business (ServicePro's customer);
 its **customers** are the people/companies it does work for.
 
-- **Positioning** (TODO.md "Product framing", `docs/product/competitive-research-2026-10.md`): the
-  field service platform that gets you paid — built for small commercial/B2B contractors (1–10 techs)
-  billing on net terms. Flat price, unlimited users, no contract.
-- **Status (2026-10-16): local-only, not hosted.** The 2026-10-16 audit (`docs/audits/2026-10-16/`)
-  found critical tenant-isolation and auth-escalation flaws; TODO.md Phase 1 must be complete before
-  anything is exposed to the internet, even invite-only. Production database: **Neon** Postgres (owner
-  decision 2026-10-18, T202; not provisioned yet). Auth target: **Neon's managed Better Auth** (OD-9, 2026-10-19).
+- **Positioning** (TODO.md "Product framing", `docs/product/mvp-plan-2026-10.md`): the field service
+  software that gets every site's work invoiced and paid — for commercial cleaning and facility-maintenance
+  companies (1–10 techs) billing property managers on net terms (D7). Flat price, unlimited users, no
+  contract; Solo $39 / Team $99 / Pro $199, cards Stripe + 0.4%, ACH 1% capped at $10 (D10).
+  "ServicePro" is a working name (OD-10).
+- **Status (2026-10-25): v0.9.0 live since 2026-10-24** at `servicepro.sharkfins.xyz` (invite-only).
+  Phase 1 security is done. Work follows the **MVP Launch Gate** in TODO.md (phases A–G, paid launch
+  2027-09-07); the honesty gate (D11: T255, T256, T261) is due 2026-11-08. Database: **Neon** Postgres
+  us-east-2 (T202). Auth: **Neon's managed Better Auth** (OD-9) — backend done, SPA still on own JWTs (T158).
 
 ## Stack
 
-| Layer    | Today                                                              | Target (TODO Phase 4, League Looper parity)                       |
+| Layer    | Today                                                              | Target (TODO Phase 4, League Looper parity; paced by D12)         |
 | -------- | ------------------------------------------------------------------ | ----------------------------------------------------------------- |
 | API      | Go 1.26, Gin, GORM, Postgres 18, Redis (optional)                  | chi, pgx/sqlc, Postgres RLS backstop, Upstash (if Redis needed)   |
 | Auth     | Own JWT (httpOnly cookies) + bcrypt                                | Neon's managed Better Auth, JWKS-verified in the API (T158, OD-9) |
 | Web      | React 19, Vite 8, TS strict, Zustand + React Query, Tailwind v4    | React 19, TanStack Query for all server state, Tailwind v4 tokens |
 | Email    | Resend / SES / SMTP (Mailpit locally)                              | Resend only                                                       |
 | Storage  | S3-compatible (MinIO locally)                                      | Cloudflare R2                                                     |
-| Payments | Stripe (platform account)                                          | Stripe Connect — money goes to the tenant (T169)                  |
+| Payments | Stripe (platform account; pay links off until T169 — T261)         | Connect Accounts v2, direct charges (D9, T169)                    |
 | Obs.     | Sentry, PostHog, Prometheus `/metrics`, Grafana (local only)       | + Better Stack uptime/status                                      |
-| Hosting  | none                                                               | Cloudflare Worker (static assets + `/api` proxy) → Cloud Run      |
-| Database | Postgres 18 (Docker locally)                                       | Neon Postgres (T202), Cloud Run in the same region                |
+| Hosting  | Cloudflare Worker (static assets + `/api` proxy) → Cloud Run us-east5 | same                                                            |
+| Database | Neon Postgres 18 us-east-2 (Free plan); Docker Postgres 18 locally | Neon Launch plan + nightly R2 backups before paying tenants (D14) |
 
-Decision record: TODO.md "Architecture decisions" (D1–D6). **Stay Go API + React SPA — not Next.js**
-(D1). Migrate incrementally; the app must keep working at every step. Don't introduce a new vendor or
-framework without recording a decision there first.
+Decision record: TODO.md "Architecture & product decisions" (D1–D14). **Stay Go API + React SPA — not Next.js**
+(D1). Migrate incrementally; the app must keep working at every step. **D12: the chi, pgx/sqlc, GORM-removal,
+repository-refactor and TanStack Query ports (T153, T155–T157, T162) are frozen until the month-6 checkpoint** —
+don't start them; Neon Auth, Resend, R2 and RLS stay in the MVP. Don't introduce a new vendor or framework without
+recording a decision there first.
 
 ## Hard rules (the reason this file exists)
 
@@ -80,7 +84,7 @@ servicepro/
 ├── frontend/                    # React SPA
 │   ├── src/{types,services,store,components,pages,routes}/
 │   ├── worker/                  # Cloudflare Worker: /api/* + /version proxy, assets
-│   ├── wrangler.jsonc           # servicepro-web, servicepro.sharkfins.xyz (not deployed)
+│   ├── wrangler.jsonc           # Worker servicepro-web, servicepro.sharkfins.xyz (live)
 │   └── public/_headers          # CSP/HSTS/cache headers for the static assets
 ├── docs/                        # ops/, audits/, product/, architecture/, api/, …
 ├── scripts/                     # bump-version, gh-release, deploy-cloudrun, git-hooks/
@@ -219,11 +223,12 @@ Format: `type: short description (T0XX)`. One logical change per commit; commit 
 Tag-driven: `make bump` → commit `VERSION` → `git tag vX.Y.Z && git push origin vX.Y.Z`. Full process
 in `RELEASING.md`; one-time setup in `docs/ops/cloud-run-setup.md`; rollback in `docs/ops/deploy.md`;
 backups in `docs/ops/backups.md`. `release-deploy.yml` skips every deploy job until the repo variable
-`GCP_PROJECT_ID` exists, so today a tag only publishes GitHub Release notes.
+`GCP_PROJECT_ID` exists; it does, so a `v*` tag migrates Neon, deploys the API and the Worker, and publishes
+release notes.
 
-Planned production shape (nothing is provisioned): `servicepro.sharkfins.xyz` → Worker
-`servicepro-web` (static assets, SPA fallback) → `/api/*` and `/version` proxied to Cloud Run
-`servicepro-api` with `X-SP-Client-IP` + `X-SP-Edge-Secret`. The API rejects non-edge traffic in
+Production (live since 2026-10-24): `servicepro.sharkfins.xyz` → Worker `servicepro-web` (static assets,
+SPA fallback) → `/api/*` and `/version` proxied to Cloud Run `servicepro-api` (us-east5) with
+`X-SP-Client-IP` + `X-SP-Edge-Secret` → Neon Postgres (us-east-2). The API rejects non-edge traffic in
 production. Cloud Run instances × DB pool must stay under the DB's connection limit.
 
 ## TODO task management
@@ -249,7 +254,7 @@ and a matching Notion task.
 ```markdown
 #### T### — Task title
 
-**Phase**: N · **Category**: X · **Hours**: N · **Status**: Open · **v1 Gate**: Yes/No · **Depends on**: T### (or "none")
+**Phase**: N · **Category**: X · **Hours**: N · **Status**: Open · **MVP Gate**: Yes/No · **Depends on**: T### (or "none")
 
 **What it is** — the deliverable.
 **What it does** — implementation gist.
@@ -263,6 +268,6 @@ Deferred / Won't Do tasks get an abbreviated section (status + why + revisit con
 ## Fleet & blog
 
 This app is tracked in Fleet as `SP`; run `/fleet-sync` after any change to hosting, vendors, plans,
-auth, data providers, domains or monthly costs. When `servicepro.sharkfins.xyz` goes live (T211), add
+auth, data providers, domains or monthly costs. `servicepro.sharkfins.xyz` went live 2026-10-24; T211 adds
 it to the blog (`src/pages/apps.astro`, `INFRA.md` in `~/repositories/blogs/rob-blog`; commit there,
 ask before pushing).
