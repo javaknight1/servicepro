@@ -20,7 +20,7 @@
 #
 # Requires (set by the workflow):
 #   GCP_PROJECT_ID   target project
-#   GCP_REGION       e.g. us-central1
+#   GCP_REGION       e.g. us-east5 (production)
 #   AR_REPOSITORY    Artifact Registry repo name, e.g. servicepro
 #   SERVICE_NAME     Cloud Run service name, e.g. servicepro-api
 #   GIT_SHA          commit being released (immutable image tag)
