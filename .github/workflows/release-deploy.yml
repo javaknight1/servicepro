@@ -6,10 +6,11 @@ name: Release
 # The tag is the single action that ships (RELEASING.md). Plain pushes to
 # master do NOT deploy — ci.yml only lints/tests/builds.
 #
-# NOT HOSTED YET. Until the repo variable GCP_PROJECT_ID is set, the guard
-# reports deploy=false and migrate/api/web are SKIPPED (not failed): a tag then
-# only publishes the GitHub Release notes. Set the variables and secrets in
-# docs/ops/cloud-run-setup.md §8 to switch deploys on.
+# LIVE since v0.9.0 (2026-10-24): GCP_PROJECT_ID is set, so a tag deploys to
+# Cloud Run servicepro-api (us-east5) and the servicepro-web Worker. If the
+# variable is ever unset, the guard reports deploy=false and migrate/api/web are
+# SKIPPED (not failed): the tag then only publishes the GitHub Release notes.
+# Variables and secrets: docs/ops/cloud-run-setup.md §8.
 #
 # Job order is deliberate and strictly sequential:
 #   guard    — the tag and the VERSION file must agree before anything runs;

@@ -1,7 +1,9 @@
 # Deploy + rollback runbook
 
-> **Not hosted yet.** This describes the pipeline as wired; it becomes live
-> once [`cloud-run-setup.md`](./cloud-run-setup.md) is done.
+> **Live since v0.9.0 (2026-10-24).** Every `v*` tag deploys: Cloud Run
+> `servicepro-api` in **us-east5** (GCP project `service-pro-512609`), Worker
+> `servicepro-web` on <https://servicepro.sharkfins.xyz>, database Neon
+> Postgres 18 (AWS us-east-2). One-time setup: [`cloud-run-setup.md`](./cloud-run-setup.md).
 
 ServicePro ships from a **`v*` tag**, never from a push to `master`. See
 [`RELEASING.md`](../../RELEASING.md) for the process. A tag runs
@@ -41,7 +43,7 @@ Cloud Run keeps every revision addressable; rollback is a traffic flip — no
 rebuild, no migration replay.
 
 ```bash
-export SERVICE=servicepro-api REGION=us-central1
+export SERVICE=servicepro-api REGION=us-east5
 
 gcloud run revisions list --service="$SERVICE" --region="$REGION"
 gcloud run services describe "$SERVICE" --region="$REGION" --format='value(status.traffic)'
@@ -99,8 +101,8 @@ small, or a destructive schema change would make rollback unsafe.
 Triage a failure at either step:
 
 ```bash
-gcloud run revisions list --service=servicepro-api --region=us-central1
-gcloud run services logs read servicepro-api --region=us-central1 --limit=100
+gcloud run revisions list --service=servicepro-api --region=us-east5
+gcloud run services logs read servicepro-api --region=us-east5 --limit=100
 ```
 
 ## Releases with hosting unconfigured

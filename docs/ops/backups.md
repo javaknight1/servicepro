@@ -1,8 +1,10 @@
 # Database backups
 
-> **Not live yet.** There is no production database (the host is undecided —
-> Supabase is the likely choice). Until the `MIGRATION_DATABASE_URL` secret
-> exists, the nightly workflow skips itself.
+> **Not activated yet (T209).** Production is Neon Postgres 18 (AWS
+> us-east-2) and the `MIGRATION_DATABASE_URL` secret is set, so the nightly
+> workflow now runs — but the R2 bucket and the `R2_ACCESS_KEY_ID` /
+> `R2_SECRET_ACCESS_KEY` secrets don't exist yet, so it fails until the
+> one-time setup below is done.
 
 Nightly at 08:00 UTC, `.github/workflows/db-backup.yml` dumps production to the
 Cloudflare R2 bucket **`servicepro-backups`**:
@@ -17,9 +19,9 @@ Restoring only `public` would leave app users with no way to sign in. Run it by 
 Actions → "Database backup" → Run workflow.
 
 Retention is the bucket's job — the workflow never deletes. Give the bucket a
-lifecycle rule (e.g. `expire-30d`). Any provider-side backups (Supabase keeps
-none on Free, 7 days on Pro) are separate; this copy exists so a lost or deleted
-database project is recoverable.
+lifecycle rule (e.g. `expire-30d`). Neon's own point-in-time restore (a short
+window on the Free plan, longer on Launch) is separate; this copy exists so a
+lost or deleted database project is recoverable.
 
 ## One-time setup
 

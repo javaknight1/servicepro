@@ -1,16 +1,18 @@
 # Deployment
 
-> **Not hosted yet — local only.** The hosting target is decided and the
-> pipeline is wired, but inert until the one-time setup is done.
+> **Live since v0.9.0 (2026-10-24)** at <https://servicepro.sharkfins.xyz>.
+> Every `v*` tag deploys through `release-deploy.yml`.
 
-| Piece          | Target                                                                                            |
-| -------------- | ------------------------------------------------------------------------------------------------- |
-| API            | Google Cloud Run service `servicepro-api` (image from `backend/Dockerfile`)                       |
-| Web            | Cloudflare Worker `servicepro-web` (static assets + `/api/*` proxy) on `servicepro.sharkfins.xyz` |
-| Database       | Postgres — host undecided (Supabase likely)                                                       |
-| Redis          | Optional; Upstash later                                                                           |
-| Object storage | Cloudflare R2 later (MinIO locally)                                                               |
-| Backups        | Nightly `pg_dump` to R2 bucket `servicepro-backups`                                               |
+| Piece          | Production                                                                                                                       |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Web            | Cloudflare Worker `servicepro-web` (static assets + `/api/*` and `/version` proxy) on `servicepro.sharkfins.xyz`                 |
+| API            | Google Cloud Run service `servicepro-api` in **us-east5** (image from `backend/Dockerfile`)                                      |
+| Database       | Neon Postgres 18, AWS **us-east-2** (Free plan; Launch plan before the first paying tenant)                                      |
+| Auth           | Neon's managed Better Auth — the API verifies its JWTs; the SPA still signs in with the API's own JWT cookies until T158 lands   |
+| Redis          | Optional (Upstash or none; without it the API uses an in-memory, per-instance store)                                            |
+| Email          | Resend (T159)                                                                                                                    |
+| Object storage | Cloudflare R2 (target; MinIO locally)                                                                                            |
+| Backups        | Nightly `pg_dump` to R2 bucket `servicepro-backups` — wired, not activated yet (T209)                                            |
 
 ## Where to look
 
@@ -24,10 +26,10 @@
 | Workflow                   | Trigger                    | Does                                                                                                 |
 | -------------------------- | -------------------------- | ---------------------------------------------------------------------------------------------------- |
 | `ci.yml`                   | push to master, PRs        | lint, tests, govulncheck, OpenAPI drift, frontend build/audit, Docker build + Trivy. Deploys nothing |
-| `release-deploy.yml`       | `v*` tag                   | guard → migrate → api → web → GitHub Release (deploy jobs skipped until `GCP_PROJECT_ID` is set)     |
+| `release-deploy.yml`       | `v*` tag                   | guard → migrate → api → web → GitHub Release                                                         |
 | `migrate.yml`              | manual                     | `version` / `up` against production                                                                  |
-| `scheduled-jobs.yml`       | hourly                     | POST `/internal/jobs/*` (no-op until `API_URL` is set)                                               |
-| `db-backup.yml`            | nightly                    | `pg_dump` to R2 (skipped until `MIGRATION_DATABASE_URL` is set)                                      |
+| `scheduled-jobs.yml`       | hourly                     | POST `/internal/jobs/{payment-reminders,quote-expiry}` to the Cloud Run URL (`API_URL`)              |
+| `db-backup.yml`            | nightly                    | `pg_dump` to R2 (fails until the R2 bucket + secrets exist — T209)                                   |
 | `security-scan.yml`        | weekly                     | govulncheck + npm audit                                                                              |
 | `dependabot-automerge.yml` | after CI on Dependabot PRs | merge patch/minor, bump, tag, release                                                                |
 

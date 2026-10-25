@@ -1,8 +1,9 @@
 # Nightly production database backup to Cloudflare R2.
 #
-# NOT LIVE YET: the production database host is undecided. Until the
-# MIGRATION_DATABASE_URL secret exists the scheduled run is a no-op (the job
-# is skipped), so it never fails on schedule. See docs/ops/backups.md.
+# NOT ACTIVATED YET (T209): production is Neon Postgres and
+# MIGRATION_DATABASE_URL is set, so the job runs, but it fails until the R2
+# bucket and the R2_* secrets below exist. Without MIGRATION_DATABASE_URL the
+# job is skipped instead. See docs/ops/backups.md.
 #
 # Each run writes one pg_dump custom-format archive under YYYY/MM/DD/:
 #   public.dump   schema + data of the app's own tables (what migrations own)

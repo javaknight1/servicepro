@@ -7,8 +7,8 @@
 # authenticated by the X-Internal-Jobs-Token header (= INTERNAL_JOBS_SECRET),
 # and this workflow is the scheduler.
 #
-# NOT LIVE YET: until the repo variable API_URL is set (the API isn't hosted),
-# every run is a no-op — the job is skipped, never failed.
+# LIVE since 2026-10-24: the repo variable API_URL points at the Cloud Run URL.
+# If API_URL is unset, every run is a no-op — the job is skipped, never failed.
 #
 # Schedule (UTC):
 #   hourly at :15   payment-reminders    unpaid-invoice reminder emails

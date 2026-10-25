@@ -58,7 +58,7 @@ Welcome to the ServicePro documentation. This guide covers everything you need t
 
 ### Deployment
 
-Not hosted yet — local only. The target (Cloud Run API + Cloudflare Workers web) and the release pipeline are documented in [Deployment](./deployment/README.md), [docs/ops/](./ops/) and [RELEASING.md](/RELEASING.md).
+Live since v0.9.0 (2026-10-24) at <https://servicepro.sharkfins.xyz>: Cloudflare Worker `servicepro-web` → Cloud Run `servicepro-api` (us-east5) → Neon Postgres 18 (AWS us-east-2). Hosting and the release pipeline are documented in [Deployment](./deployment/README.md), [docs/ops/](./ops/) and [RELEASING.md](/RELEASING.md).
 
 ## Related Documentation
 

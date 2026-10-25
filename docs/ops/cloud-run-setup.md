@@ -5,11 +5,13 @@ Cloudflare Workers, and give GitHub Actions keyless permission to deploy them.
 Run this once; after that [`RELEASING.md`](../../RELEASING.md) is the
 day-to-day process.
 
-> **Status (2026-10): nothing here exists yet.** ServicePro is local-only. The
-> GCP project has not been created, the Postgres host is undecided (Supabase is
-> the likely choice), Redis is optional (Upstash later), and object storage
-> will be Cloudflare R2 later. The release pipeline stays inert — tags publish
-> notes only — until `GCP_PROJECT_ID` is set in §8.
+> **Status: done 2026-10-24 (T203/T204), live since v0.9.0.** GCP project
+> `service-pro-512609`, Cloud Run `servicepro-api` in **us-east5**, Worker
+> `servicepro-web` on `servicepro.sharkfins.xyz`, database **Neon Postgres 18**
+> in AWS **us-east-2** (Free plan; Launch plan before the first paying tenant).
+> `GCP_PROJECT_ID` is set, so `v*` tags deploy. Still open: Redis is optional
+> (Upstash or none), object storage moves to Cloudflare R2, and nightly backups
+> to R2 aren't activated yet (T209). Keep this doc as the rebuild recipe.
 
 Companion docs: [`deploy.md`](./deploy.md) (deploy + rollback),
 [`backups.md`](./backups.md).
@@ -29,7 +31,7 @@ Browser ── https://servicepro.sharkfins.xyz ──► Cloudflare Worker "ser
 GitHub Actions (v* tag)                    Cloud Run "servicepro-api" (runtime SA)
    │ OIDC, no stored key                         │  secrets from Secret Manager
    ▼                                             ▼
-Workload Identity Federation ──► deploy SA   Postgres (host TBD)   Redis (optional)
+Workload Identity Federation ──► deploy SA   Neon Postgres (us-east-2)   Redis (optional)
         ├─► Artifact Registry (push image)
         └─► Cloud Run (deploy revision)
 ```
@@ -40,23 +42,24 @@ Two service accounts on purpose: the **deploy SA** is what CI impersonates
 
 ---
 
-## 0. Decisions to make first
+## 0. Decisions (made)
 
-| Decision       | Options                                     | Notes                                                                                                                |
-| -------------- | ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| Postgres host  | Supabase (likely), Neon, Cloud SQL          | Pick the region first; Cloud Run should sit next to it                                                               |
-| Region         | `us-central1` placeholder                   | Use a tier-1 region near the DB (Supabase `us-east-1` → `us-east1`)                                                  |
-| Redis          | Upstash (`rediss://`), Memorystore, or none | The API currently fails to boot without Redis — either provision Upstash or make Redis optional in the backend first |
-| Object storage | Cloudflare R2 (S3 API)                      | Local dev uses MinIO; prod R2 bucket + token later                                                                   |
-| Email          | Resend                                      | `RESEND_API_KEY` secret                                                                                              |
+| Decision       | Choice                                       | Notes                                                                                                   |
+| -------------- | -------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Postgres host  | Neon Postgres 18, AWS `us-east-2` (T202)     | Free plan today; Launch plan before the first paying tenant                                             |
+| Region         | `us-east5` (Columbus)                        | Closest Cloud Run region to Neon's `aws-us-east-2` (Ohio)                                               |
+| Auth           | Neon's managed Better Auth (OD-9)            | The API verifies its JWTs (`NEON_AUTH_BASE_URL`); the SPA still uses the API's own JWT cookies (T158)   |
+| Redis          | Optional: Upstash (`rediss://`) or none      | Without `REDIS_URL` the API boots with an in-memory, per-instance store                                 |
+| Object storage | Cloudflare R2 (S3 API)                       | Local dev uses MinIO                                                                                    |
+| Email          | Resend (T159)                                | `RESEND_API_KEY` secret                                                                                 |
 
 ---
 
 ## 1. Shell variables
 
 ```bash
-export PROJECT_ID="servicepro-<suffix>"      # globally unique
-export REGION="us-central1"                  # placeholder — see §0
+export PROJECT_ID="service-pro-512609"       # globally unique (the live project)
+export REGION="us-east5"                     # next to Neon aws-us-east-2 — see §0
 export AR_REPO="servicepro"
 export SERVICE="servicepro-api"
 export GITHUB_REPO="javaknight1/servicepro"  # owner/repo, exactly
@@ -142,12 +145,14 @@ printf '%s' 'postgresql://...' | gcloud secrets versions add DATABASE_URL --data
 openssl rand -hex 32 | gcloud secrets versions add JWT_SECRET --data-file=-
 ```
 
-- `DATABASE_URL` is the **runtime** connection. With Supabase, the transaction
-  pooler (6543) suits a scale-to-zero service, but GORM/pgx then needs the
-  simple protocol (no prepared-statement cache) — or use the session pooler
-  (5432). Keep `max-instances × DB_MAX_OPEN_CONNS` under the database's limit.
-- `MIGRATION_DATABASE_URL` (GitHub secret, §8) is a **different** value: the
-  session pooler / direct URL on port 5432.
+- `DATABASE_URL` is the **runtime** connection — Neon's pooled (`-pooler`)
+  host suits a scale-to-zero service. If prepared statements fail behind the
+  pooler, set `DB_SIMPLE_PROTOCOL=true` (a URL on port 6543 turns it on
+  automatically; Neon's pooler is on 5432). Keep `max-instances ×
+  DB_MAX_OPEN_CONNS` under the database's limit.
+- `MIGRATION_DATABASE_URL` (GitHub secret, §8) is a **different** value: Neon's
+  direct (non-pooler) host, port 5432 — golang-migrate and `pg_dump` need a
+  session.
 - `INTERNAL_JOBS_SECRET` must match the GitHub secret of the same name used by
   `scheduled-jobs.yml`. `EDGE_PROXY_SECRET` must match the Worker secret (§9).
 
@@ -210,8 +215,8 @@ Repo **variables** (Settings → Secrets and variables → Actions → Variables
 
 | Variable                      | Value                                                                                  | Used by                        |
 | ----------------------------- | -------------------------------------------------------------------------------------- | ------------------------------ |
-| `GCP_PROJECT_ID`              | `servicepro-<suffix>` — **setting this switches deploys on**                           | release-deploy                 |
-| `GCP_REGION`                  | e.g. `us-central1`                                                                     | release-deploy                 |
+| `GCP_PROJECT_ID`              | `service-pro-512609` — **setting this switches deploys on**                            | release-deploy                 |
+| `GCP_REGION`                  | `us-east5`                                                                             | release-deploy                 |
 | `GCP_WIF_PROVIDER`            | `projects/<NUMBER>/locations/global/workloadIdentityPools/github/providers/servicepro` | release-deploy                 |
 | `GCP_DEPLOY_SA`               | `gh-deploy@<project>.iam.gserviceaccount.com`                                          | release-deploy                 |
 | `AR_REPOSITORY`               | `servicepro` (default if unset)                                                        | release-deploy                 |
@@ -224,7 +229,7 @@ Repo **secrets**:
 
 | Secret                                      | Value                                                   | Used by                            |
 | ------------------------------------------- | ------------------------------------------------------- | ---------------------------------- |
-| `MIGRATION_DATABASE_URL`                    | session pooler / direct URL, port **5432**              | release-deploy, migrate, db-backup |
+| `MIGRATION_DATABASE_URL`                    | Neon direct (non-pooler) URL, port **5432**             | release-deploy, migrate, db-backup |
 | `INTERNAL_JOBS_SECRET`                      | same value as the Secret Manager secret                 | scheduled-jobs                     |
 | `CLOUDFLARE_API_TOKEN`                      | token with Workers Scripts:Edit (+ routes for the zone) | release-deploy (web)               |
 | `CLOUDFLARE_ACCOUNT_ID`                     | Cloudflare account id                                   | release-deploy, db-backup          |
@@ -289,7 +294,7 @@ curl -s https://servicepro.sharkfins.xyz/version | jq
 
 | Symptom                                       | Cause                                                                                                         |
 | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| Release run shows migrate/api/web **skipped** | `vars.GCP_PROJECT_ID` unset — by design until hosting exists                                                  |
+| Release run shows migrate/api/web **skipped** | `vars.GCP_PROJECT_ID` unset (it is set for production; check it wasn't removed)                               |
 | `unauthorized_client` on the auth step        | `GCP_WIF_PROVIDER` uses the project **id** instead of the **number**                                          |
 | Auth succeeds, deploy 403s                    | Deploy SA lacks `roles/iam.serviceAccountUser` on the runtime SA                                              |
 | `cannot list versions of secret`              | Deploy SA lacks `roles/secretmanager.viewer`                                                                  |
