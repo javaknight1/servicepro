@@ -19,7 +19,7 @@ Common terms used in ServicePro.
 | **Job Type**      | Category of work (Service Call, Installation, etc.) |
 | **Dispatch**      | Sending a job assignment to a technician            |
 | **Technician**    | Team member who performs the service                |
-| **Recurring Job** | Job that repeats on a schedule                      |
+| **Recurring Job** | Job that repeats on a schedule (planned)            |
 
 ## Job Statuses
 

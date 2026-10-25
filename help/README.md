@@ -45,6 +45,6 @@ New to ServicePro? Start here:
 
 ## Need Help?
 
-- **Email**: support@servicepro.com
+- **Email**: support@sharkfins.xyz
 - **Developer Docs**: [/docs](/docs/)
 - **Training**: [/training](/training/)

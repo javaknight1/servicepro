@@ -7,7 +7,7 @@ Schedule, assign, and manage service jobs.
 - [Creating Jobs](#creating-jobs)
 - [Assigning Technicians](#assigning-technicians)
 - [Managing Calendar](#managing-calendar)
-- [Recurring Jobs](#recurring-jobs)
+- [Recurring Jobs (coming soon)](#recurring-jobs-coming-soon)
 
 ## Creating Jobs
 
@@ -80,24 +80,11 @@ Enable in **Settings > Jobs > Auto-Dispatch** to automatically assign based on:
 | Previous | Left Arrow   |
 | Next     | Right Arrow  |
 
-## Recurring Jobs
+## Recurring Jobs (coming soon)
 
-For regular service visits:
-
-1. Create job as normal
-2. Click **Make Recurring**
-3. Set pattern:
-   - Daily, Weekly, Monthly
-   - Repeat interval
-   - End date (or never)
-4. Save
-
-### Managing Recurring Jobs
-
-- Edit single instance: Changes only that occurrence
-- Edit series: Changes all future occurrences
-- Skip instance: Mark as skipped
-- Cancel series: Ends all future jobs
+Recurring service agreements (for example "nightly cleaning Mon–Fri" or
+"quarterly maintenance") that create jobs automatically are planned but not
+available yet. For now, create each visit as its own job.
 
 ## Job Completion
 

@@ -34,7 +34,7 @@ Get up and running with ServicePro.
 
 - [ ] Configure invoice settings
 - [ ] Connect payment processing (Stripe)
-- [ ] Create invoice templates
+- [ ] Set default payment terms and tax rate
 
 ## Company Profile Setup
 
@@ -83,5 +83,5 @@ Get up and running with ServicePro.
 
 - Start with a few customers to learn the system
 - Use the calendar daily to manage operations
-- Set up recurring jobs for regular customers
+- Create jobs for each regular visit (recurring service agreements are coming)
 - Enable payment reminders for faster collection

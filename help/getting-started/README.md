@@ -20,4 +20,4 @@ New to ServicePro? Start here.
 ## Need Help?
 
 - [Troubleshooting](../troubleshooting/README.md) - Common issues
-- Email: support@servicepro.com
+- Email: support@sharkfins.xyz

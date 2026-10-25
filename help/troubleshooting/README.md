@@ -29,7 +29,7 @@ After 5 failed attempts, account locks for 30 minutes.
 ### Not Receiving Emails
 
 1. Check spam/junk folder
-2. Add noreply@servicepro.com to contacts
+2. Add ServicePro's sending address (the From address on your verification email) to your contacts
 3. Verify email address in profile
 4. Check email server isn't blocking
 
@@ -109,9 +109,7 @@ Conflict detection warns when:
 
 If issues persist:
 
-- **Email**: support@servicepro.com
-- **Chat**: Click chat icon (bottom right)
-- **Phone**: 1-800-SERVICE
+- **Email**: support@sharkfins.xyz
 
 Include in your request:
 

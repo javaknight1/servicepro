@@ -10,7 +10,7 @@ Get ServicePro up and running in 15 minutes.
 
 ## Step 1: Log In
 
-1. Go to **app.servicepro.com**
+1. Go to **servicepro.sharkfins.xyz**
 2. Enter your email and password
 3. Click **Sign In**
 4. Change your password on first login

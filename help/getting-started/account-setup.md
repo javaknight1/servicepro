@@ -100,5 +100,5 @@ Create job types for your services:
 | Integration     | Purpose                |
 | --------------- | ---------------------- |
 | Stripe          | Accept online payments |
-| QuickBooks      | Sync invoices          |
-| Google Calendar | Calendar sync          |
+
+QuickBooks Online sync is planned; calendar sync is not available yet.

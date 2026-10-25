@@ -56,7 +56,7 @@ Your comprehensive service business management platform.
 | ----------- | --------------------------------- |
 | Help Center | Click **?** icon or visit `/help` |
 | Search      | Press `/` to search               |
-| Support     | support@servicepro.com            |
+| Support     | support@sharkfins.xyz             |
 
 ## Next Steps
 
