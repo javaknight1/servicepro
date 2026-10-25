@@ -11,8 +11,10 @@
 4. Run `make help` to see every task. There is one Makefile, at the repo root —
    don't add Makefiles in subdirectories.
 
-ServicePro is **not hosted yet** — development is local only. See
-[docs/deployment](docs/deployment/README.md) for the planned hosting.
+ServicePro is live at <https://servicepro.sharkfins.xyz> (since v0.9.0,
+2026-10-24); production deploys only from `v*` tags (see
+[RELEASING.md](RELEASING.md) and [docs/deployment](docs/deployment/README.md)).
+Develop and test locally.
 
 ## Git hooks
 

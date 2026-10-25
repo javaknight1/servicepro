@@ -1,8 +1,16 @@
 # ServicePro
 
-A comprehensive service management platform for field service businesses. Built with Go (backend) and React (frontend).
+Field service management for small commercial service businesses — the field service platform that
+gets you paid. Built with Go (backend) and React (frontend).
 
-> **Not hosted yet — local only.** The hosting target (API on Google Cloud Run, web on Cloudflare Workers at `servicepro.sharkfins.xyz`) and the release pipeline are wired up but inert. See [docs/deployment](docs/deployment/README.md).
+> **Live since 2026-10-24 (v0.9.0)** at <https://servicepro.sharkfins.xyz>: Cloudflare Worker
+> `servicepro-web` (static assets + `/api/*` and `/version` proxy) → Cloud Run `servicepro-api`
+> (us-east5) → Neon Postgres 18 (AWS us-east-2). Deploys run on `v*` tags. See
+> [docs/deployment](docs/deployment/README.md).
+>
+> **MVP focus (decided 2026-10-25):** commercial cleaning and facility-maintenance companies
+> (1–10 techs) billing property managers on net terms. Plan: [TODO.md](TODO.md) and
+> [docs/product/mvp-plan-2026-10.md](docs/product/mvp-plan-2026-10.md).
 
 ## Overview
 
@@ -10,28 +18,31 @@ ServicePro provides tools for managing:
 
 - **Customers** - CRM with full-text search, import/export
 - **Jobs** - Work order management with scheduling
-- **Quotes** - Quote generation with templates
-- **Invoices** - Invoice generation with payment tracking
-- **Scheduling** - Technician scheduling with conflict detection
+- **Quotes** - Quotes with send/accept/reject/revise, PDF and expiry
+- **Invoices** - Invoices with payment terms, payment tracking, reminders and AR aging
+- **Scheduling** - Technician assignment, calendar and conflict checks
 - **Reports** - Revenue and customer analytics
 
 ## Tech Stack
 
 ### Backend
 
-- **Language**: Go (version in `backend/go.mod`, currently 1.24)
+- **Language**: Go (version in `backend/go.mod`, currently `go 1.26`, toolchain go1.27.3)
 - **Framework**: Gin
 - **Database**: PostgreSQL 18 (Neon in production) with GORM; golang-migrate migrations in `backend/migrations/`
-- **Cache**: Redis 7
-- **Authentication**: JWT with bcrypt
+- **Cache**: Redis — optional (Upstash or none in production)
+- **Authentication**: own JWT in httpOnly cookies + bcrypt today; Neon's managed Better Auth JWTs are
+  already verified by the API and the SPA moves to it in T158
+- **Email**: Resend (target, T159); SMTP/Mailpit locally
+- **Storage**: S3-compatible (MinIO locally; Cloudflare R2 target)
 
 ### Frontend
 
 - **Runtime**: Node.js 22 (`frontend/.nvmrc`)
-- **Framework**: React 18 with TypeScript
-- **Build Tool**: Vite
+- **Framework**: React 19 with TypeScript (strict)
+- **Build Tool**: Vite 8
 - **State**: Zustand + React Query
-- **Styling**: Tailwind CSS
+- **Styling**: Tailwind CSS 4
 
 ## Quick Start
 

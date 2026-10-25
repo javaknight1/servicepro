@@ -5,14 +5,16 @@ One plan for shipping releases and keeping a changelog. Companion to
 [`docs/ops/deploy.md`](docs/ops/deploy.md) (deploy + rollback) and
 [`docs/ops/backups.md`](docs/ops/backups.md).
 
-> **Not hosted yet — local only.** The release pipeline is fully wired but
-> inert: until the repo variable `GCP_PROJECT_ID` is set, a `v*` tag skips the
-> migrate/api/web jobs and **only publishes the GitHub Release notes**. Nothing
-> in this document deploys anything until the one-time setup is done.
+> **Live since v0.9.0 (2026-10-24).** The repo variable `GCP_PROJECT_ID` is
+> set, so every `v*` tag migrates the Neon database, deploys the API to Cloud
+> Run `servicepro-api` (us-east5) and the web bundle to the Worker
+> `servicepro-web` (<https://servicepro.sharkfins.xyz>), then publishes the
+> GitHub Release notes. (Without `GCP_PROJECT_ID` the guard would skip
+> migrate/api/web and only publish notes.)
 
 ## TL;DR
 
-Commits pile up on `master` (CI runs, but **nothing deploys**). To ship, **bump
+Commits pile up on `master` (CI runs, but **pushes to master never deploy**). To ship, **bump
 the version and push a `v*` tag**. The tag migrates production, deploys the API
 and the web bundle, and publishes the GitHub Release (the changelog). That's a
 release.
@@ -113,7 +115,7 @@ If you changed swag annotations, run `make docs` and commit
    git tag v0.8.0 && git push origin v0.8.0
    ```
 3. Watch the **Release** run: `guard` → `migrate` → `api` → `web` → `release`.
-4. Verify (once hosted):
+4. Verify:
    ```bash
    curl -s https://servicepro.sharkfins.xyz/version | jq   # through the Worker proxy
    ```
@@ -177,9 +179,9 @@ traffic. Locally, docker-compose sets `RUN_MIGRATIONS_ON_STARTUP=true`, and
 Production runs no in-process tickers (`RUN_BACKGROUND_WORKERS=false`, set by
 `deploy-cloudrun.sh`): Cloud Run throttles CPU between requests and scales to
 zero. `.github/workflows/scheduled-jobs.yml` POSTs to
-`/internal/jobs/{payment-reminders,analytics-aggregate,webhook-cleanup}` with
-`X-Internal-Jobs-Token: $INTERNAL_JOBS_SECRET`. It's a no-op until
-`vars.API_URL` is set.
+`/internal/jobs/{payment-reminders,quote-expiry}` hourly with
+`X-Internal-Jobs-Token: $INTERNAL_JOBS_SECRET` against `vars.API_URL` (the
+Cloud Run URL; the edge Worker never proxies `/internal/*`).
 
 ---
 
@@ -191,7 +193,7 @@ Full runbook: [`docs/ops/deploy.md`](docs/ops/deploy.md). Short version:
   are named after the tag: `servicepro-api-v0-8-0`):
   ```bash
   gcloud run services update-traffic servicepro-api \
-    --region=us-central1 --to-revisions=servicepro-api-v0-7-1=100
+    --region=us-east5 --to-revisions=servicepro-api-v0-7-1=100
   ```
 - **Web** — `cd frontend && npx wrangler rollback` (or Workers dashboard →
   servicepro-web → Deployments).
@@ -201,23 +203,25 @@ Full runbook: [`docs/ops/deploy.md`](docs/ops/deploy.md). Short version:
 
 ## One-time setup
 
-Infra ([`docs/ops/cloud-run-setup.md`](docs/ops/cloud-run-setup.md)) — **none
-of this exists yet**:
+Infra ([`docs/ops/cloud-run-setup.md`](docs/ops/cloud-run-setup.md)) — done
+2026-10-24 (T203/T204):
 
-- [ ] Decide the Postgres host (Supabase or other) and region
-- [ ] GCP project, APIs, Artifact Registry repo `servicepro`
-- [ ] Runtime + deploy service accounts, Secret Manager secrets
-- [ ] Workload Identity Federation pinned to this repo
-- [ ] Cloud Run service `servicepro-api`
-- [ ] Cloudflare Worker `servicepro-web` on `servicepro.sharkfins.xyz`
-- [ ] Redis (optional; Upstash later) and object storage (R2 later)
-- [ ] GitHub variables + secrets (§8 of the setup doc) — setting
-      `GCP_PROJECT_ID` is what switches deploys on
+- [x] Postgres host: Neon Postgres 18 in AWS us-east-2 (Free plan; Launch plan
+      before the first paying tenant)
+- [x] GCP project, APIs, Artifact Registry repo `servicepro` (us-east5)
+- [x] Runtime + deploy service accounts, Secret Manager secrets
+- [x] Workload Identity Federation pinned to this repo
+- [x] Cloud Run service `servicepro-api` (us-east5)
+- [x] Cloudflare Worker `servicepro-web` on `servicepro.sharkfins.xyz`
+- [x] GitHub variables + secrets (§8 of the setup doc) — `GCP_PROJECT_ID` is
+      set, so tags deploy
+- [ ] Redis (optional; Upstash or none) and object storage (Cloudflare R2)
+- [ ] Nightly backups to R2 activated (T209)
 
 Repo (done):
 
 - [x] `VERSION` at the repo root; `scripts/bump-version.sh`, `scripts/gh-release.sh`, `scripts/deploy-cloudrun.sh`
 - [x] `.github/workflows/ci.yml` — lint/test/build only; deploys nothing
-- [x] `.github/workflows/release-deploy.yml` — the `v*` tag pipeline (inert until configured)
+- [x] `.github/workflows/release-deploy.yml` — the `v*` tag pipeline (deploying since v0.9.0)
 - [x] `.github/workflows/migrate.yml`, `db-backup.yml`, `scheduled-jobs.yml`, `security-scan.yml`, `dependabot-automerge.yml`
 - [x] Versioned git hooks (`make install-hooks`)
