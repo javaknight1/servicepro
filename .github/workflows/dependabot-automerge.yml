@@ -71,52 +71,56 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
-      - name: Pick a green Dependabot PR
-        id: meta
+      - name: Merge the oldest green Dependabot PR
+        id: merge
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
-          # Sweep, don't trust the trigger: merge the oldest open Dependabot PR
-          # whose head commit passed every check and that merges cleanly. One
-          # per run — each merge changes the lockfiles, so the others need a
-          # Dependabot rebase (and a fresh CI run) anyway.
+          # Sweep, don't trust the trigger: try open Dependabot PRs, oldest
+          # first, whose head commit passed every check, and merge the first
+          # one GitHub accepts. One per run — each merge changes the
+          # lockfiles, so the others need a Dependabot rebase and fresh CI
+          # anyway. `mergeable` isn't filtered on: GitHub computes it lazily
+          # and reports UNKNOWN on a cold query; a conflicting PR just fails
+          # to merge and the next one is tried.
           # shellcheck disable=SC2016 # $c is a jq variable, not shell
-          PR_JSON=$(gh pr list --repo "$REPO" --author app/dependabot --state open \
+          CANDIDATES=$(gh pr list --repo "$REPO" --author app/dependabot --state open \
             --json number,title,url,createdAt,mergeable,statusCheckRollup \
             --jq '[.[]
-                   | select(.mergeable == "MERGEABLE")
+                   | select(.mergeable != "CONFLICTING")
                    | select((.statusCheckRollup | length) > 0)
                    | select(all(.statusCheckRollup[];
                        (.conclusion // .state // "") as $c
                        | $c == "SUCCESS" or $c == "SKIPPED" or $c == "NEUTRAL"))]
-                  | sort_by(.createdAt) | .[0] // empty')
-          if [ -z "$PR_JSON" ]; then
-            echo "No green, mergeable Dependabot PR — nothing to do"
+                  | sort_by(.createdAt) | .[] | @json')
+          if [ -z "$CANDIDATES" ]; then
+            echo "No green Dependabot PR — nothing to do"
             exit 0
           fi
-          {
-            echo "number=$(jq -r .number <<<"$PR_JSON")"
-            echo "title=$(jq -r .title <<<"$PR_JSON")"
-            echo "url=$(jq -r .url <<<"$PR_JSON")"
-          } >> "$GITHUB_OUTPUT"
-
-      - name: Squash-merge
-        id: merge
-        if: steps.meta.outputs.number
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPO: ${{ github.repository }}
-        run: |
-          echo "Merging PR #${{ steps.meta.outputs.number }}: ${{ steps.meta.outputs.title }}"
-          gh pr merge --squash --delete-branch --repo "$REPO" "${{ steps.meta.outputs.number }}"
+          while read -r pr; do
+            NUMBER=$(jq -r .number <<<"$pr")
+            TITLE=$(jq -r .title <<<"$pr")
+            echo "Trying PR #$NUMBER: $TITLE"
+            if gh pr merge --squash --delete-branch --repo "$REPO" "$NUMBER"; then
+              {
+                echo "merged=true"
+                echo "number=$NUMBER"
+                echo "title=$TITLE"
+                echo "url=$(jq -r .url <<<"$pr")"
+              } >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            echo "PR #$NUMBER didn't merge — trying the next one"
+          done <<<"$CANDIDATES"
+          echo "No candidate merged"
 
       # ── Release ────────────────────────────────────────────────────────────
       # Everything below runs only when a merge actually happened.
 
       - name: Check out master (post-merge)
-        if: steps.merge.outcome == 'success'
+        if: steps.merge.outputs.merged == 'true'
         uses: actions/checkout@v7
         with:
           ref: master
@@ -126,7 +130,7 @@ jobs:
 
       - name: Bump VERSION
         id: bump
-        if: steps.merge.outcome == 'success'
+        if: steps.merge.outputs.merged == 'true'
         run: |
           set -euo pipefail
           ./scripts/bump-version.sh
@@ -135,7 +139,7 @@ jobs:
           echo "Next release: v$VERSION"
 
       - name: Commit and push the bump
-        if: steps.merge.outcome == 'success'
+        if: steps.merge.outputs.merged == 'true'
         env:
           VERSION: ${{ steps.bump.outputs.version }}
         run: |
@@ -149,7 +153,7 @@ jobs:
         id: push
 
       - name: Validate master before tagging
-        if: steps.merge.outcome == 'success'
+        if: steps.merge.outputs.merged == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SHA: ${{ steps.push.outputs.sha }}
@@ -178,7 +182,7 @@ jobs:
           gh run watch "$RID" --exit-status --interval 15
 
       - name: Tag and start the release
-        if: steps.merge.outcome == 'success'
+        if: steps.merge.outputs.merged == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ steps.bump.outputs.version }}
@@ -194,8 +198,8 @@ jobs:
           {
             echo "### Auto-release ${TAG}"
             echo
-            echo "Triggered by auto-merging [#${{ steps.meta.outputs.number }}](${{ steps.meta.outputs.url }})"
-            echo "— \`${{ steps.meta.outputs.title }}\`"
+            echo "Triggered by auto-merging [#${{ steps.merge.outputs.number }}](${{ steps.merge.outputs.url }})"
+            echo "— \`${{ steps.merge.outputs.title }}\`"
             echo
             echo "Shipping everything unreleased on master, not only that bump:"
             echo
