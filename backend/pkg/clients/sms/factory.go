@@ -41,14 +41,12 @@ func GetRegisteredProviders() []Provider {
 //
 // Provider selection order:
 // 1. If cfg.SMS.TextBelt.APIKey != "" -> TextBelt (free tier for testing)
-// 2. If cfg.AWS.SNS.Enabled && cfg.AWS.Region != "" -> AWS SNS
-// 3. Fallback -> Mock
+// 2. Fallback -> Mock (refused in production)
 //
 // Note: Providers must be registered by importing their packages with blank imports:
 //
 //	import _ "github.com/javaknight1/servicepro/backend/pkg/clients/sms/mock"
 //	import _ "github.com/javaknight1/servicepro/backend/pkg/clients/sms/textbelt"
-//	import _ "github.com/javaknight1/servicepro/backend/pkg/clients/sms/sns"
 func NewClient(ctx context.Context, cfg *config.Config) (Client, error) {
 	if cfg == nil {
 		return nil, fmt.Errorf("config is required")
@@ -59,7 +57,7 @@ func NewClient(ctx context.Context, cfg *config.Config) (Client, error) {
 	// (T256, D11). Refuse it; the caller runs without SMS and reminders fall
 	// back to email until a real provider and 10DLC exist (OD-12).
 	if provider == ProviderMock && cfg.Server.Env == "production" {
-		return nil, fmt.Errorf("no SMS provider configured in production: SMS is off (set TEXTBELT_API_KEY or AWS SNS to enable)")
+		return nil, fmt.Errorf("no SMS provider configured in production: SMS is off (set TEXTBELT_API_KEY to enable)")
 	}
 	logging.Info(ctx, "[SMS] Using provider", map[string]any{"provider": provider})
 
@@ -82,11 +80,6 @@ func detectProvider(cfg *config.Config) Provider {
 		return ProviderTextBelt
 	}
 
-	// 2. Check for AWS SNS configuration
-	if cfg.AWS.SNS.Enabled && cfg.AWS.Region != "" {
-		return ProviderSNS
-	}
-
-	// 3. Fallback to mock (local development, unit tests)
+	// 2. Fallback to mock (local development, unit tests)
 	return ProviderMock
 }

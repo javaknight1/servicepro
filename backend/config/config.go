@@ -19,7 +19,6 @@ type Config struct {
 	Auth         AuthConfig
 	Cookie       CookieConfig
 	RateLimit    RateLimitConfig
-	AWS          AWSConfig
 	S3Compatible S3CompatibleConfig
 	SMTP         SMTPConfig
 	Resend       ResendConfig
@@ -75,44 +74,6 @@ type SMSRateLimitConfig struct {
 
 	// BurstSize is the maximum burst size
 	BurstSize int
-}
-
-// AWSConfig holds configuration for all AWS services (SES, SNS, CloudWatch, etc.)
-// Note: For S3-compatible storage, use S3CompatibleConfig instead
-type AWSConfig struct {
-	// Shared AWS credentials and region
-	Region          string
-	AccessKeyID     string
-	SecretAccessKey string
-
-	// AWS service-specific configurations
-	SES AWSSESConfig
-	SNS AWSSNSConfig
-}
-
-// AWSSESConfig holds AWS SES email service configuration
-type AWSSESConfig struct {
-	FromEmail            string
-	FromName             string
-	ReplyTo              string
-	ConfigurationSetName string  // SES configuration set for tracking
-	Domain               string  // Verified domain for sending
-	MaxSendRate          float64 // Max emails per second
-	DailyQuota           int64   // Daily sending limit
-	MaxRetries           int     // Retry attempts for failed sends
-	SandboxMode          bool    // Whether SES is in sandbox mode
-	EnableTracking       bool    // Enable open/click tracking
-	EnableDKIM           bool    // Enable DKIM signing
-	MetricsEnabled       bool    // Enable CloudWatch metrics
-	MetricsNamespace     string  // CloudWatch namespace for metrics
-	LogLevel             string  // Logging level (debug, info, warn, error)
-}
-
-// AWSSNSConfig holds AWS SNS configuration
-type AWSSNSConfig struct {
-	Enabled  bool
-	TopicARN string
-	Region   string // Optional: overrides AWS.Region for SNS
 }
 
 // S3CompatibleConfig holds S3-compatible storage configuration
@@ -491,32 +452,6 @@ func Load() *Config {
 			BurstMultiplier:    getEnvAsFloat("RATE_LIMIT_BURST", 1.2),        // 20% burst capacity
 			Window:             getEnvAsDuration("RATE_LIMIT_WINDOW", "1m"),   // 1 minute window
 			ExcludedPaths:      getEnvAsStringSlice("RATE_LIMIT_EXCLUDED_PATHS", []string{"/health", "/version"}),
-		},
-		AWS: AWSConfig{
-			Region:          getEnv("AWS_REGION", "us-east-1"),
-			AccessKeyID:     getEnv("AWS_ACCESS_KEY_ID", ""),
-			SecretAccessKey: getEnv("AWS_SECRET_ACCESS_KEY", ""),
-			SES: AWSSESConfig{
-				FromEmail:            getEnv("AWS_SES_FROM_EMAIL", "noreply@servicepro.com"),
-				FromName:             getEnv("AWS_SES_FROM_NAME", "ServicePro"),
-				ReplyTo:              getEnv("AWS_SES_REPLY_TO", ""),
-				ConfigurationSetName: getEnv("AWS_SES_CONFIGURATION_SET", ""),
-				Domain:               getEnv("AWS_SES_DOMAIN", ""),
-				MaxSendRate:          getEnvAsFloat("AWS_SES_MAX_SEND_RATE", 14.0),
-				DailyQuota:           int64(getEnvAsInt("AWS_SES_DAILY_QUOTA", 200)),
-				MaxRetries:           getEnvAsInt("AWS_SES_MAX_RETRIES", 3),
-				SandboxMode:          getEnvAsBool("AWS_SES_SANDBOX_MODE", true),
-				EnableTracking:       getEnvAsBool("AWS_SES_ENABLE_TRACKING", true),
-				EnableDKIM:           getEnvAsBool("AWS_SES_ENABLE_DKIM", true),
-				MetricsEnabled:       getEnvAsBool("AWS_SES_METRICS_ENABLED", true),
-				MetricsNamespace:     getEnv("AWS_SES_METRICS_NAMESPACE", "ServicePro/Email"),
-				LogLevel:             getEnv("AWS_SES_LOG_LEVEL", "info"),
-			},
-			SNS: AWSSNSConfig{
-				Enabled:  getEnvAsBool("AWS_SNS_ENABLED", false),
-				TopicARN: getEnv("AWS_SNS_TOPIC_ARN", ""),
-				Region:   getEnv("AWS_SNS_REGION", ""),
-			},
 		},
 		S3Compatible: S3CompatibleConfig{
 			Endpoint:        getEnv("S3_COMPATIBLE_ENDPOINT", ""),

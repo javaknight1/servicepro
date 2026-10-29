@@ -8,7 +8,6 @@ import (
 type Provider string
 
 const (
-	ProviderSNS      Provider = "sns"
 	ProviderTextBelt Provider = "textbelt"
 	ProviderMock     Provider = "mock"
 )

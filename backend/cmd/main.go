@@ -44,7 +44,6 @@ import (
 	// Email providers - blank imports to register providers
 	_ "github.com/javaknight1/servicepro/backend/pkg/clients/email/mock"
 	_ "github.com/javaknight1/servicepro/backend/pkg/clients/email/resend"
-	_ "github.com/javaknight1/servicepro/backend/pkg/clients/email/ses"
 	_ "github.com/javaknight1/servicepro/backend/pkg/clients/email/smtp"
 
 	// Storage providers - blank imports to register providers
@@ -54,7 +53,6 @@ import (
 	// SMS providers - blank imports to register providers
 	smsclient "github.com/javaknight1/servicepro/backend/pkg/clients/sms"
 	_ "github.com/javaknight1/servicepro/backend/pkg/clients/sms/mock"
-	_ "github.com/javaknight1/servicepro/backend/pkg/clients/sms/sns"
 	_ "github.com/javaknight1/servicepro/backend/pkg/clients/sms/textbelt"
 
 	// Analytics providers - blank imports to register providers

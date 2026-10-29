@@ -42,14 +42,12 @@ func GetRegisteredProviders() []Provider {
 // Provider selection order:
 // 1. If cfg.SMTP.Host != "" -> SMTP (Mailpit for local development)
 // 2. If cfg.Resend.APIKey != "" -> Resend
-// 3. If cfg.AWS.Region != "" && cfg.AWS.SES.FromEmail != "" -> SES
-// 4. Fallback -> Mock
+// 3. Fallback -> Mock (refused in production)
 //
 // Note: Providers must be registered by importing their packages with blank imports:
 //
 //	import _ "github.com/javaknight1/servicepro/backend/pkg/clients/email/mock"
 //	import _ "github.com/javaknight1/servicepro/backend/pkg/clients/email/smtp"
-//	import _ "github.com/javaknight1/servicepro/backend/pkg/clients/email/ses"
 //	import _ "github.com/javaknight1/servicepro/backend/pkg/clients/email/resend"
 func NewClient(ctx context.Context, cfg *config.Config) (Client, error) {
 	if cfg == nil {
@@ -63,7 +61,7 @@ func NewClient(ctx context.Context, cfg *config.Config) (Client, error) {
 	// back to the mock: users would never get reset/verification/invite
 	// emails (F-14). Fail startup instead.
 	if provider == ProviderMock && cfg.Server.Env == "production" {
-		return nil, fmt.Errorf("no email provider configured in production: set RESEND_API_KEY (or SMTP_HOST / AWS SES settings)")
+		return nil, fmt.Errorf("no email provider configured in production: set RESEND_API_KEY")
 	}
 
 	constructorsMu.RLock()
@@ -90,11 +88,8 @@ func detectProvider(cfg *config.Config) Provider {
 		return ProviderResend
 	}
 
-	// 3. Check for SES credentials
-	if cfg.AWS.Region != "" && cfg.AWS.SES.FromEmail != "" {
-		return ProviderSES
-	}
-
-	// 4. Fallback to mock (unit tests, CI without Docker)
+	// 3. Fallback to mock (unit tests, CI without Docker). Resend is the only
+	// production provider (T159); SES was removed because its defaults made
+	// it look configured and defeated the guard above.
 	return ProviderMock
 }

@@ -9,13 +9,12 @@ import (
 	_ "github.com/javaknight1/servicepro/backend/pkg/clients/metrics/mock"
 )
 
-// T126: with an AWS region configured (SES/SNS) and Prometheus off, the
-// factory used to pick CloudWatch, which was never linked into the binary,
-// and metrics client creation failed.
+// T126: in production with Prometheus off, the factory used to pick
+// CloudWatch (never linked into the binary) and metrics creation failed.
+// AWS config is gone since T159; production must still get a client.
 func TestNewClient_NoCloudWatchFallback(t *testing.T) {
 	cfg := &config.Config{}
 	cfg.Server.Env = "production"
-	cfg.AWS.Region = "us-east-1"
 
 	if _, err := metrics.NewClient(context.Background(), cfg); err != nil {
 		t.Fatalf("NewClient: %v", err)

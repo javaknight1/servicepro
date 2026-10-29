@@ -15,14 +15,8 @@ import (
 func init() {
 	email.RegisterProvider(email.ProviderMock, func(ctx context.Context, cfg *config.Config) (email.Client, error) {
 		mockCfg := &Config{
-			FromEmail: cfg.AWS.SES.FromEmail,
-			FromName:  cfg.AWS.SES.FromName,
-		}
-		if mockCfg.FromEmail == "" {
-			mockCfg.FromEmail = cfg.Resend.FromEmail
-		}
-		if mockCfg.FromName == "" {
-			mockCfg.FromName = cfg.Resend.FromName
+			FromEmail: cfg.Resend.FromEmail,
+			FromName:  cfg.Resend.FromName,
 		}
 		return NewClient(mockCfg), nil
 	})

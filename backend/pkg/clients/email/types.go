@@ -8,7 +8,6 @@ import (
 type Provider string
 
 const (
-	ProviderSES    Provider = "ses"
 	ProviderResend Provider = "resend"
 	ProviderSMTP   Provider = "smtp"
 	ProviderMock   Provider = "mock"

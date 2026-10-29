@@ -11,8 +11,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/credentials v1.20.10
 	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.23.16
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.114.5
-	github.com/aws/aws-sdk-go-v2/service/ses v1.42.5
-	github.com/aws/aws-sdk-go-v2/service/sns v1.47.6
 	github.com/aymerick/raymond v2.0.2+incompatible
 	github.com/getsentry/sentry-go v0.50.0
 	github.com/gin-gonic/gin v1.12.0
