@@ -1,9 +1,9 @@
 # Dependabot — weekly dependency updates.
 #
 # One update day (Monday) for all ecosystems so the batch lands in a single
-# triage block. Minor + patch updates are grouped per ecosystem;
-# dependabot-automerge.yml merges those once CI is green and cuts a release.
-# Majors arrive as individual PRs and wait for a human.
+# triage block. Minor + patch updates are grouped per ecosystem; majors arrive
+# as individual PRs. dependabot-automerge.yml merges every Dependabot PR once
+# CI is green (majors included, 2026-10-29) and cuts a release.
 #
 # The commit-message prefixes (deps(go) / deps(npm) / deps(actions)) are part
 # of the release contract: scripts/gh-release.sh filters `deps` out of the
@@ -12,13 +12,14 @@
 #
 # Security updates: Dependabot alerts + security-fix PRs are enabled in the
 # repo settings (2026-10-18). Those PRs open as soon as an advisory lands,
-# outside this weekly schedule, and auto-merge the same way when they are
-# patch/minor.
+# outside this weekly schedule, and auto-merge the same way.
 #
 # Triage:
-#   - patch + minor -> auto-merged when CI passes
-#   - major -> read the changelog, run locally, then merge by hand
-#   - transitive CVEs flagged by `npm audit` -> bump the direct parent
+#   - any bump -> auto-merged when CI passes
+#   - CI failing (usually a major with breaking changes) -> fix on the PR branch
+#     or close it; nothing merges red
+#   - an alert with no PR (a transitive dep its parent pins exactly, e.g.
+#     undici under wrangler/miniflare) -> bump the direct parent by hand
 
 version: 2
 updates:

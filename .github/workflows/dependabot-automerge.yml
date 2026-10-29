@@ -1,7 +1,9 @@
 name: Dependabot auto-merge
 
-# Auto-merges Dependabot PRs once CI passes. Filters to patch + minor
-# only — major bumps need a human eye for breaking changes. Triggered on
+# Auto-merges every Dependabot PR once CI passes — patch, minor AND major
+# (owner decision 2026-10-29). CI is the only gate: a major that breaks the
+# build or tests fails CI and simply waits; a breaking change CI can't see
+# ships. Triggered on
 # workflow_run (not pull_request) because branch protection isn't
 # available on free-tier private repos, so GitHub's native `--auto` flag
 # has nothing to wait on; this workflow gates on CI completing instead.
@@ -60,7 +62,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
-      - name: Resolve PR + bump kind
+      - name: Resolve PR
         id: meta
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -74,78 +76,21 @@ jobs:
             echo "No open PR for branch $BRANCH — skipping"
             exit 0
           fi
-          NUMBER=$(jq -r .number <<<"$PR_JSON")
-          TITLE=$(jq -r .title <<<"$PR_JSON")
-          URL=$(jq -r .url <<<"$PR_JSON")
           {
-            echo "number=$NUMBER"
-            echo "title=$TITLE"
-            echo "url=$URL"
+            echo "number=$(jq -r .number <<<"$PR_JSON")"
+            echo "title=$(jq -r .title <<<"$PR_JSON")"
+            echo "url=$(jq -r .url <<<"$PR_JSON")"
           } >> "$GITHUB_OUTPUT"
-
-          # Grouped bumps are configured in .github/dependabot.yml to only
-          # contain minor+patch updates, so they're always safe to auto-merge.
-          if grep -qiE 'group' <<<"$TITLE"; then
-            echo "kind=group" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          # Single-package bumps look like:
-          #   "deps(npm): bump axios from 1.15.1 to 1.16.0"
-          #   "deps(actions): bump actions/checkout from 4 to 6"
-          # Compare major version segments — same major = auto-merge,
-          # different major = leave for human review.
-          if [[ "$TITLE" =~ from\ ([0-9]+)(\.[0-9]+)?(\.[0-9]+)?\ to\ ([0-9]+)(\.[0-9]+)?(\.[0-9]+)? ]]; then
-            FROM_MAJOR="${BASH_REMATCH[1]}"
-            TO_MAJOR="${BASH_REMATCH[4]}"
-            if [ "$FROM_MAJOR" = "$TO_MAJOR" ]; then
-              echo "kind=patch_or_minor" >> "$GITHUB_OUTPUT"
-            else
-              echo "kind=major" >> "$GITHUB_OUTPUT"
-            fi
-          else
-            # Multi-package PRs ("Bump esbuild and vite", typical of security
-            # fixes) have no versions in the title. The body lists one line per
-            # direct dependency: "Updates `vite` from 5.4.21 to 8.3.4". Auto-
-            # merge only if every listed update stays on its major.
-            UPDATES=$(gh pr view --repo "$REPO" "$NUMBER" --json body --jq .body \
-              | grep -E '^Updates `[^`]+` from [0-9]' || true)
-            KIND=unknown
-            while read -r line; do
-              [ -z "$line" ] && continue
-              if [[ "$line" =~ from\ ([0-9]+)[^\ ]*\ to\ ([0-9]+) ]]; then
-                if [ "${BASH_REMATCH[1]}" != "${BASH_REMATCH[2]}" ]; then
-                  KIND=major
-                  break
-                fi
-                KIND=patch_or_minor
-              else
-                KIND=unknown
-                break
-              fi
-            done <<<"$UPDATES"
-            echo "kind=$KIND" >> "$GITHUB_OUTPUT"
-          fi
 
       - name: Squash-merge
         id: merge
-        if: steps.meta.outputs.number && (steps.meta.outputs.kind == 'group' || steps.meta.outputs.kind == 'patch_or_minor')
+        if: steps.meta.outputs.number
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
         run: |
-          echo "Merging PR #${{ steps.meta.outputs.number }} (${{ steps.meta.outputs.kind }}): ${{ steps.meta.outputs.title }}"
+          echo "Merging PR #${{ steps.meta.outputs.number }}: ${{ steps.meta.outputs.title }}"
           gh pr merge --squash --delete-branch --repo "$REPO" "${{ steps.meta.outputs.number }}"
-
-      - name: Skip note
-        if: steps.meta.outputs.number && (steps.meta.outputs.kind == 'major' || steps.meta.outputs.kind == 'unknown')
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPO: ${{ github.repository }}
-        run: |
-          echo "Leaving PR #${{ steps.meta.outputs.number }} for manual review (kind=${{ steps.meta.outputs.kind }})"
-          gh pr comment --repo "$REPO" "${{ steps.meta.outputs.number }}" --body \
-            "Auto-merge skipped: detected \`${{ steps.meta.outputs.kind }}\` bump. Needs manual review."
 
       # ── Release ────────────────────────────────────────────────────────────
       # Everything below runs only when a merge actually happened.
