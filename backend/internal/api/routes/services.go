@@ -82,6 +82,8 @@ func SetupServices(
 		PDFService:  documentPDFService,
 		FrontendURL: cfg.Server.FrontendURL,
 		BackendURL:  cfg.Server.BackendURL,
+		// Pay links only when payments are on and Stripe is configured (T261).
+		OnlinePayments: cfg.Stripe.InvoicePaymentsEnabled && cfg.Stripe.SecretKey != "",
 	})
 
 	// Revenue report service
@@ -144,6 +146,7 @@ func SetupServices(
 				InvoiceService: svc.Invoice,
 				SuccessURL:     cfg.Server.FrontendURL + "/invoices/payment-success",
 				CancelURL:      cfg.Server.FrontendURL + "/invoices/payment-cancelled",
+				Enabled:        cfg.Stripe.InvoicePaymentsEnabled,
 			})
 			if err != nil {
 				log.Printf("[SERVICES] Failed to create invoice payment service: %v", err)

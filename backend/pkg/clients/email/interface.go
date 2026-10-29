@@ -42,7 +42,9 @@ type Client interface {
 	// downloadURL is an optional presigned URL for downloading the PDF
 	SendQuoteEmail(ctx context.Context, to string, quote *models.Quote, pdfAttachment *Attachment, downloadURL string) error
 
-	// SendInvoiceEmail sends an invoice email with a payment link to the customer
+	// SendInvoiceEmail sends an invoice email to the customer
+	// paymentURL is the "Pay Now" link; empty means online payment is off and
+	// the email has no pay button (T261)
 	// pdfAttachment can be nil if no attachment is needed
 	// downloadURL is an optional presigned URL for downloading the PDF
 	SendInvoiceEmail(ctx context.Context, to string, invoice *models.Invoice, paymentURL string, pdfAttachment *Attachment, downloadURL string) error

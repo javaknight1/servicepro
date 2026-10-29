@@ -634,6 +634,19 @@ func (c *Client) SendInvoiceEmail(ctx context.Context, to string, invoice *model
 		`, downloadURL)
 	}
 
+	// No pay button when online payment is off (empty paymentURL, T261).
+	payNowHTML := ""
+	if paymentURL != "" {
+		payNowHTML = fmt.Sprintf(`
+			<p style="text-align: center; margin-top: 30px;">
+				<a href="%s" class="button">Pay Now</a>
+			</p>
+			<p style="color: #666; font-size: 14px; margin-top: 20px;">
+				Click the button above to pay securely online via Stripe.
+			</p>
+		`, paymentURL)
+	}
+
 	body := fmt.Sprintf(`
 		<html>
 		<head>
@@ -705,15 +718,9 @@ func (c *Client) SendInvoiceEmail(ctx context.Context, to string, invoice *model
 						</div>
 					</div>
 
-					<p style="text-align: center; margin-top: 30px;">
-						<a href="%s" class="button">Pay Now</a>
-					</p>
-
 					%s
 
-					<p style="color: #666; font-size: 14px; margin-top: 20px;">
-						Click the button above to pay securely online via Stripe.
-					</p>
+					%s
 
 					<p>Best regards,<br>The ServicePro Team</p>
 				</div>
@@ -723,7 +730,7 @@ func (c *Client) SendInvoiceEmail(ctx context.Context, to string, invoice *model
 	`, customerName, invoice.InvoiceNumber, invoice.IssueDate.Format("January 2, 2006"),
 		invoice.DueDate.Format("January 2, 2006"), lineItemsHTML,
 		invoice.Subtotal.StringFixed(2), invoice.TaxAmount.StringFixed(2),
-		invoice.TotalAmount.StringFixed(2), paymentURL, downloadPDFHTML)
+		invoice.TotalAmount.StringFixed(2), payNowHTML, downloadPDFHTML)
 
 	msg := email.NewEmailMessage(to, subject, body)
 

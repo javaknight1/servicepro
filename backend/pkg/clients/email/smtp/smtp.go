@@ -647,11 +647,11 @@ func (c *Client) SendInvoiceEmail(ctx context.Context, to string, invoice *model
 			<p><strong>Invoice Number:</strong> %s</p>
 			<p><strong>Total Amount:</strong> $%s</p>
 			<p><strong>Due Date:</strong> %s</p>
-			<p><a href="%s" style="background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none;">Pay Now</a></p>
+			%s
 			<p>Best regards,<br>The ServicePro Team</p>
 		</body>
 		</html>
-	`, customerName, invoice.InvoiceNumber, invoice.TotalAmount.StringFixed(2), invoice.DueDate.Format("January 2, 2006"), paymentURL)
+	`, customerName, invoice.InvoiceNumber, invoice.TotalAmount.StringFixed(2), invoice.DueDate.Format("January 2, 2006"), email.PayNowButtonHTML(paymentURL))
 
 	msg := email.NewEmailMessage(to, subject, body)
 	if pdfAttachment != nil {

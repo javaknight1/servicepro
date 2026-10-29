@@ -81,6 +81,8 @@ type InvoiceService struct {
 	pdfService  *DocumentPDFService
 	frontendURL string
 	backendURL  string
+	// onlinePayments puts the "Pay now" link in invoice emails (T261).
+	onlinePayments bool
 }
 
 // InvoiceServiceConfig holds configuration for the invoice service
@@ -89,6 +91,9 @@ type InvoiceServiceConfig struct {
 	PDFService  *DocumentPDFService
 	FrontendURL string
 	BackendURL  string
+	// OnlinePayments includes the pay link in invoice emails. Must match the
+	// invoice payment service's Enabled flag (T261).
+	OnlinePayments bool
 }
 
 // NewInvoiceService creates a new invoice service
@@ -104,6 +109,7 @@ func NewInvoiceServiceWithConfig(db *gorm.DB, cfg *InvoiceServiceConfig) *Invoic
 		svc.pdfService = cfg.PDFService
 		svc.frontendURL = cfg.FrontendURL
 		svc.backendURL = cfg.BackendURL
+		svc.onlinePayments = cfg.OnlinePayments
 	}
 	return svc
 }
@@ -1176,6 +1182,16 @@ func (s *InvoiceService) generatePaymentToken() (string, error) {
 	return base64.URLEncoding.EncodeToString(bytes), nil
 }
 
+// invoicePaymentURL is the emailed "Pay now" link — the backend route that
+// redirects to Stripe Checkout — or "" when online payment is off, in which
+// case the email has no pay button (T261).
+func (s *InvoiceService) invoicePaymentURL(invoice *models.Invoice) string {
+	if !s.onlinePayments || invoice.PaymentToken == nil {
+		return ""
+	}
+	return fmt.Sprintf("%s/api/v1/public/invoices/pay/%s", s.backendURL, *invoice.PaymentToken)
+}
+
 // sendInvoiceEmail sends the invoice email to the customer with PDF attachment
 func (s *InvoiceService) sendInvoiceEmail(invoice *models.Invoice) {
 	ctx := context.Background()
@@ -1185,8 +1201,7 @@ func (s *InvoiceService) sendInvoiceEmail(invoice *models.Invoice) {
 		return
 	}
 
-	// Build payment URL - points to backend API which redirects to Stripe Checkout
-	paymentURL := fmt.Sprintf("%s/api/v1/public/invoices/pay/%s", s.backendURL, *invoice.PaymentToken)
+	paymentURL := s.invoicePaymentURL(invoice)
 
 	var pdfAttachment *email.Attachment
 	var downloadURL string

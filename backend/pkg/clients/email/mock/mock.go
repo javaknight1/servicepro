@@ -181,8 +181,10 @@ func (c *Client) SendInvoiceEmail(ctx context.Context, to string, invoice *model
 	logging.Info(ctx, "[EMAIL-MOCK] Sending invoice email", map[string]any{"to": to, "invoice_number": invoice.InvoiceNumber, "payment_url": "[redacted]", "download_url": "[redacted]"})
 
 	subject := fmt.Sprintf("Invoice %s from ServicePro", invoice.InvoiceNumber)
-	body := fmt.Sprintf("Invoice #%s - Total: $%s. Pay here: %s",
-		invoice.InvoiceNumber, invoice.TotalAmount.StringFixed(2), paymentURL)
+	body := fmt.Sprintf("Invoice #%s - Total: $%s.", invoice.InvoiceNumber, invoice.TotalAmount.StringFixed(2))
+	if paymentURL != "" {
+		body += " Pay here: " + paymentURL
+	}
 
 	msg := email.NewEmailMessage(to, subject, body)
 	if pdfAttachment != nil {

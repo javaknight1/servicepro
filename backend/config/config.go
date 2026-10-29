@@ -285,6 +285,10 @@ type StripeConfig struct {
 	LogLevel       string
 	MaxRetries     int
 	Prices         StripePrices
+	// InvoicePaymentsEnabled turns on online invoice payment (the emailed
+	// "Pay now" link and /public/invoices/pay). Off until Stripe Connect
+	// routes the money to the tenant's own account (T261, T169, D9/D11).
+	InvoicePaymentsEnabled bool
 }
 
 // StripePrices holds Stripe price IDs for subscription tiers
@@ -545,6 +549,8 @@ func Load() *Config {
 			WebhookSecret:  getEnvOrFile("STRIPE_WEBHOOK_SECRET", "STRIPE_WEBHOOK_SECRET_FILE", ""),
 			LogLevel:       getEnv("STRIPE_LOG_LEVEL", "info"),
 			MaxRetries:     getEnvAsInt("STRIPE_MAX_RETRIES", 3),
+			// Default off: payments would settle to the platform account (T261).
+			InvoicePaymentsEnabled: getEnvAsBool("INVOICE_PAYMENTS_ENABLED", false),
 			Prices: StripePrices{
 				FreeMonthly:  getEnv("STRIPE_PRICE_FREE_MONTHLY", ""),
 				BasicMonthly: getEnv("STRIPE_PRICE_BASIC_MONTHLY", ""),

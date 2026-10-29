@@ -20,8 +20,9 @@ import (
 var (
 	// ErrCheckoutSessionCreationFailed is returned when Stripe checkout session creation fails
 	ErrCheckoutSessionCreationFailed = errors.New("failed to create checkout session")
-	// ErrInvoicePaymentDisabled is returned when invoice payment is not configured
-	ErrInvoicePaymentDisabled = errors.New("invoice payment is not configured")
+	// ErrInvoicePaymentDisabled is returned when online invoice payment is
+	// switched off (INVOICE_PAYMENTS_ENABLED, T261).
+	ErrInvoicePaymentDisabled = errors.New("online invoice payment is disabled")
 )
 
 // InvoicePaymentService handles invoice payment operations via Stripe
@@ -30,6 +31,7 @@ type InvoicePaymentService struct {
 	invoiceService *InvoiceService
 	successURL     string
 	cancelURL      string
+	enabled        bool
 }
 
 // InvoicePaymentServiceConfig holds configuration for the invoice payment service
@@ -38,6 +40,9 @@ type InvoicePaymentServiceConfig struct {
 	InvoiceService *InvoiceService
 	SuccessURL     string // URL to redirect after successful payment
 	CancelURL      string // URL to redirect if payment is cancelled
+	// Enabled allows checkout sessions to be created. Off until Stripe
+	// Connect routes payments to the tenant (T261, T169).
+	Enabled bool
 }
 
 // NewInvoicePaymentService creates a new invoice payment service
@@ -63,6 +68,7 @@ func NewInvoicePaymentService(cfg *InvoicePaymentServiceConfig) (*InvoicePayment
 		invoiceService: cfg.InvoiceService,
 		successURL:     cfg.SuccessURL,
 		cancelURL:      cfg.CancelURL,
+		enabled:        cfg.Enabled,
 	}, nil
 }
 
@@ -77,6 +83,12 @@ type CheckoutSessionResult struct {
 // CreateCheckoutSessionForInvoice creates a Stripe Checkout session that
 // charges exactly the invoice's balance due (T119 / audit 7.C2).
 func (s *InvoicePaymentService) CreateCheckoutSessionForInvoice(ctx context.Context, token string) (*CheckoutSessionResult, error) {
+	// Checked first: while payments would land in the platform's Stripe
+	// account, no session is ever created (T261).
+	if !s.enabled {
+		return nil, ErrInvoicePaymentDisabled
+	}
+
 	// Validate the payment token and get the invoice (payable statuses only,
 	// with a positive balance).
 	invoice, err := s.invoiceService.ValidatePaymentToken(ctx, token)

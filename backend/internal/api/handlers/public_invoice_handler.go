@@ -75,6 +75,9 @@ func (h *PublicInvoiceHandler) PayInvoice(c *gin.Context) {
 		case errors.Is(err, services.ErrInvoiceNotPayable):
 			statusCode = http.StatusConflict
 			errorMessage = "this invoice cannot be paid at this time"
+		case errors.Is(err, services.ErrInvoicePaymentDisabled):
+			statusCode = http.StatusConflict
+			errorMessage = "online payment isn't available for this invoice. Please contact the business to pay"
 		case errors.Is(err, services.ErrCheckoutSessionCreationFailed):
 			statusCode = http.StatusServiceUnavailable
 			errorMessage = "payment service temporarily unavailable"
