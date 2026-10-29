@@ -821,7 +821,7 @@ D2: move to League Looper's stack one strangler step at a time while the app kee
 
 **Why we need it** — SES is configured by accident (default env) and unused; one provider means one set of webhooks, one domain setup (T206) and fewer vulnerable modules.
 
-**Notes** — correctness audit §2 "Resend migration notes", §5.5 step 3. Folds in old P1 "Email Retry Logic with Exponential Backoff"; the old "Email Client Enhancements" (SES) section is dropped. MVP plan (2026-10-25): also remove the AWS SES defaults (`AWS_REGION`, `AWS_SES_FROM_EMAIL=noreply@servicepro.com`) that make SES look configured and defeat the email guard. Move Resend to Pro ($20/mo, 100/day cap on Free) before the design-partner beta.
+**Notes** — correctness audit §2 "Resend migration notes", §5.5 step 3. Folds in old P1 "Email Retry Logic with Exponential Backoff"; the old "Email Client Enhancements" (SES) section is dropped. MVP plan (2026-10-25): also remove the AWS SES defaults (`AWS_REGION`, `AWS_SES_FROM_EMAIL=noreply@servicepro.com`) that make SES look configured and defeat the email guard. Move Resend to Pro ($20/mo, 100/day cap on Free) before the design-partner beta. **Progress 2026-10-29 (step 1 of 3):** SES email + SNS SMS providers, `AWSConfig` and the aws-sdk ses/sns modules removed; production refuses to start without `RESEND_API_KEY` (now in Secret Manager, v1). Left: signed Resend bounce/complaint webhook replacing the SES routes, retries with backoff. Sending still fails until the domain is verified (T206).
 
 ---
 
