@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router';
 import { ArrowLeft, Mail } from 'lucide-react';
 import { Button, Input } from '@components/shared';
-import { Footer } from '@components/layout';
+import { Footer, RequestAccessLink } from '@components/layout';
 import { SUPPORT_EMAIL, buildMailto } from '@/config/support';
 
 export function ContactPage() {
@@ -51,9 +51,7 @@ export function ContactPage() {
               <Link to="/login">
                 <Button variant="ghost">Sign In</Button>
               </Link>
-              <Link to="/register">
-                <Button variant="primary">Get Started</Button>
-              </Link>
+              <RequestAccessLink label="Request access" />
             </div>
           </div>
         </div>

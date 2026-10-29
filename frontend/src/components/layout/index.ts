@@ -5,3 +5,4 @@ export { DashboardLayout } from './DashboardLayout';
 export { Sidebar } from './Sidebar';
 export { ProtectedRoute } from './ProtectedRoute';
 export { PublicRoute } from './PublicRoute';
+export { RequestAccessLink } from './RequestAccessLink';

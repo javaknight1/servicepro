@@ -1,7 +1,7 @@
 import { Link } from 'react-router';
 import { ArrowLeft, CheckCircle } from 'lucide-react';
 import { Button } from '@components/shared';
-import { Footer } from '@components/layout';
+import { Footer, RequestAccessLink } from '@components/layout';
 
 export function FeaturesPage() {
   return (
@@ -22,9 +22,7 @@ export function FeaturesPage() {
               <Link to="/login">
                 <Button variant="ghost">Sign In</Button>
               </Link>
-              <Link to="/register">
-                <Button variant="primary">Get Started</Button>
-              </Link>
+              <RequestAccessLink label="Request access" />
             </div>
           </div>
         </div>
@@ -75,19 +73,11 @@ export function FeaturesPage() {
             Ready to get started?
           </h2>
           <p className="text-neutral-600 mb-8">
-            Join thousands of businesses already using ServicePro.
+            ServicePro is in an invite-only beta with a small group of service
+            businesses.
           </p>
           <div className="flex justify-center space-x-4">
-            <Link to="/register">
-              <Button variant="primary" size="lg">
-                Start Free Trial
-              </Button>
-            </Link>
-            <Link to="/pricing">
-              <Button variant="outline" size="lg">
-                View Pricing
-              </Button>
-            </Link>
+            <RequestAccessLink size="lg" />
           </div>
         </div>
       </main>

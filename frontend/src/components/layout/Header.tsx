@@ -2,9 +2,10 @@ import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { LogOut, Settings } from 'lucide-react';
 import { useAuthStore, useTenantStore } from '@store';
-import { Button, Avatar } from '@components/shared';
+import { Avatar } from '@components/shared';
 import { TenantSwitcher } from '@components/tenants';
 import { getDisplayName } from '@/utils/avatar';
+import { RequestAccessLink } from './RequestAccessLink';
 
 function ProfileDropdown() {
   const navigate = useNavigate();
@@ -143,11 +144,7 @@ export function Header() {
                 >
                   Login
                 </Link>
-                <Link to="/register">
-                  <Button variant="primary" size="sm">
-                    Get Started
-                  </Button>
-                </Link>
+                <RequestAccessLink size="sm" label="Request access" />
               </>
             )}
           </nav>

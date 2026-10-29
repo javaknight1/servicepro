@@ -30,14 +30,6 @@ export function Footer() {
                   Features
                 </Link>
               </li>
-              <li>
-                <Link
-                  to="/pricing"
-                  className="text-sm text-neutral-600 hover:text-neutral-900"
-                >
-                  Pricing
-                </Link>
-              </li>
             </ul>
           </div>
 
@@ -93,6 +85,9 @@ export function Footer() {
         <div className="mt-8 pt-8 border-t border-neutral-200">
           <p className="text-sm text-neutral-600 text-center">
             © {currentYear} ServicePro. All rights reserved.
+          </p>
+          <p className="mt-1 text-xs text-neutral-500 text-center">
+            ServicePro is a working name while the product is in beta.
           </p>
           <BuildStamp className="mt-2" />
         </div>

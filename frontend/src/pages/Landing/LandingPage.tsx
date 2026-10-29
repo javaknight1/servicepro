@@ -1,5 +1,5 @@
 import { Link } from 'react-router';
-import { MainLayout } from '@components/layout';
+import { MainLayout, RequestAccessLink } from '@components/layout';
 import { Button, Card } from '@components/shared';
 import { CheckCircle, Shield, Zap } from 'lucide-react';
 
@@ -14,19 +14,26 @@ export function LandingPage() {
               Welcome to <span className="text-primary-600">ServicePro</span>
             </h1>
             <p className="text-xl md:text-2xl text-neutral-600 mb-8 max-w-3xl mx-auto">
-              The professional services platform built for modern businesses.
-              Streamline your operations and focus on what matters most.
+              Scheduling, work orders, quotes, invoices and payment reminders
+              for small service businesses. Now in an invite-only beta.
             </p>
             <div className="flex justify-center gap-4">
-              <Link to="/register">
-                <Button size="lg">Get Started Free</Button>
-              </Link>
+              <RequestAccessLink size="lg" />
               <Link to="/login">
                 <Button variant="outline" size="lg">
                   Sign In
                 </Button>
               </Link>
             </div>
+            <p className="mt-6 text-sm text-neutral-600">
+              Have an invite code?{' '}
+              <Link
+                to="/register"
+                className="text-primary-600 hover:text-primary-700 font-medium"
+              >
+                Create your account
+              </Link>
+            </p>
           </div>
         </div>
       </section>
@@ -61,8 +68,8 @@ export function LandingPage() {
               </div>
               <h3 className="text-xl font-semibold mb-3">Secure & Reliable</h3>
               <p className="text-neutral-600">
-                Enterprise-grade security with role-based access control and
-                comprehensive audit trails.
+                Each business's data is kept separate, and role-based access
+                controls what each person on your team can see and do.
               </p>
             </Card>
 
@@ -87,13 +94,10 @@ export function LandingPage() {
             Ready to get started?
           </h2>
           <p className="text-xl text-primary-100 mb-8">
-            Join thousands of professionals using ServicePro
+            ServicePro is in an invite-only beta with a small group of service
+            businesses.
           </p>
-          <Link to="/register">
-            <Button variant="secondary" size="lg">
-              Create Free Account
-            </Button>
-          </Link>
+          <RequestAccessLink variant="secondary" size="lg" />
         </div>
       </section>
     </MainLayout>

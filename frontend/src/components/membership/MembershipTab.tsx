@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router';
-import { ExternalLink, Crown } from 'lucide-react';
+import { Crown } from 'lucide-react';
 import {
   Card,
   CardHeader,
@@ -194,10 +194,6 @@ export function MembershipTab() {
                     Change Plan
                   </Button>
                 )}
-                <Button variant="outline" onClick={() => navigate('/pricing')}>
-                  <ExternalLink className="h-4 w-4 mr-2" />
-                  View All Plans
-                </Button>
               </div>
             </div>
           )}

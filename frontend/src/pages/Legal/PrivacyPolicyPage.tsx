@@ -1,7 +1,7 @@
 import { Link } from 'react-router';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@components/shared';
-import { Footer } from '@components/layout';
+import { Footer, RequestAccessLink } from '@components/layout';
 import { LEGAL_DRAFT_DATE, SUPPORT_EMAIL } from '@/config/support';
 
 export function PrivacyPolicyPage() {
@@ -23,9 +23,7 @@ export function PrivacyPolicyPage() {
               <Link to="/login">
                 <Button variant="ghost">Sign In</Button>
               </Link>
-              <Link to="/register">
-                <Button variant="primary">Get Started</Button>
-              </Link>
+              <RequestAccessLink label="Request access" />
             </div>
           </div>
         </div>

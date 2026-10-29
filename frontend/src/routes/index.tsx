@@ -139,14 +139,6 @@ const ConfirmMembershipPage = loadable(
   { chunkName: 'confirm-membership', delay: 100 }
 );
 
-const PricingPage = loadable(
-  () =>
-    import(/* webpackChunkName: "page-pricing" */ '@pages/Pricing').then(
-      (m) => ({ default: m.PricingPage })
-    ),
-  { chunkName: 'pricing', delay: 100 }
-);
-
 const FeaturesPage = loadable(
   () =>
     import(/* webpackChunkName: "page-features" */ '@pages/Features').then(
@@ -429,7 +421,8 @@ export function AppRoutes() {
       {/* Public routes - accessible regardless of auth status */}
       <Route path="/verify-email" element={<VerifyEmailPage />} />
       <Route path="/unauthorized" element={<UnauthorizedPage />} />
-      <Route path="/pricing" element={<PricingPage />} />
+      {/* Public pricing is hidden until T210 ships plans that match D10 (T255). */}
+      <Route path="/pricing" element={<Navigate to="/" replace />} />
       <Route path="/features" element={<FeaturesPage />} />
       <Route path="/about" element={<AboutPage />} />
       <Route path="/contact" element={<ContactPage />} />
@@ -517,7 +510,6 @@ export const routePaths = {
   newOrg: '/settings/organization/new',
   changeMembership: '/settings/organization/membership/change',
   confirmMembership: '/settings/organization/membership/confirm',
-  pricing: '/pricing',
   features: '/features',
   about: '/about',
   contact: '/contact',

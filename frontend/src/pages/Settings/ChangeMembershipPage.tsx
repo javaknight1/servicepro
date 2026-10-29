@@ -363,21 +363,6 @@ export function ChangeMembershipPage() {
                 />
               ))}
             </div>
-
-            {/* Help Text */}
-            <div className="mt-8 text-center">
-              <p className="text-sm text-neutral-500">
-                Need help choosing?{' '}
-                <a
-                  href="/pricing"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-primary-600 hover:text-primary-700"
-                >
-                  View full comparison
-                </a>
-              </p>
-            </div>
           </>
         )}
       </div>

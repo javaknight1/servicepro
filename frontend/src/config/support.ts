@@ -17,5 +17,14 @@ export function buildMailto(
   return `mailto:${to}${query ? `?${query}` : ''}`;
 }
 
+/**
+ * "Request beta access" while registration is invite-only (T255): a
+ * pre-filled email to support, since there is no waitlist API.
+ */
+export const BETA_ACCESS_MAILTO: string = buildMailto(SUPPORT_EMAIL, {
+  subject: 'ServicePro beta access',
+  body: 'Business name:\nWhat you do (e.g. commercial cleaning):\nNumber of technicians:\n',
+});
+
 /** Fixed date of the current (unreviewed) legal drafts. */
 export const LEGAL_DRAFT_DATE = 'October 16, 2026';
