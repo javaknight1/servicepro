@@ -3,7 +3,8 @@ name: Dependabot auto-merge
 # Auto-merges every Dependabot PR once CI passes — patch, minor AND major
 # (owner decision 2026-10-29). CI is the only gate: a major that breaks the
 # build or tests fails CI and simply waits; a breaking change CI can't see
-# ships. Triggered on
+# ships. Each run merges the oldest green, mergeable Dependabot PR (not just
+# the one whose CI triggered it — see the schedule below). Triggered on
 # workflow_run (not pull_request) because branch protection isn't
 # available on free-tier private repos, so GitHub's native `--auto` flag
 # has nothing to wait on; this workflow gates on CI completing instead.
@@ -40,6 +41,13 @@ on:
   workflow_run:
     workflows: ['CI']
     types: [completed]
+  # Backstop: a concurrency group keeps only ONE pending run, so when several
+  # Dependabot PRs finish CI together the queued runs replace each other and
+  # some PRs are never looked at. Each run therefore sweeps for any green
+  # Dependabot PR, and this schedule catches whatever a dropped run missed.
+  schedule:
+    - cron: '40 * * * *'
+  workflow_dispatch:
 
 permissions:
   contents: write # merge, push the VERSION bump, push the tag
@@ -56,24 +64,36 @@ concurrency:
 jobs:
   automerge:
     if: >
-      github.event.workflow_run.event == 'pull_request' &&
-      github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.actor.login == 'dependabot[bot]'
+      github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.event == 'pull_request' &&
+       github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.actor.login == 'dependabot[bot]')
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
-      - name: Resolve PR
+      - name: Pick a green Dependabot PR
         id: meta
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          BRANCH: ${{ github.event.workflow_run.head_branch }}
           REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
-          PR_JSON=$(gh pr list --repo "$REPO" --head "$BRANCH" --state open \
-            --json number,title,url --jq '.[0] // empty')
+          # Sweep, don't trust the trigger: merge the oldest open Dependabot PR
+          # whose head commit passed every check and that merges cleanly. One
+          # per run — each merge changes the lockfiles, so the others need a
+          # Dependabot rebase (and a fresh CI run) anyway.
+          # shellcheck disable=SC2016 # $c is a jq variable, not shell
+          PR_JSON=$(gh pr list --repo "$REPO" --author app/dependabot --state open \
+            --json number,title,url,createdAt,mergeable,statusCheckRollup \
+            --jq '[.[]
+                   | select(.mergeable == "MERGEABLE")
+                   | select((.statusCheckRollup | length) > 0)
+                   | select(all(.statusCheckRollup[];
+                       (.conclusion // .state // "") as $c
+                       | $c == "SUCCESS" or $c == "SKIPPED" or $c == "NEUTRAL"))]
+                  | sort_by(.createdAt) | .[0] // empty')
           if [ -z "$PR_JSON" ]; then
-            echo "No open PR for branch $BRANCH — skipping"
+            echo "No green, mergeable Dependabot PR — nothing to do"
             exit 0
           fi
           {
