@@ -55,6 +55,12 @@ func NewClient(ctx context.Context, cfg *config.Config) (Client, error) {
 	}
 
 	provider := detectProvider(cfg)
+	// In production the mock would record texts as sent that nobody gets
+	// (T256, D11). Refuse it; the caller runs without SMS and reminders fall
+	// back to email until a real provider and 10DLC exist (OD-12).
+	if provider == ProviderMock && cfg.Server.Env == "production" {
+		return nil, fmt.Errorf("no SMS provider configured in production: SMS is off (set TEXTBELT_API_KEY or AWS SNS to enable)")
+	}
 	logging.Info(ctx, "[SMS] Using provider", map[string]any{"provider": provider})
 
 	constructorsMu.RLock()

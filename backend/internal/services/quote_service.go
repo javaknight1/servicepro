@@ -359,7 +359,9 @@ func (s *QuoteService) SendQuote(id uuid.UUID) error {
 
 			// Get download URL
 			downloadURL, _, err := s.pdfService.GetQuotePDFURL(ctx, id)
-			if err != nil {
+			if errors.Is(err, ErrPDFStorageUnavailable) {
+				downloadURL = "" // no storage (T256): PDF attached, no link
+			} else if err != nil {
 				logging.Error(ctx, "[QUOTE-SERVICE] Failed to get download URL for quote", map[string]any{"quote_number": quote.QuoteNumber, "error": err})
 				// Continue without download URL
 				downloadURL = ""

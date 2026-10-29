@@ -53,6 +53,13 @@ func NewClient(ctx context.Context, cfg *config.Config) (Client, error) {
 	}
 
 	provider := detectProvider(cfg)
+	// In production the in-memory mock loses every file on restart and
+	// differs per instance (T256, D11). Refuse it; the caller runs without
+	// object storage (PDFs are generated on demand, uploads are off) until
+	// Cloudflare R2 is configured (T160).
+	if provider == ProviderMock && cfg.Server.Env == "production" {
+		return nil, fmt.Errorf("no object storage configured in production: set S3_COMPATIBLE_BUCKET and credentials (Cloudflare R2, T160)")
+	}
 	logging.Info(ctx, "[STORAGE] Using provider", map[string]any{"provider": provider})
 
 	constructorsMu.RLock()

@@ -54,20 +54,22 @@ func SetupServices(
 	svc.Job = services.NewJobService(repos.Job, repos.Customer, db)
 
 	// Document PDF service (for generating quote/invoice/receipt PDFs)
+	// Without a storage client (production until R2, T160) PDFs are generated
+	// on demand and attached to emails, just not cached or linked (T256).
 	var documentPDFService *services.DocumentPDFService
-	if storageClient != nil {
-		pdfConfig := pdf.DefaultConfig()
-		pdfConfig.Storage.Type = "local" // Use local storage for temp files, upload to S3 via storage client
-		pdfConfig.Storage.LocalPath = "./exports/pdf"
-		pdfGenerator, err := pdf.NewGenerator(context.Background(), pdfConfig, nil)
-		if err != nil {
-			log.Printf("[SERVICES] Failed to create PDF generator: %v", err)
+	pdfConfig := pdf.DefaultConfig()
+	pdfConfig.Storage.Type = "local" // Use local storage for temp files, upload to S3 via storage client
+	pdfConfig.Storage.LocalPath = "./exports/pdf"
+	pdfGenerator, err := pdf.NewGenerator(context.Background(), pdfConfig, nil)
+	if err != nil {
+		log.Printf("[SERVICES] Failed to create PDF generator: %v", err)
+	} else {
+		documentPDFService = services.NewDocumentPDFService(pdfGenerator, storageClient)
+		if storageClient == nil {
+			log.Println("[SERVICES] Document PDF service initialized without storage: PDFs generated on demand, not cached")
 		} else {
-			documentPDFService = services.NewDocumentPDFService(pdfGenerator, storageClient)
 			log.Println("[SERVICES] Document PDF service initialized")
 		}
-	} else {
-		log.Println("[SERVICES] Document PDF service not available (storage client not configured)")
 	}
 
 	// Quote service (with PDF and email for sending quotes)

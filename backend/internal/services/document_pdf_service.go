@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -27,7 +28,13 @@ type PDFResult struct {
 	Content  []byte
 }
 
-// DocumentPDFService handles PDF generation and storage for documents
+// ErrPDFStorageUnavailable means no object storage is configured: PDFs are
+// generated on demand and never cached, so there is no stored copy to
+// download or link to (T256; storage arrives with T160).
+var ErrPDFStorageUnavailable = errors.New("PDF storage not configured")
+
+// DocumentPDFService handles PDF generation and storage for documents.
+// storage may be nil: PDFs are then generated on demand only.
 type DocumentPDFService struct {
 	pdfGenerator *pdf.Generator
 	storage      storage.Client
@@ -181,6 +188,9 @@ func (s *DocumentPDFService) GetReceiptPDFURL(ctx context.Context, invoiceID uui
 
 // DownloadQuotePDF downloads the quote PDF content directly
 func (s *DocumentPDFService) DownloadQuotePDF(ctx context.Context, quoteID uuid.UUID) ([]byte, string, error) {
+	if s.storage == nil {
+		return nil, "", ErrPDFStorageUnavailable
+	}
 	s3Key := s.getQuoteS3Key(quoteID)
 	filename := fmt.Sprintf("Quote-%s.pdf", quoteID.String())
 	content, err := s.storage.DownloadBytes(ctx, s3Key)
@@ -192,6 +202,9 @@ func (s *DocumentPDFService) DownloadQuotePDF(ctx context.Context, quoteID uuid.
 
 // DownloadInvoicePDF downloads the invoice PDF content directly
 func (s *DocumentPDFService) DownloadInvoicePDF(ctx context.Context, invoiceID uuid.UUID) ([]byte, string, error) {
+	if s.storage == nil {
+		return nil, "", ErrPDFStorageUnavailable
+	}
 	s3Key := s.getInvoiceS3Key(invoiceID)
 	filename := fmt.Sprintf("Invoice-%s.pdf", invoiceID.String())
 	content, err := s.storage.DownloadBytes(ctx, s3Key)
@@ -203,6 +216,9 @@ func (s *DocumentPDFService) DownloadInvoicePDF(ctx context.Context, invoiceID u
 
 // DownloadReceiptPDF downloads the receipt PDF content directly
 func (s *DocumentPDFService) DownloadReceiptPDF(ctx context.Context, invoiceID uuid.UUID) ([]byte, string, error) {
+	if s.storage == nil {
+		return nil, "", ErrPDFStorageUnavailable
+	}
 	s3Key := s.getReceiptS3Key(invoiceID)
 	filename := fmt.Sprintf("Receipt-%s.pdf", invoiceID.String())
 	content, err := s.storage.DownloadBytes(ctx, s3Key)
@@ -227,6 +243,9 @@ func (s *DocumentPDFService) getReceiptS3Key(invoiceID uuid.UUID) string {
 
 // uploadToStorage uploads PDF content to storage
 func (s *DocumentPDFService) uploadToStorage(ctx context.Context, content []byte, key, filename string) error {
+	if s.storage == nil {
+		return nil // no storage: the PDF is returned to the caller, not cached
+	}
 	input := storage.NewUploadInput(key).
 		WithContentType("application/pdf").
 		WithSize(int64(len(content))).
@@ -238,6 +257,9 @@ func (s *DocumentPDFService) uploadToStorage(ctx context.Context, content []byte
 
 // getPresignedURL generates a presigned URL for downloading
 func (s *DocumentPDFService) getPresignedURL(ctx context.Context, key string) (string, time.Time, error) {
+	if s.storage == nil {
+		return "", time.Time{}, ErrPDFStorageUnavailable
+	}
 	// Check if file exists
 	exists, err := s.storage.Exists(ctx, key)
 	if err != nil {

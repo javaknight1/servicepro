@@ -1220,7 +1220,8 @@ func (s *InvoiceService) sendInvoiceEmail(invoice *models.Invoice) {
 
 			// Get download URL
 			url, _, err := s.pdfService.GetInvoicePDFURL(ctx, invoice.ID)
-			if err != nil {
+			// No storage (T256): the PDF is attached, there's just no link.
+			if err != nil && !errors.Is(err, ErrPDFStorageUnavailable) {
 				logging.Error(ctx, "[INVOICE-SERVICE] Failed to get download URL for invoice", map[string]any{"invoice_number": invoice.InvoiceNumber, "error": err})
 			} else {
 				downloadURL = url
@@ -1262,7 +1263,8 @@ func (s *InvoiceService) SendReceiptEmail(invoice *models.Invoice) {
 
 			// Get download URL
 			url, _, err := s.pdfService.GetReceiptPDFURL(ctx, invoice.ID)
-			if err != nil {
+			// No storage (T256): the PDF is attached, there's just no link.
+			if err != nil && !errors.Is(err, ErrPDFStorageUnavailable) {
 				logging.Error(ctx, "[INVOICE-SERVICE] Failed to get download URL for receipt", map[string]any{"invoice_number": invoice.InvoiceNumber, "error": err})
 			} else {
 				downloadURL = url
