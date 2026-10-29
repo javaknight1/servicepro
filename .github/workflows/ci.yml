@@ -43,9 +43,13 @@ permissions:
   contents: read
 
 # Cancel superseded PR runs; let master runs finish so every commit that may
-# be tagged has a complete CI result.
+# be tagged has a complete CI result. The event name is part of the group:
+# a group holds only one PENDING run, so a push to master would otherwise
+# replace (cancel) the queued workflow_dispatch run that
+# dependabot-automerge.yml waits on before tagging — which left v0.9.5
+# bumped but never released (2026-10-29).
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
