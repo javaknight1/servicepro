@@ -19,7 +19,9 @@ type UserRepositoryInterface interface {
 	IncrementFailedLoginCount(userID int) error
 	LockAccount(userID int, until time.Time) error
 	ResetFailedLoginCount(userID int) error
-	Create(email, passwordHash string) (*models.User, error)
+	// Create inserts a user; a non-empty termsVersion records the accepted
+	// Terms/Privacy version and the time (T255).
+	Create(email, passwordHash, termsVersion string) (*models.User, error)
 }
 
 // UserRepositoryGormInterface extends UserRepositoryInterface with UUID methods

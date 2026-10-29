@@ -28,11 +28,14 @@ export interface RegisterRequest {
   invitation_token?: string;
   /** Platform invite code; required when the API runs REGISTRATION_MODE=invite_only. */
   invite_code?: string;
+  /** Agreed to the Terms of Service and Privacy Policy; the API refuses false (T255). */
+  accept_terms: boolean;
 }
 
 export interface RegisterOptions {
   invitationToken?: string;
   inviteCode?: string;
+  acceptTerms?: boolean;
 }
 
 export interface RegisterResponse {

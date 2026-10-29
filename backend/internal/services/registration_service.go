@@ -36,8 +36,9 @@ func NewRegistrationService(
 	}
 }
 
-// Register registers a new user
-func (s *RegistrationService) Register(emailAddr, password string) (*models.RegisterResponse, error) {
+// Register registers a new user who has accepted termsVersion of the Terms
+// of Service and Privacy Policy (recorded on the user, T255).
+func (s *RegistrationService) Register(emailAddr, password, termsVersion string) (*models.RegisterResponse, error) {
 	// Validate email format
 	if err := auth.ValidateEmail(emailAddr); err != nil {
 		return nil, err
@@ -75,7 +76,7 @@ func (s *RegistrationService) Register(emailAddr, password string) (*models.Regi
 	}
 
 	// Create user
-	user, err := s.userRepo.Create(emailAddr, passwordHash)
+	user, err := s.userRepo.Create(emailAddr, passwordHash, termsVersion)
 	if err != nil {
 		return nil, err
 	}

@@ -9,7 +9,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Routes, Route } from 'react-router';
 import React from 'react';
@@ -111,6 +111,7 @@ async function fillRegistration(
   }
   await user.type(screen.getByLabelText(/^password$/i), 'SecurePass123!');
   await user.type(screen.getByLabelText(/confirm password/i), 'SecurePass123!');
+  await user.click(screen.getByRole('checkbox', { name: /i agree/i }));
 }
 
 // =============================================================================
@@ -579,6 +580,43 @@ describe('Authentication Flow Integration', () => {
     });
   });
 
+  describe('Terms acceptance (T255)', () => {
+    it('blocks sign-up until the Terms and Privacy box is ticked', async () => {
+      const user = userEvent.setup({ delay: null });
+      const mockRegister = vi.fn().mockResolvedValue(undefined);
+      mockRegisterStores(mockRegister);
+
+      render(
+        <MemoryRouter initialEntries={['/register?invite=CODE-1']}>
+          <RegisterPage />
+        </MemoryRouter>
+      );
+
+      const termsLabel = screen
+        .getByRole('checkbox', { name: /i agree/i })
+        .closest('label') as HTMLElement;
+      expect(
+        within(termsLabel).getByRole('link', { name: /terms of service/i })
+      ).toHaveAttribute('href', '/terms');
+      expect(
+        within(termsLabel).getByRole('link', { name: /privacy policy/i })
+      ).toHaveAttribute('href', '/privacy');
+
+      await user.type(screen.getByLabelText(/email/i), 'newuser@example.com');
+      await user.type(screen.getByLabelText(/^password$/i), 'SecurePass123!');
+      await user.type(
+        screen.getByLabelText(/confirm password/i),
+        'SecurePass123!'
+      );
+      await user.click(screen.getByRole('button', { name: /create account/i }));
+
+      expect(
+        await screen.findByText(/please agree to the terms of service/i)
+      ).toBeInTheDocument();
+      expect(mockRegister).not.toHaveBeenCalled();
+    });
+  });
+
   describe('Invite-only registration', () => {
     const registrationClosed = {
       response: {
@@ -612,7 +650,11 @@ describe('Authentication Flow Integration', () => {
         expect(mockRegister).toHaveBeenCalledWith(
           'newuser@example.com',
           'SecurePass123!',
-          { invitationToken: undefined, inviteCode: 'EARLY-BIRD-42' }
+          {
+            invitationToken: undefined,
+            inviteCode: 'EARLY-BIRD-42',
+            acceptTerms: true,
+          }
         );
       });
       expect(await screen.findByText(/check your email/i)).toBeInTheDocument();
@@ -693,7 +735,11 @@ describe('Authentication Flow Integration', () => {
         expect(mockRegister).toHaveBeenCalledWith(
           'newuser@example.com',
           'SecurePass123!',
-          { invitationToken: undefined, inviteCode: 'CODE-7' }
+          {
+            invitationToken: undefined,
+            inviteCode: 'CODE-7',
+            acceptTerms: true,
+          }
         );
       });
     });
@@ -780,7 +826,11 @@ describe('Authentication Flow Integration', () => {
         expect(mockRegister).toHaveBeenCalledWith(
           'invitee@example.com',
           'SecurePass123!',
-          { invitationToken: 'tok-123', inviteCode: undefined }
+          {
+            invitationToken: 'tok-123',
+            inviteCode: undefined,
+            acceptTerms: true,
+          }
         );
       });
     });

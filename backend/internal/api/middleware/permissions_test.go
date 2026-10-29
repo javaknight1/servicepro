@@ -48,6 +48,8 @@ func setupTestEnvironment(t *testing.T) (*gorm.DB, *redis.Client, *miniredis.Min
 			last_failed_login_at DATETIME,
 			locked_until DATETIME,
 			auth_user_id TEXT,
+			terms_version TEXT,
+			terms_accepted_at DATETIME,
 			created_at DATETIME,
 			updated_at DATETIME,
 			deleted_at DATETIME

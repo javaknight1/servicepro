@@ -531,7 +531,7 @@ export interface paths {
                         "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.RegisterResponse"];
                     };
                 };
-                /** @description Invalid request or validation error */
+                /** @description Invalid request or validation error, or terms_not_accepted */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -12675,6 +12675,11 @@ export interface components {
         /** @enum {string} */
         "github_com_javaknight1_servicepro_backend_internal_models.QuoteStatus": "draft" | "sent" | "viewed" | "accepted" | "declined" | "expired";
         "github_com_javaknight1_servicepro_backend_internal_models.RegisterRequest": {
+            /**
+             * @description AcceptTerms must be true: the user agrees to the Terms of Service and
+             *     Privacy Policy (CurrentTermsVersion is recorded on the user, T255).
+             */
+            accept_terms?: boolean;
             email: string;
             /** @description Optional invitation token to auto-join organization */
             invitation_token?: string;

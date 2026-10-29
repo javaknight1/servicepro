@@ -117,8 +117,8 @@ func (m *MockUserRepositoryWithEmailExists) ResetFailedLoginCount(userID int) er
 	return args.Error(0)
 }
 
-func (m *MockUserRepositoryWithEmailExists) Create(email, passwordHash string) (*models.User, error) {
-	args := m.Called(email, passwordHash)
+func (m *MockUserRepositoryWithEmailExists) Create(email, passwordHash, termsVersion string) (*models.User, error) {
+	args := m.Called(email, passwordHash, termsVersion)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -155,11 +155,11 @@ func TestRegister_Success(t *testing.T) {
 
 	// Mock expects GetByEmail to be called in the fallback path (non-GORM repo)
 	mockRepo.On("GetByEmail", email).Return(nil, repository.ErrUserNotFound)
-	mockRepo.On("Create", email, mock.AnythingOfType("string")).Return(user, nil)
+	mockRepo.On("Create", email, mock.AnythingOfType("string"), models.CurrentTermsVersion).Return(user, nil)
 	// Welcome email is sent when verification service is nil
 	mockEmail.On("SendWelcomeEmail", mock.Anything, email, email).Return(nil)
 
-	response, err := registrationService.Register(email, password)
+	response, err := registrationService.Register(email, password, models.CurrentTermsVersion)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, response)
@@ -178,7 +178,7 @@ func TestRegister_InvalidEmail(t *testing.T) {
 	email := "invalid-email"
 	password := "SecurePass123!"
 
-	response, err := registrationService.Register(email, password)
+	response, err := registrationService.Register(email, password, models.CurrentTermsVersion)
 
 	assert.Error(t, err)
 	assert.Nil(t, response)
@@ -193,7 +193,7 @@ func TestRegister_WeakPassword(t *testing.T) {
 	email := "user@example.com"
 	password := "weak" // Too short, no special chars, etc.
 
-	response, err := registrationService.Register(email, password)
+	response, err := registrationService.Register(email, password, models.CurrentTermsVersion)
 
 	assert.Error(t, err)
 	assert.Nil(t, response)
@@ -221,7 +221,7 @@ func TestRegister_EmailAlreadyExists(t *testing.T) {
 	}
 	mockRepo.On("GetByEmail", email).Return(existingUser, nil)
 
-	response, err := registrationService.Register(email, password)
+	response, err := registrationService.Register(email, password, models.CurrentTermsVersion)
 
 	assert.Error(t, err)
 	assert.Nil(t, response)
@@ -248,7 +248,7 @@ func TestRegister_PasswordValidationErrors(t *testing.T) {
 
 			email := "user@example.com"
 
-			response, err := registrationService.Register(email, tc.password)
+			response, err := registrationService.Register(email, tc.password, models.CurrentTermsVersion)
 
 			assert.Error(t, err)
 			assert.Nil(t, response)

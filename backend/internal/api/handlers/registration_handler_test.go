@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/services"
@@ -23,8 +24,8 @@ type MockRegistrationService struct {
 	mock.Mock
 }
 
-func (m *MockRegistrationService) Register(email, password string) (*models.RegisterResponse, error) {
-	args := m.Called(email, password)
+func (m *MockRegistrationService) Register(email, password, termsVersion string) (*models.RegisterResponse, error) {
+	args := m.Called(email, password, termsVersion)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -41,7 +42,7 @@ func TestRegisterHandler_Success(t *testing.T) {
 		CreatedAt: time.Now(),
 	}
 
-	mockService.On("Register", "newuser@example.com", "SecurePass123!").Return(expectedResponse, nil)
+	mockService.On("Register", "newuser@example.com", "SecurePass123!", models.CurrentTermsVersion).Return(expectedResponse, nil)
 
 	handler := NewRegistrationHandler(mockService, nil)
 
@@ -49,8 +50,9 @@ func TestRegisterHandler_Success(t *testing.T) {
 	router.POST("/register", handler.Register)
 
 	registerReq := models.RegisterRequest{
-		Email:    "newuser@example.com",
-		Password: "SecurePass123!",
+		Email:       "newuser@example.com",
+		Password:    "SecurePass123!",
+		AcceptTerms: true,
 	}
 	body, _ := json.Marshal(registerReq)
 
@@ -104,8 +106,9 @@ func TestRegisterHandler_InvalidEmail(t *testing.T) {
 	router.POST("/register", handler.Register)
 
 	registerReq := models.RegisterRequest{
-		Email:    "invalid-email",
-		Password: "SecurePass123!",
+		Email:       "invalid-email",
+		Password:    "SecurePass123!",
+		AcceptTerms: true,
 	}
 	body, _ := json.Marshal(registerReq)
 
@@ -136,8 +139,9 @@ func TestRegisterHandler_PasswordTooShort(t *testing.T) {
 	router.POST("/register", handler.Register)
 
 	registerReq := models.RegisterRequest{
-		Email:    "user@example.com",
-		Password: "weak", // Only 4 characters, fails min=8 binding
+		Email:       "user@example.com",
+		Password:    "weak", // Only 4 characters, fails min=8 binding
+		AcceptTerms: true,
 	}
 	body, _ := json.Marshal(registerReq)
 
@@ -162,14 +166,15 @@ func TestRegisterHandler_WeakPassword(t *testing.T) {
 	handler := NewRegistrationHandler(mockService, nil)
 
 	// Password is 8+ chars but fails service's strength requirements (no special chars, etc.)
-	mockService.On("Register", "user@example.com", "weakpass").Return(nil, services.ErrWeakPassword)
+	mockService.On("Register", "user@example.com", "weakpass", models.CurrentTermsVersion).Return(nil, services.ErrWeakPassword)
 
 	router := setupTestRouter()
 	router.POST("/register", handler.Register)
 
 	registerReq := models.RegisterRequest{
-		Email:    "user@example.com",
-		Password: "weakpass", // 8 characters but no special chars
+		Email:       "user@example.com",
+		Password:    "weakpass", // 8 characters but no special chars
+		AcceptTerms: true,
 	}
 	body, _ := json.Marshal(registerReq)
 
@@ -193,14 +198,15 @@ func TestRegisterHandler_EmailAlreadyExists(t *testing.T) {
 	mockService := new(MockRegistrationService)
 	handler := NewRegistrationHandler(mockService, nil)
 
-	mockService.On("Register", "existing@example.com", "SecurePass123!").Return(nil, services.ErrEmailAlreadyExists)
+	mockService.On("Register", "existing@example.com", "SecurePass123!", models.CurrentTermsVersion).Return(nil, services.ErrEmailAlreadyExists)
 
 	router := setupTestRouter()
 	router.POST("/register", handler.Register)
 
 	registerReq := models.RegisterRequest{
-		Email:    "existing@example.com",
-		Password: "SecurePass123!",
+		Email:       "existing@example.com",
+		Password:    "SecurePass123!",
+		AcceptTerms: true,
 	}
 	body, _ := json.Marshal(registerReq)
 
@@ -224,14 +230,15 @@ func TestRegisterHandler_InternalError(t *testing.T) {
 	mockService := new(MockRegistrationService)
 	handler := NewRegistrationHandler(mockService, nil)
 
-	mockService.On("Register", "user@example.com", "SecurePass123!").Return(nil, errors.New("database error"))
+	mockService.On("Register", "user@example.com", "SecurePass123!", models.CurrentTermsVersion).Return(nil, errors.New("database error"))
 
 	router := setupTestRouter()
 	router.POST("/register", handler.Register)
 
 	registerReq := models.RegisterRequest{
-		Email:    "user@example.com",
-		Password: "SecurePass123!",
+		Email:       "user@example.com",
+		Password:    "SecurePass123!",
+		AcceptTerms: true,
 	}
 	body, _ := json.Marshal(registerReq)
 
@@ -269,14 +276,15 @@ func TestRegisterHandler_PasswordValidationErrors(t *testing.T) {
 			mockService := new(MockRegistrationService)
 			handler := NewRegistrationHandler(mockService, nil)
 
-			mockService.On("Register", "user@example.com", "testpass").Return(nil, tc.returnError)
+			mockService.On("Register", "user@example.com", "testpass", models.CurrentTermsVersion).Return(nil, tc.returnError)
 
 			router := setupTestRouter()
 			router.POST("/register", handler.Register)
 
 			registerReq := models.RegisterRequest{
-				Email:    "user@example.com",
-				Password: "testpass",
+				Email:       "user@example.com",
+				Password:    "testpass",
+				AcceptTerms: true,
 			}
 			body, _ := json.Marshal(registerReq)
 
@@ -328,6 +336,7 @@ func TestRegisterHandler_InviteOnlyErrorCodes(t *testing.T) {
 			body, _ := json.Marshal(models.RegisterRequest{
 				Email:           "newuser@example.com",
 				Password:        "SecurePass123!",
+				AcceptTerms:     true,
 				InviteCode:      tc.inviteCode,
 				InvitationToken: tc.invitationToken,
 			})
@@ -344,4 +353,25 @@ func TestRegisterHandler_InviteOnlyErrorCodes(t *testing.T) {
 			mockService.AssertNotCalled(t, "Register", mock.Anything, mock.Anything)
 		})
 	}
+}
+
+// T255: sign-up without agreeing to the Terms/Privacy is refused before any
+// invite check or account creation.
+func TestRegisterHandler_RequiresTermsAcceptance(t *testing.T) {
+	mockService := new(MockRegistrationService)
+	handler := NewRegistrationHandler(mockService, nil)
+	router := setupTestRouter()
+	router.POST("/register", handler.Register)
+
+	body, _ := json.Marshal(models.RegisterRequest{Email: "newuser@example.com", Password: "SecurePass123!"})
+	req, _ := http.NewRequest("POST", "/register", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	var resp models.ErrorResponse
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	assert.Equal(t, "terms_not_accepted", resp.Error)
+	mockService.AssertNotCalled(t, "Register", mock.Anything, mock.Anything, mock.Anything)
 }

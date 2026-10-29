@@ -40,7 +40,7 @@ func NewRegistrationHandler(registrationService services.RegistrationServiceInte
 // @Produce json
 // @Param request body models.RegisterRequest true "Registration details"
 // @Success 201 {object} models.RegisterResponse
-// @Failure 400 {object} models.ErrorResponse "Invalid request or validation error"
+// @Failure 400 {object} models.ErrorResponse "Invalid request or validation error, or terms_not_accepted"
 // @Failure 403 {object} models.ErrorResponse "registration_closed (no invite code or invitation), invalid_invite_code or invalid_invitation"
 // @Failure 409 {object} models.ErrorResponse "Email already exists"
 // @Failure 500 {object} models.ErrorResponse "Internal server error"
@@ -51,6 +51,15 @@ func (h *RegistrationHandler) Register(c *gin.Context) {
 	// Bind and validate request
 	if err := c.ShouldBindJSON(&req); err != nil {
 		apierror.BindError(c, err)
+		return
+	}
+
+	// Sign-up requires agreeing to the Terms and Privacy Policy (T255).
+	if !req.AcceptTerms {
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
+			Error:   "terms_not_accepted",
+			Message: "Please agree to the Terms of Service and Privacy Policy to create an account.",
+		})
 		return
 	}
 
@@ -82,7 +91,7 @@ func (h *RegistrationHandler) Register(c *gin.Context) {
 	}
 
 	// Attempt registration
-	response, err := h.registrationService.Register(req.Email, req.Password)
+	response, err := h.registrationService.Register(req.Email, req.Password, models.CurrentTermsVersion)
 	if err != nil {
 		release()
 		// Handle different error types

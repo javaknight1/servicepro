@@ -50,12 +50,17 @@ func (r *UserRepositoryGorm) GetByID(id uuid.UUID) (*models.User, error) {
 }
 
 // Create creates a new user
-func (r *UserRepositoryGorm) Create(email, passwordHash string) (*models.User, error) {
+func (r *UserRepositoryGorm) Create(email, passwordHash, termsVersion string) (*models.User, error) {
 	user := &models.User{
 		ID:           uuid.New(),
 		Email:        email,
 		PasswordHash: passwordHash,
 		Role:         models.RoleUser,
+	}
+	if termsVersion != "" {
+		now := time.Now()
+		user.TermsVersion = &termsVersion
+		user.TermsAcceptedAt = &now
 	}
 
 	if err := r.db.Create(user).Error; err != nil {

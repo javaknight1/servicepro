@@ -42,8 +42,8 @@ func (m *MockUserRepository) ResetFailedLoginCount(userID int) error {
 	return args.Error(0)
 }
 
-func (m *MockUserRepository) Create(email, passwordHash string) (*models.User, error) {
-	args := m.Called(email, passwordHash)
+func (m *MockUserRepository) Create(email, passwordHash, termsVersion string) (*models.User, error) {
+	args := m.Called(email, passwordHash, termsVersion)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}

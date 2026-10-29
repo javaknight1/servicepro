@@ -69,6 +69,7 @@ export const useAuthStore = create<AuthState>()(
             password,
             invitation_token: options.invitationToken || undefined,
             invite_code: options.inviteCode || undefined,
+            accept_terms: options.acceptTerms === true,
           });
           set({ isLoading: false });
           // Registration successful - user needs to verify email

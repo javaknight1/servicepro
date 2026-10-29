@@ -413,7 +413,7 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Invalid request or validation error",
+                        "description": "Invalid request or validation error, or terms_not_accepted",
                         "schema": {
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
@@ -13152,6 +13152,10 @@ const docTemplate = `{
                 "password"
             ],
             "properties": {
+                "accept_terms": {
+                    "description": "AcceptTerms must be true: the user agrees to the Terms of Service and\nPrivacy Policy (CurrentTermsVersion is recorded on the user, T255).",
+                    "type": "boolean"
+                },
                 "email": {
                     "type": "string"
                 },

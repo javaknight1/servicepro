@@ -62,6 +62,11 @@ const registerSchema = z
     inviteCode: z.optional(
       z.string().check(z.trim(), z.maxLength(128, 'Invite code is too long'))
     ),
+    acceptTerms: z.boolean().check(
+      z.refine((accepted) => accepted, {
+        error: 'Please agree to the Terms of Service and Privacy Policy',
+      })
+    ),
   })
   .check(
     z.refine((data) => data.password === data.confirmPassword, {
@@ -96,7 +101,7 @@ export function RegisterPage() {
     formState: { errors, isSubmitting },
   } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
-    defaultValues: { inviteCode: inviteCodeFromUrl },
+    defaultValues: { inviteCode: inviteCodeFromUrl, acceptTerms: false },
   });
 
   // Fetch invitation details if token is present
@@ -128,6 +133,7 @@ export function RegisterPage() {
       await register_action(data.email, data.password, {
         invitationToken: invitationToken || undefined,
         inviteCode: data.inviteCode || undefined,
+        acceptTerms: data.acceptTerms,
       });
       setSuccess(true);
     } catch (err: unknown) {
@@ -323,14 +329,44 @@ export function RegisterPage() {
                   {...register('confirmPassword')}
                 />
 
+                <div>
+                  <label className="flex items-start gap-2 text-sm text-neutral-700">
+                    <input
+                      type="checkbox"
+                      className="mt-0.5 h-4 w-4 text-primary-600 rounded-sm"
+                      aria-invalid={errors.acceptTerms ? 'true' : 'false'}
+                      {...register('acceptTerms')}
+                    />
+                    <span>
+                      I agree to the{' '}
+                      <Link
+                        to="/terms"
+                        target="_blank"
+                        className="text-primary-600 hover:text-primary-700 underline"
+                      >
+                        Terms of Service
+                      </Link>{' '}
+                      and{' '}
+                      <Link
+                        to="/privacy"
+                        target="_blank"
+                        className="text-primary-600 hover:text-primary-700 underline"
+                      >
+                        Privacy Policy
+                      </Link>
+                      .
+                    </span>
+                  </label>
+                  {errors.acceptTerms?.message && (
+                    <p className="mt-1.5 text-sm text-error-600" role="alert">
+                      {errors.acceptTerms.message}
+                    </p>
+                  )}
+                </div>
+
                 <Button type="submit" fullWidth isLoading={isSubmitting}>
                   {invitation ? 'Create account & join' : 'Create account'}
                 </Button>
-
-                <p className="text-xs text-neutral-500 text-center">
-                  By creating an account, you agree to our Terms of Service and
-                  Privacy Policy.
-                </p>
               </form>
             </CardContent>
           </Card>

@@ -42,10 +42,15 @@ type User struct {
 	TokenVersion int `json:"-" gorm:"->;column:token_version"`
 	// AuthUserID is the Neon Auth (managed Better Auth) user id — the `sub`
 	// of its JWTs (T158). Nil until the user signs in through Neon Auth.
-	AuthUserID *string        `json:"-" gorm:"column:auth_user_id"`
-	CreatedAt  time.Time      `json:"created_at"`
-	UpdatedAt  time.Time      `json:"updated_at"`
-	DeletedAt  gorm.DeletedAt `json:"-" gorm:"index"`
+	AuthUserID *string `json:"-" gorm:"column:auth_user_id"`
+	// TermsVersion is the version of the Terms of Service and Privacy Policy
+	// accepted at sign-up (CurrentTermsVersion at the time), with the moment
+	// it was accepted (T255). Nil for users created before it was recorded.
+	TermsVersion    *string        `json:"-" gorm:"column:terms_version;size:32"`
+	TermsAcceptedAt *time.Time     `json:"-" gorm:"column:terms_accepted_at"`
+	CreatedAt       time.Time      `json:"created_at"`
+	UpdatedAt       time.Time      `json:"updated_at"`
+	DeletedAt       gorm.DeletedAt `json:"-" gorm:"index"`
 }
 
 // IsLocked checks if the user account is currently locked
@@ -76,6 +81,11 @@ type LoginCookieResponse struct {
 	ExpiresIn int    `json:"expiresIn"` // in seconds, for client-side expiry tracking
 }
 
+// CurrentTermsVersion identifies the Terms of Service and Privacy Policy a
+// new user accepts: the date of the current legal drafts (frontend
+// LEGAL_DRAFT_DATE). Bump both when the documents change (T207).
+const CurrentTermsVersion = "2026-10-16"
+
 // RegisterRequest represents the registration request payload
 type RegisterRequest struct {
 	Email           string  `json:"email" binding:"required,email"`
@@ -84,6 +94,9 @@ type RegisterRequest struct {
 	// InviteCode is required when REGISTRATION_MODE=invite_only and no
 	// invitation token for this email is supplied.
 	InviteCode *string `json:"invite_code,omitempty"`
+	// AcceptTerms must be true: the user agrees to the Terms of Service and
+	// Privacy Policy (CurrentTermsVersion is recorded on the user, T255).
+	AcceptTerms bool `json:"accept_terms"`
 }
 
 // RegisterResponse represents the registration response payload

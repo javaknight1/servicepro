@@ -31,8 +31,8 @@ func (m *MockUserRepositoryGorm) GetByEmail(email string) (*models.User, error) 
 	return args.Get(0).(*models.User), args.Error(1)
 }
 
-func (m *MockUserRepositoryGorm) Create(email, passwordHash string) (*models.User, error) {
-	args := m.Called(email, passwordHash)
+func (m *MockUserRepositoryGorm) Create(email, passwordHash, termsVersion string) (*models.User, error) {
+	args := m.Called(email, passwordHash, termsVersion)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}

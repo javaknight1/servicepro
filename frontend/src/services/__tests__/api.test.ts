@@ -63,8 +63,7 @@ describe('api service', () => {
         const registerData = {
           email: 'new@example.com',
           password: 'password123',
-          first_name: 'John',
-          last_name: 'Doe',
+          accept_terms: true,
         };
         const mockResponse = { data: { id: 'user-1' } };
         mockAxios.post.mockResolvedValue(mockResponse);
