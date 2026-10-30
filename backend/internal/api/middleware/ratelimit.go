@@ -1,10 +1,13 @@
 package middleware
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -68,16 +71,35 @@ func loginBackoff(failures int64) time.Duration {
 	return d
 }
 
+// maxPeekBodyBytes caps how much of a request body the rate limiters read to
+// find the email; auth bodies are tiny.
+const maxPeekBodyBytes = 64 << 10
+
+// peekJSONBody decodes the JSON request body into dst for a rate-limit key
+// and puts the body back so the handler can bind it again. Binding with
+// ShouldBindJSON here consumed the body, so /auth/reset-request (and logins
+// that failed validation) always answered malformed_json.
+func peekJSONBody(c *gin.Context, dst any) bool {
+	if c.Request.Body == nil {
+		return false
+	}
+	body, err := io.ReadAll(io.LimitReader(c.Request.Body, maxPeekBodyBytes+1))
+	_ = c.Request.Body.Close()
+	c.Request.Body = io.NopCloser(bytes.NewReader(body))
+	if err != nil || len(body) > maxPeekBodyBytes {
+		return false
+	}
+	return json.Unmarshal(body, dst) == nil
+}
+
 // LoginRateLimit rejects login attempts that are currently throttled.
 func (rl *RateLimiter) LoginRateLimit() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ip := ClientIP(c)
 		var loginReq models.LoginRequest
 		email := ""
-		if err := c.ShouldBindJSON(&loginReq); err == nil {
+		if peekJSONBody(c, &loginReq) {
 			email = loginReq.Email
-			// Re-bind the body for the next handler
-			c.Set("login_request", loginReq)
 		}
 		ctx := c.Request.Context()
 
@@ -158,11 +180,9 @@ func (rl *RateLimiter) PasswordResetRateLimit() gin.HandlerFunc {
 
 		// Try to get email from request body for more accurate rate limiting
 		var resetReq models.PasswordResetRequestRequest
-		if err := c.ShouldBindJSON(&resetReq); err == nil {
+		if peekJSONBody(c, &resetReq) && resetReq.Email != "" {
 			// Use email for rate limiting if available
 			ip = resetReq.Email
-			// Re-bind the body for the next handler
-			c.Set("reset_request", resetReq)
 		}
 
 		key := fmt.Sprintf("ratelimit:password_reset:%s", ip)

@@ -47,15 +47,11 @@ func NewAuthHandler(authService services.AuthServiceInterface, rateLimiter middl
 func (h *AuthHandler) Login(c *gin.Context) {
 	var req models.LoginRequest
 
-	// Check if request was already bound by rate limiter
-	if cachedReq, exists := c.Get("login_request"); exists {
-		req = cachedReq.(models.LoginRequest)
-	} else {
-		// Bind and validate request
-		if err := c.ShouldBindJSON(&req); err != nil {
-			apierror.BindError(c, err)
-			return
-		}
+	// The login rate limiter peeks at the body and restores it, so the
+	// handler always binds and validates here.
+	if err := c.ShouldBindJSON(&req); err != nil {
+		apierror.BindError(c, err)
+		return
 	}
 
 	ip := middleware.ClientIP(c)
