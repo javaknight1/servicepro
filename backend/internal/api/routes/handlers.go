@@ -1,6 +1,8 @@
 package routes
 
 import (
+	"log"
+
 	"github.com/javaknight1/servicepro/backend/config"
 	"github.com/javaknight1/servicepro/backend/internal/api/handlers"
 	"github.com/javaknight1/servicepro/backend/internal/services"
@@ -97,6 +99,16 @@ func SetupHandlers(
 
 	// Conflict handler
 	h.Conflict = handlers.NewConflictHandler(svc.Conflict)
+
+	// Resend delivery webhook (optional - only when its signing secret is set)
+	if cfg.Resend.WebhookSecret != "" {
+		rh, err := handlers.NewResendWebhookHandler(cfg.Resend.WebhookSecret, repos.EmailSuppressions)
+		if err != nil {
+			log.Printf("[HANDLERS] Resend webhook disabled: %v", err)
+		} else {
+			h.ResendWebhook = rh
+		}
+	}
 
 	// Stripe handlers (optional - depends on Stripe configuration)
 	if svc.StripeClient != nil && svc.StripeWebhook != nil {

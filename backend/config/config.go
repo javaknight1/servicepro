@@ -94,6 +94,9 @@ type ResendConfig struct {
 	APIKey    string
 	FromEmail string
 	FromName  string
+	// WebhookSecret is the signing secret (whsec_…) of the Resend webhook
+	// for email.bounced / email.complained (T159). Empty disables the route.
+	WebhookSecret string
 }
 
 // SMTPConfig holds SMTP email configuration (for Mailpit in development)
@@ -476,8 +479,9 @@ func Load() *Config {
 		Resend: ResendConfig{
 			APIKey: getEnv("RESEND_API_KEY", ""),
 			// servicepro.sharkfins.xyz is verified in Resend (SPF/DKIM, T206).
-			FromEmail: getEnv("RESEND_FROM_EMAIL", "noreply@servicepro.sharkfins.xyz"),
-			FromName:  getEnv("RESEND_FROM_NAME", "ServicePro"),
+			FromEmail:     getEnv("RESEND_FROM_EMAIL", "noreply@servicepro.sharkfins.xyz"),
+			FromName:      getEnv("RESEND_FROM_NAME", "ServicePro"),
+			WebhookSecret: getEnv("RESEND_WEBHOOK_SECRET", ""),
 		},
 		Stripe: StripeConfig{
 			SecretKey:      getEnv("STRIPE_SECRET_KEY", ""),

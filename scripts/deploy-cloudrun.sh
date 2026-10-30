@@ -92,6 +92,7 @@ has_enabled_version() {
 #
 #   SENTRY_DSN             error reporting (off without it)
 #   RESEND_API_KEY         transactional email
+#   RESEND_WEBHOOK_SECRET  Resend webhook signing secret (bounce/complaint suppression, T159)
 #   STRIPE_SECRET_KEY      payments
 #   STRIPE_WEBHOOK_SECRET  Stripe webhook signature verification
 #   POSTHOG_API_KEY        product analytics
@@ -102,6 +103,7 @@ has_enabled_version() {
 OPTIONAL_SECRETS=(
   SENTRY_DSN
   RESEND_API_KEY
+  RESEND_WEBHOOK_SECRET
   STRIPE_SECRET_KEY
   STRIPE_WEBHOOK_SECRET
   POSTHOG_API_KEY

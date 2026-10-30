@@ -38,11 +38,15 @@ type Config struct {
 
 // Client implements the email.Client interface using Resend
 type Client struct {
-	client   *resend.Client
-	config   *Config
-	fromAddr string
-	replyTo  string
+	client     *resend.Client
+	config     *Config
+	fromAddr   string
+	replyTo    string
+	suppressor email.Suppressor
 }
+
+// SetSuppressor makes Send skip bounced/complained addresses (T159).
+func (c *Client) SetSuppressor(s email.Suppressor) { c.suppressor = s }
 
 // NewClient creates a new Resend email client
 func NewClient(cfg *Config) (*Client, error) {
@@ -96,10 +100,17 @@ func (c *Client) Send(ctx context.Context, msg *email.EmailMessage) (*email.Send
 		}
 	}
 
+	// Never email an address that bounced or complained (T159).
+	to := email.FilterSuppressed(ctx, c.suppressor, msg.To)
+	if len(to) == 0 {
+		return &email.SendResult{Success: false, Provider: email.ProviderResend, SentAt: time.Now(),
+			Error: email.ErrAllRecipientsSuppressed.Error()}, email.ErrAllRecipientsSuppressed
+	}
+
 	// Build send email request
 	params := &resend.SendEmailRequest{
 		From:    from,
-		To:      msg.To,
+		To:      to,
 		Subject: msg.Subject,
 	}
 
@@ -110,11 +121,11 @@ func (c *Client) Send(ctx context.Context, msg *email.EmailMessage) (*email.Send
 		params.Text = msg.TextBody
 	}
 
-	if len(msg.CC) > 0 {
-		params.Cc = msg.CC
+	if cc := email.FilterSuppressed(ctx, c.suppressor, msg.CC); len(cc) > 0 {
+		params.Cc = cc
 	}
-	if len(msg.BCC) > 0 {
-		params.Bcc = msg.BCC
+	if bcc := email.FilterSuppressed(ctx, c.suppressor, msg.BCC); len(bcc) > 0 {
+		params.Bcc = bcc
 	}
 
 	// Set reply-to

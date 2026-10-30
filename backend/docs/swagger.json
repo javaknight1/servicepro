@@ -5544,6 +5544,32 @@
                 ]
             }
         },
+        "/api/v1/webhooks/resend": {
+            "post": {
+                "description": "Signed (Svix) Resend events. email.bounced (permanent) and email.complained add the recipients to the suppression list; other events are acknowledged and ignored.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Webhooks"
+                ],
+                "summary": "Resend delivery webhook",
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "invalid signature or payload",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/billing/config": {
             "get": {
                 "description": "Returns Stripe configuration including whether Stripe is enabled",

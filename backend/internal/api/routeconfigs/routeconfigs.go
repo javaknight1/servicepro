@@ -42,15 +42,17 @@ type Clients struct {
 
 // Repositories holds all repository instances
 type Repositories struct {
-	User       repository.UserRepositoryGormInterface
-	Customer   repository.CustomerRepositoryInterface
-	Job        repository.JobRepositoryInterface
-	Quote      repository.QuoteRepositoryInterface
-	Tenant     *repository.TenantRepository
-	Permission *repository.PermissionRepository
-	Membership *repository.MembershipRepository
-	Payment    *repository.PaymentRepository
-	Schedule   repository.ScheduleRepositoryInterface
+	User     repository.UserRepositoryGormInterface
+	Customer repository.CustomerRepositoryInterface
+	Job      repository.JobRepositoryInterface
+	Quote    repository.QuoteRepositoryInterface
+	Tenant   *repository.TenantRepository
+	// EmailSuppressions lists bounced/complained addresses (T159).
+	EmailSuppressions *repository.EmailSuppressionRepository
+	Permission        *repository.PermissionRepository
+	Membership        *repository.MembershipRepository
+	Payment           *repository.PaymentRepository
+	Schedule          repository.ScheduleRepositoryInterface
 }
 
 // Services holds all service instances
@@ -118,6 +120,7 @@ type Handlers struct {
 	Revenue           *handlers.RevenueHandler
 	ARAging           *handlers.ARAgingHandler
 	Stripe            *handlers.StripeHandler
+	ResendWebhook     *handlers.ResendWebhookHandler
 	Billing           *handlers.BillingHandler
 	Membership        *handlers.MembershipHandler
 	Export            *handlers.ExportHandler

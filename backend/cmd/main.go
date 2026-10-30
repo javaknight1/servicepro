@@ -34,6 +34,7 @@ import (
 	"github.com/javaknight1/servicepro/backend/config"
 	"github.com/javaknight1/servicepro/backend/internal/api/middleware"
 	"github.com/javaknight1/servicepro/backend/internal/api/routes"
+	"github.com/javaknight1/servicepro/backend/internal/repository"
 	"github.com/javaknight1/servicepro/backend/internal/tenancy"
 	analyticsclient "github.com/javaknight1/servicepro/backend/pkg/clients/analytics"
 	emailclient "github.com/javaknight1/servicepro/backend/pkg/clients/email"
@@ -179,6 +180,10 @@ func run() error {
 		return fmt.Errorf("failed to initialize email client: %w", err)
 	}
 	logging.Info(ctx, "Email client initialized", nil)
+	// Never email addresses that bounced or complained (Resend webhook, T159).
+	if sc, ok := emailClient.(interface{ SetSuppressor(emailclient.Suppressor) }); ok {
+		sc.SetSuppressor(repository.NewEmailSuppressionRepository(db))
+	}
 
 	// Initialize storage client (optional - may not be configured)
 	storageClient, err := storageclient.NewClient(ctx, cfg)
