@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/resend/resend-go/v2"
 
 	"github.com/javaknight1/servicepro/backend/config"
@@ -56,8 +58,11 @@ func NewClient(cfg *Config) (*Client, error) {
 		return nil, fmt.Errorf("from email is required")
 	}
 
-	// Create Resend client
-	client := resend.NewClient(cfg.APIKey)
+	// Create Resend client: transient failures are retried (retry.go)
+	client := resend.NewCustomClient(&http.Client{
+		Timeout:   30 * time.Second,
+		Transport: newRetryTransport(http.DefaultTransport),
+	}, cfg.APIKey)
 
 	// Build from address
 	fromAddr := cfg.FromEmail
@@ -142,8 +147,11 @@ func (c *Client) Send(ctx context.Context, msg *email.EmailMessage) (*email.Send
 		params.Attachments = attachments
 	}
 
-	// Send the email
-	result, err := c.client.Emails.Send(params)
+	// Send the email. One idempotency key per message: a retry after a lost
+	// response returns the original send instead of sending twice.
+	result, err := c.client.Emails.SendWithOptions(ctx, params, &resend.SendEmailOptions{
+		IdempotencyKey: uuid.NewString(),
+	})
 	if err != nil {
 		return &email.SendResult{
 			Success:  false,
