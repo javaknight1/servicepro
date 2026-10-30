@@ -12,7 +12,7 @@ sidebar app shell. Numbers in the screens are sample data, not targets.
 | 2 | `servicepro-02-onboarding-business.png` | Onboarding 1: your business (name, trade, techs, time zone) | T235 |
 | 3 | `servicepro-03-onboarding-billing.png` | Onboarding 2: how you bill (consolidated, Net terms, tax, PO rule) | T235, T187, T188 |
 | 4 | `servicepro-04-onboarding-get-paid.png` | Onboarding 3: payouts and fees, Jobber import, QuickBooks | T235, T169, T192, T193 |
-| 5 | `servicepro-05-dashboard.png` | Dashboard: KPI cards, jobs needing invoice, today's visits, A/R aging, quick actions | T257 (numbers), T269 (app shell + dashboard per mockup) |
+| 5 | `servicepro-05-dashboard.png` | Dashboard: KPI cards, jobs needing invoice, today's visits, A/R aging, quick actions | T257 (numbers), T269 (app shell + dashboard per mockup), T270 (shared visual system) |
 | 6 | `servicepro-06-customer-sites.png` | Customer with billing rules and sites | T186, T187 |
 | 7 | `servicepro-07-agreements.png` | Service agreements list | T167 |
 | 8 | `servicepro-08-schedule.png` | Weekly schedule by technician | T167, T173 |

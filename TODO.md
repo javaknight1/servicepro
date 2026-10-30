@@ -1,6 +1,6 @@
 # ServicePro — Roadmap
 
-**Last Updated**: 2026-10-30 (T159 done (Resend only, retries + idempotency, signed bounce/complaint webhook + suppression list). Mockups in `docs/product/mockups/`; T268 landing and T269 app shell + dashboard added to the MVP gate (48 tasks, ~302h). T205 in progress: owner account live; blank-site regression fixed in v0.10.5. T206 done: SPF/DKIM/DMARC on servicepro.sharkfins.xyz, test send delivered. T159 step 1 + T206 sender domain live in v0.10.3. T256 done — honesty gate (T255, T256, T261) complete. T255 done: honest public site, beta-access CTA, pricing hidden, Terms/Privacy acceptance recorded at sign-up. T261 done: invoice pay links off by default — `INVOICE_PAYMENTS_ENABLED`; Dependabot auto-merge now includes majors.) 2026-10-25 (MVP re-scope: the owner confirmed the Notion app-upgrade docs — D7–D14 decided, OD-4 closed by D9, OD-12 decided, OD-10/OD-11 opened; the "v1 Launch Gate" became the **MVP Launch Gate** (phases A–G, 46 tasks, ~292h, paid launch 2027-09-07) and every section's gate field is now **MVP Gate**; new tasks T255–T267 from the Technical Requirements N-tasks and the MVP feature table; T169 rewritten for Connect Accounts v2 direct charges; T153/T155–T157/T162 frozen (D12); T048–T050, T061, T063, T081, T183, T101, T243, T244 deferred; T242 Won't Do. Plan: `docs/product/mvp-plan-2026-10.md`.) Earlier — 2026-10-24 (TODO reformatted from the P0–P3/sprint layout to League Looper's indexed phase format: Task Index with ID/Phase/Category/Hours, one detailed section per open task, a launch gate and Verified Complete. A full audit of the repo (backend security, backend correctness, frontend, infra — stored in `docs/audits/2026-10-16/`) is filed as Phases 1–3 (T102–T152, T223–T226). The stack-convergence plan towards League Looper's stack is Phase 4 (T153–T166). Competitive research (`docs/product/competitive-research-2026-10.md`) became product Phases 5–16, merging the open T027–T101 tasks with new T167–T222. Hosting is deferred: ServicePro stays local-only until the production database decision (T202). Old IDs T001–T101 are kept; T011 never existed. Same day: Phase 3 platform work T139–T152 landed — golang-migrate, /version + schema-aware readiness, internal job endpoints, optional Redis, Cloud Run image, LL-style CI/release/hooks, Cloudflare Worker edge (not deployed); frontend fixes T130–T138; all of Phase 1 security (T102–T117) — tenant isolation plugin, per-tenant authz, invite-only registration, token/login/webhook/CSRF hardening, no known Go vulns; T227 added for the frontend follow-through. Same day: Phase 2 correctness work landed (T118–T129, T223–T239 — money path, numbering, status machines, refunds, quotes, tenant settings, error envelope + request IDs, ~39k lines of dead backend code removed, stricter golangci-lint); follow-ups T241–T244 filed. 2026-10-18: T231 (org deletion) deferred; Dependabot security-fix PRs enabled; SQLite ruled out for OD-1; Go deps bumped, T247 filed; T202 decided — Neon; OD-9 (auth provider) opened, then decided 2026-10-19 — Neon's managed Better Auth; 2026-10-24: Neon project linked, Neon agent skills + MCP server added, managed MFA confirmed on Neon's roadmap (T092); T164 frontend majors done (React 19, Router 7, Vite 8, ESLint 10, zod 4, Headless UI 2), T248/T249 filed; Tailwind 4 engine landed (T163 tokens + dark mode remain); 0 open Dependabot alerts.)
+**Last Updated**: 2026-10-30 (T159 done (Resend only, retries + idempotency, signed bounce/complaint webhook + suppression list). Mockups in `docs/product/mockups/`; T268 landing, T269 app shell + dashboard and T270 page restyle added to the MVP gate (49 tasks, ~310h). T205 in progress: owner account live; blank-site regression fixed in v0.10.5. T206 done: SPF/DKIM/DMARC on servicepro.sharkfins.xyz, test send delivered. T159 step 1 + T206 sender domain live in v0.10.3. T256 done — honesty gate (T255, T256, T261) complete. T255 done: honest public site, beta-access CTA, pricing hidden, Terms/Privacy acceptance recorded at sign-up. T261 done: invoice pay links off by default — `INVOICE_PAYMENTS_ENABLED`; Dependabot auto-merge now includes majors.) 2026-10-25 (MVP re-scope: the owner confirmed the Notion app-upgrade docs — D7–D14 decided, OD-4 closed by D9, OD-12 decided, OD-10/OD-11 opened; the "v1 Launch Gate" became the **MVP Launch Gate** (phases A–G, 46 tasks, ~292h, paid launch 2027-09-07) and every section's gate field is now **MVP Gate**; new tasks T255–T267 from the Technical Requirements N-tasks and the MVP feature table; T169 rewritten for Connect Accounts v2 direct charges; T153/T155–T157/T162 frozen (D12); T048–T050, T061, T063, T081, T183, T101, T243, T244 deferred; T242 Won't Do. Plan: `docs/product/mvp-plan-2026-10.md`.) Earlier — 2026-10-24 (TODO reformatted from the P0–P3/sprint layout to League Looper's indexed phase format: Task Index with ID/Phase/Category/Hours, one detailed section per open task, a launch gate and Verified Complete. A full audit of the repo (backend security, backend correctness, frontend, infra — stored in `docs/audits/2026-10-16/`) is filed as Phases 1–3 (T102–T152, T223–T226). The stack-convergence plan towards League Looper's stack is Phase 4 (T153–T166). Competitive research (`docs/product/competitive-research-2026-10.md`) became product Phases 5–16, merging the open T027–T101 tasks with new T167–T222. Hosting is deferred: ServicePro stays local-only until the production database decision (T202). Old IDs T001–T101 are kept; T011 never existed. Same day: Phase 3 platform work T139–T152 landed — golang-migrate, /version + schema-aware readiness, internal job endpoints, optional Redis, Cloud Run image, LL-style CI/release/hooks, Cloudflare Worker edge (not deployed); frontend fixes T130–T138; all of Phase 1 security (T102–T117) — tenant isolation plugin, per-tenant authz, invite-only registration, token/login/webhook/CSRF hardening, no known Go vulns; T227 added for the frontend follow-through. Same day: Phase 2 correctness work landed (T118–T129, T223–T239 — money path, numbering, status machines, refunds, quotes, tenant settings, error envelope + request IDs, ~39k lines of dead backend code removed, stricter golangci-lint); follow-ups T241–T244 filed. 2026-10-18: T231 (org deletion) deferred; Dependabot security-fix PRs enabled; SQLite ruled out for OD-1; Go deps bumped, T247 filed; T202 decided — Neon; OD-9 (auth provider) opened, then decided 2026-10-19 — Neon's managed Better Auth; 2026-10-24: Neon project linked, Neon agent skills + MCP server added, managed MFA confirmed on Neon's roadmap (T092); T164 frontend majors done (React 19, Router 7, Vite 8, ESLint 10, zod 4, Headless UI 2), T248/T249 filed; Tailwind 4 engine landed (T163 tokens + dark mode remain); 0 open Dependabot alerts.)
 
 > **How to read this file.** Every task has an ID (T###). The **Task Index** lists all of them: completed rows
 > (struck through) first by ID, then open rows by Phase → ID. Each open task has exactly one detailed section under
@@ -97,7 +97,7 @@ owner).
 
 "MVP" = everything before paid launch (2027-09-07). "V1" = after launch, by checkpoint (SMS, PM approval inbox,
 statements portal, quote approval page, custom roles); "Later" = backflow reports, offline tech app, Zapier, payroll,
-financing, AI collections. The MVP is **48 tasks, ~302h** in phases A–G, about 12 hours a week from 2026-11-02. Each
+financing, AI collections. The MVP is **49 tasks, ~310h** in phases A–G, about 12 hours a week from 2026-11-02. Each
 gated task's section says **MVP Gate: Yes**.
 
 | MVP phase                          | Window                     | Tasks                                                                                       | Hours | Done when                                                              |
@@ -105,7 +105,7 @@ gated task's section says **MVP Gate: Yes**.
 | A. Honesty and fixes               | 2026-11-02 → 2026-11-22    | ~~T255~~, ~~T256~~, ~~T261~~ (honesty gate, by 2026-11-08), T257, T258, T259, T260, T262, T266, T267     | 22    | No false claims, no mocks in prod, dashboard numbers right             |
 | B. Platform                        | 2026-11-23 → 2027-01-03    | T158 (rest), ~~T159~~, T160, T154, T241, T263                                                   | 51    | Neon Auth sign-in live; RLS on; files in R2                            |
 | C. Getting paid                    | 2027-01-04 → 2027-02-14    | T264, T169, T170, T210, T265                                                                | 50    | A test tenant is paid by ACH into its own Stripe account               |
-| D. Commercial wedge                | 2027-02-15 → 2027-03-31    | T167, T186, T187, T188, T028, T029, T030, T035, T235, T269                                  | 65    | Agreements generate visits; one consolidated invoice per customer      |
+| D. Commercial wedge                | 2027-02-15 → 2027-03-31    | T167, T186, T187, T188, T028, T029, T030, T035, T235, T269, T270                            | 73    | Agreements generate visits; one consolidated invoice per customer      |
 | E. Proof of service                | 2027-04-01 → 2027-05-01    | T173, T174, T176                                                                            | 40    | A tech completes a visit on a phone; the report is emailed             |
 | F. Integrations                    | 2027-05-02 → 2027-06-13    | T192, T193                                                                                  | 40    | QuickBooks sync and Jobber/HCP import used by design partners          |
 | G. Launch readiness (alongside)    | 2026-11 → 2027-08          | T218, T205, ~~T206~~, T207, T208, T209, T211, T212, T213, T251, T252, T268                            | 34    | Interviews by 2027-01-31; backups, legal, monitoring before 2027-09-07 |
@@ -367,6 +367,7 @@ stripe-go v87 supports v2 accounts) and the first 4h of T192 (QuickBooks OAuth, 
 | T253     | 12     | UX             | 2      | "Report a bug" button and cookie preferences in the footer                                               |
 | T266     | 12     | Cleanup        | 2      | Cut the customers report (segments, cohorts) and the outgoing-webhooks plan flag                         |
 | T269     | 12     | UX             | 6      | App shell and dashboard per the MVP mockup (sidebar, KPI cards, jobs to invoice, today's visits, A/R aging) |
+| T270     | 12     | UX             | 8      | Restyle existing pages to the MVP mockups' visual system (customers, jobs, quotes, invoices, team, settings) |
 | T074     | 13     | Auth           | 3      | Create Accountant role                                                                                   |
 | T075     | 13     | Auth           | 12     | Add field-level permission controls                                                                      |
 | T092     | 13     | Auth           | 6      | Implement 2FA (TOTP)                                                                                     |
@@ -2263,9 +2264,9 @@ QuickBooks (the #1 B2B buying gate), import mappers, and partner integrations in
 
 ---
 
-### Phase 12 — Reporting & Dashboards (T045, T046, T047, T066, T067, T068, T069, T070, T071, T084, T085, T086, T087, T088, T198, T246, T253, T266, T269)
+### Phase 12 — Reporting & Dashboards (T045, T046, T047, T066, T067, T068, T069, T070, T071, T084, T085, T086, T087, T088, T198, T246, T253, T266, T269, T270)
 
-Dashboard widgets and reports from the old TODO plus job costing. All tenant-scoped and in tenant timezone/currency. **19 open tasks, ~66h.**
+Dashboard widgets and reports from the old TODO plus job costing. All tenant-scoped and in tenant timezone/currency. **20 open tasks, ~74h.**
 
 - [ ] T045 — Add aging quotes dashboard widget
 - [ ] T046 — Add follow-up queue dashboard widget
@@ -2286,6 +2287,7 @@ Dashboard widgets and reports from the old TODO plus job costing. All tenant-sco
 - [ ] T253 — "Report a bug" button and cookie preferences in the footer
 - [ ] T266 — Cut the customers report (segments, cohorts) and the outgoing-webhooks plan flag
 - [ ] T269 — App shell and dashboard per the MVP mockup (sidebar, KPI cards, jobs to invoice, today's visits, A/R aging)
+- [ ] T270 — Restyle existing pages to the MVP mockups' visual system (customers, jobs, quotes, invoices, team, settings)
 
 #### T045 — Add aging quotes dashboard widget
 
@@ -2545,6 +2547,20 @@ Dashboard widgets and reports from the old TODO plus job costing. All tenant-sco
 **Why we need it** — The dashboard is the first screen every owner sees; today it shows few, partly wrong numbers (T257) in a layout that doesn't match the product.
 
 **Notes** — Mockup 05; builds on T257. Added 2026-10-30 from the Notion mockups (`docs/product/mockups/README.md`).
+
+---
+
+#### T270 — Restyle existing pages to the MVP mockups' visual system (customers, jobs, quotes, invoices, team, settings)
+
+**Phase**: 12 · **Category**: UX · **Hours**: 8 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: T269
+
+**What it is** — Every existing signed-in page looks like the product in `docs/product/mockups/` (same shell, cards, tables, badges, buttons, empty states), not like the pre-mockup UI.
+
+**What it does** — Shared building blocks first (page header with title + primary/secondary actions, KPI/stat card, list card with rows like "Jobs needing invoice", status badges, orange primary / outline secondary buttons, avatar initials, amount formatting) in `frontend/src/components/shared/`, then apply them to Customers (list + detail, toward mockup 06), Jobs, Quotes, Invoices (detail toward mockup 10), A/R aging (mockup 11), Team (mockup 13) and Settings (mockup 14 layout). No behaviour changes; integration tests updated for changed labels only.
+
+**Why we need it** — The mockups are the agreed product; half-restyled pages next to the new shell (T269) would look broken to design partners.
+
+**Notes** — Added 2026-10-30 from the Notion mockups (`docs/product/mockups/README.md`). Screens for unbuilt features (agreements, schedule, proof of service, consolidated invoice, phone views, payments, integrations) are built with their own tasks to their mockups.
 
 ---
 
