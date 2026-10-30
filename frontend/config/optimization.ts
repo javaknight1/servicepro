@@ -95,6 +95,19 @@ const appChunks: Array<[name: string, test: (id: string) => boolean]> = [
 ];
 
 const codeSplittingGroups = [
+  // Rolldown's injected transform helpers (virtual `\0@oxc-project+runtime/...`
+  // ids: defineProperty, private-field lowering for safari14, ...) get their
+  // own leaf chunk. They import nothing, so no chunk can form a cycle through
+  // them. Kept in `vendor`, react-router 8's use of defineProperty made
+  // vendor-react import from vendor while vendor imports React back: the
+  // site rendered blank with "r is not a function" (v0.9.4–v0.10.4).
+  {
+    name: 'vendor-helpers',
+    test: (id: string) =>
+      id.startsWith('\0@oxc-project+runtime') ||
+      isPackage(id, '@oxc-project/runtime'),
+    priority: 40,
+  },
   ...Object.entries(manualChunks).map(([name, packages]) => ({
     name,
     test: (id: string) => packages.some((pkg) => isPackage(id, pkg)),
@@ -105,14 +118,10 @@ const codeSplittingGroups = [
     test: (id: string) => id.includes('node_modules') && id.includes('workbox'),
     priority: 25,
   },
-  // Everything else from node_modules, plus Rolldown's injected transform
-  // helpers (virtual `\0@oxc-project+runtime/...` ids, e.g. private-field
-  // lowering for safari14). Left unassigned they land in the entry chunk and
-  // vendor chunks would import from the app entry (a chunk cycle).
+  // Everything else from node_modules.
   {
     name: 'vendor',
-    test: (id: string) =>
-      id.includes('node_modules') || id.startsWith('\0@oxc-project+runtime'),
+    test: (id: string) => id.includes('node_modules'),
     priority: 20,
   },
   ...appChunks.map(([name, test]) => ({
