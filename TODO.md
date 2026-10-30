@@ -2750,7 +2750,7 @@ Provision and launch. Live since 2026-10-24 (Neon us-east-2 + Cloud Run us-east5
 
 **Why we need it** — Reminders and invoices that land in spam defeat the collections wedge.
 
-**Notes** — D2 (Resend). MVP plan (2026-10-25): replaces the `servicepro.com` sender defaults (T258); the domain changes again with the rename (OD-10). **Progress 2026-10-30:** `servicepro.sharkfins.xyz` verified in Resend (SPF + MX on `send.`, DKIM `resend._domainkey`); `RESEND_FROM_EMAIL` defaults to `noreply@servicepro.sharkfins.xyz`; live in v0.10.3. Left: DMARC TXT `_dmarc.servicepro.sharkfins.xyz` (`v=DMARC1; p=none;`) and a real test send.
+**Notes** — D2 (Resend). MVP plan (2026-10-25): replaces the `servicepro.com` sender defaults (T258); the domain changes again with the rename (OD-10). **Progress 2026-10-30:** `servicepro.sharkfins.xyz` verified in Resend (SPF + MX on `send.`, DKIM `resend._domainkey`); `RESEND_FROM_EMAIL` defaults to `noreply@servicepro.sharkfins.xyz`; live in v0.10.3. 2026-10-30: a direct Resend test send from `noreply@servicepro.sharkfins.xyz` was delivered. Left: DMARC TXT `_dmarc.servicepro.sharkfins.xyz` (`v=DMARC1; p=none;`) and an in-app send (password reset/invite) once an owner account exists in production. Also fixed the same day: `/auth/reset-request` always answered 400 malformed_json because the rate limiter consumed the body (v0.10.4).
 
 ---
 
