@@ -45,7 +45,7 @@ const (
 )
 
 // UsesTransactionPooler reports whether a database URL points at a
-// transaction-mode connection pooler (Supabase/Supavisor or PgBouncer on port
+// transaction-mode connection pooler (PgBouncer or similar on port
 // 6543), where server-side prepared statements must not be used.
 func UsesTransactionPooler(databaseURL string) bool {
 	u, err := url.Parse(databaseURL)

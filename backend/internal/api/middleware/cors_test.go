@@ -15,7 +15,7 @@ func TestCORSMiddleware_AllowedOrigin(t *testing.T) {
 
 	cfg := &config.CORSConfig{
 		Enabled:          true,
-		AllowedOrigins:   []string{"https://app.servicepro.com", "http://localhost:3000"},
+		AllowedOrigins:   []string{"https://app.example.com", "http://localhost:3000"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Authorization", "Content-Type"},
 		ExposedHeaders:   []string{"X-Request-ID"},
@@ -37,9 +37,9 @@ func TestCORSMiddleware_AllowedOrigin(t *testing.T) {
 	}{
 		{
 			name:           "allowed origin - production",
-			origin:         "https://app.servicepro.com",
+			origin:         "https://app.example.com",
 			expectAllowed:  true,
-			expectedOrigin: "https://app.servicepro.com",
+			expectedOrigin: "https://app.example.com",
 		},
 		{
 			name:           "allowed origin - localhost",
@@ -88,7 +88,7 @@ func TestCORSMiddleware_PreflightRequest(t *testing.T) {
 
 	cfg := &config.CORSConfig{
 		Enabled:          true,
-		AllowedOrigins:   []string{"https://app.servicepro.com"},
+		AllowedOrigins:   []string{"https://app.example.com"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE"},
 		AllowedHeaders:   []string{"Authorization", "Content-Type", "X-Custom-Header"},
 		AllowCredentials: true,
@@ -103,7 +103,7 @@ func TestCORSMiddleware_PreflightRequest(t *testing.T) {
 
 	// Preflight request
 	req := httptest.NewRequest(http.MethodOptions, "/api/data", nil)
-	req.Header.Set("Origin", "https://app.servicepro.com")
+	req.Header.Set("Origin", "https://app.example.com")
 	req.Header.Set("Access-Control-Request-Method", "POST")
 	req.Header.Set("Access-Control-Request-Headers", "Authorization, Content-Type")
 	w := httptest.NewRecorder()
@@ -115,8 +115,8 @@ func TestCORSMiddleware_PreflightRequest(t *testing.T) {
 	}
 
 	// Check Access-Control-Allow-Origin
-	if got := w.Header().Get("Access-Control-Allow-Origin"); got != "https://app.servicepro.com" {
-		t.Errorf("expected Access-Control-Allow-Origin 'https://app.servicepro.com', got %q", got)
+	if got := w.Header().Get("Access-Control-Allow-Origin"); got != "https://app.example.com" {
+		t.Errorf("expected Access-Control-Allow-Origin 'https://app.example.com', got %q", got)
 	}
 
 	// Check Access-Control-Allow-Methods
@@ -149,7 +149,7 @@ func TestCORSMiddleware_PreflightRejected(t *testing.T) {
 
 	cfg := &config.CORSConfig{
 		Enabled:        true,
-		AllowedOrigins: []string{"https://app.servicepro.com"},
+		AllowedOrigins: []string{"https://app.example.com"},
 		AllowedMethods: []string{"GET", "POST"},
 	}
 
@@ -201,7 +201,7 @@ func TestCORSMiddleware_Credentials(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			cfg := &config.CORSConfig{
 				Enabled:          true,
-				AllowedOrigins:   []string{"https://app.servicepro.com"},
+				AllowedOrigins:   []string{"https://app.example.com"},
 				AllowCredentials: tt.allowCredentials,
 			}
 
@@ -212,7 +212,7 @@ func TestCORSMiddleware_Credentials(t *testing.T) {
 			})
 
 			req := httptest.NewRequest(http.MethodGet, "/test", nil)
-			req.Header.Set("Origin", "https://app.servicepro.com")
+			req.Header.Set("Origin", "https://app.example.com")
 			w := httptest.NewRecorder()
 			router.ServeHTTP(w, req)
 
@@ -235,7 +235,7 @@ func TestCORSMiddleware_ExposedHeaders(t *testing.T) {
 
 	cfg := &config.CORSConfig{
 		Enabled:        true,
-		AllowedOrigins: []string{"https://app.servicepro.com"},
+		AllowedOrigins: []string{"https://app.example.com"},
 		ExposedHeaders: []string{"X-Request-ID", "X-RateLimit-Remaining"},
 	}
 
@@ -246,7 +246,7 @@ func TestCORSMiddleware_ExposedHeaders(t *testing.T) {
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
-	req.Header.Set("Origin", "https://app.servicepro.com")
+	req.Header.Set("Origin", "https://app.example.com")
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
@@ -261,7 +261,7 @@ func TestCORSMiddleware_VaryHeader(t *testing.T) {
 
 	cfg := &config.CORSConfig{
 		Enabled:        true,
-		AllowedOrigins: []string{"https://app.servicepro.com"},
+		AllowedOrigins: []string{"https://app.example.com"},
 	}
 
 	router := gin.New()
@@ -271,7 +271,7 @@ func TestCORSMiddleware_VaryHeader(t *testing.T) {
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
-	req.Header.Set("Origin", "https://app.servicepro.com")
+	req.Header.Set("Origin", "https://app.example.com")
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
@@ -287,7 +287,7 @@ func TestCORSMiddleware_Disabled(t *testing.T) {
 
 	cfg := &config.CORSConfig{
 		Enabled:        false,
-		AllowedOrigins: []string{"https://app.servicepro.com"},
+		AllowedOrigins: []string{"https://app.example.com"},
 	}
 
 	router := gin.New()
@@ -297,7 +297,7 @@ func TestCORSMiddleware_Disabled(t *testing.T) {
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
-	req.Header.Set("Origin", "https://app.servicepro.com")
+	req.Header.Set("Origin", "https://app.example.com")
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
@@ -317,7 +317,7 @@ func TestCORSMiddleware_NilConfig(t *testing.T) {
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
-	req.Header.Set("Origin", "https://app.servicepro.com")
+	req.Header.Set("Origin", "https://app.example.com")
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 

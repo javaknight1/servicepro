@@ -162,7 +162,7 @@ type DatabaseConfig struct {
 	// environments migrate from the release pipeline via cmd/migrate).
 	RunMigrationsOnStartup bool
 	// SimpleProtocol disables server-side prepared statements (pgx simple
-	// protocol). Required behind a transaction-mode pooler such as Supabase's
+	// protocol). Required behind a transaction-mode pooler (PgBouncer)
 	// on port 6543; enabled automatically when the URL uses that port.
 	SimpleProtocol      bool
 	MaxOpenConns        int
@@ -376,7 +376,7 @@ func Load() *Config {
 	env := getEnv("ENV", "development")
 	isDev := env == "development"
 
-	defaultMaxOpenConns := 10 // MaxOpenConns x max instances must fit Supabase's connection limit
+	defaultMaxOpenConns := 10 // MaxOpenConns x max instances must fit the Neon connection limit
 	defaultRedisURL := ""
 	if isDev {
 		defaultMaxOpenConns = 25

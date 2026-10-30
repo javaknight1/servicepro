@@ -24,7 +24,7 @@ func NewGormDB(cfg *config.DatabaseConfig) (*gorm.DB, *QueryLogger, error) {
 		Logger: queryLogger,
 	}
 
-	// Behind a transaction-mode pooler (Supabase/Supavisor on :6543) a
+	// Behind a transaction-mode pooler (PgBouncer on :6543) a
 	// connection may change between statements, so server-side prepared
 	// statements must not be used: switch pgx to the simple protocol.
 	simpleProtocol := cfg.SimpleProtocol || UsesTransactionPooler(cfg.URL)

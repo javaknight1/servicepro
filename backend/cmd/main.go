@@ -4,7 +4,7 @@
 //	@description				This API provides endpoints for managing customers, jobs, quotes, invoices, and more.
 //
 //	@contact.name				ServicePro Support
-//	@contact.email				support@servicepro.com
+//	@contact.email				support@sharkfins.xyz
 //
 //	@license.name				Proprietary
 //
@@ -219,7 +219,7 @@ func run() error {
 
 		// Start KPI metrics collector (platform overview, revenue, A/R aging).
 		// It polls the database every minute, so it is a background worker:
-		// off by default outside development (keeps Supabase connections idle).
+		// off by default outside development (keeps Neon connections idle so the compute can suspend).
 		if cfg.Server.RunBackgroundWorkers {
 			kpiCollector := database.NewKPIMetricsCollector(sqlDB, metricsClient, 60*time.Second)
 			kpiCollector.Start(ctx)

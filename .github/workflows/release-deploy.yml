@@ -147,7 +147,7 @@ jobs:
       - name: Build, push, and deploy to Cloud Run
         env:
           GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
-          GCP_REGION: ${{ vars.GCP_REGION || 'us-central1' }}
+          GCP_REGION: ${{ vars.GCP_REGION || 'us-east5' }}
           AR_REPOSITORY: ${{ vars.AR_REPOSITORY || 'servicepro' }}
           SERVICE_NAME: ${{ vars.CLOUD_RUN_SERVICE || 'servicepro-api' }}
           GIT_SHA: ${{ github.sha }}

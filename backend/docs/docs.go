@@ -11,7 +11,7 @@ const docTemplate = `{
         "title": "{{.Title}}",
         "contact": {
             "name": "ServicePro Support",
-            "email": "support@servicepro.com"
+            "email": "support@sharkfins.xyz"
         },
         "license": {
             "name": "Proprietary"

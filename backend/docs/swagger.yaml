@@ -3736,7 +3736,7 @@ definitions:
 host: localhost:8080
 info:
   contact:
-    email: support@servicepro.com
+    email: support@sharkfins.xyz
     name: ServicePro Support
   description: |-
     ServicePro is a field service management platform for service businesses.

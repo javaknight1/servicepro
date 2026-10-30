@@ -18,11 +18,11 @@ func TestLatestMigrationVersion(t *testing.T) {
 
 func TestUsesTransactionPooler(t *testing.T) {
 	cases := map[string]bool{
-		"postgresql://postgres:pw@localhost:5432/servicepro?sslmode=disable":             false,
-		"postgresql://postgres.ref:pw@aws-0-us-east-1.pooler.supabase.com:6543/postgres": true,
-		"postgresql://postgres.ref:pw@aws-0-us-east-1.pooler.supabase.com:5432/postgres": false,
-		"host=db.example.com port=6543 user=postgres dbname=servicepro":                  true,
-		"postgres://u:p@[::1]:6543/db":                                                   true,
+		"postgresql://postgres:pw@localhost:5432/servicepro?sslmode=disable": false,
+		"postgresql://postgres:pw@pooler.example.com:6543/postgres":          true,
+		"postgresql://postgres:pw@pooler.example.com:5432/postgres":          false,
+		"host=db.example.com port=6543 user=postgres dbname=servicepro":      true,
+		"postgres://u:p@[::1]:6543/db":                                       true,
 	}
 	for url, want := range cases {
 		if got := UsesTransactionPooler(url); got != want {

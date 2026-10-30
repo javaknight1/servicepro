@@ -46,7 +46,7 @@ func NewClient(cfg *config.Config) (*Client, error) {
 	stripe.SetAppInfo(&stripe.AppInfo{
 		Name:    "ServicePro",
 		Version: "1.0.0",
-		URL:     "https://servicepro.com",
+		URL:     "https://servicepro.sharkfins.xyz",
 	})
 
 	// Set max network retries

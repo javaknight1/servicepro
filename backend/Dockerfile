@@ -37,7 +37,7 @@ RUN go build -trimpath -ldflags="-s -w" -o /out/server ./cmd \
 # ---- Runtime stage -----------------------------------------------------------
 FROM alpine:3.22
 
-# ca-certificates: outbound TLS (Supabase, Stripe, Resend, Sentry, PostHog).
+# ca-certificates: outbound TLS (Neon, Stripe, Resend, Sentry, PostHog).
 # tzdata: tenant business-hours / timezone handling.
 # busybox wget (in the base image) is used by HEALTHCHECK.
 RUN apk add --no-cache ca-certificates tzdata \
