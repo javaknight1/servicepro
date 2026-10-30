@@ -12,15 +12,15 @@ import {
 import { ProfilePictureSection } from '@components/settings/ProfilePictureSection';
 import { useAuthStore } from '@store';
 import { userService } from '@services/userService';
-import { User, Lock, Bell, Shield } from 'lucide-react';
+import { User } from 'lucide-react';
 
 export function SettingsPage() {
   const user = useAuthStore((state) => state.user);
   const setUser = useAuthStore((state) => state.setUser);
   const fetchCurrentUser = useAuthStore((state) => state.fetchCurrentUser);
-  const [activeTab, setActiveTab] = useState<
-    'profile' | 'security' | 'notifications'
-  >('profile');
+  // Password, 2FA and notification preferences are hidden until Neon Auth
+  // supplies them (T158, T259); only the profile tab does anything today.
+  const [activeTab, setActiveTab] = useState<'profile'>('profile');
 
   // Profile form state
   const [firstName, setFirstName] = useState(user?.first_name || '');
@@ -72,8 +72,6 @@ export function SettingsPage() {
 
   const tabs = [
     { id: 'profile' as const, label: 'Profile', icon: User },
-    { id: 'security' as const, label: 'Security', icon: Lock },
-    { id: 'notifications' as const, label: 'Notifications', icon: Bell },
   ];
 
   return (
@@ -84,7 +82,7 @@ export function SettingsPage() {
             Account Settings
           </h1>
           <p className="text-neutral-600 mt-2">
-            Manage your account preferences and security settings.
+            Manage your account profile.
           </p>
         </div>
 
@@ -183,128 +181,6 @@ export function SettingsPage() {
                       </Button>
                     </div>
                   </form>
-                </CardContent>
-              </Card>
-            )}
-
-            {activeTab === 'security' && (
-              <Card variant="elevated" padding="lg">
-                <CardHeader>
-                  <CardTitle>Security Settings</CardTitle>
-                  <CardDescription>
-                    Manage your password and security preferences
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <form className="space-y-4 mt-6">
-                    <Input
-                      label="Current Password"
-                      type="password"
-                      autoComplete="current-password"
-                      fullWidth
-                    />
-
-                    <Input
-                      label="New Password"
-                      type="password"
-                      autoComplete="new-password"
-                      fullWidth
-                      helperText="Must be at least 8 characters"
-                    />
-
-                    <Input
-                      label="Confirm New Password"
-                      type="password"
-                      autoComplete="new-password"
-                      fullWidth
-                    />
-
-                    <div className="flex justify-end space-x-3 pt-4">
-                      <Button variant="outline">Cancel</Button>
-                      <Button variant="primary">Update Password</Button>
-                    </div>
-                  </form>
-
-                  <div className="mt-8 pt-8 border-t border-neutral-200">
-                    <div className="flex items-start">
-                      <Shield className="h-5 w-5 text-primary-600 mt-0.5" />
-                      <div className="ml-3">
-                        <h4 className="text-sm font-medium text-neutral-900">
-                          Two-Factor Authentication
-                        </h4>
-                        <p className="text-sm text-neutral-600 mt-1">
-                          Add an extra layer of security to your account (coming
-                          soon)
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {activeTab === 'notifications' && (
-              <Card variant="elevated" padding="lg">
-                <CardHeader>
-                  <CardTitle>Notification Preferences</CardTitle>
-                  <CardDescription>
-                    Choose what updates you want to receive
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4 mt-6">
-                    <div className="flex items-center justify-between py-3">
-                      <div>
-                        <p className="text-sm font-medium text-neutral-900">
-                          Email Notifications
-                        </p>
-                        <p className="text-sm text-neutral-600">
-                          Receive email about your account activity
-                        </p>
-                      </div>
-                      <input
-                        type="checkbox"
-                        className="h-4 w-4 text-primary-600 rounded-sm"
-                        defaultChecked
-                      />
-                    </div>
-
-                    <div className="flex items-center justify-between py-3">
-                      <div>
-                        <p className="text-sm font-medium text-neutral-900">
-                          Security Alerts
-                        </p>
-                        <p className="text-sm text-neutral-600">
-                          Get notified of suspicious activity
-                        </p>
-                      </div>
-                      <input
-                        type="checkbox"
-                        className="h-4 w-4 text-primary-600 rounded-sm"
-                        defaultChecked
-                      />
-                    </div>
-
-                    <div className="flex items-center justify-between py-3">
-                      <div>
-                        <p className="text-sm font-medium text-neutral-900">
-                          Product Updates
-                        </p>
-                        <p className="text-sm text-neutral-600">
-                          News about product features and updates
-                        </p>
-                      </div>
-                      <input
-                        type="checkbox"
-                        className="h-4 w-4 text-primary-600 rounded-sm"
-                      />
-                    </div>
-
-                    <div className="flex justify-end space-x-3 pt-4">
-                      <Button variant="outline">Cancel</Button>
-                      <Button variant="primary">Save Preferences</Button>
-                    </div>
-                  </div>
                 </CardContent>
               </Card>
             )}

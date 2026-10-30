@@ -58,24 +58,26 @@ vi.mock('@/utils/tenantPermissions', () => ({
 
 import { OrgSettingsPage } from '../OrgSettingsPage';
 
-// T127: business hours are saved but no backend code reads them yet (T099),
-// so the page says so instead of implying they take effect.
-describe('OrgSettingsPage business hours', () => {
-  it('labels operating hours as coming soon and explains the timezone', async () => {
+// T259: operating hours are hidden until something reads them (T099); the
+// tab keeps only the timezone, which does drive due dates and reminders.
+describe('OrgSettingsPage time zone', () => {
+  it('shows the timezone and no operating-hours grid', async () => {
     render(
       <MemoryRouter>
         <OrgSettingsPage />
       </MemoryRouter>
     );
 
-    await userEvent.click(
-      screen.getByRole('button', { name: /business hours/i })
-    );
-
-    expect(screen.getByText('Coming soon')).toBeInTheDocument();
     expect(
-      screen.getByText(/aren't checked against these hours yet/i)
-    ).toBeInTheDocument();
+      screen.queryByRole('button', { name: /business hours/i })
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: /time zone/i }));
+
     expect(screen.getByText(/used for invoice due dates/i)).toBeInTheDocument();
+    expect(screen.getByLabelText('Timezone')).toHaveValue('America/Chicago');
+    expect(screen.queryByText('Coming soon')).not.toBeInTheDocument();
+    expect(screen.queryByText(/operating hours/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/monday/i)).not.toBeInTheDocument();
   });
 });

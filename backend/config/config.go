@@ -148,6 +148,12 @@ type ServerConfig struct {
 	// elsewhere: on Cloud Run these run via /internal/jobs/* from a scheduler.
 	RunBackgroundWorkers bool
 
+	// ExportJobsEnabled registers the async export-job API (/api/v1/exports:
+	// list, start, quick, status, progress, stream, download, cancel and
+	// formats). Off by default: no screen uses it yet (T259). Report CSV
+	// downloads and the customer export are separate routes and stay on.
+	ExportJobsEnabled bool
+
 	// AppVersion / GitSHA identify the running build (baked into the image
 	// as ENV by the Dockerfile). Read by internal/version; mirrored here.
 	AppVersion string
@@ -405,6 +411,7 @@ func Load() *Config {
 			EnableSwagger:        getEnvAsBool("ENABLE_SWAGGER", isDev),
 			InternalJobsSecret:   getEnv("INTERNAL_JOBS_SECRET", ""),
 			RunBackgroundWorkers: getEnvAsBool("RUN_BACKGROUND_WORKERS", isDev),
+			ExportJobsEnabled:    getEnvAsBool("EXPORT_JOBS_ENABLED", false),
 			AppVersion:           getEnv("APP_VERSION", "dev"),
 			GitSHA:               getEnv("GIT_SHA", "unknown"),
 		},

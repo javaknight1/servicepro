@@ -25,10 +25,20 @@ func Setup(router *gin.RouterGroup, cfg *routeconfigs.RouteConfig) {
 	SetupStripeRoutes(router, cfg)
 	SetupWebhookRoutes(router, cfg)
 	SetupBillingRoutes(router, cfg)
-	SetupExportRoutes(router, cfg)
+	setupExportJobRoutes(router, cfg)
 	SetupPaymentTermsRoutes(router, cfg)
 	SetupTaxRateRoutes(router, cfg)
 	SetupConflictRoutes(router, cfg)
 	SetupPaymentReminderRoutes(router, cfg)
 	SetupAdminRoutes(router, cfg)
+}
+
+// setupExportJobRoutes registers the async export-job API only when
+// EXPORT_JOBS_ENABLED is set. No screen uses it yet, so it stays off by
+// default (T259); report CSV downloads live on their own routes.
+func setupExportJobRoutes(router *gin.RouterGroup, cfg *routeconfigs.RouteConfig) {
+	if cfg.Config == nil || !cfg.Config.Server.ExportJobsEnabled {
+		return
+	}
+	SetupExportRoutes(router, cfg)
 }

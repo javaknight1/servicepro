@@ -41,7 +41,6 @@ import type {
   TenantMember,
   UpdateTenantRequest,
   Invitation,
-  DaySchedule,
 } from '@/types/tenant';
 import type { Role } from '@/types/role';
 
@@ -50,7 +49,7 @@ type TabId =
   | 'members'
   | 'membership'
   | 'notifications'
-  | 'businessHours';
+  | 'timezone';
 
 export function OrgSettingsPage() {
   const navigate = useNavigate();
@@ -116,45 +115,19 @@ export function OrgSettingsPage() {
   >(null);
   const [reminderSettingsSuccess, setReminderSettingsSuccess] = useState(false);
 
-  // Business hours state
-  const defaultBusinessHours: Record<string, DaySchedule> = {
-    monday: { enabled: true, start: '08:00', end: '18:00' },
-    tuesday: { enabled: true, start: '08:00', end: '18:00' },
-    wednesday: { enabled: true, start: '08:00', end: '18:00' },
-    thursday: { enabled: true, start: '08:00', end: '18:00' },
-    friday: { enabled: true, start: '08:00', end: '18:00' },
-    saturday: { enabled: false, start: '08:00', end: '12:00' },
-    sunday: { enabled: false, start: '08:00', end: '12:00' },
-  };
+  // Timezone state. Operating hours are hidden until something reads them
+  // (T099, T259); any saved businessHours are preserved on save.
   const [timezone, setTimezone] = useState('America/New_York');
-  const [businessHoursConfig, setBusinessHoursConfig] =
-    useState<Record<string, DaySchedule>>(defaultBusinessHours);
-  const [businessHoursSaving, setBusinessHoursSaving] = useState(false);
-  const [businessHoursSuccess, setBusinessHoursSuccess] = useState(false);
-  const [businessHoursError, setBusinessHoursError] = useState<string | null>(
-    null
-  );
-
-  const generateTimeOptions = () => {
-    const options: { value: string; label: string }[] = [];
-    for (let h = 0; h < 24; h++) {
-      for (let m = 0; m < 60; m += 15) {
-        const value = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
-        const period = h >= 12 ? 'PM' : 'AM';
-        const displayHour = h === 0 ? 12 : h > 12 ? h - 12 : h;
-        const label = `${displayHour}:${m.toString().padStart(2, '0')} ${period}`;
-        options.push({ value, label });
-      }
-    }
-    return options;
-  };
+  const [timezoneSaving, setTimezoneSaving] = useState(false);
+  const [timezoneSuccess, setTimezoneSuccess] = useState(false);
+  const [timezoneError, setTimezoneError] = useState<string | null>(null);
 
   const tabs = [
     { id: 'general' as const, label: 'General', icon: Settings },
     { id: 'members' as const, label: 'Members', icon: Users },
     { id: 'membership' as const, label: 'Membership', icon: CreditCard },
     { id: 'notifications' as const, label: 'Notifications', icon: Bell },
-    { id: 'businessHours' as const, label: 'Business Hours', icon: Clock },
+    { id: 'timezone' as const, label: 'Time Zone', icon: Clock },
   ];
 
   // Load current tenant data into form
@@ -238,63 +211,29 @@ export function OrgSettingsPage() {
     }
   }, [activeTab, currentTenant]);
 
-  // Load business hours settings when tab is active
+  // Load the timezone when the tab is active
   useEffect(() => {
-    if (activeTab === 'businessHours' && currentTenant) {
-      if (currentTenant.settings?.timezone) {
-        setTimezone(currentTenant.settings.timezone);
-      }
-      if (currentTenant.settings?.businessHours) {
-        setBusinessHoursConfig({
-          ...defaultBusinessHours,
-          ...currentTenant.settings.businessHours,
-        });
-      }
+    if (activeTab === 'timezone' && currentTenant?.settings?.timezone) {
+      setTimezone(currentTenant.settings.timezone);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, currentTenant]);
 
-  const handleSaveBusinessHours = async () => {
+  const handleSaveTimezone = async () => {
     if (!currentTenant) return;
 
-    // Validate: end must be after start for enabled days
-    for (const [day, schedule] of Object.entries(businessHoursConfig)) {
-      if (schedule.enabled && schedule.start >= schedule.end) {
-        setBusinessHoursError(
-          `${day.charAt(0).toUpperCase() + day.slice(1)}: end time must be after start time`
-        );
-        return;
-      }
-    }
-
-    // Validate: at least one day enabled
-    const anyEnabled = Object.values(businessHoursConfig).some(
-      (s) => s.enabled
-    );
-    if (!anyEnabled) {
-      setBusinessHoursError('At least one day must be enabled');
-      return;
-    }
-
-    setBusinessHoursSaving(true);
-    setBusinessHoursError(null);
-    setBusinessHoursSuccess(false);
+    setTimezoneSaving(true);
+    setTimezoneError(null);
+    setTimezoneSuccess(false);
     try {
-      const mergedSettings = {
-        ...currentTenant.settings,
-        timezone,
-        businessHours: businessHoursConfig,
-      };
+      const mergedSettings = { ...currentTenant.settings, timezone };
       await updateTenant(currentTenant.id, { settings: mergedSettings });
-      setBusinessHoursSuccess(true);
-      setTimeout(() => setBusinessHoursSuccess(false), 3000);
+      setTimezoneSuccess(true);
+      setTimeout(() => setTimezoneSuccess(false), 3000);
     } catch (err) {
-      console.error('Failed to save business hours:', err);
-      setBusinessHoursError(
-        getTenantErrorMessage(err, 'Failed to save business hours')
-      );
+      console.error('Failed to save timezone:', err);
+      setTimezoneError(getTenantErrorMessage(err, 'Failed to save timezone'));
     } finally {
-      setBusinessHoursSaving(false);
+      setTimezoneSaving(false);
     }
   };
 
@@ -968,32 +907,33 @@ export function OrgSettingsPage() {
               </Card>
             )}
 
-            {activeTab === 'businessHours' && (
+            {activeTab === 'timezone' && (
               <Card variant="elevated" padding="lg">
                 <CardHeader>
-                  <CardTitle>Business Hours</CardTitle>
+                  <CardTitle>Time Zone</CardTitle>
                   <CardDescription>
-                    Set your timezone and operating hours for each day of the
-                    week
+                    The time zone your business runs on
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-6 mt-4">
-                    {businessHoursError && (
+                    {timezoneError && (
                       <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
-                        {businessHoursError}
+                        {timezoneError}
                       </div>
                     )}
 
-                    {businessHoursSuccess && (
+                    {timezoneSuccess && (
                       <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
-                        Business hours saved successfully
+                        Time zone saved successfully
                       </div>
                     )}
 
-                    {/* Timezone */}
                     <div>
-                      <label className="block text-sm font-medium text-neutral-900 mb-1">
+                      <label
+                        htmlFor="org-timezone"
+                        className="block text-sm font-medium text-neutral-900 mb-1"
+                      >
                         Timezone
                       </label>
                       <p className="text-sm text-neutral-500 mb-2">
@@ -1001,6 +941,7 @@ export function OrgSettingsPage() {
                         reminders
                       </p>
                       <select
+                        id="org-timezone"
                         value={timezone}
                         onChange={(e) => setTimezone(e.target.value)}
                         className="w-full max-w-xs px-3 py-2 border border-neutral-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
@@ -1020,120 +961,16 @@ export function OrgSettingsPage() {
                       </select>
                     </div>
 
-                    {/* Business hours grid */}
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <p className="text-sm font-medium text-neutral-900">
-                          Operating Hours
-                        </p>
-                        <Badge variant="neutral">Coming soon</Badge>
-                      </div>
-                      {/* No backend reads businessHours yet (T099). */}
-                      <p className="text-sm text-neutral-500 mb-3">
-                        Saved for upcoming scheduling checks. Jobs aren&apos;t
-                        checked against these hours yet.
-                      </p>
-                      <div className="space-y-3">
-                        {(
-                          [
-                            'monday',
-                            'tuesday',
-                            'wednesday',
-                            'thursday',
-                            'friday',
-                            'saturday',
-                            'sunday',
-                          ] as const
-                        ).map((day) => {
-                          const schedule = businessHoursConfig[day];
-                          return (
-                            <div key={day} className="flex items-center gap-4">
-                              <span className="text-sm font-medium text-neutral-700 w-24 capitalize">
-                                {day}
-                              </span>
-                              <label className="relative inline-flex items-center cursor-pointer">
-                                <input
-                                  type="checkbox"
-                                  checked={schedule.enabled}
-                                  onChange={(e) =>
-                                    setBusinessHoursConfig({
-                                      ...businessHoursConfig,
-                                      [day]: {
-                                        ...schedule,
-                                        enabled: e.target.checked,
-                                      },
-                                    })
-                                  }
-                                  className="sr-only peer"
-                                />
-                                <div className="w-9 h-5 bg-neutral-200 peer-focus:outline-hidden peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary-600"></div>
-                              </label>
-                              <select
-                                value={schedule.start}
-                                onChange={(e) =>
-                                  setBusinessHoursConfig({
-                                    ...businessHoursConfig,
-                                    [day]: {
-                                      ...schedule,
-                                      start: e.target.value,
-                                    },
-                                  })
-                                }
-                                disabled={!schedule.enabled}
-                                className="px-2 py-1.5 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm disabled:opacity-50 disabled:bg-neutral-100"
-                              >
-                                {generateTimeOptions().map((t) => (
-                                  <option key={t.value} value={t.value}>
-                                    {t.label}
-                                  </option>
-                                ))}
-                              </select>
-                              <span className="text-sm text-neutral-500">
-                                to
-                              </span>
-                              <select
-                                value={schedule.end}
-                                onChange={(e) =>
-                                  setBusinessHoursConfig({
-                                    ...businessHoursConfig,
-                                    [day]: { ...schedule, end: e.target.value },
-                                  })
-                                }
-                                disabled={!schedule.enabled}
-                                className="px-2 py-1.5 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm disabled:opacity-50 disabled:bg-neutral-100"
-                              >
-                                {generateTimeOptions().map((t) => (
-                                  <option key={t.value} value={t.value}>
-                                    {t.label}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    {/* Save/Reset buttons */}
                     <div className="flex justify-end space-x-3 pt-4 border-t border-neutral-200">
                       <Button
                         type="button"
                         variant="outline"
                         onClick={() => {
-                          if (currentTenant?.settings?.timezone) {
-                            setTimezone(currentTenant.settings.timezone);
-                          } else {
-                            setTimezone('America/New_York');
-                          }
-                          if (currentTenant?.settings?.businessHours) {
-                            setBusinessHoursConfig({
-                              ...defaultBusinessHours,
-                              ...currentTenant.settings.businessHours,
-                            });
-                          } else {
-                            setBusinessHoursConfig(defaultBusinessHours);
-                          }
-                          setBusinessHoursError(null);
+                          setTimezone(
+                            currentTenant?.settings?.timezone ??
+                              'America/New_York'
+                          );
+                          setTimezoneError(null);
                         }}
                       >
                         Reset
@@ -1141,12 +978,10 @@ export function OrgSettingsPage() {
                       <Button
                         type="button"
                         variant="primary"
-                        onClick={handleSaveBusinessHours}
-                        disabled={businessHoursSaving}
+                        onClick={handleSaveTimezone}
+                        disabled={timezoneSaving}
                       >
-                        {businessHoursSaving
-                          ? 'Saving...'
-                          : 'Save Business Hours'}
+                        {timezoneSaving ? 'Saving...' : 'Save Time Zone'}
                       </Button>
                     </div>
                   </div>
