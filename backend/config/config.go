@@ -202,7 +202,7 @@ type AuthConfig struct {
 
 // CookieConfig holds HTTP cookie configuration for JWT tokens
 type CookieConfig struct {
-	// Domain is the domain for cookies (e.g., ".servicepro.com" for production)
+	// Domain is the domain for cookies (empty = host-only, which production uses)
 	Domain string
 	// Secure indicates if cookies should only be sent over HTTPS
 	Secure bool
@@ -325,7 +325,7 @@ type PDFConfig struct {
 type CORSConfig struct {
 	// Enabled enables CORS handling
 	Enabled bool
-	// AllowedOrigins is a list of allowed origins (e.g., ["https://app.servicepro.com"])
+	// AllowedOrigins is a list of allowed origins (e.g., ["https://servicepro.sharkfins.xyz"])
 	// In development, defaults to ["http://localhost:3000", "http://localhost:5173"]
 	// IMPORTANT: Never use "*" in production with credentials
 	AllowedOrigins []string
@@ -474,8 +474,9 @@ func Load() *Config {
 			StartTLS:  getEnvAsBool("SMTP_START_TLS", false),
 		},
 		Resend: ResendConfig{
-			APIKey:    getEnv("RESEND_API_KEY", ""),
-			FromEmail: getEnv("RESEND_FROM_EMAIL", "noreply@servicepro.com"),
+			APIKey: getEnv("RESEND_API_KEY", ""),
+			// servicepro.sharkfins.xyz is verified in Resend (SPF/DKIM, T206).
+			FromEmail: getEnv("RESEND_FROM_EMAIL", "noreply@servicepro.sharkfins.xyz"),
 			FromName:  getEnv("RESEND_FROM_NAME", "ServicePro"),
 		},
 		Stripe: StripeConfig{
