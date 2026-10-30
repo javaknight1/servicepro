@@ -167,20 +167,5 @@ describe('api service', () => {
         expect(mockAxios.get).toHaveBeenCalledWith('/v1/users/me');
       });
     });
-
-    describe('updateUser', () => {
-      it('should call PUT /v1/users/:id with update data', async () => {
-        const updateData = { first_name: 'Updated', last_name: 'Name' };
-        const mockResponse = { data: { id: 'user-1', ...updateData } };
-        mockAxios.put.mockResolvedValue(mockResponse);
-
-        await userApi.updateUser('user-1', updateData);
-
-        expect(mockAxios.put).toHaveBeenCalledWith(
-          '/v1/users/user-1',
-          updateData
-        );
-      });
-    });
   });
 });

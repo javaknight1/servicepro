@@ -9,7 +9,6 @@ export type {
   PasswordResetConfirmRequest,
   VerifyEmailRequest,
   ResendVerificationRequest,
-  UpdateUserRequest,
   ErrorResponse,
   AuthState,
 } from './auth';
@@ -18,13 +17,7 @@ export type {
   Permission,
   Role,
   RoleAssignment,
-  RoleAuditLog,
-  CreateRoleRequest,
-  UpdateRoleRequest,
-  AssignRoleRequest,
-  BulkAssignRolesRequest,
   RoleFilters,
-  AuditFilters,
 } from './role';
 
 export type {

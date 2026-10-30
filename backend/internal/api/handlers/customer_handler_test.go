@@ -94,9 +94,10 @@ func (m *MockCustomerRepository) Autocomplete(prefix string, limit int) ([]map[s
 	return args.Get(0).([]map[string]interface{}), args.Error(1)
 }
 
-func (m *MockCustomerRepository) GetSearchStats() (map[string]interface{}, error) {
+func (m *MockCustomerRepository) GetSearchStats() (*models.CustomerStats, error) {
 	args := m.Called()
-	return args.Get(0).(map[string]interface{}), args.Error(1)
+	stats, _ := args.Get(0).(*models.CustomerStats)
+	return stats, args.Error(1)
 }
 
 func setupRouter() *gin.Engine {
@@ -777,10 +778,11 @@ func TestGetSearchStats_Success(t *testing.T) {
 
 	router.GET("/customers/stats", handler.GetSearchStats)
 
-	stats := map[string]interface{}{
-		"total_customers":      100,
-		"active_customers":     80,
-		"commercial_customers": 30,
+	stats := &models.CustomerStats{
+		TotalCustomers:  100,
+		ActiveCustomers: 80,
+		Prospects:       20,
+		ByStatus:        map[string]int64{"active": 80, "prospect": 20},
 	}
 
 	mockRepo.On("GetSearchStats").Return(stats, nil)
@@ -791,6 +793,10 @@ func TestGetSearchStats_Success(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
+	var body map[string]interface{}
+	assert.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+	assert.Equal(t, float64(100), body["total_customers"])
+	assert.Equal(t, float64(80), body["active_customers"])
 	mockRepo.AssertExpectations(t)
 }
 
@@ -801,7 +807,7 @@ func TestGetSearchStats_RepositoryError(t *testing.T) {
 
 	router.GET("/customers/stats", handler.GetSearchStats)
 
-	mockRepo.On("GetSearchStats").Return(map[string]interface{}{}, errors.New("database error"))
+	mockRepo.On("GetSearchStats").Return(nil, errors.New("database error"))
 
 	req, _ := http.NewRequest("GET", "/customers/stats", nil)
 	w := httptest.NewRecorder()

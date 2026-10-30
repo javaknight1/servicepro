@@ -228,6 +228,25 @@ func (h *InvoiceHandler) ListInvoices(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
+// GetInvoiceStats godoc
+// @Summary Get invoice statistics
+// @Description Receivables for the caller's tenant: unpaid balance and count of open invoices (sent, viewed, partially paid, overdue), the part of it past due, and payments less refunds dated this calendar month (UTC)
+// @Tags invoices
+// @Produce json
+// @Success 200 {object} models.InvoiceStats
+// @Failure 401 {object} models.ErrorResponse "Unauthorized"
+// @Failure 500 {object} models.ErrorResponse "Internal server error"
+// @Router /invoices/stats [get]
+// @Security BearerAuth
+func (h *InvoiceHandler) GetInvoiceStats(c *gin.Context) {
+	stats, err := h.service.GetInvoiceStats(c.Request.Context())
+	if err != nil {
+		apierror.Respond(c, err, "Failed to get invoice statistics")
+		return
+	}
+	c.JSON(http.StatusOK, stats)
+}
+
 // GetInvoice godoc
 // @Summary Get invoice
 // @Description Get a single invoice by ID

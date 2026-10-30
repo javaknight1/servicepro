@@ -154,9 +154,10 @@ func (m *MockJobService) AddNote(jobID, userID uuid.UUID, note string, isInterna
 	return args.Error(0)
 }
 
-func (m *MockJobService) GetJobStats() (map[string]interface{}, error) {
+func (m *MockJobService) GetJobStats() (*models.JobStats, error) {
 	args := m.Called()
-	return args.Get(0).(map[string]interface{}), args.Error(1)
+	stats, _ := args.Get(0).(*models.JobStats)
+	return stats, args.Error(1)
 }
 
 func (m *MockJobService) GetTechnicianWorkload(userID uuid.UUID) (map[string]interface{}, error) {
@@ -700,11 +701,7 @@ func TestJobHandler_GetJobStats_Success(t *testing.T) {
 		handler.GetJobStats(c)
 	})
 
-	stats := map[string]interface{}{
-		"total":       100,
-		"by_status":   map[string]int{"scheduled": 30, "in_progress": 20},
-		"by_priority": map[string]int{"high": 10, "normal": 80},
-	}
+	stats := models.NewJobStats(map[string]int64{"new": 4, "scheduled": 30, "en_route": 1, "in_progress": 20})
 
 	mockService.On("GetJobStats").Return(stats, nil)
 
@@ -715,10 +712,14 @@ func TestJobHandler_GetJobStats_Success(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
+	// The dashboard reads these exact keys (T257).
 	var respBody map[string]interface{}
 	err := json.Unmarshal(w.Body.Bytes(), &respBody)
 	require.NoError(t, err)
-	assert.Equal(t, float64(100), respBody["total"])
+	assert.Equal(t, float64(55), respBody["total_jobs"])
+	assert.Equal(t, float64(4), respBody["pending_jobs"])
+	assert.Equal(t, float64(30), respBody["scheduled_jobs"])
+	assert.Equal(t, float64(21), respBody["in_progress_jobs"])
 	mockService.AssertExpectations(t)
 }
 

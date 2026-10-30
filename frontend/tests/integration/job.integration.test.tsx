@@ -75,6 +75,7 @@ vi.mock('@services/customerService', () => ({
 // Import after mocking
 import { useAuthStore, useTenantStore, useSidebarStore } from '@store';
 import { jobService } from '@services/jobService';
+import type { JobStats } from '@app-types/job';
 import { customerService } from '@services/customerService';
 
 // =============================================================================
@@ -156,13 +157,15 @@ const mockJobs = [
   },
 ];
 
-const mockJobStats = {
-  total_jobs: 3,
+const mockJobStats: JobStats = {
+  total_jobs: 4,
   pending_jobs: 1,
   scheduled_jobs: 1,
   in_progress_jobs: 1,
+  on_hold_jobs: 0,
   completed_jobs: 1,
   cancelled_jobs: 0,
+  by_status: { new: 1, scheduled: 1, in_progress: 1, completed: 1 },
 };
 
 // =============================================================================

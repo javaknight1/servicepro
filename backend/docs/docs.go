@@ -1067,20 +1067,19 @@ const docTemplate = `{
         },
         "/api/v1/customers/stats": {
             "get": {
-                "description": "Get statistics about customers for search optimization",
+                "description": "Customer counts for the caller's tenant: total, active, inactive, prospects and a count per status",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "customers"
                 ],
-                "summary": "Get customer search statistics",
+                "summary": "Get customer statistics",
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.CustomerStats"
                         }
                     },
                     "500": {
@@ -1089,7 +1088,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
             }
         },
         "/api/v1/customers/{id}": {
@@ -2098,7 +2102,7 @@ const docTemplate = `{
         },
         "/api/v1/jobs/stats": {
             "get": {
-                "description": "Get statistics about jobs (counts by status, priority, type, etc.)",
+                "description": "Job counts for the caller's tenant: the dashboard buckets (pending = new, in progress = en route + in progress, completed = completed + invoiced + paid) and a count for every status",
                 "produces": [
                     "application/json"
                 ],
@@ -2110,8 +2114,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.JobStats"
                         }
                     },
                     "401": {
@@ -5748,6 +5751,43 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/invoices/stats": {
+            "get": {
+                "description": "Receivables for the caller's tenant: unpaid balance and count of open invoices (sent, viewed, partially paid, overdue), the part of it past due, and payments less refunds dated this calendar month (UTC)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "invoices"
+                ],
+                "summary": "Get invoice statistics",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.InvoiceStats"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
@@ -10182,6 +10222,30 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_javaknight1_servicepro_backend_internal_models.CustomerStats": {
+            "type": "object",
+            "properties": {
+                "active_customers": {
+                    "type": "integer"
+                },
+                "by_status": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer",
+                        "format": "int64"
+                    }
+                },
+                "inactive_customers": {
+                    "type": "integer"
+                },
+                "prospects": {
+                    "type": "integer"
+                },
+                "total_customers": {
+                    "type": "integer"
+                }
+            }
+        },
         "github_com_javaknight1_servicepro_backend_internal_models.CustomerStatus": {
             "type": "string",
             "enum": [
@@ -10947,6 +11011,26 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_javaknight1_servicepro_backend_internal_models.InvoiceStats": {
+            "type": "object",
+            "properties": {
+                "collected_this_month": {
+                    "type": "number"
+                },
+                "outstanding_invoices": {
+                    "type": "integer"
+                },
+                "overdue_amount": {
+                    "type": "number"
+                },
+                "overdue_invoices": {
+                    "type": "integer"
+                },
+                "total_outstanding": {
+                    "type": "number"
+                }
+            }
+        },
         "github_com_javaknight1_servicepro_backend_internal_models.InvoiceStatus": {
             "type": "string",
             "enum": [
@@ -11460,6 +11544,42 @@ const docTemplate = `{
                     "items": {
                         "type": "string"
                     }
+                }
+            }
+        },
+        "github_com_javaknight1_servicepro_backend_internal_models.JobStats": {
+            "type": "object",
+            "properties": {
+                "by_status": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer",
+                        "format": "int64"
+                    }
+                },
+                "cancelled_jobs": {
+                    "type": "integer"
+                },
+                "completed_jobs": {
+                    "description": "CompletedJobs counts completed, invoiced and paid.",
+                    "type": "integer"
+                },
+                "in_progress_jobs": {
+                    "description": "InProgressJobs counts en_route and in_progress.",
+                    "type": "integer"
+                },
+                "on_hold_jobs": {
+                    "type": "integer"
+                },
+                "pending_jobs": {
+                    "description": "PendingJobs are new jobs not yet scheduled.",
+                    "type": "integer"
+                },
+                "scheduled_jobs": {
+                    "type": "integer"
+                },
+                "total_jobs": {
+                    "type": "integer"
                 }
             }
         },

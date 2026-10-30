@@ -137,9 +137,10 @@ func (m *MockJobRepository) GetJobNotes(jobID uuid.UUID, includeInternal bool) (
 	return args.Get(0).([]models.JobNote), args.Error(1)
 }
 
-func (m *MockJobRepository) GetJobStats() (map[string]interface{}, error) {
+func (m *MockJobRepository) GetJobStats() (*models.JobStats, error) {
 	args := m.Called()
-	return args.Get(0).(map[string]interface{}), args.Error(1)
+	stats, _ := args.Get(0).(*models.JobStats)
+	return stats, args.Error(1)
 }
 
 func (m *MockJobRepository) GetTechnicianWorkload(userID uuid.UUID) (map[string]interface{}, error) {
@@ -248,9 +249,10 @@ func (m *MockCustomerRepository) Autocomplete(prefix string, limit int) ([]map[s
 	return args.Get(0).([]map[string]interface{}), args.Error(1)
 }
 
-func (m *MockCustomerRepository) GetSearchStats() (map[string]interface{}, error) {
+func (m *MockCustomerRepository) GetSearchStats() (*models.CustomerStats, error) {
 	args := m.Called()
-	return args.Get(0).(map[string]interface{}), args.Error(1)
+	stats, _ := args.Get(0).(*models.CustomerStats)
+	return stats, args.Error(1)
 }
 
 // MockDB is a mock gorm.DB for testing

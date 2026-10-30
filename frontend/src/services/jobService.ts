@@ -137,14 +137,8 @@ export interface JobListResponse {
   page_size: number;
 }
 
-export interface JobStats {
-  total_jobs: number;
-  pending_jobs: number;
-  scheduled_jobs: number;
-  in_progress_jobs: number;
-  completed_jobs: number;
-  cancelled_jobs: number;
-}
+export type { JobStats } from '../types/job';
+import type { JobStats } from '../types/job';
 
 export interface CreateJobRequest {
   customer_id: string;

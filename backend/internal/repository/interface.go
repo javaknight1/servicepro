@@ -63,7 +63,7 @@ type CustomerRepositoryInterface interface {
 	GetByType(customerType models.CustomerType) ([]models.Customer, error)
 	FullTextSearch(query string, customerType models.CustomerType, status models.CustomerStatus, city, state string, limit, offset int, sortBy, sortOrder string) ([]models.Customer, int64, error)
 	Autocomplete(prefix string, limit int) ([]map[string]interface{}, error)
-	GetSearchStats() (map[string]interface{}, error)
+	GetSearchStats() (*models.CustomerStats, error)
 }
 
 // =============================================================================
@@ -114,7 +114,7 @@ type JobRepositoryInterface interface {
 	GetJobNotes(jobID uuid.UUID, includeInternal bool) ([]models.JobNote, error)
 
 	// Statistics
-	GetJobStats() (map[string]interface{}, error)
+	GetJobStats() (*models.JobStats, error)
 	GetTechnicianWorkload(userID uuid.UUID) (map[string]interface{}, error)
 
 	// Status transition operations

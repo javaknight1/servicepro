@@ -48,13 +48,13 @@ export interface CustomerListResponse {
   page_size: number;
 }
 
+/** GET /customers/stats (T257). */
 export interface CustomerStats {
   total_customers: number;
   active_customers: number;
   inactive_customers: number;
   prospects: number;
-  residential_customers: number;
-  commercial_customers: number;
+  by_status: Record<string, number>;
 }
 
 export const getCustomerStatusLabel = (status: CustomerStatus): string => {

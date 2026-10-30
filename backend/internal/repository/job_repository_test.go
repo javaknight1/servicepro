@@ -439,13 +439,16 @@ func TestJobRepository_GetJobStats(t *testing.T) {
 	job2.Status = models.JobStatusInProgress
 	require.NoError(t, f.repo.Update(job2))
 
+	f.createTestJob(t, customer.ID) // scheduled
+
 	stats, err := f.repo.GetJobStats()
 	require.NoError(t, err)
-	assert.Equal(t, int64(2), stats["total"])
-	assert.InDelta(t, 150.0, stats["avg_cost"], 0.001)
-	assert.NotNil(t, stats["by_status"])
-	assert.NotNil(t, stats["by_priority"])
-	assert.NotNil(t, stats["by_type"])
+	assert.Equal(t, int64(3), stats.TotalJobs)
+	assert.Equal(t, int64(1), stats.CompletedJobs)
+	assert.Equal(t, int64(1), stats.InProgressJobs)
+	assert.Equal(t, int64(1), stats.ScheduledJobs)
+	assert.Equal(t, int64(0), stats.PendingJobs)
+	assert.Equal(t, int64(1), stats.ByStatus["completed"])
 }
 
 // TestJobRepository_CrossTenant: tenant B can neither see nor change tenant
@@ -489,5 +492,6 @@ func TestJobRepository_CrossTenant(t *testing.T) {
 
 	stats, err := b.repo.GetJobStats()
 	require.NoError(t, err)
-	assert.Equal(t, int64(0), stats["total"])
+	assert.Equal(t, int64(0), stats.TotalJobs)
+	assert.Equal(t, int64(0), stats.ScheduledJobs)
 }

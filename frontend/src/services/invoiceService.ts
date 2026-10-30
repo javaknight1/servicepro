@@ -108,15 +108,8 @@ export interface InvoiceListResponse {
   page_size: number;
 }
 
-export interface InvoiceStats {
-  total_invoices: number;
-  draft_invoices: number;
-  sent_invoices: number;
-  paid_invoices: number;
-  overdue_invoices: number;
-  total_outstanding: number;
-  total_revenue: number;
-}
+export type { InvoiceStats } from '../types/invoice';
+import type { InvoiceStats } from '../types/invoice';
 
 /** A refund on an invoice. Amounts are API decimals (strings). */
 export interface InvoiceRefund {

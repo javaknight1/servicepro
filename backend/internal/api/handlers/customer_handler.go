@@ -596,11 +596,12 @@ func (h *CustomerHandler) Autocomplete(c *gin.Context) {
 }
 
 // GetSearchStats handles GET /api/v1/customers/stats
-// @Summary Get customer search statistics
-// @Description Get statistics about customers for search optimization
+// @Summary Get customer statistics
+// @Description Customer counts for the caller's tenant: total, active, inactive, prospects and a count per status
 // @Tags customers
 // @Produce json
-// @Success 200 {object} map[string]interface{}
+// @Security BearerAuth
+// @Success 200 {object} models.CustomerStats
 // @Failure 500 {object} models.ErrorResponse "Internal server error"
 // @Router /api/v1/customers/stats [get]
 func (h *CustomerHandler) GetSearchStats(c *gin.Context) {

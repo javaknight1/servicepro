@@ -11,7 +11,6 @@ import type {
   PasswordResetConfirmRequest,
   VerifyEmailRequest,
   ResendVerificationRequest,
-  UpdateUserRequest,
   ApiError,
   User,
 } from '@app-types';
@@ -204,8 +203,6 @@ export const authApi = {
 // User API endpoints
 export const userApi = {
   getCurrentUser: () => api.get<User>('/v1/users/me'),
-  updateUser: (id: string, data: UpdateUserRequest) =>
-    api.put<User>(`/v1/users/${id}`, data),
 };
 
 export default api;

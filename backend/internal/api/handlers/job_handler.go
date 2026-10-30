@@ -895,11 +895,11 @@ func (h *JobHandler) AddNote(c *gin.Context) {
 
 // GetJobStats handles GET /api/v1/jobs/stats
 // @Summary Get job statistics
-// @Description Get statistics about jobs (counts by status, priority, type, etc.)
+// @Description Job counts for the caller's tenant: the dashboard buckets (pending = new, in progress = en route + in progress, completed = completed + invoiced + paid) and a count for every status
 // @Tags jobs
 // @Produce json
 // @Security BearerAuth
-// @Success 200 {object} map[string]interface{}
+// @Success 200 {object} models.JobStats
 // @Failure 401 {object} models.ErrorResponse "Unauthorized"
 // @Failure 500 {object} models.ErrorResponse "Internal server error"
 // @Router /api/v1/jobs/stats [get]

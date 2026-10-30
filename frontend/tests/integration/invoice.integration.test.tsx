@@ -76,6 +76,7 @@ vi.mock('@services/taxRateService', () => ({
 // Import after mocking
 import { useAuthStore, useTenantStore, useSidebarStore } from '@store';
 import { invoiceService } from '@services/invoiceService';
+import type { InvoiceStats } from '@app-types/invoice';
 import { customerService } from '@services/customerService';
 import { paymentTermService } from '@services/paymentTermService';
 import { taxRateService, type TaxRate } from '@services/taxRateService';
@@ -257,14 +258,12 @@ const mockTaxRates: TaxRate[] = [
   },
 ];
 
-const mockInvoiceStats = {
-  total_invoices: 4,
-  draft_invoices: 1,
-  sent_invoices: 1,
-  paid_invoices: 1,
+const mockInvoiceStats: InvoiceStats = {
+  total_outstanding: '2430.00',
+  outstanding_invoices: 2,
+  overdue_amount: '810.00',
   overdue_invoices: 1,
-  total_outstanding: 2430,
-  total_revenue: 1620,
+  collected_this_month: '1620.00',
 };
 
 // =============================================================================

@@ -1318,8 +1318,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get customer search statistics
-         * @description Get statistics about customers for search optimization
+         * Get customer statistics
+         * @description Customer counts for the caller's tenant: total, active, inactive, prospects and a count per status
          */
         get: {
             parameters: {
@@ -1336,9 +1336,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
-                            [key: string]: unknown;
-                        };
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.CustomerStats"];
                     };
                 };
                 /** @description Internal server error */
@@ -2609,7 +2607,7 @@ export interface paths {
         };
         /**
          * Get job statistics
-         * @description Get statistics about jobs (counts by status, priority, type, etc.)
+         * @description Job counts for the caller's tenant: the dashboard buckets (pending = new, in progress = en route + in progress, completed = completed + invoiced + paid) and a count for every status
          */
         get: {
             parameters: {
@@ -2626,9 +2624,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
-                            [key: string]: unknown;
-                        };
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.JobStats"];
                     };
                 };
                 /** @description Unauthorized */
@@ -6996,6 +6992,63 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/invoices/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get invoice statistics
+         * @description Receivables for the caller's tenant: unpaid balance and count of open invoices (sent, viewed, partially paid, overdue), the part of it past due, and payments less refunds dated this calendar month (UTC)
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.InvoiceStats"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Internal server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/invoices/{id}": {
         parameters: {
             query?: never;
@@ -11289,6 +11342,15 @@ export interface components {
             user_id?: string;
             user_name?: string;
         };
+        "github_com_javaknight1_servicepro_backend_internal_models.CustomerStats": {
+            active_customers?: number;
+            by_status?: {
+                [key: string]: number;
+            };
+            inactive_customers?: number;
+            prospects?: number;
+            total_customers?: number;
+        };
         /** @enum {string} */
         "github_com_javaknight1_servicepro_backend_internal_models.CustomerStatus": "active" | "inactive" | "prospect";
         /** @enum {string} */
@@ -11565,6 +11627,13 @@ export interface components {
             stripe_payment_intent_id?: string;
             updated_at?: string;
         };
+        "github_com_javaknight1_servicepro_backend_internal_models.InvoiceStats": {
+            collected_this_month?: number;
+            outstanding_invoices?: number;
+            overdue_amount?: number;
+            overdue_invoices?: number;
+            total_outstanding?: number;
+        };
         /** @enum {string} */
         "github_com_javaknight1_servicepro_backend_internal_models.InvoiceStatus": "draft" | "sent" | "viewed" | "paid" | "partially_paid" | "overdue" | "cancelled" | "refunded";
         "github_com_javaknight1_servicepro_backend_internal_models.Job": {
@@ -11727,6 +11796,21 @@ export interface components {
             total_amount?: number;
             updated_at?: string;
             warnings?: string[];
+        };
+        "github_com_javaknight1_servicepro_backend_internal_models.JobStats": {
+            by_status?: {
+                [key: string]: number;
+            };
+            cancelled_jobs?: number;
+            /** @description CompletedJobs counts completed, invoiced and paid. */
+            completed_jobs?: number;
+            /** @description InProgressJobs counts en_route and in_progress. */
+            in_progress_jobs?: number;
+            on_hold_jobs?: number;
+            /** @description PendingJobs are new jobs not yet scheduled. */
+            pending_jobs?: number;
+            scheduled_jobs?: number;
+            total_jobs?: number;
         };
         /** @enum {string} */
         "github_com_javaknight1_servicepro_backend_internal_models.JobStatus": "new" | "scheduled" | "en_route" | "in_progress" | "on_hold" | "completed" | "invoiced" | "paid" | "cancelled";

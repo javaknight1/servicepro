@@ -37,6 +37,7 @@ vi.mock('@services/customerService', () => ({
 // Import after mocking
 import { useAuthStore, useTenantStore, useSidebarStore } from '@store';
 import { customerService } from '@services/customerService';
+import type { CustomerStats } from '@app-types/customer';
 
 // =============================================================================
 // Test Data
@@ -125,13 +126,12 @@ const mockCustomers = [
   },
 ];
 
-const mockCustomerStats = {
+const mockCustomerStats: CustomerStats = {
   total_customers: 3,
   active_customers: 2,
   inactive_customers: 1,
   prospects: 0,
-  residential_customers: 2,
-  commercial_customers: 1,
+  by_status: { active: 2, inactive: 1 },
 };
 
 // =============================================================================

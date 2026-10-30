@@ -72,14 +72,16 @@ export interface InvoiceListResponse {
   page_size: number;
 }
 
+/** GET /invoices/stats (T257). Amounts are API decimals (strings). */
 export interface InvoiceStats {
-  total_invoices: number;
-  draft_invoices: number;
-  sent_invoices: number;
-  paid_invoices: number;
+  /** Unpaid balance of sent, viewed, partially paid and overdue invoices. */
+  total_outstanding: string | number;
+  outstanding_invoices: number;
+  /** The part of total_outstanding past its due date. */
+  overdue_amount: string | number;
   overdue_invoices: number;
-  total_outstanding: number;
-  total_revenue: number;
+  /** Payments less refunds dated this calendar month (UTC). */
+  collected_this_month: string | number;
 }
 
 export const getInvoiceStatusLabel = (status: InvoiceStatus): string => {

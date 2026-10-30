@@ -28,6 +28,13 @@ func SetupInvoiceRoutes(router *gin.RouterGroup, cfg *routeconfigs.RouteConfig) 
 			cfg.Middleware.PermMiddleware.RequirePermission(permissions.InvoicesList),
 			cfg.Handlers.Invoice.ListInvoices)
 
+		// Receivables stats - requires "invoices.list" permission. Registered
+		// before /:id so the literal path wins (T257).
+		invoices.GET("/stats",
+			listRateLimiter.RateLimit(),
+			cfg.Middleware.PermMiddleware.RequirePermission(permissions.InvoicesList),
+			cfg.Handlers.Invoice.GetInvoiceStats)
+
 		// Get single invoice - requires "invoices.read" permission
 		invoices.GET("/:id",
 			cfg.Middleware.PermMiddleware.RequirePermission(permissions.InvoicesRead),

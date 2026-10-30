@@ -287,7 +287,8 @@ export function DashboardPage() {
                 ? '...'
                 : (
                     (stats.jobs?.in_progress_jobs || 0) +
-                    (stats.jobs?.scheduled_jobs || 0)
+                    (stats.jobs?.scheduled_jobs || 0) +
+                    (stats.jobs?.on_hold_jobs || 0)
                   ).toString()
             }
             icon={<Briefcase className="h-6 w-6 text-primary-600" />}
@@ -312,7 +313,7 @@ export function DashboardPage() {
             changeType="neutral"
           />
           <StatsCard
-            label="Outstanding"
+            label="Outstanding A/R"
             value={
               isLoading
                 ? '...'
@@ -321,7 +322,7 @@ export function DashboardPage() {
             icon={<Receipt className="h-6 w-6 text-primary-600" />}
             change={
               stats.invoices?.overdue_invoices
-                ? `${stats.invoices.overdue_invoices} overdue`
+                ? `${formatDollars(stats.invoices.overdue_amount)} overdue`
                 : undefined
             }
             changeType={

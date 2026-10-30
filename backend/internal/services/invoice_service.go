@@ -561,6 +561,77 @@ func (s *InvoiceService) DeleteInvoice(ctx context.Context, id uuid.UUID) error 
 	})
 }
 
+// openInvoiceStatuses are issued invoices with money still owed.
+var openInvoiceStatuses = []models.InvoiceStatus{
+	models.InvoiceStatusSent,
+	models.InvoiceStatusViewed,
+	models.InvoiceStatusPartiallyPaid,
+	models.InvoiceStatusOverdue,
+}
+
+// GetInvoiceStats returns the caller's receivables: outstanding, overdue and
+// collected this month (T257). Invoices are tenant-scoped by the tenancy
+// plugin; payments and refunds have no tenant_id, so they are joined to
+// their invoice and filtered on its tenant explicitly.
+func (s *InvoiceService) GetInvoiceStats(ctx context.Context) (*models.InvoiceStats, error) {
+	tenantID, err := tenancy.MustTenantID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	now := time.Now().UTC()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+	monthStart := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
+
+	type sumRow struct {
+		Amount decimal.Decimal
+		Count  int64
+	}
+	db := s.db.WithContext(ctx)
+
+	var outstanding sumRow
+	if err := db.Model(&models.Invoice{}).
+		Select("COALESCE(SUM(total_amount - amount_paid), 0) AS amount, COUNT(*) AS count").
+		Where("status IN ?", openInvoiceStatuses).
+		Scan(&outstanding).Error; err != nil {
+		return nil, fmt.Errorf("failed to sum outstanding invoices: %w", err)
+	}
+
+	var overdue sumRow
+	if err := db.Model(&models.Invoice{}).
+		Select("COALESCE(SUM(total_amount - amount_paid), 0) AS amount, COUNT(*) AS count").
+		Where("status IN ?", openInvoiceStatuses).
+		Where("due_date < ?", today).
+		Scan(&overdue).Error; err != nil {
+		return nil, fmt.Errorf("failed to sum overdue invoices: %w", err)
+	}
+
+	var paid, refunded decimal.Decimal
+	if err := db.Table("invoice_payments").
+		Select("COALESCE(SUM(invoice_payments.amount), 0)").
+		Joins("INNER JOIN invoices ON invoices.id = invoice_payments.invoice_id").
+		Where("invoices.tenant_id = ? AND invoices.deleted_at IS NULL", tenantID).
+		Where("invoice_payments.payment_date >= ?", monthStart).
+		Scan(&paid).Error; err != nil {
+		return nil, fmt.Errorf("failed to sum payments: %w", err)
+	}
+	if err := db.Table("invoice_refunds").
+		Select("COALESCE(SUM(invoice_refunds.amount), 0)").
+		Joins("INNER JOIN invoices ON invoices.id = invoice_refunds.invoice_id").
+		Where("invoices.tenant_id = ? AND invoices.deleted_at IS NULL", tenantID).
+		Where("invoice_refunds.refund_date >= ?", monthStart).
+		Scan(&refunded).Error; err != nil {
+		return nil, fmt.Errorf("failed to sum refunds: %w", err)
+	}
+
+	return &models.InvoiceStats{
+		TotalOutstanding:    outstanding.Amount,
+		OutstandingInvoices: outstanding.Count,
+		OverdueAmount:       overdue.Amount,
+		OverdueInvoices:     overdue.Count,
+		CollectedThisMonth:  paid.Sub(refunded),
+	}, nil
+}
+
 // ListInvoices retrieves invoices with filtering and pagination
 func (s *InvoiceService) ListInvoices(ctx context.Context, filter *models.InvoiceFilter) (*models.InvoiceListResponse, error) {
 	query := s.db.WithContext(ctx).Model(&models.Invoice{})

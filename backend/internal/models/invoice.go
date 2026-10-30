@@ -431,3 +431,16 @@ type InvoiceListResponse struct {
 	PageSize   int       `json:"page_size"`
 	TotalPages int       `json:"total_pages"`
 }
+
+// InvoiceStats is GET /invoices/stats: the caller's receivables (T257).
+// Outstanding is the unpaid balance of every issued, open invoice (sent,
+// viewed, partially paid, overdue); overdue is the part of it past its due
+// date; collected this month is payments dated since the first of the
+// current month (UTC) less refunds dated in the same period.
+type InvoiceStats struct {
+	TotalOutstanding    decimal.Decimal `json:"total_outstanding"`
+	OutstandingInvoices int64           `json:"outstanding_invoices"`
+	OverdueAmount       decimal.Decimal `json:"overdue_amount"`
+	OverdueInvoices     int64           `json:"overdue_invoices"`
+	CollectedThisMonth  decimal.Decimal `json:"collected_this_month"`
+}

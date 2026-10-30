@@ -130,13 +130,19 @@ export interface JobListResponse {
   page_size: number;
 }
 
+/** GET /jobs/stats (T257). by_status has a count for every status. */
 export interface JobStats {
   total_jobs: number;
+  /** New jobs not yet scheduled. */
   pending_jobs: number;
   scheduled_jobs: number;
+  /** en_route + in_progress. */
   in_progress_jobs: number;
+  on_hold_jobs: number;
+  /** completed + invoiced + paid. */
   completed_jobs: number;
   cancelled_jobs: number;
+  by_status: Record<string, number>;
 }
 
 export interface JobStatusTransition {

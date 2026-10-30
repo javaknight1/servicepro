@@ -58,14 +58,8 @@ export interface CustomerListResponse {
   page_size: number;
 }
 
-export interface CustomerStats {
-  total_customers: number;
-  active_customers: number;
-  inactive_customers: number;
-  prospects: number;
-  residential_customers: number;
-  commercial_customers: number;
-}
+export type { CustomerStats } from '../types/customer';
+import type { CustomerStats } from '../types/customer';
 
 class CustomerService {
   private basePath = '/v1/customers';

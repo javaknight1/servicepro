@@ -383,13 +383,10 @@ func (r *JobRepository) GetJobNotes(jobID uuid.UUID, includeInternal bool) ([]mo
 	return notes, err
 }
 
-// GetJobStats retrieves job statistics
-func (r *JobRepository) GetJobStats() (map[string]interface{}, error) {
-	stats := make(map[string]interface{})
-
-	// Count by status
+// GetJobStats counts the caller's jobs by status (T257).
+func (r *JobRepository) GetJobStats() (*models.JobStats, error) {
 	var statusCounts []struct {
-		Status models.JobStatus
+		Status string
 		Count  int64
 	}
 	if err := r.db.Model(&models.Job{}).
@@ -398,52 +395,12 @@ func (r *JobRepository) GetJobStats() (map[string]interface{}, error) {
 		Scan(&statusCounts).Error; err != nil {
 		return nil, err
 	}
-	stats["by_status"] = statusCounts
 
-	// Count by priority
-	var priorityCounts []struct {
-		Priority models.JobPriority
-		Count    int64
+	byStatus := make(map[string]int64, len(statusCounts))
+	for _, sc := range statusCounts {
+		byStatus[sc.Status] = sc.Count
 	}
-	if err := r.db.Model(&models.Job{}).
-		Select("priority, COUNT(*) as count").
-		Group("priority").
-		Scan(&priorityCounts).Error; err != nil {
-		return nil, err
-	}
-	stats["by_priority"] = priorityCounts
-
-	// Count by type
-	var typeCounts []struct {
-		JobType models.JobType
-		Count   int64
-	}
-	if err := r.db.Model(&models.Job{}).
-		Select("job_type, COUNT(*) as count").
-		Group("job_type").
-		Scan(&typeCounts).Error; err != nil {
-		return nil, err
-	}
-	stats["by_type"] = typeCounts
-
-	// Total jobs
-	var total int64
-	if err := r.db.Model(&models.Job{}).Count(&total).Error; err != nil {
-		return nil, err
-	}
-	stats["total"] = total
-
-	// Average cost (use COALESCE to handle NULL when no jobs have costs)
-	var avgCost float64
-	if err := r.db.Model(&models.Job{}).
-		Select("COALESCE(AVG(actual_cost), 0)").
-		Where("actual_cost > 0").
-		Scan(&avgCost).Error; err != nil {
-		return nil, err
-	}
-	stats["avg_cost"] = avgCost
-
-	return stats, nil
+	return models.NewJobStats(byStatus), nil
 }
 
 // GetTechnicianWorkload retrieves workload statistics for a technician

@@ -263,3 +263,12 @@ type CustomerListResponse struct {
 	PageSize   int                `json:"page_size"`
 	TotalPages int                `json:"total_pages"`
 }
+
+// CustomerStats is GET /customers/stats: the caller's customer counts (T257).
+type CustomerStats struct {
+	TotalCustomers    int64            `json:"total_customers"`
+	ActiveCustomers   int64            `json:"active_customers"`
+	InactiveCustomers int64            `json:"inactive_customers"`
+	Prospects         int64            `json:"prospects"`
+	ByStatus          map[string]int64 `json:"by_status"`
+}

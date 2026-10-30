@@ -322,6 +322,48 @@ type JobListFilter struct {
 	Offset             *int         `form:"offset" json:"offset,omitempty"`
 }
 
+// JobStats is GET /jobs/stats: the caller's job counts (T257). The named
+// buckets are what the dashboard shows; ByStatus has every status.
+type JobStats struct {
+	TotalJobs int64 `json:"total_jobs"`
+	// PendingJobs are new jobs not yet scheduled.
+	PendingJobs   int64 `json:"pending_jobs"`
+	ScheduledJobs int64 `json:"scheduled_jobs"`
+	// InProgressJobs counts en_route and in_progress.
+	InProgressJobs int64 `json:"in_progress_jobs"`
+	OnHoldJobs     int64 `json:"on_hold_jobs"`
+	// CompletedJobs counts completed, invoiced and paid.
+	CompletedJobs int64            `json:"completed_jobs"`
+	CancelledJobs int64            `json:"cancelled_jobs"`
+	ByStatus      map[string]int64 `json:"by_status"`
+}
+
+// NewJobStats buckets per-status counts into a JobStats.
+func NewJobStats(byStatus map[string]int64) *JobStats {
+	if byStatus == nil {
+		byStatus = map[string]int64{}
+	}
+	st := &JobStats{ByStatus: byStatus}
+	for status, n := range byStatus {
+		st.TotalJobs += n
+		switch JobStatus(status) {
+		case JobStatusNew:
+			st.PendingJobs += n
+		case JobStatusScheduled:
+			st.ScheduledJobs += n
+		case JobStatusEnRoute, JobStatusInProgress:
+			st.InProgressJobs += n
+		case JobStatusOnHold:
+			st.OnHoldJobs += n
+		case JobStatusCompleted, JobStatusInvoiced, JobStatusPaid:
+			st.CompletedJobs += n
+		case JobStatusCancelled:
+			st.CancelledJobs += n
+		}
+	}
+	return st
+}
+
 // JobListResponse represents a paginated list of jobs
 type JobListResponse struct {
 	Jobs       []JobResponse `json:"jobs"`

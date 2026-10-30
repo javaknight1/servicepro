@@ -119,7 +119,7 @@ type JobServiceInterface interface {
 	AddNote(jobID, userID uuid.UUID, note string, isInternal bool, userRole models.UserRole) error
 
 	// Statistics
-	GetJobStats() (map[string]interface{}, error)
+	GetJobStats() (*models.JobStats, error)
 	GetTechnicianWorkload(userID uuid.UUID) (map[string]interface{}, error)
 
 	// Status transition operations
@@ -888,7 +888,7 @@ func (s *JobService) AddNote(jobID, userID uuid.UUID, note string, isInternal bo
 }
 
 // GetJobStats retrieves job statistics
-func (s *JobService) GetJobStats() (map[string]interface{}, error) {
+func (s *JobService) GetJobStats() (*models.JobStats, error) {
 	return s.jobRepo.GetJobStats()
 }
 

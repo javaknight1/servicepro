@@ -715,6 +715,22 @@ definitions:
       user_name:
         type: string
     type: object
+  github_com_javaknight1_servicepro_backend_internal_models.CustomerStats:
+    properties:
+      active_customers:
+        type: integer
+      by_status:
+        additionalProperties:
+          format: int64
+          type: integer
+        type: object
+      inactive_customers:
+        type: integer
+      prospects:
+        type: integer
+      total_customers:
+        type: integer
+    type: object
   github_com_javaknight1_servicepro_backend_internal_models.CustomerStatus:
     enum:
     - active
@@ -1254,6 +1270,19 @@ definitions:
       updated_at:
         type: string
     type: object
+  github_com_javaknight1_servicepro_backend_internal_models.InvoiceStats:
+    properties:
+      collected_this_month:
+        type: number
+      outstanding_invoices:
+        type: integer
+      overdue_amount:
+        type: number
+      overdue_invoices:
+        type: integer
+      total_outstanding:
+        type: number
+    type: object
   github_com_javaknight1_servicepro_backend_internal_models.InvoiceStatus:
     enum:
     - draft
@@ -1604,6 +1633,31 @@ definitions:
         items:
           type: string
         type: array
+    type: object
+  github_com_javaknight1_servicepro_backend_internal_models.JobStats:
+    properties:
+      by_status:
+        additionalProperties:
+          format: int64
+          type: integer
+        type: object
+      cancelled_jobs:
+        type: integer
+      completed_jobs:
+        description: CompletedJobs counts completed, invoiced and paid.
+        type: integer
+      in_progress_jobs:
+        description: InProgressJobs counts en_route and in_progress.
+        type: integer
+      on_hold_jobs:
+        type: integer
+      pending_jobs:
+        description: PendingJobs are new jobs not yet scheduled.
+        type: integer
+      scheduled_jobs:
+        type: integer
+      total_jobs:
+        type: integer
     type: object
   github_com_javaknight1_servicepro_backend_internal_models.JobStatus:
     enum:
@@ -4612,20 +4666,22 @@ paths:
       - customers
   /api/v1/customers/stats:
     get:
-      description: Get statistics about customers for search optimization
+      description: 'Customer counts for the caller''s tenant: total, active, inactive,
+        prospects and a count per status'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.CustomerStats'
         "500":
           description: Internal server error
           schema:
             $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
-      summary: Get customer search statistics
+      security:
+      - BearerAuth: []
+      summary: Get customer statistics
       tags:
       - customers
   /api/v1/exports:
@@ -5851,15 +5907,16 @@ paths:
       - jobs
   /api/v1/jobs/stats:
     get:
-      description: Get statistics about jobs (counts by status, priority, type, etc.)
+      description: 'Job counts for the caller''s tenant: the dashboard buckets (pending
+        = new, in progress = en route + in progress, completed = completed + invoiced
+        + paid) and a count for every status'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.JobStats'
         "401":
           description: Unauthorized
           schema:
@@ -7965,6 +8022,31 @@ paths:
       security:
       - BearerAuth: []
       summary: Send invoice
+      tags:
+      - invoices
+  /invoices/stats:
+    get:
+      description: 'Receivables for the caller''s tenant: unpaid balance and count
+        of open invoices (sent, viewed, partially paid, overdue), the part of it past
+        due, and payments less refunds dated this calendar month (UTC)'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.InvoiceStats'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get invoice statistics
       tags:
       - invoices
   /membership-tiers:

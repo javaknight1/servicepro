@@ -343,7 +343,7 @@ func (r *CustomerRepository) Autocomplete(prefix string, limit int) ([]map[strin
 }
 
 // GetSearchStats retrieves customer counts for the caller's tenant
-func (r *CustomerRepository) GetSearchStats() (map[string]interface{}, error) {
+func (r *CustomerRepository) GetSearchStats() (*models.CustomerStats, error) {
 	type row struct {
 		Status string
 		Count  int64
@@ -357,14 +357,18 @@ func (r *CustomerRepository) GetSearchStats() (map[string]interface{}, error) {
 		return nil, err
 	}
 
-	var total int64
-	byStatus := make(map[string]int64, len(rows))
+	stats := &models.CustomerStats{ByStatus: make(map[string]int64, len(rows))}
 	for _, rw := range rows {
-		byStatus[rw.Status] = rw.Count
-		total += rw.Count
+		stats.ByStatus[rw.Status] = rw.Count
+		stats.TotalCustomers += rw.Count
+		switch models.CustomerStatus(rw.Status) {
+		case models.CustomerStatusActive:
+			stats.ActiveCustomers += rw.Count
+		case models.CustomerStatusInactive:
+			stats.InactiveCustomers += rw.Count
+		case models.CustomerStatusProspect:
+			stats.Prospects += rw.Count
+		}
 	}
-	return map[string]interface{}{
-		"total_customers": total,
-		"by_status":       byStatus,
-	}, nil
+	return stats, nil
 }
