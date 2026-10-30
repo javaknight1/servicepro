@@ -2,7 +2,7 @@
 
 Decided 2026-10-25: the owner confirmed the app-upgrade docs drafted 2026-10-24. This file is the in-repo copy of
 what the MVP is and why; **`TODO.md` is the source of truth for tasks** (MVP Launch Gate, decisions D7–D14, open
-decisions). Full write-ups with mockups and sources live in Notion under Apps → All Apps → ServicePro:
+decisions). The 18 mockup screens are in `docs/product/mockups/` (with an index of which task each guides). Full write-ups and sources live in Notion under Apps → All Apps → ServicePro:
 MVP Proposal, Market & Competition, Technical Requirements, Decisions.
 
 "MVP" = everything before paid launch (2027-09-07). "V1" = after launch, by checkpoint. "ServicePro" is a working

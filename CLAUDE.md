@@ -129,6 +129,8 @@ golang-migrate, files in `backend/migrations/`, embedded into the binary.
 - Zustand for client state; React Query for server state (TanStack Query everywhere is the target).
 - API calls only through the axios services (`frontend/src/services/api.ts`); same-origin `/api`.
 - Follow `frontend/src/components/shared/` patterns. TypeScript strict.
+- **UI follows the MVP mockups** in `docs/product/mockups/` (index in its README: which screen guides
+  which task). Match layout, copy tone and colours; sample numbers are not targets.
 - **Never use `any`.** Use `unknown` + `getErrorMessage()` (`frontend/src/utils/error.ts`) in catch
   blocks; typed interfaces for third-party callbacks (see `frontend/src/components/calendar/types.ts`);
   proper mock interfaces in tests; if you must cast an incomplete mock, `as unknown as ProperType`.
