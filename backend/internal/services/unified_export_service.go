@@ -7,13 +7,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"html/template"
 	"io"
-	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
+	apperrors "github.com/javaknight1/servicepro/backend/internal/errors"
+	"github.com/javaknight1/servicepro/backend/internal/services/pdf"
 	csvsafe "github.com/javaknight1/servicepro/backend/pkg/csv"
 
 	"github.com/google/uuid"
@@ -49,10 +48,10 @@ type UnifiedExportService interface {
 }
 
 type unifiedExportService struct {
-	db         *gorm.DB
-	pdfService *PDFService
-	files      ExportFileStore
-	baseURL    string
+	db      *gorm.DB
+	pdfGen  *pdf.Generator
+	files   ExportFileStore
+	baseURL string
 }
 
 // exportTimeout bounds one export run.
@@ -62,15 +61,15 @@ const exportTimeout = 2 * time.Minute
 //
 // files is where finished exports are stored: NewObjectExportStore in any
 // deployed environment (T128), NewLocalExportStore for development and tests.
-func NewUnifiedExportService(db *gorm.DB, pdfService *PDFService, files ExportFileStore, baseURL string) UnifiedExportService {
+func NewUnifiedExportService(db *gorm.DB, pdfGen *pdf.Generator, files ExportFileStore, baseURL string) UnifiedExportService {
 	if files == nil {
 		files = NewLocalExportStore("./exports")
 	}
 	return &unifiedExportService{
-		db:         db,
-		pdfService: pdfService,
-		files:      files,
-		baseURL:    baseURL,
+		db:      db,
+		pdfGen:  pdfGen,
+		files:   files,
+		baseURL: baseURL,
 	}
 }
 
@@ -735,126 +734,116 @@ func (s *unifiedExportService) writeQuotesExcel(f *excelize.File, sheet string, 
 	return nil
 }
 
-// ExportToPDF exports data to PDF format
+// ExportToPDF renders a list export as a gofpdf table (T260, D13). Only the
+// tabular exports have a PDF layout; validateConfig rejects PDF for the rest.
 func (s *unifiedExportService) ExportToPDF(ctx context.Context, data interface{}, config *models.ExportConfig) ([]byte, error) {
+	if s.pdfGen == nil {
+		return nil, fmt.Errorf("PDF generator is not configured")
+	}
 	opts := config.PDFOptions
 	if opts == nil {
 		opts = models.DefaultPDFOptions()
 	}
 
-	// Build HTML content based on data type
-	htmlContent := s.buildPDFHTML(data, config, opts)
-
-	// Generate PDF using PDF service
-	tempFile := filepath.Join(os.TempDir(), fmt.Sprintf("export_%s.pdf", uuid.New().String()))
-	defer os.Remove(tempFile)
-
-	pdfOpts := &PDFGenerationOptions{
-		PageSize:        models.PageSize(opts.PageSize),
-		PageOrientation: models.PageOrientation(opts.Orientation),
-		MarginTop:       "15mm",
-		MarginRight:     "10mm",
-		MarginBottom:    "15mm",
-		MarginLeft:      "10mm",
-		DPI:             150,
-		ImageQuality:    85,
+	report, ok := buildPDFReport(data, config, opts)
+	if !ok {
+		return nil, fmt.Errorf("PDF is not available for %s exports", config.ExportType)
 	}
 
-	if opts.ShowPageNumbers {
-		pdfOpts.FooterHTML = `<div style="text-align: center; font-size: 10px; color: #666;">Page [page] of [topage]</div>`
+	genOpts := &pdf.GenerationOptions{Watermark: opts.WatermarkText}
+	page := s.pdfGen.GetConfig().PageDefaults
+	if strings.EqualFold(opts.Orientation, "landscape") {
+		page.Orientation = "L"
+	}
+	if size := normalizePageSize(opts.PageSize); size != "" {
+		page.Size = size
+	}
+	genOpts.Page = &page
+	if opts.FooterText != "" {
+		branding := s.pdfGen.GetConfig().Branding
+		branding.FooterText = opts.FooterText
+		genOpts.Branding = &branding
 	}
 
-	_, err := s.pdfService.GeneratePDF(ctx, htmlContent, tempFile, pdfOpts)
-	if err != nil {
+	var buf bytes.Buffer
+	if err := s.pdfGen.GenerateToWriter(ctx, report, &buf, genOpts); err != nil {
 		return nil, fmt.Errorf("failed to generate PDF: %w", err)
 	}
-
-	return os.ReadFile(tempFile) //nolint:gosec // G304: tempFile is a server-generated path in the temp dir
+	return buf.Bytes(), nil
 }
 
-// pdfExportTemplate renders export PDFs. html/template escapes every value
-// (titles, header text, customer/job fields), so user content can't inject
-// markup such as <iframe src=file://...> into the wkhtmltopdf input (F-8).
-var pdfExportTemplate = template.Must(template.New("export").Parse(`<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <style>
-        body { font-family: Arial, sans-serif; font-size: 12px; margin: 0; padding: 20px; }
-        h1 { color: #333; border-bottom: 2px solid #4a90d9; padding-bottom: 10px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { padding: 8px; text-align: left; border-bottom: 1px solid #ddd; }
-        th { background-color: #4a90d9; color: white; }
-        tr:nth-child(even) { background-color: #f9f9f9; }
-        .summary { background: #f5f5f5; padding: 15px; margin-bottom: 20px; border-radius: 5px; }
-        .summary-item { display: inline-block; margin-right: 30px; }
-        .footer { margin-top: 30px; text-align: center; color: #666; font-size: 10px; }
-    </style>
-</head>
-<body>
-<h1>{{.Title}}</h1>
-{{if .HeaderText}}<p>{{.HeaderText}}</p>{{end}}
-{{if .Headers}}<div class="summary"><span class="summary-item"><strong>{{.SummaryLabel}}:</strong> {{len .Rows}}</span></div>
-<table><thead><tr>{{range .Headers}}<th>{{.}}</th>{{end}}</tr></thead><tbody>
-{{range .Rows}}<tr>{{range .}}<td>{{.}}</td>{{end}}</tr>
-{{end}}</tbody></table>{{else}}<pre>{{.Raw}}</pre>{{end}}
-<div class="footer">Generated on {{.GeneratedAt}}</div>
-</body></html>`))
-
-type pdfExportView struct {
-	Title, HeaderText, SummaryLabel, Raw, GeneratedAt string
-	Headers                                           []string
-	Rows                                              [][]string
+// normalizePageSize maps an export option to a gofpdf page size ("" = default).
+func normalizePageSize(size string) string {
+	switch strings.ToLower(size) {
+	case "a4":
+		return "A4"
+	case "letter":
+		return "Letter"
+	case "legal":
+		return "Legal"
+	default:
+		return ""
+	}
 }
 
-func (s *unifiedExportService) buildPDFHTML(data interface{}, config *models.ExportConfig, opts *models.PDFExportOptions) string {
-	view := pdfExportView{
+// pdfExportSupported reports whether an export type has a PDF layout.
+func pdfExportSupported(t models.ExportType) bool {
+	switch t {
+	case models.ExportTypeCustomers, models.ExportTypeJobs, models.ExportTypeInvoices, models.ExportTypeQuotes:
+		return true
+	default:
+		return false
+	}
+}
+
+// buildPDFReport turns list-export rows into a table. gofpdf draws text, not
+// markup, so user content can't inject HTML into the PDF (F-8).
+func buildPDFReport(data interface{}, config *models.ExportConfig, opts *models.PDFExportOptions) (*pdf.TableReportData, bool) {
+	report := &pdf.TableReportData{
 		Title:       opts.Title,
-		HeaderText:  opts.HeaderText,
-		GeneratedAt: time.Now().Format("January 2, 2006 3:04 PM"),
+		Subtitle:    opts.HeaderText,
+		GeneratedAt: time.Now(),
 	}
-	if view.Title == "" {
-		view.Title = fmt.Sprintf("%s Export", strings.Title(string(config.ExportType))) //nolint:staticcheck // ASCII export type names
+	if report.Title == "" {
+		report.Title = fmt.Sprintf("%s Export", strings.Title(string(config.ExportType))) //nolint:staticcheck // ASCII export type names
 	}
 
+	var label string
 	switch d := data.(type) {
 	case []models.Customer:
-		view.SummaryLabel = "Total Customers"
-		view.Headers = []string{"Name", "Company", "Email", "Phone", "Type", "Status", "City", "State"}
+		label = "Total Customers"
+		report.Headers = []string{"Name", "Company", "Email", "Phone", "Type", "Status", "City", "State"}
 		for _, c := range d {
-			view.Rows = append(view.Rows, []string{c.FirstName + " " + c.LastName, ptrToStr(c.CompanyName), c.Email, c.PhonePrimary,
+			report.Rows = append(report.Rows, []string{c.FirstName + " " + c.LastName, ptrToStr(c.CompanyName), c.Email, c.PhonePrimary,
 				string(c.CustomerType), string(c.Status), c.BillingAddressCity, c.BillingAddressState})
 		}
 	case []models.Job:
-		view.SummaryLabel = "Total Jobs"
-		view.Headers = []string{"Title", "Status", "Scheduled", "Created"}
+		label = "Total Jobs"
+		report.Headers = []string{"Title", "Status", "Scheduled", "Created"}
 		for _, j := range d {
-			view.Rows = append(view.Rows, []string{j.Title, string(j.Status), formatEpochPtr(j.ScheduledStartAt), j.CreatedAt.Format("2006-01-02")})
+			report.Rows = append(report.Rows, []string{j.Title, string(j.Status), formatEpochPtr(j.ScheduledStartAt), j.CreatedAt.Format("2006-01-02")})
 		}
 	case []models.Invoice:
-		view.SummaryLabel = "Total Invoices"
-		view.Headers = []string{"Invoice #", "Status", "Subtotal", "Tax", "Total", "Due Date"}
+		label = "Total Invoices"
+		report.Headers = []string{"Invoice #", "Status", "Subtotal", "Tax", "Total", "Due Date"}
 		for _, inv := range d {
-			view.Rows = append(view.Rows, []string{inv.InvoiceNumber, string(inv.Status), "$" + inv.Subtotal.StringFixed(2),
+			report.Rows = append(report.Rows, []string{inv.InvoiceNumber, string(inv.Status), "$" + inv.Subtotal.StringFixed(2),
 				"$" + inv.TaxAmount.StringFixed(2), "$" + inv.TotalAmount.StringFixed(2), inv.DueDate.Format("2006-01-02")})
 		}
 	case []models.Quote:
-		view.SummaryLabel = "Total Quotes"
-		view.Headers = []string{"Quote #", "Status", "Total", "Valid Until", "Created"}
+		label = "Total Quotes"
+		report.Headers = []string{"Quote #", "Status", "Total", "Valid Until", "Created"}
 		for _, q := range d {
-			view.Rows = append(view.Rows, []string{q.QuoteNumber, string(q.Status), "$" + q.Total.StringFixed(2),
+			report.Rows = append(report.Rows, []string{q.QuoteNumber, string(q.Status), "$" + q.Total.StringFixed(2),
 				q.ValidUntil.Format("2006-01-02"), q.CreatedAt.Format("2006-01-02")})
 		}
 	default:
-		jsonData, _ := json.MarshalIndent(data, "", "  ")
-		view.Raw = string(jsonData)
+		return nil, false
 	}
-
-	var out strings.Builder
-	if err := pdfExportTemplate.Execute(&out, view); err != nil {
-		return "<!DOCTYPE html><html><body><p>Export could not be rendered.</p></body></html>"
+	if opts.IncludeSummary {
+		report.Summary = fmt.Sprintf("%s: %d", label, len(report.Rows))
 	}
-	return out.String()
+	return report, true
 }
 
 // GetExportStatus returns the status of an export job
@@ -986,6 +975,10 @@ func (s *unifiedExportService) validateConfig(config *models.ExportConfig) error
 	}
 	if config.ExportType == "" {
 		return fmt.Errorf("export type is required")
+	}
+	if config.Format == models.ExportFormatPDF && !pdfExportSupported(config.ExportType) {
+		return apperrors.Validation("PDF is not available for this export; use CSV, Excel or JSON",
+			map[string]string{"format": "pdf is only available for customers, jobs, invoices and quotes"})
 	}
 	return nil
 }

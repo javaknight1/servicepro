@@ -20,11 +20,15 @@ The Import/Export system provides:
 | Jobs            | -      | CSV, JSON, XLSX, PDF       |
 | Invoices        | -      | CSV, JSON, XLSX, PDF       |
 | Quotes          | -      | CSV, JSON, XLSX, PDF       |
-| Revenue report  | -      | CSV, JSON, XLSX, PDF       |
-| Customer report | -      | CSV, JSON, XLSX, PDF       |
+| Revenue report  | -      | CSV, JSON, XLSX            |
+| Customer report | -      | CSV, JSON, XLSX            |
 
 `GET /api/v1/exports/formats` returns the live list. Single invoice and quote
 PDFs are `GET /api/v1/invoices/:id/pdf` and `GET /api/v1/quotes/:id/pdf`.
+
+Every PDF (list exports, quotes, invoices, receipts) is drawn by the gofpdf
+generator in `backend/internal/services/pdf` — there is no HTML-to-PDF engine
+(D13, T260). A PDF export of a report type is rejected with a 400.
 
 ## Export Endpoints
 

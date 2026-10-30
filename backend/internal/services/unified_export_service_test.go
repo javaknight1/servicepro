@@ -17,6 +17,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/javaknight1/servicepro/backend/internal/models"
+	"github.com/javaknight1/servicepro/backend/internal/services/pdf"
 	"github.com/javaknight1/servicepro/backend/internal/tenancy"
 	storagemock "github.com/javaknight1/servicepro/backend/pkg/clients/storage/mock"
 )
@@ -147,7 +148,7 @@ func TestExportToCSV(t *testing.T) {
 	db := setupExportTestDB(t)
 	customers := createExportTestCustomers(t, db, 10)
 
-	pdfService := NewPDFService("", "", "")
+	var pdfService *pdf.Generator // these tests export CSV/JSON/Excel only
 	service := NewUnifiedExportService(db, pdfService, NewLocalExportStore(t.TempDir()), "http://localhost")
 
 	config := &models.ExportConfig{
@@ -181,7 +182,7 @@ func TestExportToCSVWithBOM(t *testing.T) {
 	db := setupExportTestDB(t)
 	customers := createExportTestCustomers(t, db, 5)
 
-	pdfService := NewPDFService("", "", "")
+	var pdfService *pdf.Generator // these tests export CSV/JSON/Excel only
 	service := NewUnifiedExportService(db, pdfService, NewLocalExportStore(t.TempDir()), "http://localhost")
 
 	config := &models.ExportConfig{
@@ -210,7 +211,7 @@ func TestExportToCSVWithDelimiter(t *testing.T) {
 	db := setupExportTestDB(t)
 	customers := createExportTestCustomers(t, db, 3)
 
-	pdfService := NewPDFService("", "", "")
+	var pdfService *pdf.Generator // these tests export CSV/JSON/Excel only
 	service := NewUnifiedExportService(db, pdfService, NewLocalExportStore(t.TempDir()), "http://localhost")
 
 	testCases := []struct {
@@ -255,7 +256,7 @@ func TestExportToJSON(t *testing.T) {
 	db := setupExportTestDB(t)
 	customers := createExportTestCustomers(t, db, 5)
 
-	pdfService := NewPDFService("", "", "")
+	var pdfService *pdf.Generator // these tests export CSV/JSON/Excel only
 	service := NewUnifiedExportService(db, pdfService, NewLocalExportStore(t.TempDir()), "http://localhost")
 
 	config := &models.ExportConfig{
@@ -280,7 +281,7 @@ func TestExportToExcel(t *testing.T) {
 	db := setupExportTestDB(t)
 	customers := createExportTestCustomers(t, db, 10)
 
-	pdfService := NewPDFService("", "", "")
+	var pdfService *pdf.Generator // these tests export CSV/JSON/Excel only
 	service := NewUnifiedExportService(db, pdfService, NewLocalExportStore(t.TempDir()), "http://localhost")
 
 	config := &models.ExportConfig{
@@ -309,7 +310,7 @@ func TestExportWithFieldSelection(t *testing.T) {
 	db := setupExportTestDB(t)
 	customers := createExportTestCustomers(t, db, 5)
 
-	pdfService := NewPDFService("", "", "")
+	var pdfService *pdf.Generator // these tests export CSV/JSON/Excel only
 	service := NewUnifiedExportService(db, pdfService, NewLocalExportStore(t.TempDir()), "http://localhost")
 
 	config := &models.ExportConfig{
@@ -343,7 +344,7 @@ func TestExportJobLifecycle(t *testing.T) {
 	db := setupExportTestDB(t)
 	createExportTestCustomers(t, db, 20)
 
-	pdfService := NewPDFService("", "", "")
+	var pdfService *pdf.Generator // these tests export CSV/JSON/Excel only
 	service := NewUnifiedExportService(db, pdfService, NewLocalExportStore(t.TempDir()), "http://localhost")
 
 	userID := uuid.New()
@@ -397,7 +398,7 @@ func TestExportProgress(t *testing.T) {
 	db := setupExportTestDB(t)
 	createExportTestCustomers(t, db, 100)
 
-	pdfService := NewPDFService("", "", "")
+	var pdfService *pdf.Generator // these tests export CSV/JSON/Excel only
 	service := NewUnifiedExportService(db, pdfService, NewLocalExportStore(t.TempDir()), "http://localhost")
 
 	job, err := service.StartExport(exportCtx, uuid.New(), &models.ExportConfig{
@@ -440,7 +441,7 @@ func TestCancelExport(t *testing.T) {
 	db := setupExportTestDB(t)
 	createExportTestCustomers(t, db, 10)
 
-	pdfService := NewPDFService("", "", "")
+	var pdfService *pdf.Generator // these tests export CSV/JSON/Excel only
 	service := NewUnifiedExportService(db, pdfService, NewLocalExportStore(t.TempDir()), "http://localhost")
 
 	userID := uuid.New()
@@ -473,7 +474,7 @@ func TestListExports(t *testing.T) {
 	db := setupExportTestDB(t)
 	createExportTestCustomers(t, db, 5)
 
-	pdfService := NewPDFService("", "", "")
+	var pdfService *pdf.Generator // these tests export CSV/JSON/Excel only
 	service := NewUnifiedExportService(db, pdfService, NewLocalExportStore(t.TempDir()), "http://localhost")
 
 	userID := uuid.New()
@@ -500,7 +501,7 @@ func TestListExports(t *testing.T) {
 func TestExportValidation(t *testing.T) {
 	db := setupExportTestDB(t)
 
-	pdfService := NewPDFService("", "", "")
+	var pdfService *pdf.Generator // these tests export CSV/JSON/Excel only
 	service := NewUnifiedExportService(db, pdfService, NewLocalExportStore(t.TempDir()), "http://localhost")
 
 	userID := uuid.New()
@@ -549,7 +550,7 @@ func TestCharacterEncoding(t *testing.T) {
 	err := db.Create(&customer).Error
 	require.NoError(t, err)
 
-	pdfService := NewPDFService("", "", "")
+	var pdfService *pdf.Generator // these tests export CSV/JSON/Excel only
 	service := NewUnifiedExportService(db, pdfService, NewLocalExportStore(t.TempDir()), "http://localhost")
 
 	config := &models.ExportConfig{
@@ -576,7 +577,7 @@ func TestCharacterEncoding(t *testing.T) {
 // Benchmark tests
 func BenchmarkExportCSV_100Records(b *testing.B) {
 	db := setupExportBenchmarkDB(b, 100)
-	pdfService := NewPDFService("", "", "")
+	var pdfService *pdf.Generator // these tests export CSV/JSON/Excel only
 	service := NewUnifiedExportService(db, pdfService, NewLocalExportStore(b.TempDir()), "http://localhost")
 
 	var customers []models.Customer
@@ -596,7 +597,7 @@ func BenchmarkExportCSV_100Records(b *testing.B) {
 
 func BenchmarkExportCSV_1000Records(b *testing.B) {
 	db := setupExportBenchmarkDB(b, 1000)
-	pdfService := NewPDFService("", "", "")
+	var pdfService *pdf.Generator // these tests export CSV/JSON/Excel only
 	service := NewUnifiedExportService(db, pdfService, NewLocalExportStore(b.TempDir()), "http://localhost")
 
 	var customers []models.Customer
@@ -616,7 +617,7 @@ func BenchmarkExportCSV_1000Records(b *testing.B) {
 
 func BenchmarkExportCSV_10000Records(b *testing.B) {
 	db := setupExportBenchmarkDB(b, 10000)
-	pdfService := NewPDFService("", "", "")
+	var pdfService *pdf.Generator // these tests export CSV/JSON/Excel only
 	service := NewUnifiedExportService(db, pdfService, NewLocalExportStore(b.TempDir()), "http://localhost")
 
 	var customers []models.Customer
@@ -636,7 +637,7 @@ func BenchmarkExportCSV_10000Records(b *testing.B) {
 
 func BenchmarkExportJSON_1000Records(b *testing.B) {
 	db := setupExportBenchmarkDB(b, 1000)
-	pdfService := NewPDFService("", "", "")
+	var pdfService *pdf.Generator // these tests export CSV/JSON/Excel only
 	service := NewUnifiedExportService(db, pdfService, NewLocalExportStore(b.TempDir()), "http://localhost")
 
 	var customers []models.Customer
@@ -655,7 +656,7 @@ func BenchmarkExportJSON_1000Records(b *testing.B) {
 
 func BenchmarkExportExcel_1000Records(b *testing.B) {
 	db := setupExportBenchmarkDB(b, 1000)
-	pdfService := NewPDFService("", "", "")
+	var pdfService *pdf.Generator // these tests export CSV/JSON/Excel only
 	service := NewUnifiedExportService(db, pdfService, NewLocalExportStore(b.TempDir()), "http://localhost")
 
 	var customers []models.Customer

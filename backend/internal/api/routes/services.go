@@ -97,9 +97,6 @@ func SetupServices(
 	// A/R Aging report service
 	svc.ARAging = services.NewARAgingService(db)
 
-	// PDF service
-	svc.PDF = services.NewPDFService("", "", "./exports/pdf")
-
 	// Export service
 	// Export files go to object storage so any instance can serve the
 	// download (T128); local ./exports only without a storage client (dev).
@@ -110,7 +107,7 @@ func SetupServices(
 		log.Println("[SERVICES] Storage client not configured: exports are stored on local disk (development only)")
 		exportFiles = services.NewLocalExportStore("./exports")
 	}
-	svc.Export = services.NewUnifiedExportService(db, svc.PDF, exportFiles, "")
+	svc.Export = services.NewUnifiedExportService(db, pdfGenerator, exportFiles, "")
 
 	// Payment terms service
 	svc.PaymentTerms = services.NewPaymentTermsService(db)

@@ -76,7 +76,6 @@ type Services struct {
 	Revenue           services.RevenueReportService
 	ARAging           services.ARAgingService
 	Export            services.UnifiedExportService
-	PDF               *services.PDFService
 	Import            *services.ImportService
 	PaymentTerms      *services.PaymentTermsService
 	TaxRates          *services.TaxRateService
