@@ -13,7 +13,8 @@ export function Footer() {
               ServicePro
             </h3>
             <p className="text-sm text-neutral-600">
-              Professional services platform for modern businesses.
+              Field service software for commercial cleaning and
+              facility-maintenance teams.
             </p>
           </div>
 
