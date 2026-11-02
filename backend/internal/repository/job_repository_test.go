@@ -10,6 +10,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/javaknight1/servicepro/backend/internal/models"
+	"github.com/javaknight1/servicepro/backend/internal/tenancy/rlstest"
 )
 
 // jobFixture is one freshly seeded tenant with a job repository scoped to it.
@@ -454,8 +455,18 @@ func TestJobRepository_GetJobStats(t *testing.T) {
 // TestJobRepository_CrossTenant: tenant B can neither see nor change tenant
 // A's job (hard rule 1 — cross-tenant reads are "not found").
 func TestJobRepository_CrossTenant(t *testing.T) {
-	a := newJobFixture(t)
-	b := newJobFixtureOn(t, a.db)
+	runJobCrossTenant(t, openTestDB(t))
+}
+
+// The same checks as a role bound by the Postgres RLS policies (T154), with
+// the driver applying the tenant to every transaction.
+func TestJobRepository_CrossTenant_RLS(t *testing.T) {
+	runJobCrossTenant(t, rlstest.Setup(t).OpenApp(t, true))
+}
+
+func runJobCrossTenant(t *testing.T, db *gorm.DB) {
+	a := newJobFixtureOn(t, db)
+	b := newJobFixtureOn(t, db)
 	customer := a.createTestCustomer(t)
 	job := a.createTestJob(t, customer.ID)
 

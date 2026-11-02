@@ -170,7 +170,14 @@ type DatabaseConfig struct {
 	// SimpleProtocol disables server-side prepared statements (pgx simple
 	// protocol). Required behind a transaction-mode pooler (PgBouncer)
 	// on port 6543; enabled automatically when the URL uses that port.
-	SimpleProtocol      bool
+	SimpleProtocol bool
+	// RLSEnforce applies the caller's tenant to every database transaction
+	// (transaction-local app.tenant_id / app.bypass_rls settings) so the
+	// Postgres row-level-security policies from migration 000007 can
+	// enforce tenant isolation (T154). It only bites when DATABASE_URL's
+	// role is subject to RLS (a member of servicepro_app, not the tables'
+	// owner). Costs extra round trips per statement; default false.
+	RLSEnforce          bool
 	MaxOpenConns        int
 	MaxIdleConns        int
 	ConnMaxLifetime     time.Duration
@@ -419,6 +426,7 @@ func Load() *Config {
 			URL:                    getEnv("DATABASE_URL", DefaultDatabaseURL),
 			RunMigrationsOnStartup: getEnvAsBool("RUN_MIGRATIONS_ON_STARTUP", isDev),
 			SimpleProtocol:         getEnvAsBool("DB_SIMPLE_PROTOCOL", false),
+			RLSEnforce:             getEnvAsBool("RLS_ENFORCE", false),
 			MaxOpenConns:           getEnvAsInt("DB_MAX_OPEN_CONNS", defaultMaxOpenConns),
 			MaxIdleConns:           getEnvAsInt("DB_MAX_IDLE_CONNS", 5),
 			ConnMaxLifetime:        getEnvAsDuration("DB_CONN_MAX_LIFETIME", "5m"),

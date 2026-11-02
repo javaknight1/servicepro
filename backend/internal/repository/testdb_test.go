@@ -29,10 +29,13 @@ var adminRoleID = uuid.MustParse("00000000-0000-0000-0000-000000000002")
 
 // openTestDB connects to the migrated test database and installs the tenancy
 // plugin, exactly as cmd/main.go does. It skips when no database is reachable.
+// RLS_ENFORCE=true runs the package with the RLS driver plumbing (T154); point
+// TEST_DATABASE_URL at a servicepro_app login role to have the policies bite.
 func openTestDB(tb testing.TB) *gorm.DB {
 	tb.Helper()
 	cfg := &config.DatabaseConfig{
 		URL:             testDatabaseURL(),
+		RLSEnforce:      os.Getenv("RLS_ENFORCE") == "true",
 		MaxOpenConns:    10,
 		MaxIdleConns:    2,
 		ConnMaxLifetime: time.Hour,
@@ -74,10 +77,12 @@ func createTestTenant(tb testing.TB, db *gorm.DB) *testTenant {
 	tb.Cleanup(func() {
 		// jobs.customer_id and jobs.created_by are ON DELETE RESTRICT, so jobs
 		// go first; the tenant delete cascades to customers, memberships and
-		// counters. Raw SQL is not tenant-rewritten.
-		_ = db.Exec(`DELETE FROM jobs WHERE tenant_id = ?`, tt.ID).Error
-		_ = db.Exec(`DELETE FROM tenants WHERE id = ?`, tt.ID).Error
-		_ = db.Exec(`DELETE FROM users WHERE id IN ?`, tt.users).Error
+		// counters. Raw SQL is not tenant-rewritten; the system context lets
+		// it through the RLS policies (T154) when they are enforced.
+		sys := db.WithContext(tenancy.WithSystem(context.Background()))
+		_ = sys.Exec(`DELETE FROM jobs WHERE tenant_id = ?`, tt.ID).Error
+		_ = sys.Exec(`DELETE FROM tenants WHERE id = ?`, tt.ID).Error
+		_ = sys.Exec(`DELETE FROM users WHERE id IN ?`, tt.users).Error
 	})
 	return tt
 }

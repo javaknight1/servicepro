@@ -156,6 +156,28 @@ DB_MAX_OPEN_CONNS` under the database's limit.
 - `INTERNAL_JOBS_SECRET` must match the GitHub secret of the same name used by
   `scheduled-jobs.yml`. `EDGE_PROXY_SECRET` must match the Worker secret (§9).
 
+### Row-level security (T154, off until switched on)
+
+Migration 000007 puts RLS policies on the tenant tables and creates the
+`NOLOGIN` group role `servicepro_app` (table privileges, no `BYPASSRLS`). The
+tables' owner — the role migrations, `pg_dump` and seeds use — is exempt, so
+with today's `DATABASE_URL` (the owner) the policies change nothing. To turn
+the backstop on:
+
+1. Create a login role in the group (Neon SQL editor, as the owner; password
+   generated and saved in Bitwarden): `CREATE ROLE servicepro_api LOGIN
+   PASSWORD '…' IN ROLE servicepro_app;`
+2. Point the runtime `DATABASE_URL` secret at `servicepro_api` (pooler host).
+   `MIGRATION_DATABASE_URL` stays on the owner.
+3. In the same revision, set `RLS_ENFORCE=true` (without it the new role sees
+   no tenant rows at all). Every statement then runs in a
+   transaction carrying `app.tenant_id` (or `app.bypass_rls` for system
+   code). A statement outside an explicit transaction costs three round
+   trips instead of one — watch p95 latency after the switch.
+
+The API logs a warning at startup if `RLS_ENFORCE=true` but its role still
+bypasses RLS. Roll back by unsetting `RLS_ENFORCE` and restoring the owner URL.
+
 ## 6. Workload Identity Federation
 
 ```bash
