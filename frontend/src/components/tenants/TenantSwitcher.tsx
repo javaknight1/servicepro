@@ -77,7 +77,7 @@ export function TenantSwitcher({ className = '' }: TenantSwitcherProps) {
         className="flex items-center px-3 py-2 text-sm font-medium text-neutral-700 hover:text-neutral-900 rounded-md hover:bg-neutral-100 transition-colors"
       >
         <Building2 className="h-4 w-4 mr-2 text-neutral-500" />
-        <span className="max-w-[150px] truncate">
+        <span className="max-w-[220px] truncate">
           {currentTenant?.name || 'Select Organization'}
         </span>
         <ChevronDown
@@ -88,7 +88,7 @@ export function TenantSwitcher({ className = '' }: TenantSwitcherProps) {
       </button>
 
       {isOpen && (
-        <div className="absolute left-0 mt-1 w-64 bg-white rounded-lg shadow-lg border border-neutral-200 py-1 z-50">
+        <div className="absolute right-0 mt-1 w-64 bg-white rounded-lg shadow-lg border border-neutral-200 py-1 z-50">
           <div className="px-3 py-2 text-xs font-semibold text-neutral-500 uppercase tracking-wider">
             Organizations
           </div>

@@ -25,8 +25,11 @@ const files = [];
 
 // Static imports only: `import ... from "./x.js"` / `import "./x.js"`.
 // Dynamic import() is lazy and can't deadlock module evaluation.
+// Minified chunks put every import on one line with no spaces
+// (`import{a as b}from"./x.js";import{c}from"./y.js"`), so match each
+// statement start (line start or after `;`), not just line starts.
 const STATIC_IMPORT =
-  /^\s*import\s+(?:[^'"]*?\s+from\s+)?["'](\.{1,2}\/[^"']+\.js)["']/gm;
+  /(?:^|;)\s*import\s*(?:[^'";]*?\bfrom\s*)?["'](\.{1,2}\/[^"']+\.js)["']/gm;
 const graph = new Map();
 for (const file of files) {
   const src = fs.readFileSync(file, 'utf8');

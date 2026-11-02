@@ -158,6 +158,8 @@ export interface InvoiceLineRequest {
 /** Body of POST /invoices (handlers.CreateInvoiceRequest). */
 export interface CreateInvoiceRequest {
   customer_id: string;
+  /** The completed job this invoice bills; the API moves it to invoiced. */
+  job_id?: string;
   issue_date?: string;
   due_date?: string;
   payment_term_id?: string;

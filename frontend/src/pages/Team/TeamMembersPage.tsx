@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router';
 import { DashboardLayout } from '@components/layout';
 import {
   Card,
@@ -269,12 +270,21 @@ export function TeamMembersPage() {
               <span className="font-medium">{currentTenant.name}</span>
             </p>
           </div>
-          {canManage && !loadError && (
-            <Button variant="primary" onClick={() => setShowAddModal(true)}>
-              <UserPlus className="h-4 w-4 mr-2" />
-              Invite Member
-            </Button>
-          )}
+          <div className="flex items-center gap-3">
+            {/* The sidebar's Team item opens this page; roles live one click away. */}
+            <Link
+              to="/team/roles"
+              className="text-sm font-medium text-primary-600 hover:text-primary-700"
+            >
+              Roles & permissions
+            </Link>
+            {canManage && !loadError && (
+              <Button variant="primary" onClick={() => setShowAddModal(true)}>
+                <UserPlus className="h-4 w-4 mr-2" />
+                Invite Member
+              </Button>
+            )}
+          </div>
         </div>
 
         <Card variant="elevated" padding="lg">

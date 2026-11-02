@@ -84,7 +84,18 @@ function isPackage(id: string, pkg: string): boolean {
  */
 const appChunks: Array<[name: string, test: (id: string) => boolean]> = [
   ['page-dashboard', (id) => id.includes('/pages/Dashboard')],
-  ['page-settings', (id) => id.includes('/pages/Settings')],
+  // Settings' own components live with its pages: split out, the lazy
+  // `Settings` entry chunk and page-settings imported each other.
+  [
+    'page-settings',
+    (id) =>
+      id.includes('/pages/Settings') ||
+      id.includes('/components/settings') ||
+      id.includes('/components/membership') ||
+      id.includes('/services/userService') ||
+      id.includes('/types/membership') ||
+      id.includes('/types/payment'),
+  ],
   [
     'page-auth',
     (id) => id.includes('/pages/Login') || id.includes('/pages/Register'),
@@ -106,6 +117,15 @@ const codeSplittingGroups = [
     test: (id: string) =>
       id.startsWith('\0@oxc-project+runtime') ||
       isPackage(id, '@oxc-project/runtime'),
+    priority: 40,
+  },
+  // Vite's dynamic-import preload helper, also a leaf. Left to Rolldown it can
+  // be merged into an app chunk (`shared`) that vendor-react (react-router's
+  // lazy routes) imports while that chunk imports React back — the same
+  // blank-page cycle.
+  {
+    name: 'preload-helper',
+    test: (id: string) => id.includes('vite/preload-helper'),
     priority: 40,
   },
   ...Object.entries(manualChunks).map(([name, packages]) => ({

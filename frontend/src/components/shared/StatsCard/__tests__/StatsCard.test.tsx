@@ -97,11 +97,11 @@ describe('StatsCard', () => {
         <StatsCard label="Balance" value="$3,000" change="0%" />
       );
 
-      const changeContainer = container.querySelector('.text-neutral-600');
-      expect(changeContainer).toBeInTheDocument();
+      const changeContainer = container.querySelector('.text-neutral-500');
+      expect(changeContainer).toHaveTextContent('0%');
     });
 
-    it('should render TrendingUp icon for positive change', () => {
+    it('should render the subline without a trend icon', () => {
       const { container } = render(
         <StatsCard
           label="Growth"
@@ -111,37 +111,7 @@ describe('StatsCard', () => {
         />
       );
 
-      // Lucide icons render as SVG
-      const svg = container.querySelector('svg');
-      expect(svg).toBeInTheDocument();
-    });
-
-    it('should render TrendingDown icon for negative change', () => {
-      const { container } = render(
-        <StatsCard
-          label="Decline"
-          value="50"
-          change="-20%"
-          changeType="negative"
-        />
-      );
-
-      const svg = container.querySelector('svg');
-      expect(svg).toBeInTheDocument();
-    });
-
-    it('should render Minus icon for neutral change', () => {
-      const { container } = render(
-        <StatsCard
-          label="Static"
-          value="100"
-          change="0%"
-          changeType="neutral"
-        />
-      );
-
-      const svg = container.querySelector('svg');
-      expect(svg).toBeInTheDocument();
+      expect(container.querySelector('svg')).not.toBeInTheDocument();
     });
   });
 
@@ -161,11 +131,10 @@ describe('StatsCard', () => {
 
       expect(container.firstChild).toHaveClass(
         'bg-white',
-        'rounded-xl',
+        'rounded-2xl',
         'border',
         'border-neutral-200',
-        'p-6',
-        'shadow-xs'
+        'p-6'
       );
     });
   });

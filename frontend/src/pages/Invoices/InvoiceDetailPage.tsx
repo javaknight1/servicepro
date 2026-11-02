@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate, useParams } from 'react-router';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 import { DashboardLayout } from '@components/layout';
 import {
   Button,
@@ -40,6 +40,7 @@ import {
 } from '@/utils/money';
 import { trackEvent, AnalyticsEvents } from '@services/analytics';
 import type { Customer } from '@services/customerService';
+import { jobService, type Job } from '@services/jobService';
 import { fetchAllCustomers } from '@services/customerLookup';
 import { paymentTermService } from '@services/paymentTermService';
 import { useTaxRates } from '@/hooks/useTaxRates';
@@ -132,6 +133,10 @@ export function InvoiceDetailPage() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const isNew = !id || id === 'new';
+  // "Create invoice" from a completed job (dashboard, T269): /invoices/new?job_id=…
+  const [searchParams] = useSearchParams();
+  const sourceJobId = isNew ? searchParams.get('job_id') : null;
+  const [sourceJob, setSourceJob] = useState<Job | null>(null);
 
   const [formData, setFormData] = useState<InvoiceFormData>(initialFormData);
   const [lineItems, setLineItems] = useState<LineItemFormData[]>([
@@ -282,6 +287,42 @@ export function InvoiceDetailPage() {
       cancelled = true;
     };
   }, [id, isNew, loadInvoice]);
+
+  // Prefill a new invoice from the job it bills: its customer and one line.
+  useEffect(() => {
+    if (!sourceJobId) return;
+    let cancelled = false;
+    jobService
+      .getJob(sourceJobId)
+      .then((job) => {
+        if (cancelled) return;
+        setSourceJob(job);
+        setFormData((prev) => ({ ...prev, customer_id: job.customer_id }));
+        if (job.customer?.email) setCustomerEmail(job.customer.email);
+        const amount = [job.total_amount, job.actual_cost, job.estimated_cost]
+          .map((v) => toAmount(v))
+          .find((v) => v > 0);
+        setLineItems((prev) =>
+          prev.length === 1 && !prev[0].description
+            ? [
+                {
+                  ...emptyLineItem,
+                  description: job.title,
+                  unit_price: amount ?? 0,
+                },
+              ]
+            : prev
+        );
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        console.error('Failed to load job:', err);
+        setError(getErrorMessage(err, 'Failed to load the job to invoice'));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [sourceJobId]);
 
   // New invoice + tenant default tax rate: leave the rate blank so the API
   // applies the default, then pick it once the tax rates load (T237).
@@ -462,6 +503,7 @@ export function InvoiceDetailPage() {
       if (isNew) {
         const createData: CreateInvoiceRequest = {
           customer_id: formData.customer_id,
+          job_id: sourceJob?.id,
           issue_date: issueDateISO,
           due_date: dueDateISO,
           // A picked rate goes by ID; a typed one as a direct fraction
@@ -739,10 +781,18 @@ export function InvoiceDetailPage() {
                   value={formData.customer_id}
                   onChange={handleCustomerChange}
                   required
-                  disabled={isLoadingCustomers}
+                  // An invoice for a job bills that job's customer.
+                  disabled={isLoadingCustomers || Boolean(sourceJob)}
                   className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                 >
                   <option value="">Select a customer</option>
+                  {sourceJob?.customer &&
+                    !customers.some((c) => c.id === sourceJob.customer_id) && (
+                      <option value={sourceJob.customer_id}>
+                        {sourceJob.customer.company_name ||
+                          `${sourceJob.customer.first_name} ${sourceJob.customer.last_name}`}
+                      </option>
+                    )}
                   {customers.map((customer) => (
                     <option key={customer.id} value={customer.id}>
                       {customer.first_name} {customer.last_name}
@@ -752,6 +802,18 @@ export function InvoiceDetailPage() {
                     </option>
                   ))}
                 </select>
+                {sourceJob && (
+                  <p className="mt-2 text-sm text-neutral-600">
+                    Invoicing job{' '}
+                    <Link
+                      to={`/jobs/${sourceJob.id}`}
+                      className="font-mono text-primary-600 hover:underline"
+                    >
+                      {sourceJob.job_number}
+                    </Link>{' '}
+                    · {sourceJob.title}
+                  </p>
+                )}
               </div>
 
               <div>

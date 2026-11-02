@@ -7,7 +7,7 @@ import { TenantSwitcher } from '@components/tenants';
 import { getDisplayName } from '@/utils/avatar';
 import { RequestAccessLink } from './RequestAccessLink';
 
-function ProfileDropdown() {
+export function ProfileDropdown() {
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
   const { reset: resetTenants } = useTenantStore();

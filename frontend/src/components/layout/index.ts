@@ -6,3 +6,5 @@ export { Sidebar } from './Sidebar';
 export { ProtectedRoute } from './ProtectedRoute';
 export { PublicRoute } from './PublicRoute';
 export { RequestAccessLink } from './RequestAccessLink';
+export { AppTopBar } from './AppTopBar';
+export type { Breadcrumb } from './AppTopBar';

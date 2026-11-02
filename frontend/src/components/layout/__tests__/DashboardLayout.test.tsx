@@ -9,8 +9,8 @@ vi.mock('../Sidebar', () => ({
   Sidebar: () => <div data-testid="sidebar">Sidebar</div>,
 }));
 
-vi.mock('../Header', () => ({
-  Header: () => <div data-testid="header">Header</div>,
+vi.mock('../AppTopBar', () => ({
+  AppTopBar: () => <div data-testid="header">Header</div>,
 }));
 
 vi.mock('../BuildStamp', () => ({

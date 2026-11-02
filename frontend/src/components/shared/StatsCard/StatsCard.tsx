@@ -1,16 +1,18 @@
 import { ReactNode } from 'react';
 import { cn } from '@utils/cn';
-import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 
 export interface StatsCardProps {
   label: string;
   value: string | number;
   icon?: ReactNode;
+  /** Line under the value. */
   change?: string;
+  /** Colour of that line: green, red or grey. */
   changeType?: 'positive' | 'negative' | 'neutral';
   className?: string;
 }
 
+/** KPI card from the MVP mockups: label, big value, coloured subline, icon tile. */
 export function StatsCard({
   label,
   value,
@@ -22,47 +24,34 @@ export function StatsCard({
   const changeColors = {
     positive: 'text-success-600',
     negative: 'text-error-600',
-    neutral: 'text-neutral-600',
+    neutral: 'text-neutral-500',
   };
-
-  const ChangeIcon =
-    changeType === 'positive'
-      ? TrendingUp
-      : changeType === 'negative'
-        ? TrendingDown
-        : Minus;
 
   return (
     <div
       className={cn(
-        'bg-white rounded-xl border border-neutral-200 p-6 shadow-xs',
+        'rounded-2xl border border-neutral-200 bg-white p-6',
         className
       )}
     >
-      <div className="flex items-center justify-between">
+      <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium text-neutral-600 truncate">
-            {label}
+          <p className="text-[15px] leading-snug text-neutral-600">{label}</p>
+          <p className="mt-1.5 text-3xl font-bold tracking-tight text-neutral-900 tabular-nums">
+            {value}
           </p>
-          <p className="text-2xl font-bold text-neutral-900 mt-1">{value}</p>
-          {change && (
-            <div
-              className={cn(
-                'flex items-center gap-1 mt-1',
-                changeColors[changeType]
-              )}
-            >
-              <ChangeIcon className="h-4 w-4" />
-              <span className="text-sm">{change}</span>
-            </div>
-          )}
         </div>
         {icon && (
-          <div className="p-3 bg-primary-100 rounded-lg shrink-0 ml-4">
+          <div className="mt-1 flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary-600">
             {icon}
           </div>
         )}
       </div>
+      {change && (
+        <p className={cn('mt-1.5 text-sm', changeColors[changeType])}>
+          {change}
+        </p>
+      )}
     </div>
   );
 }

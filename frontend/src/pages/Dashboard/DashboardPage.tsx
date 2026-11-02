@@ -1,39 +1,122 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router';
+import { useState, useEffect, useCallback } from 'react';
+import { Link, useNavigate } from 'react-router';
 import { DashboardLayout } from '@components/layout';
 import {
   Card,
-  CardHeader,
-  CardTitle,
   CardContent,
   StatsCard,
-  Badge,
   Button,
-  getStatusBadgeVariant,
+  PageHeader,
+  ListCard,
+  ListCardRow,
 } from '@components/shared';
 import { useAuthStore, useTenantStore } from '@store';
-import { customerService, CustomerStats } from '@services/customerService';
-import { jobService, JobStats, Job } from '@services/jobService';
-import { quoteService } from '@services/quoteService';
+import { jobService, JobStats, Job, JobStatus } from '@services/jobService';
 import { invoiceService, InvoiceStats } from '@services/invoiceService';
-import type { Quote, QuoteStats } from '@app-types/quote';
-import { getJobStatusLabel } from '@app-types';
+import { arAgingService } from '@services/arAgingService';
+import type { ARAgingBucketSummary, AgingBucket } from '@app-types/arAging';
 import {
   Users,
   Briefcase,
   FileText,
   Receipt,
-  ArrowRight,
   Building2,
   Rocket,
+  Plus,
+  Hourglass,
+  HandCoins,
+  Wrench,
 } from 'lucide-react';
-import { formatDollars } from '@/utils/money';
+import { formatDollars, toAmount } from '@/utils/money';
+import { isValidTimeZone } from '@/utils/epoch';
+import { cn } from '@utils/cn';
 
-interface DashboardStats {
-  customers: CustomerStats | null;
+/** Completed jobs that have no invoice yet (creating one moves a job to "invoiced"). */
+const JOBS_TO_INVOICE_SHOWN = 6;
+
+interface JobsToInvoice {
+  jobs: Job[];
+  total: number;
+  /** When the longest-waiting job was finished (epoch seconds). */
+  oldestDoneAt?: number;
+}
+
+interface DashboardData {
   jobs: JobStats | null;
-  quotes: QuoteStats | null;
   invoices: InvoiceStats | null;
+  toInvoice: JobsToInvoice | null;
+  aging: ARAgingBucketSummary[] | null;
+}
+
+const emptyData: DashboardData = {
+  jobs: null,
+  invoices: null,
+  toInvoice: null,
+  aging: null,
+};
+
+/** A/R aging bucket colours: green for current, warming to red as debt ages. */
+const BUCKET_STYLES: Record<AgingBucket, { bar: string; label: string }> = {
+  current: { bar: 'bg-success-600', label: 'Current' },
+  '1-30': { bar: 'bg-primary-300', label: '1–30 days' },
+  '31-60': { bar: 'bg-primary-500', label: '31–60' },
+  '61-90': { bar: 'bg-primary-700', label: '61–90' },
+  '90+': { bar: 'bg-error-600', label: '90+' },
+};
+const BUCKET_ORDER: AgingBucket[] = [
+  'current',
+  '1-30',
+  '31-60',
+  '61-90',
+  '90+',
+];
+const OVER_30_DAYS: AgingBucket[] = ['31-60', '61-90', '90+'];
+
+function customerName(job: Job): string {
+  const c = job.customer;
+  if (!c) return 'Customer';
+  return c.company_name || `${c.first_name} ${c.last_name}`.trim() || c.email;
+}
+
+/** What the job is worth, for the invoice: its total, actual or estimated cost. */
+function jobAmount(job: Job): number | undefined {
+  return [job.total_amount, job.actual_cost, job.estimated_cost]
+    .map((v) => toAmount(v))
+    .find((v) => v > 0);
+}
+
+function sumBuckets(
+  buckets: ARAgingBucketSummary[],
+  which: AgingBucket[]
+): number {
+  return buckets
+    .filter((b) => which.includes(b.bucket))
+    .reduce((sum, b) => sum + toAmount(b.total_amount), 0);
+}
+
+function useDateFormatters(timeZone: string | undefined) {
+  const tz = isValidTimeZone(timeZone) ? timeZone : undefined;
+  const longDate = new Intl.DateTimeFormat('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+    timeZone: tz,
+  });
+  const shortDate = new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    timeZone: tz,
+  });
+  const month = new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    timeZone: tz,
+  });
+  return {
+    today: longDate.format(new Date()),
+    thisMonth: month.format(new Date()),
+    shortEpoch: (epoch: number) => shortDate.format(new Date(epoch * 1000)),
+  };
 }
 
 export function DashboardPage() {
@@ -45,16 +128,10 @@ export function DashboardPage() {
     isLoading: tenantsLoading,
     loadTenants,
   } = useTenantStore();
-  const [stats, setStats] = useState<DashboardStats>({
-    customers: null,
-    jobs: null,
-    quotes: null,
-    invoices: null,
-  });
-  const [recentJobs, setRecentJobs] = useState<Job[]>([]);
-  const [recentQuotes, setRecentQuotes] = useState<Quote[]>([]);
+  const [data, setData] = useState<DashboardData>(emptyData);
   const [isLoading, setIsLoading] = useState(true);
   const [tenantsChecked, setTenantsChecked] = useState(false);
+  const dates = useDateFormatters(currentTenant?.settings?.timezone);
 
   // Load tenants on mount to check if user has any organizations
   useEffect(() => {
@@ -70,57 +147,47 @@ export function DashboardPage() {
     checkTenants();
   }, [loadTenants]);
 
-  const loadDashboardData = async () => {
+  const loadDashboardData = useCallback(async () => {
     setIsLoading(true);
-    try {
-      const [
-        customerStats,
-        jobStats,
-        quoteStats,
-        invoiceStats,
-        jobsResponse,
-        quotesResponse,
-      ] = await Promise.allSettled([
-        customerService.getStats(),
+    const [jobStats, invoiceStats, toInvoice, oldest, aging] =
+      await Promise.allSettled([
         jobService.getStats(),
-        quoteService.getStats(),
         invoiceService.getStats(),
         jobService.getJobs({
+          status: JobStatus.COMPLETED,
           page: 1,
-          page_size: 5,
-          sort_by: 'created_at',
+          page_size: JOBS_TO_INVOICE_SHOWN,
+          sort_by: 'actual_end_at',
           sort_order: 'desc',
         }),
-        quoteService.getQuotes({
+        jobService.getJobs({
+          status: JobStatus.COMPLETED,
           page: 1,
-          page_size: 5,
-          sort_by: 'created_at',
-          sort_order: 'desc',
+          page_size: 1,
+          sort_by: 'actual_end_at',
+          sort_order: 'asc',
         }),
+        arAgingService.getBucketSummary(),
       ]);
 
-      setStats({
-        customers:
-          customerStats.status === 'fulfilled' ? customerStats.value : null,
-        jobs: jobStats.status === 'fulfilled' ? jobStats.value : null,
-        quotes: quoteStats.status === 'fulfilled' ? quoteStats.value : null,
-        invoices:
-          invoiceStats.status === 'fulfilled' ? invoiceStats.value : null,
-      });
-
-      if (jobsResponse.status === 'fulfilled') {
-        setRecentJobs(jobsResponse.value.jobs);
-      }
-
-      if (quotesResponse.status === 'fulfilled') {
-        setRecentQuotes(quotesResponse.value.quotes);
-      }
-    } catch (error) {
-      console.error('Failed to load dashboard data:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    setData({
+      jobs: jobStats.status === 'fulfilled' ? jobStats.value : null,
+      invoices: invoiceStats.status === 'fulfilled' ? invoiceStats.value : null,
+      toInvoice:
+        toInvoice.status === 'fulfilled'
+          ? {
+              jobs: toInvoice.value.jobs ?? [],
+              total: toInvoice.value.total ?? 0,
+              oldestDoneAt:
+                oldest.status === 'fulfilled'
+                  ? oldest.value.jobs?.[0]?.actual_end_at
+                  : undefined,
+            }
+          : null,
+      aging: aging.status === 'fulfilled' ? aging.value : null,
+    });
+    setIsLoading(false);
+  }, []);
 
   // Only load dashboard data if user has an organization
   useEffect(() => {
@@ -129,46 +196,7 @@ export function DashboardPage() {
     } else {
       setIsLoading(false);
     }
-  }, [currentTenant]);
-
-  const quickActions = [
-    {
-      label: 'New Customer',
-      icon: Users,
-      onClick: () => navigate('/customers/new'),
-      color: 'bg-blue-100 text-blue-600',
-    },
-    {
-      label: 'New Job',
-      icon: Briefcase,
-      onClick: () => navigate('/jobs/new'),
-      color: 'bg-green-100 text-green-600',
-    },
-    {
-      label: 'New Quote',
-      icon: FileText,
-      onClick: () => navigate('/quotes/new'),
-      color: 'bg-purple-100 text-purple-600',
-    },
-    {
-      label: 'New Invoice',
-      icon: Receipt,
-      onClick: () => navigate('/invoices/new'),
-      color: 'bg-orange-100 text-orange-600',
-    },
-  ];
-
-  const getQuoteStatusLabel = (status: string): string => {
-    const labels: Record<string, string> = {
-      draft: 'Draft',
-      sent: 'Sent',
-      viewed: 'Viewed',
-      accepted: 'Accepted',
-      declined: 'Declined',
-      expired: 'Expired',
-    };
-    return labels[status] || status;
-  };
+  }, [currentTenant, loadDashboardData]);
 
   // Show loading while checking tenants
   if (!tenantsChecked || tenantsLoading) {
@@ -250,238 +278,283 @@ export function DashboardPage() {
     );
   }
 
+  const { jobs, invoices, toInvoice, aging } = data;
+  const firstName = user?.first_name?.trim() || user?.email?.split('@')[0];
+  const loadingValue = '…';
+
+  const activeJobs =
+    (jobs?.scheduled_jobs ?? 0) +
+    (jobs?.in_progress_jobs ?? 0) +
+    (jobs?.on_hold_jobs ?? 0);
+  const jobsToInvoiceCount =
+    toInvoice?.total ?? jobs?.by_status?.[JobStatus.COMPLETED] ?? 0;
+  const over30 = aging ? sumBuckets(aging, OVER_30_DAYS) : null;
+
+  let arSubline: string | undefined;
+  if (over30 !== null && over30 > 0) {
+    arSubline = `${formatDollars(over30, { wholeUnits: true })} over 30 days`;
+  } else if (invoices && toAmount(invoices.overdue_amount) > 0) {
+    arSubline = `${formatDollars(invoices.overdue_amount, { wholeUnits: true })} overdue`;
+  } else if (invoices) {
+    arSubline =
+      invoices.outstanding_invoices > 0
+        ? 'Nothing past due'
+        : 'No open invoices';
+  }
+
+  const quickActions = [
+    { label: 'New quote', icon: FileText, to: '/quotes/new' },
+    { label: 'Create invoice', icon: Receipt, to: '/invoices/new' },
+    { label: 'Add customer', icon: Building2, to: '/customers/new' },
+    { label: 'New job', icon: Briefcase, to: '/jobs/new' },
+  ];
+
+  const agingTotal = aging
+    ? aging.reduce((sum, b) => sum + toAmount(b.total_amount), 0)
+    : 0;
+  const shownJobs = toInvoice?.jobs ?? [];
+  const moreToInvoice = Math.max(0, jobsToInvoiceCount - shownJobs.length);
+
   return (
     <DashboardLayout>
-      <div className="p-6 lg:p-8">
-        {/* Welcome Section */}
-        <div className="mb-8">
-          <h1 className="text-2xl lg:text-3xl font-bold text-neutral-900">
-            Welcome back{user?.email ? `, ${user.email.split('@')[0]}` : ''}!
-          </h1>
-          <p className="text-neutral-600 mt-1">
-            Here's an overview of your business today.
-          </p>
-        </div>
+      <div className="mx-auto max-w-[1440px] p-4 sm:p-6 lg:p-8">
+        <PageHeader
+          title={`Welcome back${firstName ? `, ${firstName}` : ''}`}
+          subtitle={`${dates.today}. Here's where your jobs and money stand.`}
+          actions={
+            <Button
+              variant="primary"
+              onClick={() => navigate('/jobs/new')}
+              className="gap-2"
+            >
+              <Plus className="h-4 w-4" />
+              New job
+            </Button>
+          }
+        />
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-8">
+        {/* KPI cards */}
+        <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4 lg:gap-6">
           <StatsCard
-            label="Total Customers"
-            value={
-              isLoading
-                ? '...'
-                : stats.customers?.total_customers?.toString() || '0'
-            }
-            icon={<Users className="h-6 w-6 text-primary-600" />}
+            label="Active jobs"
+            value={isLoading ? loadingValue : activeJobs}
+            icon={<Wrench className="h-6 w-6" />}
             change={
-              stats.customers?.active_customers
-                ? `${stats.customers.active_customers} active`
+              jobs
+                ? `${jobs.scheduled_jobs} scheduled · ${jobs.in_progress_jobs} in progress`
                 : undefined
             }
-            changeType="neutral"
           />
           <StatsCard
-            label="Active Jobs"
-            value={
-              isLoading
-                ? '...'
-                : (
-                    (stats.jobs?.in_progress_jobs || 0) +
-                    (stats.jobs?.scheduled_jobs || 0) +
-                    (stats.jobs?.on_hold_jobs || 0)
-                  ).toString()
-            }
-            icon={<Briefcase className="h-6 w-6 text-primary-600" />}
+            label="Jobs needing invoice"
+            value={isLoading ? loadingValue : jobsToInvoiceCount}
+            icon={<Receipt className="h-6 w-6" />}
             change={
-              stats.jobs?.pending_jobs
-                ? `${stats.jobs.pending_jobs} pending`
-                : undefined
+              toInvoice?.oldestDoneAt
+                ? `Oldest done ${dates.shortEpoch(toInvoice.oldestDoneAt)}`
+                : jobsToInvoiceCount === 0 && !isLoading
+                  ? 'All caught up'
+                  : undefined
             }
-            changeType="neutral"
-          />
-          <StatsCard
-            label="Pending Quotes"
-            value={
-              isLoading ? '...' : stats.quotes?.sent_quotes?.toString() || '0'
-            }
-            icon={<FileText className="h-6 w-6 text-primary-600" />}
-            change={
-              stats.quotes?.draft_quotes
-                ? `${stats.quotes.draft_quotes} drafts`
-                : undefined
-            }
-            changeType="neutral"
           />
           <StatsCard
             label="Outstanding A/R"
             value={
               isLoading
-                ? '...'
-                : formatDollars(stats.invoices?.total_outstanding || 0)
+                ? loadingValue
+                : formatDollars(invoices?.total_outstanding ?? 0, {
+                    wholeUnits: true,
+                  })
             }
-            icon={<Receipt className="h-6 w-6 text-primary-600" />}
-            change={
-              stats.invoices?.overdue_invoices
-                ? `${formatDollars(stats.invoices.overdue_amount)} overdue`
-                : undefined
-            }
+            icon={<Hourglass className="h-6 w-6" />}
+            change={arSubline}
             changeType={
-              stats.invoices?.overdue_invoices ? 'negative' : 'neutral'
+              (over30 ?? 0) > 0 || toAmount(invoices?.overdue_amount) > 0
+                ? 'negative'
+                : 'neutral'
             }
+          />
+          <StatsCard
+            label={`Collected in ${dates.thisMonth}`}
+            value={
+              isLoading
+                ? loadingValue
+                : formatDollars(invoices?.collected_this_month ?? 0, {
+                    wholeUnits: true,
+                  })
+            }
+            icon={<HandCoins className="h-6 w-6" />}
+            change={`Payments since ${dates.thisMonth} 1`}
           />
         </div>
 
-        {/* Quick Actions */}
-        <Card variant="elevated" padding="lg" className="mb-8">
-          <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
-              {quickActions.map((action) => {
-                const Icon = action.icon;
-                return (
-                  <button
-                    key={action.label}
-                    onClick={action.onClick}
-                    className="flex flex-col items-center justify-center gap-2 p-4 rounded-lg border border-neutral-200 hover:border-primary-300 hover:bg-primary-50 transition-colors"
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+          {/* Jobs needing invoice */}
+          <ListCard
+            className="lg:col-span-7"
+            title="Jobs needing invoice"
+            count={isLoading ? undefined : jobsToInvoiceCount}
+            action={{ label: 'View all', to: '/jobs' }}
+            bodyClassName="px-2 pb-2"
+            footer={
+              shownJobs.length > 0 ? (
+                <>
+                  <span className="text-sm text-neutral-600">
+                    {moreToInvoice > 0
+                      ? `${moreToInvoice} more ready to invoice`
+                      : 'Each job becomes its own invoice'}
+                  </span>
+                  <Link
+                    to="/invoices"
+                    className="text-sm font-medium text-primary-600 hover:text-primary-700"
                   >
-                    <div className={`p-2 rounded-lg ${action.color}`}>
-                      <Icon className="h-5 w-5" />
-                    </div>
-                    <span className="text-sm font-medium text-neutral-700">
-                      {action.label}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Recent Activity Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Recent Jobs */}
-          <Card variant="elevated" padding="lg">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle>Recent Jobs</CardTitle>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => navigate('/jobs')}
-                  className="flex items-center gap-1 text-primary-600"
-                >
-                  View all
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
+                    Go to invoices
+                  </Link>
+                </>
+              ) : undefined
+            }
+          >
+            {isLoading ? (
+              <p className="px-4 py-8 text-center text-sm text-neutral-500">
+                Loading…
+              </p>
+            ) : shownJobs.length === 0 ? (
+              <div className="px-4 py-10 text-center">
+                <p className="font-medium text-neutral-900">
+                  Nothing waiting to be invoiced
+                </p>
+                <p className="mt-1 text-sm text-neutral-500">
+                  Completed jobs show up here until they're invoiced.
+                </p>
               </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3 mt-4">
-                {isLoading ? (
-                  <div className="text-center py-4 text-neutral-500">
-                    Loading...
-                  </div>
-                ) : recentJobs.length === 0 ? (
-                  <div className="text-center py-4 text-neutral-500">
-                    No recent jobs
-                  </div>
-                ) : (
-                  recentJobs.map((job) => (
-                    <div
+            ) : (
+              <ul className="space-y-1">
+                {shownJobs.map((job, i) => {
+                  const amount = jobAmount(job);
+                  const done = job.actual_end_at
+                    ? `done ${dates.shortEpoch(job.actual_end_at)}`
+                    : 'completed';
+                  return (
+                    <ListCardRow
                       key={job.id}
-                      onClick={() => navigate(`/jobs/${job.id}`)}
-                      className="flex items-center justify-between p-3 rounded-lg bg-neutral-50 hover:bg-neutral-100 cursor-pointer transition-colors"
-                    >
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono text-sm text-primary-600">
-                            {job.job_number}
-                          </span>
-                          <Badge
-                            variant={getStatusBadgeVariant(job.status)}
-                            size="sm"
-                          >
-                            {getJobStatusLabel(job.status)}
-                          </Badge>
-                        </div>
-                        <p className="text-sm text-neutral-700 font-medium truncate mt-1">
-                          {job.title}
-                        </p>
-                        {job.customer && (
-                          <p className="text-xs text-neutral-500 truncate">
-                            {job.customer.first_name} {job.customer.last_name}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </CardContent>
-          </Card>
+                      className={cn(i % 2 === 0 && 'rounded-xl bg-neutral-50')}
+                      to={`/jobs/${job.id}`}
+                      reference={job.job_number}
+                      title={customerName(job)}
+                      subtitle={`${job.title} · ${done}`}
+                      value={
+                        amount !== undefined ? formatDollars(amount) : null
+                      }
+                      trailing={
+                        <Link
+                          to={`/invoices/new?job_id=${job.id}`}
+                          className="mr-3 shrink-0 rounded-lg border border-primary-600 px-3 py-1.5 text-sm font-medium text-primary-600 hover:bg-primary-50"
+                          aria-label={`Create invoice for ${job.job_number}`}
+                        >
+                          Invoice
+                        </Link>
+                      }
+                    />
+                  );
+                })}
+              </ul>
+            )}
+          </ListCard>
 
-          {/* Recent Quotes */}
-          <Card variant="elevated" padding="lg">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle>Recent Quotes</CardTitle>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => navigate('/quotes')}
-                  className="flex items-center gap-1 text-primary-600"
+          <div className="flex flex-col gap-6 lg:col-span-5">
+            {/* A/R aging */}
+            <ListCard
+              title="A/R aging"
+              action={
+                <Link
+                  to="/reports/ar-aging"
+                  className="text-[15px] font-semibold text-neutral-900 tabular-nums hover:text-primary-700"
+                  title="Open the A/R aging report"
                 >
-                  View all
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3 mt-4">
-                {isLoading ? (
-                  <div className="text-center py-4 text-neutral-500">
-                    Loading...
+                  {aging ? formatDollars(agingTotal, { wholeUnits: true }) : ''}
+                </Link>
+              }
+              bodyClassName="px-6 pb-6"
+            >
+              {isLoading ? (
+                <p className="py-6 text-center text-sm text-neutral-500">
+                  Loading…
+                </p>
+              ) : !aging ? (
+                <p className="py-6 text-center text-sm text-neutral-500">
+                  Aging isn't available right now.
+                </p>
+              ) : agingTotal <= 0 ? (
+                <p className="py-6 text-center text-sm text-neutral-500">
+                  No money owed right now.
+                </p>
+              ) : (
+                <>
+                  <div
+                    className="mb-4 flex h-3 gap-0.5 overflow-hidden rounded-full bg-neutral-100"
+                    role="img"
+                    aria-label="Outstanding balance by age"
+                  >
+                    {BUCKET_ORDER.map((bucket) => {
+                      const amount = sumBuckets(aging, [bucket]);
+                      if (amount <= 0) return null;
+                      return (
+                        <div
+                          key={bucket}
+                          className={BUCKET_STYLES[bucket].bar}
+                          style={{ width: `${(amount / agingTotal) * 100}%` }}
+                        />
+                      );
+                    })}
                   </div>
-                ) : recentQuotes.length === 0 ? (
-                  <div className="text-center py-4 text-neutral-500">
-                    No recent quotes
-                  </div>
-                ) : (
-                  recentQuotes.map((quote) => (
-                    <div
-                      key={quote.id}
-                      onClick={() => navigate(`/quotes/${quote.id}`)}
-                      className="flex items-center justify-between p-3 rounded-lg bg-neutral-50 hover:bg-neutral-100 cursor-pointer transition-colors"
+                  <ul className="space-y-2">
+                    {BUCKET_ORDER.map((bucket) => (
+                      <li
+                        key={bucket}
+                        className="flex items-center justify-between text-[15px]"
+                      >
+                        <span className="flex items-center gap-2.5 text-neutral-700">
+                          <span
+                            className={cn(
+                              'h-2.5 w-2.5 rounded-full',
+                              BUCKET_STYLES[bucket].bar
+                            )}
+                          />
+                          {BUCKET_STYLES[bucket].label}
+                        </span>
+                        <span className="font-medium text-neutral-900 tabular-nums">
+                          {formatDollars(sumBuckets(aging, [bucket]), {
+                            wholeUnits: true,
+                          })}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
+            </ListCard>
+
+            {/* Quick actions */}
+            <ListCard title="Quick actions" bodyClassName="px-6 pb-6">
+              <div className="grid grid-cols-2 gap-3">
+                {quickActions.map((action) => {
+                  const Icon = action.icon;
+                  return (
+                    <Link
+                      key={action.label}
+                      to={action.to}
+                      className="flex items-center gap-3 rounded-xl border border-neutral-200 px-3 py-3 text-[15px] text-neutral-800 transition-colors hover:border-primary-300 hover:bg-primary-50"
                     >
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono text-sm text-primary-600">
-                            {quote.quote_number}
-                          </span>
-                          <Badge
-                            variant={getStatusBadgeVariant(quote.status)}
-                            size="sm"
-                          >
-                            {getQuoteStatusLabel(quote.status)}
-                          </Badge>
-                        </div>
-                        {quote.customer && (
-                          <p className="text-sm text-neutral-700 truncate mt-1">
-                            {quote.customer.name || quote.customer.email}
-                          </p>
-                        )}
-                        <p className="text-xs text-neutral-500 mt-0.5">
-                          {formatDollars(quote.total)}
-                        </p>
-                      </div>
-                    </div>
-                  ))
-                )}
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary-50 text-primary-600">
+                        <Icon className="h-4 w-4" />
+                      </span>
+                      <span className="truncate">{action.label}</span>
+                    </Link>
+                  );
+                })}
               </div>
-            </CardContent>
-          </Card>
+            </ListCard>
+          </div>
         </div>
       </div>
     </DashboardLayout>
