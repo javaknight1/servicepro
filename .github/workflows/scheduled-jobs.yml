@@ -13,6 +13,8 @@
 # Schedule (UTC):
 #   hourly at :15   payment-reminders    unpaid-invoice reminder emails
 #   hourly at :15   quote-expiry         sent quotes past valid_until -> expired
+#   :05/:20/:35/:50 imports              queued customer CSV imports (> 1,000 rows;
+#                                        smaller files import during the upload)
 # Add a job here only once the API exposes /internal/jobs/<name> for it.
 # GitHub may delay scheduled runs under load; the jobs must tolerate a late or
 # skipped tick (they select by due-time, not "exactly now").
@@ -23,6 +25,7 @@ name: Scheduled jobs
 on:
   schedule:
     - cron: '15 * * * *'
+    - cron: '5,20,35,50 * * * *'
   workflow_dispatch:
     inputs:
       job:
@@ -33,6 +36,7 @@ on:
           - all
           - payment-reminders
           - quote-expiry
+          - imports
 
 concurrency:
   group: scheduled-jobs
@@ -78,13 +82,17 @@ jobs:
 
           if [ "$EVENT" = "workflow_dispatch" ]; then
             if [ "$INPUT_JOB" = "all" ]; then
-              jobs="payment-reminders quote-expiry"
+              jobs="payment-reminders quote-expiry imports"
             else
               jobs="$INPUT_JOB"
             fi
-          else
+          elif [ "$SCHEDULE" = "15 * * * *" ]; then
             # Hourly tick: reminders and quote expiry every hour.
             jobs="payment-reminders quote-expiry"
+          else
+            # Quarter-hour tick: queued CSV imports. (Each tick wakes the Neon
+            # compute; an idle run is one cheap UPDATE.)
+            jobs="imports"
           fi
 
           echo "trigger=${EVENT} schedule=${SCHEDULE:-n/a} jobs=${jobs}"

@@ -98,6 +98,19 @@ Form fields:
 | `duplicate_handling` | no       | `error` (default), `skip` or `update` — matched by email |
 | `dry_run`            | no       | `true` to validate and preview without saving            |
 
+Limits: 5 MiB and 10,000 data rows per file (413 / 400 `file_too_large` above that).
+A file with any row-level format error is rejected whole (400 `validation_error`).
+
+How it runs: the upload creates an import job holding the parsed rows. Files of
+up to 1,000 rows are imported during the request (the 202 response already has
+status `completed` or `failed`). Larger files stay `pending` and are imported by
+`POST /internal/jobs/imports`, which the scheduler calls every 15 minutes
+(`.github/workflows/scheduled-jobs.yml`; the dev server runs it every minute with
+`RUN_BACKGROUND_WORKERS`). Each job is claimed atomically before it runs, so it is
+imported once even when runs overlap, and always into its own tenant. A job stuck
+in `processing` for 15 minutes is marked `failed` (not re-run, which could
+duplicate rows). The stored rows are deleted when the job finishes.
+
 ### Get Import Template
 
 ```http
@@ -135,7 +148,7 @@ first_name,last_name,company_name,email,phone_primary,phone_secondary,billing_ad
 ### Status
 
 `GET /api/v1/customers/import/:job_id` returns the import job: status, row
-counts and per-row errors (row, field, message). Exact shape: Swagger UI at
+counts and per-row errors (row, field, message, row data). Exact shape: Swagger UI at
 `/api/docs` (Import/Export tag).
 
 ## Validation Rules

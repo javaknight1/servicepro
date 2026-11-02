@@ -164,3 +164,4 @@ behind or dirty.
 | GET    | /health, /health/live, /health/ready | readiness includes schema and redis state                  |
 | POST   | /internal/jobs/payment-reminders     | header `X-Internal-Jobs-Token: $INTERNAL_JOBS_SECRET`      |
 | POST   | /internal/jobs/quote-expiry          | same header; sent/viewed quotes past valid_until → expired |
+| POST   | /internal/jobs/imports               | same header; runs queued customer CSV imports              |

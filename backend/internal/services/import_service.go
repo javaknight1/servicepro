@@ -7,61 +7,96 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/javaknight1/servicepro/backend/internal/tenancy"
-
 	"github.com/google/uuid"
-	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/repository"
+	"github.com/javaknight1/servicepro/backend/internal/tenancy"
 	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"
 	csvpkg "github.com/javaknight1/servicepro/backend/pkg/csv"
 )
 
-// ImportService handles customer import operations
+// Import limits (finding F-23). The upload handler enforces the byte and row
+// caps; files up to ImportInlineMaxRows are imported during the upload
+// request, larger ones wait for POST /internal/jobs/imports.
+const (
+	ImportMaxUploadBytes int64 = 5 << 20 // 5 MiB
+	ImportMaxRows              = 10000
+	ImportInlineMaxRows        = 1000
+
+	// importStaleAfter: a processing job with no progress for this long was
+	// interrupted (instance stopped mid-import). It is failed, not retried:
+	// re-running would create the already-imported rows twice.
+	importStaleAfter = 15 * time.Minute
+	// importInterruptedMessage is shown to the user on an interrupted job.
+	importInterruptedMessage = "Import was interrupted before it finished; check your customers and upload the remaining rows again"
+)
+
+// importPayload is what a queued job carries in import_jobs.payload.
+type importPayload struct {
+	DuplicateHandling string                `json:"duplicate_handling"`
+	DryRun            bool                  `json:"dry_run"`
+	Rows              []models.CSVImportRow `json:"rows"`
+}
+
+// ImportRunResult summarizes one POST /internal/jobs/imports pass.
+type ImportRunResult struct {
+	Claimed     int   `json:"claimed" example:"2"`
+	Completed   int   `json:"completed" example:"2"`
+	Failed      int   `json:"failed" example:"0"`
+	Interrupted int64 `json:"interrupted" example:"0"`
+	Remaining   bool  `json:"remaining" example:"false"`
+}
+
+// ImportService handles customer import operations.
+//
+// Lifecycle: CreateImportJob stores the parsed rows as a pending job; a
+// runner claims it atomically (pending → processing, one winner), imports the
+// rows under the job's own tenant, records per-row failures in import_errors,
+// then marks it completed/failed and clears the payload.
 type ImportService struct {
 	db           *gorm.DB
 	customerRepo repository.CustomerRepositoryInterface
-	redisClient  *redis.Client
+	now          func() time.Time
 }
 
 // NewImportService creates a new import service
-func NewImportService(
-	db *gorm.DB,
-	customerRepo repository.CustomerRepositoryInterface,
-	redisClient *redis.Client,
-) *ImportService {
-	return &ImportService{
-		db:           db,
-		customerRepo: customerRepo,
-		redisClient:  redisClient,
-	}
+func NewImportService(db *gorm.DB, customerRepo repository.CustomerRepositoryInterface) *ImportService {
+	return &ImportService{db: db, customerRepo: customerRepo, now: time.Now}
 }
 
-// CreateImportJob creates a new import job
+// CreateImportJob stores a pending import job for the caller's tenant (taken
+// from ctx by the tenancy plugin) with its rows and options.
 func (s *ImportService) CreateImportJob(
 	ctx context.Context,
 	userID uuid.UUID,
 	filename string,
-	totalRows int,
+	rows []models.CSVImportRow,
+	duplicateHandling string,
+	dryRun bool,
 ) (*models.ImportJob, error) {
+	data, err := json.Marshal(importPayload{DuplicateHandling: duplicateHandling, DryRun: dryRun, Rows: rows})
+	if err != nil {
+		return nil, fmt.Errorf("marshal import payload: %w", err)
+	}
+	payload := string(data)
 	job := &models.ImportJob{
 		ID:        uuid.New(),
 		UserID:    userID,
 		Filename:  filename,
 		Status:    models.ImportJobStatusPending,
-		TotalRows: totalRows,
+		TotalRows: len(rows),
+		Payload:   &payload,
 	}
-
 	if err := s.db.WithContext(ctx).Create(job).Error; err != nil {
 		return nil, fmt.Errorf("failed to create import job: %w", err)
 	}
-
 	return job, nil
 }
 
-// GetImportJob retrieves an import job by ID
+// GetImportJob retrieves an import job by ID (tenant-scoped: another
+// tenant's job is not found).
 func (s *ImportService) GetImportJob(ctx context.Context, jobID uuid.UUID) (*models.ImportJob, error) {
 	var job models.ImportJob
 	if err := s.db.WithContext(ctx).Where("id = ?", jobID).First(&job).Error; err != nil {
@@ -79,292 +114,271 @@ func (s *ImportService) GetImportErrors(ctx context.Context, jobID uuid.UUID, li
 	if _, err := s.GetImportJob(ctx, jobID); err != nil {
 		return nil, err
 	}
-	var errors []models.ImportError
+	var errs []models.ImportError
 	query := s.db.WithContext(ctx).Where("job_id = ?", jobID).Order("row_number ASC")
-
 	if limit > 0 {
 		query = query.Limit(limit)
 	}
-
-	if err := query.Find(&errors).Error; err != nil {
+	if err := query.Find(&errs).Error; err != nil {
 		return nil, fmt.Errorf("failed to get import errors: %w", err)
 	}
-
-	return errors, nil
+	return errs, nil
 }
 
-// UpdateJobStatus updates the status of an import job
-func (s *ImportService) UpdateJobStatus(
-	ctx context.Context,
-	jobID uuid.UUID,
-	status models.ImportJobStatus,
-	errorSummary *string,
-) error {
-	updates := map[string]interface{}{
-		"status": status,
+// claim runs an UPDATE … RETURNING that moves at most one pending job to
+// processing. Raw SQL is not rewritten by the tenancy plugin, so the caller's
+// WHERE decides the scope.
+func (s *ImportService) claim(ctx context.Context, where string, args ...any) (*models.ImportJob, error) {
+	now := s.now()
+	var jobs []models.ImportJob
+	q := `UPDATE import_jobs SET status = 'processing', started_at = ?, updated_at = ? WHERE ` + where + ` RETURNING *`
+	if err := s.db.WithContext(ctx).Raw(q, append([]any{now, now}, args...)...).Scan(&jobs).Error; err != nil {
+		return nil, fmt.Errorf("claim import job: %w", err)
 	}
-
-	if status == models.ImportJobStatusProcessing {
-		now := time.Now()
-		updates["started_at"] = &now
+	if len(jobs) == 0 {
+		return nil, nil
 	}
-
-	if status == models.ImportJobStatusCompleted || status == models.ImportJobStatusFailed {
-		now := time.Now()
-		updates["completed_at"] = &now
-	}
-
-	if errorSummary != nil {
-		updates["error_summary"] = errorSummary
-	}
-
-	return s.db.WithContext(ctx).Model(&models.ImportJob{}).Where("id = ?", jobID).Updates(updates).Error
+	return &jobs[0], nil
 }
 
-// UpdateJobProgress updates the progress of an import job
-func (s *ImportService) UpdateJobProgress(
-	ctx context.Context,
-	jobID uuid.UUID,
-	processedRows, successfulRows, failedRows int,
-) error {
-	updates := map[string]interface{}{
-		"processed_rows":  processedRows,
-		"successful_rows": successfulRows,
-		"failed_rows":     failedRows,
-	}
-
-	return s.db.WithContext(ctx).Model(&models.ImportJob{}).Where("id = ?", jobID).Updates(updates).Error
-}
-
-// ProcessImport processes an import job
-func (s *ImportService) ProcessImport(
-	ctx context.Context,
-	jobID uuid.UUID,
-	rows []models.CSVImportRow,
-	duplicateHandling string,
-	dryRun bool,
-) error {
-	// Update job status to processing
-	if err := s.UpdateJobStatus(ctx, jobID, models.ImportJobStatusProcessing, nil); err != nil {
-		return err
-	}
-
-	var processedRows, successfulRows, failedRows int
-	var importErrors []models.ImportError
-
-	for i, row := range rows {
-		// Validate additional business rules
-		validationErrors := csvpkg.ValidateCustomerData(&row)
-		if len(validationErrors) > 0 {
-			for _, errMsg := range validationErrors {
-				importErrors = append(importErrors, models.ImportError{
-					JobID:     jobID,
-					RowNumber: i + 1,
-					Error:     errMsg,
-				})
-			}
-			failedRows++
-			processedRows++
-			continue
-		}
-
-		// Check for duplicates
-		existingCustomer, err := s.customerRepo.WithContext(ctx).GetByEmail(row.Email)
-		if err == nil && existingCustomer != nil {
-			// Email already exists
-			switch duplicateHandling {
-			case "skip":
-				successfulRows++ // Count as success (skipped)
-			case "update":
-				if !dryRun {
-					// Update existing customer
-					customer := row.ToCustomer()
-					customer.ID = existingCustomer.ID
-					if err := s.customerRepo.WithContext(ctx).Update(customer); err != nil {
-						importErrors = append(importErrors, models.ImportError{
-							JobID:     jobID,
-							RowNumber: i + 1,
-							Field:     "email",
-							Error:     fmt.Sprintf("failed to update: %v", err),
-						})
-						failedRows++
-					} else {
-						successfulRows++
-					}
-				} else {
-					successfulRows++ // Dry run
-				}
-			case "error":
-				importErrors = append(importErrors, models.ImportError{
-					JobID:     jobID,
-					RowNumber: i + 1,
-					Field:     "email",
-					Error:     "duplicate email address",
-				})
-				failedRows++
-			default:
-				importErrors = append(importErrors, models.ImportError{
-					JobID:     jobID,
-					RowNumber: i + 1,
-					Field:     "email",
-					Error:     "duplicate email address",
-				})
-				failedRows++
-			}
-		} else {
-			// Create new customer
-			if !dryRun {
-				customer := row.ToCustomer()
-				if err := s.customerRepo.WithContext(ctx).Create(customer); err != nil {
-					importErrors = append(importErrors, models.ImportError{
-						JobID:     jobID,
-						RowNumber: i + 1,
-						Error:     fmt.Sprintf("failed to create: %v", err),
-					})
-					failedRows++
-				} else {
-					successfulRows++
-				}
-			} else {
-				successfulRows++ // Dry run
-			}
-		}
-
-		processedRows++
-
-		// Update progress every 10 rows
-		if processedRows%10 == 0 {
-			if err := s.UpdateJobProgress(ctx, jobID, processedRows, successfulRows, failedRows); err != nil {
-				// Log error but continue processing
-				logging.Error(ctx, "[IMPORT] Failed to update progress", map[string]any{"error": err})
-			}
-		}
-	}
-
-	// Save all import errors
-	if len(importErrors) > 0 {
-		if err := s.db.WithContext(ctx).Create(&importErrors).Error; err != nil {
-			logging.Error(ctx, "[IMPORT] Failed to save import errors", map[string]any{"error": err})
-		}
-	}
-
-	// Final progress update
-	if err := s.UpdateJobProgress(ctx, jobID, processedRows, successfulRows, failedRows); err != nil {
-		logging.Error(ctx, "[IMPORT] Failed to update final progress", map[string]any{"error": err})
-	}
-
-	// Update job status
-	var errorSummary *string
-	if failedRows > 0 {
-		summary := fmt.Sprintf("%d rows failed to import", failedRows)
-		errorSummary = &summary
-	}
-
-	status := models.ImportJobStatusCompleted
-	if failedRows == len(rows) {
-		status = models.ImportJobStatusFailed
-	}
-
-	if err := s.UpdateJobStatus(ctx, jobID, status, errorSummary); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// EnqueueImportJob enqueues an import job for background processing
-func (s *ImportService) EnqueueImportJob(
-	ctx context.Context,
-	jobID uuid.UUID,
-	rows []models.CSVImportRow,
-	duplicateHandling string,
-	dryRun bool,
-) error {
-	// The worker has no request context, so carry the caller's tenant with
-	// the job (taken from ctx, which the tenant middleware set).
+// ClaimImportJob claims one pending job of the caller's tenant. It returns
+// nil when the job is not pending any more (another runner claimed it) or
+// belongs to another tenant.
+func (s *ImportService) ClaimImportJob(ctx context.Context, jobID uuid.UUID) (*models.ImportJob, error) {
 	tenantID, err := tenancy.MustTenantID(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
-
-	// Serialize the job data
-	jobData := map[string]interface{}{
-		"tenant_id":          tenantID.String(),
-		"job_id":             jobID.String(),
-		"rows":               rows,
-		"duplicate_handling": duplicateHandling,
-		"dry_run":            dryRun,
-	}
-
-	data, err := json.Marshal(jobData)
-	if err != nil {
-		return fmt.Errorf("failed to marshal job data: %w", err)
-	}
-
-	// Add to Redis queue
-	queueKey := "import:queue"
-	if err := s.redisClient.RPush(ctx, queueKey, data).Err(); err != nil {
-		return fmt.Errorf("failed to enqueue job: %w", err)
-	}
-
-	return nil
+	return s.claim(ctx, `id = ? AND tenant_id = ? AND status = 'pending'`, jobID, tenantID)
 }
 
-// ProcessNextJob processes the next job from the queue
-func (s *ImportService) ProcessNextJob(ctx context.Context) error {
-	queueKey := "import:queue"
+// claimNext claims the oldest pending job of any tenant. FOR UPDATE SKIP
+// LOCKED lets concurrent runners each take a different job.
+func (s *ImportService) claimNext(ctx context.Context) (*models.ImportJob, error) {
+	return s.claim(ctx, `id = (SELECT id FROM import_jobs WHERE status = 'pending'
+		ORDER BY created_at, id LIMIT 1 FOR UPDATE SKIP LOCKED) AND status = 'pending'`)
+}
 
-	// Pop from queue
-	result, err := s.redisClient.BLPop(ctx, 5*time.Second, queueKey).Result()
+// failStale fails jobs stuck in processing (no progress for importStaleAfter).
+func (s *ImportService) failStale(ctx context.Context) (int64, error) {
+	now := s.now()
+	res := s.db.WithContext(ctx).Exec(`UPDATE import_jobs
+		SET status = 'failed', error_summary = ?, completed_at = ?, updated_at = ?, payload = NULL
+		WHERE status = 'processing' AND updated_at < ?`,
+		importInterruptedMessage, now, now, now.Add(-importStaleAfter))
+	if res.Error != nil {
+		return 0, fmt.Errorf("fail stale import jobs: %w", res.Error)
+	}
+	return res.RowsAffected, nil
+}
+
+// ProcessPending is one POST /internal/jobs/imports pass: it fails
+// interrupted jobs, then claims and runs pending jobs one at a time until none
+// are left, maxJobs ran, or budget elapsed. Safe to run concurrently.
+func (s *ImportService) ProcessPending(ctx context.Context, maxJobs int, budget time.Duration) (ImportRunResult, error) {
+	var result ImportRunResult
+	sysCtx := tenancy.WithSystem(ctx)
+
+	n, err := s.failStale(sysCtx)
 	if err != nil {
-		if errors.Is(err, redis.Nil) {
-			// No jobs in queue
-			return nil
+		return result, err
+	}
+	result.Interrupted = n
+
+	deadline := s.now().Add(budget)
+	for {
+		if result.Claimed >= maxJobs || !s.now().Before(deadline) {
+			result.Remaining = true // maybe; the next tick picks it up
+			return result, nil
 		}
-		return fmt.Errorf("failed to dequeue job: %w", err)
+		job, err := s.claimNext(sysCtx)
+		if err != nil {
+			return result, err
+		}
+		if job == nil {
+			return result, nil
+		}
+		result.Claimed++
+		finished, err := s.RunImportJob(ctx, job)
+		if err != nil {
+			return result, err
+		}
+		if finished.Status == models.ImportJobStatusFailed {
+			result.Failed++
+		} else {
+			result.Completed++
+		}
+	}
+}
+
+// RunImportJob imports a claimed job's rows under the job's own tenant and
+// returns the finished job. The tenant comes from the job row, never from the
+// caller, so a runner can't import one tenant's rows into another.
+func (s *ImportService) RunImportJob(ctx context.Context, job *models.ImportJob) (*models.ImportJob, error) {
+	if job.TenantID == uuid.Nil {
+		return nil, fmt.Errorf("import job %s has no tenant", job.ID)
+	}
+	ctx = tenancy.WithTenant(ctx, job.TenantID)
+
+	var payload importPayload
+	if job.Payload == nil || json.Unmarshal([]byte(*job.Payload), &payload) != nil {
+		logging.Error(ctx, "[IMPORT-SERVICE] Unreadable import payload", map[string]any{"job_id": job.ID.String()})
+		msg := "Import data could not be read; upload the file again"
+		return s.finish(ctx, job, importStats{}, &msg, models.ImportJobStatusFailed)
 	}
 
-	if len(result) < 2 {
-		return nil
-	}
+	stats := s.importRows(ctx, job.ID, payload)
 
-	// Deserialize job data
-	var jobData map[string]interface{}
-	if err := json.Unmarshal([]byte(result[1]), &jobData); err != nil {
-		return fmt.Errorf("failed to unmarshal job data: %w", err)
+	var summary *string
+	if stats.failed > 0 {
+		msg := fmt.Sprintf("%d rows failed to import", stats.failed)
+		summary = &msg
 	}
-
-	// Extract job parameters
-	jobIDStr, ok := jobData["job_id"].(string)
-	if !ok {
-		return fmt.Errorf("invalid job_id")
+	status := models.ImportJobStatusCompleted
+	if len(payload.Rows) > 0 && stats.failed == len(payload.Rows) {
+		status = models.ImportJobStatusFailed
 	}
+	return s.finish(ctx, job, stats, summary, status)
+}
 
-	jobID, err := uuid.Parse(jobIDStr)
+type importStats struct{ processed, successful, failed int }
+
+// finish records the final counts and status and clears the payload. It only
+// touches a job this runner still holds (status = processing).
+func (s *ImportService) finish(ctx context.Context, job *models.ImportJob, st importStats, summary *string, status models.ImportJobStatus) (*models.ImportJob, error) {
+	now := s.now()
+	updates := map[string]any{
+		"status":          status,
+		"processed_rows":  st.processed,
+		"successful_rows": st.successful,
+		"failed_rows":     st.failed,
+		"error_summary":   summary,
+		"completed_at":    &now,
+		"payload":         gorm.Expr("NULL"),
+	}
+	res := s.db.WithContext(ctx).Model(&models.ImportJob{}).
+		Where("id = ? AND status = ?", job.ID, models.ImportJobStatusProcessing).
+		Updates(updates)
+	if res.Error != nil {
+		return nil, fmt.Errorf("finish import job: %w", res.Error)
+	}
+	if res.RowsAffected == 0 {
+		// failStale already failed it (this run outlived importStaleAfter).
+		logging.Warn(ctx, "[IMPORT-SERVICE] Job was no longer processing at finish", map[string]any{"job_id": job.ID.String()})
+	}
+	job.Status, job.ProcessedRows, job.SuccessfulRows, job.FailedRows = status, st.processed, st.successful, st.failed
+	job.ErrorSummary, job.CompletedAt, job.Payload = summary, &now, nil
+	return job, nil
+}
+
+// updateProgress records running counts (and bumps updated_at, which keeps
+// the job from looking stale).
+func (s *ImportService) updateProgress(ctx context.Context, jobID uuid.UUID, st importStats) {
+	err := s.db.WithContext(ctx).Model(&models.ImportJob{}).Where("id = ?", jobID).Updates(map[string]any{
+		"processed_rows": st.processed, "successful_rows": st.successful, "failed_rows": st.failed,
+	}).Error
 	if err != nil {
-		return fmt.Errorf("invalid job_id format: %w", err)
+		logging.Error(ctx, "[IMPORT-SERVICE] Failed to update progress", map[string]any{"error": err.Error(), "job_id": jobID.String()})
+	}
+}
+
+// importRows creates/updates customers for each row (ctx carries the job's
+// tenant) and records every failed row in import_errors.
+func (s *ImportService) importRows(ctx context.Context, jobID uuid.UUID, p importPayload) importStats {
+	var st importStats
+	var rowErrors []models.ImportError
+	repo := s.customerRepo.WithContext(ctx)
+
+	fail := func(rowNum int, row *models.CSVImportRow, field, msg string) {
+		data, _ := json.Marshal(row)
+		rowErrors = append(rowErrors, models.ImportError{JobID: jobID, RowNumber: rowNum, Field: field, Error: msg, RowData: string(data)})
 	}
 
-	tenantStr, _ := jobData["tenant_id"].(string)
-	tenantID, err := uuid.Parse(tenantStr)
-	if err != nil {
-		return fmt.Errorf("import job %s has no tenant: %w", jobID, err)
-	}
-	ctx = tenancy.WithTenant(ctx, tenantID)
-
-	duplicateHandling, _ := jobData["duplicate_handling"].(string)
-	dryRun, _ := jobData["dry_run"].(bool)
-
-	// Deserialize rows
-	rowsData, _ := jobData["rows"].([]interface{})
-	rows := make([]models.CSVImportRow, len(rowsData))
-	for i, rowInterface := range rowsData {
-		rowBytes, _ := json.Marshal(rowInterface)
-		if err := json.Unmarshal(rowBytes, &rows[i]); err != nil {
-			return fmt.Errorf("decode import row %d: %w", i, err)
+	for i := range p.Rows {
+		row := &p.Rows[i]
+		rowNum := i + 1
+		ok := s.importRow(ctx, repo, row, p.DuplicateHandling, p.DryRun, rowNum, fail)
+		st.processed++
+		if ok {
+			st.successful++
+		} else {
+			st.failed++
+		}
+		if st.processed%50 == 0 {
+			s.updateProgress(ctx, jobID, st)
 		}
 	}
 
-	// Process the import
-	return s.ProcessImport(ctx, jobID, rows, duplicateHandling, dryRun)
+	if len(rowErrors) > 0 {
+		if err := s.db.WithContext(ctx).CreateInBatches(&rowErrors, 500).Error; err != nil {
+			logging.Error(ctx, "[IMPORT-SERVICE] Failed to save import errors", map[string]any{"error": err.Error(), "job_id": jobID.String()})
+		}
+	}
+	return st
+}
+
+// importRow imports one row; it reports failures through fail and returns
+// whether the row succeeded (a skipped duplicate counts as success).
+func (s *ImportService) importRow(
+	ctx context.Context,
+	repo repository.CustomerRepositoryInterface,
+	row *models.CSVImportRow,
+	duplicateHandling string,
+	dryRun bool,
+	rowNum int,
+	fail func(int, *models.CSVImportRow, string, string),
+) bool {
+	if errs := csvpkg.ValidateCustomerData(row); len(errs) > 0 {
+		for _, msg := range errs {
+			fail(rowNum, row, "", msg)
+		}
+		return false
+	}
+
+	existing, err := repo.GetByEmail(row.Email)
+	if err != nil && !errors.Is(err, repository.ErrCustomerNotFound) {
+		logging.Error(ctx, "[IMPORT-SERVICE] Duplicate lookup failed", map[string]any{"error": err.Error(), "row": rowNum})
+		fail(rowNum, row, "", "could not save this row")
+		return false
+	}
+
+	if existing != nil {
+		switch duplicateHandling {
+		case "skip":
+			return true
+		case "update":
+			if dryRun {
+				return true
+			}
+			customer := row.ToCustomer()
+			customer.ID = existing.ID
+			if err := repo.Update(customer); err != nil {
+				fail(rowNum, row, "email", rowSaveError(ctx, err, rowNum))
+				return false
+			}
+			return true
+		default: // "error"
+			fail(rowNum, row, "email", "duplicate email address")
+			return false
+		}
+	}
+
+	if dryRun {
+		return true
+	}
+	if err := repo.Create(row.ToCustomer()); err != nil {
+		fail(rowNum, row, "", rowSaveError(ctx, err, rowNum))
+		return false
+	}
+	return true
+}
+
+// rowSaveError is the user-safe message for a failed write (raw database
+// errors are logged, never stored for the client).
+func rowSaveError(ctx context.Context, err error, rowNum int) string {
+	if errors.Is(err, repository.ErrEmailAlreadyExists) {
+		return "duplicate email address"
+	}
+	logging.Error(ctx, "[IMPORT-SERVICE] Row save failed", map[string]any{"error": err.Error(), "row": rowNum})
+	return "could not save this row"
 }

@@ -29,10 +29,13 @@ type ImportJob struct {
 	SuccessfulRows int             `json:"successful_rows" gorm:"not null;default:0"`
 	FailedRows     int             `json:"failed_rows" gorm:"not null;default:0"`
 	ErrorSummary   *string         `json:"error_summary" gorm:"type:text"`
-	StartedAt      *time.Time      `json:"started_at"`
-	CompletedAt    *time.Time      `json:"completed_at"`
-	CreatedAt      time.Time       `json:"created_at"`
-	UpdatedAt      time.Time       `json:"updated_at"`
+	// Payload holds the parsed rows and options of a pending/processing job
+	// (JSON); it is cleared when the job finishes. Never sent to clients.
+	Payload     *string    `json:"-" gorm:"type:jsonb"`
+	StartedAt   *time.Time `json:"started_at"`
+	CompletedAt *time.Time `json:"completed_at"`
+	CreatedAt   time.Time  `json:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at"`
 }
 
 // TableName specifies the table name for ImportJob model

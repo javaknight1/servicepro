@@ -48,7 +48,7 @@ func SetupServices(
 	svc.PasswordReset = services.NewPasswordResetService(repos.User, emailClient, redisClient, resetURL)
 
 	// Import service
-	svc.Import = services.NewImportService(db, repos.Customer, redisClient)
+	svc.Import = services.NewImportService(db, repos.Customer)
 
 	// Job service
 	svc.Job = services.NewJobService(repos.Job, repos.Customer, db)

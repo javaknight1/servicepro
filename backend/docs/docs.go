@@ -4651,7 +4651,7 @@ const docTemplate = `{
         },
         "/customers/import": {
             "post": {
-                "description": "Imports customers from a CSV file (max 10,000 rows)",
+                "description": "Imports customers from a CSV file (max 5 MiB and 10,000 rows). Files up to 1,000 rows are imported during the request (status completed/failed in the response); larger files are queued (status pending) and imported by the scheduled imports job. Poll GET /customers/import/{job_id} for progress and per-row errors.",
                 "consumes": [
                     "multipart/form-data"
                 ],
@@ -4705,6 +4705,12 @@ const docTemplate = `{
                     },
                     "401": {
                         "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "413": {
+                        "description": "Request Entity Too Large",
                         "schema": {
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
@@ -4885,6 +4891,53 @@ const docTemplate = `{
                         "description": "Service Unavailable",
                         "schema": {
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_health.HealthReport"
+                        }
+                    }
+                }
+            }
+        },
+        "/internal/jobs/imports": {
+            "post": {
+                "description": "Internal job endpoint (auth: X-Internal-Jobs-Token header = INTERNAL_JOBS_SECRET; 404 when the secret is unset). Runs queued customer CSV imports for every tenant: each job is claimed atomically (pending → processing, FOR UPDATE SKIP LOCKED) before it runs, so overlapping runs never import a job twice; each job imports into its own tenant only. Jobs stuck in processing for 15 minutes are marked failed. Runs up to 20 jobs or 4 minutes per call. Mounted at the server root (/internal/jobs/imports), outside /api.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Internal"
+                ],
+                "summary": "Run CSV imports job",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Internal jobs secret",
+                        "name": "X-Internal-Jobs-Token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_api_handlers.ImportsJobResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     }
                 }
@@ -13708,6 +13761,39 @@ const docTemplate = `{
                 },
                 "timezone": {
                     "type": "string"
+                }
+            }
+        },
+        "internal_api_handlers.ImportsJobResponse": {
+            "type": "object",
+            "properties": {
+                "claimed": {
+                    "type": "integer",
+                    "example": 2
+                },
+                "completed": {
+                    "type": "integer",
+                    "example": 2
+                },
+                "duration_ms": {
+                    "type": "integer",
+                    "example": 812
+                },
+                "failed": {
+                    "type": "integer",
+                    "example": 0
+                },
+                "interrupted": {
+                    "type": "integer",
+                    "example": 0
+                },
+                "job": {
+                    "type": "string",
+                    "example": "imports"
+                },
+                "remaining": {
+                    "type": "boolean",
+                    "example": false
                 }
             }
         },

@@ -5619,7 +5619,7 @@ export interface paths {
         put?: never;
         /**
          * Import customers
-         * @description Imports customers from a CSV file (max 10,000 rows)
+         * @description Imports customers from a CSV file (max 5 MiB and 10,000 rows). Files up to 1,000 rows are imported during the request (status completed/failed in the response); larger files are queued (status pending) and imported by the scheduled imports job. Poll GET /customers/import/{job_id} for progress and per-row errors.
          */
         post: {
             parameters: {
@@ -5666,6 +5666,15 @@ export interface paths {
                 };
                 /** @description Unauthorized */
                 401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Request Entity Too Large */
+                413: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -5929,6 +5938,75 @@ export interface paths {
         };
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/internal/jobs/imports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run CSV imports job
+         * @description Internal job endpoint (auth: X-Internal-Jobs-Token header = INTERNAL_JOBS_SECRET; 404 when the secret is unset). Runs queued customer CSV imports for every tenant: each job is claimed atomically (pending → processing, FOR UPDATE SKIP LOCKED) before it runs, so overlapping runs never import a job twice; each job imports into its own tenant only. Jobs stuck in processing for 15 minutes are marked failed. Runs up to 20 jobs or 4 minutes per call. Mounted at the server root (/internal/jobs/imports), outside /api.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description Internal jobs secret */
+                    "X-Internal-Jobs-Token": string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_api_handlers.ImportsJobResponse"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Internal Server Error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;
@@ -12022,6 +12100,22 @@ export interface components {
             issue_date: string;
             payment_term_id: string;
             timezone?: string;
+        };
+        "internal_api_handlers.ImportsJobResponse": {
+            /** @example 2 */
+            claimed?: number;
+            /** @example 2 */
+            completed?: number;
+            /** @example 812 */
+            duration_ms?: number;
+            /** @example 0 */
+            failed?: number;
+            /** @example 0 */
+            interrupted?: number;
+            /** @example imports */
+            job?: string;
+            /** @example false */
+            remaining?: boolean;
         };
         "internal_api_handlers.InviteMemberRequest": {
             email: string;

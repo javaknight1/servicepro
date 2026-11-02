@@ -103,6 +103,10 @@ func setupInternalJobRoutes(router *gin.Engine, routeCfg *RouteConfig, cfg *conf
 		}))
 		endpoints += ", /internal/jobs/quote-expiry"
 	}
+	if routeCfg.Services != nil && routeCfg.Services.Import != nil {
+		group.POST("/imports", handlers.RunImports(routeCfg.Services.Import.ProcessPending))
+		endpoints += ", /internal/jobs/imports"
+	}
 
 	logging.Info(context.Background(), "Internal job endpoints registered", map[string]any{
 		"enabled": cfg.Server.InternalJobsSecret != "", "endpoints": endpoints, "source": "jobs",
@@ -214,6 +218,11 @@ func NewRouteConfig(db *gorm.DB, redis *redis.Client, email emailclient.Client, 
 		reminderWorker := services.NewPaymentReminderWorker(svc.PaymentReminder, 1*time.Hour)
 		reminderWorker.Start(context.Background())
 	}
+	// Dev only: drain queued CSV imports every minute (deployed environments
+	// call POST /internal/jobs/imports from the scheduler).
+	if svc.Import != nil && cfg.Server.RunBackgroundWorkers {
+		go runImportWorker(context.Background(), svc.Import, time.Minute)
+	}
 
 	// Register analytics event handler for Stripe checkout payments
 	if svc.StripeEvents != nil && analytics != nil {
@@ -235,5 +244,22 @@ func NewRouteConfig(db *gorm.DB, redis *redis.Client, email emailclient.Client, 
 		Middleware: mw,
 		Services:   svc,
 		Handlers:   handlers,
+	}
+}
+
+// runImportWorker is the in-process (development) stand-in for the scheduled
+// imports job.
+func runImportWorker(ctx context.Context, imports *services.ImportService, every time.Duration) {
+	ticker := time.NewTicker(every)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			if _, err := imports.ProcessPending(ctx, 20, every); err != nil {
+				logging.Error(ctx, "[IMPORT-WORKER] imports pass failed", map[string]any{"error": err.Error()})
+			}
+		}
 	}
 }

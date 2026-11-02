@@ -28,7 +28,7 @@
 | `ci.yml`                   | push to master, PRs        | lint, tests, govulncheck, OpenAPI drift, frontend build/audit, Docker build + Trivy. Deploys nothing |
 | `release-deploy.yml`       | `v*` tag                   | guard → migrate → api → web → GitHub Release                                                         |
 | `migrate.yml`              | manual                     | `version` / `up` against production                                                                  |
-| `scheduled-jobs.yml`       | hourly                     | POST `/internal/jobs/{payment-reminders,quote-expiry}` to the Cloud Run URL (`API_URL`)              |
+| `scheduled-jobs.yml`       | hourly / every 15 min      | POST `/internal/jobs/{payment-reminders,quote-expiry}` hourly, `/internal/jobs/imports` every 15 min, to the Cloud Run URL (`API_URL`) |
 | `db-backup.yml`            | nightly                    | `pg_dump` to R2 (fails until the R2 bucket + secrets exist — T209)                                   |
 | `security-scan.yml`        | weekly                     | govulncheck + npm audit                                                                              |
 | `dependabot-automerge.yml` | after CI on Dependabot PRs | merge patch/minor, bump, tag, release                                                                |

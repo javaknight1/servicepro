@@ -179,7 +179,8 @@ traffic. Locally, docker-compose sets `RUN_MIGRATIONS_ON_STARTUP=true`, and
 Production runs no in-process tickers (`RUN_BACKGROUND_WORKERS=false`, set by
 `deploy-cloudrun.sh`): Cloud Run throttles CPU between requests and scales to
 zero. `.github/workflows/scheduled-jobs.yml` POSTs to
-`/internal/jobs/{payment-reminders,quote-expiry}` hourly with
+`/internal/jobs/{payment-reminders,quote-expiry}` hourly and
+`/internal/jobs/imports` every 15 minutes with
 `X-Internal-Jobs-Token: $INTERNAL_JOBS_SECRET` against `vars.API_URL` (the
 Cloud Run URL; the edge Worker never proxies `/internal/*`).
 

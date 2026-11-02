@@ -2,9 +2,12 @@ package handlers
 
 import (
 	"bytes"
+	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -12,6 +15,7 @@ import (
 	"github.com/javaknight1/servicepro/backend/internal/api/apierror"
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/services"
+	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"
 	csvpkg "github.com/javaknight1/servicepro/backend/pkg/csv"
 )
 
@@ -29,9 +33,12 @@ func NewImportExportHandler(
 	}
 }
 
+// importInlineTimeout bounds an import run inside the upload request.
+const importInlineTimeout = 2 * time.Minute
+
 // ImportCustomers handles customer import
 // @Summary		Import customers
-// @Description	Imports customers from a CSV file (max 10,000 rows)
+// @Description	Imports customers from a CSV file (max 5 MiB and 10,000 rows). Files up to 1,000 rows are imported during the request (status completed/failed in the response); larger files are queued (status pending) and imported by the scheduled imports job. Poll GET /customers/import/{job_id} for progress and per-row errors.
 // @Tags			Import/Export
 // @Accept			multipart/form-data
 // @Produce		json
@@ -43,9 +50,34 @@ func NewImportExportHandler(
 // @Success		202					{object}	models.ImportResponse
 // @Failure		400					{object}	models.ErrorResponse
 // @Failure		401					{object}	models.ErrorResponse
+// @Failure		413					{object}	models.ErrorResponse
 // @Failure		500					{object}	models.ErrorResponse
 // @Router			/customers/import [post]
 func (h *ImportExportHandler) ImportCustomers(c *gin.Context) {
+	// Cap the upload before anything reads the body (F-23). The multipart
+	// envelope adds a little over the file itself.
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, services.ImportMaxUploadBytes+64<<10)
+	if err := c.Request.ParseMultipartForm(1 << 20); err != nil {
+		var tooBig *http.MaxBytesError
+		if errors.As(err, &tooBig) {
+			apierror.WriteResponse(c, http.StatusRequestEntityTooLarge, models.ErrorResponse{
+				Error:   "file_too_large",
+				Message: fmt.Sprintf("file exceeds the maximum size of %d MiB", services.ImportMaxUploadBytes>>20),
+			})
+			return
+		}
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
+			Error:   "invalid_request",
+			Message: "request must be multipart/form-data with a file",
+		})
+		return
+	}
+	defer func() {
+		if c.Request.MultipartForm != nil {
+			_ = c.Request.MultipartForm.RemoveAll()
+		}
+	}()
+
 	// Parse form data
 	var req models.ImportRequest
 	if err := c.ShouldBind(&req); err != nil {
@@ -78,9 +110,17 @@ func (h *ImportExportHandler) ImportCustomers(c *gin.Context) {
 		return
 	}
 
+	if header.Size > services.ImportMaxUploadBytes {
+		apierror.WriteResponse(c, http.StatusRequestEntityTooLarge, models.ErrorResponse{
+			Error:   "file_too_large",
+			Message: fmt.Sprintf("file exceeds the maximum size of %d MiB", services.ImportMaxUploadBytes>>20),
+		})
+		return
+	}
+
 	// Read file content into buffer for multiple reads
 	buf := new(bytes.Buffer)
-	if _, err := io.Copy(buf, file); err != nil {
+	if _, err := io.Copy(buf, io.LimitReader(file, services.ImportMaxUploadBytes+1)); err != nil {
 		apierror.Internal(c, err, "failed to read file")
 		return
 	}
@@ -90,7 +130,7 @@ func (h *ImportExportHandler) ImportCustomers(c *gin.Context) {
 	if err != nil {
 		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "invalid_file",
-			Message: fmt.Sprintf("failed to read CSV: %v", err),
+			Message: "failed to read CSV: the file is not valid CSV",
 		})
 		return
 	}
@@ -103,10 +143,10 @@ func (h *ImportExportHandler) ImportCustomers(c *gin.Context) {
 		return
 	}
 
-	if rowCount > 10000 {
+	if rowCount > services.ImportMaxRows {
 		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "file_too_large",
-			Message: "file exceeds maximum of 10,000 rows",
+			Message: fmt.Sprintf("file exceeds maximum of %d rows", services.ImportMaxRows),
 		})
 		return
 	}
@@ -117,7 +157,7 @@ func (h *ImportExportHandler) ImportCustomers(c *gin.Context) {
 	if err != nil {
 		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "parse_error",
-			Message: fmt.Sprintf("failed to parse CSV: %v", err),
+			Message: "failed to parse CSV: the file is not valid CSV",
 		})
 		return
 	}
@@ -154,38 +194,42 @@ func (h *ImportExportHandler) ImportCustomers(c *gin.Context) {
 
 	userUUID, ok := userID.(uuid.UUID)
 	if !ok {
-		apierror.Internal(c, err, "invalid user ID format")
+		apierror.Internal(c, fmt.Errorf("user_id has type %T", userID), "invalid user ID format")
 		return
 	}
 
-	// Create import job
-	job, err := h.importService.CreateImportJob(
-		c.Request.Context(),
-		userUUID,
-		header.Filename,
-		len(rows),
-	)
+	ctx := c.Request.Context()
+	job, err := h.importService.CreateImportJob(ctx, userUUID, header.Filename, rows, req.DuplicateHandling, req.DryRun)
 	if err != nil {
 		apierror.Internal(c, err, "failed to create import job")
 		return
 	}
 
-	// Enqueue job for background processing
-	if err := h.importService.EnqueueImportJob(
-		c.Request.Context(),
-		job.ID,
-		rows,
-		req.DuplicateHandling,
-		req.DryRun,
-	); err != nil {
-		apierror.Internal(c, err, "failed to enqueue import job")
-		return
+	message := "Import queued; it runs within a few minutes"
+	if len(rows) <= services.ImportInlineMaxRows {
+		// Small file: run it now. The claim makes this safe against the
+		// scheduled runner picking the same job; whoever claims it runs it.
+		// The run outlives a client disconnect so the job is never left
+		// half-done in processing.
+		runCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), importInlineTimeout)
+		defer cancel()
+		if claimed, err := h.importService.ClaimImportJob(runCtx, job.ID); err != nil {
+			logging.Error(ctx, "[IMPORT-HANDLER] Inline claim failed; left for the imports job", map[string]any{"error": err.Error(), "job_id": job.ID.String()})
+		} else if claimed != nil {
+			finished, err := h.importService.RunImportJob(runCtx, claimed)
+			if err != nil {
+				apierror.Internal(c, err, "failed to run import job")
+				return
+			}
+			job = finished
+			message = "Import finished"
+		}
 	}
 
 	c.JSON(http.StatusAccepted, models.ImportResponse{
 		JobID:     job.ID,
 		Status:    job.Status,
-		Message:   "Import job created successfully",
+		Message:   message,
 		TotalRows: len(rows),
 	})
 }
