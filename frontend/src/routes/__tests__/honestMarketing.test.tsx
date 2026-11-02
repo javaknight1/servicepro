@@ -23,6 +23,8 @@ describe('public marketing pages (T255)', () => {
     useAuthStore.setState({ isAuthenticated: false, user: null });
   });
 
+  // Lazy routes can take a while to load when the whole suite runs under
+  // CPU load; generous timeouts keep this from flaking (seen 2026-10-30).
   it.each(['/', '/features', '/about'])(
     '%s makes no false claims and offers beta access',
     async (path) => {
@@ -30,12 +32,13 @@ describe('public marketing pages (T255)', () => {
       const cta = await screen.findAllByRole(
         'link',
         { name: /request (beta )?access/i },
-        { timeout: 3000 }
+        { timeout: 10000 }
       );
       expect(cta[0]).toHaveAttribute('href', BETA_ACCESS_MAILTO);
       expect(document.body.textContent ?? '').not.toMatch(FALSE_CLAIMS);
       expect(screen.queryByRole('link', { name: /^pricing$/i })).toBeNull();
-    }
+    },
+    15000
   );
 
   it('redirects /pricing home while public pricing is hidden', async () => {
@@ -43,7 +46,7 @@ describe('public marketing pages (T255)', () => {
     const matches = await screen.findAllByText(
       /invite-only beta/i,
       {},
-      { timeout: 3000 }
+      { timeout: 10000 }
     );
     expect(matches.length).toBeGreaterThan(0);
   });
@@ -51,7 +54,7 @@ describe('public marketing pages (T255)', () => {
   it('says ServicePro is a working name', async () => {
     renderAt('/');
     expect(
-      await screen.findByText(/working name/i, {}, { timeout: 3000 })
+      await screen.findByText(/working name/i, {}, { timeout: 10000 })
     ).toBeInTheDocument();
   });
 });

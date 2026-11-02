@@ -1,6 +1,6 @@
 # ServicePro — Roadmap
 
-**Last Updated**: 2026-11-02 (T268 done: landing page per mockup 01. T159 done (Resend only, retries + idempotency, signed bounce/complaint webhook + suppression list). Mockups in `docs/product/mockups/`; T268 landing, T269 app shell + dashboard and T270 page restyle added to the MVP gate (49 tasks, ~310h). T205 in progress: owner account live; blank-site regression fixed in v0.10.5. T206 done: SPF/DKIM/DMARC on servicepro.sharkfins.xyz, test send delivered. T159 step 1 + T206 sender domain live in v0.10.3. T256 done — honesty gate (T255, T256, T261) complete. T255 done: honest public site, beta-access CTA, pricing hidden, Terms/Privacy acceptance recorded at sign-up. T261 done: invoice pay links off by default — `INVOICE_PAYMENTS_ENABLED`; Dependabot auto-merge now includes majors.) 2026-10-25 (MVP re-scope: the owner confirmed the Notion app-upgrade docs — D7–D14 decided, OD-4 closed by D9, OD-12 decided, OD-10/OD-11 opened; the "v1 Launch Gate" became the **MVP Launch Gate** (phases A–G, 46 tasks, ~292h, paid launch 2027-09-07) and every section's gate field is now **MVP Gate**; new tasks T255–T267 from the Technical Requirements N-tasks and the MVP feature table; T169 rewritten for Connect Accounts v2 direct charges; T153/T155–T157/T162 frozen (D12); T048–T050, T061, T063, T081, T183, T101, T243, T244 deferred; T242 Won't Do. Plan: `docs/product/mvp-plan-2026-10.md`.) Earlier — 2026-10-24 (TODO reformatted from the P0–P3/sprint layout to League Looper's indexed phase format: Task Index with ID/Phase/Category/Hours, one detailed section per open task, a launch gate and Verified Complete. A full audit of the repo (backend security, backend correctness, frontend, infra — stored in `docs/audits/2026-10-16/`) is filed as Phases 1–3 (T102–T152, T223–T226). The stack-convergence plan towards League Looper's stack is Phase 4 (T153–T166). Competitive research (`docs/product/competitive-research-2026-10.md`) became product Phases 5–16, merging the open T027–T101 tasks with new T167–T222. Hosting is deferred: ServicePro stays local-only until the production database decision (T202). Old IDs T001–T101 are kept; T011 never existed. Same day: Phase 3 platform work T139–T152 landed — golang-migrate, /version + schema-aware readiness, internal job endpoints, optional Redis, Cloud Run image, LL-style CI/release/hooks, Cloudflare Worker edge (not deployed); frontend fixes T130–T138; all of Phase 1 security (T102–T117) — tenant isolation plugin, per-tenant authz, invite-only registration, token/login/webhook/CSRF hardening, no known Go vulns; T227 added for the frontend follow-through. Same day: Phase 2 correctness work landed (T118–T129, T223–T239 — money path, numbering, status machines, refunds, quotes, tenant settings, error envelope + request IDs, ~39k lines of dead backend code removed, stricter golangci-lint); follow-ups T241–T244 filed. 2026-10-18: T231 (org deletion) deferred; Dependabot security-fix PRs enabled; SQLite ruled out for OD-1; Go deps bumped, T247 filed; T202 decided — Neon; OD-9 (auth provider) opened, then decided 2026-10-19 — Neon's managed Better Auth; 2026-10-24: Neon project linked, Neon agent skills + MCP server added, managed MFA confirmed on Neon's roadmap (T092); T164 frontend majors done (React 19, Router 7, Vite 8, ESLint 10, zod 4, Headless UI 2), T248/T249 filed; Tailwind 4 engine landed (T163 tokens + dark mode remain); 0 open Dependabot alerts.)
+**Last Updated**: 2026-11-02 (Phase A done: T257, T258, T259, T260, T262, T266, T267 merged (parallel worktree agents). T268 done: landing page per mockup 01. T159 done (Resend only, retries + idempotency, signed bounce/complaint webhook + suppression list). Mockups in `docs/product/mockups/`; T268 landing, T269 app shell + dashboard and T270 page restyle added to the MVP gate (49 tasks, ~310h). T205 in progress: owner account live; blank-site regression fixed in v0.10.5. T206 done: SPF/DKIM/DMARC on servicepro.sharkfins.xyz, test send delivered. T159 step 1 + T206 sender domain live in v0.10.3. T256 done — honesty gate (T255, T256, T261) complete. T255 done: honest public site, beta-access CTA, pricing hidden, Terms/Privacy acceptance recorded at sign-up. T261 done: invoice pay links off by default — `INVOICE_PAYMENTS_ENABLED`; Dependabot auto-merge now includes majors.) 2026-10-25 (MVP re-scope: the owner confirmed the Notion app-upgrade docs — D7–D14 decided, OD-4 closed by D9, OD-12 decided, OD-10/OD-11 opened; the "v1 Launch Gate" became the **MVP Launch Gate** (phases A–G, 46 tasks, ~292h, paid launch 2027-09-07) and every section's gate field is now **MVP Gate**; new tasks T255–T267 from the Technical Requirements N-tasks and the MVP feature table; T169 rewritten for Connect Accounts v2 direct charges; T153/T155–T157/T162 frozen (D12); T048–T050, T061, T063, T081, T183, T101, T243, T244 deferred; T242 Won't Do. Plan: `docs/product/mvp-plan-2026-10.md`.) Earlier — 2026-10-24 (TODO reformatted from the P0–P3/sprint layout to League Looper's indexed phase format: Task Index with ID/Phase/Category/Hours, one detailed section per open task, a launch gate and Verified Complete. A full audit of the repo (backend security, backend correctness, frontend, infra — stored in `docs/audits/2026-10-16/`) is filed as Phases 1–3 (T102–T152, T223–T226). The stack-convergence plan towards League Looper's stack is Phase 4 (T153–T166). Competitive research (`docs/product/competitive-research-2026-10.md`) became product Phases 5–16, merging the open T027–T101 tasks with new T167–T222. Hosting is deferred: ServicePro stays local-only until the production database decision (T202). Old IDs T001–T101 are kept; T011 never existed. Same day: Phase 3 platform work T139–T152 landed — golang-migrate, /version + schema-aware readiness, internal job endpoints, optional Redis, Cloud Run image, LL-style CI/release/hooks, Cloudflare Worker edge (not deployed); frontend fixes T130–T138; all of Phase 1 security (T102–T117) — tenant isolation plugin, per-tenant authz, invite-only registration, token/login/webhook/CSRF hardening, no known Go vulns; T227 added for the frontend follow-through. Same day: Phase 2 correctness work landed (T118–T129, T223–T239 — money path, numbering, status machines, refunds, quotes, tenant settings, error envelope + request IDs, ~39k lines of dead backend code removed, stricter golangci-lint); follow-ups T241–T244 filed. 2026-10-18: T231 (org deletion) deferred; Dependabot security-fix PRs enabled; SQLite ruled out for OD-1; Go deps bumped, T247 filed; T202 decided — Neon; OD-9 (auth provider) opened, then decided 2026-10-19 — Neon's managed Better Auth; 2026-10-24: Neon project linked, Neon agent skills + MCP server added, managed MFA confirmed on Neon's roadmap (T092); T164 frontend majors done (React 19, Router 7, Vite 8, ESLint 10, zod 4, Headless UI 2), T248/T249 filed; Tailwind 4 engine landed (T163 tokens + dark mode remain); 0 open Dependabot alerts.)
 
 > **How to read this file.** Every task has an ID (T###). The **Task Index** lists all of them: completed rows
 > (struck through) first by ID, then open rows by Phase → ID. Each open task has exactly one detailed section under
@@ -102,7 +102,7 @@ gated task's section says **MVP Gate: Yes**.
 
 | MVP phase                          | Window                     | Tasks                                                                                       | Hours | Done when                                                              |
 |------------------------------------|----------------------------|---------------------------------------------------------------------------------------------|-------|------------------------------------------------------------------------|
-| A. Honesty and fixes               | 2026-11-02 → 2026-11-22    | ~~T255~~, ~~T256~~, ~~T261~~ (honesty gate, by 2026-11-08), T257, T258, T259, T260, T262, T266, T267     | 22    | No false claims, no mocks in prod, dashboard numbers right             |
+| A. Honesty and fixes               | 2026-11-02 → 2026-11-22    | ~~T255~~, ~~T256~~, ~~T261~~ (honesty gate, by 2026-11-08), ~~T257~~, ~~T258~~, ~~T259~~, ~~T260~~, ~~T262~~, ~~T266~~, ~~T267~~     | 22    | No false claims, no mocks in prod, dashboard numbers right             |
 | B. Platform                        | 2026-11-23 → 2027-01-03    | T158 (rest), ~~T159~~, T160, T154, T241, T263                                                   | 51    | Neon Auth sign-in live; RLS on; files in R2                            |
 | C. Getting paid                    | 2027-01-04 → 2027-02-14    | T264, T169, T170, T210, T265                                                                | 50    | A test tenant is paid by ACH into its own Stripe account               |
 | D. Commercial wedge                | 2027-02-15 → 2027-03-31    | T167, T186, T187, T188, T028, T029, T030, T035, T235, T269, T270                            | 73    | Agreements generate visits; one consolidated invoice per customer      |
@@ -240,11 +240,11 @@ stripe-go v87 supports v2 accounts) and the first 4h of T192 (QuickBooks OAuth, 
 | T243     | 2      | Security       | 1      | A/R aging CSV export: proper CSV writer + formula neutralisation                                         |
 | T244     | 2      | Bug            | 3      | Handle the discarded GORM .Error results                                                                 |
 | ~~T256~~ | ~~2~~  | ~~Security~~   | ~~2~~  | ~~SMS and storage refuse mock providers in production; SMS off~~                                         |
-| T257     | 2      | Bug            | 3      | Dashboard numbers right: add /invoices/stats, fix job and customer stats shapes, delete dead API calls   |
-| T259     | 2      | UX             | 3      | Hide unfinished settings and screens (account security, business hours, export jobs)                     |
-| T260     | 2      | Cleanup        | 3      | Remove the wkhtmltopdf/raymond export path; gofpdf renders every PDF                                     |
+| ~~T257~~ | ~~2~~  | ~~Bug~~        | ~~3~~  | ~~Dashboard numbers right: add /invoices/stats, fix job and customer stats shapes, delete dead API calls~~|
+| ~~T259~~ | ~~2~~  | ~~UX~~         | ~~3~~  | ~~Hide unfinished settings and screens (account security, business hours, export jobs)~~                 |
+| ~~T260~~ | ~~2~~  | ~~Cleanup~~    | ~~3~~  | ~~Remove the wkhtmltopdf/raymond export path; gofpdf renders every PDF~~                                 |
 | T263     | 2      | DB             | 2      | Additive migration dropping 7 unused tables                                                              |
-| T267     | 2      | Cleanup        | 3      | One job status machine; remove the duplicate per-action job endpoints                                    |
+| ~~T267~~ | ~~2~~  | ~~Cleanup~~    | ~~3~~  | ~~One job status machine; remove the duplicate per-action job endpoints~~                                |
 | T101     | 3      | Monitoring     | 2      | Upload source maps to Sentry for production builds                                                       |
 | T247     | 3      | Platform       | 3      | Move S3 uploads from the deprecated feature/s3/manager to feature/s3/transfermanager                     |
 | T153     | 4      | Backend        | 24     | Repositories take ctx + tenantID; services stop taking *gorm.DB; transaction manager                     |
@@ -365,7 +365,7 @@ stripe-go v87 supports v2 accounts) and the first 4h of T192 (QuickBooks OAuth, 
 | T198     | 12     | Reporting      | 12     | Job costing / profit per job                                                                             |
 | T246     | 12     | Perf           | 3      | Lazy-load / trim Sentry and PostHog (109 KB gzipped on every page)                                       |
 | T253     | 12     | UX             | 2      | "Report a bug" button and cookie preferences in the footer                                               |
-| T266     | 12     | Cleanup        | 2      | Cut the customers report (segments, cohorts) and the outgoing-webhooks plan flag                         |
+| ~~T266~~ | ~~12~~ | ~~Cleanup~~    | ~~2~~  | ~~Cut the customers report (segments, cohorts) and the outgoing-webhooks plan flag~~                     |
 | T269     | 12     | UX             | 6      | App shell and dashboard per the MVP mockup (sidebar, KPI cards, jobs to invoice, today's visits, A/R aging) |
 | T270     | 12     | UX             | 8      | Restyle existing pages to the MVP mockups' visual system (customers, jobs, quotes, invoices, team, settings) |
 | T074     | 13     | Auth           | 3      | Create Accountant role                                                                                   |
@@ -379,7 +379,7 @@ stripe-go v87 supports v2 accounts) and the first 4h of T192 (QuickBooks OAuth, 
 | T231     | 13     | Auth           | 1      | Owner decision: may a tenant's owner/admin delete their own organization? (Deferred)                     |
 | ~~T203~~ | ~~14~~ | ~~Deploy~~     | ~~4~~  | ~~GCP project + WIF + Artifact Registry + Cloud Run service~~                                            |
 | ~~T204~~ | ~~14~~ | ~~Deploy~~     | ~~2~~  | ~~Deploy the Worker + DNS for servicepro.sharkfins.xyz~~                                                 |
-| T262     | 13     | Security       | 1      | Privacy hardening: Sentry replay on errors only, self-host Inter, tighten CSP                            |
+| ~~T262~~ | ~~13~~ | ~~Security~~   | ~~1~~  | ~~Privacy hardening: Sentry replay on errors only, self-host Inter, tighten CSP~~                        |
 | T205     | 14     | Deploy         | 2      | Invite-gated preview launch                                                                              |
 | ~~T206~~ | ~~14~~ | ~~Email~~      | ~~2~~  | ~~Production email domain on Resend (SPF/DKIM/DMARC)~~                                                   |
 | T207     | 14     | Legal          | 4      | Terms of Service + Privacy Policy legal review                                                           |
@@ -392,7 +392,7 @@ stripe-go v87 supports v2 accounts) and the first 4h of T192 (QuickBooks OAuth, 
 | T251     | 14     | Ops            | 3      | Post-deploy smoke check + GCP uptime check and alert                                                     |
 | T252     | 14     | Monitoring     | 1      | Sentry cron check-ins for scheduled jobs and the nightly backup                                          |
 | ~~T255~~ | ~~14~~ | ~~Content~~    | ~~3~~  | ~~Honest public site: remove false claims, invite-only CTA, hide pricing, Terms/Privacy at sign-up~~     |
-| T258     | 14     | Cleanup        | 1      | Replace servicepro.com defaults; complete the .env.example files                                         |
+| ~~T258~~ | ~~14~~ | ~~Cleanup~~    | ~~1~~  | ~~Replace servicepro.com defaults; complete the .env.example files~~                                     |
 | T214     | 15     | AI             | 24     | AI collections agent                                                                                     |
 | T215     | 15     | AI             | 20     | AI quote drafting from photos, voice or notes against the price book                                     |
 | T216     | 15     | AI             | 12     | "Ask your business" chat over reporting views                                                            |
@@ -470,7 +470,7 @@ Work completed under the old P0–P3/sprint TODO. Details are in Verified Comple
 
 ### Phase 2 — Correctness & Cleanup (T118, T119, T120, T121, T122, T123, T124, T125, T126, T127, T128, T129, T130, T131, T132, T133, T134, T135, T136, T137, T138, T223, T224, T225, T226, T227, T228, T229, T232, T233, T234, T237, T238, T239, T241, T242, T243, T244, T256, T257, T259, T260, T263, T267)
 
-Money flows that are wired but broken (payments don't update invoices, reminders never sent, numbering wedges, a panicking webhook), frontend bugs users would hit in the preview, and dead code. From `docs/audits/2026-10-16/backend-correctness.md` and `docs/audits/2026-10-16/frontend.md`. **6 open tasks, ~17h.** 35 done.
+Money flows that are wired but broken (payments don't update invoices, reminders never sent, numbering wedges, a panicking webhook), frontend bugs users would hit in the preview, and dead code. From `docs/audits/2026-10-16/backend-correctness.md` and `docs/audits/2026-10-16/frontend.md`. **2 open tasks, ~5h.** 39 done.
 
 - [x] T118 — Recording a payment updates the invoice balance and status ✓ (2026-10-16)
 - [x] T119 — Stripe Checkout charges the true balance due ✓ (2026-10-16)
@@ -511,11 +511,11 @@ Money flows that are wired but broken (payments don't update invoices, reminders
 - [ ] T243 — A/R aging CSV export: proper CSV writer + formula neutralisation
 - [ ] T244 — Handle the discarded GORM .Error results
 - [x] T256 — SMS and storage refuse mock providers in production; SMS off ✓ (2026-10-29)
-- [ ] T257 — Dashboard numbers right: add /invoices/stats, fix job and customer stats shapes, delete dead API calls
-- [ ] T259 — Hide unfinished settings and screens (account security, business hours, export jobs)
-- [ ] T260 — Remove the wkhtmltopdf/raymond export path; gofpdf renders every PDF
+- [x] T257 — Dashboard numbers right: add /invoices/stats, fix job and customer stats shapes, delete dead API calls ✓ (2026-11-02)
+- [x] T259 — Hide unfinished settings and screens (account security, business hours, export jobs) ✓ (2026-11-02)
+- [x] T260 — Remove the wkhtmltopdf/raymond export path; gofpdf renders every PDF ✓ (2026-11-02)
 - [ ] T263 — Additive migration dropping 7 unused tables
-- [ ] T267 — One job status machine; remove the duplicate per-action job endpoints
+- [x] T267 — One job status machine; remove the duplicate per-action job endpoints ✓ (2026-11-02)
 
 #### T241 — CSV imports are queued but never processed
 
@@ -589,7 +589,7 @@ Money flows that are wired but broken (payments don't update invoices, reminders
 
 #### T257 — Dashboard numbers right: add /invoices/stats, fix job and customer stats shapes, delete dead API calls
 
-**Phase**: 2 · **Category**: Bug · **Hours**: 3 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: none
+**Phase**: 2 · **Category**: Bug · **Hours**: 3 · **Status**: Done (2026-11-02) · **MVP Gate**: Yes · **Depends on**: none
 
 **What it is** — The dashboard shows real outstanding money and active jobs.
 
@@ -603,7 +603,7 @@ Money flows that are wired but broken (payments don't update invoices, reminders
 
 #### T259 — Hide unfinished settings and screens (account security, business hours, export jobs)
 
-**Phase**: 2 · **Category**: UX · **Hours**: 3 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: none
+**Phase**: 2 · **Category**: UX · **Hours**: 3 · **Status**: Done (2026-11-02) · **MVP Gate**: Yes · **Depends on**: none
 
 **What it is** — Nothing in the UI looks like it works when it doesn't.
 
@@ -617,7 +617,7 @@ Money flows that are wired but broken (payments don't update invoices, reminders
 
 #### T260 — Remove the wkhtmltopdf/raymond export path; gofpdf renders every PDF
 
-**Phase**: 2 · **Category**: Cleanup · **Hours**: 3 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: none
+**Phase**: 2 · **Category**: Cleanup · **Hours**: 3 · **Status**: Done (2026-11-02) · **MVP Gate**: Yes · **Depends on**: none
 
 **What it is** — One PDF engine.
 
@@ -645,7 +645,7 @@ Money flows that are wired but broken (payments don't update invoices, reminders
 
 #### T267 — One job status machine; remove the duplicate per-action job endpoints
 
-**Phase**: 2 · **Category**: Cleanup · **Hours**: 3 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: none
+**Phase**: 2 · **Category**: Cleanup · **Hours**: 3 · **Status**: Done (2026-11-02) · **MVP Gate**: Yes · **Depends on**: none
 
 **What it is** — Job status rules live in one place.
 
@@ -659,7 +659,7 @@ Money flows that are wired but broken (payments don't update invoices, reminders
 
 ### Phase 3 — Platform & Delivery (T101, T139, T140, T141, T142, T143, T144, T145, T146, T147, T148, T149, T150, T151, T152, T245, T247, T250)
 
-Migrations, versioning, CI, the release pipeline and the edge setup — League Looper's delivery pattern applied to ServicePro. From `docs/audits/2026-10-16/infra.md`. Deploy jobs run on `v*` tags since GCP was provisioned (T203, 2026-10-24). **1 open task, ~3h.** 15 done.
+Migrations, versioning, CI, the release pipeline and the edge setup — League Looper's delivery pattern applied to ServicePro. From `docs/audits/2026-10-16/infra.md`. Deploy jobs run on `v*` tags since GCP was provisioned (T203, 2026-10-24). **1 open tasks, ~3h.** 16 done.
 
 - [x] T139 — golang-migrate baseline (000001), cmd/migrate, dev-only startup migrations ✓ (2026-10-16)
 - [x] T140 — /version endpoint and schema-aware readiness ✓ (2026-10-16)
@@ -2266,7 +2266,7 @@ QuickBooks (the #1 B2B buying gate), import mappers, and partner integrations in
 
 ### Phase 12 — Reporting & Dashboards (T045, T046, T047, T066, T067, T068, T069, T070, T071, T084, T085, T086, T087, T088, T198, T246, T253, T266, T269, T270)
 
-Dashboard widgets and reports from the old TODO plus job costing. All tenant-scoped and in tenant timezone/currency. **20 open tasks, ~74h.**
+Dashboard widgets and reports from the old TODO plus job costing. All tenant-scoped and in tenant timezone/currency. **19 open tasks, ~72h.** 1 done.
 
 - [ ] T045 — Add aging quotes dashboard widget
 - [ ] T046 — Add follow-up queue dashboard widget
@@ -2285,7 +2285,7 @@ Dashboard widgets and reports from the old TODO plus job costing. All tenant-sco
 - [ ] T198 — Job costing / profit per job
 - [ ] T246 — Lazy-load / trim Sentry and PostHog (109 KB gzipped on every page)
 - [ ] T253 — "Report a bug" button and cookie preferences in the footer
-- [ ] T266 — Cut the customers report (segments, cohorts) and the outgoing-webhooks plan flag
+- [x] T266 — Cut the customers report (segments, cohorts) and the outgoing-webhooks plan flag ✓ (2026-11-02)
 - [ ] T269 — App shell and dashboard per the MVP mockup (sidebar, KPI cards, jobs to invoice, today's visits, A/R aging)
 - [ ] T270 — Restyle existing pages to the MVP mockups' visual system (customers, jobs, quotes, invoices, team, settings)
 
@@ -2524,7 +2524,7 @@ Dashboard widgets and reports from the old TODO plus job costing. All tenant-sco
 
 #### T266 — Cut the customers report (segments, cohorts) and the outgoing-webhooks plan flag
 
-**Phase**: 12 · **Category**: Cleanup · **Hours**: 2 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: none
+**Phase**: 12 · **Category**: Cleanup · **Hours**: 2 · **Status**: Done (2026-11-02) · **MVP Gate**: Yes · **Depends on**: none
 
 **What it is** — Less unused surface.
 
@@ -2566,7 +2566,7 @@ Dashboard widgets and reports from the old TODO plus job costing. All tenant-sco
 
 ### Phase 13 — Roles, Compliance & Trust (T074, T075, T092, T093, T094, T199, T200, T201, T230, T231, T262)
 
-Remaining roles, audit logging, MFA, and the export/deletion promises that back the trust brand. **8 open tasks, ~49h.** 1 done.
+Remaining roles, audit logging, MFA, and the export/deletion promises that back the trust brand. **7 open tasks, ~48h.** 2 done.
 
 - [x] T230 — Expose the caller's effective permissions per tenant; decide who can delete an organization ✓ (2026-10-16)
 - [ ] T074 — Create Accountant role
@@ -2577,7 +2577,7 @@ Remaining roles, audit logging, MFA, and the export/deletion promises that back 
 - [ ] T199 — One-click full data export (trust promise)
 - [ ] T200 — Account/tenant deletion + data retention policy
 - [ ] T201 — Privacy/CCPA handling SOP
-- [ ] T262 — Privacy hardening: Sentry replay on errors only, self-host Inter, tighten CSP
+- [x] T262 — Privacy hardening: Sentry replay on errors only, self-host Inter, tighten CSP ✓ (2026-11-02)
 - [~] T231 — Owner decision: may a tenant's owner/admin delete their own organization? (Deferred)
 
 #### T074 — Create Accountant role
@@ -2698,7 +2698,7 @@ Remaining roles, audit logging, MFA, and the export/deletion promises that back 
 
 #### T262 — Privacy hardening: Sentry replay on errors only, self-host Inter, tighten CSP
 
-**Phase**: 13 · **Category**: Security · **Hours**: 1 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: none
+**Phase**: 13 · **Category**: Security · **Hours**: 1 · **Status**: Done (2026-11-02) · **MVP Gate**: Yes · **Depends on**: none
 
 **What it is** — Visitors aren't recorded or sent to third parties without need.
 
@@ -2712,7 +2712,7 @@ Remaining roles, audit logging, MFA, and the export/deletion promises that back 
 
 ### Phase 14 — Hosting & Launch Readiness (T202, T203, T204, T205, T206, T207, T208, T209, T210, T211, T212, T213, T251, T252, T255, T258)
 
-Provision and launch. Live since 2026-10-24 (Neon us-east-2 + Cloud Run us-east5 + Worker; T202–T204). What's left gets the live site honest (T255, T258) and ready for the design-partner beta and paid launch (D11, D14). **13 open tasks, ~37h.** 5 done.
+Provision and launch. Live since 2026-10-24 (Neon us-east-2 + Cloud Run us-east5 + Worker; T202–T204). What's left gets the live site honest (T255, T258) and ready for the design-partner beta and paid launch (D11, D14). **12 open tasks, ~36h.** 6 done.
 
 - [x] T202 — Decide production database hosting (OWNER DECISION) ✓ (2026-10-18)
 - [x] T203 — GCP project + WIF + Artifact Registry + Cloud Run service ✓ (2026-10-24)
@@ -2729,7 +2729,7 @@ Provision and launch. Live since 2026-10-24 (Neon us-east-2 + Cloud Run us-east5
 - [ ] T251 — Post-deploy smoke check + GCP uptime check and alert
 - [ ] T252 — Sentry cron check-ins for scheduled jobs and the nightly backup
 - [x] T255 — Honest public site: remove false claims, invite-only CTA, hide pricing, Terms/Privacy at sign-up ✓ (2026-10-29)
-- [ ] T258 — Replace servicepro.com defaults; complete the .env.example files
+- [x] T258 — Replace servicepro.com defaults; complete the .env.example files ✓ (2026-11-02)
 
 #### T203 — GCP project + WIF + Artifact Registry + Cloud Run service
 
@@ -2919,7 +2919,7 @@ Provision and launch. Live since 2026-10-24 (Neon us-east-2 + Cloud Run us-east5
 
 #### T258 — Replace servicepro.com defaults; complete the .env.example files
 
-**Phase**: 14 · **Category**: Cleanup · **Hours**: 1 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: none
+**Phase**: 14 · **Category**: Cleanup · **Hours**: 1 · **Status**: Done (2026-11-02) · **MVP Gate**: Yes · **Depends on**: none
 
 **What it is** — No default, address or link points at servicepro.com, a domain someone else owns.
 
@@ -3371,3 +3371,10 @@ Dated history from the original "Completed Items" list:
 ### 2026-11-02
 
 - **T268** — Landing page per mockup 01: "Get paid for commercial service work." hero with an example consolidated invoice and the "Pay by bank" fee chip, the three-step story, the beta CTA band (white button) and the positioning footer line; header shows Features / Sign in / Request beta access. Pricing section built but behind `SHOW_PRICING = false` until T210 (D10/D11). Checked against the mockup in a headless production build.
+- **T257** — Dashboard numbers right: `GET /invoices/stats` (outstanding, overdue, collected this month; tenant-scoped incl. payments/refunds via their invoice; cross-tenant test), typed `JobStats` (pending/scheduled/in-progress/on-hold/completed/cancelled + by_status) and `CustomerStats` (+active/inactive/prospects, DB test); dashboard shows "Outstanding A/R" with the overdue amount; dead `roleApi` calls and `PUT /users/:id` removed.
+- **T258** — No `servicepro.com` left in code/config (Stripe AppInfo, swag contact, `.env.example` URLs, CORS test origins); `release-deploy.yml` region fallback us-east5; Supabase comments → Neon; `.env.example` gains `BACKEND_URL` and the SMS/TextBelt keys.
+- **T259** — Account settings: Security (password/2FA) and Notifications tabs removed until Neon Auth; org "Business Hours" → "Time Zone" (picker kept, dead hours grid removed); the 9 `/exports` job routes register only with `EXPORT_JOBS_ENABLED=true` (default false, regression test).
+- **T260** — One PDF engine: wkhtmltopdf/raymond path and dependency removed; customer/job/invoice/quote exports render through gofpdf (`pdf/table_report.go`); report-export PDF returns a typed 400; tests generate quote/invoice/receipt/export PDFs and cover F-8.
+- **T262** — Sentry replays on errors only (session rate 0); Inter self-hosted via `@fontsource-variable/inter`; Google Fonts removed from `index.html` and the CSP in `public/_headers`; tests `sentryReplay.test.ts`, `selfHostedFonts.test.ts`.
+- **T266** — Customer segmentation/cohort report removed (11 `/reports/customers/*` routes, handler, service, page, nav, API, types, `customer_report` export type); outgoing-webhooks plan flag removed (migration 000005 strips the `webhooks` key from `membership_tiers.features`; tables stay for T263).
+- **T267** — One job state machine: per-action `/jobs/:id/{start,complete,cancel,hold,resume}` and `allowed-transitions` removed (unused by the UI); every job response carries `allowed_transitions` from `models.GetAllowedTransitions` and `StatusTransitionButton` reads it (its copy of the rules deleted); Cypress intercepts fixed.
