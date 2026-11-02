@@ -9,8 +9,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
-	"github.com/stripe/stripe-go/v76"
-	"github.com/stripe/stripe-go/v76/checkout/session"
+	"github.com/stripe/stripe-go/v87"
+	"github.com/stripe/stripe-go/v87/checkout/session"
 
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	stripeClient "github.com/javaknight1/servicepro/backend/internal/services/stripe"

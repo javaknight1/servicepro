@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/shopspring/decimal"
-	"github.com/stripe/stripe-go/v76"
+	"github.com/stripe/stripe-go/v87"
 
 	"github.com/javaknight1/servicepro/backend/config"
 	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"

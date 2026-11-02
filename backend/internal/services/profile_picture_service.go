@@ -11,7 +11,7 @@ import (
 	"io"
 
 	"github.com/google/uuid"
-	"github.com/nfnt/resize"
+	"golang.org/x/image/draw"
 
 	"github.com/javaknight1/servicepro/backend/internal/repository"
 	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"
@@ -91,7 +91,7 @@ func (s *ProfilePictureService) UploadProfilePicture(ctx context.Context, userID
 	}
 
 	// Resize image to target dimensions (square, maintaining aspect ratio)
-	resized := resize.Thumbnail(TargetWidth, TargetHeight, img, resize.Lanczos3)
+	resized := thumbnail(img, TargetWidth, TargetHeight)
 
 	// Encode as JPEG
 	var buf bytes.Buffer
@@ -153,4 +153,28 @@ func (s *ProfilePictureService) DeleteProfilePicture(ctx context.Context, userID
 	}
 
 	return nil
+}
+
+// thumbnail scales img down to fit within maxW x maxH, keeping its aspect
+// ratio; smaller images are returned unchanged (like the archived
+// nfnt/resize.Thumbnail it replaces, T264). Catmull-Rom keeps edges sharp.
+func thumbnail(img image.Image, maxW, maxH uint) image.Image {
+	b := img.Bounds()
+	w, h := uint(b.Dx()), uint(b.Dy())
+	if w <= maxW && h <= maxH || w == 0 || h == 0 {
+		return img
+	}
+	nw, nh := maxW, h*maxW/w
+	if nh > maxH {
+		nw, nh = w*maxH/h, maxH
+	}
+	if nw == 0 {
+		nw = 1
+	}
+	if nh == 0 {
+		nh = 1
+	}
+	dst := image.NewRGBA(image.Rect(0, 0, int(nw), int(nh)))
+	draw.CatmullRom.Scale(dst, dst.Bounds(), img, b, draw.Over, nil)
+	return dst
 }

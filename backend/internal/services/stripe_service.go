@@ -7,12 +7,12 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/stripe/stripe-go/v76"
-	"github.com/stripe/stripe-go/v76/customer"
-	"github.com/stripe/stripe-go/v76/invoice"
-	"github.com/stripe/stripe-go/v76/paymentmethod"
-	"github.com/stripe/stripe-go/v76/setupintent"
-	"github.com/stripe/stripe-go/v76/subscription"
+	"github.com/stripe/stripe-go/v87"
+	"github.com/stripe/stripe-go/v87/customer"
+	"github.com/stripe/stripe-go/v87/invoice"
+	"github.com/stripe/stripe-go/v87/paymentmethod"
+	"github.com/stripe/stripe-go/v87/setupintent"
+	"github.com/stripe/stripe-go/v87/subscription"
 
 	"github.com/javaknight1/servicepro/backend/config"
 	"github.com/javaknight1/servicepro/backend/internal/models"
@@ -125,7 +125,7 @@ func (s *StripeService) CreateSetupIntent(ctx context.Context, tenantID uuid.UUI
 	// Create setup intent
 	params := &stripe.SetupIntentParams{
 		Customer: stripe.String(customerID),
-		PaymentMethodTypes: stripe.StringSlice([]string{
+		AllowedPaymentMethodTypes: stripe.StringSlice([]string{
 			"card",
 		}),
 		Metadata: map[string]string{
@@ -586,19 +586,21 @@ func (s *StripeService) previewStripeInvoice(ctx context.Context, tenantID uuid.
 	}
 
 	// Preview the upcoming invoice with the subscription change
-	params := &stripe.InvoiceUpcomingParams{
+	params := &stripe.InvoiceCreatePreviewParams{
 		Customer:     stripe.String(customerID),
 		Subscription: stripe.String(stripeSubID),
-		SubscriptionItems: []*stripe.SubscriptionItemsParams{
-			{
-				ID:    stripe.String(sub.Items.Data[0].ID),
-				Price: stripe.String(newPriceID),
+		SubscriptionDetails: &stripe.InvoiceCreatePreviewSubscriptionDetailsParams{
+			Items: []*stripe.InvoiceCreatePreviewSubscriptionDetailsItemParams{
+				{
+					ID:    stripe.String(sub.Items.Data[0].ID),
+					Price: stripe.String(newPriceID),
+				},
 			},
+			ProrationBehavior: stripe.String("create_prorations"),
 		},
-		SubscriptionProrationBehavior: stripe.String("create_prorations"),
 	}
 
-	upcomingInvoice, err := invoice.Upcoming(params)
+	upcomingInvoice, err := invoice.CreatePreview(params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to preview invoice: %w", err)
 	}
@@ -610,7 +612,7 @@ func (s *StripeService) previewStripeInvoice(ctx context.Context, tenantID uuid.
 
 	// Calculate proration credit from line items
 	for _, line := range upcomingInvoice.Lines.Data {
-		if line.Proration {
+		if invoiceLineIsProration(line) {
 			// Negative amounts are credits
 			preview.prorationCredit += int(-line.Amount)
 		}
@@ -620,8 +622,8 @@ func (s *StripeService) previewStripeInvoice(ctx context.Context, tenantID uuid.
 	if upcomingInvoice.NextPaymentAttempt > 0 {
 		nextBilling := time.Unix(upcomingInvoice.NextPaymentAttempt, 0)
 		preview.nextBillingDate = &nextBilling
-	} else if sub.CurrentPeriodEnd > 0 {
-		nextBilling := time.Unix(sub.CurrentPeriodEnd, 0)
+	} else if end := subscriptionPeriodEnd(sub); end > 0 {
+		nextBilling := time.Unix(end, 0)
 		preview.nextBillingDate = &nextBilling
 	}
 
@@ -701,7 +703,7 @@ func (s *StripeService) HandleSubscriptionUpdated(ctx context.Context, sub *stri
 	}
 
 	// Convert period end
-	periodEnd := time.Unix(sub.CurrentPeriodEnd, 0)
+	periodEnd := time.Unix(subscriptionPeriodEnd(sub), 0)
 
 	// Update subscription in database
 	if err := s.membershipRepo.UpdateSubscriptionFromStripe(ctx, stripeSubID, status, &periodEnd, sub.CancelAtPeriodEnd); err != nil {
@@ -723,4 +725,36 @@ func (s *StripeService) HandleSubscriptionDeleted(ctx context.Context, sub *stri
 
 	logging.Info(ctx, "[STRIPE] Subscription deleted", map[string]any{"subscription_id": stripeSubID})
 	return nil
+}
+
+// subscriptionPeriodEnd is when the subscription's current billing period
+// ends. Since Stripe API 2025-03-31 the period lives on each subscription
+// item, not the subscription; ServicePro subscriptions have one item, and
+// the latest end is used if there are several (stripe-go v87, T264).
+func subscriptionPeriodEnd(sub *stripe.Subscription) int64 {
+	var end int64
+	if sub == nil || sub.Items == nil {
+		return 0
+	}
+	for _, item := range sub.Items.Data {
+		if item != nil && item.CurrentPeriodEnd > end {
+			end = item.CurrentPeriodEnd
+		}
+	}
+	return end
+}
+
+// invoiceLineIsProration reports whether a preview line is a proration. In
+// stripe-go v87 the flag lives on the line's parent details (T264).
+func invoiceLineIsProration(line *stripe.InvoiceLineItem) bool {
+	if line == nil || line.Parent == nil {
+		return false
+	}
+	if d := line.Parent.SubscriptionItemDetails; d != nil && d.Proration {
+		return true
+	}
+	if d := line.Parent.InvoiceItemDetails; d != nil && d.Proration {
+		return true
+	}
+	return false
 }
