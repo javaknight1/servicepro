@@ -76,6 +76,7 @@ func SetupServices(
 	svc.Quote = services.NewQuoteServiceWithConfig(repos.Quote, &services.QuoteServiceConfig{
 		PDFService:  documentPDFService,
 		EmailClient: emailClient,
+		DB:          db,
 	})
 
 	// Invoice service (with email client and PDF service for sending invoices)

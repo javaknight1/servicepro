@@ -31,6 +31,20 @@ type PaymentReminderService struct {
 	smsClient   smsclient.Client
 	frontendURL string
 	backendURL  string
+	now         func() time.Time // replaced in tests
+}
+
+// Automatic reminders go out only in the tenant's local daytime (T265):
+// 8 a.m. up to 6 p.m. The hourly job (:15) catches the next window.
+const (
+	reminderWindowStartHour = 8
+	reminderWindowEndHour   = 18
+)
+
+// inReminderWindow reports whether now is inside the tenant's local window.
+func inReminderWindow(tenant *models.Tenant, now time.Time) bool {
+	h := now.In(loadLocationOrUTC(tenant.Settings.Timezone)).Hour()
+	return h >= reminderWindowStartHour && h < reminderWindowEndHour
 }
 
 // PaymentReminderServiceConfig holds configuration for the service
@@ -52,7 +66,7 @@ var (
 )
 
 func NewPaymentReminderService(db *gorm.DB, cfg *PaymentReminderServiceConfig) *PaymentReminderService {
-	svc := &PaymentReminderService{db: db}
+	svc := &PaymentReminderService{db: db, now: time.Now}
 	if cfg != nil {
 		svc.emailClient = cfg.EmailClient
 		svc.smsClient = cfg.SMSClient
@@ -72,13 +86,16 @@ var ErrReminderAlreadySent = errors.New("payment reminder already sent")
 // idempotent: re-running immediately sends nothing new (Sent == 0).
 type ReminderRunResult struct {
 	TenantsProcessed int `json:"tenants_processed" example:"3"`
-	Sent             int `json:"sent" example:"5"`
-	Skipped          int `json:"skipped" example:"2"`
-	Failed           int `json:"failed" example:"0"`
+	// TenantsOutsideWindow were skipped: outside their 8 a.m.–6 p.m. (T265)
+	TenantsOutsideWindow int `json:"tenants_outside_window" example:"1"`
+	Sent                 int `json:"sent" example:"5"`
+	Skipped              int `json:"skipped" example:"2"`
+	Failed               int `json:"failed" example:"0"`
 }
 
 func (r *ReminderRunResult) add(o ReminderRunResult) {
 	r.TenantsProcessed += o.TenantsProcessed
+	r.TenantsOutsideWindow += o.TenantsOutsideWindow
 	r.Sent += o.Sent
 	r.Skipped += o.Skipped
 	r.Failed += o.Failed
@@ -97,6 +114,10 @@ func (s *PaymentReminderService) ProcessAllTenants(ctx context.Context) (Reminde
 
 	for i := range tenants {
 		if tenants[i].Settings.PaymentRemindersEnabled {
+			if !inReminderWindow(&tenants[i], s.now()) {
+				result.TenantsOutsideWindow++
+				continue
+			}
 			// Scope each tenant's run to that tenant (internal/tenancy).
 			result.add(s.ProcessTenantReminders(tenancy.WithTenant(ctx, tenants[i].ID), &tenants[i]))
 		}
@@ -485,7 +506,7 @@ func (s *PaymentReminderService) sendEmailReminder(ctx context.Context, tenant *
 		WithTag("invoice_id", invoice.ID.String()).
 		WithTag("tone", tone)
 
-	_, err := s.emailClient.Send(ctx, msg)
+	_, err := s.emailClient.Send(tenantSenderFor(ctx, tenant), msg)
 	return err
 }
 
@@ -532,7 +553,7 @@ func buildSMSContent(firstName, invoiceNumber, amountDue string, daysOverdue int
 	case "firm":
 		return fmt.Sprintf("Payment reminder: Invoice %s ($%s) is %d days overdue. Please make payment promptly to avoid further action.", invoiceNumber, amountDue, daysOverdue)
 	default: // final
-		return fmt.Sprintf("FINAL NOTICE: Invoice %s ($%s) is %d days overdue and requires immediate attention. Please contact us to arrange payment.", invoiceNumber, amountDue, daysOverdue)
+		return fmt.Sprintf("Invoice %s ($%s) is now %d days overdue. Please arrange payment, or reply if you have a question or would like a payment plan.", invoiceNumber, amountDue, daysOverdue)
 	}
 }
 
@@ -607,7 +628,7 @@ const reminderHTMLTemplate = `<!DOCTYPE html>
 {{else if eq .Tone "firm"}}
 <p>Please arrange payment at your earliest convenience. If you have already made payment, please let us know so we can update our records.</p>
 {{else}}
-<p><strong>Immediate action is required.</strong> Please contact us to arrange payment or discuss a payment plan. Failure to respond may result in additional late fees or collection activity.</p>
+<p><strong>This invoice is now well past due.</strong> Please arrange payment, or reply to this email if you have a question about the invoice or would like to set up a payment plan.</p>
 {{end}}
 <p>Thank you for your attention to this matter.</p>
 <p>Best regards,<br/>{{.CompanyName}}</p>
@@ -624,7 +645,7 @@ Invoice Number: {{.InvoiceNumber}}
 Amount Due: ${{.AmountDue}}
 Due Date: {{.DueDate}}
 
-{{if eq .Tone "friendly"}}If you have already sent payment, please disregard this notice.{{else if eq .Tone "firm"}}Please arrange payment at your earliest convenience.{{else}}Immediate action is required. Please contact us to arrange payment.{{end}}
+{{if eq .Tone "friendly"}}If you have already sent payment, please disregard this notice.{{else if eq .Tone "firm"}}Please arrange payment at your earliest convenience.{{else}}This invoice is now well past due. Please arrange payment, or reply if you have a question or would like a payment plan.{{end}}
 
 Best regards,
 {{.CompanyName}}`

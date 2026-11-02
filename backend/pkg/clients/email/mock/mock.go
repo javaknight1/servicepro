@@ -158,7 +158,7 @@ func (c *Client) SendOrganizationInviteEmail(ctx context.Context, to, orgName, i
 func (c *Client) SendQuoteEmail(ctx context.Context, to string, quote *models.Quote, pdfAttachment *email.Attachment, downloadURL string) error {
 	logging.Info(ctx, "[EMAIL-MOCK] Sending quote email", map[string]any{"to": to, "quote_number": quote.QuoteNumber, "download_url": "[redacted]"})
 
-	subject := fmt.Sprintf("Quote %s from ServicePro", quote.QuoteNumber)
+	subject := fmt.Sprintf("Quote %s from %s", quote.QuoteNumber, email.BusinessName(ctx))
 	body := fmt.Sprintf("Quote #%s - Total: $%s. Valid until: %s",
 		quote.QuoteNumber, quote.Total.StringFixed(2), quote.ValidUntil.Format("January 2, 2006"))
 
@@ -174,7 +174,7 @@ func (c *Client) SendQuoteEmail(ctx context.Context, to string, quote *models.Qu
 func (c *Client) SendInvoiceEmail(ctx context.Context, to string, invoice *models.Invoice, paymentURL string, pdfAttachment *email.Attachment, downloadURL string) error {
 	logging.Info(ctx, "[EMAIL-MOCK] Sending invoice email", map[string]any{"to": to, "invoice_number": invoice.InvoiceNumber, "payment_url": "[redacted]", "download_url": "[redacted]"})
 
-	subject := fmt.Sprintf("Invoice %s from ServicePro", invoice.InvoiceNumber)
+	subject := fmt.Sprintf("Invoice %s from %s", invoice.InvoiceNumber, email.BusinessName(ctx))
 	body := fmt.Sprintf("Invoice #%s - Total: $%s.", invoice.InvoiceNumber, invoice.TotalAmount.StringFixed(2))
 	if paymentURL != "" {
 		body += " Pay here: " + paymentURL
@@ -192,7 +192,7 @@ func (c *Client) SendInvoiceEmail(ctx context.Context, to string, invoice *model
 func (c *Client) SendPaymentReceiptEmail(ctx context.Context, to string, invoice *models.Invoice, pdfAttachment *email.Attachment, downloadURL string) error {
 	logging.Info(ctx, "[EMAIL-MOCK] Sending payment receipt email", map[string]any{"to": to, "invoice_number": invoice.InvoiceNumber, "download_url": "[redacted]"})
 
-	subject := fmt.Sprintf("Payment Receipt for Invoice %s - ServicePro", invoice.InvoiceNumber)
+	subject := fmt.Sprintf("Payment receipt for invoice %s - %s", invoice.InvoiceNumber, email.BusinessName(ctx))
 	body := fmt.Sprintf("Payment received for Invoice #%s - Amount Paid: $%s. Thank you!",
 		invoice.InvoiceNumber, invoice.AmountPaid.StringFixed(2))
 

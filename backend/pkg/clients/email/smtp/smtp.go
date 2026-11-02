@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"html"
 	"net"
 	"net/smtp"
 	"strings"
@@ -97,15 +98,8 @@ func (c *Client) Send(ctx context.Context, msg *email.EmailMessage) (*email.Send
 	// Build email headers and body
 	var emailBuilder strings.Builder
 
-	// From header
-	fromHeader := c.fromAddr
-	if msg.From != "" {
-		if msg.FromName != "" {
-			fromHeader = fmt.Sprintf("%s <%s>", msg.FromName, msg.From)
-		} else {
-			fromHeader = msg.From
-		}
-	}
+	// From header: "<Business> via ServicePro" when a tenant sender is in ctx (T265)
+	fromHeader, replyTo := email.ResolveFrom(ctx, msg, c.config.FromName, c.config.FromEmail, msg.ReplyTo)
 	fmt.Fprintf(&emailBuilder, "From: %s\r\n", fromHeader)
 
 	// To header
@@ -117,7 +111,6 @@ func (c *Client) Send(ctx context.Context, msg *email.EmailMessage) (*email.Send
 	}
 
 	// Reply-To header
-	replyTo := msg.ReplyTo
 	if replyTo == "" {
 		replyTo = from
 	}
@@ -603,21 +596,22 @@ func (c *Client) SendQuoteEmail(ctx context.Context, to string, quote *models.Qu
 		}
 	}
 
-	subject := fmt.Sprintf("Quote %s from ServicePro", quote.QuoteNumber)
+	subject := fmt.Sprintf("Quote %s from %s", quote.QuoteNumber, email.BusinessName(ctx))
 	body := fmt.Sprintf(`
 		<html>
 		<body>
-			<h1>Quote from ServicePro</h1>
+			<h1>Quote from {{BUSINESS}}</h1>
 			<p>Hello %s,</p>
 			<p>Please find your quote details below:</p>
 			<p><strong>Quote Number:</strong> %s</p>
 			<p><strong>Total Amount:</strong> $%s</p>
 			<p><strong>Valid Until:</strong> %s</p>
-			<p>Best regards,<br>The ServicePro Team</p>
+			<p>Best regards,<br>{{BUSINESS}}</p>
 		</body>
 		</html>
 	`, customerName, quote.QuoteNumber, quote.Total.StringFixed(2), quote.ValidUntil.Format("January 2, 2006"))
 
+	body = strings.ReplaceAll(body, "{{BUSINESS}}", html.EscapeString(email.BusinessName(ctx)))
 	msg := email.NewEmailMessage(to, subject, body)
 	if pdfAttachment != nil {
 		msg.WithAttachment(*pdfAttachment)
@@ -637,22 +631,23 @@ func (c *Client) SendInvoiceEmail(ctx context.Context, to string, invoice *model
 		}
 	}
 
-	subject := fmt.Sprintf("Invoice %s from ServicePro", invoice.InvoiceNumber)
+	subject := fmt.Sprintf("Invoice %s from %s", invoice.InvoiceNumber, email.BusinessName(ctx))
 	body := fmt.Sprintf(`
 		<html>
 		<body>
-			<h1>Invoice from ServicePro</h1>
+			<h1>Invoice from {{BUSINESS}}</h1>
 			<p>Hello %s,</p>
 			<p>Please find your invoice details below:</p>
 			<p><strong>Invoice Number:</strong> %s</p>
 			<p><strong>Total Amount:</strong> $%s</p>
 			<p><strong>Due Date:</strong> %s</p>
 			%s
-			<p>Best regards,<br>The ServicePro Team</p>
+			<p>Best regards,<br>{{BUSINESS}}</p>
 		</body>
 		</html>
 	`, customerName, invoice.InvoiceNumber, invoice.TotalAmount.StringFixed(2), invoice.DueDate.Format("January 2, 2006"), email.PayNowButtonHTML(paymentURL))
 
+	body = strings.ReplaceAll(body, "{{BUSINESS}}", html.EscapeString(email.BusinessName(ctx)))
 	msg := email.NewEmailMessage(to, subject, body)
 	if pdfAttachment != nil {
 		msg.WithAttachment(*pdfAttachment)
@@ -672,7 +667,7 @@ func (c *Client) SendPaymentReceiptEmail(ctx context.Context, to string, invoice
 		}
 	}
 
-	subject := fmt.Sprintf("Payment Receipt for Invoice %s - ServicePro", invoice.InvoiceNumber)
+	subject := fmt.Sprintf("Payment receipt for invoice %s - %s", invoice.InvoiceNumber, email.BusinessName(ctx))
 	body := fmt.Sprintf(`
 		<html>
 		<body>
@@ -681,11 +676,12 @@ func (c *Client) SendPaymentReceiptEmail(ctx context.Context, to string, invoice
 			<p>Thank you for your payment! This confirms we have received payment for:</p>
 			<p><strong>Invoice Number:</strong> %s</p>
 			<p><strong>Amount Paid:</strong> $%s</p>
-			<p>Best regards,<br>The ServicePro Team</p>
+			<p>Best regards,<br>{{BUSINESS}}</p>
 		</body>
 		</html>
 	`, customerName, invoice.InvoiceNumber, invoice.AmountPaid.StringFixed(2))
 
+	body = strings.ReplaceAll(body, "{{BUSINESS}}", html.EscapeString(email.BusinessName(ctx)))
 	msg := email.NewEmailMessage(to, subject, body)
 	if pdfAttachment != nil {
 		msg.WithAttachment(*pdfAttachment)

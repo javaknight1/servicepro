@@ -12097,6 +12097,11 @@ export interface components {
             sent?: number;
             /** @example 2 */
             skipped?: number;
+            /**
+             * @description TenantsOutsideWindow were skipped: outside their 8 a.m.–6 p.m. (T265)
+             * @example 1
+             */
+            tenants_outside_window?: number;
             /** @example 3 */
             tenants_processed?: number;
         };

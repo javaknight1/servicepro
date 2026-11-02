@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"html"
 	"net/http"
 	"strings"
 	"time"
@@ -90,15 +91,9 @@ func NewClient(cfg *Config) (*Client, error) {
 
 // Send implements email.Client
 func (c *Client) Send(ctx context.Context, msg *email.EmailMessage) (*email.SendResult, error) {
-	// Determine from address
-	from := c.fromAddr
-	if msg.From != "" {
-		if msg.FromName != "" {
-			from = fmt.Sprintf("%s <%s>", msg.FromName, msg.From)
-		} else {
-			from = msg.From
-		}
-	}
+	// From/Reply-To: "<Business> via ServicePro" when a tenant sender is in
+	// ctx (T265), else the platform default.
+	from, replyTo := email.ResolveFrom(ctx, msg, c.config.FromName, c.config.FromEmail, c.replyTo)
 
 	// Never email an address that bounced or complained (T159).
 	to := email.FilterSuppressed(ctx, c.suppressor, msg.To)
@@ -128,11 +123,6 @@ func (c *Client) Send(ctx context.Context, msg *email.EmailMessage) (*email.Send
 		params.Bcc = bcc
 	}
 
-	// Set reply-to
-	replyTo := c.replyTo
-	if msg.ReplyTo != "" {
-		replyTo = msg.ReplyTo
-	}
 	if replyTo != "" {
 		params.ReplyTo = replyTo
 	}
@@ -502,7 +492,7 @@ func (c *Client) SendQuoteEmail(ctx context.Context, to string, quote *models.Qu
 		}
 	}
 
-	subject := fmt.Sprintf("Quote %s from ServicePro", quote.QuoteNumber)
+	subject := fmt.Sprintf("Quote %s from %s", quote.QuoteNumber, email.BusinessName(ctx))
 
 	// Build line items HTML
 	lineItemsHTML := ""
@@ -547,7 +537,7 @@ func (c *Client) SendQuoteEmail(ctx context.Context, to string, quote *models.Qu
 		<body>
 			<div class="container">
 				<div class="header">
-					<h1>Quote from ServicePro</h1>
+					<h1>Quote from {{BUSINESS}}</h1>
 				</div>
 				<div class="content">
 					<p>Hello %s,</p>
@@ -594,7 +584,7 @@ func (c *Client) SendQuoteEmail(ctx context.Context, to string, quote *models.Qu
 						If you have any questions about this quote, please don't hesitate to contact us.
 					</p>
 
-					<p>Best regards,<br>The ServicePro Team</p>
+					<p>Best regards,<br>{{BUSINESS}}</p>
 				</div>
 			</div>
 		</body>
@@ -604,6 +594,7 @@ func (c *Client) SendQuoteEmail(ctx context.Context, to string, quote *models.Qu
 		quote.Subtotal.StringFixed(2), quote.TaxAmount.StringFixed(2),
 		quote.Total.StringFixed(2), downloadPDFHTML)
 
+	body = strings.ReplaceAll(body, "{{BUSINESS}}", html.EscapeString(email.BusinessName(ctx)))
 	msg := email.NewEmailMessage(to, subject, body)
 
 	// Attach PDF if provided
@@ -627,7 +618,7 @@ func (c *Client) SendInvoiceEmail(ctx context.Context, to string, invoice *model
 		}
 	}
 
-	subject := fmt.Sprintf("Invoice %s from ServicePro", invoice.InvoiceNumber)
+	subject := fmt.Sprintf("Invoice %s from %s", invoice.InvoiceNumber, email.BusinessName(ctx))
 
 	// Build line items HTML
 	lineItemsHTML := ""
@@ -696,7 +687,7 @@ func (c *Client) SendInvoiceEmail(ctx context.Context, to string, invoice *model
 		<body>
 			<div class="container">
 				<div class="header">
-					<h1>Invoice from ServicePro</h1>
+					<h1>Invoice from {{BUSINESS}}</h1>
 				</div>
 				<div class="content">
 					<p>Hello %s,</p>
@@ -741,7 +732,7 @@ func (c *Client) SendInvoiceEmail(ctx context.Context, to string, invoice *model
 
 					%s
 
-					<p>Best regards,<br>The ServicePro Team</p>
+					<p>Best regards,<br>{{BUSINESS}}</p>
 				</div>
 			</div>
 		</body>
@@ -751,6 +742,7 @@ func (c *Client) SendInvoiceEmail(ctx context.Context, to string, invoice *model
 		invoice.Subtotal.StringFixed(2), invoice.TaxAmount.StringFixed(2),
 		invoice.TotalAmount.StringFixed(2), payNowHTML, downloadPDFHTML)
 
+	body = strings.ReplaceAll(body, "{{BUSINESS}}", html.EscapeString(email.BusinessName(ctx)))
 	msg := email.NewEmailMessage(to, subject, body)
 
 	// Attach PDF if provided
@@ -774,7 +766,7 @@ func (c *Client) SendPaymentReceiptEmail(ctx context.Context, to string, invoice
 		}
 	}
 
-	subject := fmt.Sprintf("Payment Receipt for Invoice %s - ServicePro", invoice.InvoiceNumber)
+	subject := fmt.Sprintf("Payment receipt for invoice %s - %s", invoice.InvoiceNumber, email.BusinessName(ctx))
 
 	// Build line items HTML
 	lineItemsHTML := ""
@@ -879,7 +871,7 @@ func (c *Client) SendPaymentReceiptEmail(ctx context.Context, to string, invoice
 						please don't hesitate to contact us.
 					</p>
 
-					<p>Best regards,<br>The ServicePro Team</p>
+					<p>Best regards,<br>{{BUSINESS}}</p>
 				</div>
 			</div>
 		</body>
@@ -888,6 +880,7 @@ func (c *Client) SendPaymentReceiptEmail(ctx context.Context, to string, invoice
 		lineItemsHTML, invoice.Subtotal.StringFixed(2), invoice.TaxAmount.StringFixed(2),
 		invoice.AmountPaid.StringFixed(2), downloadPDFHTML)
 
+	body = strings.ReplaceAll(body, "{{BUSINESS}}", html.EscapeString(email.BusinessName(ctx)))
 	msg := email.NewEmailMessage(to, subject, body)
 
 	// Attach PDF if provided

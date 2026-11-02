@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 
 	apperrors "github.com/javaknight1/servicepro/backend/internal/errors"
 	"github.com/javaknight1/servicepro/backend/internal/models"
@@ -105,12 +106,15 @@ type QuoteService struct {
 	quoteRepo   repository.QuoteRepositoryInterface
 	pdfService  *DocumentPDFService
 	emailClient email.Client
+	db          *gorm.DB // tenant lookup for the email sender (T265); optional
 }
 
 // QuoteServiceConfig holds configuration for the quote service
 type QuoteServiceConfig struct {
 	PDFService  *DocumentPDFService
 	EmailClient email.Client
+	// DB lets quote emails go out as "<Business> via ServicePro" (T265).
+	DB *gorm.DB
 }
 
 // WithContext returns a copy of the service whose repository runs with ctx.
@@ -133,6 +137,7 @@ func NewQuoteServiceWithConfig(quoteRepo repository.QuoteRepositoryInterface, cf
 	if cfg != nil {
 		svc.pdfService = cfg.PDFService
 		svc.emailClient = cfg.EmailClient
+		svc.db = cfg.DB
 	}
 	return svc
 }
@@ -346,9 +351,10 @@ func (s *QuoteService) SendQuote(id uuid.UUID) error {
 	}
 
 	// Send email with PDF asynchronously
-	if s.pdfService != nil && s.emailClient != nil && quote.Customer != nil && quote.Customer.Email != "" {
+	// Honour the customer's email opt-out on every send (T265).
+	if s.pdfService != nil && s.emailClient != nil && quote.Customer != nil && quote.Customer.Email != "" && !quote.Customer.DoNotEmail {
 		go func() {
-			ctx := context.Background()
+			ctx := withTenantSender(context.Background(), s.db, quote.TenantID)
 
 			// Generate PDF
 			pdfResult, err := s.pdfService.GenerateQuotePDF(ctx, quote)

@@ -1271,6 +1271,12 @@ func (s *InvoiceService) sendInvoiceEmail(invoice *models.Invoice) {
 		logging.Warn(ctx, "[INVOICE-SERVICE] Cannot send invoice email: missing customer or payment token", nil)
 		return
 	}
+	// Honour the customer's email opt-out on every send (T265).
+	if invoice.Customer.DoNotEmail {
+		logging.Info(ctx, "[INVOICE-SERVICE] Invoice email skipped: customer opted out of email", map[string]any{"invoice_number": invoice.InvoiceNumber})
+		return
+	}
+	ctx = withTenantSender(ctx, s.db, invoice.TenantID)
 
 	paymentURL := s.invoicePaymentURL(invoice)
 
@@ -1316,6 +1322,11 @@ func (s *InvoiceService) SendReceiptEmail(invoice *models.Invoice) {
 		logging.Warn(ctx, "[INVOICE-SERVICE] Cannot send receipt email: missing email client or customer", nil)
 		return
 	}
+	if invoice.Customer.DoNotEmail {
+		logging.Info(ctx, "[INVOICE-SERVICE] Receipt email skipped: customer opted out of email", map[string]any{"invoice_number": invoice.InvoiceNumber})
+		return
+	}
+	ctx = withTenantSender(ctx, s.db, invoice.TenantID)
 
 	var pdfAttachment *email.Attachment
 	var downloadURL string

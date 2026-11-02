@@ -3572,6 +3572,11 @@ definitions:
       skipped:
         example: 2
         type: integer
+      tenants_outside_window:
+        description: 'TenantsOutsideWindow were skipped: outside their 8 a.m.–6 p.m.
+          (T265)'
+        example: 1
+        type: integer
       tenants_processed:
         example: 3
         type: integer

@@ -13911,6 +13911,11 @@ const docTemplate = `{
                     "type": "integer",
                     "example": 2
                 },
+                "tenants_outside_window": {
+                    "description": "TenantsOutsideWindow were skipped: outside their 8 a.m.–6 p.m. (T265)",
+                    "type": "integer",
+                    "example": 1
+                },
                 "tenants_processed": {
                     "type": "integer",
                     "example": 3
