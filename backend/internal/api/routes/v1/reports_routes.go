@@ -16,9 +16,6 @@ func SetupReportRoutes(router *gin.RouterGroup, cfg *routeconfigs.RouteConfig) {
 		// Revenue report routes
 		setupRevenueReportRoutes(reports, cfg)
 
-		// Customer report routes
-		setupCustomerReportRoutes(reports, cfg)
-
 		// A/R Aging report routes
 		setupARAgingReportRoutes(reports, cfg)
 	}
@@ -59,63 +56,6 @@ func setupRevenueReportRoutes(reports *gin.RouterGroup, cfg *routeconfigs.RouteC
 	reports.POST("/revenue/cache/refresh",
 		cfg.Middleware.PermMiddleware.RequirePermission(permissions.ReportsAdmin),
 		cfg.Handlers.Revenue.RefreshCache)
-}
-
-func setupCustomerReportRoutes(reports *gin.RouterGroup, cfg *routeconfigs.RouteConfig) {
-	// Main customer report - requires "reports.view" permission
-	reports.GET("/customers",
-		cfg.Middleware.PermMiddleware.RequirePermission(permissions.ReportsView),
-		cfg.Handlers.CustomerReport.GetCustomerReport)
-
-	// Customer segment breakdown - requires "reports.view" permission
-	reports.GET("/customers/segments",
-		cfg.Middleware.PermMiddleware.RequirePermission(permissions.ReportsView),
-		cfg.Handlers.CustomerReport.GetSegmentBreakdown)
-
-	// Customer type breakdown - requires "reports.view" permission
-	reports.GET("/customers/types",
-		cfg.Middleware.PermMiddleware.RequirePermission(permissions.ReportsView),
-		cfg.Handlers.CustomerReport.GetTypeBreakdown)
-
-	// Customer geography breakdown - requires "reports.view" permission
-	reports.GET("/customers/geography",
-		cfg.Middleware.PermMiddleware.RequirePermission(permissions.ReportsView),
-		cfg.Handlers.CustomerReport.GetGeographyBreakdown)
-
-	// Customer acquisition trend - requires "reports.view" permission
-	reports.GET("/customers/acquisition",
-		cfg.Middleware.PermMiddleware.RequirePermission(permissions.ReportsView),
-		cfg.Handlers.CustomerReport.GetAcquisitionTrend)
-
-	// Top customers - requires "reports.view" permission
-	reports.GET("/customers/top",
-		cfg.Middleware.PermMiddleware.RequirePermission(permissions.ReportsView),
-		cfg.Handlers.CustomerReport.GetTopCustomers)
-
-	// At-risk customers - requires "reports.view" permission
-	reports.GET("/customers/at-risk",
-		cfg.Middleware.PermMiddleware.RequirePermission(permissions.ReportsView),
-		cfg.Handlers.CustomerReport.GetAtRiskCustomers)
-
-	// Customer cohort data - requires "reports.view" permission
-	reports.GET("/customers/cohorts",
-		cfg.Middleware.PermMiddleware.RequirePermission(permissions.ReportsView),
-		cfg.Handlers.CustomerReport.GetCohortData)
-
-	// Customer chart data - requires "reports.view" permission
-	reports.GET("/customers/chart-data",
-		cfg.Middleware.PermMiddleware.RequirePermission(permissions.ReportsView),
-		cfg.Handlers.CustomerReport.GetChartData)
-
-	// Export customer report - requires "reports.export" permission
-	reports.POST("/customers/export",
-		cfg.Middleware.PermMiddleware.RequirePermission(permissions.ReportsExport),
-		cfg.Handlers.CustomerReport.ExportReport)
-
-	// Refresh customer metrics cache - requires "reports.admin" permission
-	reports.POST("/customers/cache/refresh",
-		cfg.Middleware.PermMiddleware.RequirePermission(permissions.ReportsAdmin),
-		cfg.Handlers.CustomerReport.RefreshMetricsCache)
 }
 
 func setupARAgingReportRoutes(reports *gin.RouterGroup, cfg *routeconfigs.RouteConfig) {

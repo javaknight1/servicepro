@@ -114,15 +114,6 @@ export const routeConfigs: Record<string, RouteConfig> = {
     preload: 'hover',
     priority: 'medium',
   },
-  customerReport: {
-    path: '/reports/customers',
-    component: () =>
-      import(/* webpackChunkName: "page-reports" */ '@pages/Reports').then(
-        (m) => ({ default: m.CustomerReportPage })
-      ),
-    preload: 'hover',
-    priority: 'medium',
-  },
 
   // Error routes
   notFound: {

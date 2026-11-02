@@ -36,7 +36,6 @@ type TierFeatures struct {
 	StorageGB         int  `json:"storage_gb"`
 	AdvancedReporting bool `json:"advanced_reporting"`
 	APIAccess         bool `json:"api_access"`
-	Webhooks          bool `json:"webhooks"`
 	CustomBranding    bool `json:"custom_branding"`
 }
 

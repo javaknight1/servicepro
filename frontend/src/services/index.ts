@@ -33,7 +33,6 @@ export type { QuoteFilters } from './quoteService';
 
 export { revenueService } from './revenueService';
 
-export { customerReportService } from './customerReportService';
 
 export { roleApi } from './roleApi';
 

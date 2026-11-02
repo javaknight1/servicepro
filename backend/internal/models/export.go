@@ -22,12 +22,11 @@ const (
 type ExportType string
 
 const (
-	ExportTypeCustomers      ExportType = "customers"
-	ExportTypeJobs           ExportType = "jobs"
-	ExportTypeInvoices       ExportType = "invoices"
-	ExportTypeQuotes         ExportType = "quotes"
-	ExportTypeRevenueReport  ExportType = "revenue_report"
-	ExportTypeCustomerReport ExportType = "customer_report"
+	ExportTypeCustomers     ExportType = "customers"
+	ExportTypeJobs          ExportType = "jobs"
+	ExportTypeInvoices      ExportType = "invoices"
+	ExportTypeQuotes        ExportType = "quotes"
+	ExportTypeRevenueReport ExportType = "revenue_report"
 )
 
 // ExportJob represents an export job with progress tracking

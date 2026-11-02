@@ -396,7 +396,6 @@ func (h *ExportHandler) GetSupportedFormats(c *gin.Context) {
 			{"value": "invoices", "label": "Invoices"},
 			{"value": "quotes", "label": "Quotes"},
 			{"value": "revenue_report", "label": "Revenue Report"},
-			{"value": "customer_report", "label": "Customer Report"},
 		},
 		"csv_options": map[string]interface{}{
 			"delimiters": []map[string]string{

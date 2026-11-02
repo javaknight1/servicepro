@@ -236,8 +236,6 @@ func (s *unifiedExportService) fetchData(ctx context.Context, config *models.Exp
 		return s.fetchQuotes(ctx, config)
 	case models.ExportTypeRevenueReport:
 		return s.fetchRevenueReport(ctx, config)
-	case models.ExportTypeCustomerReport:
-		return s.fetchCustomerReport(ctx, config)
 	default:
 		return nil, 0, fmt.Errorf("unsupported export type: %s", config.ExportType)
 	}
@@ -328,14 +326,6 @@ func (s *unifiedExportService) fetchRevenueReport(ctx context.Context, config *m
 	return map[string]interface{}{
 		"type":    "revenue_report",
 		"message": "Revenue report data",
-	}, 1, nil
-}
-
-func (s *unifiedExportService) fetchCustomerReport(ctx context.Context, config *models.ExportConfig) (interface{}, int, error) {
-	// Customer reports return aggregated data
-	return map[string]interface{}{
-		"type":    "customer_report",
-		"message": "Customer report data",
 	}, 1, nil
 }
 

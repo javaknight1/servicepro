@@ -32,7 +32,6 @@ export type {
   CustomerFilters,
   CustomerListResponse,
   CustomerStats,
-  CustomerSegment,
   CustomerType,
   CustomerStatus,
 } from './customer';

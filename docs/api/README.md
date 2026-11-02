@@ -102,10 +102,9 @@ See [tax rates](../features/tax-service.md).
 | Method   | Endpoint                                                                                                       | Description           |
 | -------- | -------------------------------------------------------------------------------------------------------------- | --------------------- |
 | GET      | `/reports/revenue`, `/revenue/time-series`, `/revenue/categories`, `/revenue/customers`, `/revenue/chart-data` | Revenue               |
-| GET      | `/reports/customers`, `/customers/{segments,types,geography,acquisition,top,at-risk,cohorts,chart-data}`       | Customers             |
 | GET      | `/reports/ar-aging`, `/ar-aging/buckets`, `/ar-aging/buckets/:bucket/invoices`, `/ar-aging/customers`          | AR aging              |
-| POST     | `/reports/{revenue,customers,ar-aging}/export`                                                                 | Report exports        |
-| POST     | `/reports/{revenue,customers}/cache/refresh`                                                                   | Refresh report caches |
+| POST     | `/reports/{revenue,ar-aging}/export`                                                                           | Report exports        |
+| POST     | `/reports/revenue/cache/refresh`                                                                               | Refresh report cache  |
 | GET/POST | `/exports`, `/exports/quick`, `/exports/:id{,/progress,/stream,/download,/cancel}`, `/exports/formats`         | Export jobs           |
 
 See [import-export.md](../features/import-export.md).

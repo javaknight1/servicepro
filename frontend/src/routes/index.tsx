@@ -304,14 +304,6 @@ const RevenueReportPage = loadable(
   { chunkName: 'revenue-report', delay: 100 }
 );
 
-const CustomerReportPage = loadable(
-  () =>
-    import(/* webpackChunkName: "page-reports" */ '@pages/Reports').then(
-      (m) => ({ default: m.CustomerReportPage })
-    ),
-  { chunkName: 'customer-report', delay: 100 }
-);
-
 const ARAgingReportPage = loadable(
   () =>
     import(/* webpackChunkName: "page-reports" */ '@pages/Reports').then(
@@ -368,7 +360,6 @@ function useRoutePreloading() {
 
     if (path.startsWith('/reports')) {
       preloadRoute('revenueReport', { delay: 0 });
-      preloadRoute('customerReport', { delay: 0 });
     }
   }, [location.pathname]);
 }
@@ -387,7 +378,6 @@ export const preloadHandlers = {
   invoices: getPreloadHandler('invoices'),
   settings: getPreloadHandler('settings'),
   revenueReport: getPreloadHandler('revenueReport'),
-  customerReport: getPreloadHandler('customerReport'),
 };
 
 // =============================================================================
@@ -471,7 +461,6 @@ export function AppRoutes() {
         <Route path="/team/members" element={<TeamMembersPage />} />
         <Route path="/team/roles" element={<TeamRolesPage />} />
         <Route path="/reports/revenue" element={<RevenueReportPage />} />
-        <Route path="/reports/customers" element={<CustomerReportPage />} />
         <Route path="/reports/ar-aging" element={<ARAgingReportPage />} />
       </Route>
 
@@ -521,7 +510,6 @@ export const routePaths = {
   },
   reports: {
     revenue: '/reports/revenue',
-    customers: '/reports/customers',
     arAging: '/reports/ar-aging',
   },
   unauthorized: '/unauthorized',

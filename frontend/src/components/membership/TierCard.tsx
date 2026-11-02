@@ -26,7 +26,6 @@ const featureLabels: Record<keyof TierFeatures, string> = {
   storage_gb: 'Storage',
   advanced_reporting: 'Advanced Reporting',
   api_access: 'API Access',
-  webhooks: 'Webhooks',
   custom_branding: 'Custom Branding',
 };
 
@@ -128,11 +127,6 @@ export function TierCard({
           <FeatureItem
             label={featureLabels.api_access}
             value={tier.features.api_access}
-            type="boolean"
-          />
-          <FeatureItem
-            label={featureLabels.webhooks}
-            value={tier.features.webhooks}
             type="boolean"
           />
           <FeatureItem

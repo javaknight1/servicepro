@@ -57,7 +57,6 @@ const orgNavItems: NavItem[] = [
     icon: BarChart3,
     children: [
       { label: 'Revenue', path: '/reports/revenue' },
-      { label: 'Customers', path: '/reports/customers' },
       { label: 'A/R Aging', path: '/reports/ar-aging' },
     ],
   },

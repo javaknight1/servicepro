@@ -61,7 +61,6 @@ type Services struct {
 	Registration      services.RegistrationServiceInterface
 	EmailVerification *services.EmailVerificationService
 	PasswordReset     *services.PasswordResetService
-	Customer          services.CustomerReportService
 	Job               *services.JobService
 	Quote             *services.QuoteService
 	Invoice           *services.InvoiceService
@@ -107,7 +106,6 @@ type Handlers struct {
 	PasswordReset     *handlers.PasswordResetHandler
 	User              *handlers.UserHandler
 	Customer          *handlers.CustomerHandler
-	CustomerReport    *handlers.CustomerReportHandler
 	Job               *handlers.JobHandler
 	Quote             *handlers.QuoteHandler
 	Invoice           *handlers.InvoiceHandler

@@ -91,9 +91,6 @@ func SetupServices(
 	// Revenue report service
 	svc.Revenue = services.NewRevenueReportService(db)
 
-	// Customer report service
-	svc.Customer = services.NewCustomerReportService(db)
-
 	// A/R Aging report service
 	svc.ARAging = services.NewARAgingService(db)
 

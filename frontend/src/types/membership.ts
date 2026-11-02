@@ -15,7 +15,6 @@ export interface TierFeatures {
   storage_gb: number;
   advanced_reporting: boolean;
   api_access: boolean;
-  webhooks: boolean;
   custom_branding: boolean;
 }
 
@@ -147,6 +146,5 @@ export const featureDisplayConfig: FeatureDisplay[] = [
   { key: 'storage_gb', label: 'Storage', type: 'number', unit: 'GB' },
   { key: 'advanced_reporting', label: 'Advanced Reporting', type: 'boolean' },
   { key: 'api_access', label: 'API Access', type: 'boolean' },
-  { key: 'webhooks', label: 'Webhooks', type: 'boolean' },
   { key: 'custom_branding', label: 'Custom Branding', type: 'boolean' },
 ];

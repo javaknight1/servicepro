@@ -21,7 +21,6 @@ The Import/Export system provides:
 | Invoices        | -      | CSV, JSON, XLSX, PDF       |
 | Quotes          | -      | CSV, JSON, XLSX, PDF       |
 | Revenue report  | -      | CSV, JSON, XLSX            |
-| Customer report | -      | CSV, JSON, XLSX            |
 
 `GET /api/v1/exports/formats` returns the live list. Single invoice and quote
 PDFs are `GET /api/v1/invoices/:id/pdf` and `GET /api/v1/quotes/:id/pdf`.
@@ -45,7 +44,7 @@ All under `/api/v1`, authenticated and tenant-scoped.
 | GET    | `/exports/:id/stream`                                                              | Progress as a server-sent event stream      |
 | GET    | `/exports/:id/download`                                                            | Download the finished file                  |
 | POST   | `/exports/:id/cancel`                                                              | Cancel a running export                     |
-| POST   | `/reports/revenue/export`, `/reports/customers/export`, `/reports/ar-aging/export` | Report exports                              |
+| POST   | `/reports/revenue/export`, `/reports/ar-aging/export`                              | Report exports                              |
 
 `GET /customers/export` is deprecated and returns **410 Gone** — use
 `POST /exports` with `export_type: "customers"`.
@@ -67,7 +66,7 @@ Content-Type: application/json
 ```
 
 `format` is one of `csv`, `json`, `xlsx`, `pdf`; `export_type` one of
-`customers`, `jobs`, `invoices`, `quotes`, `revenue_report`, `customer_report`.
+`customers`, `jobs`, `invoices`, `quotes`, `revenue_report`.
 Optional: `include_sections`, `encoding`, `csv_options`, `pdf_options`,
 `excel_options`. Poll `/exports/:id/progress` (or subscribe to `/stream`) and
 then fetch `/exports/:id/download`. CSV/XLSX cells are protected against
