@@ -1,6 +1,6 @@
 # ServicePro — Roadmap
 
-**Last Updated**: 2026-11-02 (T265 done: tenant-branded, opt-out-respecting customer email. T264 done: stripe-go v87, x/image/draw. Phase A done: T257, T258, T259, T260, T262, T266, T267 merged (parallel worktree agents). T268 done: landing page per mockup 01. T159 done (Resend only, retries + idempotency, signed bounce/complaint webhook + suppression list). Mockups in `docs/product/mockups/`; T268 landing, T269 app shell + dashboard and T270 page restyle added to the MVP gate (49 tasks, ~310h). T205 in progress: owner account live; blank-site regression fixed in v0.10.5. T206 done: SPF/DKIM/DMARC on servicepro.sharkfins.xyz, test send delivered. T159 step 1 + T206 sender domain live in v0.10.3. T256 done — honesty gate (T255, T256, T261) complete. T255 done: honest public site, beta-access CTA, pricing hidden, Terms/Privacy acceptance recorded at sign-up. T261 done: invoice pay links off by default — `INVOICE_PAYMENTS_ENABLED`; Dependabot auto-merge now includes majors.) 2026-10-25 (MVP re-scope: the owner confirmed the Notion app-upgrade docs — D7–D14 decided, OD-4 closed by D9, OD-12 decided, OD-10/OD-11 opened; the "v1 Launch Gate" became the **MVP Launch Gate** (phases A–G, 46 tasks, ~292h, paid launch 2027-09-07) and every section's gate field is now **MVP Gate**; new tasks T255–T267 from the Technical Requirements N-tasks and the MVP feature table; T169 rewritten for Connect Accounts v2 direct charges; T153/T155–T157/T162 frozen (D12); T048–T050, T061, T063, T081, T183, T101, T243, T244 deferred; T242 Won't Do. Plan: `docs/product/mvp-plan-2026-10.md`.) Earlier — 2026-10-24 (TODO reformatted from the P0–P3/sprint layout to League Looper's indexed phase format: Task Index with ID/Phase/Category/Hours, one detailed section per open task, a launch gate and Verified Complete. A full audit of the repo (backend security, backend correctness, frontend, infra — stored in `docs/audits/2026-10-16/`) is filed as Phases 1–3 (T102–T152, T223–T226). The stack-convergence plan towards League Looper's stack is Phase 4 (T153–T166). Competitive research (`docs/product/competitive-research-2026-10.md`) became product Phases 5–16, merging the open T027–T101 tasks with new T167–T222. Hosting is deferred: ServicePro stays local-only until the production database decision (T202). Old IDs T001–T101 are kept; T011 never existed. Same day: Phase 3 platform work T139–T152 landed — golang-migrate, /version + schema-aware readiness, internal job endpoints, optional Redis, Cloud Run image, LL-style CI/release/hooks, Cloudflare Worker edge (not deployed); frontend fixes T130–T138; all of Phase 1 security (T102–T117) — tenant isolation plugin, per-tenant authz, invite-only registration, token/login/webhook/CSRF hardening, no known Go vulns; T227 added for the frontend follow-through. Same day: Phase 2 correctness work landed (T118–T129, T223–T239 — money path, numbering, status machines, refunds, quotes, tenant settings, error envelope + request IDs, ~39k lines of dead backend code removed, stricter golangci-lint); follow-ups T241–T244 filed. 2026-10-18: T231 (org deletion) deferred; Dependabot security-fix PRs enabled; SQLite ruled out for OD-1; Go deps bumped, T247 filed; T202 decided — Neon; OD-9 (auth provider) opened, then decided 2026-10-19 — Neon's managed Better Auth; 2026-10-24: Neon project linked, Neon agent skills + MCP server added, managed MFA confirmed on Neon's roadmap (T092); T164 frontend majors done (React 19, Router 7, Vite 8, ESLint 10, zod 4, Headless UI 2), T248/T249 filed; Tailwind 4 engine landed (T163 tokens + dark mode remain); 0 open Dependabot alerts.)
+**Last Updated**: 2026-11-02 (T154 RLS backstop (off by default), T241 imports, T263 table drops merged; migrations now 000001–000008. T265 done: tenant-branded, opt-out-respecting customer email. T264 done: stripe-go v87, x/image/draw. Phase A done: T257, T258, T259, T260, T262, T266, T267 merged (parallel worktree agents). T268 done: landing page per mockup 01. T159 done (Resend only, retries + idempotency, signed bounce/complaint webhook + suppression list). Mockups in `docs/product/mockups/`; T268 landing, T269 app shell + dashboard and T270 page restyle added to the MVP gate (49 tasks, ~310h). T205 in progress: owner account live; blank-site regression fixed in v0.10.5. T206 done: SPF/DKIM/DMARC on servicepro.sharkfins.xyz, test send delivered. T159 step 1 + T206 sender domain live in v0.10.3. T256 done — honesty gate (T255, T256, T261) complete. T255 done: honest public site, beta-access CTA, pricing hidden, Terms/Privacy acceptance recorded at sign-up. T261 done: invoice pay links off by default — `INVOICE_PAYMENTS_ENABLED`; Dependabot auto-merge now includes majors.) 2026-10-25 (MVP re-scope: the owner confirmed the Notion app-upgrade docs — D7–D14 decided, OD-4 closed by D9, OD-12 decided, OD-10/OD-11 opened; the "v1 Launch Gate" became the **MVP Launch Gate** (phases A–G, 46 tasks, ~292h, paid launch 2027-09-07) and every section's gate field is now **MVP Gate**; new tasks T255–T267 from the Technical Requirements N-tasks and the MVP feature table; T169 rewritten for Connect Accounts v2 direct charges; T153/T155–T157/T162 frozen (D12); T048–T050, T061, T063, T081, T183, T101, T243, T244 deferred; T242 Won't Do. Plan: `docs/product/mvp-plan-2026-10.md`.) Earlier — 2026-10-24 (TODO reformatted from the P0–P3/sprint layout to League Looper's indexed phase format: Task Index with ID/Phase/Category/Hours, one detailed section per open task, a launch gate and Verified Complete. A full audit of the repo (backend security, backend correctness, frontend, infra — stored in `docs/audits/2026-10-16/`) is filed as Phases 1–3 (T102–T152, T223–T226). The stack-convergence plan towards League Looper's stack is Phase 4 (T153–T166). Competitive research (`docs/product/competitive-research-2026-10.md`) became product Phases 5–16, merging the open T027–T101 tasks with new T167–T222. Hosting is deferred: ServicePro stays local-only until the production database decision (T202). Old IDs T001–T101 are kept; T011 never existed. Same day: Phase 3 platform work T139–T152 landed — golang-migrate, /version + schema-aware readiness, internal job endpoints, optional Redis, Cloud Run image, LL-style CI/release/hooks, Cloudflare Worker edge (not deployed); frontend fixes T130–T138; all of Phase 1 security (T102–T117) — tenant isolation plugin, per-tenant authz, invite-only registration, token/login/webhook/CSRF hardening, no known Go vulns; T227 added for the frontend follow-through. Same day: Phase 2 correctness work landed (T118–T129, T223–T239 — money path, numbering, status machines, refunds, quotes, tenant settings, error envelope + request IDs, ~39k lines of dead backend code removed, stricter golangci-lint); follow-ups T241–T244 filed. 2026-10-18: T231 (org deletion) deferred; Dependabot security-fix PRs enabled; SQLite ruled out for OD-1; Go deps bumped, T247 filed; T202 decided — Neon; OD-9 (auth provider) opened, then decided 2026-10-19 — Neon's managed Better Auth; 2026-10-24: Neon project linked, Neon agent skills + MCP server added, managed MFA confirmed on Neon's roadmap (T092); T164 frontend majors done (React 19, Router 7, Vite 8, ESLint 10, zod 4, Headless UI 2), T248/T249 filed; Tailwind 4 engine landed (T163 tokens + dark mode remain); 0 open Dependabot alerts.)
 
 > **How to read this file.** Every task has an ID (T###). The **Task Index** lists all of them: completed rows
 > (struck through) first by ID, then open rows by Phase → ID. Each open task has exactly one detailed section under
@@ -103,7 +103,7 @@ gated task's section says **MVP Gate: Yes**.
 | MVP phase                          | Window                     | Tasks                                                                                       | Hours | Done when                                                              |
 |------------------------------------|----------------------------|---------------------------------------------------------------------------------------------|-------|------------------------------------------------------------------------|
 | A. Honesty and fixes               | 2026-11-02 → 2026-11-22    | ~~T255~~, ~~T256~~, ~~T261~~ (honesty gate, by 2026-11-08), ~~T257~~, ~~T258~~, ~~T259~~, ~~T260~~, ~~T262~~, ~~T266~~, ~~T267~~     | 22    | No false claims, no mocks in prod, dashboard numbers right             |
-| B. Platform                        | 2026-11-23 → 2027-01-03    | T158 (rest), ~~T159~~, T160, T154, T241, T263                                                   | 51    | Neon Auth sign-in live; RLS on; files in R2                            |
+| B. Platform                        | 2026-11-23 → 2027-01-03    | T158 (rest), ~~T159~~, T160, ~~T154~~, ~~T241~~, ~~T263~~                                                   | 51    | Neon Auth sign-in live; RLS on; files in R2                            |
 | C. Getting paid                    | 2027-01-04 → 2027-02-14    | ~~T264~~, T169, T170, T210, ~~T265~~                                                                | 50    | A test tenant is paid by ACH into its own Stripe account               |
 | D. Commercial wedge                | 2027-02-15 → 2027-03-31    | T167, T186, T187, T188, T028, T029, T030, T035, T235, T269, T270                            | 73    | Agreements generate visits; one consolidated invoice per customer      |
 | E. Proof of service                | 2027-04-01 → 2027-05-01    | T173, T174, T176                                                                            | 40    | A tech completes a visit on a phone; the report is emailed             |
@@ -235,7 +235,7 @@ stripe-go v87 supports v2 accounts) and the first 4h of T192 (QuickBooks OAuth, 
 | ~~T239~~ | ~~2~~  | ~~Security~~   | ~~1~~  | ~~Access log drops query strings~~                                                                       |
 | ~~T245~~ | ~~3~~  | ~~Testing~~    | ~~2~~  | ~~Repair the Postgres repository tests so CI go-test is green~~                                          |
 | ~~T250~~ | ~~3~~  | ~~Frontend~~   | ~~2~~  | ~~Footer build stamp: web + API versions, drift warning~~                                                |
-| T241     | 2      | Bug            | 3      | CSV imports are queued but never processed                                                               |
+| ~~T241~~ | ~~2~~  | ~~Bug~~        | ~~3~~  | ~~CSV imports are queued but never processed~~                                                           |
 | T242     | 2      | Bug            | 1      | PDF header/footer files are deleted before wkhtmltopdf reads them                                        |
 | T243     | 2      | Security       | 1      | A/R aging CSV export: proper CSV writer + formula neutralisation                                         |
 | T244     | 2      | Bug            | 3      | Handle the discarded GORM .Error results                                                                 |
@@ -243,12 +243,12 @@ stripe-go v87 supports v2 accounts) and the first 4h of T192 (QuickBooks OAuth, 
 | ~~T257~~ | ~~2~~  | ~~Bug~~        | ~~3~~  | ~~Dashboard numbers right: add /invoices/stats, fix job and customer stats shapes, delete dead API calls~~|
 | ~~T259~~ | ~~2~~  | ~~UX~~         | ~~3~~  | ~~Hide unfinished settings and screens (account security, business hours, export jobs)~~                 |
 | ~~T260~~ | ~~2~~  | ~~Cleanup~~    | ~~3~~  | ~~Remove the wkhtmltopdf/raymond export path; gofpdf renders every PDF~~                                 |
-| T263     | 2      | DB             | 2      | Additive migration dropping 7 unused tables                                                              |
+| ~~T263~~ | ~~2~~  | ~~DB~~         | ~~2~~  | ~~Additive migration dropping 7 unused tables~~                                                          |
 | ~~T267~~ | ~~2~~  | ~~Cleanup~~    | ~~3~~  | ~~One job status machine; remove the duplicate per-action job endpoints~~                                |
 | T101     | 3      | Monitoring     | 2      | Upload source maps to Sentry for production builds                                                       |
 | T247     | 3      | Platform       | 3      | Move S3 uploads from the deprecated feature/s3/manager to feature/s3/transfermanager                     |
 | T153     | 4      | Backend        | 24     | Repositories take ctx + tenantID; services stop taking *gorm.DB; transaction manager                     |
-| T154     | 4      | Security       | 12     | Postgres RLS backstop keyed on a per-transaction tenant GUC + isolation tests                            |
+| ~~T154~~ | ~~4~~  | ~~Security~~   | ~~12~~ | ~~Postgres RLS backstop keyed on a per-transaction tenant GUC + isolation tests~~                        |
 | T155     | 4      | Backend        | 40     | Gin → chi                                                                                                |
 | T156     | 4      | Backend        | 120    | GORM → pgx/sqlc, one repository at a time                                                                |
 | T157     | 4      | Testing        | 16     | Drop GORM and sqlite; backend tests on Postgres via testcontainers                                       |
@@ -470,7 +470,7 @@ Work completed under the old P0–P3/sprint TODO. Details are in Verified Comple
 
 ### Phase 2 — Correctness & Cleanup (T118, T119, T120, T121, T122, T123, T124, T125, T126, T127, T128, T129, T130, T131, T132, T133, T134, T135, T136, T137, T138, T223, T224, T225, T226, T227, T228, T229, T232, T233, T234, T237, T238, T239, T241, T242, T243, T244, T256, T257, T259, T260, T263, T267)
 
-Money flows that are wired but broken (payments don't update invoices, reminders never sent, numbering wedges, a panicking webhook), frontend bugs users would hit in the preview, and dead code. From `docs/audits/2026-10-16/backend-correctness.md` and `docs/audits/2026-10-16/frontend.md`. **2 open tasks, ~5h.** 39 done.
+Money flows that are wired but broken (payments don't update invoices, reminders never sent, numbering wedges, a panicking webhook), frontend bugs users would hit in the preview, and dead code. From `docs/audits/2026-10-16/backend-correctness.md` and `docs/audits/2026-10-16/frontend.md`. **0 open tasks, ~0h.** 41 done.
 
 - [x] T118 — Recording a payment updates the invoice balance and status ✓ (2026-10-16)
 - [x] T119 — Stripe Checkout charges the true balance due ✓ (2026-10-16)
@@ -506,7 +506,7 @@ Money flows that are wired but broken (payments don't update invoices, reminders
 - [x] T237 — Tax rates API + tax-rate picker; terms on invoice create; keep line discounts on edit ✓ (2026-10-16)
 - [x] T238 — Job assignment checks the technician belongs to the tenant ✓ (2026-10-16)
 - [x] T239 — Access log drops query strings ✓ (2026-10-16)
-- [ ] T241 — CSV imports are queued but never processed
+- [x] T241 — CSV imports are queued but never processed ✓ (2026-11-02)
 - [ ] T242 — PDF header/footer files are deleted before wkhtmltopdf reads them
 - [ ] T243 — A/R aging CSV export: proper CSV writer + formula neutralisation
 - [ ] T244 — Handle the discarded GORM .Error results
@@ -514,12 +514,12 @@ Money flows that are wired but broken (payments don't update invoices, reminders
 - [x] T257 — Dashboard numbers right: add /invoices/stats, fix job and customer stats shapes, delete dead API calls ✓ (2026-11-02)
 - [x] T259 — Hide unfinished settings and screens (account security, business hours, export jobs) ✓ (2026-11-02)
 - [x] T260 — Remove the wkhtmltopdf/raymond export path; gofpdf renders every PDF ✓ (2026-11-02)
-- [ ] T263 — Additive migration dropping 7 unused tables
+- [x] T263 — Additive migration dropping 7 unused tables ✓ (2026-11-02)
 - [x] T267 — One job status machine; remove the duplicate per-action job endpoints ✓ (2026-11-02)
 
 #### T241 — CSV imports are queued but never processed
 
-**Phase**: 2 · **Category**: Bug · **Hours**: 3 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: T102
+**Phase**: 2 · **Category**: Bug · **Hours**: 3 · **Status**: Done (2026-11-02) · **MVP Gate**: Yes · **Depends on**: T102
 
 **What it is** — An uploaded import actually runs and reports per-row results.
 
@@ -631,7 +631,7 @@ Money flows that are wired but broken (payments don't update invoices, reminders
 
 #### T263 — Additive migration dropping 7 unused tables
 
-**Phase**: 2 · **Category**: DB · **Hours**: 2 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: T266
+**Phase**: 2 · **Category**: DB · **Hours**: 2 · **Status**: Done (2026-11-02) · **MVP Gate**: Yes · **Depends on**: T266
 
 **What it is** — The schema only holds tables the code uses.
 
@@ -710,11 +710,11 @@ Migrations, versioning, CI, the release pipeline and the edge setup — League L
 
 ### Phase 4 — Stack Convergence (LL parity; incremental) (T153, T154, T155, T156, T157, T158, T159, T160, T161, T162, T163, T164, T165, T166, T248, T249, T264)
 
-D2: move to League Looper's stack one strangler step at a time while the app keeps working. MVP subset (D12, 2026-10-25): Neon Auth (T158), Resend only (T159), R2 (T160) and the RLS backstop (T154), plus the stripe-go upgrade (T264). The repository refactor, chi, pgx/sqlc, GORM removal and TanStack Query ports (T153, T155–T157, T162) are frozen until the month-6 checkpoint. **9 open tasks, ~103h.** 3 done.
+D2: move to League Looper's stack one strangler step at a time while the app keeps working. MVP subset (D12, 2026-10-25): Neon Auth (T158), Resend only (T159), R2 (T160) and the RLS backstop (T154), plus the stripe-go upgrade (T264). The repository refactor, chi, pgx/sqlc, GORM removal and TanStack Query ports (T153, T155–T157, T162) are frozen until the month-6 checkpoint. **8 open tasks, ~91h.** 4 done.
 
 - [x] T164 — React 19, React Router 7, Vite major, ESLint 9, Headless UI 2 ✓ (2026-10-18)
 - [ ] T153 — Repositories take ctx + tenantID; services stop taking *gorm.DB; transaction manager
-- [ ] T154 — Postgres RLS backstop keyed on a per-transaction tenant GUC + isolation tests
+- [x] T154 — Postgres RLS backstop keyed on a per-transaction tenant GUC + isolation tests ✓ (2026-11-02)
 - [ ] T155 — Gin → chi
 - [ ] T156 — GORM → pgx/sqlc, one repository at a time
 - [ ] T157 — Drop GORM and sqlite; backend tests on Postgres via testcontainers
@@ -746,7 +746,7 @@ D2: move to League Looper's stack one strangler step at a time while the app kee
 
 #### T154 — Postgres RLS backstop keyed on a per-transaction tenant GUC + isolation tests
 
-**Phase**: 4 · **Category**: Security · **Hours**: 12 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: T153, T139
+**Phase**: 4 · **Category**: Security · **Hours**: 12 · **Status**: Done (2026-11-02) · **MVP Gate**: Yes · **Depends on**: T153, T139
 
 **What it is** — Postgres itself refuses to return or modify another tenant's rows, even if application code forgets a filter.
 
@@ -3103,6 +3103,7 @@ Validate the beachhead before the Phase 9–10 build-out, then publish positioni
 
 ## Blocked — needs Rob
 
+- **T154 production switch-on** — create a non-owner login: `CREATE ROLE servicepro_api LOGIN PASSWORD '<generated>' IN ROLE servicepro_app;` on the Neon `production` branch (password generated with `bwx generate -ulns --length 24` and saved in Bitwarden), point the Cloud Run runtime `DATABASE_URL` secret at that role (migrations keep the owner URL), set `RLS_ENFORCE=true` in the same revision, then watch p95 latency (lone statements cost 3 round trips). Steps in `docs/ops/cloud-run-setup.md`. Until then the policies exist but the owner connection bypasses them.
 - **T159 webhook secret** — in Resend → Webhooks, add endpoint `https://servicepro.sharkfins.xyz/api/v1/webhooks/resend` with events `email.bounced` and `email.complained`; copy its signing secret (`whsec_…`) into Bitwarden (Dev & Cloud → Resend API key, custom field `webhook_secret`) and Secret Manager: `bwx get item <id> | jq -r '.fields[] | select(.name=="webhook_secret").value' | gcloud secrets versions add RESEND_WEBHOOK_SECRET --project service-pro-512609 --data-file=-` (create the secret first with `gcloud secrets create RESEND_WEBHOOK_SECRET --project service-pro-512609` and grant `servicepro-api@…` secretAccessor). Until then the route stays off and nothing is suppressed; sending works.
 
 ## Open Decisions
@@ -3380,3 +3381,6 @@ Dated history from the original "Completed Items" list:
 - **T267** — One job state machine: per-action `/jobs/:id/{start,complete,cancel,hold,resume}` and `allowed-transitions` removed (unused by the UI); every job response carries `allowed_transitions` from `models.GetAllowedTransitions` and `StatusTransitionButton` reads it (its copy of the rules deleted); Cypress intercepts fixed.
 - **T264** — stripe-go v76 → v87.1.0: SetupIntent `AllowedPaymentMethodTypes`; subscription-change preview via `invoice.CreatePreview` + `SubscriptionDetails`; billing period end read from subscription items (`subscriptionPeriodEnd`); proration flag from line parent details (`invoiceLineIsProration`); webhooks already ignore API-version mismatch. Archived `nfnt/resize` replaced by an `x/image/draw` Catmull-Rom `thumbnail` (test). Unblocks T169 (Connect Accounts v2).
 - **T265** — Customer emails (quotes, invoices, receipts, reminders) go out as "<Business> via ServicePro" from the verified address with the business as Reply-To (`email.Sender` in ctx → `ResolveFrom`, names sanitised), and subjects/headings/sign-offs name the business; platform emails (sign-up, reset, invites) stay ServicePro. `DoNotEmail` now honoured on invoice, receipt and quote sends (reminders already did). Automatic reminders only run 8 a.m.–6 p.m. tenant-local (`inReminderWindow`; run result reports `tenants_outside_window`). Final-notice email/SMS reworded without the collection threat. Quote follow-ups and review requests don't exist yet, so the CAN-SPAM unsubscribe/postal-address rule applies when T041/T182 are built. Tests: `sender_test.go`, `tenant_email_test.go`.
+- **T154** — Postgres RLS backstop (migration 000007): policies on every tenancy-registered table keyed on transaction-local `app.tenant_id` / `app.bypass_rls`, applied at the driver level (`tenancy.RLSConnector` wraps pgx: GORM, raw SQL, transactions, savepoints) so it's safe behind Neon's transaction pooler; tables use ENABLE (not FORCE) and enforcement comes from connecting as the non-owner `servicepro_app` role. Off by default (`RLS_ENFORCE=false`); DB-backed tests cover cross-tenant read/update/delete/insert, shared-read tables, nested transactions and a request-level path. Production switch-on is in Blocked — needs Rob.
+- **T241** — Queued CSV imports run: parsed rows stored in `import_jobs.payload` (migration 000008), claimed one at a time with `FOR UPDATE SKIP LOCKED` by `POST /internal/jobs/imports` (scheduled-jobs.yml, every 15 min; dev ticker) under the job's own tenant; stale `processing` jobs fail instead of re-running; ≤1,000-row files import in-request; 5 MiB `MaxBytesReader` (413) and 10,000-row caps (F-23); per-row failures saved; Redis queue removed. DB-backed tests incl. concurrent claims and cross-tenant.
+- **T263** — Migration 000006 drops 9 unused tables (`subscription_plans`, `plan_features`, `analytics.aggregated_metrics`, `revenue_alerts`, `schedule_exceptions`, `holidays`, `customer_segments`, `customer_metrics_cache`, `customer_activities`) with `IF EXISTS` (the `subscriptions` FK to `subscription_plans` dropped first); down recreates them empty. `docs/architecture/DATABASE.md` counts refreshed (45 tables, 17 triggers).
