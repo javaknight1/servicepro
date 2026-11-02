@@ -1,4 +1,4 @@
--- 000009_import_jobs_payload (T241)
+-- 000008_import_jobs_payload (T241)
 -- Queued CSV imports carry their parsed rows and options in the database so
 -- POST /internal/jobs/imports can claim and run them (Redis is optional in
 -- production, so the old Redis queue was never drained). The payload is

@@ -18,7 +18,7 @@ import (
 )
 
 // importFixture is a migrated test database (openProvisioningTestDB) with
-// the import service, skipped when import_jobs.payload (migration 000009) is
+// the import service, skipped when import_jobs.payload (migration 000008) is
 // not there yet.
 type importFixture struct {
 	db  *gorm.DB
@@ -39,7 +39,7 @@ func newImportFixture(t *testing.T) *importFixture {
 	require.NoError(t, db.Raw(`SELECT count(*) FROM information_schema.columns
 		WHERE table_name = 'import_jobs' AND column_name = 'payload'`).Scan(&n).Error)
 	if n == 0 {
-		t.Skip("Skipping - test database is not migrated to 000009 (import_jobs.payload)")
+		t.Skip("Skipping - test database is not migrated to 000008 (import_jobs.payload)")
 	}
 	return &importFixture{db: db, svc: NewImportService(db, repository.NewCustomerRepository(db)), tag: uuid.NewString()[:8]}
 }
