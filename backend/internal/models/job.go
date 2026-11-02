@@ -263,9 +263,13 @@ type JobResponse struct {
 	RequiresFollowUp    bool                    `json:"requires_follow_up"`
 	FollowUpDate        *int64                  `json:"follow_up_date,omitempty"`
 	NextStatus          *JobStatus              `json:"next_status,omitempty"`
-	Warnings            []string                `json:"warnings,omitempty"`
-	CreatedAt           time.Time               `json:"created_at"`
-	UpdatedAt           time.Time               `json:"updated_at"`
+	// AllowedTransitions are the statuses POST /jobs/{id}/transition accepts
+	// next, from the job state machine (job_status.go). The UI's status
+	// actions read this instead of keeping their own copy (T267).
+	AllowedTransitions []JobStatus `json:"allowed_transitions"`
+	Warnings           []string    `json:"warnings,omitempty"`
+	CreatedAt          time.Time   `json:"created_at"`
+	UpdatedAt          time.Time   `json:"updated_at"`
 }
 
 // JobAssignmentResponse represents the response for a job assignment
@@ -410,6 +414,10 @@ func (j *Job) ToResponse() JobResponse {
 	nextStatus := GetNextLogicalStatus(j.Status)
 	if nextStatus != "" {
 		response.NextStatus = &nextStatus
+	}
+	response.AllowedTransitions = GetAllowedTransitions(j.Status)
+	if response.AllowedTransitions == nil {
+		response.AllowedTransitions = []JobStatus{}
 	}
 
 	// Include customer if loaded

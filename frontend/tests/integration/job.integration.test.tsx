@@ -29,9 +29,6 @@ vi.mock('@services/jobService', () => ({
     createJob: vi.fn(),
     updateJob: vi.fn(),
     deleteJob: vi.fn(),
-    startJob: vi.fn(),
-    completeJob: vi.fn(),
-    cancelJob: vi.fn(),
     getStats: vi.fn(),
     transitionStatus: vi.fn(),
     getStatusHistory: vi.fn(),
@@ -116,6 +113,7 @@ const mockJobs = [
     description: 'Install new HVAC system',
     job_type: 'installation' as const,
     status: 'new' as const,
+    allowed_transitions: ['scheduled' as const, 'cancelled' as const],
     priority: 'normal' as const,
     scheduled_start_at: Date.UTC(2024, 0, 15, 9, 0) / 1000,
     scheduled_end_at: '2024-01-15T17:00:00Z',
@@ -131,6 +129,13 @@ const mockJobs = [
     description: 'Fix leaking pipe',
     job_type: 'repair' as const,
     status: 'in_progress' as const,
+    allowed_transitions: [
+      'on_hold' as const,
+      'completed' as const,
+      'en_route' as const,
+      'scheduled' as const,
+      'cancelled' as const,
+    ],
     priority: 'high' as const,
     scheduled_start_at: Date.UTC(2024, 0, 10, 10, 0) / 1000,
     scheduled_end_at: '2024-01-10T14:00:00Z',
@@ -147,6 +152,11 @@ const mockJobs = [
     description: 'Annual safety inspection',
     job_type: 'inspection' as const,
     status: 'completed' as const,
+    allowed_transitions: [
+      'invoiced' as const,
+      'in_progress' as const,
+      'cancelled' as const,
+    ],
     priority: 'low' as const,
     scheduled_start_at: Date.UTC(2024, 0, 5, 8, 0) / 1000,
     scheduled_end_at: '2024-01-05T10:00:00Z',
@@ -967,7 +977,7 @@ describe('Job Lifecycle Integration', () => {
     it('should handle status transition error', async () => {
       const user = userEvent.setup({ delay: null });
       vi.mocked(jobService.getJob).mockResolvedValue(mockJobs[1]);
-      vi.mocked(jobService.completeJob).mockRejectedValue({
+      vi.mocked(jobService.transitionStatus).mockRejectedValue({
         response: {
           data: { message: 'Cannot complete job without work details' },
         },

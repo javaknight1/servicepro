@@ -31,20 +31,18 @@ All under `/api/v1`, authenticated and tenant-scoped.
 
 ### Status
 
-| Method | Endpoint                        | Description                                       |
-| ------ | ------------------------------- | ------------------------------------------------- |
-| POST   | `/jobs/:id/start`               | Start the job                                     |
-| POST   | `/jobs/:id/complete`            | Complete (`{"completion_notes": "…"}` optional)   |
-| POST   | `/jobs/:id/cancel`              | Cancel (`{"reason": "…"}` optional)               |
-| POST   | `/jobs/:id/hold`                | Put on hold (`{"reason": "…"}` optional)          |
-| POST   | `/jobs/:id/resume`              | Resume from `on_hold`                             |
-| POST   | `/jobs/:id/transition`          | Generic transition (`models.StatusChangeRequest`) |
-| GET    | `/jobs/:id/allowed-transitions` | Transitions allowed from the current status       |
-| GET    | `/jobs/:id/status-history`      | Status history                                    |
+| Method | Endpoint                   | Description                                                  |
+| ------ | -------------------------- | ------------------------------------------------------------ |
+| POST   | `/jobs/:id/transition`     | Change status (`models.StatusChangeRequest`: `to_status`, optional `reason`, `notes`) |
+| GET    | `/jobs/:id/status-history` | Status history                                               |
 
 Job statuses: `new`, `scheduled`, `en_route`, `in_progress`, `on_hold`,
-`completed`, `invoiced`, `paid`, `cancelled`. The state machine lives in the
-job service; ask `allowed-transitions` rather than hard-coding it.
+`completed`, `invoiced`, `paid`, `cancelled`. The one state machine is
+`backend/internal/models/job_status.go`; every job response carries
+`allowed_transitions` (the statuses `/transition` accepts next), so clients
+read that rather than hard-coding the rules. The per-action endpoints
+(`/start`, `/complete`, `/cancel`, `/hold`, `/resume`) and
+`/allowed-transitions` were removed in T267.
 
 ### Assignments, materials, notes
 

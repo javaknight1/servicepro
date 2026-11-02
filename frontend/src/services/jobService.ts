@@ -111,6 +111,9 @@ export interface Job {
   special_instructions?: string;
   required_materials?: string;
   next_status?: JobStatus;
+  /** Statuses POST /jobs/{id}/transition accepts next, from the backend
+   *  job state machine (T267). The UI's status actions read only this. */
+  allowed_transitions?: JobStatus[];
   requires_follow_up?: boolean;
   follow_up_date?: number;
   warnings?: string[];
@@ -219,25 +222,6 @@ class JobService {
 
   async deleteJob(id: string): Promise<void> {
     await api.delete(`${this.basePath}/${id}`);
-  }
-
-  async startJob(id: string): Promise<Job> {
-    const response = await api.post<Job>(`${this.basePath}/${id}/start`);
-    return response.data;
-  }
-
-  async completeJob(id: string, notes?: string): Promise<Job> {
-    const response = await api.post<Job>(`${this.basePath}/${id}/complete`, {
-      notes,
-    });
-    return response.data;
-  }
-
-  async cancelJob(id: string, reason?: string): Promise<Job> {
-    const response = await api.post<Job>(`${this.basePath}/${id}/cancel`, {
-      reason,
-    });
-    return response.data;
   }
 
   async getStats(): Promise<JobStats> {

@@ -100,11 +100,6 @@ type JobServiceInterface interface {
 	GetOverdueJobs() ([]models.JobResponse, error)
 
 	// Status transitions
-	StartJob(id uuid.UUID, userID uuid.UUID, userRole models.UserRole) (*models.JobResponse, error)
-	CompleteJob(id uuid.UUID, completionNotes string, userID uuid.UUID, userRole models.UserRole) (*models.JobResponse, error)
-	CancelJob(id uuid.UUID, reason string, userID uuid.UUID, userRole models.UserRole) (*models.JobResponse, error)
-	PutOnHold(id uuid.UUID, reason string, userID uuid.UUID, userRole models.UserRole) (*models.JobResponse, error)
-	ResumeJob(id uuid.UUID, userID uuid.UUID, userRole models.UserRole) (*models.JobResponse, error)
 
 	// Assignment operations
 	AssignTechnician(jobID, technicianID uuid.UUID, role string, userID uuid.UUID, userRole models.UserRole) error
@@ -125,7 +120,6 @@ type JobServiceInterface interface {
 	// Status transition operations
 	TransitionStatus(jobID uuid.UUID, toStatus models.JobStatus, reason string, notes *string, userID uuid.UUID, userRole models.UserRole) (*models.JobResponse, error)
 	GetStatusHistory(jobID uuid.UUID, limit, offset int, sortOrder string) (*models.StatusHistoryResponse, error)
-	GetAllowedTransitions(jobID uuid.UUID, userID uuid.UUID, userRole models.UserRole) (*models.AllowedTransitionsResponse, error)
 }
 
 // JobService handles job business logic
@@ -524,176 +518,6 @@ func (s *JobService) GetOverdueJobs() ([]models.JobResponse, error) {
 	return responses, nil
 }
 
-// StartJob transitions a job to in_progress status
-func (s *JobService) StartJob(id uuid.UUID, userID uuid.UUID, userRole models.UserRole) (*models.JobResponse, error) {
-	job, err := s.jobRepo.GetByID(id)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, ErrJobNotFound
-		}
-		return nil, err
-	}
-
-	// Check permissions
-	if err := s.validator.CanUserModifyJob(job, userID, userRole); err != nil {
-		return nil, ErrUnauthorized
-	}
-
-	if err := s.applyTransition(job, models.JobStatusInProgress, models.ReasonStartWork, nil, userID); err != nil {
-		return nil, err
-	}
-
-	updatedJob, err := s.jobRepo.GetByID(id)
-	if err != nil {
-		return nil, err
-	}
-
-	response := updatedJob.ToResponse()
-	return &response, nil
-}
-
-// CompleteJob transitions a job to completed status
-func (s *JobService) CompleteJob(id uuid.UUID, completionNotes string, userID uuid.UUID, userRole models.UserRole) (*models.JobResponse, error) {
-	job, err := s.jobRepo.GetByID(id)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, ErrJobNotFound
-		}
-		return nil, err
-	}
-
-	// Check permissions
-	if err := s.validator.CanUserModifyJob(job, userID, userRole); err != nil {
-		return nil, ErrUnauthorized
-	}
-
-	var notes *string
-	if completionNotes != "" {
-		notes = &completionNotes
-		job.CompletionNotes = &completionNotes
-	}
-	if err := s.applyTransition(job, models.JobStatusCompleted, models.ReasonCompleteWork, notes, userID); err != nil {
-		return nil, err
-	}
-
-	updatedJob, err := s.jobRepo.GetByID(id)
-	if err != nil {
-		return nil, err
-	}
-
-	response := updatedJob.ToResponse()
-	return &response, nil
-}
-
-// CancelJob transitions a job to cancelled status
-func (s *JobService) CancelJob(id uuid.UUID, reason string, userID uuid.UUID, userRole models.UserRole) (*models.JobResponse, error) {
-	job, err := s.jobRepo.GetByID(id)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, ErrJobNotFound
-		}
-		return nil, err
-	}
-
-	// Check permissions (only admin and manager can cancel jobs)
-	if userRole != models.UserRoleAdmin && userRole != models.UserRoleManager {
-		return nil, ErrUnauthorized
-	}
-
-	var notes *string
-	if reason != "" {
-		notes = &reason
-		internal := ""
-		if job.InternalNotes != nil {
-			internal = *job.InternalNotes
-		}
-		internal = internal + "\n\nCancellation Reason: " + reason
-		job.InternalNotes = &internal
-	}
-	if err := s.applyTransition(job, models.JobStatusCancelled, models.ReasonCancellation, notes, userID); err != nil {
-		return nil, err
-	}
-
-	updatedJob, err := s.jobRepo.GetByID(id)
-	if err != nil {
-		return nil, err
-	}
-
-	response := updatedJob.ToResponse()
-	return &response, nil
-}
-
-// PutOnHold transitions a job to on_hold status
-func (s *JobService) PutOnHold(id uuid.UUID, reason string, userID uuid.UUID, userRole models.UserRole) (*models.JobResponse, error) {
-	job, err := s.jobRepo.GetByID(id)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, ErrJobNotFound
-		}
-		return nil, err
-	}
-
-	// Check permissions
-	if err := s.validator.CanUserModifyJob(job, userID, userRole); err != nil {
-		return nil, ErrUnauthorized
-	}
-
-	var notes *string
-	if reason != "" {
-		notes = &reason
-		internal := ""
-		if job.InternalNotes != nil {
-			internal = *job.InternalNotes
-		}
-		internal = internal + "\n\nOn Hold Reason: " + reason
-		job.InternalNotes = &internal
-	}
-	if err := s.applyTransition(job, models.JobStatusOnHold, models.ReasonTechnicalIssue, notes, userID); err != nil {
-		return nil, err
-	}
-
-	updatedJob, err := s.jobRepo.GetByID(id)
-	if err != nil {
-		return nil, err
-	}
-
-	response := updatedJob.ToResponse()
-	return &response, nil
-}
-
-// ResumeJob transitions a job from on_hold back to in_progress
-func (s *JobService) ResumeJob(id uuid.UUID, userID uuid.UUID, userRole models.UserRole) (*models.JobResponse, error) {
-	job, err := s.jobRepo.GetByID(id)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, ErrJobNotFound
-		}
-		return nil, err
-	}
-
-	// Check permissions
-	if err := s.validator.CanUserModifyJob(job, userID, userRole); err != nil {
-		return nil, ErrUnauthorized
-	}
-
-	// Must be on hold to resume
-	if job.Status != models.JobStatusOnHold {
-		return nil, models.ErrInvalidStatusTransition.WithMessage("Only jobs that are on hold can be resumed")
-	}
-
-	if err := s.applyTransition(job, models.JobStatusInProgress, models.ReasonResume, nil, userID); err != nil {
-		return nil, err
-	}
-
-	updatedJob, err := s.jobRepo.GetByID(id)
-	if err != nil {
-		return nil, err
-	}
-
-	response := updatedJob.ToResponse()
-	return &response, nil
-}
-
 // AssignTechnician assigns a technician to a job
 func (s *JobService) AssignTechnician(jobID, technicianID uuid.UUID, role string, userID uuid.UUID, userRole models.UserRole) error {
 	// Get job to check permissions
@@ -1001,30 +825,5 @@ func (s *JobService) GetStatusHistory(jobID uuid.UUID, limit, offset int, sortOr
 	return &models.StatusHistoryResponse{
 		Transitions: responses,
 		Total:       total,
-	}, nil
-}
-
-// GetAllowedTransitions returns the statuses a job can move to next, from
-// the single job state machine (models/job_status.go).
-func (s *JobService) GetAllowedTransitions(jobID uuid.UUID, userID uuid.UUID, userRole models.UserRole) (*models.AllowedTransitionsResponse, error) {
-	job, err := s.jobRepo.GetByID(jobID)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, ErrJobNotFound
-		}
-		return nil, err
-	}
-	if err := s.validator.CanUserModifyJob(job, userID, userRole); err != nil {
-		return nil, ErrUnauthorized
-	}
-	allowed := models.GetAllowedTransitions(job.Status)
-	if allowed == nil {
-		allowed = []models.JobStatus{}
-	}
-	return &models.AllowedTransitionsResponse{
-		JobID:              job.ID,
-		CurrentStatus:      job.Status,
-		AllowedTransitions: allowed,
-		IsTerminal:         models.IsTerminalStatus(job.Status),
 	}, nil
 }

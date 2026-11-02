@@ -104,6 +104,9 @@ export interface Job {
   special_instructions?: string;
   required_materials?: string;
   next_status?: JobStatus;
+  /** Statuses POST /jobs/{id}/transition accepts next, from the backend
+   *  job state machine (T267). The UI's status actions read only this. */
+  allowed_transitions?: JobStatus[];
   requires_follow_up?: boolean;
   follow_up_date?: number;
   warnings?: string[];

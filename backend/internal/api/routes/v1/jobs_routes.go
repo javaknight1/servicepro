@@ -67,36 +67,10 @@ func SetupJobRoutes(router *gin.RouterGroup, cfg *routeconfigs.RouteConfig) {
 			cfg.Middleware.PermMiddleware.RequirePermission(permissions.JobsDelete),
 			cfg.Handlers.Job.DeleteJob)
 
-		// Job status transitions - require "jobs.update" permission
-		jobs.POST("/:id/start",
-			cfg.Middleware.PermMiddleware.RequirePermission(permissions.JobsUpdate),
-			cfg.Handlers.Job.StartJob)
-
-		jobs.POST("/:id/complete",
-			cfg.Middleware.PermMiddleware.RequirePermission(permissions.JobsUpdate),
-			cfg.Handlers.Job.CompleteJob)
-
-		jobs.POST("/:id/cancel",
-			cfg.Middleware.PermMiddleware.RequirePermission(permissions.JobsDelete),
-			cfg.Handlers.Job.CancelJob)
-
-		jobs.POST("/:id/hold",
-			cfg.Middleware.PermMiddleware.RequirePermission(permissions.JobsUpdate),
-			cfg.Handlers.Job.PutOnHold)
-
-		jobs.POST("/:id/resume",
-			cfg.Middleware.PermMiddleware.RequirePermission(permissions.JobsUpdate),
-			cfg.Handlers.Job.ResumeJob)
-
-		// Status transition endpoint
+		// Status transitions (the job state machine) - require "jobs.update"
 		jobs.POST("/:id/transition",
 			cfg.Middleware.PermMiddleware.RequirePermission(permissions.JobsUpdate),
 			cfg.Handlers.Job.TransitionStatus)
-
-		// Allowed next statuses (job state machine) for the status actions
-		jobs.GET("/:id/allowed-transitions",
-			cfg.Middleware.PermMiddleware.RequirePermission(permissions.JobsRead),
-			cfg.Handlers.Job.GetAllowedTransitions)
 
 		// Status history endpoint
 		jobs.GET("/:id/status-history",

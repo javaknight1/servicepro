@@ -384,14 +384,6 @@ type StatusTransitionResponse struct {
 	TransitionedAt int64                  `json:"transitioned_at"`
 }
 
-// AllowedTransitionsResponse represents allowed transitions for a job
-type AllowedTransitionsResponse struct {
-	JobID              uuid.UUID   `json:"job_id"`
-	CurrentStatus      JobStatus   `json:"current_status"`
-	AllowedTransitions []JobStatus `json:"allowed_transitions"`
-	IsTerminal         bool        `json:"is_terminal"`
-}
-
 // ToResponse converts JobStatusTransition to response
 func (t *JobStatusTransition) ToResponse() StatusTransitionResponse {
 	response := StatusTransitionResponse{

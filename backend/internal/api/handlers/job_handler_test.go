@@ -84,46 +84,6 @@ func (m *MockJobService) GetOverdueJobs() ([]models.JobResponse, error) {
 	return args.Get(0).([]models.JobResponse), args.Error(1)
 }
 
-func (m *MockJobService) StartJob(id uuid.UUID, userID uuid.UUID, userRole models.UserRole) (*models.JobResponse, error) {
-	args := m.Called(id, userID, userRole)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*models.JobResponse), args.Error(1)
-}
-
-func (m *MockJobService) CompleteJob(id uuid.UUID, completionNotes string, userID uuid.UUID, userRole models.UserRole) (*models.JobResponse, error) {
-	args := m.Called(id, completionNotes, userID, userRole)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*models.JobResponse), args.Error(1)
-}
-
-func (m *MockJobService) CancelJob(id uuid.UUID, reason string, userID uuid.UUID, userRole models.UserRole) (*models.JobResponse, error) {
-	args := m.Called(id, reason, userID, userRole)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*models.JobResponse), args.Error(1)
-}
-
-func (m *MockJobService) PutOnHold(id uuid.UUID, reason string, userID uuid.UUID, userRole models.UserRole) (*models.JobResponse, error) {
-	args := m.Called(id, reason, userID, userRole)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*models.JobResponse), args.Error(1)
-}
-
-func (m *MockJobService) ResumeJob(id uuid.UUID, userID uuid.UUID, userRole models.UserRole) (*models.JobResponse, error) {
-	args := m.Called(id, userID, userRole)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*models.JobResponse), args.Error(1)
-}
-
 func (m *MockJobService) AssignTechnician(jobID, technicianID uuid.UUID, role string, userID uuid.UUID, userRole models.UserRole) error {
 	args := m.Called(jobID, technicianID, role, userID, userRole)
 	return args.Error(0)
@@ -184,14 +144,6 @@ func (m *MockJobService) GetStatusHistory(jobID uuid.UUID, limit, offset int, so
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*models.StatusHistoryResponse), args.Error(1)
-}
-
-func (m *MockJobService) GetAllowedTransitions(jobID uuid.UUID, userID uuid.UUID, userRole models.UserRole) (*models.AllowedTransitionsResponse, error) {
-	args := m.Called(jobID, userID, userRole)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*models.AllowedTransitionsResponse), args.Error(1)
 }
 
 // Helper functions
@@ -533,71 +485,74 @@ func TestJobHandler_DeleteJob_Success(t *testing.T) {
 	mockService.AssertExpectations(t)
 }
 
-// Tests for StartJob
-func TestJobHandler_StartJob_Success(t *testing.T) {
+// Tests for TransitionStatus — the one status endpoint (T267)
+func TestJobHandler_TransitionStatus_Success(t *testing.T) {
 	mockService := new(MockJobService)
 	handler := NewJobHandler(mockService)
 	router := setupJobTestRouter()
 
-	userID := uuid.New()
-	jobID := uuid.New()
-
-	router.POST("/jobs/:id/start", func(c *gin.Context) {
+	userID, jobID := uuid.New(), uuid.New()
+	router.POST("/jobs/:id/transition", func(c *gin.Context) {
 		c.Set("user_id", userID)
 		c.Set("userRole", models.RoleUser)
-		handler.StartJob(c)
+		handler.TransitionStatus(c)
 	})
 
 	response := createTestJobResponse()
 	response.ID = jobID
-	response.Status = models.JobStatusInProgress
+	response.Status = models.JobStatusOnHold
+	response.AllowedTransitions = models.GetAllowedTransitions(models.JobStatusOnHold)
+	notes := "waiting on parts"
+	mockService.On("TransitionStatus", jobID, models.JobStatusOnHold, "technical_issue", &notes, userID, models.RoleUser).
+		Return(response, nil)
 
-	mockService.On("StartJob", jobID, userID, models.RoleUser).Return(response, nil)
-
-	req := httptest.NewRequest(http.MethodPost, "/jobs/"+jobID.String()+"/start", nil)
+	body, _ := json.Marshal(map[string]string{"to_status": "on_hold", "reason": "technical_issue", "notes": notes})
+	req := httptest.NewRequest(http.MethodPost, "/jobs/"+jobID.String()+"/transition", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
-
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusOK, w.Code)
-
+	require.Equal(t, http.StatusOK, w.Code)
 	var respBody models.JobResponse
-	err := json.Unmarshal(w.Body.Bytes(), &respBody)
-	require.NoError(t, err)
-	assert.Equal(t, models.JobStatusInProgress, respBody.Status)
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &respBody))
+	assert.Equal(t, models.JobStatusOnHold, respBody.Status)
+	assert.ElementsMatch(t, []models.JobStatus{models.JobStatusInProgress, models.JobStatusCancelled}, respBody.AllowedTransitions)
 	mockService.AssertExpectations(t)
 }
 
 // T223: an invalid status transition reaches the client as a 409 with its
-// own message (publicError used to reduce "invalid status transition: …" to
-// a generic 400), and an unexpected error is a 500 that leaks nothing.
-func TestJobHandler_StartJob_DomainAndInfraErrors(t *testing.T) {
+// own message, and an unexpected error is a 500 that leaks nothing.
+func TestJobHandler_TransitionStatus_DomainAndInfraErrors(t *testing.T) {
 	for _, tc := range []struct {
 		serviceErr error
 		status     int
 		code       string
 		message    string
 	}{
-		{fmt.Errorf("start: %w", models.ErrInvalidStatusTransition.WithMessage("A job can't move from completed to in_progress")),
+		{fmt.Errorf("transition: %w", models.ErrInvalidStatusTransition.WithMessage("A job can't move from completed to in_progress")),
 			http.StatusConflict, "invalid_status_transition", "A job can't move from completed to in_progress"},
 		{services.ErrJobNotFound, http.StatusNotFound, "job_not_found", "Job not found"},
 		{services.ErrUnauthorized, http.StatusForbidden, "forbidden", ""},
-		{errors.New("pq: deadlock detected"), http.StatusInternalServerError, "internal_error", "Failed to start job"},
+		{errors.New("pq: deadlock detected"), http.StatusInternalServerError, "internal_error", "Failed to change job status"},
 	} {
 		mockService := new(MockJobService)
 		handler := NewJobHandler(mockService)
 		router := setupJobTestRouter()
 		router.Use(middleware.RequestID())
 		userID, jobID := uuid.New(), uuid.New()
-		router.POST("/jobs/:id/start", func(c *gin.Context) {
+		router.POST("/jobs/:id/transition", func(c *gin.Context) {
 			c.Set("user_id", userID)
 			c.Set("userRole", models.RoleUser)
-			handler.StartJob(c)
+			handler.TransitionStatus(c)
 		})
-		mockService.On("StartJob", jobID, userID, models.RoleUser).Return(nil, tc.serviceErr)
+		mockService.On("TransitionStatus", jobID, models.JobStatusInProgress, "", (*string)(nil), userID, models.RoleUser).
+			Return(nil, tc.serviceErr)
 
+		req := httptest.NewRequest(http.MethodPost, "/jobs/"+jobID.String()+"/transition",
+			bytes.NewBufferString(`{"to_status":"in_progress"}`))
+		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
-		router.ServeHTTP(w, httptest.NewRequest(http.MethodPost, "/jobs/"+jobID.String()+"/start", nil))
+		router.ServeHTTP(w, req)
 
 		var body models.ErrorResponse
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
@@ -609,48 +564,6 @@ func TestJobHandler_StartJob_DomainAndInfraErrors(t *testing.T) {
 		assert.NotContains(t, body.Message, "pq:")
 		assert.NotEmpty(t, body.RequestID)
 	}
-}
-
-// Tests for CompleteJob
-func TestJobHandler_CompleteJob_Success(t *testing.T) {
-	mockService := new(MockJobService)
-	handler := NewJobHandler(mockService)
-	router := setupJobTestRouter()
-
-	userID := uuid.New()
-	jobID := uuid.New()
-
-	router.POST("/jobs/:id/complete", func(c *gin.Context) {
-		c.Set("user_id", userID)
-		c.Set("userRole", models.RoleUser)
-		handler.CompleteJob(c)
-	})
-
-	reqBody := map[string]string{
-		"completion_notes": "Job completed successfully",
-	}
-
-	response := createTestJobResponse()
-	response.ID = jobID
-	response.Status = models.JobStatusCompleted
-
-	mockService.On("CompleteJob", jobID, "Job completed successfully", userID, models.RoleUser).
-		Return(response, nil)
-
-	jsonBody, _ := json.Marshal(reqBody)
-	req := httptest.NewRequest(http.MethodPost, "/jobs/"+jobID.String()+"/complete", bytes.NewBuffer(jsonBody))
-	req.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
-
-	router.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusOK, w.Code)
-
-	var respBody models.JobResponse
-	err := json.Unmarshal(w.Body.Bytes(), &respBody)
-	require.NoError(t, err)
-	assert.Equal(t, models.JobStatusCompleted, respBody.Status)
-	mockService.AssertExpectations(t)
 }
 
 // Tests for AssignTechnician

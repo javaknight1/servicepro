@@ -24,38 +24,6 @@ interface StatusTransitionButtonProps {
   disabled?: boolean;
 }
 
-// Define allowed transitions from each status
-const transitionRules: Record<JobStatus, JobStatus[]> = {
-  [JobStatus.NEW]: [JobStatus.SCHEDULED, JobStatus.CANCELLED],
-  [JobStatus.SCHEDULED]: [
-    JobStatus.IN_PROGRESS,
-    JobStatus.EN_ROUTE,
-    JobStatus.NEW,
-    JobStatus.CANCELLED,
-  ],
-  [JobStatus.EN_ROUTE]: [
-    JobStatus.IN_PROGRESS,
-    JobStatus.SCHEDULED,
-    JobStatus.CANCELLED,
-  ],
-  [JobStatus.IN_PROGRESS]: [
-    JobStatus.COMPLETED,
-    JobStatus.ON_HOLD,
-    JobStatus.EN_ROUTE,
-    JobStatus.SCHEDULED,
-    JobStatus.CANCELLED,
-  ],
-  [JobStatus.ON_HOLD]: [JobStatus.IN_PROGRESS, JobStatus.CANCELLED],
-  [JobStatus.COMPLETED]: [
-    JobStatus.INVOICED,
-    JobStatus.IN_PROGRESS,
-    JobStatus.CANCELLED,
-  ],
-  [JobStatus.INVOICED]: [JobStatus.PAID, JobStatus.COMPLETED],
-  [JobStatus.PAID]: [JobStatus.INVOICED],
-  [JobStatus.CANCELLED]: [],
-};
-
 // Get button configuration for each status
 function getButtonConfig(toStatus: JobStatus, fromStatus: JobStatus) {
   const isBackward = isBackwardTransition(fromStatus, toStatus);
@@ -141,10 +109,12 @@ function isBackwardTransition(from: JobStatus, to: JobStatus): boolean {
   return toIndex < fromIndex;
 }
 
-// Categorize transitions
-function categorizeTransitions(currentStatus: JobStatus) {
-  const allowed = transitionRules[currentStatus] || [];
-
+// Categorize the job's allowed next statuses. They come from the API (the
+// backend job state machine, T267); the UI keeps no copy of the rules.
+function categorizeTransitions(
+  currentStatus: JobStatus,
+  allowed: readonly JobStatus[]
+) {
   const primary: JobStatus[] = [];
   const secondary: JobStatus[] = [];
   const backward: JobStatus[] = [];
@@ -180,7 +150,8 @@ export function StatusTransitionButton({
   const [error, setError] = useState<string | null>(null);
 
   const { primary, secondary, backward, cancel } = categorizeTransitions(
-    job.status
+    job.status,
+    job.allowed_transitions ?? []
   );
 
   const handleTransition = async (toStatus: JobStatus) => {

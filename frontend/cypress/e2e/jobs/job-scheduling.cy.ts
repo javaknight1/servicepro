@@ -194,6 +194,7 @@ describe('Job Scheduling', () => {
           id: 'job-001',
           title: 'Lawn Mowing',
           status: 'scheduled',
+          allowed_transitions: ['en_route', 'in_progress', 'new', 'cancelled'],
         },
       }).as('getJob');
 
@@ -202,7 +203,7 @@ describe('Job Scheduling', () => {
     });
 
     it('should mark job as complete', () => {
-      cy.intercept('PATCH', '**/api/v1/jobs/job-001/complete', {
+      cy.intercept('POST', '**/api/v1/jobs/job-001/transition', {
         statusCode: 200,
         body: {
           id: 'job-001',
@@ -220,7 +221,7 @@ describe('Job Scheduling', () => {
     });
 
     it('should cancel job', () => {
-      cy.intercept('PATCH', '**/api/v1/jobs/job-001/cancel', {
+      cy.intercept('POST', '**/api/v1/jobs/job-001/transition', {
         statusCode: 200,
         body: { id: 'job-001', status: 'cancelled' },
       }).as('cancelJob');
