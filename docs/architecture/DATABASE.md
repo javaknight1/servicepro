@@ -27,15 +27,16 @@
 
 ### 1.1 Database Statistics
 
-Counted from `000001_initial_schema.up.sql` (2026-10-25):
+Counted from a database migrated through 000006 (2026-11-02; 000006 dropped nine
+unused tables, T263):
 
 | Metric     | Value                                                      |
 | ---------- | ---------------------------------------------------------- |
-| Tables     | 53 (51 in `public`, 2 in `analytics`)                      |
+| Tables     | 45 (44 in `public`, 1 in `analytics`)                      |
 | Views      | 8 (`v_*` reporting views, no materialized views)           |
 | Functions  | 15                                                         |
 | Enum types | 16                                                         |
-| Triggers   | 19 (17 `updated_at`, quote item totals, invoice numbering) |
+| Triggers   | 17 (16 `updated_at`, quote item totals)                    |
 
 ### 1.2 Naming Conventions
 
@@ -488,7 +489,6 @@ erDiagram
 erDiagram
     jobs ||--o{ schedules : has
     recurring_schedules ||--o{ schedules : generates
-    recurring_schedules ||--o{ schedule_exceptions : has
     schedules ||--o{ schedule_conflicts : may_have
 
     schedules {
@@ -548,20 +548,6 @@ erDiagram
         timestamp deleted_at
     }
 
-    schedule_exceptions {
-        uuid id PK
-        uuid recurring_pattern_id FK
-        date exception_date
-        enum exception_type
-        text reason
-        date rescheduled_date
-        jsonb modifications
-        uuid created_by FK
-        timestamp created_at
-        timestamp updated_at
-        timestamp deleted_at
-    }
-
     schedule_conflicts {
         uuid id PK
         uuid schedule_id_1 FK
@@ -577,17 +563,6 @@ erDiagram
         timestamp detected_at
         timestamp created_at
         timestamp updated_at
-    }
-
-    holidays {
-        uuid id PK
-        string name
-        date date
-        string country
-        boolean is_recurring
-        timestamp created_at
-        timestamp updated_at
-        timestamp deleted_at
     }
 ```
 
@@ -860,15 +835,14 @@ Eight plain (non-materialized) reporting views:
 | `v_revenue_daily`         | Revenue per day                   |
 | `v_ar_aging_summary`      | Accounts-receivable aging buckets |
 
-Report endpoints that need caching use cache tables (`revenue_summary_cache`,
-`customer_metrics_cache`) with explicit refresh endpoints, not materialized
-views.
+Report endpoints that need caching use a cache table (`revenue_summary_cache`)
+with explicit refresh endpoints, not materialized views.
 
 ### 6.2 Functions
 
 | Function                                                                       | Purpose                                        |
 | ------------------------------------------------------------------------------ | ---------------------------------------------- |
-| `update_updated_at_column()`                                                   | Trigger: keep `updated_at` current (17 tables) |
+| `update_updated_at_column()`                                                   | Trigger: keep `updated_at` current (16 tables) |
 | `validate_email`, `validate_phone`, `validate_state_code`, `validate_zip_code` | Check-constraint helpers                       |
 | `calculate_quote_item_total()`                                                 | Trigger: quote line totals                     |
 | `generate_quote_number`, `generate_invoice_number`                             | Document numbering                             |

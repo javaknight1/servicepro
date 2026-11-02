@@ -13,7 +13,8 @@
   `recurring_schedules` table (recurrence type `daily`/`weekly`/`monthly`/
   `yearly`/`custom`, an optional RRULE string, interval, days of week, day of
   month, time window, assigned technicians, `job_template_id`) plus
-  `schedules`, `schedule_exceptions` and `holidays`. Nothing creates rows in
+  `schedules` (its unused `schedule_exceptions` and `holidays` tables were
+  dropped in 000006, T263). Nothing creates rows in
   `recurring_schedules`; the repository methods for it
   (`backend/internal/repository/schedule_repository.go`) have no callers in the
   API. Note the table has no `tenant_id` — it must get one (or be replaced)
