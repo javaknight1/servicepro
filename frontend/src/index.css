@@ -73,8 +73,8 @@
   --color-neutral-900: #171717;
   --color-neutral-950: #0a0a0a;
 
-  --font-sans: Inter, system-ui, -apple-system, sans-serif;
-  --font-heading: Inter, system-ui, -apple-system, sans-serif;
+  --font-sans: 'Inter Variable', Inter, system-ui, -apple-system, sans-serif;
+  --font-heading: 'Inter Variable', Inter, system-ui, -apple-system, sans-serif;
 
   --text-xs: 0.75rem;
   --text-xs--line-height: 1rem;

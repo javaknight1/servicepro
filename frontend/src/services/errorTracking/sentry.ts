@@ -97,7 +97,9 @@ export function initErrorTracking(config: ErrorTrackingConfig): void {
     // trace headers to our own /api routes (and localhost in dev).
     tracePropagationTargets: [/^\/api(\/|$)/, /^https?:\/\/localhost(:\d+)?\//],
 
-    replaysSessionSampleRate: 0.1,
+    // Record replays only around errors: no routine session recording
+    // (privacy, free-tier quota) (T262).
+    replaysSessionSampleRate: 0,
     replaysOnErrorSampleRate: 1.0,
 
     allowUrls: finalConfig.allowUrls,

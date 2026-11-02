@@ -1,6 +1,8 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App.tsx';
+// Inter is self-hosted (bundled woff2), not hot-linked from Google Fonts (T262).
+import '@fontsource-variable/inter';
 import './index.css';
 import { initErrorTracking } from './services/errorTracking';
 import { initAnalytics } from './services/analytics';
