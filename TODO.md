@@ -1,6 +1,6 @@
 # ServicePro — Roadmap
 
-**Last Updated**: 2026-11-02 (T269 app shell + dashboard and T270 page restyle done per the mockups. T154 RLS backstop (off by default), T241 imports, T263 table drops merged; migrations now 000001–000008. T265 done: tenant-branded, opt-out-respecting customer email. T264 done: stripe-go v87, x/image/draw. Phase A done: T257, T258, T259, T260, T262, T266, T267 merged (parallel worktree agents). T268 done: landing page per mockup 01. T159 done (Resend only, retries + idempotency, signed bounce/complaint webhook + suppression list). Mockups in `docs/product/mockups/`; T268 landing, T269 app shell + dashboard and T270 page restyle added to the MVP gate (49 tasks, ~310h). T205 in progress: owner account live; blank-site regression fixed in v0.10.5. T206 done: SPF/DKIM/DMARC on servicepro.sharkfins.xyz, test send delivered. T159 step 1 + T206 sender domain live in v0.10.3. T256 done — honesty gate (T255, T256, T261) complete. T255 done: honest public site, beta-access CTA, pricing hidden, Terms/Privacy acceptance recorded at sign-up. T261 done: invoice pay links off by default — `INVOICE_PAYMENTS_ENABLED`; Dependabot auto-merge now includes majors.) 2026-10-25 (MVP re-scope: the owner confirmed the Notion app-upgrade docs — D7–D14 decided, OD-4 closed by D9, OD-12 decided, OD-10/OD-11 opened; the "v1 Launch Gate" became the **MVP Launch Gate** (phases A–G, 46 tasks, ~292h, paid launch 2027-09-07) and every section's gate field is now **MVP Gate**; new tasks T255–T267 from the Technical Requirements N-tasks and the MVP feature table; T169 rewritten for Connect Accounts v2 direct charges; T153/T155–T157/T162 frozen (D12); T048–T050, T061, T063, T081, T183, T101, T243, T244 deferred; T242 Won't Do. Plan: `docs/product/mvp-plan-2026-10.md`.) Earlier — 2026-10-24 (TODO reformatted from the P0–P3/sprint layout to League Looper's indexed phase format: Task Index with ID/Phase/Category/Hours, one detailed section per open task, a launch gate and Verified Complete. A full audit of the repo (backend security, backend correctness, frontend, infra — stored in `docs/audits/2026-10-16/`) is filed as Phases 1–3 (T102–T152, T223–T226). The stack-convergence plan towards League Looper's stack is Phase 4 (T153–T166). Competitive research (`docs/product/competitive-research-2026-10.md`) became product Phases 5–16, merging the open T027–T101 tasks with new T167–T222. Hosting is deferred: ServicePro stays local-only until the production database decision (T202). Old IDs T001–T101 are kept; T011 never existed. Same day: Phase 3 platform work T139–T152 landed — golang-migrate, /version + schema-aware readiness, internal job endpoints, optional Redis, Cloud Run image, LL-style CI/release/hooks, Cloudflare Worker edge (not deployed); frontend fixes T130–T138; all of Phase 1 security (T102–T117) — tenant isolation plugin, per-tenant authz, invite-only registration, token/login/webhook/CSRF hardening, no known Go vulns; T227 added for the frontend follow-through. Same day: Phase 2 correctness work landed (T118–T129, T223–T239 — money path, numbering, status machines, refunds, quotes, tenant settings, error envelope + request IDs, ~39k lines of dead backend code removed, stricter golangci-lint); follow-ups T241–T244 filed. 2026-10-18: T231 (org deletion) deferred; Dependabot security-fix PRs enabled; SQLite ruled out for OD-1; Go deps bumped, T247 filed; T202 decided — Neon; OD-9 (auth provider) opened, then decided 2026-10-19 — Neon's managed Better Auth; 2026-10-24: Neon project linked, Neon agent skills + MCP server added, managed MFA confirmed on Neon's roadmap (T092); T164 frontend majors done (React 19, Router 7, Vite 8, ESLint 10, zod 4, Headless UI 2), T248/T249 filed; Tailwind 4 engine landed (T163 tokens + dark mode remain); 0 open Dependabot alerts.)
+**Last Updated**: 2026-11-03 (T169 Stripe Connect code merged and T160 R2 code done — both blocked on Rob's setup; overdue invoices now marked by an hourly job; record-payment 500 and A/R aging bucket bugs fixed. T269 app shell + dashboard and T270 page restyle done per the mockups. T154 RLS backstop (off by default), T241 imports, T263 table drops merged; migrations now 000001–000008. T265 done: tenant-branded, opt-out-respecting customer email. T264 done: stripe-go v87, x/image/draw. Phase A done: T257, T258, T259, T260, T262, T266, T267 merged (parallel worktree agents). T268 done: landing page per mockup 01. T159 done (Resend only, retries + idempotency, signed bounce/complaint webhook + suppression list). Mockups in `docs/product/mockups/`; T268 landing, T269 app shell + dashboard and T270 page restyle added to the MVP gate (49 tasks, ~310h). T205 in progress: owner account live; blank-site regression fixed in v0.10.5. T206 done: SPF/DKIM/DMARC on servicepro.sharkfins.xyz, test send delivered. T159 step 1 + T206 sender domain live in v0.10.3. T256 done — honesty gate (T255, T256, T261) complete. T255 done: honest public site, beta-access CTA, pricing hidden, Terms/Privacy acceptance recorded at sign-up. T261 done: invoice pay links off by default — `INVOICE_PAYMENTS_ENABLED`; Dependabot auto-merge now includes majors.) 2026-10-25 (MVP re-scope: the owner confirmed the Notion app-upgrade docs — D7–D14 decided, OD-4 closed by D9, OD-12 decided, OD-10/OD-11 opened; the "v1 Launch Gate" became the **MVP Launch Gate** (phases A–G, 46 tasks, ~292h, paid launch 2027-09-07) and every section's gate field is now **MVP Gate**; new tasks T255–T267 from the Technical Requirements N-tasks and the MVP feature table; T169 rewritten for Connect Accounts v2 direct charges; T153/T155–T157/T162 frozen (D12); T048–T050, T061, T063, T081, T183, T101, T243, T244 deferred; T242 Won't Do. Plan: `docs/product/mvp-plan-2026-10.md`.) Earlier — 2026-10-24 (TODO reformatted from the P0–P3/sprint layout to League Looper's indexed phase format: Task Index with ID/Phase/Category/Hours, one detailed section per open task, a launch gate and Verified Complete. A full audit of the repo (backend security, backend correctness, frontend, infra — stored in `docs/audits/2026-10-16/`) is filed as Phases 1–3 (T102–T152, T223–T226). The stack-convergence plan towards League Looper's stack is Phase 4 (T153–T166). Competitive research (`docs/product/competitive-research-2026-10.md`) became product Phases 5–16, merging the open T027–T101 tasks with new T167–T222. Hosting is deferred: ServicePro stays local-only until the production database decision (T202). Old IDs T001–T101 are kept; T011 never existed. Same day: Phase 3 platform work T139–T152 landed — golang-migrate, /version + schema-aware readiness, internal job endpoints, optional Redis, Cloud Run image, LL-style CI/release/hooks, Cloudflare Worker edge (not deployed); frontend fixes T130–T138; all of Phase 1 security (T102–T117) — tenant isolation plugin, per-tenant authz, invite-only registration, token/login/webhook/CSRF hardening, no known Go vulns; T227 added for the frontend follow-through. Same day: Phase 2 correctness work landed (T118–T129, T223–T239 — money path, numbering, status machines, refunds, quotes, tenant settings, error envelope + request IDs, ~39k lines of dead backend code removed, stricter golangci-lint); follow-ups T241–T244 filed. 2026-10-18: T231 (org deletion) deferred; Dependabot security-fix PRs enabled; SQLite ruled out for OD-1; Go deps bumped, T247 filed; T202 decided — Neon; OD-9 (auth provider) opened, then decided 2026-10-19 — Neon's managed Better Auth; 2026-10-24: Neon project linked, Neon agent skills + MCP server added, managed MFA confirmed on Neon's roadmap (T092); T164 frontend majors done (React 19, Router 7, Vite 8, ESLint 10, zod 4, Headless UI 2), T248/T249 filed; Tailwind 4 engine landed (T163 tokens + dark mode remain); 0 open Dependabot alerts.)
 
 > **How to read this file.** Every task has an ID (T###). The **Task Index** lists all of them: completed rows
 > (struck through) first by ID, then open rows by Phase → ID. Each open task has exactly one detailed section under
@@ -262,6 +262,7 @@ stripe-go v87 supports v2 accounts) and the first 4h of T192 (QuickBooks OAuth, 
 | T166     | 4      | Research       | 2      | Decide money representation (decimal vs integer cents) before the pgx port                               |
 | T248     | 4      | Monitoring     | 3      | Upgrade @sentry/react to 11 with an explicit data-collection config                                      |
 | T249     | 4      | Frontend       | 2      | Drop Vite's legacy.inconsistentCjsInterop flag and ready the config for Vite's native loader             |
+| T271     | 4      | Infra          | 2      | Replace MinIO in the local Docker stack (images no longer pullable)                                      |
 | ~~T264~~ | ~~4~~  | ~~Backend~~    | ~~4~~  | ~~Upgrade stripe-go v76 → v87; replace archived nfnt/resize~~                                            |
 | T028     | 5      | Feature        | 3      | Add "Convert Quote to Job" button                                                                        |
 | T029     | 5      | Feature        | 2      | Add "Generate Invoice from Job" button                                                                   |
@@ -708,7 +709,7 @@ Migrations, versioning, CI, the release pipeline and the edge setup — League L
 
 ---
 
-### Phase 4 — Stack Convergence (LL parity; incremental) (T153, T154, T155, T156, T157, T158, T159, T160, T161, T162, T163, T164, T165, T166, T248, T249, T264)
+### Phase 4 — Stack Convergence (LL parity; incremental) (T153, T154, T155, T156, T157, T158, T159, T160, T161, T162, T163, T164, T165, T166, T248, T249, T264, T271)
 
 D2: move to League Looper's stack one strangler step at a time while the app keeps working. MVP subset (D12, 2026-10-25): Neon Auth (T158), Resend only (T159), R2 (T160) and the RLS backstop (T154), plus the stripe-go upgrade (T264). The repository refactor, chi, pgx/sqlc, GORM removal and TanStack Query ports (T153, T155–T157, T162) are frozen until the month-6 checkpoint. **8 open tasks, ~91h.** 4 done.
 
@@ -729,6 +730,7 @@ D2: move to League Looper's stack one strangler step at a time while the app kee
 - [ ] T248 — Upgrade @sentry/react to 11 with an explicit data-collection config
 - [ ] T249 — Drop Vite's legacy.inconsistentCjsInterop flag and ready the config for Vite's native loader
 - [x] T264 — Upgrade stripe-go v76 → v87; replace archived nfnt/resize ✓ (2026-11-02)
+- [ ] T271 — Replace MinIO in the local Docker stack (images no longer pullable)
 
 #### T153 — Repositories take ctx + tenantID; services stop taking *gorm.DB; transaction manager
 
@@ -830,7 +832,7 @@ D2: move to League Looper's stack one strangler step at a time while the app kee
 
 #### T160 — Storage → Cloudflare R2 (fix presign host rewrite)
 
-**Phase**: 4 · **Category**: Infra · **Hours**: 4 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: T113
+**Phase**: 4 · **Category**: Infra · **Hours**: 4 · **Status**: Blocked — code done 2026-11-03, needs the R2 bucket (see "Blocked — needs Rob") · **MVP Gate**: Yes · **Depends on**: T113
 
 **What it is** — Files (PDFs, avatars, job photos, exports) live in R2, and presigned links work.
 
@@ -840,6 +842,8 @@ D2: move to League Looper's stack one strangler step at a time while the app kee
 
 **Notes** — correctness audit §2 "R2 migration notes". D2. Drops the old "Storage Client Enhancements" section except MIME/size validation, folded here. MVP plan (2026-10-25): the uploads bucket isn't created yet; production must refuse the in-memory mock (T256). Since T256 (2026-10-29) production runs with no storage client: PDFs are generated on demand (attached, not cached or linked), the profile-picture upload route isn't registered (the Settings upload button then fails — hide it or ship R2), and export files fall back to per-instance local disk (T259 turns exports off). R2 restores all three.
 
+
+**Progress (2026-11-03)** — Code done: presigned links are signed for the browser-facing host (`S3_COMPATIBLE_PRESIGN_ENDPOINT`, no post-signing rewrite); `S3_COMPATIBLE_PUBLIC_URL` only for public objects (empty in `.env.example`); profile pictures stored as `/api/v1/users/{id}/profile-picture` (302 to a 1h presigned link, self or shared-tenant only, cross-tenant test); avatar body capped before parsing (413). The deploy script attaches the R2 keys once they exist; setup steps in `docs/ops/cloud-run-setup.md` "File storage: Cloudflare R2". Left: create the bucket and token (Rob), then verify a PDF link and an avatar on production.
 ---
 
 #### T161 — Production Redis: Upstash for rate limits/lockout/cache, or move them to Postgres
@@ -937,6 +941,20 @@ D2: move to League Looper's stack one strangler step at a time while the app kee
 **Why we need it** — The flag is a migration crutch Vite will remove; when it goes, the calendar breaks only in production builds.
 
 **Notes** — Follow-up from the Vite 8 upgrade (T164, 2026-10-18).
+
+---
+
+#### T271 — Replace MinIO in the local Docker stack (images no longer pullable)
+
+**Phase**: 4 · **Category**: Infra · **Hours**: 2 · **Status**: Open · **MVP Gate**: No · **Depends on**: T160
+
+**What it is** — `docker compose up` gives a working local S3-compatible store again.
+
+**What it does** — `minio/minio:latest` and `minio/mc:latest` (Docker Hub) and the quay.io images now refuse anonymous pulls (seen 2026-11-03), so the `minio` and `minio-init` services can't start. Pick a maintained S3-compatible image (record the choice in Architecture decisions first), pin its version, create `servicepro-uploads` at startup, keep `S3_COMPATIBLE_PRESIGN_ENDPOINT=http://localhost:9000`, and check an avatar upload and an invoice PDF link locally.
+
+**Why we need it** — Without it, file features (T160) can't be tested locally before production, which the owner asked for.
+
+**Notes** — Found while doing T160. Production uses R2, unaffected.
 
 ---
 
@@ -1316,7 +1334,7 @@ Stripe Connect so tenants actually receive the money, ACH for B2B, deposits, aut
 
 #### T169 — Stripe Connect (Accounts v2, direct charges); invoice payments routed to the tenant
 
-**Phase**: 6 · **Category**: Payments · **Hours**: 24 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: T105, T109, T118, T119, T264
+**Phase**: 6 · **Category**: Payments · **Hours**: 24 · **Status**: Blocked — code done 2026-11-03, needs Stripe Connect platform setup (see "Blocked — needs Rob") · **MVP Gate**: Yes · **Depends on**: T105, T109, T118, T119, T264
 
 **What it is** — Each tenant connects its own Stripe account (Accounts v2), and its customers' invoice payments are direct charges on that account, with ServicePro's application fee taken automatically.
 
@@ -1326,6 +1344,8 @@ Stripe Connect so tenants actually receive the money, ACH for B2B, deposits, aut
 
 **Notes** — D9 (decided 2026-10-25; closes OD-4): Accounts v2 + direct charges, "Stripe handles pricing" so ServicePro pays no Connect fees — **not Express, not destination charges** (Express is legacy for new platforms; destination charges would cost ~0.51% of volume in Connect fees). Was "Stripe Connect Express onboarding" until 2026-10-25. Use the `stripe:connect-recommend` / `stripe-best-practices` skills when designing. `docs/product/competitive-research-2026-10.md` §0, §2 row 9, §4.2 (1, 4), §5 MVP #1; `docs/product/mvp-plan-2026-10.md`.
 
+
+**Progress (2026-11-03)** — Code merged (`f7ae7f1`, `68280c7`, `e2d5d29`): spike findings in `docs/architecture/stripe-connect.md`; migration 000009 `stripe_connected_accounts` (RLS policy); onboarding `POST /tenants/:id/payments/connect` + `GET …/payments/status` (membership.billing); invoice Checkout as direct charges on the tenant account with the fee computed server-side in cents (bank 1% capped at $10 by default when ACH is active, card 0.4%; `?method=bank|card`); `/stripe/webhooks/connect` and `/stripe/webhooks/v2` (signature-verified, deduplicated, tenant-scoped); Settings → Payments page + sidebar entry. Account creation could not run for real: the platform account returns `non_connect_platform_accounts_v2_access_blocked` until Connect is set up (the spike test reruns with `STRIPE_CONNECT_SPIKE=1`). Left: Rob's Stripe setup, then an end-to-end test-mode payment; bank/card choice page per mockup 17 goes to T170.
 ---
 
 #### T170 — Card + ACH invoice payments, ACH preferred for B2B
@@ -3105,6 +3125,8 @@ Validate the beachhead before the Phase 9–10 build-out, then publish positioni
 
 - **T154 production switch-on** — create a non-owner login: `CREATE ROLE servicepro_api LOGIN PASSWORD '<generated>' IN ROLE servicepro_app;` on the Neon `production` branch (password generated with `bwx generate -ulns --length 24` and saved in Bitwarden), point the Cloud Run runtime `DATABASE_URL` secret at that role (migrations keep the owner URL), set `RLS_ENFORCE=true` in the same revision, then watch p95 latency (lone statements cost 3 round trips). Steps in `docs/ops/cloud-run-setup.md`. Until then the policies exist but the owner connection bypasses them.
 - **T159 webhook secret** — in Resend → Webhooks, add endpoint `https://servicepro.sharkfins.xyz/api/v1/webhooks/resend` with events `email.bounced` and `email.complained`; copy its signing secret (`whsec_…`) into Bitwarden (Dev & Cloud → Resend API key, custom field `webhook_secret`) and Secret Manager: `bwx get item <id> | jq -r '.fields[] | select(.name=="webhook_secret").value' | gcloud secrets versions add RESEND_WEBHOOK_SECRET --project service-pro-512609 --data-file=-` (create the secret first with `gcloud secrets create RESEND_WEBHOOK_SECRET --project service-pro-512609` and grant `servicepro-api@…` secretAccessor). Until then the route stays off and nothing is suppressed; sending works.
+- **T169 Stripe Connect setup** (test mode first, then live) — Stripe Dashboard → Settings → Connect → platform setup as a SaaS platform whose connected accounts pay Stripe directly (blocks everything else); platform profile + branding; a Connect webhook endpoint `https://servicepro.sharkfins.xyz/api/v1/stripe/webhooks/connect` for `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `charge.refunded`, `account.updated` → its secret into Bitwarden and Secret Manager as `STRIPE_CONNECT_WEBHOOK_SECRET`; an event destination (thin payloads) at `/api/v1/stripe/webhooks/v2` for `v2.core.account[requirements].updated` and `v2.core.account[configuration.merchant].capability_status_updated` → `STRIPE_V2_WEBHOOK_SECRET`. Then I run the end-to-end test-mode payment and `INVOICE_PAYMENTS_ENABLED` can go on. Until then pay links stay off.
+- **T160 R2 bucket** — Cloudflare → R2: private bucket `servicepro-uploads` and an Object Read & Write token scoped to it (Bitwarden: Dev & Cloud → `Cloudflare R2 (servicepro-uploads)`); secrets `S3_COMPATIBLE_ACCESS_KEY_ID` / `S3_COMPATIBLE_SECRET_ACCESS_KEY` in Secret Manager; one `gcloud run services update … --update-env-vars` for endpoint/bucket/region/path style. Exact steps: `docs/ops/cloud-run-setup.md` "File storage: Cloudflare R2". Until then PDFs are attached, not linked, and avatar upload is off.
 
 ## Open Decisions
 
