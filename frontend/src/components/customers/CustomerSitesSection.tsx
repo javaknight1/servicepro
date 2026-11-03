@@ -1,9 +1,18 @@
 import { useState } from 'react';
+import { Link } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Building2, Loader2, Pencil } from 'lucide-react';
 import { Badge, Button } from '@components/shared';
 import { siteService, sitesQueryKey, type Site } from '@services/siteService';
+import {
+  agreementKeys,
+  agreementService,
+  describeFrequency,
+  monthlyAmount,
+  type Agreement,
+} from '@services/agreementService';
 import { getErrorMessage } from '@/utils/error';
+import { formatDollars } from '@/utils/money';
 import { SiteFormModal } from './SiteFormModal';
 
 interface CustomerSitesSectionProps {
@@ -38,7 +47,25 @@ export function CustomerSitesSection({
       }),
   });
 
+  // Each site's agreements (T167): the Agreement and Monthly columns.
+  const agreementsQuery = useQuery({
+    queryKey: agreementKeys.list({ customer_id: customerId }),
+    queryFn: () => agreementService.list({ customer_id: customerId }),
+  });
+  const agreementsBySite = new Map<string, Agreement[]>();
+  for (const a of agreementsQuery.data ?? []) {
+    agreementsBySite.set(a.site_id, [
+      ...(agreementsBySite.get(a.site_id) ?? []),
+      a,
+    ]);
+  }
+  const siteMonthly = (siteId: string) =>
+    (agreementsBySite.get(siteId) ?? [])
+      .filter((a) => a.status === 'active')
+      .reduce((sum, a) => sum + monthlyAmount(a), 0);
+
   const sites = sitesQuery.data ?? [];
+  const totalMonthly = sites.reduce((sum, s) => sum + siteMonthly(s.id), 0);
   const activeCount = sites.filter((s) => s.is_active).length;
 
   const handleToggle = (site: Site) => {
@@ -94,13 +121,15 @@ export function CustomerSitesSection({
         </div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[760px] text-left text-[15px]">
+          <table className="w-full min-w-[960px] text-left text-[15px]">
             <thead className="border-b border-neutral-200 bg-neutral-50 text-sm font-semibold text-neutral-700">
               <tr>
                 <th className="px-6 py-3">Site</th>
                 <th className="px-4 py-3">Address</th>
+                <th className="px-4 py-3">Agreement</th>
                 <th className="px-4 py-3">Site contact</th>
                 <th className="px-4 py-3">Access notes</th>
+                <th className="px-4 py-3 text-right">Monthly</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-6 py-3">
                   <span className="sr-only">Actions</span>
@@ -127,6 +156,14 @@ export function CustomerSitesSection({
                     {site.address_full}
                   </td>
                   <td className="px-4 py-4">
+                    <SiteAgreements
+                      agreements={agreementsBySite.get(site.id) ?? []}
+                      customerId={customerId}
+                      siteId={site.id}
+                      canAdd={site.is_active}
+                    />
+                  </td>
+                  <td className="px-4 py-4">
                     {site.contact_name ? (
                       <>
                         <p className="text-neutral-800">{site.contact_name}</p>
@@ -140,6 +177,13 @@ export function CustomerSitesSection({
                   </td>
                   <td className="max-w-[16rem] px-4 py-4 text-sm text-neutral-600">
                     <p className="line-clamp-2">{site.access_notes || '—'}</p>
+                  </td>
+                  <td className="px-4 py-4 text-right font-semibold text-neutral-900 tabular-nums">
+                    {siteMonthly(site.id) > 0
+                      ? formatDollars(siteMonthly(site.id), {
+                          wholeUnits: true,
+                        })
+                      : '—'}
                   </td>
                   <td className="px-4 py-4">
                     <Badge
@@ -178,11 +222,23 @@ export function CustomerSitesSection({
         </div>
       )}
       {sites.length > 0 && (
-        <footer className="border-t border-neutral-200 bg-neutral-50/60 px-6 py-4 text-[15px] font-medium text-neutral-800">
-          {activeCount} active {activeCount === 1 ? 'site' : 'sites'} ·{' '}
-          {consolidatedBilling
-            ? 'billed together on one invoice'
-            : 'invoiced job by job'}
+        <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-neutral-200 bg-neutral-50/60 px-6 py-4 text-[15px] font-medium text-neutral-800">
+          <span>
+            {activeCount} active {activeCount === 1 ? 'site' : 'sites'} ·{' '}
+            {consolidatedBilling
+              ? 'billed together on one invoice'
+              : 'invoiced job by job'}
+          </span>
+          {totalMonthly > 0 && (
+            <span>
+              <span className="font-semibold text-neutral-900">
+                {formatDollars(totalMonthly, { wholeUnits: true })}
+              </span>{' '}
+              <span className="font-normal text-neutral-500">
+                per month, before tax
+              </span>
+            </span>
+          )}
         </footer>
       )}
 
@@ -196,5 +252,52 @@ export function CustomerSitesSection({
         }}
       />
     </section>
+  );
+}
+
+interface SiteAgreementsProps {
+  agreements: Agreement[];
+  customerId: string;
+  siteId: string;
+  canAdd: boolean;
+}
+
+/** A site's agreements in the Sites table, or a link to add one. */
+function SiteAgreements({
+  agreements,
+  customerId,
+  siteId,
+  canAdd,
+}: SiteAgreementsProps) {
+  if (agreements.length === 0) {
+    return canAdd ? (
+      <Link
+        to="/agreements/new"
+        state={{ customerId, siteId }}
+        className="text-sm font-medium text-primary-600 hover:text-primary-700"
+      >
+        Add agreement
+      </Link>
+    ) : (
+      <span className="text-neutral-400">—</span>
+    );
+  }
+  return (
+    <ul className="space-y-1">
+      {agreements.map((a) => (
+        <li key={a.id}>
+          <Link
+            to={`/agreements/${a.id}`}
+            className="font-medium text-primary-600 hover:text-primary-700"
+          >
+            {a.title}
+          </Link>
+          <p className="text-sm text-neutral-600">
+            {describeFrequency(a)}
+            {a.status === 'paused' ? ' · paused' : ''}
+          </p>
+        </li>
+      ))}
+    </ul>
   );
 }

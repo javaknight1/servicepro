@@ -204,6 +204,30 @@ const CustomerDetailPage = loadable(
   { chunkName: 'customer-detail', delay: 100 }
 );
 
+const AgreementsPage = loadable(
+  () =>
+    import(/* webpackChunkName: "page-agreements" */ '@pages/Agreements').then(
+      (m) => ({ default: m.AgreementsPage })
+    ),
+  { chunkName: 'agreements', delay: 100 }
+);
+
+const AgreementDetailPage = loadable(
+  () =>
+    import(/* webpackChunkName: "page-agreements" */ '@pages/Agreements').then(
+      (m) => ({ default: m.AgreementDetailPage })
+    ),
+  { chunkName: 'agreement-detail', delay: 100 }
+);
+
+const AgreementFormPage = loadable(
+  () =>
+    import(/* webpackChunkName: "page-agreements" */ '@pages/Agreements').then(
+      (m) => ({ default: m.AgreementFormPage })
+    ),
+  { chunkName: 'agreement-form', delay: 100 }
+);
+
 const JobsPage = loadable(
   () =>
     import(/* webpackChunkName: "page-jobs" */ '@pages/Jobs').then((m) => ({
@@ -456,6 +480,10 @@ export function AppRoutes() {
         <Route path="/customers" element={<CustomersPage />} />
         <Route path="/customers/new" element={<CustomerDetailPage />} />
         <Route path="/customers/:id" element={<CustomerDetailPage />} />
+        <Route path="/agreements" element={<AgreementsPage />} />
+        <Route path="/agreements/new" element={<AgreementFormPage />} />
+        <Route path="/agreements/:id" element={<AgreementDetailPage />} />
+        <Route path="/agreements/:id/edit" element={<AgreementFormPage />} />
         <Route path="/jobs" element={<JobsPage />} />
         <Route path="/jobs/calendar" element={<JobCalendarPage />} />
         <Route path="/jobs/new" element={<JobDetailPage />} />
@@ -511,6 +539,7 @@ export const routePaths = {
   customers: '/customers',
   customerNew: '/customers/new',
   customerDetail: (id: string) => `/customers/${id}`,
+  agreements: '/agreements',
   jobs: '/jobs',
   jobCalendar: '/jobs/calendar',
   quotes: '/quotes',
@@ -545,6 +574,7 @@ export function isProtectedRoute(path: string): boolean {
   const protectedPaths = [
     '/dashboard',
     '/customers',
+    '/agreements',
     '/jobs',
     '/quotes',
     '/invoices',

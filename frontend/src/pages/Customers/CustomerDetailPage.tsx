@@ -16,6 +16,14 @@ import {
 } from '@components/customers';
 import { customerService, type Customer } from '@services/customerService';
 import { siteService, sitesQueryKey } from '@services/siteService';
+import {
+  agreementKeys,
+  agreementService,
+  describeFrequency,
+  monthlyAmount,
+  type Agreement,
+} from '@services/agreementService';
+import { formatDollars } from '@/utils/money';
 import { cn } from '@utils/cn';
 import { jobService, Job } from '@services/jobService';
 import { getErrorMessage } from '@/utils/error';
@@ -43,7 +51,7 @@ import {
   Pencil,
 } from 'lucide-react';
 
-type CustomerTab = 'sites' | 'jobs';
+type CustomerTab = 'sites' | 'agreements' | 'jobs';
 
 interface CustomerFormData {
   email: string;
@@ -130,6 +138,12 @@ export function CustomerDetailPage() {
   const activeSiteCount = (sitesQuery.data ?? []).filter(
     (s) => s.is_active
   ).length;
+  // Shares the Sites tab's agreements query (same key).
+  const agreementsQuery = useQuery({
+    queryKey: agreementKeys.list({ customer_id: id }),
+    queryFn: () => agreementService.list({ customer_id: id }),
+    enabled: !isNew && !!id,
+  });
 
   const loadCustomer = async (customerId: string) => {
     setIsLoading(true);
@@ -405,6 +419,7 @@ export function CustomerDetailPage() {
                     'Sites',
                     sitesQuery.data ? activeSiteCount : undefined,
                   ],
+                  ['agreements', 'Agreements', agreementsQuery.data?.length],
                   [
                     'jobs',
                     'Jobs',
@@ -448,6 +463,19 @@ export function CustomerDetailPage() {
                   consolidatedBilling={!!customer.consolidated_billing}
                   isAddOpen={isAddSiteOpen}
                   onAddOpenChange={setIsAddSiteOpen}
+                />
+              ) : activeTab === 'agreements' && id ? (
+                <CustomerAgreements
+                  agreements={agreementsQuery.data}
+                  isLoading={agreementsQuery.isPending}
+                  onOpen={(agreementId) =>
+                    navigate(`/agreements/${agreementId}`)
+                  }
+                  onNew={() =>
+                    navigate('/agreements/new', {
+                      state: { customerId: id },
+                    })
+                  }
                 />
               ) : (
                 <RecentJobs
@@ -1101,6 +1129,77 @@ function RecentJobs({
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+interface CustomerAgreementsProps {
+  agreements: Agreement[] | undefined;
+  isLoading: boolean;
+  onOpen: (agreementId: string) => void;
+  onNew: () => void;
+}
+
+/** The Agreements tab: the customer's service agreements (T167). */
+function CustomerAgreements({
+  agreements,
+  isLoading,
+  onOpen,
+  onNew,
+}: CustomerAgreementsProps) {
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center rounded-2xl border border-neutral-200 bg-white py-8">
+        <Loader2 className="h-6 w-6 animate-spin text-neutral-400" />
+      </div>
+    );
+  }
+  const list = agreements ?? [];
+  return (
+    <div className="rounded-2xl border border-neutral-200 bg-white p-4">
+      {list.length === 0 ? (
+        <p className="py-4 text-center text-sm text-neutral-500">
+          No agreements yet for this customer.
+        </p>
+      ) : (
+        <ul className="divide-y divide-neutral-200">
+          {list.map((a) => (
+            <li key={a.id}>
+              <button
+                type="button"
+                onClick={() => onOpen(a.id)}
+                className="flex w-full items-center justify-between gap-4 rounded-xl px-3 py-3 text-left hover:bg-neutral-50"
+              >
+                <span className="min-w-0">
+                  <span className="block font-medium text-neutral-900">
+                    {a.title}
+                  </span>
+                  <span className="block text-sm text-neutral-500">
+                    {describeFrequency(a)}
+                  </span>
+                </span>
+                <span className="flex shrink-0 items-center gap-3">
+                  <span className="font-semibold text-neutral-900 tabular-nums">
+                    {formatDollars(monthlyAmount(a), { wholeUnits: true })}/mo
+                  </span>
+                  <Badge
+                    size="sm"
+                    variant={a.status === 'active' ? 'success' : 'neutral'}
+                  >
+                    {a.status === 'active' ? 'Active' : 'Paused'}
+                  </Badge>
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="mt-2 flex justify-end">
+        <Button variant="outline" size="sm" onClick={onNew} className="gap-2">
+          <Plus className="h-4 w-4" />
+          New agreement
+        </Button>
+      </div>
     </div>
   );
 }

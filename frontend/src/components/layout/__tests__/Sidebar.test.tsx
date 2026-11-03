@@ -53,6 +53,7 @@ describe('Sidebar (T269)', () => {
     expect(labels).toEqual([
       'Dashboard',
       'Customers & Sites',
+      'Agreements',
       'Jobs',
       'Quotes',
       'Invoices',
@@ -65,7 +66,7 @@ describe('Sidebar (T269)', () => {
 
   it('hides modules whose pages do not exist yet', () => {
     renderAt('/dashboard');
-    for (const name of ['Agreements', 'Schedule']) {
+    for (const name of ['Schedule']) {
       expect(screen.queryByText(name)).not.toBeInTheDocument();
     }
   });

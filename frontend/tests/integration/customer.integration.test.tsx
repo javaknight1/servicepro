@@ -53,6 +53,12 @@ vi.mock('@services/siteService', () => ({
   ],
 }));
 
+vi.mock('@services/agreementService', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@services/agreementService')>();
+  return { ...actual, agreementService: { list: vi.fn() } };
+});
+
 /** Pages read sites and billing rules through React Query. */
 function render(ui: React.ReactElement) {
   const client = new QueryClient({
@@ -69,6 +75,7 @@ function render(ui: React.ReactElement) {
 import { useAuthStore, useTenantStore, useSidebarStore } from '@store';
 import { customerService } from '@services/customerService';
 import { siteService, type Site } from '@services/siteService';
+import { agreementService, type Agreement } from '@services/agreementService';
 import type { CustomerStats } from '@app-types/customer';
 
 // =============================================================================
@@ -177,6 +184,26 @@ const mockSites: Site[] = [
   },
 ];
 
+const mockAgreements: Agreement[] = [
+  {
+    id: 'ag-1',
+    customer_id: 'customer-1',
+    site_id: 'site-1',
+    title: 'Nightly cleaning',
+    frequency: 'weekdays',
+    weekdays: [1, 2, 3, 4, 5],
+    start_date: '2026-11-02',
+    visit_start_time: '18:00',
+    visit_duration_minutes: 120,
+    price_per_period: '2400.00',
+    billing_period: 'month',
+    job_type: 'maintenance' as Agreement['job_type'],
+    status: 'active',
+    created_at: '2026-11-01T00:00:00Z',
+    updated_at: '2026-11-01T00:00:00Z',
+  },
+];
+
 const mockCustomerStats: CustomerStats = {
   total_customers: 3,
   active_customers: 2,
@@ -275,6 +302,7 @@ const setupMocks = () => {
 
   vi.mocked(customerService.getStats).mockResolvedValue(mockCustomerStats);
   vi.mocked(siteService.list).mockResolvedValue(mockSites);
+  vi.mocked(agreementService.list).mockResolvedValue(mockAgreements);
 };
 
 // =============================================================================
@@ -807,6 +835,15 @@ describe('Customer CRUD Integration', () => {
         within(sites).getByText('220 W Spring St, Columbus, OH 43215')
       ).toBeInTheDocument();
       expect(within(sites).getByText('Ray Burke')).toBeInTheDocument();
+      // The site's agreement and monthly price (T167)
+      expect(
+        await within(sites).findByRole('link', { name: 'Nightly cleaning' })
+      ).toHaveAttribute('href', '/agreements/ag-1');
+      expect(within(sites).getByText('Nightly, Mon–Fri')).toBeInTheDocument();
+      expect(within(sites).getAllByText('$2,400')).toHaveLength(2);
+      expect(agreementService.list).toHaveBeenCalledWith({
+        customer_id: 'customer-1',
+      });
       expect(siteService.list).toHaveBeenCalledWith('customer-1', true);
       expect(screen.getByRole('tab', { name: /sites/i })).toHaveAttribute(
         'aria-selected',
