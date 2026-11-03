@@ -752,6 +752,16 @@ UPDATE customers SET
     consolidated_billing = TRUE
 WHERE id = '66666666-6666-6666-6666-666666666663';
 
+-- Johnson Corp's standing PO, tracked against $30,000 (T187)
+INSERT INTO customer_purchase_orders (id, tenant_id, customer_id, po_number, amount, expires_on, notes, created_by)
+VALUES ('cccccccc-0000-0000-0000-000000000001', '22222222-2222-2222-2222-222222222222',
+        '66666666-6666-6666-6666-666666666663', 'PO-7731-HV', 30000.00, '2027-09-30',
+        'Annual janitorial PO, FY2027', '11111111-1111-1111-1111-111111111111')
+ON CONFLICT (id) DO UPDATE SET
+    amount = EXCLUDED.amount,
+    expires_on = EXCLUDED.expires_on,
+    updated_at = CURRENT_TIMESTAMP;
+
 -- ============================================================================
 -- 11. SERVICE AGREEMENTS (Johnson Corp sites; T167)
 -- POST /internal/jobs/agreement-visits (or the dev ticker) turns them into

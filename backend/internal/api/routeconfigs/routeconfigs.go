@@ -57,6 +57,8 @@ type Repositories struct {
 	ConnectedAccounts *repository.ConnectedAccountRepository
 	// Sites are customers' service locations (T186).
 	Sites repository.SiteRepositoryInterface
+	// PurchaseOrders are customers' POs with amounts (T187).
+	PurchaseOrders repository.PurchaseOrderRepositoryInterface
 	// JobApprovals are approvers' OKs for extra work (T187).
 	JobApprovals repository.JobApprovalRepositoryInterface
 	// Agreements are recurring service agreements (T167).
@@ -98,6 +100,7 @@ type Services struct {
 	Conflict        *conflict.ConflictDetector
 	PaymentReminder *services.PaymentReminderService
 	Sites           *services.SiteService
+	PurchaseOrders  *services.PurchaseOrderService
 	JobApprovals    *services.JobApprovalService
 	Agreements      *services.AgreementService
 	// QuoteConversion turns accepted quotes into jobs (T028).
@@ -149,6 +152,7 @@ type Handlers struct {
 	PaymentReminder   *handlers.PaymentReminderHandler
 	NeonAuth          *handlers.NeonAuthHandler
 	Site              *handlers.SiteHandler
+	PurchaseOrder     *handlers.PurchaseOrderHandler
 	JobApproval       *handlers.JobApprovalHandler
 	Agreement         *handlers.AgreementHandler
 	QuoteConversion   *handlers.QuoteConversionHandler

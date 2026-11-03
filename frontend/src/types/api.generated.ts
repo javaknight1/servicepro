@@ -2123,6 +2123,280 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/customers/{id}/purchase-orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List a customer's purchase orders
+         * @description The customer's POs, newest first, each with what invoices have billed against it (issued invoices with that PO number: sent, not draft or cancelled) and what remains.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Customer ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.PurchaseOrderListResponse"];
+                    };
+                };
+                /** @description Invalid ID */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Customer not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Internal server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * Record a customer purchase order
+         * @description Records a PO number with the amount it authorises and an optional expiry. Invoices for the customer carrying that PO number count against it.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Customer ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            /** @description Purchase order */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.CreatePurchaseOrderRequest"];
+                };
+            };
+            responses: {
+                /** @description Created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.PurchaseOrderResponse"];
+                    };
+                };
+                /** @description Invalid request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Customer not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description The customer already has a PO with that number (purchase_order_exists) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Internal server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/customers/{id}/purchase-orders/{poId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Update a customer purchase order
+         * @description Changes the fields present in the body; clear_expires_on removes the expiry.
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Customer ID */
+                    id: string;
+                    /** @description Purchase order ID */
+                    poId: string;
+                };
+                cookie?: never;
+            };
+            /** @description Fields to change */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.UpdatePurchaseOrderRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.PurchaseOrderResponse"];
+                    };
+                };
+                /** @description Invalid request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Customer or purchase order not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description The customer already has a PO with that number (purchase_order_exists) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Internal server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /**
+         * Delete a customer purchase order
+         * @description Stops tracking the PO. Invoices keep their PO number.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Customer ID */
+                    id: string;
+                    /** @description Purchase order ID */
+                    poId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Deleted */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Invalid ID */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Customer or purchase order not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Internal server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/customers/{id}/quotes": {
         parameters: {
             query?: never;
@@ -8822,7 +9096,7 @@ export interface paths {
         put?: never;
         /**
          * Send invoice
-         * @description Mark invoice as sent and update sent_date
+         * @description Mark invoice as sent and update sent_date. Issuing a draft whose PO number is one of the customer's tracked purchase orders is 409 po_exceeded when the invoice is more than the PO's remaining balance, or po_expired when the PO has expired; send again with confirm_po_override to go ahead.
          */
         post: {
             parameters: {
@@ -8834,7 +9108,12 @@ export interface paths {
                 };
                 cookie?: never;
             };
-            requestBody?: never;
+            /** @description Options */
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["internal_api_handlers.SendInvoiceRequest"];
+                };
+            };
             responses: {
                 /** @description OK */
                 200: {
@@ -8863,7 +9142,7 @@ export interface paths {
                         "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
-                /** @description Conflict */
+                /** @description po_required, po_exceeded, po_expired, or the invoice can't be sent in its status */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -12814,6 +13093,21 @@ export interface components {
             special_instructions?: string;
             title: string;
         };
+        "github_com_javaknight1_servicepro_backend_internal_models.CreatePurchaseOrderRequest": {
+            /**
+             * @description Amount is the total the PO authorises (more than zero).
+             * @example 12000.00
+             */
+            amount?: string;
+            /**
+             * @description ExpiresOn is YYYY-MM-DD (inclusive); omit for no expiry.
+             * @example 2027-06-30
+             */
+            expires_on?: string;
+            notes?: string;
+            /** @example PO-7731-HV */
+            po_number: string;
+        };
         "github_com_javaknight1_servicepro_backend_internal_models.CreateSetupIntentResponse": {
             client_secret?: string;
         };
@@ -13172,6 +13466,11 @@ export interface components {
             payments?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.InvoicePayment"][];
             /** @description Additional information */
             po_number?: string;
+            /**
+             * @description PurchaseOrder is the customer's tracked PO with this number and its
+             *     balance (T187). Read-only, set by GET /invoices/{id}.
+             */
+            purchase_order?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.PurchaseOrderResponse"];
             quote_id?: string;
             refunds?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.InvoiceRefund"][];
             sent_date?: string;
@@ -13740,6 +14039,29 @@ export interface components {
         "github_com_javaknight1_servicepro_backend_internal_models.ProfilePictureUploadResponse": {
             profile_picture_url?: string;
         };
+        "github_com_javaknight1_servicepro_backend_internal_models.PurchaseOrderListResponse": {
+            purchase_orders?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.PurchaseOrderResponse"][];
+            total?: number;
+        };
+        "github_com_javaknight1_servicepro_backend_internal_models.PurchaseOrderResponse": {
+            /** @example 12000.00 */
+            amount?: string;
+            /** @example 4800.00 */
+            billed?: string;
+            created_at?: string;
+            customer_id?: string;
+            /** @description Expired: the expiry date has passed (tenant's time zone). */
+            expired?: boolean;
+            /** @example 2027-06-30 */
+            expires_on?: string;
+            id?: string;
+            invoice_count?: number;
+            notes?: string;
+            po_number?: string;
+            /** @example 7200.00 */
+            remaining?: string;
+            updated_at?: string;
+        };
         "github_com_javaknight1_servicepro_backend_internal_models.QuoteItemRequest": {
             description: string;
             quantity: number;
@@ -14279,6 +14601,15 @@ export interface components {
             first_name?: string;
             last_name?: string;
         };
+        "github_com_javaknight1_servicepro_backend_internal_models.UpdatePurchaseOrderRequest": {
+            /** @example 12000.00 */
+            amount?: string;
+            clear_expires_on?: boolean;
+            /** @example 2027-06-30 */
+            expires_on?: string;
+            notes?: string;
+            po_number?: string;
+        };
         "github_com_javaknight1_servicepro_backend_internal_models.UpdateSiteRequest": {
             access_notes?: string;
             address_city?: string;
@@ -14614,6 +14945,11 @@ export interface components {
             payments?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.InvoicePayment"][];
             /** @description Additional information */
             po_number?: string;
+            /**
+             * @description PurchaseOrder is the customer's tracked PO with this number and its
+             *     balance (T187). Read-only, set by GET /invoices/{id}.
+             */
+            purchase_order?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.PurchaseOrderResponse"];
             quote_id?: string;
             refunds?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.InvoiceRefund"][];
             sent_date?: string;
@@ -14725,6 +15061,13 @@ export interface components {
             method?: string;
             reason?: string;
             refund_date?: string;
+        };
+        "internal_api_handlers.SendInvoiceRequest": {
+            /**
+             * @description ConfirmPOOverride sends even when the invoice is more than its
+             *     purchase order's remaining balance or the PO has expired (T187).
+             */
+            confirm_po_override?: boolean;
         };
         "internal_api_handlers.StartExportRequest": {
             csv_options?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.CSVExportOptions"];

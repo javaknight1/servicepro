@@ -460,17 +460,25 @@ func (h *InvoiceHandler) DeleteInvoice(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
+// SendInvoiceRequest is the optional body of POST /invoices/{id}/send.
+type SendInvoiceRequest struct {
+	// ConfirmPOOverride sends even when the invoice is more than its
+	// purchase order's remaining balance or the PO has expired (T187).
+	ConfirmPOOverride bool `json:"confirm_po_override"`
+}
+
 // SendInvoice godoc
 // @Summary Send invoice
-// @Description Mark invoice as sent and update sent_date
+// @Description Mark invoice as sent and update sent_date. Issuing a draft whose PO number is one of the customer's tracked purchase orders is 409 po_exceeded when the invoice is more than the PO's remaining balance, or po_expired when the PO has expired; send again with confirm_po_override to go ahead.
 // @Tags invoices
 // @Accept json
 // @Produce json
 // @Param id path string true "Invoice ID"
+// @Param request body SendInvoiceRequest false "Options"
 // @Success 200 {object} models.Invoice
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
-// @Failure 409 {object} models.ErrorResponse
+// @Failure 409 {object} models.ErrorResponse "po_required, po_exceeded, po_expired, or the invoice can't be sent in its status"
 // @Failure 500 {object} models.ErrorResponse
 // @Router /invoices/{id}/send [post]
 // @Security BearerAuth
@@ -483,7 +491,15 @@ func (h *InvoiceHandler) SendInvoice(c *gin.Context) {
 		return
 	}
 
-	invoice, err := h.service.SendInvoice(ctx, id)
+	var req SendInvoiceRequest
+	if c.Request.ContentLength != 0 {
+		if err := c.ShouldBindJSON(&req); err != nil {
+			apierror.BindError(c, err)
+			return
+		}
+	}
+
+	invoice, err := h.service.SendInvoiceWithOptions(ctx, id, services.SendInvoiceOptions{ConfirmPOOverride: req.ConfirmPOOverride})
 	if err != nil {
 		if errors.Is(err, services.ErrInvoiceNotFound) {
 			apierror.WriteResponse(c, http.StatusNotFound, models.ErrorResponse{Error: "Invoice not found"})

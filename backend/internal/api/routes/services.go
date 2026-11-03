@@ -56,6 +56,9 @@ func SetupServices(
 	// Customer sites (T186)
 	svc.Sites = services.NewSiteService(db, repos.Sites)
 
+	// Customer purchase orders with amounts (T187)
+	svc.PurchaseOrders = services.NewPurchaseOrderService(db, repos.PurchaseOrders)
+
 	// Approver OKs for extra work over a customer's not-to-exceed limit (T187)
 	svc.JobApprovals = services.NewJobApprovalService(db, repos.JobApprovals)
 

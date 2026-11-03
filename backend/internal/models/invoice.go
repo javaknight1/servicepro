@@ -131,10 +131,13 @@ type Invoice struct {
 	BillingPeriodEnd   *time.Time `gorm:"type:date" json:"billing_period_end,omitempty"`
 
 	// Additional information
-	PONumber           string `gorm:"type:varchar(100)" json:"po_number,omitempty"`
-	Notes              string `gorm:"type:text" json:"notes,omitempty"`
-	TermsAndConditions string `gorm:"type:text" json:"terms_and_conditions,omitempty"`
-	FooterText         string `gorm:"type:text" json:"footer_text,omitempty"`
+	PONumber string `gorm:"type:varchar(100)" json:"po_number,omitempty"`
+	// PurchaseOrder is the customer's tracked PO with this number and its
+	// balance (T187). Read-only, set by GET /invoices/{id}.
+	PurchaseOrder      *PurchaseOrderResponse `gorm:"-" json:"purchase_order,omitempty"`
+	Notes              string                 `gorm:"type:text" json:"notes,omitempty"`
+	TermsAndConditions string                 `gorm:"type:text" json:"terms_and_conditions,omitempty"`
+	FooterText         string                 `gorm:"type:text" json:"footer_text,omitempty"`
 
 	// Payment token for online invoice payment
 	PaymentToken          *string    `gorm:"type:varchar(64);uniqueIndex" json:"payment_token,omitempty"`

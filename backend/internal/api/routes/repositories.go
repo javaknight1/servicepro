@@ -21,6 +21,7 @@ func SetupRepositories(db *gorm.DB) *Repositories {
 		Schedule:          repository.NewScheduleRepository(db),
 		ConnectedAccounts: repository.NewConnectedAccountRepository(db),
 		Sites:             repository.NewSiteRepository(db),
+		PurchaseOrders:    repository.NewPurchaseOrderRepository(db),
 		JobApprovals:      repository.NewJobApprovalRepository(db),
 		Agreements:        repository.NewAgreementRepository(db),
 	}

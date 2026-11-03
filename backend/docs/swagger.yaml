@@ -892,6 +892,26 @@ definitions:
     - job_type
     - title
     type: object
+  github_com_javaknight1_servicepro_backend_internal_models.CreatePurchaseOrderRequest:
+    properties:
+      amount:
+        description: Amount is the total the PO authorises (more than zero).
+        example: "12000.00"
+        type: string
+      expires_on:
+        description: ExpiresOn is YYYY-MM-DD (inclusive); omit for no expiry.
+        example: "2027-06-30"
+        type: string
+      notes:
+        maxLength: 2000
+        type: string
+      po_number:
+        example: PO-7731-HV
+        maxLength: 100
+        type: string
+    required:
+    - po_number
+    type: object
   github_com_javaknight1_servicepro_backend_internal_models.CreateSetupIntentResponse:
     properties:
       client_secret:
@@ -1591,6 +1611,12 @@ definitions:
       po_number:
         description: Additional information
         type: string
+      purchase_order:
+        allOf:
+        - $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.PurchaseOrderResponse'
+        description: |-
+          PurchaseOrder is the customer's tracked PO with this number and its
+          balance (T187). Read-only, set by GET /invoices/{id}.
       quote_id:
         type: string
       refunds:
@@ -2743,6 +2769,47 @@ definitions:
       profile_picture_url:
         type: string
     type: object
+  github_com_javaknight1_servicepro_backend_internal_models.PurchaseOrderListResponse:
+    properties:
+      purchase_orders:
+        items:
+          $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.PurchaseOrderResponse'
+        type: array
+      total:
+        type: integer
+    type: object
+  github_com_javaknight1_servicepro_backend_internal_models.PurchaseOrderResponse:
+    properties:
+      amount:
+        example: "12000.00"
+        type: string
+      billed:
+        example: "4800.00"
+        type: string
+      created_at:
+        type: string
+      customer_id:
+        type: string
+      expired:
+        description: 'Expired: the expiry date has passed (tenant''s time zone).'
+        type: boolean
+      expires_on:
+        example: "2027-06-30"
+        type: string
+      id:
+        type: string
+      invoice_count:
+        type: integer
+      notes:
+        type: string
+      po_number:
+        type: string
+      remaining:
+        example: "7200.00"
+        type: string
+      updated_at:
+        type: string
+    type: object
   github_com_javaknight1_servicepro_backend_internal_models.QuoteItemRequest:
     properties:
       description:
@@ -3879,6 +3946,23 @@ definitions:
       last_name:
         type: string
     type: object
+  github_com_javaknight1_servicepro_backend_internal_models.UpdatePurchaseOrderRequest:
+    properties:
+      amount:
+        example: "12000.00"
+        type: string
+      clear_expires_on:
+        type: boolean
+      expires_on:
+        example: "2027-06-30"
+        type: string
+      notes:
+        maxLength: 2000
+        type: string
+      po_number:
+        maxLength: 100
+        type: string
+    type: object
   github_com_javaknight1_servicepro_backend_internal_models.UpdateSiteRequest:
     properties:
       access_notes:
@@ -4530,6 +4614,12 @@ definitions:
       po_number:
         description: Additional information
         type: string
+      purchase_order:
+        allOf:
+        - $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.PurchaseOrderResponse'
+        description: |-
+          PurchaseOrder is the customer's tracked PO with this number and its
+          balance (T187). Read-only, set by GET /invoices/{id}.
       quote_id:
         type: string
       refunds:
@@ -4712,6 +4802,14 @@ definitions:
         type: string
     required:
     - amount
+    type: object
+  internal_api_handlers.SendInvoiceRequest:
+    properties:
+      confirm_po_override:
+        description: |-
+          ConfirmPOOverride sends even when the invoice is more than its
+          purchase order's remaining balance or the PO has expired (T187).
+        type: boolean
     type: object
   internal_api_handlers.StartExportRequest:
     properties:
@@ -5812,6 +5910,170 @@ paths:
       summary: Get jobs for a customer
       tags:
       - jobs
+  /api/v1/customers/{id}/purchase-orders:
+    get:
+      description: 'The customer''s POs, newest first, each with what invoices have
+        billed against it (issued invoices with that PO number: sent, not draft or
+        cancelled) and what remains.'
+      parameters:
+      - description: Customer ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.PurchaseOrderListResponse'
+        "400":
+          description: Invalid ID
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "404":
+          description: Customer not found
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List a customer's purchase orders
+      tags:
+      - purchase-orders
+    post:
+      consumes:
+      - application/json
+      description: Records a PO number with the amount it authorises and an optional
+        expiry. Invoices for the customer carrying that PO number count against it.
+      parameters:
+      - description: Customer ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Purchase order
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.CreatePurchaseOrderRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.PurchaseOrderResponse'
+        "400":
+          description: Invalid request
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "404":
+          description: Customer not found
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "409":
+          description: The customer already has a PO with that number (purchase_order_exists)
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Record a customer purchase order
+      tags:
+      - purchase-orders
+  /api/v1/customers/{id}/purchase-orders/{poId}:
+    delete:
+      description: Stops tracking the PO. Invoices keep their PO number.
+      parameters:
+      - description: Customer ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Purchase order ID
+        in: path
+        name: poId
+        required: true
+        type: string
+      responses:
+        "204":
+          description: Deleted
+        "400":
+          description: Invalid ID
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "404":
+          description: Customer or purchase order not found
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete a customer purchase order
+      tags:
+      - purchase-orders
+    put:
+      consumes:
+      - application/json
+      description: Changes the fields present in the body; clear_expires_on removes
+        the expiry.
+      parameters:
+      - description: Customer ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Purchase order ID
+        in: path
+        name: poId
+        required: true
+        type: string
+      - description: Fields to change
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.UpdatePurchaseOrderRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.PurchaseOrderResponse'
+        "400":
+          description: Invalid request
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "404":
+          description: Customer or purchase order not found
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "409":
+          description: The customer already has a PO with that number (purchase_order_exists)
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update a customer purchase order
+      tags:
+      - purchase-orders
   /api/v1/customers/{id}/quotes:
     get:
       consumes:
@@ -9580,13 +9842,21 @@ paths:
     post:
       consumes:
       - application/json
-      description: Mark invoice as sent and update sent_date
+      description: Mark invoice as sent and update sent_date. Issuing a draft whose
+        PO number is one of the customer's tracked purchase orders is 409 po_exceeded
+        when the invoice is more than the PO's remaining balance, or po_expired when
+        the PO has expired; send again with confirm_po_override to go ahead.
       parameters:
       - description: Invoice ID
         in: path
         name: id
         required: true
         type: string
+      - description: Options
+        in: body
+        name: request
+        schema:
+          $ref: '#/definitions/internal_api_handlers.SendInvoiceRequest'
       produces:
       - application/json
       responses:
@@ -9603,7 +9873,8 @@ paths:
           schema:
             $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
         "409":
-          description: Conflict
+          description: po_required, po_exceeded, po_expired, or the invoice can't
+            be sent in its status
           schema:
             $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
         "500":

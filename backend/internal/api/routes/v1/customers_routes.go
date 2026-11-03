@@ -105,6 +105,20 @@ func SetupCustomerRoutes(router *gin.RouterGroup, cfg *routeconfigs.RouteConfig)
 			cfg.Middleware.PermMiddleware.RequirePermission(permissions.CustomersUpdate),
 			cfg.Handlers.Site.DeleteSite)
 
+		// Customer purchase orders with amounts (T187) - customers.* permissions
+		customers.GET("/:id/purchase-orders",
+			cfg.Middleware.PermMiddleware.RequirePermission(permissions.CustomersRead),
+			cfg.Handlers.PurchaseOrder.ListPurchaseOrders)
+		customers.POST("/:id/purchase-orders",
+			cfg.Middleware.PermMiddleware.RequirePermission(permissions.CustomersUpdate),
+			cfg.Handlers.PurchaseOrder.CreatePurchaseOrder)
+		customers.PUT("/:id/purchase-orders/:poId",
+			cfg.Middleware.PermMiddleware.RequirePermission(permissions.CustomersUpdate),
+			cfg.Handlers.PurchaseOrder.UpdatePurchaseOrder)
+		customers.DELETE("/:id/purchase-orders/:poId",
+			cfg.Middleware.PermMiddleware.RequirePermission(permissions.CustomersUpdate),
+			cfg.Handlers.PurchaseOrder.DeletePurchaseOrder)
+
 		// Customer quotes - nested under customers
 		customers.GET("/:id/quotes",
 			cfg.Middleware.PermMiddleware.RequirePermission(permissions.CustomersRead),

@@ -253,6 +253,13 @@ func (s *InvoiceService) GetInvoice(ctx context.Context, id uuid.UUID) (*models.
 		return nil, fmt.Errorf("failed to get invoice: %w", err)
 	}
 
+	// The tracked PO's balance, when the invoice names one (T187).
+	po, err := invoicePurchaseOrder(ctx, s.db, &invoice)
+	if err != nil {
+		return nil, err
+	}
+	invoice.PurchaseOrder = po
+
 	return &invoice, nil
 }
 
@@ -973,8 +980,21 @@ func hasPayments(tx *gorm.DB, invoice *models.Invoice) (bool, error) {
 	return n > 0, nil
 }
 
+// SendInvoiceOptions are the send request's choices.
+type SendInvoiceOptions struct {
+	// ConfirmPOOverride sends even when the invoice exceeds its purchase
+	// order's remaining balance or the PO has expired (T187).
+	ConfirmPOOverride bool
+}
+
 // SendInvoice marks an invoice as sent and generates a payment token
 func (s *InvoiceService) SendInvoice(ctx context.Context, id uuid.UUID) (*models.Invoice, error) {
+	return s.SendInvoiceWithOptions(ctx, id, SendInvoiceOptions{})
+}
+
+// SendInvoiceWithOptions sends an invoice (see SendInvoice). Issuing a draft
+// checks its purchase order (checkPOForSend) unless opts.ConfirmPOOverride.
+func (s *InvoiceService) SendInvoiceWithOptions(ctx context.Context, id uuid.UUID, opts SendInvoiceOptions) (*models.Invoice, error) {
 	// Generate new payment token
 	token, err := s.generatePaymentToken()
 	if err != nil {
@@ -1005,6 +1025,12 @@ func (s *InvoiceService) SendInvoice(ctx context.Context, id uuid.UUID) (*models
 			}
 			if customer.PORequired && strings.TrimSpace(invoice.PONumber) == "" {
 				return ErrPORequired
+			}
+			// A tracked PO must have room for the invoice (T187).
+			if !opts.ConfirmPOOverride {
+				if err := checkPOForSend(ctx, tx, invoice); err != nil {
+					return err
+				}
 			}
 		case invoice.Status.AcceptsPayments():
 		default:

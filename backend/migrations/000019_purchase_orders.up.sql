@@ -11,9 +11,10 @@
 -- customer_purchase_orders: a PO the customer issued, with the amount it
 -- authorises and an optional expiry. Invoices reference a PO by number
 -- (invoices.po_number, same customer); billed = the totals of the
--- customer's non-cancelled invoices with that number, remaining = amount -
--- billed. Sending an invoice that would take remaining below zero, or
--- against an expired PO, is a 409 the office can override. One row per
+-- customer's issued invoices (not draft, not cancelled) with that number,
+-- remaining = amount - billed. Sending an invoice that would take remaining
+-- below zero, or against an expired PO, is a 409 the office can override
+-- (the PO row is locked so concurrent sends serialise). One row per
 -- (customer, po_number). Tenant-owned: tenant_id NOT NULL, (tenant_id, ...)
 -- index, the RLS policy of 000007, tenancy.DefaultTables.
 
