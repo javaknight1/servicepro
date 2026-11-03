@@ -724,6 +724,16 @@ ON CONFLICT (id) DO UPDATE SET
     access_notes = EXCLUDED.access_notes,
     updated_at = CURRENT_TIMESTAMP;
 
+-- Billing rules for Johnson Corp (T187): PO required, named approver, $500 NTE
+UPDATE customers SET
+    po_required = TRUE,
+    default_po_number = 'PO-7731-HV',
+    billing_approver_name = 'Karen Doyle',
+    billing_approver_email = 'karen.doyle@johnsoncorp.example.com',
+    nte_limit = 500.00,
+    consolidated_billing = TRUE
+WHERE id = '66666666-6666-6666-6666-666666666663';
+
 COMMIT;
 
 -- ============================================================================

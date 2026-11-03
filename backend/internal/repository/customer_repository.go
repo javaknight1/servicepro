@@ -74,9 +74,12 @@ func (r *CustomerRepository) GetByEmail(email string) (*models.Customer, error) 
 	return &customer, nil
 }
 
-// Update updates a customer
+// Update saves every column of a customer the caller loaded and changed.
+// Select("*") makes GORM write false/nil values too (a struct Updates skips
+// them, so e.g. po_required or do_not_email could never be switched off).
 func (r *CustomerRepository) Update(customer *models.Customer) error {
-	result := r.db.Model(customer).Where("id = ? AND deleted_at IS NULL", customer.ID).Updates(customer)
+	result := r.db.Model(customer).Where("id = ? AND deleted_at IS NULL", customer.ID).
+		Select("*").Omit("id", "tenant_id", "created_at", "deleted_at").Updates(customer)
 	if result.Error != nil {
 		if strings.Contains(result.Error.Error(), "duplicate key") || strings.Contains(result.Error.Error(), "unique constraint") {
 			if strings.Contains(result.Error.Error(), "email") {

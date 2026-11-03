@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 )
 
@@ -69,9 +70,42 @@ type Customer struct {
 	MarketingConsentAt *time.Time `json:"marketing_consent_at" gorm:"type:timestamp"`
 	MarketingConsentIP *string    `json:"marketing_consent_ip" gorm:"type:varchar(45)"` // Supports IPv6
 
+	// Billing rules (T187)
+	BillingRules
+
 	CreatedAt time.Time      `json:"created_at"`
 	UpdatedAt time.Time      `json:"updated_at"`
 	DeletedAt gorm.DeletedAt `json:"-" gorm:"index"`
+}
+
+// BillingRules are a customer's purchase-order, approval and invoicing
+// rules (T187). Embedded in Customer and in its API response.
+type BillingRules struct {
+	// PORequired: invoices can't be sent without a PO number.
+	PORequired bool `json:"po_required" gorm:"not null"`
+	// DefaultPONumber is copied onto new invoices that have none.
+	DefaultPONumber *string `json:"default_po_number" gorm:"type:varchar(100)"`
+	// The customer's named approver for extra work.
+	BillingApproverName  *string `json:"billing_approver_name" gorm:"type:varchar(100)"`
+	BillingApproverEmail *string `json:"billing_approver_email" gorm:"type:varchar(255)"`
+	// NTELimit (not-to-exceed): extra work estimated above it can't be
+	// scheduled until the approver's OK is recorded. Nil means no limit.
+	NTELimit *decimal.Decimal `json:"nte_limit" gorm:"type:numeric(12,2)" swaggertype:"string" example:"500.00"`
+	// ConsolidatedBilling: one monthly invoice per customer, a line per site (T188).
+	ConsolidatedBilling bool `json:"consolidated_billing" gorm:"not null"`
+}
+
+// BillingRulesRequest sets billing rules on create or update; omitted fields
+// are left unchanged. An empty string clears a text field.
+type BillingRulesRequest struct {
+	PORequired           *bool            `json:"po_required"`
+	DefaultPONumber      *string          `json:"default_po_number" binding:"omitempty,max=100"`
+	BillingApproverName  *string          `json:"billing_approver_name" binding:"omitempty,max=100"`
+	BillingApproverEmail *string          `json:"billing_approver_email" binding:"omitempty,max=255"`
+	NTELimit             *decimal.Decimal `json:"nte_limit" swaggertype:"string" example:"500.00"`
+	// ClearNTELimit removes the not-to-exceed limit.
+	ClearNTELimit       bool  `json:"clear_nte_limit"`
+	ConsolidatedBilling *bool `json:"consolidated_billing"`
 }
 
 // TableName specifies the table name for Customer model
@@ -134,6 +168,9 @@ type CreateCustomerRequest struct {
 
 	// Marketing consent
 	MarketingConsent *bool `json:"marketing_consent" binding:"omitempty"`
+
+	// Billing rules (T187)
+	BillingRulesRequest
 }
 
 // UpdateCustomerRequest represents the request payload for updating a customer
@@ -165,6 +202,9 @@ type UpdateCustomerRequest struct {
 
 	// Marketing consent
 	MarketingConsent *bool `json:"marketing_consent" binding:"omitempty"`
+
+	// Billing rules (T187)
+	BillingRulesRequest
 }
 
 // CustomerResponse represents the response payload for a customer
@@ -202,6 +242,9 @@ type CustomerResponse struct {
 	MarketingConsent   bool       `json:"marketing_consent"`
 	MarketingConsentAt *time.Time `json:"marketing_consent_at"`
 
+	// Billing rules (T187)
+	BillingRules
+
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
@@ -237,6 +280,7 @@ func (c *Customer) ToResponse() CustomerResponse {
 		DoNotMail:              c.DoNotMail,
 		MarketingConsent:       c.MarketingConsent,
 		MarketingConsentAt:     c.MarketingConsentAt,
+		BillingRules:           c.BillingRules,
 		CreatedAt:              c.CreatedAt,
 		UpdatedAt:              c.UpdatedAt,
 	}

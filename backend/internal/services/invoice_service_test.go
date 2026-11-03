@@ -76,6 +76,12 @@ func setupTestDB(t *testing.T) *gorm.DB {
 			marketing_consent INTEGER DEFAULT 0,
 			marketing_consent_at DATETIME,
 			marketing_consent_ip TEXT,
+			po_required INTEGER DEFAULT 0,
+			default_po_number TEXT,
+			billing_approver_name TEXT,
+			billing_approver_email TEXT,
+			nte_limit REAL,
+			consolidated_billing INTEGER DEFAULT 0,
 			created_at DATETIME,
 			updated_at DATETIME,
 			deleted_at DATETIME

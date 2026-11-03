@@ -774,6 +774,13 @@ func (s *JobService) applyTransition(job *models.Job, to models.JobStatus, reaso
 	if err := models.ValidateTransition(job, to, notes); err != nil {
 		return err
 	}
+	// Extra work over the customer's not-to-exceed limit needs the
+	// approver's OK before it is scheduled (T187).
+	if to == models.JobStatusScheduled {
+		if err := requireNTEApproval(s.ctx(), s.db, job); err != nil {
+			return err
+		}
+	}
 	from := job.Status
 	job.Status = to
 	job.UpdatedBy = &userID

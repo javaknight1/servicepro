@@ -56,6 +56,9 @@ func SetupServices(
 	// Customer sites (T186)
 	svc.Sites = services.NewSiteService(db, repos.Sites)
 
+	// Approver OKs for extra work over a customer's not-to-exceed limit (T187)
+	svc.JobApprovals = services.NewJobApprovalService(db, repos.JobApprovals)
+
 	// Document PDF service (for generating quote/invoice/receipt PDFs)
 	// Without a storage client (production until R2, T160) PDFs are generated
 	// on demand and attached to emails, just not cached or linked (T256).

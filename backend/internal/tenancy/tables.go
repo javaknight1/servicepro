@@ -29,6 +29,7 @@ func DefaultTables() map[string]Mode {
 		// switch to the owning tenant (T169).
 		"stripe_connected_accounts": Owned,
 		"service_locations":         Owned, // T186, RLS policy in migration 000010
+		"job_approvals":             Owned, // T187, RLS policy in migration 000011
 		"payment_terms":             SharedRead,
 		"tax_rates":                 SharedRead,
 		"invoice_templates":         SharedRead,

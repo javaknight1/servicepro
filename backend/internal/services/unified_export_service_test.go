@@ -71,6 +71,12 @@ func setupExportTestDB(t *testing.T) *gorm.DB {
 			marketing_consent BOOLEAN DEFAULT false,
 			marketing_consent_at DATETIME,
 			marketing_consent_ip TEXT,
+			po_required BOOLEAN DEFAULT false,
+			default_po_number TEXT,
+			billing_approver_name TEXT,
+			billing_approver_email TEXT,
+			nte_limit REAL,
+			consolidated_billing BOOLEAN DEFAULT false,
 			created_at DATETIME NOT NULL,
 			updated_at DATETIME NOT NULL,
 			deleted_at DATETIME

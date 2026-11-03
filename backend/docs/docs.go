@@ -2692,6 +2692,128 @@ const docTemplate = `{
                 ]
             }
         },
+        "/api/v1/jobs/{id}/approval": {
+            "post": {
+                "description": "Office staff record that the customer's approver OK'd this work (V1: no customer-facing approval flow). Extra work estimated above the customer's not-to-exceed limit can only be scheduled once an approval for at least its estimated cost exists. Approver defaults to the customer's billing approver, amount to the job's estimated cost, approved_at to now.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "jobs"
+                ],
+                "summary": "Record the approver's OK for a job",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Job ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Approval",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.RecordJobApprovalRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.JobApproval"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request, or no approver email",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Job not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/jobs/{id}/approvals": {
+            "get": {
+                "description": "The approver OKs recorded for the job, newest first.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "jobs"
+                ],
+                "summary": "List a job's approvals",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Job ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.JobApprovalListResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid ID",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Job not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/v1/jobs/{id}/assign": {
             "post": {
                 "description": "Assign a user to a job (admin/manager only)",
@@ -9785,9 +9907,24 @@ const docTemplate = `{
                     "type": "string",
                     "maxLength": 10
                 },
+                "billing_approver_email": {
+                    "type": "string",
+                    "maxLength": 255
+                },
+                "billing_approver_name": {
+                    "type": "string",
+                    "maxLength": 100
+                },
+                "clear_nte_limit": {
+                    "description": "ClearNTELimit removes the not-to-exceed limit.",
+                    "type": "boolean"
+                },
                 "company_name": {
                     "type": "string",
                     "maxLength": 100
+                },
+                "consolidated_billing": {
+                    "type": "boolean"
                 },
                 "customer_type": {
                     "enum": [
@@ -9799,6 +9936,10 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.CustomerType"
                         }
                     ]
+                },
+                "default_po_number": {
+                    "type": "string",
+                    "maxLength": 100
                 },
                 "do_not_call": {
                     "type": "boolean"
@@ -9831,6 +9972,10 @@ const docTemplate = `{
                 "notes": {
                     "type": "string"
                 },
+                "nte_limit": {
+                    "type": "string",
+                    "example": "500.00"
+                },
                 "phone_primary": {
                     "type": "string",
                     "maxLength": 20
@@ -9838,6 +9983,9 @@ const docTemplate = `{
                 "phone_secondary": {
                     "type": "string",
                     "maxLength": 20
+                },
+                "po_required": {
+                    "type": "boolean"
                 },
                 "preferred_contact_method": {
                     "description": "Contact preferences",
@@ -10119,14 +10267,29 @@ const docTemplate = `{
                 "billing_address_zip": {
                     "type": "string"
                 },
+                "billing_approver_email": {
+                    "type": "string"
+                },
+                "billing_approver_name": {
+                    "description": "The customer's named approver for extra work.",
+                    "type": "string"
+                },
                 "company_name": {
                     "type": "string"
+                },
+                "consolidated_billing": {
+                    "description": "ConsolidatedBilling: one monthly invoice per customer, a line per site (T188).",
+                    "type": "boolean"
                 },
                 "created_at": {
                     "type": "string"
                 },
                 "customer_type": {
                     "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.CustomerType"
+                },
+                "default_po_number": {
+                    "description": "DefaultPONumber is copied onto new invoices that have none.",
+                    "type": "string"
                 },
                 "do_not_call": {
                     "type": "boolean"
@@ -10166,11 +10329,20 @@ const docTemplate = `{
                 "notes": {
                     "type": "string"
                 },
+                "nte_limit": {
+                    "description": "NTELimit (not-to-exceed): extra work estimated above it can't be\nscheduled until the approver's OK is recorded. Nil means no limit.",
+                    "type": "string",
+                    "example": "500.00"
+                },
                 "phone_primary": {
                     "type": "string"
                 },
                 "phone_secondary": {
                     "type": "string"
+                },
+                "po_required": {
+                    "description": "PORequired: invoices can't be sent without a PO number.",
+                    "type": "boolean"
                 },
                 "preferred_contact_method": {
                     "description": "Contact preferences",
@@ -10245,14 +10417,29 @@ const docTemplate = `{
                 "billing_address_zip": {
                     "type": "string"
                 },
+                "billing_approver_email": {
+                    "type": "string"
+                },
+                "billing_approver_name": {
+                    "description": "The customer's named approver for extra work.",
+                    "type": "string"
+                },
                 "company_name": {
                     "type": "string"
+                },
+                "consolidated_billing": {
+                    "description": "ConsolidatedBilling: one monthly invoice per customer, a line per site (T188).",
+                    "type": "boolean"
                 },
                 "created_at": {
                     "type": "string"
                 },
                 "customer_type": {
                     "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.CustomerType"
+                },
+                "default_po_number": {
+                    "description": "DefaultPONumber is copied onto new invoices that have none.",
+                    "type": "string"
                 },
                 "display_name": {
                     "type": "string"
@@ -10291,11 +10478,20 @@ const docTemplate = `{
                 "notes": {
                     "type": "string"
                 },
+                "nte_limit": {
+                    "description": "NTELimit (not-to-exceed): extra work estimated above it can't be\nscheduled until the approver's OK is recorded. Nil means no limit.",
+                    "type": "string",
+                    "example": "500.00"
+                },
                 "phone_primary": {
                     "type": "string"
                 },
                 "phone_secondary": {
                     "type": "string"
+                },
+                "po_required": {
+                    "description": "PORequired: invoices can't be sent without a PO number.",
+                    "type": "boolean"
                 },
                 "preferred_contact_method": {
                     "description": "Contact preferences",
@@ -11315,6 +11511,50 @@ const docTemplate = `{
                 },
                 "updated_by": {
                     "type": "string"
+                }
+            }
+        },
+        "github_com_javaknight1_servicepro_backend_internal_models.JobApproval": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "string",
+                    "example": "750.00"
+                },
+                "approved_at": {
+                    "type": "string"
+                },
+                "approver_email": {
+                    "type": "string"
+                },
+                "approver_name": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "job_id": {
+                    "type": "string"
+                },
+                "notes": {
+                    "type": "string"
+                },
+                "recorded_by": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_javaknight1_servicepro_backend_internal_models.JobApprovalListResponse": {
+            "type": "object",
+            "properties": {
+                "approvals": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.JobApproval"
+                    }
                 }
             }
         },
@@ -12592,6 +12832,30 @@ const docTemplate = `{
                 "QuoteStatusExpired"
             ]
         },
+        "github_com_javaknight1_servicepro_backend_internal_models.RecordJobApprovalRequest": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "string",
+                    "example": "750.00"
+                },
+                "approved_at": {
+                    "type": "string"
+                },
+                "approver_email": {
+                    "type": "string",
+                    "maxLength": 255
+                },
+                "approver_name": {
+                    "type": "string",
+                    "maxLength": 100
+                },
+                "notes": {
+                    "type": "string",
+                    "maxLength": 2000
+                }
+            }
+        },
         "github_com_javaknight1_servicepro_backend_internal_models.RegisterRequest": {
             "type": "object",
             "required": [
@@ -13579,9 +13843,24 @@ const docTemplate = `{
                     "type": "string",
                     "maxLength": 10
                 },
+                "billing_approver_email": {
+                    "type": "string",
+                    "maxLength": 255
+                },
+                "billing_approver_name": {
+                    "type": "string",
+                    "maxLength": 100
+                },
+                "clear_nte_limit": {
+                    "description": "ClearNTELimit removes the not-to-exceed limit.",
+                    "type": "boolean"
+                },
                 "company_name": {
                     "type": "string",
                     "maxLength": 100
+                },
+                "consolidated_billing": {
+                    "type": "boolean"
                 },
                 "customer_type": {
                     "enum": [
@@ -13593,6 +13872,10 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.CustomerType"
                         }
                     ]
+                },
+                "default_po_number": {
+                    "type": "string",
+                    "maxLength": 100
                 },
                 "do_not_call": {
                     "type": "boolean"
@@ -13625,6 +13908,10 @@ const docTemplate = `{
                 "notes": {
                     "type": "string"
                 },
+                "nte_limit": {
+                    "type": "string",
+                    "example": "500.00"
+                },
                 "phone_primary": {
                     "type": "string",
                     "maxLength": 20
@@ -13632,6 +13919,9 @@ const docTemplate = `{
                 "phone_secondary": {
                     "type": "string",
                     "maxLength": 20
+                },
+                "po_required": {
+                    "type": "boolean"
                 },
                 "preferred_contact_method": {
                     "description": "Contact preferences",

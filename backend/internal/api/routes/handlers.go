@@ -52,6 +52,7 @@ func SetupHandlers(
 
 	// Job handler
 	h.Job = handlers.NewJobHandler(svc.Job)
+	h.JobApproval = handlers.NewJobApprovalHandler(svc.JobApprovals)
 
 	// Quote handler
 	h.Quote = handlers.NewQuoteHandler(svc.Quote)

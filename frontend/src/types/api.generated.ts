@@ -3281,6 +3281,158 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/jobs/{id}/approval": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record the approver's OK for a job
+         * @description Office staff record that the customer's approver OK'd this work (V1: no customer-facing approval flow). Extra work estimated above the customer's not-to-exceed limit can only be scheduled once an approval for at least its estimated cost exists. Approver defaults to the customer's billing approver, amount to the job's estimated cost, approved_at to now.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Job ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            /** @description Approval */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.RecordJobApprovalRequest"];
+                };
+            };
+            responses: {
+                /** @description Created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.JobApproval"];
+                    };
+                };
+                /** @description Invalid request, or no approver email */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Job not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Internal server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/jobs/{id}/approvals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List a job's approvals
+         * @description The approver OKs recorded for the job, newest first.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Job ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.JobApprovalListResponse"];
+                    };
+                };
+                /** @description Invalid ID */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Job not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Internal server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/jobs/{id}/assign": {
         parameters: {
             query?: never;
@@ -11267,9 +11419,15 @@ export interface components {
             billing_address_state: string;
             billing_address_street: string;
             billing_address_zip: string;
+            billing_approver_email?: string;
+            billing_approver_name?: string;
+            /** @description ClearNTELimit removes the not-to-exceed limit. */
+            clear_nte_limit?: boolean;
             company_name?: string;
+            consolidated_billing?: boolean;
             /** @enum {unknown} */
             customer_type: "residential" | "commercial";
+            default_po_number?: string;
             do_not_call?: boolean;
             do_not_email?: boolean;
             do_not_mail?: boolean;
@@ -11280,8 +11438,11 @@ export interface components {
             /** @description Marketing consent */
             marketing_consent?: boolean;
             notes?: string;
+            /** @example 500.00 */
+            nte_limit?: string;
             phone_primary: string;
             phone_secondary?: string;
+            po_required?: boolean;
             /**
              * @description Contact preferences
              * @enum {unknown}
@@ -11362,9 +11523,16 @@ export interface components {
             billing_address_state?: string;
             billing_address_street?: string;
             billing_address_zip?: string;
+            billing_approver_email?: string;
+            /** @description The customer's named approver for extra work. */
+            billing_approver_name?: string;
             company_name?: string;
+            /** @description ConsolidatedBilling: one monthly invoice per customer, a line per site (T188). */
+            consolidated_billing?: boolean;
             created_at?: string;
             customer_type?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.CustomerType"];
+            /** @description DefaultPONumber is copied onto new invoices that have none. */
+            default_po_number?: string;
             do_not_call?: boolean;
             do_not_email?: boolean;
             do_not_mail?: boolean;
@@ -11379,8 +11547,16 @@ export interface components {
             /** @description Supports IPv6 */
             marketing_consent_ip?: string;
             notes?: string;
+            /**
+             * @description NTELimit (not-to-exceed): extra work estimated above it can't be
+             *     scheduled until the approver's OK is recorded. Nil means no limit.
+             * @example 500.00
+             */
+            nte_limit?: string;
             phone_primary?: string;
             phone_secondary?: string;
+            /** @description PORequired: invoices can't be sent without a PO number. */
+            po_required?: boolean;
             /** @description Contact preferences */
             preferred_contact_method?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.PreferredContactMethod"];
             service_address_city?: string;
@@ -11405,9 +11581,16 @@ export interface components {
             billing_address_state?: string;
             billing_address_street?: string;
             billing_address_zip?: string;
+            billing_approver_email?: string;
+            /** @description The customer's named approver for extra work. */
+            billing_approver_name?: string;
             company_name?: string;
+            /** @description ConsolidatedBilling: one monthly invoice per customer, a line per site (T188). */
+            consolidated_billing?: boolean;
             created_at?: string;
             customer_type?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.CustomerType"];
+            /** @description DefaultPONumber is copied onto new invoices that have none. */
+            default_po_number?: string;
             display_name?: string;
             do_not_call?: boolean;
             do_not_email?: boolean;
@@ -11421,8 +11604,16 @@ export interface components {
             marketing_consent?: boolean;
             marketing_consent_at?: string;
             notes?: string;
+            /**
+             * @description NTELimit (not-to-exceed): extra work estimated above it can't be
+             *     scheduled until the approver's OK is recorded. Nil means no limit.
+             * @example 500.00
+             */
+            nte_limit?: string;
             phone_primary?: string;
             phone_secondary?: string;
+            /** @description PORequired: invoices can't be sent without a PO number. */
+            po_required?: boolean;
             /** @description Contact preferences */
             preferred_contact_method?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.PreferredContactMethod"];
             service_address_city?: string;
@@ -11779,6 +11970,21 @@ export interface components {
             total_amount?: number;
             updated_at?: string;
             updated_by?: string;
+        };
+        "github_com_javaknight1_servicepro_backend_internal_models.JobApproval": {
+            /** @example 750.00 */
+            amount?: string;
+            approved_at?: string;
+            approver_email?: string;
+            approver_name?: string;
+            created_at?: string;
+            id?: string;
+            job_id?: string;
+            notes?: string;
+            recorded_by?: string;
+        };
+        "github_com_javaknight1_servicepro_backend_internal_models.JobApprovalListResponse": {
+            approvals?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.JobApproval"][];
         };
         "github_com_javaknight1_servicepro_backend_internal_models.JobAssignment": {
             assigned_at?: number;
@@ -12186,6 +12392,14 @@ export interface components {
         };
         /** @enum {string} */
         "github_com_javaknight1_servicepro_backend_internal_models.QuoteStatus": "draft" | "sent" | "viewed" | "accepted" | "declined" | "expired";
+        "github_com_javaknight1_servicepro_backend_internal_models.RecordJobApprovalRequest": {
+            /** @example 750.00 */
+            amount?: string;
+            approved_at?: string;
+            approver_email?: string;
+            approver_name?: string;
+            notes?: string;
+        };
         "github_com_javaknight1_servicepro_backend_internal_models.RegisterRequest": {
             /**
              * @description AcceptTerms must be true: the user agrees to the Terms of Service and
@@ -12506,9 +12720,15 @@ export interface components {
             billing_address_state?: string;
             billing_address_street?: string;
             billing_address_zip?: string;
+            billing_approver_email?: string;
+            billing_approver_name?: string;
+            /** @description ClearNTELimit removes the not-to-exceed limit. */
+            clear_nte_limit?: boolean;
             company_name?: string;
+            consolidated_billing?: boolean;
             /** @enum {unknown} */
             customer_type?: "residential" | "commercial";
+            default_po_number?: string;
             do_not_call?: boolean;
             do_not_email?: boolean;
             do_not_mail?: boolean;
@@ -12519,8 +12739,11 @@ export interface components {
             /** @description Marketing consent */
             marketing_consent?: boolean;
             notes?: string;
+            /** @example 500.00 */
+            nte_limit?: string;
             phone_primary?: string;
             phone_secondary?: string;
+            po_required?: boolean;
             /**
              * @description Contact preferences
              * @enum {unknown}

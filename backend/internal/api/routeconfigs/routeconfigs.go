@@ -57,6 +57,8 @@ type Repositories struct {
 	ConnectedAccounts *repository.ConnectedAccountRepository
 	// Sites are customers' service locations (T186).
 	Sites repository.SiteRepositoryInterface
+	// JobApprovals are approvers' OKs for extra work (T187).
+	JobApprovals repository.JobApprovalRepositoryInterface
 }
 
 // Services holds all service instances
@@ -94,6 +96,7 @@ type Services struct {
 	Conflict        *conflict.ConflictDetector
 	PaymentReminder *services.PaymentReminderService
 	Sites           *services.SiteService
+	JobApprovals    *services.JobApprovalService
 }
 
 // Middleware holds all middleware instances
@@ -141,4 +144,5 @@ type Handlers struct {
 	PaymentReminder   *handlers.PaymentReminderHandler
 	NeonAuth          *handlers.NeonAuthHandler
 	Site              *handlers.SiteHandler
+	JobApproval       *handlers.JobApprovalHandler
 }

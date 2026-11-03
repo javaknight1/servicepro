@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -73,6 +74,10 @@ var (
 // ErrReceiptNotAvailable is returned when asking for the receipt of an
 // invoice that isn't paid (T223: a typed 409 instead of a generic 400).
 var ErrReceiptNotAvailable = apperrors.Conflict("receipt_not_available", "A receipt is only available for paid invoices")
+
+// ErrPORequired: the customer requires a purchase-order number on every
+// invoice and this one has none (T187).
+var ErrPORequired = apperrors.Conflict("po_required", "This customer requires a PO number before the invoice can be sent")
 
 // InvoiceService handles invoice business logic
 type InvoiceService struct {
@@ -161,12 +166,17 @@ func (s *InvoiceService) CreateInvoice(ctx context.Context, invoice *models.Invo
 	}
 
 	// The customer must belong to the caller's tenant (scoped lookup).
-	if err := s.requireCustomer(ctx, invoice.CustomerID); err != nil {
+	customer, err := s.invoiceCustomer(s.db.WithContext(ctx), invoice.CustomerID)
+	if err != nil {
 		return nil, err
+	}
+	// The customer's standing PO is used when the invoice names none (T187).
+	if strings.TrimSpace(invoice.PONumber) == "" && customer.DefaultPONumber != nil {
+		invoice.PONumber = *customer.DefaultPONumber
 	}
 
 	// Create invoice in transaction
-	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		// A job or quote is invoiced at most once (audit 7.M5). Locking the
 		// source row serialises concurrent creates for the same job/quote.
 		if err := guardInvoiceSource(tx, invoice); err != nil {
@@ -968,6 +978,14 @@ func (s *InvoiceService) SendInvoice(ctx context.Context, id uuid.UUID) (*models
 			if err := s.validateForSending(invoice, lineCount); err != nil {
 				return err
 			}
+			// Customers marked "PO required" can't be invoiced without one (T187).
+			customer, err := s.invoiceCustomer(tx, invoice.CustomerID)
+			if err != nil {
+				return err
+			}
+			if customer.PORequired && strings.TrimSpace(invoice.PONumber) == "" {
+				return ErrPORequired
+			}
 		case invoice.Status.AcceptsPayments():
 		default:
 			return ErrInvalidInvoiceTransition
@@ -1069,18 +1087,18 @@ func (s *InvoiceService) calculateDueDate(ctx context.Context, issueDate time.Ti
 	return issueDate.AddDate(0, 0, paymentTerm.DaysUntilDue), nil
 }
 
-// requireCustomer returns ErrCustomerNotFound unless the customer is visible
-// to the caller (tenant scoping hides other tenants' customers).
-func (s *InvoiceService) requireCustomer(ctx context.Context, customerID uuid.UUID) error {
-	var count int64
-	if err := s.db.WithContext(ctx).Model(&models.Customer{}).
-		Where("id = ? AND deleted_at IS NULL", customerID).Count(&count).Error; err != nil {
-		return err
+// invoiceCustomer loads the invoice's customer through db (tenant-scoped by
+// its context), or ErrCustomerNotFound.
+func (s *InvoiceService) invoiceCustomer(db *gorm.DB, customerID uuid.UUID) (*models.Customer, error) {
+	var customer models.Customer
+	err := db.Where("id = ? AND deleted_at IS NULL", customerID).First(&customer).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, ErrCustomerNotFound
 	}
-	if count == 0 {
-		return ErrCustomerNotFound
+	if err != nil {
+		return nil, err
 	}
-	return nil
+	return &customer, nil
 }
 
 func (s *InvoiceService) validateInvoice(invoice *models.Invoice) error {

@@ -99,6 +99,11 @@ func (h *CustomerHandler) CreateCustomer(c *gin.Context) {
 	if req.MarketingConsent != nil {
 		customer.MarketingConsent = *req.MarketingConsent
 	}
+	// Billing rules: PO, approver, not-to-exceed, consolidated billing (T187)
+	if err := req.Apply(&customer.BillingRules); err != nil {
+		apierror.Respond(c, err, "Invalid billing rules")
+		return
+	}
 
 	// Set default preferred contact method if not provided
 	if customer.PreferredContactMethod == "" {
@@ -279,6 +284,11 @@ func (h *CustomerHandler) UpdateCustomer(c *gin.Context) {
 	}
 	if req.MarketingConsent != nil {
 		customer.MarketingConsent = *req.MarketingConsent
+	}
+	// Billing rules: PO, approver, not-to-exceed, consolidated billing (T187)
+	if err := req.Apply(&customer.BillingRules); err != nil {
+		apierror.Respond(c, err, "Invalid billing rules")
+		return
 	}
 
 	// Update customer

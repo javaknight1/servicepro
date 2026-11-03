@@ -72,6 +72,15 @@ func SetupJobRoutes(router *gin.RouterGroup, cfg *routeconfigs.RouteConfig) {
 			cfg.Middleware.PermMiddleware.RequirePermission(permissions.JobsUpdate),
 			cfg.Handlers.Job.TransitionStatus)
 
+		// Approver OKs for extra work over the customer's not-to-exceed
+		// limit (T187): recorded by office staff
+		jobs.POST("/:id/approval",
+			cfg.Middleware.PermMiddleware.RequirePermission(permissions.JobsUpdate),
+			cfg.Handlers.JobApproval.RecordApproval)
+		jobs.GET("/:id/approvals",
+			cfg.Middleware.PermMiddleware.RequirePermission(permissions.JobsRead),
+			cfg.Handlers.JobApproval.ListApprovals)
+
 		// Status history endpoint
 		jobs.GET("/:id/status-history",
 			cfg.Middleware.PermMiddleware.RequirePermission(permissions.JobsRead),
