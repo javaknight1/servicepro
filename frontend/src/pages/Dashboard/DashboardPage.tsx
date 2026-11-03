@@ -34,6 +34,7 @@ import {
 import { formatDollars, toAmount } from '@/utils/money';
 import { isValidTimeZone } from '@/utils/epoch';
 import { cn } from '@utils/cn';
+import { useInvoiceJob } from '@/hooks/useInvoiceJob';
 
 /** Completed jobs that have no invoice yet (creating one moves a job to "invoiced"). */
 const JOBS_TO_INVOICE_SHOWN = 6;
@@ -121,6 +122,12 @@ export function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [tenantsChecked, setTenantsChecked] = useState(false);
   const dates = useDateFormatters(currentTenant?.settings?.timezone);
+  // "Invoice" on a completed job: the API drafts it, then it opens (T029).
+  const {
+    invoiceJob,
+    pendingJobId: invoicingJobId,
+    error: invoiceError,
+  } = useInvoiceJob();
   // The owner started the onboarding wizard (T235) and hasn't finished it.
   const settings = currentTenant?.settings;
   const resumeOnboarding =
@@ -404,6 +411,15 @@ export function DashboardPage() {
           />
         </div>
 
+        {invoiceError && (
+          <div
+            role="alert"
+            className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+          >
+            {invoiceError}
+          </div>
+        )}
+
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
           {/* Jobs needing invoice */}
           <ListCard
@@ -462,13 +478,24 @@ export function DashboardPage() {
                         amount !== undefined ? formatDollars(amount) : null
                       }
                       trailing={
-                        <Link
-                          to={`/invoices/new?job_id=${job.id}`}
-                          className="mr-3 shrink-0 rounded-lg border border-primary-600 px-3 py-1.5 text-sm font-medium text-primary-600 hover:bg-primary-50"
-                          aria-label={`Create invoice for ${job.job_number}`}
-                        >
-                          Invoice
-                        </Link>
+                        // Agreement visits go on the consolidated invoice.
+                        job.agreement_id ? (
+                          <span className="mr-3 shrink-0 text-xs text-neutral-500">
+                            On agreement
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => invoiceJob(job.id)}
+                            disabled={invoicingJobId !== null}
+                            className="mr-3 shrink-0 rounded-lg border border-primary-600 px-3 py-1.5 text-sm font-medium text-primary-600 hover:bg-primary-50 disabled:opacity-60"
+                            aria-label={`Create invoice for ${job.job_number}`}
+                          >
+                            {invoicingJobId === job.id
+                              ? 'Invoicing…'
+                              : 'Invoice'}
+                          </button>
+                        )
                       }
                     />
                   );

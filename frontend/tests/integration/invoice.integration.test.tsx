@@ -71,11 +71,6 @@ vi.mock('@services/customerService', () => ({
   },
 }));
 
-vi.mock('@services/jobService', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@services/jobService')>()),
-  jobService: { getJob: vi.fn() },
-}));
-
 vi.mock('@services/taxRateService', () => ({
   taxRateService: {
     listTaxRates: vi.fn(),
@@ -87,7 +82,6 @@ import { useAuthStore, useTenantStore, useSidebarStore } from '@store';
 import { invoiceService } from '@services/invoiceService';
 import type { InvoiceStats } from '@app-types/invoice';
 import { customerService } from '@services/customerService';
-import { jobService, type Job } from '@services/jobService';
 import { paymentTermService } from '@services/paymentTermService';
 import { taxRateService, type TaxRate } from '@services/taxRateService';
 import { useTenantPermissions } from '@/utils/tenantPermissions';
@@ -618,57 +612,26 @@ describe('Invoice & Payment Integration', () => {
       expect(invoiceService.updateInvoice).not.toHaveBeenCalled();
     });
 
-    it('invoices a completed job: customer and line prefilled, job_id sent (T269)', async () => {
-      const user = userEvent.setup({ delay: null });
-      vi.mocked(jobService.getJob).mockResolvedValue({
-        id: 'job-1',
-        job_number: 'J-3317',
-        customer_id: 'customer-1',
-        customer: mockCustomer,
-        title: 'Deep clean, exam rooms',
-        status: 'completed',
-        estimated_cost: 380,
-      } as unknown as Job);
-      vi.mocked(invoiceService.createInvoice).mockResolvedValue({
+    // T029: invoices are generated from a job by the API (POST
+    // /jobs/{id}/invoice); the draft links back to its job.
+    it('links an invoice generated from a job back to the job', async () => {
+      vi.mocked(invoiceService.getInvoice).mockResolvedValue({
         ...mockInvoices[0],
-        id: 'invoice-new',
+        job_id: 'job-1',
       });
-
       const { InvoiceDetailPage } =
         await import('../../src/pages/Invoices/InvoiceDetailPage');
       render(
-        <MemoryRouter initialEntries={['/invoices/new?job_id=job-1']}>
+        <MemoryRouter initialEntries={['/invoices/invoice-1']}>
           <Routes>
-            <Route path="/invoices/new" element={<InvoiceDetailPage />} />
+            <Route path="/invoices/:id" element={<InvoiceDetailPage />} />
           </Routes>
         </MemoryRouter>
       );
 
-      expect(await screen.findByText('J-3317')).toBeInTheDocument();
-      expect(jobService.getJob).toHaveBeenCalledWith('job-1');
-      const customerSelect = screen.getByLabelText(/customer/i);
-      expect(customerSelect).toHaveValue('customer-1');
-      // The invoice bills the job's customer; it can't be switched.
-      expect(customerSelect).toBeDisabled();
-      expect(screen.getAllByPlaceholderText(/description/i)[0]).toHaveValue(
-        'Deep clean, exam rooms'
-      );
-
-      await user.click(screen.getByRole('button', { name: /create invoice/i }));
-      await waitFor(() => {
-        expect(invoiceService.createInvoice).toHaveBeenCalledWith(
-          expect.objectContaining({
-            customer_id: 'customer-1',
-            job_id: 'job-1',
-            lines: [
-              expect.objectContaining({
-                description: 'Deep clean, exam rooms',
-                unit_price: 380,
-              }),
-            ],
-          })
-        );
-      });
+      expect(
+        await screen.findByRole('link', { name: 'View job' })
+      ).toHaveAttribute('href', '/jobs/job-1');
     });
   });
 

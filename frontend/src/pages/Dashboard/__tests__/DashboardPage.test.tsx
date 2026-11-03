@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, within } from '@testing-library/react';
-import { MemoryRouter } from 'react-router';
+import userEvent from '@testing-library/user-event';
+import { MemoryRouter, Route, Routes } from 'react-router';
 import type { ReactNode } from 'react';
 import type { Tenant } from '@/types/tenant';
 import type { JobStats } from '@app-types/job';
@@ -44,7 +45,7 @@ vi.mock('@store', () => ({
 
 vi.mock('@services/jobService', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@services/jobService')>()),
-  jobService: { getStats: vi.fn(), getJobs: vi.fn() },
+  jobService: { getStats: vi.fn(), getJobs: vi.fn(), invoiceJob: vi.fn() },
 }));
 vi.mock('@services/invoiceService', () => ({
   invoiceService: { getStats: vi.fn() },
@@ -131,8 +132,11 @@ const card = (label: string) => {
 
 const renderPage = () =>
   render(
-    <MemoryRouter>
-      <DashboardPage />
+    <MemoryRouter initialEntries={['/dashboard']}>
+      <Routes>
+        <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/invoices/:id" element={<p>Invoice page</p>} />
+      </Routes>
     </MemoryRouter>
   );
 
@@ -202,20 +206,86 @@ describe('DashboardPage (T269)', () => {
     );
   });
 
-  it('lists completed jobs with a link to invoice each one', async () => {
+  it('lists completed jobs with a button to invoice each one', async () => {
     renderPage();
     const row = (await screen.findByText('Polaris Pet Clinic')).closest('li');
     if (!row) throw new Error('no row');
     expect(within(row).getByText('J-3317')).toBeInTheDocument();
     expect(within(row).getByText('$380.00')).toBeInTheDocument();
     expect(
-      within(row).getByRole('link', { name: 'Create invoice for J-3317' })
-    ).toHaveAttribute('href', '/invoices/new?job_id=job-1');
+      within(row).getByRole('button', { name: 'Create invoice for J-3317' })
+    ).toBeEnabled();
     expect(screen.getByText('6 more ready to invoice')).toBeInTheDocument();
 
     expect(jobService.getJobs).toHaveBeenCalledWith(
       expect.objectContaining({ status: JobStatus.COMPLETED })
     );
+  });
+
+  // T029: the API drafts the invoice from the job, then it opens.
+  it('generates the invoice from the job and opens it', async () => {
+    vi.mocked(jobService.invoiceJob).mockResolvedValue({
+      id: 'inv-9',
+      lines: [],
+    } as unknown as Awaited<ReturnType<typeof jobService.invoiceJob>>);
+    renderPage();
+    const user = userEvent.setup();
+    await user.click(
+      await screen.findByRole('button', { name: 'Create invoice for J-3317' })
+    );
+
+    expect(jobService.invoiceJob).toHaveBeenCalledWith('job-1');
+    expect(await screen.findByText('Invoice page')).toBeInTheDocument();
+  });
+
+  it('opens the existing invoice when the job was already invoiced', async () => {
+    vi.mocked(jobService.invoiceJob).mockRejectedValue({
+      response: {
+        status: 409,
+        data: {
+          error: 'already_invoiced',
+          message: 'This job has already been invoiced',
+          resource_id: 'inv-1',
+        },
+      },
+    });
+    renderPage();
+    const user = userEvent.setup();
+    await user.click(
+      await screen.findByRole('button', { name: 'Create invoice for J-3317' })
+    );
+    expect(await screen.findByText('Invoice page')).toBeInTheDocument();
+  });
+
+  it("shows the API's reason when the job can't be invoiced", async () => {
+    vi.mocked(jobService.invoiceJob).mockRejectedValue({
+      response: {
+        status: 409,
+        data: {
+          error: 'job_not_completed',
+          message: 'Only completed jobs can be invoiced',
+        },
+      },
+    });
+    renderPage();
+    const user = userEvent.setup();
+    await user.click(
+      await screen.findByRole('button', { name: 'Create invoice for J-3317' })
+    );
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Only completed jobs can be invoiced'
+    );
+  });
+
+  it('leaves agreement visits to the consolidated invoice', async () => {
+    vi.mocked(jobService.getJobs).mockResolvedValue(
+      list([{ ...completedJob, agreement_id: 'agr-1' }], 1)
+    );
+    renderPage();
+    const row = (await screen.findByText('Polaris Pet Clinic')).closest('li');
+    if (!row) throw new Error('no row');
+    expect(within(row).getByText('On agreement')).toBeInTheDocument();
+    expect(within(row).queryByRole('button')).toBeNull();
   });
 
   it('shows the A/R aging buckets', async () => {

@@ -30,7 +30,17 @@ import { getErrorMessage } from '@/utils/error';
 import { trackEvent, AnalyticsEvents } from '@services/analytics';
 import { datetimeLocalToEpoch, epochToDatetimeLocal } from '@/utils/epoch';
 import { useTenantTimezone } from '@/hooks/useTenantTimezone';
-import { ArrowLeft, Save, Trash2, Loader2 } from 'lucide-react';
+import { useInvoiceJob } from '@/hooks/useInvoiceJob';
+import { useTenantStore } from '@store';
+import { useTenantPermissions } from '@/utils/tenantPermissions';
+import {
+  ArrowLeft,
+  Save,
+  Trash2,
+  Loader2,
+  Receipt,
+  FileText,
+} from 'lucide-react';
 
 interface PendingAssignment extends CreateJobAssignment {
   user_name: string;
@@ -96,6 +106,14 @@ export function JobDetailPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasConflicts, setHasConflicts] = useState(false);
+  const { currentTenant } = useTenantStore();
+  const { can } = useTenantPermissions(currentTenant);
+  // Completed job -> draft invoice (T029)
+  const {
+    invoiceJob,
+    pendingJobId: invoicingJobId,
+    error: invoiceError,
+  } = useInvoiceJob();
   const [isCheckingConflicts, setIsCheckingConflicts] = useState(false);
 
   // Min/max for scheduling: no past dates, no more than 1 year ahead
@@ -232,9 +250,7 @@ export function JobDetailPage() {
         priority: job.priority || JobPriority.NORMAL,
         scheduled_start_at: '',
         estimated_duration: job.estimated_duration?.toString() || '',
-        estimated_cost: job.estimated_cost
-          ? job.estimated_cost.toString()
-          : '',
+        estimated_cost: job.estimated_cost ? job.estimated_cost.toString() : '',
         internal_notes: job.internal_notes || '',
         customer_notes: job.customer_notes || '',
         special_instructions: job.special_instructions || '',
@@ -452,9 +468,19 @@ export function JobDetailPage() {
           </div>
         )}
 
-        {error && (
+        {!isNew && currentJob && (
+          <JobInvoiceAction
+            job={currentJob}
+            canInvoice={can('invoices.create')}
+            isInvoicing={invoicingJobId === currentJob.id}
+            onInvoice={() => invoiceJob(currentJob.id)}
+            onViewInvoice={(invoiceId) => navigate(`/invoices/${invoiceId}`)}
+          />
+        )}
+
+        {(error || invoiceError) && (
           <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
-            {error}
+            {error || invoiceError}
           </div>
         )}
 
@@ -825,5 +851,90 @@ export function JobDetailPage() {
         )}
       </div>
     </DashboardLayout>
+  );
+}
+
+/**
+ * Billing for a finished job (T029): a completed job offers "Generate
+ * invoice" (the server builds the draft from the job's time, materials and
+ * notes, T030); an invoiced or paid job links to its invoice. Agreement
+ * visits are billed on the customer's consolidated invoice instead.
+ */
+function JobInvoiceAction({
+  job,
+  canInvoice,
+  isInvoicing,
+  onInvoice,
+  onViewInvoice,
+}: {
+  job: Job;
+  canInvoice: boolean;
+  isInvoicing: boolean;
+  onInvoice: () => void;
+  onViewInvoice: (invoiceId: string) => void;
+}) {
+  const completed = job.status === JobStatus.COMPLETED;
+  const billed =
+    job.status === JobStatus.INVOICED || job.status === JobStatus.PAID;
+
+  if (billed && job.invoice_id) {
+    const invoiceId = job.invoice_id;
+    return (
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-neutral-200 bg-white p-4">
+        <p className="text-sm text-neutral-600">
+          {job.status === JobStatus.PAID
+            ? 'This job has been invoiced and paid.'
+            : 'This job has been invoiced.'}
+        </p>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={() => onViewInvoice(invoiceId)}
+          className="flex items-center gap-2"
+        >
+          <FileText className="h-4 w-4" />
+          View invoice
+        </Button>
+      </div>
+    );
+  }
+
+  if (!completed) return null;
+
+  if (job.agreement_id) {
+    return (
+      <div className="mb-6 rounded-2xl border border-neutral-200 bg-neutral-50 p-4 text-sm text-neutral-600">
+        This visit is part of a service agreement. It is billed on the
+        customer&apos;s consolidated invoice.
+      </div>
+    );
+  }
+
+  if (!canInvoice) return null;
+
+  return (
+    <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-primary-200 bg-primary-50 p-4">
+      <div>
+        <p className="font-medium text-neutral-900">Ready to invoice</p>
+        <p className="text-sm text-neutral-600">
+          Creates a draft from the time on site, billable materials and notes.
+          You can review it before sending.
+        </p>
+      </div>
+      <Button
+        type="button"
+        variant="primary"
+        onClick={onInvoice}
+        disabled={isInvoicing}
+        className="flex items-center gap-2"
+      >
+        {isInvoicing ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <Receipt className="h-4 w-4" />
+        )}
+        Generate invoice
+      </Button>
+    </div>
   );
 }

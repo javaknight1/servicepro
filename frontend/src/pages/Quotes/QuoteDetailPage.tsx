@@ -494,8 +494,7 @@ export function QuoteDetailPage() {
   };
 
   const canAcceptDecline = quoteStatus === 'sent' || quoteStatus === 'viewed';
-  const canConvert =
-    quoteStatus === 'accepted' && !jobId && can('jobs.create');
+  const canConvert = quoteStatus === 'accepted' && !jobId && can('jobs.create');
   // Only drafts can be edited; sent/viewed/expired/declined quotes are
   // revised back to draft first (accepted quotes are final).
   const isEditable = isNew || quoteStatus === 'draft';

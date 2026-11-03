@@ -71,8 +71,6 @@ export interface Job {
   id: string;
   job_number: string;
   customer_id: string;
-  /** The accepted quote this job was converted from (T028). */
-  quote_id?: string;
   customer?: {
     id: string;
     email: string;

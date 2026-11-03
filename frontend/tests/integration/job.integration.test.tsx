@@ -45,6 +45,7 @@ vi.mock('@services/jobService', () => ({
     unassignMember: vi.fn(),
     getApprovals: vi.fn(),
     recordApproval: vi.fn(),
+    invoiceJob: vi.fn(),
   },
   jobApprovalsQueryKey: (jobId: string | null) => ['job-approvals', jobId],
   JobStatus: {
@@ -80,6 +81,11 @@ vi.mock('@services/customerService', () => ({
   },
 }));
 
+// Tenant permissions come from GET /tenants/:id/me; the tests set them.
+vi.mock('@/utils/tenantPermissions', () => ({
+  useTenantPermissions: vi.fn(),
+}));
+
 vi.mock('@services/siteService', () => ({
   siteService: { list: vi.fn(), create: vi.fn(), update: vi.fn() },
   sitesQueryKey: (customerId: string | null, includeInactive = false) => [
@@ -107,6 +113,9 @@ import { jobService } from '@services/jobService';
 import type { JobStats } from '@app-types/job';
 import { customerService } from '@services/customerService';
 import { siteService, type Site } from '@services/siteService';
+import { useTenantPermissions } from '@/utils/tenantPermissions';
+
+let grantedPermissions = new Set<string>(['invoices.create']);
 
 // =============================================================================
 // Test Data
@@ -255,6 +264,18 @@ vi.mock('react-router', async () => {
 });
 
 const setupMocks = () => {
+  grantedPermissions = new Set<string>(['invoices.create']);
+  vi.mocked(useTenantPermissions).mockImplementation(() => ({
+    can: (permission: string) => grantedPermissions.has(permission),
+    canManageMembers: false,
+    canUpdateTenant: false,
+    canChangePlan: false,
+    canManageBilling: false,
+    canDeleteTenant: false,
+    canManageTaxRates: false,
+    isLoading: false,
+  }));
+
   vi.mocked(useAuthStore).mockImplementation((selector) => {
     const state = {
       user: mockUser,
@@ -1251,6 +1272,146 @@ describe('Job Lifecycle Integration', () => {
         await within(approvals).findByText('Karen Doyle')
       ).toBeInTheDocument();
       expect(within(approvals).getByText('$750.00')).toBeInTheDocument();
+    });
+  });
+
+  describe('Generate invoice from a completed job (T029)', () => {
+    const completedJob = {
+      ...mockJobs[1],
+      status: 'completed' as const,
+      allowed_transitions: [],
+    };
+
+    const renderJob = async (job: typeof completedJob) => {
+      vi.mocked(jobService.getJob).mockResolvedValue(
+        job as unknown as Awaited<ReturnType<typeof jobService.getJob>>
+      );
+      const { JobDetailPage } =
+        await import('../../src/pages/Jobs/JobDetailPage');
+      render(
+        <MemoryRouter initialEntries={[`/jobs/${job.id}`]}>
+          <Routes>
+            <Route path="/jobs/:id" element={<JobDetailPage />} />
+          </Routes>
+        </MemoryRouter>
+      );
+      await waitFor(() => {
+        expect(jobService.getJob).toHaveBeenCalledWith(job.id);
+      });
+    };
+
+    it('generates the draft invoice and opens it', async () => {
+      const user = userEvent.setup({ delay: null });
+      vi.mocked(jobService.invoiceJob).mockResolvedValue({
+        id: 'inv-42',
+        lines: [],
+      } as unknown as Awaited<ReturnType<typeof jobService.invoiceJob>>);
+
+      await renderJob(completedJob);
+      await user.click(
+        await screen.findByRole('button', { name: /generate invoice/i })
+      );
+
+      await waitFor(() => {
+        expect(jobService.invoiceJob).toHaveBeenCalledWith('job-2');
+      });
+      expect(mockNavigate).toHaveBeenCalledWith('/invoices/inv-42');
+    });
+
+    it('opens the existing invoice when the job was invoiced meanwhile', async () => {
+      const user = userEvent.setup({ delay: null });
+      vi.mocked(jobService.invoiceJob).mockRejectedValue({
+        response: {
+          status: 409,
+          data: {
+            error: 'already_invoiced',
+            message: 'This job has already been invoiced',
+            resource_id: 'inv-7',
+          },
+        },
+      });
+
+      await renderJob(completedJob);
+      await user.click(
+        await screen.findByRole('button', { name: /generate invoice/i })
+      );
+
+      await waitFor(() => {
+        expect(mockNavigate).toHaveBeenCalledWith('/invoices/inv-7');
+      });
+    });
+
+    it("shows the API's reason when invoicing is refused", async () => {
+      const user = userEvent.setup({ delay: null });
+      vi.mocked(jobService.invoiceJob).mockRejectedValue({
+        response: {
+          status: 409,
+          data: {
+            error: 'job_not_completed',
+            message: 'Only completed jobs can be invoiced',
+          },
+        },
+      });
+
+      await renderJob(completedJob);
+      await user.click(
+        await screen.findByRole('button', { name: /generate invoice/i })
+      );
+
+      expect(
+        await screen.findByText('Only completed jobs can be invoiced')
+      ).toBeInTheDocument();
+    });
+
+    it('links an invoiced job to its invoice', async () => {
+      const user = userEvent.setup({ delay: null });
+      await renderJob({
+        ...completedJob,
+        status: 'invoiced' as const,
+        invoice_id: 'inv-42',
+      } as unknown as typeof completedJob);
+
+      await user.click(
+        await screen.findByRole('button', { name: /view invoice/i })
+      );
+      expect(mockNavigate).toHaveBeenCalledWith('/invoices/inv-42');
+      expect(
+        screen.queryByRole('button', { name: /generate invoice/i })
+      ).toBeNull();
+    });
+
+    it('offers nothing before the job is completed', async () => {
+      await renderJob(mockJobs[1] as unknown as typeof completedJob); // in progress
+      expect(
+        await screen.findByRole('button', { name: /complete job/i })
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: /generate invoice/i })
+      ).toBeNull();
+    });
+
+    it('needs the invoices.create permission', async () => {
+      grantedPermissions = new Set<string>();
+      await renderJob(completedJob);
+      await screen.findByLabelText(/title/i);
+      expect(
+        screen.queryByRole('button', { name: /generate invoice/i })
+      ).toBeNull();
+    });
+
+    it('leaves agreement visits to the consolidated invoice', async () => {
+      await renderJob({
+        ...completedJob,
+        agreement_id: 'agr-1',
+      } as unknown as typeof completedJob);
+      expect(
+        await screen.findByText(
+          /billed on the customer's consolidated invoice/i
+        )
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: /generate invoice/i })
+      ).toBeNull();
     });
   });
 });

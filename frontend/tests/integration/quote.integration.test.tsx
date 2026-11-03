@@ -804,7 +804,9 @@ describe('Quote Workflow Integration', () => {
       });
 
       await renderQuote('quote-3');
-      await user.click(await screen.findByRole('button', { name: /view job/i }));
+      await user.click(
+        await screen.findByRole('button', { name: /view job/i })
+      );
 
       expect(mockNavigate).toHaveBeenCalledWith('/jobs/job-77');
       expect(

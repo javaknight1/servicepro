@@ -5,7 +5,7 @@ import {
   QuoteSortField,
   QuoteStats,
 } from '../types/quote';
-import type { Job } from '../types/job';
+import type { Job } from './jobService';
 import { downloadPDF } from '../utils/fileDownload';
 
 export interface PDFDownloadResponse {

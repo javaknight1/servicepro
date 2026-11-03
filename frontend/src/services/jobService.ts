@@ -1,4 +1,5 @@
 import api from './api';
+import type { Invoice } from '../types/invoice';
 
 export enum JobStatus {
   NEW = 'new',
@@ -91,6 +92,10 @@ export interface Job {
   /** Set on visits a service agreement generated (T167); jobs without one
    *  are extra work, subject to the customer's not-to-exceed limit (T187). */
   agreement_id?: string;
+  /** The accepted quote this job was converted from (T028). */
+  quote_id?: string;
+  /** An invoiced job's invoice (GET /jobs/{id} only, T029). */
+  invoice_id?: string;
   title: string;
   description?: string;
   job_type: JobType;
@@ -247,6 +252,16 @@ class JobService {
 
   async updateJob(id: string, data: Partial<Job>): Promise<Job> {
     const response = await api.put<Job>(`${this.basePath}/${id}`, data);
+    return response.data;
+  }
+
+  /**
+   * Generate the draft invoice for a completed job (T029/T030): the server
+   * builds the lines from the job and moves it to invoiced. Once per job: a
+   * second call answers 409 already_invoiced with the invoice in resource_id.
+   */
+  async invoiceJob(id: string): Promise<Invoice> {
+    const response = await api.post<Invoice>(`${this.basePath}/${id}/invoice`);
     return response.data;
   }
 
