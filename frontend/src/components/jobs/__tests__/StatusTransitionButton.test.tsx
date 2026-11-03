@@ -53,6 +53,35 @@ describe('StatusTransitionButton', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('never offers Mark Invoiced or Mark Paid: the invoice moves the job (T029)', () => {
+    const { unmount } = render(
+      <StatusTransitionButton
+        job={job(JobStatus.COMPLETED, [
+          JobStatus.INVOICED,
+          JobStatus.IN_PROGRESS,
+        ])}
+        onStatusChange={vi.fn()}
+      />
+    );
+    expect(
+      screen.queryByRole('button', { name: /invoiced/i })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /in progress/i })
+    ).toBeInTheDocument();
+    unmount();
+
+    render(
+      <StatusTransitionButton
+        job={job(JobStatus.INVOICED, [JobStatus.PAID, JobStatus.COMPLETED])}
+        onStatusChange={vi.fn()}
+      />
+    );
+    expect(
+      screen.queryByRole('button', { name: /paid/i })
+    ).not.toBeInTheDocument();
+  });
+
   it('offers no actions when the API allows none', () => {
     render(
       <StatusTransitionButton

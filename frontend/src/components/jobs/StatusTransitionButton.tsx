@@ -110,6 +110,14 @@ function isBackwardTransition(from: JobStatus, to: JobStatus): boolean {
   return toIndex < fromIndex;
 }
 
+// Invoiced and paid follow the job's invoice (Create invoice, payments;
+// T029): no manual button moves a job there without one. The API still
+// allows the transitions for now.
+const INVOICE_DRIVEN_STATUSES: readonly JobStatus[] = [
+  JobStatus.INVOICED,
+  JobStatus.PAID,
+];
+
 // Categorize the job's allowed next statuses. They come from the API (the
 // backend job state machine, T267); the UI keeps no copy of the rules.
 function categorizeTransitions(
@@ -159,7 +167,9 @@ export function StatusTransitionButton({
 
   const { primary, secondary, backward, cancel } = categorizeTransitions(
     job.status,
-    job.allowed_transitions ?? []
+    (job.allowed_transitions ?? []).filter(
+      (s) => !INVOICE_DRIVEN_STATUSES.includes(s)
+    )
   );
 
   const handleTransition = async (toStatus: JobStatus) => {
