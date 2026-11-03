@@ -16,6 +16,9 @@
 #   hourly at :15   agreement-visits     scheduled jobs for service-agreement visits,
 #                                        next 14 days in each tenant's time zone
 #                                        (idempotent: one claim per agreement+date)
+#   hourly at :15   consolidated-invoices draft consolidated invoices for last month,
+#                                        on the 1st in each tenant's time zone
+#                                        (idempotent: one claim per customer+month)
 #   :05/:20/:35/:50 imports              queued customer CSV imports (> 1,000 rows;
 #                                        smaller files import during the upload)
 # Add a job here only once the API exposes /internal/jobs/<name> for it.
@@ -41,6 +44,7 @@ on:
           - quote-expiry
           - invoice-overdue
           - agreement-visits
+          - consolidated-invoices
           - imports
 
 concurrency:
@@ -87,14 +91,14 @@ jobs:
 
           if [ "$EVENT" = "workflow_dispatch" ]; then
             if [ "$INPUT_JOB" = "all" ]; then
-              jobs="invoice-overdue payment-reminders quote-expiry agreement-visits imports"
+              jobs="invoice-overdue payment-reminders quote-expiry agreement-visits consolidated-invoices imports"
             else
               jobs="$INPUT_JOB"
             fi
           elif [ "$SCHEDULE" = "15 * * * *" ]; then
             # Hourly tick: overdue marking, reminders, quote expiry and
-            # agreement visits every hour.
-            jobs="invoice-overdue payment-reminders quote-expiry agreement-visits"
+            # agreement visits and consolidated invoices every hour.
+            jobs="invoice-overdue payment-reminders quote-expiry agreement-visits consolidated-invoices"
           else
             # Quarter-hour tick: queued CSV imports. (Each tick wakes the Neon
             # compute; an idle run is one cheap UPDATE.)

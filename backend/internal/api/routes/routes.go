@@ -110,6 +110,9 @@ func setupInternalJobRoutes(router *gin.Engine, routeCfg *RouteConfig, cfg *conf
 			return services.GenerateAgreementVisits(ctx, db, now)
 		}))
 		endpoints += ", /internal/jobs/agreement-visits"
+		consolidated := services.NewInvoiceService(db)
+		group.POST("/consolidated-invoices", handlers.RunConsolidatedInvoices(consolidated.GenerateConsolidatedInvoices))
+		endpoints += ", /internal/jobs/consolidated-invoices"
 	}
 	if routeCfg.Services != nil && routeCfg.Services.Import != nil {
 		group.POST("/imports", handlers.RunImports(routeCfg.Services.Import.ProcessPending))

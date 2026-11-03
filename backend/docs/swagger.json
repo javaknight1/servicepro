@@ -5789,6 +5789,53 @@
                 }
             }
         },
+        "/internal/jobs/consolidated-invoices": {
+            "post": {
+                "description": "Internal job endpoint (auth: X-Internal-Jobs-Token header = INTERNAL_JOBS_SECRET; 404 when the secret is unset). On the 1st of the month in each tenant's time zone, creates a draft consolidated invoice for the previous month for every customer with consolidated billing (T188). Drafts are not sent. Idempotent: each (customer, period) is claimed once, so hourly runs create at most one draft. Mounted at the server root (/internal/jobs/consolidated-invoices), outside /api.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Internal"
+                ],
+                "summary": "Run consolidated invoices job",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Internal jobs secret",
+                        "name": "X-Internal-Jobs-Token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_api_handlers.ConsolidatedInvoicesJobResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/internal/jobs/imports": {
             "post": {
                 "description": "Internal job endpoint (auth: X-Internal-Jobs-Token header = INTERNAL_JOBS_SECRET; 404 when the secret is unset). Runs queued customer CSV imports for every tenant: each job is claimed atomically (pending → processing, FOR UPDATE SKIP LOCKED) before it runs, so overlapping runs never import a job twice; each job imports into its own tenant only. Jobs stuck in processing for 15 minutes are marked failed. Runs up to 20 jobs or 4 minutes per call. Mounted at the server root (/internal/jobs/imports), outside /api.",
@@ -16019,6 +16066,43 @@
                 },
                 "timezone": {
                     "type": "string"
+                }
+            }
+        },
+        "internal_api_handlers.ConsolidatedInvoicesJobResponse": {
+            "type": "object",
+            "properties": {
+                "created": {
+                    "description": "Created drafts.",
+                    "type": "integer",
+                    "example": 9
+                },
+                "customers": {
+                    "description": "Customers with consolidated billing in tenants whose local date is the 1st.",
+                    "type": "integer",
+                    "example": 12
+                },
+                "duration_ms": {
+                    "type": "integer",
+                    "example": 40
+                },
+                "empty": {
+                    "description": "Empty: claimed, but no unbilled work for the month.",
+                    "type": "integer",
+                    "example": 2
+                },
+                "failed": {
+                    "type": "integer",
+                    "example": 0
+                },
+                "job": {
+                    "type": "string",
+                    "example": "consolidated-invoices"
+                },
+                "skipped": {
+                    "description": "Skipped: already handled by an earlier or concurrent run.",
+                    "type": "integer",
+                    "example": 1
                 }
             }
         },

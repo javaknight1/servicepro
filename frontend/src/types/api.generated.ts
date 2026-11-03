@@ -6983,6 +6983,75 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/internal/jobs/consolidated-invoices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run consolidated invoices job
+         * @description Internal job endpoint (auth: X-Internal-Jobs-Token header = INTERNAL_JOBS_SECRET; 404 when the secret is unset). On the 1st of the month in each tenant's time zone, creates a draft consolidated invoice for the previous month for every customer with consolidated billing (T188). Drafts are not sent. Idempotent: each (customer, period) is claimed once, so hourly runs create at most one draft. Mounted at the server root (/internal/jobs/consolidated-invoices), outside /api.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description Internal jobs secret */
+                    "X-Internal-Jobs-Token": string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_api_handlers.ConsolidatedInvoicesJobResponse"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Internal Server Error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/internal/jobs/imports": {
         parameters: {
             query?: never;
@@ -14088,6 +14157,34 @@ export interface components {
             payment_date?: string;
             payment_term_id: string;
             timezone?: string;
+        };
+        "internal_api_handlers.ConsolidatedInvoicesJobResponse": {
+            /**
+             * @description Created drafts.
+             * @example 9
+             */
+            created?: number;
+            /**
+             * @description Customers with consolidated billing in tenants whose local date is the 1st.
+             * @example 12
+             */
+            customers?: number;
+            /** @example 40 */
+            duration_ms?: number;
+            /**
+             * @description Empty: claimed, but no unbilled work for the month.
+             * @example 2
+             */
+            empty?: number;
+            /** @example 0 */
+            failed?: number;
+            /** @example consolidated-invoices */
+            job?: string;
+            /**
+             * @description Skipped: already handled by an earlier or concurrent run.
+             * @example 1
+             */
+            skipped?: number;
         };
         "internal_api_handlers.CreateInvoiceRequest": {
             customer_id: string;

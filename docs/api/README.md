@@ -81,7 +81,10 @@ materials, notes, and `POST /conflicts/check`. See [jobs.md](./jobs.md).
 ### Invoices and payments
 
 `/invoices` CRUD, `send`, `payments`, `refunds`, `cancel`, `pdf`,
-`receipt/pdf`, `reminders`; `/settings/payment-reminders`; public pay links
+`receipt/pdf`, `reminders`; `POST /invoices/consolidate` and
+`GET /invoices/consolidate/preview` (one invoice per customer and period, a
+line per site per agreement plus extra work; each month, visit and job billed
+once); `/settings/payment-reminders`; public pay links
 under `/public/invoices/*`; `POST /stripe/webhooks`. See
 [invoices.md](./invoices.md) and [payments.md](./payments.md).
 
@@ -121,7 +124,7 @@ See [import-export.md](../features/import-export.md).
 | ------ | ----------------------------------------------------------------- | ------------------------------------------------------------------- |
 | GET    | `/version`                                                        | Build identity (`git_sha`, `app_version`)                           |
 | GET    | `/health`, `/health/live`, `/health/ready`                        | Health; `ready` is 503 when the DB schema is behind/dirty           |
-| POST   | `/internal/jobs/payment-reminders`, `/internal/jobs/quote-expiry`, `/internal/jobs/invoice-overdue`, `/internal/jobs/imports` | Scheduled jobs (`X-Internal-Jobs-Token`); not proxied by the Worker |
+| POST   | `/internal/jobs/payment-reminders`, `/internal/jobs/quote-expiry`, `/internal/jobs/invoice-overdue`, `/internal/jobs/agreement-visits`, `/internal/jobs/consolidated-invoices`, `/internal/jobs/imports` | Scheduled jobs (`X-Internal-Jobs-Token`); not proxied by the Worker |
 | GET    | `/metrics`                                                        | Prometheus (bearer token outside development)                       |
 | GET    | `/api/docs/*`                                                     | Swagger UI                                                          |
 

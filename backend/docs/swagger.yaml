@@ -4118,6 +4118,35 @@ definitions:
     - issue_date
     - payment_term_id
     type: object
+  internal_api_handlers.ConsolidatedInvoicesJobResponse:
+    properties:
+      created:
+        description: Created drafts.
+        example: 9
+        type: integer
+      customers:
+        description: Customers with consolidated billing in tenants whose local date
+          is the 1st.
+        example: 12
+        type: integer
+      duration_ms:
+        example: 40
+        type: integer
+      empty:
+        description: 'Empty: claimed, but no unbilled work for the month.'
+        example: 2
+        type: integer
+      failed:
+        example: 0
+        type: integer
+      job:
+        example: consolidated-invoices
+        type: string
+      skipped:
+        description: 'Skipped: already handled by an earlier or concurrent run.'
+        example: 1
+        type: integer
+    type: object
   internal_api_handlers.CreateInvoiceRequest:
     properties:
       customer_id:
@@ -8533,6 +8562,43 @@ paths:
           schema:
             $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
       summary: Run agreement visits job
+      tags:
+      - Internal
+  /internal/jobs/consolidated-invoices:
+    post:
+      description: 'Internal job endpoint (auth: X-Internal-Jobs-Token header = INTERNAL_JOBS_SECRET;
+        404 when the secret is unset). On the 1st of the month in each tenant''s time
+        zone, creates a draft consolidated invoice for the previous month for every
+        customer with consolidated billing (T188). Drafts are not sent. Idempotent:
+        each (customer, period) is claimed once, so hourly runs create at most one
+        draft. Mounted at the server root (/internal/jobs/consolidated-invoices),
+        outside /api.'
+      parameters:
+      - description: Internal jobs secret
+        in: header
+        name: X-Internal-Jobs-Token
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_api_handlers.ConsolidatedInvoicesJobResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+      summary: Run consolidated invoices job
       tags:
       - Internal
   /internal/jobs/imports:
