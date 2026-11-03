@@ -1,7 +1,8 @@
 // Package apierror writes the standard API error envelope (T223):
 //
 //	{"error": "<snake_case code>", "message": "<safe, human text>",
-//	 "request_id": "<X-Request-ID>", "fields": {...}?, "details": [...]?}
+//	 "request_id": "<X-Request-ID>", "fields": {...}?, "details": [...]?,
+//	 "resource_id": "<id>"?}
 //
 // See docs/api/errors.md for the contract. Handlers and middleware write
 // every error response through this package so the shape, the request ID
@@ -122,7 +123,7 @@ func Respond(c *gin.Context, err error, internalMessage string) {
 		return
 	}
 	if de, ok := apperrors.As(err); ok {
-		WriteResponse(c, de.Status, models.ErrorResponse{Error: de.Code, Message: de.Message, Fields: de.Fields})
+		WriteResponse(c, de.Status, models.ErrorResponse{Error: de.Code, Message: de.Message, Fields: de.Fields, ResourceID: de.ResourceID})
 		return
 	}
 	if errors.Is(err, gorm.ErrRecordNotFound) {

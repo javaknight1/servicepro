@@ -35,6 +35,10 @@ type Quote struct {
 	UpdatedAt     time.Time       `json:"updated_at"`
 	DeletedAt     gorm.DeletedAt  `json:"-" gorm:"index"`
 
+	// JobID is the job this quote was converted to (T028; jobs.quote_id).
+	// Read-only, filled by QuoteRepository.GetByID.
+	JobID *uuid.UUID `json:"job_id,omitempty" gorm:"-"`
+
 	// ApplyDefaultTaxRate is a create-time input only (not stored): the
 	// request gave no tax rate, so BeforeCreate applies the tenant's default
 	// tax rate (TenantSettings.DefaultTaxRateID, T127) and recomputes totals.
@@ -335,10 +339,12 @@ type QuoteResponse struct {
 	Notes       *string             `json:"notes,omitempty"`
 	Terms       *string             `json:"terms,omitempty"`
 	Items       []QuoteItemResponse `json:"items"`
-	CreatedBy   uuid.UUID           `json:"created_by"`
-	UpdatedBy   *uuid.UUID          `json:"updated_by,omitempty"`
-	CreatedAt   time.Time           `json:"created_at"`
-	UpdatedAt   time.Time           `json:"updated_at"`
+	// JobID is the job the quote was converted to, once it has been (T028).
+	JobID     *uuid.UUID `json:"job_id,omitempty"`
+	CreatedBy uuid.UUID  `json:"created_by"`
+	UpdatedBy *uuid.UUID `json:"updated_by,omitempty"`
+	CreatedAt time.Time  `json:"created_at"`
+	UpdatedAt time.Time  `json:"updated_at"`
 }
 
 // QuoteItemResponse represents a quote item response
@@ -375,6 +381,7 @@ func (q *Quote) ToResponse() QuoteResponse {
 		Currency:    q.Currency,
 		Notes:       q.Notes,
 		Terms:       q.Terms,
+		JobID:       q.JobID,
 		CreatedBy:   q.CreatedBy,
 		UpdatedBy:   q.UpdatedBy,
 		CreatedAt:   q.CreatedAt,
@@ -427,4 +434,16 @@ type QuoteQueryParams struct {
 	SortOrder string `form:"sort_order" binding:"omitempty,oneof=asc desc ASC DESC"`
 	Page      int    `form:"page" binding:"min=1"`
 	PageSize  int    `form:"page_size" binding:"min=1,max=100"`
+}
+
+// ConvertQuoteToJobRequest is the optional body of POST
+// /quotes/{id}/convert-to-job (T028). Everything else comes from the quote.
+type ConvertQuoteToJobRequest struct {
+	// Title defaults to the quote's first line item (or "Quote <number>").
+	Title *string `json:"title" binding:"omitempty,max=200"`
+	// JobType defaults to maintenance.
+	JobType JobType `json:"job_type" binding:"omitempty,oneof=installation maintenance repair inspection emergency"`
+	// SiteID must be one of the customer's active sites; its address
+	// becomes the service address (else the customer's billing address).
+	SiteID *uuid.UUID `json:"site_id"`
 }

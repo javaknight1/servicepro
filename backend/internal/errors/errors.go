@@ -47,6 +47,9 @@ type Error struct {
 	// Fields maps request field names (JSON names) to a problem description,
 	// for validation errors.
 	Fields map[string]string
+	// ResourceID names the existing resource a conflict refers to (e.g. the
+	// job a quote was already converted to), so a client can open it.
+	ResourceID string
 
 	cause  error
 	origin *Error // the sentinel a WithCause/WithMessage copy was made from
@@ -91,6 +94,14 @@ func (e *Error) WithCause(cause error) *Error {
 func (e *Error) WithMessage(message string) *Error {
 	cp := e.clone()
 	cp.Message = message
+	return cp
+}
+
+// WithResource returns a copy naming the existing resource the error is
+// about (sent as "resource_id").
+func (e *Error) WithResource(id string) *Error {
+	cp := e.clone()
+	cp.ResourceID = id
 	return cp
 }
 

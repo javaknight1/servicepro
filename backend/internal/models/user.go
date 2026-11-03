@@ -127,6 +127,9 @@ type ErrorResponse struct {
 	Fields map[string]string `json:"fields,omitempty"`
 	// Details lists extra messages, e.g. per-row import errors.
 	Details []string `json:"details,omitempty"`
+	// ResourceID is the existing resource a 409 refers to, e.g. the invoice
+	// a job already has (POST /jobs/{id}/invoice).
+	ResourceID string `json:"resource_id,omitempty" example:"5b1f0c2e-8a3d-4c6f-9e21-7d4a8b3c2f10"`
 }
 
 // ProfilePictureUploadResponse represents the response for profile picture upload

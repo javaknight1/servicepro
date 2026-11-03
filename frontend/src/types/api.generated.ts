@@ -5001,6 +5001,107 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/quotes/{id}/convert-to-job": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Convert an accepted quote to a job
+         * @description Creates a job (status new, ready to schedule) from an accepted quote in one transaction: the quote's customer, the optional site (its address becomes the service address, else the customer's billing address), the quote's line items and notes in the description, and its subtotal as the estimated cost. The job links back to the quote (quote_id); GET /quotes/{id} then returns job_id. A quote converts once: a second call answers 409 already_converted with the job's ID in resource_id. 409 quote_not_accepted for any other status; 409 already_invoiced when the quote was invoiced directly. When the job is invoiced (POST /jobs/{id}/invoice) its lines come from the quote.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Quote ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            /** @description Optional title, job type and site */
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ConvertQuoteToJobRequest"];
+                };
+            };
+            responses: {
+                /** @description Created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.JobResponse"];
+                    };
+                };
+                /** @description Invalid request, or the site isn't one of the customer's */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Missing jobs.create permission */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Quote not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Not accepted, already converted (resource_id = job) or already invoiced */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Internal server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/quotes/{id}/pdf": {
         parameters: {
             query?: never;
@@ -12467,6 +12568,20 @@ export interface components {
             total?: string;
             visits?: number;
         };
+        "github_com_javaknight1_servicepro_backend_internal_models.ConvertQuoteToJobRequest": {
+            /**
+             * @description JobType defaults to maintenance.
+             * @enum {unknown}
+             */
+            job_type?: "installation" | "maintenance" | "repair" | "inspection" | "emergency";
+            /**
+             * @description SiteID must be one of the customer's active sites; its address
+             *     becomes the service address (else the customer's billing address).
+             */
+            site_id?: string;
+            /** @description Title defaults to the quote's first line item (or "Quote <number>"). */
+            title?: string;
+        };
         "github_com_javaknight1_servicepro_backend_internal_models.CreateAgreementRequest": {
             assigned_technician_id?: string;
             /**
@@ -12771,6 +12886,12 @@ export interface components {
              * @example 3f6c1b9e-2a4d-4e7b-9a51-0c8d2f1e6b7a
              */
             request_id?: string;
+            /**
+             * @description ResourceID is the existing resource a 409 refers to, e.g. the invoice
+             *     a job already has (POST /jobs/{id}/invoice).
+             * @example 5b1f0c2e-8a3d-4c6f-9e21-7d4a8b3c2f10
+             */
+            resource_id?: string;
         };
         "github_com_javaknight1_servicepro_backend_internal_models.ExcelExportOptions": {
             auto_filter?: boolean;
@@ -13089,6 +13210,8 @@ export interface components {
             materials?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.JobMaterial"][];
             notes?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.JobNote"][];
             priority?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.JobPriority"];
+            /** @description the accepted quote this job was converted from (T028) */
+            quote_id?: string;
             required_materials?: string;
             requires_follow_up?: boolean;
             scheduled_end_at?: number;
@@ -13240,6 +13363,8 @@ export interface components {
             next_status?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.JobStatus"];
             notes?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.JobNoteResponse"][];
             priority?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.JobPriority"];
+            /** @description QuoteID is the accepted quote the job was converted from (T028). */
+            quote_id?: string;
             required_materials?: string;
             requires_follow_up?: boolean;
             scheduled_end_at?: number;
@@ -13539,6 +13664,8 @@ export interface components {
             id?: string;
             is_expired?: boolean;
             items?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.QuoteItemResponse"][];
+            /** @description JobID is the job the quote was converted to, once it has been (T028). */
+            job_id?: string;
             notes?: string;
             quote_number?: string;
             status?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.QuoteStatus"];

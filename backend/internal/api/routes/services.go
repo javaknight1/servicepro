@@ -62,6 +62,9 @@ func SetupServices(
 	// Service agreements (T167)
 	svc.Agreements = services.NewAgreementService(db, repos.Agreements)
 
+	// Accepted quote -> job (T028)
+	svc.QuoteConversion = services.NewQuoteConversionService(db)
+
 	// Document PDF service (for generating quote/invoice/receipt PDFs)
 	// Without a storage client (production until R2, T160) PDFs are generated
 	// on demand and attached to emails, just not cached or linked (T256).

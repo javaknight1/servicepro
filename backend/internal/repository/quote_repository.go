@@ -72,6 +72,16 @@ func (r *QuoteRepository) GetByID(id uuid.UUID) (*models.Quote, error) {
 		return nil, err
 	}
 
+	// The job the quote was converted to, if any (T028). jobs is
+	// tenant-scoped by the tenancy plugin like the quote lookup above.
+	var jobIDs []uuid.UUID
+	if err := r.db.Model(&models.Job{}).Where("quote_id = ?", quote.ID).Limit(1).Pluck("id", &jobIDs).Error; err != nil {
+		return nil, err
+	}
+	if len(jobIDs) > 0 {
+		quote.JobID = &jobIDs[0]
+	}
+
 	return &quote, nil
 }
 

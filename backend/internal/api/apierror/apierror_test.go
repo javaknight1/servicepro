@@ -49,6 +49,17 @@ func TestRespond_DomainErrorKeepsStatusCodeAndMessage(t *testing.T) {
 	}
 }
 
+func TestRespond_DomainErrorCarriesResourceID(t *testing.T) {
+	err := errQuoteNotAcceptable.WithResource("5b1f0c2e-8a3d-4c6f-9e21-7d4a8b3c2f10")
+	status, resp := run(t, func(c *gin.Context) { Respond(c, fmt.Errorf("convert: %w", err), "") }, "")
+	if status != http.StatusConflict || resp.ResourceID != "5b1f0c2e-8a3d-4c6f-9e21-7d4a8b3c2f10" {
+		t.Fatalf("got %d %+v", status, resp)
+	}
+	if !errors.Is(err, errQuoteNotAcceptable) || errQuoteNotAcceptable.ResourceID != "" {
+		t.Fatal("WithResource must copy, keeping the sentinel's identity and leaving it unchanged")
+	}
+}
+
 func TestRespond_DomainErrorWithCauseHidesCause(t *testing.T) {
 	err := errQuoteNotAcceptable.WithCause(fmt.Errorf("pq: relation \"quotes\" does not exist"))
 	status, resp := run(t, func(c *gin.Context) { Respond(c, err, "") }, "")

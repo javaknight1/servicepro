@@ -66,6 +66,12 @@ func SetupQuoteRoutes(router *gin.RouterGroup, cfg *routeconfigs.RouteConfig) {
 			cfg.Middleware.PermMiddleware.RequirePermission(permissions.QuotesUpdate),
 			cfg.Handlers.Quote.ReviseQuote)
 
+		// Convert an accepted quote to a job (T028) - creates a job, so it
+		// requires "jobs.create"
+		quotes.POST("/:id/convert-to-job",
+			cfg.Middleware.PermMiddleware.RequirePermission(permissions.JobsCreate),
+			cfg.Handlers.QuoteConversion.ConvertToJob)
+
 		// Get quote PDF download URL - requires "quotes.read" permission
 		quotes.GET("/:id/pdf",
 			cfg.Middleware.PermMiddleware.RequirePermission(permissions.QuotesRead),

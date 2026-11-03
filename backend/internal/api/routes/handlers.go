@@ -57,6 +57,7 @@ func SetupHandlers(
 
 	// Quote handler
 	h.Quote = handlers.NewQuoteHandler(svc.Quote)
+	h.QuoteConversion = handlers.NewQuoteConversionHandler(svc.QuoteConversion)
 
 	// Invoice handler
 	h.Invoice = handlers.NewInvoiceHandler(svc.Invoice)

@@ -4176,6 +4176,87 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/quotes/{id}/convert-to-job": {
+            "post": {
+                "description": "Creates a job (status new, ready to schedule) from an accepted quote in one transaction: the quote's customer, the optional site (its address becomes the service address, else the customer's billing address), the quote's line items and notes in the description, and its subtotal as the estimated cost. The job links back to the quote (quote_id); GET /quotes/{id} then returns job_id. A quote converts once: a second call answers 409 already_converted with the job's ID in resource_id. 409 quote_not_accepted for any other status; 409 already_invoiced when the quote was invoiced directly. When the job is invoiced (POST /jobs/{id}/invoice) its lines come from the quote.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "quotes"
+                ],
+                "summary": "Convert an accepted quote to a job",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Quote ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Optional title, job type and site",
+                        "name": "request",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ConvertQuoteToJobRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.JobResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request, or the site isn't one of the customer's",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Missing jobs.create permission",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Quote not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Not accepted, already converted (resource_id = job) or already invoiced",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/v1/quotes/{id}/pdf": {
             "get": {
                 "description": "Returns a presigned URL for downloading the quote PDF",
@@ -10973,6 +11054,35 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_javaknight1_servicepro_backend_internal_models.ConvertQuoteToJobRequest": {
+            "type": "object",
+            "properties": {
+                "job_type": {
+                    "description": "JobType defaults to maintenance.",
+                    "enum": [
+                        "installation",
+                        "maintenance",
+                        "repair",
+                        "inspection",
+                        "emergency"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.JobType"
+                        }
+                    ]
+                },
+                "site_id": {
+                    "description": "SiteID must be one of the customer's active sites; its address\nbecomes the service address (else the customer's billing address).",
+                    "type": "string"
+                },
+                "title": {
+                    "description": "Title defaults to the quote's first line item (or \"Quote \u003cnumber\u003e\").",
+                    "type": "string",
+                    "maxLength": 200
+                }
+            }
+        },
         "github_com_javaknight1_servicepro_backend_internal_models.CreateAgreementRequest": {
             "type": "object",
             "required": [
@@ -11856,6 +11966,11 @@ const docTemplate = `{
                     "description": "RequestID matches the X-Request-ID response header and the server's log lines.",
                     "type": "string",
                     "example": "3f6c1b9e-2a4d-4e7b-9a51-0c8d2f1e6b7a"
+                },
+                "resource_id": {
+                    "description": "ResourceID is the existing resource a 409 refers to, e.g. the invoice\na job already has (POST /jobs/{id}/invoice).",
+                    "type": "string",
+                    "example": "5b1f0c2e-8a3d-4c6f-9e21-7d4a8b3c2f10"
                 }
             }
         },
@@ -12727,6 +12842,10 @@ const docTemplate = `{
                 "priority": {
                     "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.JobPriority"
                 },
+                "quote_id": {
+                    "description": "the accepted quote this job was converted from (T028)",
+                    "type": "string"
+                },
                 "required_materials": {
                     "type": "string"
                 },
@@ -13157,6 +13276,10 @@ const docTemplate = `{
                 },
                 "priority": {
                     "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.JobPriority"
+                },
+                "quote_id": {
+                    "description": "QuoteID is the accepted quote the job was converted from (T028).",
+                    "type": "string"
                 },
                 "required_materials": {
                     "type": "string"
@@ -14107,6 +14230,10 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.QuoteItemResponse"
                     }
+                },
+                "job_id": {
+                    "description": "JobID is the job the quote was converted to, once it has been (T028).",
+                    "type": "string"
                 },
                 "notes": {
                     "type": "string"

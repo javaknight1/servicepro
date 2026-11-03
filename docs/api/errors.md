@@ -9,7 +9,8 @@ Every error response from the ServicePro API uses one JSON envelope (T223), and 
   "message": "This quote can no longer be accepted",
   "request_id": "3f6c1b9e-2a4d-4e7b-9a51-0c8d2f1e6b7a",
   "fields": { "email": "email must be a valid email address" },
-  "details": ["row 3: email is required"]
+  "details": ["row 3: email is required"],
+  "resource_id": "5b1f0c2e-8a3d-4c6f-9e21-7d4a8b3c2f10"
 }
 ```
 
@@ -20,6 +21,7 @@ Every error response from the ServicePro API uses one JSON envelope (T223), and 
 | `request_id` | yes\*   | Same value as the `X-Request-ID` header; appears on the server's log lines for the request. |
 | `fields`     | no      | Validation errors only: request field (JSON name) → problem.                               |
 | `details`    | no      | Extra messages, e.g. per-row CSV import errors.                                             |
+| `resource_id`| no      | A 409's existing resource, e.g. the job a quote was already converted to (T028).          |
 
 \* Present on every response written by the API's handlers and middleware. A gateway or proxy error
 (e.g. a 502 from the edge) may not use the envelope; clients fall back to the status code there.

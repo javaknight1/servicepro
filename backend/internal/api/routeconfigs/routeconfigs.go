@@ -100,6 +100,8 @@ type Services struct {
 	Sites           *services.SiteService
 	JobApprovals    *services.JobApprovalService
 	Agreements      *services.AgreementService
+	// QuoteConversion turns accepted quotes into jobs (T028).
+	QuoteConversion *services.QuoteConversionService
 }
 
 // Middleware holds all middleware instances
@@ -149,4 +151,5 @@ type Handlers struct {
 	Site              *handlers.SiteHandler
 	JobApproval       *handlers.JobApprovalHandler
 	Agreement         *handlers.AgreementHandler
+	QuoteConversion   *handlers.QuoteConversionHandler
 }
