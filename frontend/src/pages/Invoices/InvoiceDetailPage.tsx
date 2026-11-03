@@ -12,6 +12,7 @@ import {
   invoiceService,
   Invoice,
   InvoiceStatus,
+  PO_OVERRIDE_CODES,
   type CreateInvoiceRequest,
   type InvoiceLineRequest,
   type UpdateInvoiceRequest,
@@ -24,6 +25,7 @@ import { getApiErrorInfo, getErrorMessage } from '@/utils/error';
 import {
   CancelInvoiceModal,
   InvoicePaymentHistory,
+  POBalanceNote,
   RecordPaymentModal,
   RefundModal,
 } from '@components/invoices';
@@ -207,9 +209,13 @@ export function InvoiceDetailPage() {
   const isNew = !id || id === 'new';
   // The list's Send hit 409 po_required: open the send dialog asking for it.
   const location = useLocation();
-  const poRequiredOnArrival = !!(
-    location.state as { poRequired?: boolean } | null
-  )?.poRequired;
+  const arrivalState = location.state as {
+    poRequired?: boolean;
+    poWarning?: string;
+  } | null;
+  const poRequiredOnArrival = !!arrivalState?.poRequired;
+  // The list's Send hit 409 po_exceeded / po_expired (T187).
+  const poWarningOnArrival = arrivalState?.poWarning ?? null;
 
   const [formData, setFormData] = useState<InvoiceFormData>(initialFormData);
   const [lineItems, setLineItems] = useState<LineItemFormData[]>([
@@ -229,8 +235,11 @@ export function InvoiceDetailPage() {
   );
   const [invoiceNumber, setInvoiceNumber] = useState<string>('');
   const [showSendConfirmation, setShowSendConfirmation] = useState(
-    poRequiredOnArrival && !isNew
+    (poRequiredOnArrival || !!poWarningOnArrival) && !isNew
   );
+  // Send was refused with 409 po_exceeded / po_expired (T187): show why and
+  // let the office send anyway.
+  const [poWarning, setPoWarning] = useState<string | null>(poWarningOnArrival);
   // Send was refused with 409 po_required (T187): ask for the PO inline.
   const [poRequired, setPoRequired] = useState(poRequiredOnArrival);
   const [poDraft, setPoDraft] = useState('');
@@ -631,19 +640,27 @@ export function InvoiceDetailPage() {
         setInvoice(saved);
         setFormData((prev) => ({ ...prev, po_number: po }));
       }
-      const updatedInvoice = await invoiceService.sendInvoice(id);
+      const updatedInvoice = await invoiceService.sendInvoice(id, {
+        confirmPoOverride: !!poWarning,
+      });
+      setInvoice(updatedInvoice);
       setPoRequired(false);
+      setPoWarning(null);
       setInvoiceStatus(updatedInvoice.status || InvoiceStatus.SENT);
       setShowSendConfirmation(false);
       trackEvent(AnalyticsEvents.INVOICE_SENT, { total: calculateTotal() });
       // Show success message or navigate
       alert('Invoice sent successfully!');
     } catch (err) {
-      const { status, code } = getApiErrorInfo(err);
+      const { status, code, message } = getApiErrorInfo(err);
       if (status === 409 && code === 'po_required') {
         // Keep the dialog open and ask for the PO there.
         setPoRequired(true);
         setPoDraft(formData.po_number);
+      } else if (status === 409 && PO_OVERRIDE_CODES.some((c) => c === code)) {
+        // The PO is saved by now; ask to send anyway.
+        setPoRequired(false);
+        setPoWarning(message ?? 'Check the purchase order.');
       } else {
         console.error('Failed to send invoice:', err);
         setError(getErrorMessage(err, 'Failed to send invoice'));
@@ -977,6 +994,18 @@ export function InvoiceDetailPage() {
                       Leave empty to use the customer's current PO.
                     </p>
                   )}
+                  {invoice?.purchase_order &&
+                    invoice.purchase_order.po_number ===
+                      formData.po_number.trim() && (
+                      <POBalanceNote
+                        po={invoice.purchase_order}
+                        invoiceTotal={
+                          invoiceStatus === InvoiceStatus.DRAFT
+                            ? toAmount(invoice.total_amount)
+                            : undefined
+                        }
+                      />
+                    )}
                 </div>
 
                 <TaxRatePicker
@@ -1592,6 +1621,21 @@ export function InvoiceDetailPage() {
                 </div>
               )}
 
+              {poWarning && (
+                <div
+                  role="alert"
+                  data-testid="po-warning"
+                  className="mb-4 rounded-lg border border-warning-200 bg-warning-50 p-3"
+                >
+                  <p className="text-sm font-medium text-warning-800">
+                    {poWarning}
+                  </p>
+                  <p className="mt-1 text-sm text-warning-800">
+                    Send it anyway, or cancel and change the invoice or the PO.
+                  </p>
+                </div>
+              )}
+
               {!customerEmail && (
                 <p className="text-amber-600 text-sm mb-4">
                   Warning: The customer does not have an email address. The
@@ -1606,6 +1650,7 @@ export function InvoiceDetailPage() {
                   onClick={() => {
                     setShowSendConfirmation(false);
                     setPoRequired(false);
+                    setPoWarning(null);
                   }}
                   disabled={isSending}
                 >
@@ -1628,7 +1673,9 @@ export function InvoiceDetailPage() {
                     ? 'Sending...'
                     : poRequired
                       ? 'Save PO & Send'
-                      : 'Confirm & Send'}
+                      : poWarning
+                        ? 'Send anyway'
+                        : 'Confirm & Send'}
                 </Button>
               </div>
             </div>

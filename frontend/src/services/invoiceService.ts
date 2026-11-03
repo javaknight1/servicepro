@@ -1,4 +1,5 @@
 import api from './api';
+import type { PurchaseOrder } from './purchaseOrderService';
 import { downloadPDF } from '../utils/fileDownload';
 import { buildQueryParams } from '../utils/queryParams';
 
@@ -86,9 +87,16 @@ export interface Invoice {
    * skip the invoice until it succeeds or fails.
    */
   payment_pending_at?: string;
+  /** The customer's tracked PO with this invoice's PO number and its
+   * balance (T187); absent when the PO isn't tracked. */
+  purchase_order?: PurchaseOrder;
   created_at: string;
   updated_at: string;
 }
+
+/** Codes of the 409s sending an invoice can answer that the office may
+ * override with `confirmPoOverride` (T187). */
+export const PO_OVERRIDE_CODES = ['po_exceeded', 'po_expired'] as const;
 
 /** A payment on an invoice. Amounts are API decimals (strings, e.g. "12.50"). */
 export interface InvoicePayment {
@@ -333,8 +341,20 @@ class InvoiceService {
     await api.delete(`${this.basePath}/${id}`);
   }
 
-  async sendInvoice(id: string): Promise<Invoice> {
-    const response = await api.post<Invoice>(`${this.basePath}/${id}/send`);
+  /**
+   * Send (or re-send) an invoice. 409 po_required: no PO on a customer that
+   * requires one; 409 po_exceeded / po_expired: over the tracked PO's
+   * remaining balance or past its expiry, sent anyway with
+   * `confirmPoOverride` (T187).
+   */
+  async sendInvoice(
+    id: string,
+    options: { confirmPoOverride?: boolean } = {}
+  ): Promise<Invoice> {
+    const response = await api.post<Invoice>(
+      `${this.basePath}/${id}/send`,
+      options.confirmPoOverride ? { confirm_po_override: true } : undefined
+    );
     return response.data;
   }
 

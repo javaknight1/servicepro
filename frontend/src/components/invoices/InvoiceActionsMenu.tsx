@@ -2,7 +2,11 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { getApiErrorInfo } from '@/utils/error';
 import { Send, Download, FileText } from 'lucide-react';
-import { invoiceService, InvoiceStatus } from '../../services/invoiceService';
+import {
+  invoiceService,
+  InvoiceStatus,
+  PO_OVERRIDE_CODES,
+} from '../../services/invoiceService';
 import { DropdownMenu, DropdownMenuItem } from '../shared/DropdownMenu';
 
 interface InvoiceActionsMenuProps {
@@ -36,10 +40,16 @@ export function InvoiceActionsMenu({
         onInvoiceSent?.();
       }
     } catch (error) {
-      const { status, code } = getApiErrorInfo(error);
+      const { status, code, message } = getApiErrorInfo(error);
       if (status === 409 && code === 'po_required') {
         // The invoice page asks for the PO and sends it (T187).
         navigate(`/invoices/${invoiceId}`, { state: { poRequired: true } });
+      } else if (status === 409 && PO_OVERRIDE_CODES.some((c) => c === code)) {
+        // Over the PO's remaining balance, or the PO expired: the invoice
+        // page shows why and asks to send anyway (T187).
+        navigate(`/invoices/${invoiceId}`, {
+          state: { poWarning: message ?? 'Check the purchase order.' },
+        });
       } else {
         console.error('Failed to send invoice:', error);
       }

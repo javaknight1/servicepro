@@ -14,10 +14,14 @@ import { InvoiceActionsMenu } from './InvoiceActionsMenu';
 
 function DetailProbe() {
   const location = useLocation();
-  const state = location.state as { poRequired?: boolean } | null;
+  const state = location.state as {
+    poRequired?: boolean;
+    poWarning?: string;
+  } | null;
   return (
     <p>
       detail {location.pathname} {state?.poRequired ? 'needs PO' : ''}
+      {state?.poWarning ?? ''}
     </p>
   );
 }
@@ -60,5 +64,36 @@ describe('InvoiceActionsMenu', () => {
       await screen.findByText(/detail \/invoices\/inv-1 needs PO/)
     ).toBeInTheDocument();
     expect(onInvoiceSent).not.toHaveBeenCalled();
+  });
+
+  it('opens the invoice with the warning when send exceeds the PO (T187)', async () => {
+    const user = userEvent.setup();
+    vi.mocked(invoiceService.sendInvoice).mockRejectedValue({
+      response: {
+        status: 409,
+        data: { error: 'po_exceeded', message: 'Over PO-1' },
+      },
+    });
+    render(
+      <MemoryRouter initialEntries={['/invoices']}>
+        <Routes>
+          <Route
+            path="/invoices"
+            element={
+              <InvoiceActionsMenu
+                invoiceId="inv-1"
+                status={InvoiceStatus.DRAFT}
+              />
+            }
+          />
+          <Route path="/invoices/:id" element={<DetailProbe />} />
+        </Routes>
+      </MemoryRouter>
+    );
+    await user.click(screen.getByRole('button', { name: 'Invoice actions' }));
+    await user.click(await screen.findByText('Send Invoice'));
+    expect(
+      await screen.findByText(/detail \/invoices\/inv-1 .*Over PO-1/)
+    ).toBeInTheDocument();
   });
 });

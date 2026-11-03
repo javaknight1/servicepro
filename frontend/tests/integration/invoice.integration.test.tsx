@@ -51,6 +51,7 @@ vi.mock('@services/invoiceService', () => ({
     CANCELLED: 'cancelled',
     REFUNDED: 'refunded',
   },
+  PO_OVERRIDE_CODES: ['po_exceeded', 'po_expired'],
 }));
 
 // Tenant permissions come from GET /tenants/:id/me; the tests set them.
@@ -80,7 +81,7 @@ vi.mock('@services/taxRateService', () => ({
 
 // Import after mocking
 import { useAuthStore, useTenantStore, useSidebarStore } from '@store';
-import { invoiceService } from '@services/invoiceService';
+import { invoiceService, type Invoice } from '@services/invoiceService';
 import type { InvoiceStats } from '@app-types/invoice';
 import { customerService } from '@services/customerService';
 import { paymentTermService } from '@services/paymentTermService';
@@ -1024,7 +1025,9 @@ describe('Invoice & Payment Integration', () => {
       await user.click(screen.getByTestId('confirm-send'));
 
       await waitFor(() => {
-        expect(invoiceService.sendInvoice).toHaveBeenCalledWith('invoice-1');
+        expect(invoiceService.sendInvoice).toHaveBeenCalledWith('invoice-1', {
+          confirmPoOverride: false,
+        });
       });
       alertSpy.mockRestore();
     });
@@ -1044,8 +1047,11 @@ describe('Invoice & Payment Integration', () => {
         config: { headers: new AxiosHeaders() },
       });
 
-    const renderDraft = async (state?: { poRequired: boolean }) => {
-      vi.mocked(invoiceService.getInvoice).mockResolvedValue(mockInvoices[0]);
+    const renderDraft = async (
+      state?: { poRequired?: boolean; poWarning?: string },
+      invoice: Invoice = mockInvoices[0]
+    ) => {
+      vi.mocked(invoiceService.getInvoice).mockResolvedValue(invoice);
       const { InvoiceDetailPage } =
         await import('../../src/pages/Invoices/InvoiceDetailPage');
       render(
@@ -1113,6 +1119,92 @@ describe('Invoice & Payment Integration', () => {
         po_number: 'PO-42',
       });
       alertSpy.mockRestore();
+    });
+
+    const trackedPO = {
+      id: 'po-1',
+      customer_id: 'customer-1',
+      po_number: 'PO-7731-HV',
+      amount: '30000.00',
+      billed: '29500.00',
+      remaining: '500.00',
+      invoice_count: 12,
+      expired: false,
+      created_at: '2026-10-01T00:00:00Z',
+      updated_at: '2026-10-01T00:00:00Z',
+    };
+
+    it("shows the tracked PO's remaining balance and what this draft leaves", async () => {
+      await renderDraft(undefined, {
+        ...mockInvoices[0],
+        po_number: 'PO-7731-HV',
+        purchase_order: trackedPO,
+      });
+      const note = await screen.findByTestId('po-balance');
+      expect(note).toHaveTextContent(
+        '$500.00 of $30,000.00 left on PO PO-7731-HV'
+      );
+      // Draft total 1,080 → 500 - 1,080
+      expect(note).toHaveTextContent(
+        'After this invoice: -$580.00 (over the PO)'
+      );
+    });
+
+    it('warns when send exceeds the PO and sends anyway on confirm', async () => {
+      const user = userEvent.setup({ delay: null });
+      vi.mocked(invoiceService.sendInvoice)
+        .mockRejectedValueOnce(
+          new AxiosError('Conflict', 'ERR_BAD_REQUEST', undefined, undefined, {
+            data: {
+              error: 'po_exceeded',
+              message:
+                'This invoice (1080.00) is more than the 500.00 remaining on purchase order PO-7731-HV',
+            },
+            status: 409,
+            statusText: 'Conflict',
+            headers: {},
+            config: { headers: new AxiosHeaders() },
+          })
+        )
+        .mockResolvedValueOnce({ ...mockInvoices[0], status: 'sent' as const });
+      const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+      await renderDraft(undefined, {
+        ...mockInvoices[0],
+        po_number: 'PO-7731-HV',
+        purchase_order: trackedPO,
+      });
+
+      await user.click(
+        await screen.findByRole('button', { name: /send invoice/i })
+      );
+      await user.click(screen.getByTestId('confirm-send'));
+
+      expect(await screen.findByTestId('po-warning')).toHaveTextContent(
+        /500\.00 remaining on purchase order PO-7731-HV/
+      );
+      expect(invoiceService.sendInvoice).toHaveBeenLastCalledWith('invoice-1', {
+        confirmPoOverride: false,
+      });
+      await user.click(screen.getByRole('button', { name: /send anyway/i }));
+      await waitFor(() => {
+        expect(invoiceService.sendInvoice).toHaveBeenLastCalledWith(
+          'invoice-1',
+          { confirmPoOverride: true }
+        );
+      });
+      alertSpy.mockRestore();
+    });
+
+    it('opens the PO warning when the list sent us here for one', async () => {
+      await renderDraft({
+        poWarning: 'Purchase order PO-1 expired on 2020-01-31',
+      });
+      expect(await screen.findByTestId('po-warning')).toHaveTextContent(
+        /expired on 2020-01-31/
+      );
+      expect(screen.getByTestId('confirm-send')).toHaveTextContent(
+        /send anyway/i
+      );
     });
 
     it('opens the PO prompt when the list sent us here for a PO', async () => {
