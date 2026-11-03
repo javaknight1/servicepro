@@ -102,6 +102,10 @@ func setupInternalJobRoutes(router *gin.Engine, routeCfg *RouteConfig, cfg *conf
 			return services.ExpireQuotes(ctx, db, now)
 		}))
 		endpoints += ", /internal/jobs/quote-expiry"
+		group.POST("/invoice-overdue", handlers.RunInvoiceOverdue(func(ctx context.Context, now time.Time) (int64, error) {
+			return services.MarkOverdueInvoices(ctx, db, now)
+		}))
+		endpoints += ", /internal/jobs/invoice-overdue"
 	}
 	if routeCfg.Services != nil && routeCfg.Services.Import != nil {
 		group.POST("/imports", handlers.RunImports(routeCfg.Services.Import.ProcessPending))

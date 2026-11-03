@@ -121,7 +121,7 @@ See [import-export.md](../features/import-export.md).
 | ------ | ----------------------------------------------------------------- | ------------------------------------------------------------------- |
 | GET    | `/version`                                                        | Build identity (`git_sha`, `app_version`)                           |
 | GET    | `/health`, `/health/live`, `/health/ready`                        | Health; `ready` is 503 when the DB schema is behind/dirty           |
-| POST   | `/internal/jobs/payment-reminders`, `/internal/jobs/quote-expiry`, `/internal/jobs/imports` | Scheduled jobs (`X-Internal-Jobs-Token`); not proxied by the Worker |
+| POST   | `/internal/jobs/payment-reminders`, `/internal/jobs/quote-expiry`, `/internal/jobs/invoice-overdue`, `/internal/jobs/imports` | Scheduled jobs (`X-Internal-Jobs-Token`); not proxied by the Worker |
 | GET    | `/metrics`                                                        | Prometheus (bearer token outside development)                       |
 | GET    | `/api/docs/*`                                                     | Swagger UI                                                          |
 

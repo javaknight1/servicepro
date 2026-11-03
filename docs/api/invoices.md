@@ -412,7 +412,7 @@ DELETE /api/v1/tax-rates/:id                # tax_rates.manage
 | viewed         | Customer viewed the invoice |
 | partially_paid | Partial payment received    |
 | paid           | Fully paid                  |
-| overdue        | Past due date               |
+| overdue        | Past due date (set hourly)  |
 | cancelled      | Cancelled                   |
 | refunded       | Payment refunded            |
 
@@ -426,6 +426,10 @@ draft → cancelled
 sent → cancelled
 overdue → paid (when payment received)
 ```
+
+Sent and viewed invoices due before today (UTC) move to `overdue` from the hourly
+`POST /internal/jobs/invoice-overdue` job. Partially paid invoices keep their status;
+`is_overdue` / `days_overdue` show their lateness.
 
 ## Automatic Calculations
 

@@ -4943,6 +4943,53 @@ const docTemplate = `{
                 }
             }
         },
+        "/internal/jobs/invoice-overdue": {
+            "post": {
+                "description": "Internal job endpoint (auth: X-Internal-Jobs-Token header = INTERNAL_JOBS_SECRET; 404 when the secret is unset). Moves sent/viewed invoices due before today (UTC) to overdue, for every tenant. Idempotent (one conditional UPDATE). Mounted at the server root (/internal/jobs/invoice-overdue), outside /api.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Internal"
+                ],
+                "summary": "Run invoice overdue job",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Internal jobs secret",
+                        "name": "X-Internal-Jobs-Token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_api_handlers.InvoiceOverdueJobResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/internal/jobs/payment-reminders": {
             "post": {
                 "description": "Internal job endpoint (auth: X-Internal-Jobs-Token header = INTERNAL_JOBS_SECRET; 404 when the secret is unset). Sends due automatic payment reminders for every active tenant with reminders enabled. Idempotent: each (invoice, reminder number) is sent at most once, so re-running or overlapping runs send nothing twice. Mounted at the server root (/internal/jobs/payment-reminders), outside /api.",
@@ -13809,6 +13856,23 @@ const docTemplate = `{
                 },
                 "role_id": {
                     "type": "string"
+                }
+            }
+        },
+        "internal_api_handlers.InvoiceOverdueJobResponse": {
+            "type": "object",
+            "properties": {
+                "duration_ms": {
+                    "type": "integer",
+                    "example": 12
+                },
+                "job": {
+                    "type": "string",
+                    "example": "invoice-overdue"
+                },
+                "marked": {
+                    "type": "integer",
+                    "example": 3
                 }
             }
         },

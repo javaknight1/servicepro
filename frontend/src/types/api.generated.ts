@@ -6013,6 +6013,75 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/internal/jobs/invoice-overdue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run invoice overdue job
+         * @description Internal job endpoint (auth: X-Internal-Jobs-Token header = INTERNAL_JOBS_SECRET; 404 when the secret is unset). Moves sent/viewed invoices due before today (UTC) to overdue, for every tenant. Idempotent (one conditional UPDATE). Mounted at the server root (/internal/jobs/invoice-overdue), outside /api.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description Internal jobs secret */
+                    "X-Internal-Jobs-Token": string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_api_handlers.InvoiceOverdueJobResponse"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Internal Server Error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/internal/jobs/payment-reminders": {
         parameters: {
             query?: never;
@@ -12120,6 +12189,14 @@ export interface components {
         "internal_api_handlers.InviteMemberRequest": {
             email: string;
             role_id: string;
+        };
+        "internal_api_handlers.InvoiceOverdueJobResponse": {
+            /** @example 12 */
+            duration_ms?: number;
+            /** @example invoice-overdue */
+            job?: string;
+            /** @example 3 */
+            marked?: number;
         };
         "internal_api_handlers.InvoiceResponse": {
             /** @description Computed column */

@@ -3469,6 +3469,18 @@ definitions:
     - email
     - role_id
     type: object
+  internal_api_handlers.InvoiceOverdueJobResponse:
+    properties:
+      duration_ms:
+        example: 12
+        type: integer
+      job:
+        example: invoice-overdue
+        type: string
+      marked:
+        example: 3
+        type: integer
+    type: object
   internal_api_handlers.InvoiceResponse:
     properties:
       amount_due:
@@ -7080,6 +7092,40 @@ paths:
           schema:
             $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
       summary: Run CSV imports job
+      tags:
+      - Internal
+  /internal/jobs/invoice-overdue:
+    post:
+      description: 'Internal job endpoint (auth: X-Internal-Jobs-Token header = INTERNAL_JOBS_SECRET;
+        404 when the secret is unset). Moves sent/viewed invoices due before today
+        (UTC) to overdue, for every tenant. Idempotent (one conditional UPDATE). Mounted
+        at the server root (/internal/jobs/invoice-overdue), outside /api.'
+      parameters:
+      - description: Internal jobs secret
+        in: header
+        name: X-Internal-Jobs-Token
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_api_handlers.InvoiceOverdueJobResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+      summary: Run invoice overdue job
       tags:
       - Internal
   /internal/jobs/payment-reminders:

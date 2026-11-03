@@ -36,6 +36,7 @@ on:
           - all
           - payment-reminders
           - quote-expiry
+          - invoice-overdue
           - imports
 
 concurrency:
@@ -82,13 +83,13 @@ jobs:
 
           if [ "$EVENT" = "workflow_dispatch" ]; then
             if [ "$INPUT_JOB" = "all" ]; then
-              jobs="payment-reminders quote-expiry imports"
+              jobs="invoice-overdue payment-reminders quote-expiry imports"
             else
               jobs="$INPUT_JOB"
             fi
           elif [ "$SCHEDULE" = "15 * * * *" ]; then
-            # Hourly tick: reminders and quote expiry every hour.
-            jobs="payment-reminders quote-expiry"
+            # Hourly tick: overdue marking, reminders and quote expiry every hour.
+            jobs="invoice-overdue payment-reminders quote-expiry"
           else
             # Quarter-hour tick: queued CSV imports. (Each tick wakes the Neon
             # compute; an idle run is one cheap UPDATE.)
