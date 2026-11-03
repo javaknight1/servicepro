@@ -2,6 +2,7 @@ import { ReactNode } from 'react';
 import { Sidebar } from './Sidebar';
 import { AppTopBar, type Breadcrumb } from './AppTopBar';
 import { BuildStamp } from './BuildStamp';
+import { TrialBanner } from '@components/membership/TrialBanner';
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -19,6 +20,7 @@ export function DashboardLayout({
       <Sidebar />
       <div className="flex min-w-0 flex-1 flex-col">
         <AppTopBar breadcrumbs={breadcrumbs} />
+        <TrialBanner />
         <main className="flex-1">{children}</main>
         <footer className="border-t border-neutral-200 bg-white px-4 py-1.5">
           <BuildStamp />

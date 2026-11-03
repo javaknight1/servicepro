@@ -7,6 +7,8 @@ import { TierCard, BillingToggle } from '@components/membership';
 import { useMembershipStore, useTenantStore, useBillingStore } from '@store';
 import { useStripeContext } from '@/providers/StripeProvider';
 import { billingApi } from '@/services';
+import { membershipApi } from '@/services/membershipService';
+import { redirectTo } from '@/utils/redirect';
 import type { MembershipTier, BillingCycle } from '@/types/membership';
 
 /** Expected shape of location.state when navigating to this page */
@@ -200,6 +202,25 @@ export function ChangeMembershipPage() {
     const isPaidTier =
       tier.monthly_price_cents > 0 || tier.annual_price_cents > 0;
 
+    // A first paid plan goes through Stripe Checkout (T210); the plan
+    // changes when Stripe confirms it.
+    if (
+      isPaidTier &&
+      currentMembership?.checkout_available &&
+      !currentMembership.has_paid_subscription
+    ) {
+      try {
+        const { data } = await membershipApi.startCheckout(currentTenant.id, {
+          tier_id: tier.id,
+          billing_cycle: billingCycle,
+        });
+        redirectTo(data.url);
+      } catch (err: unknown) {
+        setUpdateError(getTenantErrorMessage(err, 'Failed to start checkout'));
+      }
+      return;
+    }
+
     // If paid tier, check payment requirements
     if (isPaidTier) {
       // If Stripe is configured and available
@@ -356,8 +377,14 @@ export function ChangeMembershipPage() {
                   onSelect={handleSelectTier}
                   disabled={false}
                   highlighted={
-                    tier.name === 'basic' ||
+                    tier.name === 'team' ||
                     (!!preSelectedTierId && tier.id === preSelectedTierId)
+                  }
+                  ribbon={tier.name === 'team' ? 'Most teams' : undefined}
+                  foundingOffer={
+                    tier.name === 'team' &&
+                    !!currentMembership?.founding_offer_available &&
+                    !currentMembership.has_paid_subscription
                   }
                   billingCycle={billingCycle}
                 />

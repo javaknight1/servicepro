@@ -13,6 +13,10 @@ vi.mock('../AppTopBar', () => ({
   AppTopBar: () => <div data-testid="header">Header</div>,
 }));
 
+vi.mock('@components/membership/TrialBanner', () => ({
+  TrialBanner: () => null,
+}));
+
 vi.mock('../BuildStamp', () => ({
   BuildStamp: () => <p data-testid="build-stamp">WEB V0.0.0</p>,
 }));

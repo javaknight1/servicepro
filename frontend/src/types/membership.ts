@@ -1,21 +1,25 @@
 // Membership types for tenant-level membership system
 
-export type MembershipTierName = 'free' | 'basic' | 'pro';
+/** Solo, Team and Pro are sold (D15); Free and Basic are legacy. */
+export type MembershipTierName = 'solo' | 'team' | 'pro' | 'free' | 'basic';
 
 export type MembershipStatus = 'active' | 'cancelled' | 'expired' | 'pending';
 
 export type BillingCycle = 'monthly' | 'annual';
 
-// Features available in each tier
+// Features available in each tier. The D15 tiers carry only the user limit;
+// the count limits exist on the legacy tiers.
 export interface TierFeatures {
   team_members: number; // -1 for unlimited
-  customers: number; // -1 for unlimited
-  jobs_per_month: number; // -1 for unlimited
-  quotes_per_month: number; // -1 for unlimited
-  storage_gb: number;
+  customers?: number; // legacy; -1 for unlimited
+  jobs_per_month?: number; // legacy
+  quotes_per_month?: number; // legacy
+  storage_gb?: number; // legacy
   advanced_reporting: boolean;
   api_access: boolean;
   custom_branding: boolean;
+  multi_entity?: boolean;
+  highlights?: string[]; // plan card bullets
 }
 
 // Membership tier definition
@@ -46,12 +50,24 @@ export interface TenantSubscription {
   ended_at?: string;
   current_period_start: string;
   current_period_end?: string;
+  trial_ends_at?: string;
+}
+
+/** A no-card trial (D15). */
+export interface TrialInfo {
+  ends_at: string;
+  days_left: number;
+  ended: boolean;
 }
 
 // Combined membership response
 export interface TenantMembership {
   subscription: TenantSubscription | null;
   tier: MembershipTier | null;
+  trial?: TrialInfo;
+  has_paid_subscription?: boolean;
+  checkout_available?: boolean;
+  founding_offer_available?: boolean;
 }
 
 // Request types
@@ -59,6 +75,16 @@ export interface UpdateMembershipRequest {
   tier_id: string;
   billing_cycle: BillingCycle;
   change_reason?: string;
+}
+
+export interface PlanCheckoutRequest {
+  tier_id: string;
+  billing_cycle: BillingCycle;
+}
+
+export interface PlanCheckoutResponse {
+  url: string;
+  founding_offer: boolean;
 }
 
 // Response types
@@ -126,25 +152,11 @@ export function isUnlimited(value: number): boolean {
   return value === -1;
 }
 
-export function formatLimit(value: number): string {
-  return isUnlimited(value) ? 'Unlimited' : value.toString();
+/** "1 user" / "Unlimited users" */
+export function usersLabel(teamMembers: number): string {
+  if (isUnlimited(teamMembers)) return 'Unlimited users';
+  return `${teamMembers} ${teamMembers === 1 ? 'user' : 'users'}`;
 }
 
-// Feature display configuration
-export interface FeatureDisplay {
-  key: keyof TierFeatures;
-  label: string;
-  type: 'number' | 'boolean';
-  unit?: string;
-}
-
-export const featureDisplayConfig: FeatureDisplay[] = [
-  { key: 'team_members', label: 'Team Members', type: 'number' },
-  { key: 'customers', label: 'Customers', type: 'number' },
-  { key: 'jobs_per_month', label: 'Jobs / Month', type: 'number' },
-  { key: 'quotes_per_month', label: 'Quotes / Month', type: 'number' },
-  { key: 'storage_gb', label: 'Storage', type: 'number', unit: 'GB' },
-  { key: 'advanced_reporting', label: 'Advanced Reporting', type: 'boolean' },
-  { key: 'api_access', label: 'API Access', type: 'boolean' },
-  { key: 'custom_branding', label: 'Custom Branding', type: 'boolean' },
-];
+/** Founding offer (D15): $40 off Team monthly, for life. */
+export const FOUNDING_DISCOUNT_CENTS = 4000;

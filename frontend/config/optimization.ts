@@ -91,7 +91,10 @@ const appChunks: Array<[name: string, test: (id: string) => boolean]> = [
     (id) =>
       id.includes('/pages/Settings') ||
       id.includes('/components/settings') ||
-      id.includes('/components/membership') ||
+      // TrialBanner is rendered by the app shell (layout): it stays out of
+      // the lazy settings chunk, or layout and page-settings import each other.
+      (id.includes('/components/membership') &&
+        !id.includes('/components/membership/TrialBanner')) ||
       id.includes('/services/userService') ||
       id.includes('/services/paymentsService') ||
       id.includes('/utils/redirect') ||

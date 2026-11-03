@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import { DashboardLayout } from '@components/layout';
 import {
   Card,
@@ -47,8 +47,22 @@ import type { Role } from '@/types/role';
 type TabId =
   'general' | 'members' | 'membership' | 'notifications' | 'timezone';
 
+const TAB_IDS: readonly TabId[] = [
+  'general',
+  'members',
+  'membership',
+  'notifications',
+  'timezone',
+];
+
+/** ?tab=membership opens that tab (e.g. coming back from Stripe Checkout). */
+function initialTab(param: string | null): TabId {
+  return TAB_IDS.find((t) => t === param) ?? 'general';
+}
+
 export function OrgSettingsPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const {
     currentTenant,
     isLoading,
@@ -60,7 +74,9 @@ export function OrgSettingsPage() {
     clearError,
   } = useTenantStore();
 
-  const [activeTab, setActiveTab] = useState<TabId>('general');
+  const [activeTab, setActiveTab] = useState<TabId>(() =>
+    initialTab(searchParams.get('tab'))
+  );
   const [members, setMembers] = useState<TenantMember[]>([]);
   const [pendingInvitations, setPendingInvitations] = useState<Invitation[]>(
     []

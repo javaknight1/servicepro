@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import { Crown } from 'lucide-react';
 import {
   Card,
@@ -12,11 +12,14 @@ import {
 } from '@components/shared';
 import { useMembershipStore, useTenantStore } from '@store';
 import { BillingSection } from './BillingSection';
+import { PlansSection } from './PlansSection';
 import { formatCents } from '@/utils/money';
 import { useTenantPermissions } from '@/utils/tenantPermissions';
 
 export function MembershipTab() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const checkoutResult = searchParams.get('checkout');
   const { currentTenant } = useTenantStore();
   const { currentMembership, isLoading, error, loadMembership } =
     useMembershipStore();
@@ -60,6 +63,16 @@ export function MembershipTab() {
 
   return (
     <div className="space-y-6">
+      {checkoutResult === 'success' && (
+        <div
+          role="status"
+          className="rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-900"
+        >
+          Thanks! Your plan updates here as soon as Stripe confirms the payment,
+          usually within a minute.
+        </div>
+      )}
+
       {/* Current Plan */}
       <Card variant="elevated" padding="lg">
         <CardHeader>
@@ -123,11 +136,13 @@ export function MembershipTab() {
                   <div>
                     <p className="text-neutral-500">Current Price</p>
                     <p className="font-medium text-neutral-900">
-                      {subscription?.price_cents === 0
-                        ? 'Free'
-                        : subscription?.billing_cycle === 'annual'
-                          ? `${formatCents(subscription?.price_cents || 0)}/year`
-                          : `${formatCents(subscription?.price_cents || 0)}/month`}
+                      {currentMembership?.trial
+                        ? 'Free trial'
+                        : subscription?.price_cents === 0
+                          ? 'Free'
+                          : subscription?.billing_cycle === 'annual'
+                            ? `${formatCents(subscription?.price_cents || 0)}/year`
+                            : `${formatCents(subscription?.price_cents || 0)}/month`}
                     </p>
                   </div>
                   {subscription && (
@@ -167,24 +182,25 @@ export function MembershipTab() {
                 </div>
                 {/* Savings message for monthly billing */}
                 {subscription?.billing_cycle === 'monthly' &&
+                  currentMembership?.has_paid_subscription &&
                   tier.monthly_price_cents > 0 && (
                     <div className="mt-4 pt-4 border-t border-neutral-200">
                       <p className="text-sm text-green-600">
-                        💡 Switch to annual billing and save{' '}
+                        Switch to annual billing and save{' '}
                         <span className="font-semibold">
                           {formatCents(
                             tier.monthly_price_cents * 12 -
                               tier.annual_price_cents
                           )}
                         </span>{' '}
-                        per year (17% off)
+                        per year (two months free)
                       </p>
                     </div>
                   )}
               </div>
 
               <div className="flex space-x-3">
-                {canManage && (
+                {canManage && currentMembership?.has_paid_subscription && (
                   <Button
                     variant="primary"
                     onClick={() =>
@@ -199,6 +215,10 @@ export function MembershipTab() {
           )}
         </CardContent>
       </Card>
+
+      {currentTenant?.id && (
+        <PlansSection tenantId={currentTenant.id} canChoose={canManage} />
+      )}
 
       {/* Billing Section (membership.billing) */}
       {canManageBilling && <BillingSection />}
