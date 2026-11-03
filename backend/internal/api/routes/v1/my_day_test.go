@@ -190,6 +190,23 @@ func TestPostgresMyDayCrossTenant(t *testing.T) {
 	assert.NotContains(t, w.Body.String(), "B secret code")
 }
 
+func TestPostgresJobNotesNameTheirAuthor(t *testing.T) {
+	f := setupMyDayFixture(t)
+	sys := tenancy.WithSystem(context.Background())
+	require.NoError(t, f.db.WithContext(sys).Exec(
+		`UPDATE users SET first_name = 'Marcus', last_name = 'Jones' WHERE id = ?`, f.techA).Error)
+	job := f.visit(t, "MD-N", f.at(3, 8, 0), models.JobStatusInProgress, &f.techA, nil)
+
+	w := f.do(t, f.techA, f.tenantA, http.MethodPost, "/jobs/"+job.ID.String()+"/notes", map[string]interface{}{"note": "Door closer loose"})
+	require.Equal(t, http.StatusCreated, w.Code, w.Body.String())
+	w = f.do(t, f.techA, f.tenantA, http.MethodGet, "/jobs/"+job.ID.String(), nil)
+	require.Equal(t, http.StatusOK, w.Code)
+	var got models.JobResponse
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &got))
+	require.Len(t, got.Notes, 1)
+	assert.Equal(t, "Marcus Jones", got.Notes[0].UserName)
+}
+
 func TestPostgresMyDayDefaultsToTodayAndRejectsBadDates(t *testing.T) {
 	f := setupMyDayFixture(t)
 

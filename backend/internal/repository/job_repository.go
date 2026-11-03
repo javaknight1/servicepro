@@ -62,6 +62,7 @@ func (r *JobRepository) GetByID(id uuid.UUID) (*models.Job, error) {
 		Preload("Assignments.User").
 		Preload("Materials").
 		Preload("Notes").
+		Preload("Notes.User"). // note authors' names (T173)
 		Where("id = ?", id).
 		First(&job).Error
 
