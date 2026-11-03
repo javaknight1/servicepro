@@ -1,6 +1,6 @@
 # ServicePro — Roadmap
 
-**Last Updated**: 2026-11-03 (T271 local storage on RustFS (D16). T035 Technician role done (migration 000017). T028–T030 quote→job→invoice done (migration 000016). T235 settings validation + onboarding wizard done. T188 consolidated invoicing done (migration 000015). T186 sites and T167 agreements done with their screens; T187 screens merged, PO on quotes/agreements and PO balances left. T210 plans/trial/founding offer merged on Proposed D15 (migration 000014) — confirm D15 before the next release. T170 pay page + ACH pending merged (migration 000013). T186 sites, T187 billing rules and T167 agreements backend merged — migrations now 000001–000012; their screens are in progress. T169 Stripe Connect code merged and T160 R2 code done — both blocked on Rob's setup; overdue invoices now marked by an hourly job; record-payment 500 and A/R aging bucket bugs fixed. T269 app shell + dashboard and T270 page restyle done per the mockups. T154 RLS backstop (off by default), T241 imports, T263 table drops merged; migrations now 000001–000008. T265 done: tenant-branded, opt-out-respecting customer email. T264 done: stripe-go v87, x/image/draw. Phase A done: T257, T258, T259, T260, T262, T266, T267 merged (parallel worktree agents). T268 done: landing page per mockup 01. T159 done (Resend only, retries + idempotency, signed bounce/complaint webhook + suppression list). Mockups in `docs/product/mockups/`; T268 landing, T269 app shell + dashboard and T270 page restyle added to the MVP gate (49 tasks, ~310h). T205 in progress: owner account live; blank-site regression fixed in v0.10.5. T206 done: SPF/DKIM/DMARC on servicepro.sharkfins.xyz, test send delivered. T159 step 1 + T206 sender domain live in v0.10.3. T256 done — honesty gate (T255, T256, T261) complete. T255 done: honest public site, beta-access CTA, pricing hidden, Terms/Privacy acceptance recorded at sign-up. T261 done: invoice pay links off by default — `INVOICE_PAYMENTS_ENABLED`; Dependabot auto-merge now includes majors.) 2026-10-25 (MVP re-scope: the owner confirmed the Notion app-upgrade docs — D7–D14 decided, OD-4 closed by D9, OD-12 decided, OD-10/OD-11 opened; the "v1 Launch Gate" became the **MVP Launch Gate** (phases A–G, 46 tasks, ~292h, paid launch 2027-09-07) and every section's gate field is now **MVP Gate**; new tasks T255–T267 from the Technical Requirements N-tasks and the MVP feature table; T169 rewritten for Connect Accounts v2 direct charges; T153/T155–T157/T162 frozen (D12); T048–T050, T061, T063, T081, T183, T101, T243, T244 deferred; T242 Won't Do. Plan: `docs/product/mvp-plan-2026-10.md`.) Earlier — 2026-10-24 (TODO reformatted from the P0–P3/sprint layout to League Looper's indexed phase format: Task Index with ID/Phase/Category/Hours, one detailed section per open task, a launch gate and Verified Complete. A full audit of the repo (backend security, backend correctness, frontend, infra — stored in `docs/audits/2026-10-16/`) is filed as Phases 1–3 (T102–T152, T223–T226). The stack-convergence plan towards League Looper's stack is Phase 4 (T153–T166). Competitive research (`docs/product/competitive-research-2026-10.md`) became product Phases 5–16, merging the open T027–T101 tasks with new T167–T222. Hosting is deferred: ServicePro stays local-only until the production database decision (T202). Old IDs T001–T101 are kept; T011 never existed. Same day: Phase 3 platform work T139–T152 landed — golang-migrate, /version + schema-aware readiness, internal job endpoints, optional Redis, Cloud Run image, LL-style CI/release/hooks, Cloudflare Worker edge (not deployed); frontend fixes T130–T138; all of Phase 1 security (T102–T117) — tenant isolation plugin, per-tenant authz, invite-only registration, token/login/webhook/CSRF hardening, no known Go vulns; T227 added for the frontend follow-through. Same day: Phase 2 correctness work landed (T118–T129, T223–T239 — money path, numbering, status machines, refunds, quotes, tenant settings, error envelope + request IDs, ~39k lines of dead backend code removed, stricter golangci-lint); follow-ups T241–T244 filed. 2026-10-18: T231 (org deletion) deferred; Dependabot security-fix PRs enabled; SQLite ruled out for OD-1; Go deps bumped, T247 filed; T202 decided — Neon; OD-9 (auth provider) opened, then decided 2026-10-19 — Neon's managed Better Auth; 2026-10-24: Neon project linked, Neon agent skills + MCP server added, managed MFA confirmed on Neon's roadmap (T092); T164 frontend majors done (React 19, Router 7, Vite 8, ESLint 10, zod 4, Headless UI 2), T248/T249 filed; Tailwind 4 engine landed (T163 tokens + dark mode remain); 0 open Dependabot alerts.)
+**Last Updated**: 2026-11-03 (T187 PO tracking and T173 My Day done (migration 000018); T272, T273 filed. T271 local storage on RustFS (D16). T035 Technician role done (migration 000017). T028–T030 quote→job→invoice done (migration 000016). T235 settings validation + onboarding wizard done. T188 consolidated invoicing done (migration 000015). T186 sites and T167 agreements done with their screens; T187 screens merged, PO on quotes/agreements and PO balances left. T210 plans/trial/founding offer merged on Proposed D15 (migration 000014) — confirm D15 before the next release. T170 pay page + ACH pending merged (migration 000013). T186 sites, T187 billing rules and T167 agreements backend merged — migrations now 000001–000012; their screens are in progress. T169 Stripe Connect code merged and T160 R2 code done — both blocked on Rob's setup; overdue invoices now marked by an hourly job; record-payment 500 and A/R aging bucket bugs fixed. T269 app shell + dashboard and T270 page restyle done per the mockups. T154 RLS backstop (off by default), T241 imports, T263 table drops merged; migrations now 000001–000008. T265 done: tenant-branded, opt-out-respecting customer email. T264 done: stripe-go v87, x/image/draw. Phase A done: T257, T258, T259, T260, T262, T266, T267 merged (parallel worktree agents). T268 done: landing page per mockup 01. T159 done (Resend only, retries + idempotency, signed bounce/complaint webhook + suppression list). Mockups in `docs/product/mockups/`; T268 landing, T269 app shell + dashboard and T270 page restyle added to the MVP gate (49 tasks, ~310h). T205 in progress: owner account live; blank-site regression fixed in v0.10.5. T206 done: SPF/DKIM/DMARC on servicepro.sharkfins.xyz, test send delivered. T159 step 1 + T206 sender domain live in v0.10.3. T256 done — honesty gate (T255, T256, T261) complete. T255 done: honest public site, beta-access CTA, pricing hidden, Terms/Privacy acceptance recorded at sign-up. T261 done: invoice pay links off by default — `INVOICE_PAYMENTS_ENABLED`; Dependabot auto-merge now includes majors.) 2026-10-25 (MVP re-scope: the owner confirmed the Notion app-upgrade docs — D7–D14 decided, OD-4 closed by D9, OD-12 decided, OD-10/OD-11 opened; the "v1 Launch Gate" became the **MVP Launch Gate** (phases A–G, 46 tasks, ~292h, paid launch 2027-09-07) and every section's gate field is now **MVP Gate**; new tasks T255–T267 from the Technical Requirements N-tasks and the MVP feature table; T169 rewritten for Connect Accounts v2 direct charges; T153/T155–T157/T162 frozen (D12); T048–T050, T061, T063, T081, T183, T101, T243, T244 deferred; T242 Won't Do. Plan: `docs/product/mvp-plan-2026-10.md`.) Earlier — 2026-10-24 (TODO reformatted from the P0–P3/sprint layout to League Looper's indexed phase format: Task Index with ID/Phase/Category/Hours, one detailed section per open task, a launch gate and Verified Complete. A full audit of the repo (backend security, backend correctness, frontend, infra — stored in `docs/audits/2026-10-16/`) is filed as Phases 1–3 (T102–T152, T223–T226). The stack-convergence plan towards League Looper's stack is Phase 4 (T153–T166). Competitive research (`docs/product/competitive-research-2026-10.md`) became product Phases 5–16, merging the open T027–T101 tasks with new T167–T222. Hosting is deferred: ServicePro stays local-only until the production database decision (T202). Old IDs T001–T101 are kept; T011 never existed. Same day: Phase 3 platform work T139–T152 landed — golang-migrate, /version + schema-aware readiness, internal job endpoints, optional Redis, Cloud Run image, LL-style CI/release/hooks, Cloudflare Worker edge (not deployed); frontend fixes T130–T138; all of Phase 1 security (T102–T117) — tenant isolation plugin, per-tenant authz, invite-only registration, token/login/webhook/CSRF hardening, no known Go vulns; T227 added for the frontend follow-through. Same day: Phase 2 correctness work landed (T118–T129, T223–T239 — money path, numbering, status machines, refunds, quotes, tenant settings, error envelope + request IDs, ~39k lines of dead backend code removed, stricter golangci-lint); follow-ups T241–T244 filed. 2026-10-18: T231 (org deletion) deferred; Dependabot security-fix PRs enabled; SQLite ruled out for OD-1; Go deps bumped, T247 filed; T202 decided — Neon; OD-9 (auth provider) opened, then decided 2026-10-19 — Neon's managed Better Auth; 2026-10-24: Neon project linked, Neon agent skills + MCP server added, managed MFA confirmed on Neon's roadmap (T092); T164 frontend majors done (React 19, Router 7, Vite 8, ESLint 10, zod 4, Headless UI 2), T248/T249 filed; Tailwind 4 engine landed (T163 tokens + dark mode remain); 0 open Dependabot alerts.)
 
 > **How to read this file.** Every task has an ID (T###). The **Task Index** lists all of them: completed rows
 > (struck through) first by ID, then open rows by Phase → ID. Each open task has exactly one detailed section under
@@ -115,8 +115,8 @@ gated task's section says **MVP Gate: Yes**.
 | A. Honesty and fixes               | 2026-11-02 → 2026-11-22    | ~~T255~~, ~~T256~~, ~~T261~~ (honesty gate, by 2026-11-08), ~~T257~~, ~~T258~~, ~~T259~~, ~~T260~~, ~~T262~~, ~~T266~~, ~~T267~~     | 22    | No false claims, no mocks in prod, dashboard numbers right             |
 | B. Platform                        | 2026-11-23 → 2027-01-03    | T158 (rest), ~~T159~~, T160, ~~T154~~, ~~T241~~, ~~T263~~                                                   | 51    | Neon Auth sign-in live; RLS on; files in R2                            |
 | C. Getting paid                    | 2027-01-04 → 2027-02-14    | ~~T264~~, T169, T170, T210, ~~T265~~                                                                | 50    | A test tenant is paid by ACH into its own Stripe account               |
-| D. Commercial wedge                | 2027-02-15 → 2027-03-31    | ~~T167~~, ~~T186~~, T187, ~~T188~~, ~~T028~~, ~~T029~~, ~~T030~~, ~~T035~~, ~~T235~~, ~~T269~~, ~~T270~~                            | 73    | Agreements generate visits; one consolidated invoice per customer      |
-| E. Proof of service                | 2027-04-01 → 2027-05-01    | T173, T174, T176                                                                            | 40    | A tech completes a visit on a phone; the report is emailed             |
+| D. Commercial wedge                | 2027-02-15 → 2027-03-31    | ~~T167~~, ~~T186~~, ~~T187~~, ~~T188~~, ~~T028~~, ~~T029~~, ~~T030~~, ~~T035~~, ~~T235~~, ~~T269~~, ~~T270~~                            | 73    | Agreements generate visits; one consolidated invoice per customer      |
+| E. Proof of service                | 2027-04-01 → 2027-05-01    | ~~T173~~, T174, T176                                                                            | 40    | A tech completes a visit on a phone; the report is emailed             |
 | F. Integrations                    | 2027-05-02 → 2027-06-13    | T192, T193                                                                                  | 40    | QuickBooks sync and Jobber/HCP import used by design partners          |
 | G. Launch readiness (alongside)    | 2026-11 → 2027-08          | T218, T205, ~~T206~~, T207, T208, T209, T211, T212, T213, T251, T252, ~~T268~~                        | 34    | Interviews by 2027-01-31; backups, legal, monitoring before 2027-09-07 |
 
@@ -273,6 +273,8 @@ stripe-go v87 supports v2 accounts) and the first 4h of T192 (QuickBooks OAuth, 
 | T248     | 4      | Monitoring     | 3      | Upgrade @sentry/react to 11 with an explicit data-collection config                                      |
 | T249     | 4      | Frontend       | 2      | Drop Vite's legacy.inconsistentCjsInterop flag and ready the config for Vite's native loader             |
 | ~~T271~~ | ~~4~~  | ~~Infra~~      | ~~2~~  | ~~Replace MinIO in the local Docker stack (images no longer pullable)~~                                  |
+| T272     | 5      | Bug            | 1      | Technicians get repeated 403s on GET /tenants/:id/membership                                             |
+| T273     | 5      | Bug            | 1      | Job note timestamps come back hours off (time zone)                                                      |
 | ~~T264~~ | ~~4~~  | ~~Backend~~    | ~~4~~  | ~~Upgrade stripe-go v76 → v87; replace archived nfnt/resize~~                                            |
 | ~~T028~~ | ~~5~~  | ~~Feature~~    | ~~3~~  | ~~Add "Convert Quote to Job" button~~                                                                    |
 | ~~T029~~ | ~~5~~  | ~~Feature~~    | ~~2~~  | ~~Add "Generate Invoice from Job" button~~                                                               |
@@ -313,7 +315,7 @@ stripe-go v87 supports v2 accounts) and the first 4h of T192 (QuickBooks OAuth, 
 | T078     | 7      | Feature        | 4      | Add skill-based job matching suggestions                                                                 |
 | T079     | 7      | Feature        | 1      | Add travel time notes field                                                                              |
 | T099     | 7      | Backend        | 4      | Add tenant timezone support for conflict detection                                                       |
-| T173     | 7      | Mobile         | 24     | Technician "My Day" mobile-first view                                                                    |
+| ~~T173~~ | ~~7~~  | ~~Mobile~~     | ~~24~~ | ~~Technician "My Day" mobile-first view~~                                                                |
 | T174     | 7      | Feature        | 8      | Job photos and attachments (R2)                                                                          |
 | T175     | 7      | Feature        | 12     | Job checklists / forms                                                                                   |
 | T176     | 7      | Feature        | 8      | Customer signature on completion + service report PDF emailed                                            |
@@ -344,7 +346,7 @@ stripe-go v87 supports v2 accounts) and the first 4h of T192 (QuickBooks OAuth, 
 | T064     | 10     | Feature        | 2      | Add last contact date tracking on invoices                                                               |
 | T065     | 10     | Feature        | 3      | Add promise-to-pay notes                                                                                 |
 | ~~T186~~ | ~~10~~ | ~~Feature~~    | ~~16~~ | ~~Multi-site customers (service locations; invoice per site or consolidated)~~                           |
-| T187     | 10     | Feature        | 6      | PO capture and matching on jobs and invoices                                                             |
+| ~~T187~~ | ~~10~~ | ~~Feature~~    | ~~6~~  | ~~PO capture and matching on jobs and invoices~~                                                         |
 | ~~T188~~ | ~~10~~ | ~~Feature~~    | ~~8~~  | ~~Consolidated monthly invoicing~~                                                                       |
 | T189     | 10     | Feature        | 6      | Statements of account (portal + email)                                                                   |
 | T190     | 10     | Feature        | 24     | Property-manager approval workflow (NTE limits, multi-approver, email intake)                            |
@@ -970,6 +972,28 @@ D2: move to League Looper's stack one strangler step at a time while the app kee
 **Done (2026-11-03)** — `2157bee`, `b9f9919`: RustFS 1.0.4 (D16) as the `minio` service (ports 9000/9001 and env unchanged), private `servicepro-uploads` bucket created idempotently, docs updated; end-to-end: avatar upload → 302 → presigned JPEG 200, invoice PDF presigned link 200, tampered/unsigned 403. Also fixed: SMTP (Mailpit) emails dropped the PDF attachment and download link. Old local `servicepro-minio` container / `minio_data` volume can be removed by hand.
 ---
 
+#### T272 — Technicians get repeated 403s on GET /tenants/:id/membership
+
+**Phase**: 5 · **Category**: Bug · **Hours**: 1 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: T035
+
+**What it is** — A technician's app stops calling the membership endpoint it isn't allowed to read.
+**What it does** — The plan badge / trial banner (T210) request `GET /tenants/:id/membership` for everyone; technicians lack the permission and get 403 on every page. Gate the query on the permission (or return a minimal plan summary every member may see) and add a test.
+**Why we need it** — Noise in logs and Sentry, wasted requests on phones.
+**Notes** — Found during T173 (2026-11-03).
+
+---
+
+#### T273 — Job note timestamps come back hours off (time zone)
+
+**Phase**: 5 · **Category**: Bug · **Hours**: 1 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: none
+
+**What it is** — Note `created_at` values are correct regardless of the server's time zone.
+**What it does** — With the API running in US Eastern time, job note `created_at` came back ~5 hours off. Check the column type (`timestamp` vs `timestamptz`) and how GORM writes it; fix with an additive migration if the column lacks a time zone, plus a test that runs with a non-UTC `TZ`.
+**Why we need it** — Visit notes show the wrong time to techs and the office.
+**Notes** — Found during T173 (2026-11-03). Production runs in UTC, so it may only show locally — confirm.
+
+---
+
 #### T264 — Upgrade stripe-go v76 → v87; replace archived nfnt/resize
 
 **Phase**: 4 · **Category**: Backend · **Hours**: 4 · **Status**: Done (2026-11-02) · **MVP Gate**: Yes · **Depends on**: none
@@ -1302,6 +1326,9 @@ The quote → job → invoice loop, roles for field and office staff, recurring 
 **Notes** — Follow-up from T223 (2026-10-16).
 
 ---
+- [ ] T272 — Technicians get repeated 403s on GET /tenants/:id/membership
+- [ ] T273 — Job note timestamps come back hours off (time zone)
+
 
 ### Phase 6 — Payments to the Business (T061, T063, T083, T169, T170, T171, T172, T261)
 
@@ -1447,7 +1474,7 @@ The technician experience (the product's weakest area) and the remaining schedul
 - [ ] T078 — Add skill-based job matching suggestions
 - [ ] T079 — Add travel time notes field
 - [ ] T099 — Add tenant timezone support for conflict detection
-- [ ] T173 — Technician "My Day" mobile-first view
+- [x] T173 — Technician "My Day" mobile-first view ✓ (2026-11-03)
 - [ ] T174 — Job photos and attachments (R2)
 - [ ] T175 — Job checklists / forms
 - [ ] T176 — Customer signature on completion + service report PDF emailed
@@ -1612,7 +1639,7 @@ The technician experience (the product's weakest area) and the remaining schedul
 
 #### T173 — Technician "My Day" mobile-first view
 
-**Phase**: 7 · **Category**: Mobile · **Hours**: 24 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: T035, T124, T133
+**Phase**: 7 · **Category**: Mobile · **Hours**: 24 · **Status**: Done (2026-11-03) · **MVP Gate**: Yes · **Depends on**: T035, T124, T133
 
 **What it is** — A phone-first screen where a technician sees today's assigned jobs and works them: directions, call, status, notes.
 
@@ -1622,6 +1649,8 @@ The technician experience (the product's weakest area) and the remaining schedul
 
 **Notes** — `docs/product/competitive-research-2026-10.md` §2 row 15, §5 MVP #3. Offline support is T179; store-listed app is T180. MVP plan (2026-10-25): the technician's day on a phone — stops, start/complete, checklist (12 of 12 tasks), photos, then signature (T174, T176).
 
+
+**Done (2026-11-03)** — `8553796`, `ccee49b`, `6508439`, `70d5321`. `GET /jobs/my-day?date=` (caller's assigned visits for a tenant-local day, DST-safe, with site details; technician row filter and money hiding apply); `/my-day` per mockup 15 (date switcher, next visit, maps and call links, Start/Complete/Resume from allowed transitions) and `/my-day/:jobId` per mockup 16 (what to do, site, notes, materials without prices); technicians land on My day. Fixed: job notes now name their author. Checked at 375px as the seeded technician. Not built: checklist (T175), photos (T174), sign-off (T176), "On my way" (T050), the mockup's bottom tabs.
 ---
 
 #### T174 — Job photos and attachments (R2)
@@ -2025,7 +2054,7 @@ What residential-first tools do poorly and the beachhead needs: multi-site custo
 - [ ] T064 — Add last contact date tracking on invoices
 - [ ] T065 — Add promise-to-pay notes
 - [x] T186 — Multi-site customers (service locations; invoice per site or consolidated) ✓ (2026-11-03)
-- [ ] T187 — PO capture and matching on jobs and invoices
+- [x] T187 — PO capture and matching on jobs and invoices ✓ (2026-11-03)
 - [x] T188 — Consolidated monthly invoicing ✓ (2026-11-03)
 - [ ] T189 — Statements of account (portal + email)
 - [ ] T190 — Property-manager approval workflow (NTE limits, multi-approver, email intake)
@@ -2093,7 +2122,7 @@ What residential-first tools do poorly and the beachhead needs: multi-site custo
 
 #### T187 — PO capture and matching on jobs and invoices
 
-**Phase**: 10 · **Category**: Feature · **Hours**: 6 · **Status**: In progress · **MVP Gate**: Yes · **Depends on**: T186
+**Phase**: 10 · **Category**: Feature · **Hours**: 6 · **Status**: Done (2026-11-03) · **MVP Gate**: Yes · **Depends on**: T186
 
 **What it is** — Purchase-order numbers captured on jobs/quotes, required where the customer demands it, carried to invoices and tracked against PO amounts.
 
@@ -2107,6 +2136,8 @@ What residential-first tools do poorly and the beachhead needs: multi-site custo
 **Progress (2026-11-03)** — Backend merged (`1bb6f0e`): migration 000011: customer `po_required`, `default_po_number`, approver name/email, `nte_limit`, `consolidated_billing`, plus `job_approvals` (RLS); invoice send without a required PO is 409 `po_required`; new invoices take the default PO; extra work over the NTE can't be scheduled without an approval (409 `approval_required`; `POST /jobs/{id}/approval`, `GET /jobs/{id}/approvals`). Left: forms and dialogs (frontend agent in progress); PO amount/remaining balance across invoices.
 
 **Screens (2026-11-03)** — `5f35403`, `4a2b9b9`, `71d98cf`: billing-rules cards and edit dialog on the customer page, estimated cost on jobs, "Record the approver's OK" dialog on 409 `approval_required` with automatic retry, approvals list on job detail, PO field on invoices and a PO prompt when send returns 409 `po_required`. Left: PO on quotes and agreements; PO amount and remaining balance across invoices.
+
+**Done (2026-11-03)** — `030cf42`…`4b3426d` + `748f990`. Migration 000018: `po_number` on quotes, agreements and jobs (carried quote → job → invoice and agreement → visit → invoice; most specific PO wins, consolidated invoices use the shared PO or the customer default); `customer_purchase_orders` (amount, expiry, RLS) with CRUD under `/customers/{id}/purchase-orders`; remaining = amount − issued (non-draft, non-cancelled) invoices; send guard 409 `po_exceeded` / `po_expired` with `confirm_po_override`, PO row locked so concurrent sends serialise; Purchase orders tab on the customer page, PO fields on quote/agreement forms, remaining balance on invoices, "Send anyway". Manual Mark Invoiced / Mark Paid job buttons hidden (backend transitions still allowed). Not built: PO field on the job form.
 ---
 
 #### T188 — Consolidated monthly invoicing
@@ -3434,6 +3465,8 @@ Dated history from the original "Completed Items" list:
 
 ### 2026-11-03
 
+- **T187** — PO numbers on quotes/agreements/jobs carried to invoices; tracked customer POs with remaining balance and a send guard (`po_exceeded`/`po_expired`, override); migration 000018. `030cf42`…`748f990`.
+- **T173** — Technician My Day (`GET /jobs/my-day`, `/my-day`, `/my-day/:jobId`) per mockups 15–16; technicians land on it; note authors fixed. `8553796`…`70d5321`.
 - **T271** — Local S3 store is RustFS 1.0.4 (D16) behind the `minio` compose service; avatar and invoice PDF presigned links verified end to end; SMTP emails now carry the PDF attachment and link. `2157bee`, `b9f9919`.
 - **T035** — Technician role: migration 000017 (`technician`, `jobs.view_all`), assigned-jobs-only row filter and money hiding from the tenant middleware's access scope, end-to-end Postgres tests over 20 money/admin routes and cross-tenant, a status-history cross-tenant read fixed, technician-only navigation and dashboard, Team page role pills; browser-checked. `3b55c7e`…`acff573`.
 - **T028–T030** — Quote → job → invoice: convert an accepted quote once (migration 000016), generate a completed job's invoice once from its quote lines or labor × `laborRate` + materials, with PO/tax/terms/site and notes, server-side totals, guards against consolidated double-billing; buttons on quote/job detail and the dashboard; `resource_id` on 409s. `defc9ba`…`eeaf844`.
