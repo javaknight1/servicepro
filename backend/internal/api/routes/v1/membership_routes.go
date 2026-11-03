@@ -33,6 +33,11 @@ func SetupMembershipRoutes(router *gin.RouterGroup, cfg *routeconfigs.RouteConfi
 			cfg.Middleware.PermMiddleware.RequirePermission(permissions.MembershipUpdate),
 			cfg.Handlers.Membership.GetSubscriptionHistory)
 
+		// Start plan Checkout (T210) - requires membership.update permission
+		tenants.POST("/membership/checkout",
+			cfg.Middleware.PermMiddleware.RequirePermission(permissions.MembershipUpdate),
+			cfg.Handlers.Membership.StartPlanCheckout)
+
 		// Preview subscription change - requires membership.update permission
 		tenants.POST("/membership/preview",
 			cfg.Middleware.PermMiddleware.RequirePermission(permissions.MembershipUpdate),

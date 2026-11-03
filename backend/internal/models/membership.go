@@ -150,6 +150,50 @@ func (TenantSubscription) TableName() string {
 type GetMembershipResponse struct {
 	Subscription *TenantSubscriptionResponse `json:"subscription"`
 	Tier         *MembershipTierResponse     `json:"tier"`
+	// Trial is set while the tenant is on (or has run out of) its no-card
+	// trial and has not chosen a paid plan yet (D15).
+	Trial *TrialInfo `json:"trial,omitempty"`
+	// HasPaidSubscription: a Stripe subscription backs the current plan.
+	HasPaidSubscription bool `json:"has_paid_subscription"`
+	// CheckoutAvailable: plans can be bought on this server (Stripe set up).
+	CheckoutAvailable bool `json:"checkout_available"`
+	// FoundingOfferAvailable: Team monthly is $40 off for life right now.
+	FoundingOfferAvailable bool `json:"founding_offer_available"`
+}
+
+// TrialInfo describes a tenant's no-card trial.
+type TrialInfo struct {
+	EndsAt   time.Time `json:"ends_at"`
+	DaysLeft int       `json:"days_left"` // whole days, rounded up; 0 once ended
+	Ended    bool      `json:"ended"`
+}
+
+// NewTrialInfo is the trial state of a subscription at now, or nil when the
+// subscription is not a no-card trial.
+func NewTrialInfo(s *TenantSubscription, now time.Time) *TrialInfo {
+	if s == nil || s.TrialEndsAt == nil || (s.StripeSubscriptionID != nil && *s.StripeSubscriptionID != "") {
+		return nil
+	}
+	left := s.TrialEndsAt.Sub(now)
+	info := &TrialInfo{EndsAt: *s.TrialEndsAt}
+	if left <= 0 {
+		info.Ended = true
+		return info
+	}
+	info.DaysLeft = int((left + 24*time.Hour - time.Nanosecond) / (24 * time.Hour))
+	return info
+}
+
+// PlanCheckoutRequest starts a Stripe Checkout session for a plan (T210).
+type PlanCheckoutRequest struct {
+	TierID       uuid.UUID    `json:"tier_id" binding:"required"`
+	BillingCycle BillingCycle `json:"billing_cycle" binding:"required,oneof=monthly annual"`
+}
+
+// PlanCheckoutResponse is the hosted Checkout page to send the user to.
+type PlanCheckoutResponse struct {
+	URL           string `json:"url"`
+	FoundingOffer bool   `json:"founding_offer"` // the founding discount was applied
 }
 
 // MembershipTierResponse represents the API response for a membership tier

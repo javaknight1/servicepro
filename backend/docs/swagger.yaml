@@ -1211,6 +1211,31 @@ definitions:
     - ExportTypeInvoices
     - ExportTypeQuotes
     - ExportTypeRevenueReport
+  github_com_javaknight1_servicepro_backend_internal_models.GetMembershipResponse:
+    properties:
+      checkout_available:
+        description: 'CheckoutAvailable: plans can be bought on this server (Stripe
+          set up).'
+        type: boolean
+      founding_offer_available:
+        description: 'FoundingOfferAvailable: Team monthly is $40 off for life right
+          now.'
+        type: boolean
+      has_paid_subscription:
+        description: 'HasPaidSubscription: a Stripe subscription backs the current
+          plan.'
+        type: boolean
+      subscription:
+        $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.TenantSubscriptionResponse'
+      tier:
+        $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.MembershipTierResponse'
+      trial:
+        allOf:
+        - $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.TrialInfo'
+        description: |-
+          Trial is set while the tenant is on (or has run out of) its no-card
+          trial and has not chosen a paid plan yet (D15).
+    type: object
   github_com_javaknight1_servicepro_backend_internal_models.ImportErrorResponse:
     properties:
       error:
@@ -2153,6 +2178,27 @@ definitions:
       updated_at:
         type: string
     type: object
+  github_com_javaknight1_servicepro_backend_internal_models.MembershipTierResponse:
+    properties:
+      annual_price_cents:
+        type: integer
+      description:
+        type: string
+      display_name:
+        type: string
+      enabled:
+        type: boolean
+      features:
+        $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.TierFeatures'
+      id:
+        type: string
+      monthly_price_cents:
+        type: integer
+      name:
+        type: string
+      sort_order:
+        type: integer
+    type: object
   github_com_javaknight1_servicepro_backend_internal_models.NeonProvisionRequest:
     properties:
       invitation_token:
@@ -2417,6 +2463,28 @@ definitions:
           $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.Role'
         type: array
       updated_at:
+        type: string
+    type: object
+  github_com_javaknight1_servicepro_backend_internal_models.PlanCheckoutRequest:
+    properties:
+      billing_cycle:
+        allOf:
+        - $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.BillingCycle'
+        enum:
+        - monthly
+        - annual
+      tier_id:
+        type: string
+    required:
+    - billing_cycle
+    - tier_id
+    type: object
+  github_com_javaknight1_servicepro_backend_internal_models.PlanCheckoutResponse:
+    properties:
+      founding_offer:
+        description: the founding discount was applied
+        type: boolean
+      url:
         type: string
     type: object
   github_com_javaknight1_servicepro_backend_internal_models.PreferredContactMethod:
@@ -3318,6 +3386,16 @@ definitions:
     - TransactionTypeRefund
     - TransactionTypeChargeback
     - TransactionTypeAdjustment
+  github_com_javaknight1_servicepro_backend_internal_models.TrialInfo:
+    properties:
+      days_left:
+        description: whole days, rounded up; 0 once ended
+        type: integer
+      ended:
+        type: boolean
+      ends_at:
+        type: string
+    type: object
   github_com_javaknight1_servicepro_backend_internal_models.UpdateAgreementRequest:
     properties:
       assigned_technician_id:
@@ -10406,7 +10484,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.TenantSubscriptionResponse'
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.GetMembershipResponse'
         "400":
           description: Bad Request
           schema:
@@ -10446,7 +10524,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.TenantSubscriptionResponse'
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.GetMembershipResponse'
         "400":
           description: Bad Request
           schema:
@@ -10474,6 +10552,67 @@ paths:
       security:
       - BearerAuth: []
       summary: Update tenant membership
+      tags:
+      - Membership
+  /tenants/{id}/membership/checkout:
+    post:
+      consumes:
+      - application/json
+      description: Creates a Stripe Checkout session on ServicePro's own account for
+        Solo, Team or Pro (monthly or annual) and returns its URL. The founding offer
+        ($40 off Team monthly, for life) is applied automatically while it is open.
+        A trial with more than two days left carries over. The plan changes only when
+        Stripe's signed webhook reports the subscription active. Requires membership.update.
+      parameters:
+      - description: Tenant ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Plan and billing cycle
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.PlanCheckoutRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.PlanCheckoutResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "404":
+          description: Plan not available
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "409":
+          description: Already on a paid plan
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "502":
+          description: Bad Gateway
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "503":
+          description: Plan billing not configured
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Start plan checkout
       tags:
       - Membership
   /tenants/{id}/membership/history:

@@ -8995,7 +8995,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.TenantSubscriptionResponse"
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.GetMembershipResponse"
                         }
                     },
                     "400": {
@@ -9057,7 +9057,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.TenantSubscriptionResponse"
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.GetMembershipResponse"
                         }
                     },
                     "400": {
@@ -9092,6 +9092,94 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/tenants/{id}/membership/checkout": {
+            "post": {
+                "description": "Creates a Stripe Checkout session on ServicePro's own account for Solo, Team or Pro (monthly or annual) and returns its URL. The founding offer ($40 off Team monthly, for life) is applied automatically while it is open. A trial with more than two days left carries over. The plan changes only when Stripe's signed webhook reports the subscription active. Requires membership.update.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Membership"
+                ],
+                "summary": "Start plan checkout",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Tenant ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Plan and billing cycle",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.PlanCheckoutRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.PlanCheckoutResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Plan not available",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Already on a paid plan",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "502": {
+                        "description": "Bad Gateway",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Plan billing not configured",
                         "schema": {
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
@@ -11594,6 +11682,37 @@ const docTemplate = `{
                 "ExportTypeRevenueReport"
             ]
         },
+        "github_com_javaknight1_servicepro_backend_internal_models.GetMembershipResponse": {
+            "type": "object",
+            "properties": {
+                "checkout_available": {
+                    "description": "CheckoutAvailable: plans can be bought on this server (Stripe set up).",
+                    "type": "boolean"
+                },
+                "founding_offer_available": {
+                    "description": "FoundingOfferAvailable: Team monthly is $40 off for life right now.",
+                    "type": "boolean"
+                },
+                "has_paid_subscription": {
+                    "description": "HasPaidSubscription: a Stripe subscription backs the current plan.",
+                    "type": "boolean"
+                },
+                "subscription": {
+                    "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.TenantSubscriptionResponse"
+                },
+                "tier": {
+                    "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.MembershipTierResponse"
+                },
+                "trial": {
+                    "description": "Trial is set while the tenant is on (or has run out of) its no-card\ntrial and has not chosen a paid plan yet (D15).",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.TrialInfo"
+                        }
+                    ]
+                }
+            }
+        },
         "github_com_javaknight1_servicepro_backend_internal_models.ImportErrorResponse": {
             "type": "object",
             "properties": {
@@ -12944,6 +13063,38 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_javaknight1_servicepro_backend_internal_models.MembershipTierResponse": {
+            "type": "object",
+            "properties": {
+                "annual_price_cents": {
+                    "type": "integer"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "display_name": {
+                    "type": "string"
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "features": {
+                    "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.TierFeatures"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "monthly_price_cents": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "sort_order": {
+                    "type": "integer"
+                }
+            }
+        },
         "github_com_javaknight1_servicepro_backend_internal_models.NeonProvisionRequest": {
             "type": "object",
             "properties": {
@@ -13328,6 +13479,41 @@ const docTemplate = `{
                     }
                 },
                 "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_javaknight1_servicepro_backend_internal_models.PlanCheckoutRequest": {
+            "type": "object",
+            "required": [
+                "billing_cycle",
+                "tier_id"
+            ],
+            "properties": {
+                "billing_cycle": {
+                    "enum": [
+                        "monthly",
+                        "annual"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.BillingCycle"
+                        }
+                    ]
+                },
+                "tier_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_javaknight1_servicepro_backend_internal_models.PlanCheckoutResponse": {
+            "type": "object",
+            "properties": {
+                "founding_offer": {
+                    "description": "the founding discount was applied",
+                    "type": "boolean"
+                },
+                "url": {
                     "type": "string"
                 }
             }
@@ -14642,6 +14828,21 @@ const docTemplate = `{
                 "TransactionTypeChargeback",
                 "TransactionTypeAdjustment"
             ]
+        },
+        "github_com_javaknight1_servicepro_backend_internal_models.TrialInfo": {
+            "type": "object",
+            "properties": {
+                "days_left": {
+                    "description": "whole days, rounded up; 0 once ended",
+                    "type": "integer"
+                },
+                "ended": {
+                    "type": "boolean"
+                },
+                "ends_at": {
+                    "type": "string"
+                }
+            }
         },
         "github_com_javaknight1_servicepro_backend_internal_models.UpdateAgreementRequest": {
             "type": "object",

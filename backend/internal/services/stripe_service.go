@@ -97,6 +97,8 @@ func (s *StripeService) GetOrCreateStripeCustomer(ctx context.Context, tenantID 
 			"tenant_id": tenantID.String(),
 		},
 	}
+	// One platform customer per tenant, even on a double-click (T210).
+	params.SetIdempotencyKey("tenant-customer:" + tenantID.String())
 
 	cust, err := customer.New(params)
 	if err != nil {
@@ -686,14 +688,30 @@ func (s *StripeService) HandleSubscriptionUpdated(ctx context.Context, sub *stri
 		status = models.MembershipStatusActive
 	case stripe.SubscriptionStatusCanceled:
 		status = models.MembershipStatusCancelled
-	case stripe.SubscriptionStatusPastDue, stripe.SubscriptionStatusUnpaid:
+	case stripe.SubscriptionStatusPastDue, stripe.SubscriptionStatusUnpaid,
+		stripe.SubscriptionStatusIncomplete:
 		status = models.MembershipStatusPending
+	case stripe.SubscriptionStatusIncompleteExpired:
+		status = models.MembershipStatusExpired
 	default:
 		status = models.MembershipStatusActive
 	}
 
 	// Convert period end
 	periodEnd := time.Unix(subscriptionPeriodEnd(sub), 0)
+
+	// A subscription we have no row for yet comes from plan Checkout (T210):
+	// make it the tenant's subscription once Stripe reports it active.
+	if _, err := s.membershipRepo.GetSubscriptionByStripeID(ctx, stripeSubID); err != nil {
+		if !errors.Is(err, repository.ErrSubscriptionNotFound) {
+			return fmt.Errorf("look up subscription: %w", err)
+		}
+		if status != models.MembershipStatusActive {
+			logging.Info(ctx, "[STRIPE] New subscription not active yet; waiting for an update", map[string]any{"subscription_id": stripeSubID, "status": sub.Status})
+			return nil
+		}
+		return s.activateCheckoutSubscription(ctx, sub, &periodEnd)
+	}
 
 	// Update subscription in database
 	if err := s.membershipRepo.UpdateSubscriptionFromStripe(ctx, stripeSubID, status, &periodEnd, sub.CancelAtPeriodEnd); err != nil {

@@ -225,6 +225,9 @@ func SetupServices(
 
 	// Membership service
 	svc.Membership = services.NewMembershipService(repos.Membership, svc.Stripe)
+	// Plan Checkout + founding offer on the platform account (T210, D15).
+	svc.Membership.SetPlanCheckout(services.NewPlanCheckoutServiceFromStripe(
+		repos.Membership, svc.Stripe, cfg.Stripe.SecretKey, cfg.Stripe.InvoicePaymentsEnabled, cfg.Server.FrontendURL))
 
 	// Tenant service
 	svc.Tenant = services.NewTenantService(repos.Tenant, repos.User)

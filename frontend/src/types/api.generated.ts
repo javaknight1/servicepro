@@ -10742,7 +10742,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.TenantSubscriptionResponse"];
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.GetMembershipResponse"];
                     };
                 };
                 /** @description Bad Request */
@@ -10801,7 +10801,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.TenantSubscriptionResponse"];
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.GetMembershipResponse"];
                     };
                 };
                 /** @description Bad Request */
@@ -10861,6 +10861,116 @@ export interface paths {
             };
         };
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tenants/{id}/membership/checkout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start plan checkout
+         * @description Creates a Stripe Checkout session on ServicePro's own account for Solo, Team or Pro (monthly or annual) and returns its URL. The founding offer ($40 off Team monthly, for life) is applied automatically while it is open. A trial with more than two days left carries over. The plan changes only when Stripe's signed webhook reports the subscription active. Requires membership.update.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Tenant ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            /** @description Plan and billing cycle */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.PlanCheckoutRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.PlanCheckoutResponse"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Plan not available */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Already on a paid plan */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Bad Gateway */
+                502: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Plan billing not configured */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;
@@ -12398,6 +12508,21 @@ export interface components {
         };
         /** @enum {string} */
         "github_com_javaknight1_servicepro_backend_internal_models.ExportType": "customers" | "jobs" | "invoices" | "quotes" | "revenue_report";
+        "github_com_javaknight1_servicepro_backend_internal_models.GetMembershipResponse": {
+            /** @description CheckoutAvailable: plans can be bought on this server (Stripe set up). */
+            checkout_available?: boolean;
+            /** @description FoundingOfferAvailable: Team monthly is $40 off for life right now. */
+            founding_offer_available?: boolean;
+            /** @description HasPaidSubscription: a Stripe subscription backs the current plan. */
+            has_paid_subscription?: boolean;
+            subscription?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.TenantSubscriptionResponse"];
+            tier?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.MembershipTierResponse"];
+            /**
+             * @description Trial is set while the tenant is on (or has run out of) its no-card
+             *     trial and has not chosen a paid plan yet (D15).
+             */
+            trial?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.TrialInfo"];
+        };
         "github_com_javaknight1_servicepro_backend_internal_models.ImportErrorResponse": {
             error?: string;
             field?: string;
@@ -12863,6 +12988,17 @@ export interface components {
             sort_order?: number;
             updated_at?: string;
         };
+        "github_com_javaknight1_servicepro_backend_internal_models.MembershipTierResponse": {
+            annual_price_cents?: number;
+            description?: string;
+            display_name?: string;
+            enabled?: boolean;
+            features?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.TierFeatures"];
+            id?: string;
+            monthly_price_cents?: number;
+            name?: string;
+            sort_order?: number;
+        };
         "github_com_javaknight1_servicepro_backend_internal_models.NeonProvisionRequest": {
             invitation_token?: string;
             invite_code?: string;
@@ -12988,6 +13124,16 @@ export interface components {
             /** @description Relationships */
             roles?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.Role"][];
             updated_at?: string;
+        };
+        "github_com_javaknight1_servicepro_backend_internal_models.PlanCheckoutRequest": {
+            /** @enum {unknown} */
+            billing_cycle: "monthly" | "annual";
+            tier_id: string;
+        };
+        "github_com_javaknight1_servicepro_backend_internal_models.PlanCheckoutResponse": {
+            /** @description the founding discount was applied */
+            founding_offer?: boolean;
+            url?: string;
         };
         /** @enum {string} */
         "github_com_javaknight1_servicepro_backend_internal_models.PreferredContactMethod": "email" | "phone" | "sms" | "mail" | "any";
@@ -13416,6 +13562,12 @@ export interface components {
         };
         /** @enum {string} */
         "github_com_javaknight1_servicepro_backend_internal_models.TransactionType": "payment" | "refund" | "chargeback" | "adjustment";
+        "github_com_javaknight1_servicepro_backend_internal_models.TrialInfo": {
+            /** @description whole days, rounded up; 0 once ended */
+            days_left?: number;
+            ended?: boolean;
+            ends_at?: string;
+        };
         "github_com_javaknight1_servicepro_backend_internal_models.UpdateAgreementRequest": {
             assigned_technician_id?: string;
             /** @enum {unknown} */

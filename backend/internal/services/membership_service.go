@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/google/uuid"
 
+	apperrors "github.com/javaknight1/servicepro/backend/internal/errors"
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/repository"
 	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"
@@ -32,7 +34,25 @@ const (
 // MembershipService handles membership business logic
 type MembershipService struct {
 	membershipRepo *repository.MembershipRepository
-	stripeService  *StripeService // Optional, nil if Stripe not configured
+	stripeService  *StripeService       // Optional, nil if Stripe not configured
+	planCheckout   *PlanCheckoutService // Optional; plan Checkout + founding offer (T210)
+	now            func() time.Time
+}
+
+// ErrCheckoutRequired: a first paid plan is bought through Stripe Checkout
+// (POST /tenants/{id}/membership/checkout), not set directly (T210).
+var ErrCheckoutRequired = apperrors.New(http.StatusConflict, "checkout_required",
+	"Choose a plan through checkout to start paying")
+
+// SetPlanCheckout attaches plan Checkout (T210).
+func (s *MembershipService) SetPlanCheckout(p *PlanCheckoutService) { s.planCheckout = p }
+
+// StartPlanCheckout starts a Stripe Checkout session for a plan.
+func (s *MembershipService) StartPlanCheckout(ctx context.Context, tenantID uuid.UUID, req *models.PlanCheckoutRequest) (*models.PlanCheckoutResponse, error) {
+	if s.planCheckout == nil {
+		return nil, ErrPlanBillingUnavailable
+	}
+	return s.planCheckout.StartCheckout(ctx, tenantID, req)
 }
 
 // NewMembershipService creates a new membership service
@@ -40,6 +60,7 @@ func NewMembershipService(membershipRepo *repository.MembershipRepository, strip
 	return &MembershipService{
 		membershipRepo: membershipRepo,
 		stripeService:  stripeService,
+		now:            time.Now,
 	}
 }
 
@@ -74,7 +95,13 @@ func (s *MembershipService) GetTenantMembership(ctx context.Context, tenantID uu
 	subResponse := subscription.ToResponse()
 
 	response := &models.GetMembershipResponse{
-		Subscription: &subResponse,
+		Subscription:        &subResponse,
+		Trial:               models.NewTrialInfo(subscription, s.now()),
+		HasPaidSubscription: subscription.StripeSubscriptionID != nil && *subscription.StripeSubscriptionID != "",
+	}
+	if s.planCheckout != nil && s.planCheckout.Available() {
+		response.CheckoutAvailable = true
+		response.FoundingOfferAvailable = s.planCheckout.FoundingOfferAvailable(ctx)
 	}
 
 	if subscription.Tier != nil {
@@ -119,7 +146,12 @@ func (s *MembershipService) UpdateTenantMembership(ctx context.Context, tenantID
 	var stripeSubscriptionID string
 	if priceCents > 0 && s.stripeService != nil && s.stripeService.IsConfigured() {
 		// Check if there's an existing Stripe subscription
-		if currentSub != nil && currentSub.StripeSubscriptionID != nil && *currentSub.StripeSubscriptionID != "" {
+		hasStripeSub := currentSub != nil && currentSub.StripeSubscriptionID != nil && *currentSub.StripeSubscriptionID != ""
+		if !hasStripeSub && s.planCheckout != nil && s.planCheckout.Available() {
+			// A first paid plan goes through Checkout; the webhook activates it.
+			return nil, ErrCheckoutRequired
+		}
+		if hasStripeSub {
 			// Update existing subscription
 			stripeSub, err := s.stripeService.ChangeSubscription(ctx, *currentSub.StripeSubscriptionID, newTier.Name, req.BillingCycle)
 			if err != nil {

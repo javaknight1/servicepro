@@ -53,7 +53,7 @@ func (h *MembershipHandler) GetAllTiers(c *gin.Context) {
 // @Produce		json
 // @Security		BearerAuth
 // @Param			id	path		string	true	"Tenant ID"
-// @Success		200	{object}	models.TenantSubscriptionResponse
+// @Success		200	{object}	models.GetMembershipResponse
 // @Failure		400	{object}	models.ErrorResponse
 // @Failure		404	{object}	models.ErrorResponse
 // @Failure		500	{object}	models.ErrorResponse
@@ -94,7 +94,7 @@ func (h *MembershipHandler) GetTenantMembership(c *gin.Context) {
 // @Security		BearerAuth
 // @Param			id		path		string							true	"Tenant ID"
 // @Param			request	body		models.UpdateMembershipRequest	true	"Membership update request"
-// @Success		200		{object}	models.TenantSubscriptionResponse
+// @Success		200		{object}	models.GetMembershipResponse
 // @Failure		400		{object}	models.ErrorResponse
 // @Failure		401		{object}	models.ErrorResponse
 // @Failure		402		{object}	models.ErrorResponse
@@ -147,12 +147,52 @@ func (h *MembershipHandler) UpdateTenantMembership(c *gin.Context) {
 				Message: "A payment method is required to upgrade to a paid tier. Please add a payment method first.",
 			})
 		default:
-			apierror.Internal(c, err, "Failed to update membership")
+			apierror.Respond(c, err, "Failed to update membership")
 		}
 		return
 	}
 
 	c.JSON(http.StatusOK, membership)
+}
+
+// StartPlanCheckout starts a Stripe Checkout session for a plan
+// @Summary		Start plan checkout
+// @Description	Creates a Stripe Checkout session on ServicePro's own account for Solo, Team or Pro (monthly or annual) and returns its URL. The founding offer ($40 off Team monthly, for life) is applied automatically while it is open. A trial with more than two days left carries over. The plan changes only when Stripe's signed webhook reports the subscription active. Requires membership.update.
+// @Tags			Membership
+// @Accept			json
+// @Produce		json
+// @Security		BearerAuth
+// @Param			id		path		string						true	"Tenant ID"
+// @Param			request	body		models.PlanCheckoutRequest	true	"Plan and billing cycle"
+// @Success		200		{object}	models.PlanCheckoutResponse
+// @Failure		400		{object}	models.ErrorResponse
+// @Failure		401		{object}	models.ErrorResponse
+// @Failure		403		{object}	models.ErrorResponse
+// @Failure		404		{object}	models.ErrorResponse	"Plan not available"
+// @Failure		409		{object}	models.ErrorResponse	"Already on a paid plan"
+// @Failure		502		{object}	models.ErrorResponse
+// @Failure		503		{object}	models.ErrorResponse	"Plan billing not configured"
+// @Router			/tenants/{id}/membership/checkout [post]
+func (h *MembershipHandler) StartPlanCheckout(c *gin.Context) {
+	tenantID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
+			Error:   "invalid_id",
+			Message: "Invalid tenant ID format",
+		})
+		return
+	}
+	var req models.PlanCheckoutRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		apierror.BindError(c, err)
+		return
+	}
+	resp, err := h.membershipService.StartPlanCheckout(c.Request.Context(), tenantID, &req)
+	if err != nil {
+		apierror.Respond(c, err, "Failed to start checkout")
+		return
+	}
+	c.JSON(http.StatusOK, resp)
 }
 
 // PreviewSubscriptionChange previews what will happen when changing subscriptions

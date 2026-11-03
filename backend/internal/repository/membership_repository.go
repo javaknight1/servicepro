@@ -228,6 +228,71 @@ func (r *MembershipRepository) UpdateSubscriptionFromStripe(ctx context.Context,
 		}).Error
 }
 
+// StripeActivation is a paid subscription that Stripe reports active for a
+// tenant (billing webhook, T210).
+type StripeActivation struct {
+	TierID               uuid.UUID
+	BillingCycle         models.BillingCycle
+	PriceCents           int
+	StripeSubscriptionID string
+	StripePriceID        string
+	CurrentPeriodEnd     *time.Time
+	CancelAtPeriodEnd    bool
+	Reason               string
+}
+
+// ActivateStripeSubscription makes a Stripe subscription the tenant's active
+// subscription in one transaction: the tenant's current active row (e.g. the
+// trial) is ended and a new active row is created. Only tenantID's rows are
+// touched. It is idempotent: when a row for the Stripe subscription already
+// exists (a redelivered or concurrent event) nothing changes and created is
+// false.
+func (r *MembershipRepository) ActivateStripeSubscription(ctx context.Context, tenantID uuid.UUID, a StripeActivation) (created bool, err error) {
+	err = r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// Serialize activations of one tenant (the unique index on
+		// stripe_subscription_id catches the rest).
+		if err := tx.Exec("SELECT 1 FROM tenants WHERE id = ? FOR UPDATE", tenantID).Error; err != nil {
+			return err
+		}
+		var existing int64
+		if err := tx.Model(&models.TenantSubscription{}).
+			Where("stripe_subscription_id = ?", a.StripeSubscriptionID).
+			Count(&existing).Error; err != nil {
+			return err
+		}
+		if existing > 0 {
+			return nil
+		}
+		now := time.Now()
+		if err := tx.Model(&models.TenantSubscription{}).
+			Where("tenant_id = ? AND status = ?", tenantID, models.MembershipStatusActive).
+			Updates(map[string]any{"status": models.MembershipStatusCancelled, "ended_at": now}).Error; err != nil {
+			return err
+		}
+		subID, priceID := a.StripeSubscriptionID, a.StripePriceID
+		if err := tx.Create(&models.TenantSubscription{
+			ID:                   uuid.New(),
+			TenantID:             tenantID,
+			TierID:               a.TierID,
+			Status:               models.MembershipStatusActive,
+			BillingCycle:         a.BillingCycle,
+			PriceCents:           a.PriceCents,
+			StartedAt:            now,
+			CurrentPeriodStart:   now,
+			CurrentPeriodEnd:     a.CurrentPeriodEnd,
+			ChangeReason:         a.Reason,
+			StripeSubscriptionID: &subID,
+			StripePriceID:        &priceID,
+			CancelAtPeriodEnd:    a.CancelAtPeriodEnd,
+		}).Error; err != nil {
+			return err
+		}
+		created = true
+		return nil
+	})
+	return created, err
+}
+
 // CancelSubscriptionAtPeriodEnd marks a subscription to cancel at period end
 func (r *MembershipRepository) CancelSubscriptionAtPeriodEnd(ctx context.Context, subscriptionID uuid.UUID, cancel bool) error {
 	return r.db.WithContext(ctx).Model(&models.TenantSubscription{}).
