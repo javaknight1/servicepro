@@ -13,6 +13,7 @@ vi.mock('@services/publicInvoiceService', async (importOriginal) => {
   return { ...actual, publicInvoiceApi: { getDetails } };
 });
 
+import { payInvoiceUrl } from '@services/publicInvoiceService';
 import { PayInvoicePage } from '../PayInvoicePage';
 
 function invoice(overrides: Partial<PublicInvoice> = {}): PublicInvoice {
@@ -80,10 +81,7 @@ describe('PayInvoicePage (T170, mockup 17)', () => {
     ).toBeInTheDocument();
 
     const button = screen.getByRole('link', { name: 'Pay $9,882.00 by bank' });
-    expect(button).toHaveAttribute(
-      'href',
-      '/api/v1/public/invoices/pay/tok_abc?method=bank'
-    );
+    expect(button).toHaveAttribute('href', payInvoiceUrl('tok_abc', 'bank'));
     expect(
       screen.getByText('Secure payment by Stripe · Powered by ServicePro')
     ).toBeInTheDocument();
@@ -97,10 +95,7 @@ describe('PayInvoicePage (T170, mockup 17)', () => {
     );
 
     const button = screen.getByRole('link', { name: 'Pay $9,882.00 by card' });
-    expect(button).toHaveAttribute(
-      'href',
-      '/api/v1/public/invoices/pay/tok_abc?method=card'
-    );
+    expect(button).toHaveAttribute('href', payInvoiceUrl('tok_abc', 'card'));
     expect(
       screen.getByText('$39.53 card fee paid by Brightline Facility Services')
     ).toBeInTheDocument();
