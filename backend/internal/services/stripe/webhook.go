@@ -67,6 +67,17 @@ func NewWebhookHandler(cfg *config.Config, eventProcessor *EventProcessor) *Webh
 	return handler
 }
 
+// NewWebhookHandlerWithSecret creates a handler for a second endpoint with
+// its own signing secret — the Connect endpoint that receives events from
+// connected accounts (T169) — sharing the event processor.
+func NewWebhookHandlerWithSecret(secret string, eventProcessor *EventProcessor) *WebhookHandler {
+	return &WebhookHandler{
+		webhookSecret:  secret,
+		eventProcessor: eventProcessor,
+		store:          newMemoryEventStore(),
+	}
+}
+
 // SetEventStore installs the persistent dedupe store (stripe_webhook_events).
 // Without it deduplication is per process only.
 func (h *WebhookHandler) SetEventStore(store EventStore) {

@@ -33,6 +33,14 @@ func SetupStripeRoutes(router *gin.RouterGroup, cfg *routeconfigs.RouteConfig) {
 		// The raw payment-intent/customer/refund passthrough routes were
 		// removed (T105 / F-4): see handlers.StripeHandler.
 		stripe.POST("/webhooks", cfg.Handlers.Stripe.HandleWebhook)
+		// Stripe Connect (T169): events from connected accounts, and thin
+		// v2 account events. Each endpoint has its own signing secret.
+		if cfg.Handlers.Stripe.HasConnectWebhook() {
+			stripe.POST("/webhooks/connect", cfg.Handlers.Stripe.HandleConnectWebhook)
+		}
+		if cfg.Handlers.Stripe.HasV2Webhook() {
+			stripe.POST("/webhooks/v2", cfg.Handlers.Stripe.HandleV2Webhook)
+		}
 	}
 
 	log.Printf("[STRIPE] Stripe routes configured successfully in %s mode", environment)

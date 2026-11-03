@@ -79,15 +79,31 @@ func SetupServices(
 		DB:          db,
 	})
 
+	// Stripe Connect: each tenant's own Stripe account (T169). Without a
+	// Stripe key the service exists but refuses to connect.
+	var connectAPI stripeService.ConnectAPI
+	if cfg.Stripe.SecretKey != "" {
+		connectAPI = stripeService.NewConnectClient(cfg.Stripe.SecretKey)
+	}
+	svc.PaymentsConnect = services.NewPaymentsConnectService(services.PaymentsConnectServiceConfig{
+		DB:              db,
+		Repo:            repos.ConnectedAccounts,
+		API:             connectAPI,
+		FrontendURL:     cfg.Server.FrontendURL,
+		PaymentsEnabled: cfg.Stripe.InvoicePaymentsEnabled,
+	})
+
 	// Invoice service (with email client and PDF service for sending invoices)
 	svc.Invoice = services.NewInvoiceServiceWithConfig(db, &services.InvoiceServiceConfig{
 		EmailClient: emailClient,
 		PDFService:  documentPDFService,
 		FrontendURL: cfg.Server.FrontendURL,
 		BackendURL:  cfg.Server.BackendURL,
-		// Pay links only when payments are on and Stripe is configured (T261).
+		// Pay links only when payments are on and Stripe is configured (T261)...
 		OnlinePayments: cfg.Stripe.InvoicePaymentsEnabled && cfg.Stripe.SecretKey != "",
 	})
+	// ...and the invoice's tenant can take payments on its own account (T169).
+	svc.Invoice.SetPayLinkPolicy(svc.PaymentsConnect)
 
 	// Revenue report service
 	svc.Revenue = services.NewRevenueReportService(db)
@@ -135,7 +151,28 @@ func SetupServices(
 			services.RegisterBillingWebhookHandlers(svc.StripeEvents, svc.Stripe)
 			svc.StripeWebhook = stripeService.NewWebhookHandler(cfg, svc.StripeEvents)
 			// Persistent dedupe across restarts/instances (F-10).
-			svc.StripeWebhook.SetEventStore(stripeService.NewGormEventStore(db))
+			eventStore := stripeService.NewGormEventStore(db)
+			svc.StripeWebhook.SetEventStore(eventStore)
+
+			// Connect (T169): events from connected accounts arrive on their
+			// own endpoint and secret, through the same processor and dedupe
+			// store; v2 account events arrive as thin events.
+			if cfg.Stripe.ConnectWebhookSecret != "" {
+				svc.StripeConnectWebhook = stripeService.NewWebhookHandlerWithSecret(cfg.Stripe.ConnectWebhookSecret, svc.StripeEvents)
+				svc.StripeConnectWebhook.SetEventStore(eventStore)
+			}
+			if cfg.Stripe.V2WebhookSecret != "" {
+				connectSvc := svc.PaymentsConnect
+				svc.StripeV2Webhook = stripeService.NewThinEventHandler(cfg.Stripe.V2WebhookSecret,
+					func(ctx context.Context, ev *stripeService.ThinEvent) error {
+						if !stripeService.IsAccountEvent(ev) {
+							return nil
+						}
+						return connectSvc.SyncAccount(ctx, ev.RelatedObject.ID)
+					})
+				svc.StripeV2Webhook.SetEventStore(eventStore)
+			}
+			services.RegisterConnectWebhookHandlers(svc.StripeEvents, svc.PaymentsConnect)
 
 			// Invoice payment service (for Stripe checkout)
 			invoicePaymentSvc, err := services.NewInvoicePaymentService(&services.InvoicePaymentServiceConfig{
@@ -143,6 +180,7 @@ func SetupServices(
 				InvoiceService: svc.Invoice,
 				SuccessURL:     cfg.Server.FrontendURL + "/invoices/payment-success",
 				CancelURL:      cfg.Server.FrontendURL + "/invoices/payment-cancelled",
+				Accounts:       svc.PaymentsConnect,
 				Enabled:        cfg.Stripe.InvoicePaymentsEnabled,
 			})
 			if err != nil {
@@ -152,8 +190,14 @@ func SetupServices(
 
 				// Register checkout.session.completed handler for invoice payments
 				invoicePaymentHandler := services.NewInvoicePaymentHandlerAdapter(svc.Invoice)
+				invoicePaymentHandler.SetConnectedAccounts(svc.PaymentsConnect)
 				svc.StripeEvents.RegisterHandler(
 					stripeService.EventCheckoutSessionCompleted,
+					invoicePaymentHandler.CreateCheckoutCompletedHandler(),
+				)
+				// ACH: the session completes unpaid; the payment lands later.
+				svc.StripeEvents.RegisterHandler(
+					stripeService.EventCheckoutSessionAsyncPaymentSucceeded,
 					invoicePaymentHandler.CreateCheckoutCompletedHandler(),
 				)
 				// Refunds lower the invoice's amount_paid (T125)

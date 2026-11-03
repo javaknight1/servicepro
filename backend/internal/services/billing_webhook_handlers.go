@@ -49,6 +49,9 @@ func (s *StripeService) TenantIDForStripeCustomer(ctx context.Context, stripeCus
 // cannot act on (unknown customer) are acknowledged.
 func RegisterBillingWebhookHandlers(p *stripeClient.EventProcessor, store billingWebhookStore) {
 	subHandler := func(ctx context.Context, event *stripe.Event) error {
+		if event.Account != "" {
+			return nil // a connected account's own subscriptions are not platform billing (T169)
+		}
 		ctx = tenancy.WithSystem(ctx)
 		var sub stripe.Subscription
 		if err := json.Unmarshal(event.Data.Raw, &sub); err != nil {
@@ -65,6 +68,9 @@ func RegisterBillingWebhookHandlers(p *stripeClient.EventProcessor, store billin
 
 	invoiceHandler := func(status models.BillingEventStatus, description string, amount func(*stripe.Invoice) int64) stripeClient.EventHandler {
 		return func(ctx context.Context, event *stripe.Event) error {
+			if event.Account != "" {
+				return nil // a connected account's own invoices are not platform billing (T169)
+			}
 			ctx = tenancy.WithSystem(ctx)
 			var inv stripe.Invoice
 			if err := json.Unmarshal(event.Data.Raw, &inv); err != nil {

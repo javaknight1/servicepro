@@ -68,7 +68,7 @@ func TestConnectSpike(t *testing.T) {
 			},
 			Locales: []*string{stripe.String("en-US")},
 		},
-		Include: stripe.StringSlice([]string{"configuration.merchant", "configuration.customer", "requirements"}),
+		Include:  stripe.StringSlice([]string{"configuration.merchant", "configuration.customer", "requirements"}),
 		Metadata: map[string]string{"spike": "T169"},
 	}
 	create.SetIdempotencyKey("t169-spike-account-" + run)
@@ -202,10 +202,10 @@ func spikePlatformCheckoutShape(t *testing.T, sc *stripe.Client, run string) {
 	}
 	t.Logf("platform bank-only checkout %s methods=%v", sess.ID, sess.PaymentMethodTypes)
 	cs2 := &stripe.CheckoutSessionCreateParams{
-		Mode:       cs.Mode,
-		SuccessURL: cs.SuccessURL,
-		CancelURL:  cs.CancelURL,
-		LineItems:  cs.LineItems,
+		Mode:                       cs.Mode,
+		SuccessURL:                 cs.SuccessURL,
+		CancelURL:                  cs.CancelURL,
+		LineItems:                  cs.LineItems,
 		ExcludedPaymentMethodTypes: stripe.StringSlice([]string{"us_bank_account"}),
 	}
 	cs2.SetIdempotencyKey("t169-spike-platform-card-" + run)

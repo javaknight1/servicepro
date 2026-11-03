@@ -8143,11 +8143,14 @@ export interface paths {
         };
         /**
          * Pay invoice
-         * @description Validates the payment token, creates a Stripe Checkout session, and redirects to Stripe's hosted checkout page
+         * @description Validates the payment token, creates a Stripe Checkout session on the business's own Stripe account (a direct charge with ServicePro's fee: bank 1% capped at $10, card 0.4%), and redirects to Stripe's hosted checkout page. Without a method, bank is used when the business accepts it.
          */
         get: {
             parameters: {
-                query?: never;
+                query?: {
+                    /** @description Payment method */
+                    method?: "bank" | "card";
+                };
                 header?: never;
                 path: {
                     /** @description Payment token */
@@ -9961,6 +9964,153 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/tenants/{id}/payments/connect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Connect Stripe payouts
+         * @description Creates the organization's own Stripe account on first use (Accounts v2, direct charges; Stripe collects its fees from the business) and returns a single-use Stripe-hosted onboarding link. Call it again to continue onboarding. Requires membership.billing (owners and admins).
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Tenant ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.PaymentsConnectResponse"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Bad Gateway */
+                502: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Service Unavailable */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tenants/{id}/payments/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get payments status
+         * @description Whether the organization's Stripe account exists, which payment methods are active, whether Stripe needs more information, and ServicePro's fees. While onboarding is unfinished the status is re-read from Stripe. Requires membership.billing.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Tenant ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.PaymentsStatusResponse"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Internal Server Error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/tenants/{tenant_id}/invitations": {
         parameters: {
             query?: never;
@@ -11520,6 +11670,12 @@ export interface components {
         "github_com_javaknight1_servicepro_backend_internal_models.PasswordResetResponse": {
             message?: string;
         };
+        "github_com_javaknight1_servicepro_backend_internal_models.PaymentFeesResponse": {
+            ach_cap?: string;
+            ach_percent?: string;
+            card_percent?: string;
+            currency?: string;
+        };
         "github_com_javaknight1_servicepro_backend_internal_models.PaymentReminderResponse": {
             channel?: string;
             created_at?: string;
@@ -11566,6 +11722,27 @@ export interface components {
         };
         /** @enum {string} */
         "github_com_javaknight1_servicepro_backend_internal_models.PaymentTermType": "due_on_receipt" | "net_7" | "net_10" | "net_15" | "net_30" | "net_60" | "net_90" | "custom";
+        "github_com_javaknight1_servicepro_backend_internal_models.PaymentsConnectResponse": {
+            url?: string;
+        };
+        "github_com_javaknight1_servicepro_backend_internal_models.PaymentsStatusResponse": {
+            ach_payments_status?: string;
+            card_payments_status?: string;
+            /** @description Connected is true once a Stripe account exists for the tenant. */
+            connected?: boolean;
+            /** @description Fees are ServicePro's fees on top of Stripe's (D10). */
+            fees?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.PaymentFeesResponse"];
+            livemode?: boolean;
+            /** @description OnlinePaymentsEnabled is the platform-wide switch (INVOICE_PAYMENTS_ENABLED). */
+            online_payments_enabled?: boolean;
+            /** @description PayLinksActive is true when invoice emails carry a pay link for this tenant. */
+            pay_links_active?: boolean;
+            payouts_status?: string;
+            requirements_status?: string;
+            /** @description State summarises onboarding: not_connected, onboarding, action_required, restricted, active. */
+            state?: string;
+            synced_at?: string;
+        };
         /** @enum {string} */
         "github_com_javaknight1_servicepro_backend_internal_models.PeriodType": "daily" | "weekly" | "monthly" | "quarterly" | "yearly";
         "github_com_javaknight1_servicepro_backend_internal_models.Permission": {

@@ -2,12 +2,12 @@ package services
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/stripe/stripe-go/v87"
 
 	stripeClient "github.com/javaknight1/servicepro/backend/internal/services/stripe"
-	"github.com/javaknight1/servicepro/backend/internal/tenancy"
 	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"
 )
 
@@ -18,8 +18,14 @@ import (
 func (a *InvoicePaymentHandlerAdapter) CreateChargeRefundedHandler() stripeClient.EventHandler {
 	return func(ctx context.Context, event *stripe.Event) error {
 		// Signed Stripe event: no tenant session; the payment intent selects
-		// our invoice payment.
-		ctx = tenancy.WithSystem(ctx)
+		// our invoice payment, within the connected account's tenant (T169).
+		ctx, err := a.scopeToEventAccount(ctx, event)
+		if errors.Is(err, errSkipEvent) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
 		ch, err := stripeClient.ParseCharge(event)
 		if err != nil {
 			return fmt.Errorf("failed to parse charge: %w", err)

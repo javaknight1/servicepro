@@ -110,6 +110,12 @@ func SetupHandlers(
 	// Stripe handlers (optional - depends on Stripe configuration)
 	if svc.StripeClient != nil && svc.StripeWebhook != nil {
 		h.Stripe = handlers.NewStripeHandler(svc.StripeWebhook)
+		h.Stripe.SetConnectWebhooks(svc.StripeConnectWebhook, svc.StripeV2Webhook)
+	}
+
+	// Stripe Connect onboarding + status (T169); answers 503 without Stripe.
+	if svc.PaymentsConnect != nil {
+		h.PaymentsConnect = handlers.NewPaymentsConnectHandler(svc.PaymentsConnect)
 	}
 
 	// Billing handler (optional - depends on Stripe service)

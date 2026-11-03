@@ -154,6 +154,11 @@ const (
 	// Checkout Session Events
 	EventCheckoutSessionCompleted = "checkout.session.completed"
 	EventCheckoutSessionExpired   = "checkout.session.expired"
+	// EventCheckoutSessionAsyncPaymentSucceeded: a delayed method (ACH) settled.
+	EventCheckoutSessionAsyncPaymentSucceeded = "checkout.session.async_payment_succeeded"
+
+	// Connect events (T169)
+	EventAccountUpdated = "account.updated"
 )
 
 // PaymentIntentData represents parsed payment intent data from an event

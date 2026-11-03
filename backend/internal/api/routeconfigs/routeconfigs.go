@@ -53,6 +53,8 @@ type Repositories struct {
 	Membership        *repository.MembershipRepository
 	Payment           *repository.PaymentRepository
 	Schedule          repository.ScheduleRepositoryInterface
+	// ConnectedAccounts stores each tenant's Stripe Connect account (T169).
+	ConnectedAccounts *repository.ConnectedAccountRepository
 }
 
 // Services holds all service instances
@@ -81,8 +83,14 @@ type Services struct {
 	StripeClient      *stripeService.Client
 	StripeEvents      *stripeService.EventProcessor
 	StripeWebhook     *stripeService.WebhookHandler
-	Conflict          *conflict.ConflictDetector
-	PaymentReminder   *services.PaymentReminderService
+	// StripeConnectWebhook receives events from connected accounts and
+	// StripeV2Webhook thin v2 account events (T169); nil when unconfigured.
+	StripeConnectWebhook *stripeService.WebhookHandler
+	StripeV2Webhook      *stripeService.ThinEventHandler
+	// PaymentsConnect connects tenants' own Stripe accounts (T169).
+	PaymentsConnect *services.PaymentsConnectService
+	Conflict        *conflict.ConflictDetector
+	PaymentReminder *services.PaymentReminderService
 }
 
 // Middleware holds all middleware instances
@@ -117,6 +125,7 @@ type Handlers struct {
 	Revenue           *handlers.RevenueHandler
 	ARAging           *handlers.ARAgingHandler
 	Stripe            *handlers.StripeHandler
+	PaymentsConnect   *handlers.PaymentsConnectHandler
 	ResendWebhook     *handlers.ResendWebhookHandler
 	Billing           *handlers.BillingHandler
 	Membership        *handlers.MembershipHandler

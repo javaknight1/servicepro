@@ -32,11 +32,12 @@ func NewPublicInvoiceHandler(
 
 // PayInvoice handles the payment initiation for an invoice
 // @Summary		Pay invoice
-// @Description	Validates the payment token, creates a Stripe Checkout session, and redirects to Stripe's hosted checkout page
+// @Description	Validates the payment token, creates a Stripe Checkout session on the business's own Stripe account (a direct charge with ServicePro's fee: bank 1% capped at $10, card 0.4%), and redirects to Stripe's hosted checkout page. Without a method, bank is used when the business accepts it.
 // @Tags			Public
 // @Accept			json
 // @Produce		json
 // @Param			token	path	string	true	"Payment token"
+// @Param			method	query	string	false	"Payment method"	Enums(bank, card)
 // @Success		303
 // @Failure		400	{object}	models.ErrorResponse
 // @Failure		404	{object}	models.ErrorResponse
@@ -57,7 +58,7 @@ func (h *PublicInvoiceHandler) PayInvoice(c *gin.Context) {
 	ctx := tenancy.WithSystem(c.Request.Context())
 
 	// Create checkout session (this also validates the token)
-	result, err := h.invoicePaymentService.CreateCheckoutSessionForInvoice(ctx, token)
+	result, err := h.invoicePaymentService.CreateCheckoutSessionForInvoice(ctx, token, c.Query("method"))
 	if err != nil {
 		statusCode := http.StatusInternalServerError
 		errorMessage := "failed to create payment session"
@@ -78,6 +79,12 @@ func (h *PublicInvoiceHandler) PayInvoice(c *gin.Context) {
 		case errors.Is(err, services.ErrInvoicePaymentDisabled):
 			statusCode = http.StatusConflict
 			errorMessage = "online payment isn't available for this invoice. Please contact the business to pay"
+		case errors.Is(err, services.ErrPaymentMethodUnavailable):
+			statusCode = http.StatusConflict
+			errorMessage = "this business can't take that payment method yet. Please choose another way to pay"
+		case errors.Is(err, services.ErrInvalidPaymentMethod):
+			statusCode = http.StatusBadRequest
+			errorMessage = "unknown payment method"
 		case errors.Is(err, services.ErrCheckoutSessionCreationFailed):
 			statusCode = http.StatusServiceUnavailable
 			errorMessage = "payment service temporarily unavailable"

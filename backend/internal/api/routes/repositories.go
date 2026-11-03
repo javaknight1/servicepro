@@ -19,5 +19,6 @@ func SetupRepositories(db *gorm.DB) *Repositories {
 		Membership:        repository.NewMembershipRepository(db),
 		Payment:           repository.NewPaymentRepository(db),
 		Schedule:          repository.NewScheduleRepository(db),
+		ConnectedAccounts: repository.NewConnectedAccountRepository(db),
 	}
 }

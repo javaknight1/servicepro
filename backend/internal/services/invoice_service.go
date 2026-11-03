@@ -83,6 +83,20 @@ type InvoiceService struct {
 	backendURL  string
 	// onlinePayments puts the "Pay now" link in invoice emails (T261).
 	onlinePayments bool
+	// payLinks decides per tenant: only tenants whose own Stripe account
+	// can take payments get a pay link (T169).
+	payLinks PayLinkPolicy
+}
+
+// PayLinkPolicy reports whether a tenant's invoices may carry a pay link
+// (implemented by PaymentsConnectService).
+type PayLinkPolicy interface {
+	CanAcceptPayments(ctx context.Context, tenantID uuid.UUID) bool
+}
+
+// SetPayLinkPolicy installs the per-tenant pay-link check (T169).
+func (s *InvoiceService) SetPayLinkPolicy(p PayLinkPolicy) {
+	s.payLinks = p
 }
 
 // InvoiceServiceConfig holds configuration for the invoice service
@@ -1254,10 +1268,14 @@ func (s *InvoiceService) generatePaymentToken() (string, error) {
 }
 
 // invoicePaymentURL is the emailed "Pay now" link — the backend route that
-// redirects to Stripe Checkout — or "" when online payment is off, in which
-// case the email has no pay button (T261).
-func (s *InvoiceService) invoicePaymentURL(invoice *models.Invoice) string {
+// redirects to Stripe Checkout — or "" when online payment is off (T261) or
+// the invoice's tenant can't take payments on its own Stripe account yet
+// (T169), in which case the email has no pay button.
+func (s *InvoiceService) invoicePaymentURL(ctx context.Context, invoice *models.Invoice) string {
 	if !s.onlinePayments || invoice.PaymentToken == nil {
+		return ""
+	}
+	if s.payLinks == nil || !s.payLinks.CanAcceptPayments(ctx, invoice.TenantID) {
 		return ""
 	}
 	return fmt.Sprintf("%s/api/v1/public/invoices/pay/%s", s.backendURL, *invoice.PaymentToken)
@@ -1278,7 +1296,7 @@ func (s *InvoiceService) sendInvoiceEmail(invoice *models.Invoice) {
 	}
 	ctx = withTenantSender(ctx, s.db, invoice.TenantID)
 
-	paymentURL := s.invoicePaymentURL(invoice)
+	paymentURL := s.invoicePaymentURL(ctx, invoice)
 
 	var pdfAttachment *email.Attachment
 	var downloadURL string

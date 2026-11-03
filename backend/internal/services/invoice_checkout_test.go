@@ -26,7 +26,7 @@ func TestBuildCheckoutParams_ChargesBalanceDue(t *testing.T) {
 	setInvoiceTotals(inv, totals)
 
 	now := time.Date(2026, 10, 16, 14, 5, 0, 0, time.UTC)
-	params, balance := svc.buildCheckoutParams(inv, "usd", now)
+	params, balance, fee := svc.buildCheckoutParams(inv, "usd", now, "acct_tenant", "card")
 	require.NotNil(t, params)
 	require.Len(t, params.LineItems, 1)
 	li := params.LineItems[0]
@@ -38,15 +38,20 @@ func TestBuildCheckoutParams_ChargesBalanceDue(t *testing.T) {
 	assert.Equal(t, int64(12228), *li.PriceData.UnitAmount)
 	assert.Equal(t, inv.ID.String(), params.Metadata["invoice_id"])
 	require.NotNil(t, params.IdempotencyKey)
+	// T169: a direct charge on the tenant's account with the 0.4% card fee.
+	require.NotNil(t, params.StripeAccount)
+	assert.Equal(t, "acct_tenant", *params.StripeAccount)
+	assert.Equal(t, int64(49), fee, "0.4% of 122.28 = 0.489 -> 49 cents")
+	assert.Equal(t, int64(49), *params.PaymentIntentData.ApplicationFeeAmount)
 
-	again, _ := svc.buildCheckoutParams(inv, "usd", now.Add(10*time.Minute))
+	again, _, _ := svc.buildCheckoutParams(inv, "usd", now.Add(10*time.Minute), "acct_tenant", "card")
 	assert.Equal(t, *params.IdempotencyKey, *again.IdempotencyKey, "a retry within the hour reuses the session")
 	inv.AmountPaid = dec("50")
-	other, _ := svc.buildCheckoutParams(inv, "usd", now)
+	other, _, _ := svc.buildCheckoutParams(inv, "usd", now, "acct_tenant", "card")
 	assert.NotEqual(t, *params.IdempotencyKey, *other.IdempotencyKey, "a different balance gets a new session")
 
 	inv.AmountPaid = inv.TotalAmount
-	none, _ := svc.buildCheckoutParams(inv, "usd", now)
+	none, _, _ := svc.buildCheckoutParams(inv, "usd", now, "acct_tenant", "card")
 	assert.Nil(t, none, "nothing owed, no session")
 }
 

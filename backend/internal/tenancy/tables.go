@@ -25,9 +25,12 @@ func DefaultTables() map[string]Mode {
 		"payment_reminders":     Owned,
 		"revenue_transactions":  Owned,
 		"revenue_summary_cache": Owned,
-		"payment_terms":         SharedRead,
-		"tax_rates":             SharedRead,
-		"invoice_templates":     SharedRead,
+		// Webhooks resolve it with WithSystem by Stripe account ID, then
+		// switch to the owning tenant (T169).
+		"stripe_connected_accounts": Owned,
+		"payment_terms":             SharedRead,
+		"tax_rates":                 SharedRead,
+		"invoice_templates":         SharedRead,
 	}
 }
 

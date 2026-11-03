@@ -35,16 +35,16 @@ PaymentIntent with a 0.4% fee.
 2. **Platform profile and branding** (Settings → Connect → Branding): name, icon, colour shown in Stripe-hosted
    onboarding. Required before live onboarding.
 3. **Connect webhook endpoint** (Developers → Webhooks → "Events on connected accounts") at
-   `https://<api>/api/v1/webhooks/stripe/connect` for `checkout.session.completed`,
+   `https://<api>/api/v1/stripe/webhooks/connect` for `checkout.session.completed`,
    `checkout.session.async_payment_succeeded`, `charge.refunded`, `account.updated`; its signing secret goes in
    `STRIPE_CONNECT_WEBHOOK_SECRET`.
 4. **Event destination for v2 events** (Developers → Event destinations, "thin" payload) at
-   `https://<api>/api/v1/webhooks/stripe/v2` for `v2.core.account[requirements].updated` and
+   `https://<api>/api/v1/stripe/webhooks/v2` for `v2.core.account[requirements].updated` and
    `v2.core.account[configuration.merchant].capability_status_updated`; secret → `STRIPE_V2_WEBHOOK_SECRET`.
 5. Optional: **Public details** (Settings → Connect → Onboarding options) to collect statement descriptor and support
    phone during onboarding.
-6. Locally, `stripe listen --forward-connect-to localhost:8080/api/v1/webhooks/stripe/connect` and
-   `stripe listen --forward-thin-to localhost:8080/api/v1/webhooks/stripe/v2 --thin-events 'v2.core.account[*]'`
+6. Locally, `stripe listen --forward-connect-to localhost:8080/api/v1/stripe/webhooks/connect` and
+   `stripe listen --forward-thin-to localhost:8080/api/v1/stripe/webhooks/v2 --thin-events 'v2.core.account[*]'`
    replace items 3–4.
 
 ## Design (what the code does)
@@ -116,9 +116,9 @@ Idempotency key: `invoice-checkout:<invoice>:<account>:<method>:<currency>:<unit
 
 | Endpoint | Secret | Events |
 | --- | --- | --- |
-| `/webhooks/stripe` | `STRIPE_WEBHOOK_SECRET` | platform events (subscriptions, T122) |
-| `/webhooks/stripe/connect` | `STRIPE_CONNECT_WEBHOOK_SECRET` | snapshot events from connected accounts (`event.account` set) |
-| `/webhooks/stripe/v2` | `STRIPE_V2_WEBHOOK_SECRET` | v2 thin events (`v2.core.account[...]`) |
+| `/stripe/webhooks` | `STRIPE_WEBHOOK_SECRET` | platform events (subscriptions, T122) |
+| `/stripe/webhooks/connect` | `STRIPE_CONNECT_WEBHOOK_SECRET` | snapshot events from connected accounts (`event.account` set) |
+| `/stripe/webhooks/v2` | `STRIPE_V2_WEBHOOK_SECRET` | v2 thin events (`v2.core.account[...]`) |
 
 All three verify the signature and claim the event ID in `stripe_webhook_events` before processing (exactly-once).
 The invoice handlers only apply a connected-account payment when `event.account` equals the stored account of the
