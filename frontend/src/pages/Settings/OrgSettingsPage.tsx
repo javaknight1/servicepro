@@ -84,6 +84,8 @@ export function OrgSettingsPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [city, setCity] = useState('');
+  const [state, setState] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
   // Modal state for inviting member
@@ -134,6 +136,8 @@ export function OrgSettingsPage() {
       setName(currentTenant.name);
       setEmail(currentTenant.email || '');
       setPhone(currentTenant.phone || '');
+      setCity(currentTenant.settings?.businessCity || '');
+      setState(currentTenant.settings?.businessState || '');
     }
   }, [currentTenant]);
 
@@ -287,6 +291,12 @@ export function OrgSettingsPage() {
         name: name.trim(),
         email: email.trim() || undefined,
         phone: phone.trim() || undefined,
+        // Settings are replaced as a whole: keep everything else.
+        settings: {
+          ...currentTenant.settings,
+          businessCity: city.trim() || undefined,
+          businessState: state.trim() || undefined,
+        },
       };
       await updateTenant(currentTenant.id, data);
     } catch (err) {
@@ -510,6 +520,32 @@ export function OrgSettingsPage() {
                         disabled={!canEditSettings}
                       />
 
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div className="sm:col-span-2">
+                          <Input
+                            label="City"
+                            type="text"
+                            value={city}
+                            onChange={(e) => setCity(e.target.value)}
+                            placeholder="Columbus"
+                            maxLength={100}
+                            fullWidth
+                            disabled={!canEditSettings}
+                            helperText="Shown to customers on your pay page"
+                          />
+                        </div>
+                        <Input
+                          label="State"
+                          type="text"
+                          value={state}
+                          onChange={(e) => setState(e.target.value)}
+                          placeholder="OH"
+                          maxLength={50}
+                          fullWidth
+                          disabled={!canEditSettings}
+                        />
+                      </div>
+
                       {canEditSettings && (
                         <div className="flex justify-end space-x-3 pt-4">
                           <Button
@@ -519,6 +555,12 @@ export function OrgSettingsPage() {
                               setName(currentTenant.name);
                               setEmail(currentTenant.email || '');
                               setPhone(currentTenant.phone || '');
+                              setCity(
+                                currentTenant.settings?.businessCity || ''
+                              );
+                              setState(
+                                currentTenant.settings?.businessState || ''
+                              );
                             }}
                           >
                             Reset

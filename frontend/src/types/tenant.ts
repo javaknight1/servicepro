@@ -35,6 +35,9 @@ export interface TenantSettings {
   reminderDaysAfterDue?: number[];
   maxRemindersPerInvoice?: number;
   businessHours?: Record<string, DaySchedule>;
+  /** Shown to customers under the business name on the pay page (T170). */
+  businessCity?: string;
+  businessState?: string;
 }
 
 /** The caller's access in one tenant (`GET /tenants/:id/me`). */

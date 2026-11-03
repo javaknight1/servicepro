@@ -15,6 +15,8 @@ vi.mock('@components/membership', () => ({
   MembershipTab: () => <div />,
 }));
 
+const updateTenant = vi.hoisted(() => vi.fn());
+
 const currentTenant: Tenant = {
   id: 'tenant-1',
   name: 'Acme HVAC',
@@ -31,7 +33,7 @@ vi.mock('@store', () => ({
     currentTenant,
     isLoading: false,
     error: null,
-    updateTenant: vi.fn(),
+    updateTenant,
     deleteTenant: vi.fn(),
     getMembers: vi.fn(),
     removeMember: vi.fn(),
@@ -79,5 +81,34 @@ describe('OrgSettingsPage time zone', () => {
     expect(screen.queryByText('Coming soon')).not.toBeInTheDocument();
     expect(screen.queryByText(/operating hours/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/monday/i)).not.toBeInTheDocument();
+  });
+});
+
+// T170: the business's city and state appear on the customer pay page; the
+// rest of the settings are kept when they are saved.
+describe('OrgSettingsPage business location', () => {
+  it('saves city and state into the settings without dropping others', async () => {
+    render(
+      <MemoryRouter>
+        <OrgSettingsPage />
+      </MemoryRouter>
+    );
+
+    await userEvent.type(screen.getByLabelText('City'), 'Columbus');
+    await userEvent.type(screen.getByLabelText('State'), 'OH');
+    await userEvent.click(
+      screen.getByRole('button', { name: /save changes/i })
+    );
+
+    expect(updateTenant).toHaveBeenCalledWith(
+      'tenant-1',
+      expect.objectContaining({
+        settings: {
+          timezone: 'America/Chicago',
+          businessCity: 'Columbus',
+          businessState: 'OH',
+        },
+      })
+    );
   });
 });

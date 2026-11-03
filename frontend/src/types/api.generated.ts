@@ -13346,10 +13346,16 @@ export interface components {
             updated_at?: string;
         };
         "github_com_javaknight1_servicepro_backend_internal_models.TenantSettings": {
+            /**
+             * @description Where the business is, shown to its customers under its name on the
+             *     public pay page (T170, mockup 17). Optional.
+             */
+            businessCity?: string;
             /** @description Business hours settings */
             businessHours?: {
                 [key: string]: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.DaySchedule"];
             };
+            businessState?: string;
             currency?: string;
             dateFormat?: string;
             defaultPaymentTermId?: string;

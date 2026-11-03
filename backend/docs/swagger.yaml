@@ -3193,11 +3193,18 @@ definitions:
     type: object
   github_com_javaknight1_servicepro_backend_internal_models.TenantSettings:
     properties:
+      businessCity:
+        description: |-
+          Where the business is, shown to its customers under its name on the
+          public pay page (T170, mockup 17). Optional.
+        type: string
       businessHours:
         additionalProperties:
           $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.DaySchedule'
         description: Business hours settings
         type: object
+      businessState:
+        type: string
       currency:
         type: string
       dateFormat:

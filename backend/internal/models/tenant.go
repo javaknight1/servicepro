@@ -64,6 +64,11 @@ type TenantSettings struct {
 
 	// Business hours settings
 	BusinessHours map[string]DaySchedule `json:"businessHours,omitempty"`
+
+	// Where the business is, shown to its customers under its name on the
+	// public pay page (T170, mockup 17). Optional.
+	BusinessCity  string `json:"businessCity,omitempty"`
+	BusinessState string `json:"businessState,omitempty"`
 }
 
 // Value implements driver.Valuer for database serialization

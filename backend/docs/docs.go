@@ -14472,12 +14472,19 @@ const docTemplate = `{
         "github_com_javaknight1_servicepro_backend_internal_models.TenantSettings": {
             "type": "object",
             "properties": {
+                "businessCity": {
+                    "description": "Where the business is, shown to its customers under its name on the\npublic pay page (T170, mockup 17). Optional.",
+                    "type": "string"
+                },
                 "businessHours": {
                     "description": "Business hours settings",
                     "type": "object",
                     "additionalProperties": {
                         "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.DaySchedule"
                     }
+                },
+                "businessState": {
+                    "type": "string"
                 },
                 "currency": {
                     "type": "string"
