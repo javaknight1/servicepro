@@ -32,7 +32,10 @@ import { datetimeLocalToEpoch, epochToDatetimeLocal } from '@/utils/epoch';
 import { useTenantTimezone } from '@/hooks/useTenantTimezone';
 import { useInvoiceJob } from '@/hooks/useInvoiceJob';
 import { useTenantStore } from '@store';
-import { useTenantPermissions } from '@/utils/tenantPermissions';
+import {
+  APP_PERMISSIONS,
+  useTenantPermissions,
+} from '@/utils/tenantPermissions';
 import {
   ArrowLeft,
   Save,
@@ -108,6 +111,15 @@ export function JobDetailPage() {
   const [hasConflicts, setHasConflicts] = useState(false);
   const { currentTenant } = useTenantStore();
   const { can } = useTenantPermissions(currentTenant);
+  // Technicians (T035) work their assigned jobs: no prices or invoices, no
+  // customer list, no dispatch tools (conflicts, approvals, assigning,
+  // deleting).
+  const seesMoney = can(APP_PERMISSIONS.invoicesRead);
+  const isOffice = can(APP_PERMISSIONS.jobsViewAll);
+  const canListCustomers = can(APP_PERMISSIONS.customersList);
+  const canReadCustomers = can(APP_PERMISSIONS.customersRead);
+  const canAssign = can(APP_PERMISSIONS.jobsAssign);
+  const canDeleteJob = can(APP_PERMISSIONS.jobsDelete);
   // Completed job -> draft invoice (T029)
   const {
     invoiceJob,
@@ -152,7 +164,10 @@ export function JobDetailPage() {
   const conflictJobId = id || 'new';
 
   const canCheckConflicts =
-    startTime !== null && endTime !== null && assignedTechIds.length > 0;
+    isOffice &&
+    startTime !== null &&
+    endTime !== null &&
+    assignedTechIds.length > 0;
 
   const handleConflictDetected = useCallback(() => {
     setHasConflicts(true);
@@ -224,8 +239,17 @@ export function JobDetailPage() {
     [timeZone]
   );
 
+  // The customer list needs customers.list; without it the job's own
+  // customer is shown read-only.
   useEffect(() => {
-    loadCustomers();
+    if (canListCustomers) {
+      loadCustomers();
+    } else {
+      setIsLoadingCustomers(false);
+    }
+  }, [canListCustomers]);
+
+  useEffect(() => {
     if (!isNew && id) {
       loadJob(id);
     } else if (isNew && cloneFromId) {
@@ -333,7 +357,7 @@ export function JobDetailPage() {
         await jobService.createJob({
           customer_id: formData.customer_id,
           site_id: formData.site_id || undefined,
-          estimated_cost: estimatedCost,
+          estimated_cost: seesMoney ? estimatedCost : undefined,
           title: formData.title,
           description: formData.description || undefined,
           job_type: formData.job_type,
@@ -365,7 +389,7 @@ export function JobDetailPage() {
         await jobService.updateJob(id, {
           // The API can't unset a site; an empty pick leaves it unchanged.
           site_id: formData.site_id || undefined,
-          estimated_cost: estimatedCost,
+          estimated_cost: seesMoney ? estimatedCost : undefined,
           title: formData.title,
           description: formData.description || undefined,
           job_type: formData.job_type,
@@ -468,7 +492,7 @@ export function JobDetailPage() {
           </div>
         )}
 
-        {!isNew && currentJob && (
+        {!isNew && currentJob && seesMoney && (
           <JobInvoiceAction
             job={currentJob}
             canInvoice={can('invoices.create')}
@@ -504,11 +528,16 @@ export function JobDetailPage() {
                   value={formData.customer_id}
                   onChange={handleChange}
                   required
-                  disabled={isLoadingCustomers}
+                  disabled={isLoadingCustomers || !canListCustomers}
                   className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                 >
                   <option value="">Select a customer</option>
-                  {customers.map((customer) => (
+                  {(canListCustomers
+                    ? customers
+                    : currentJob?.customer
+                      ? [currentJob.customer]
+                      : []
+                  ).map((customer) => (
                     <option key={customer.id} value={customer.id}>
                       {customer.first_name} {customer.last_name}
                       {customer.company_name
@@ -519,15 +548,17 @@ export function JobDetailPage() {
                 </select>
               </div>
 
-              <div className="md:col-span-2">
-                <JobSitePicker
-                  customerId={formData.customer_id}
-                  value={formData.site_id}
-                  onChange={(siteId) =>
-                    setFormData((prev) => ({ ...prev, site_id: siteId }))
-                  }
-                />
-              </div>
+              {canReadCustomers && (
+                <div className="md:col-span-2">
+                  <JobSitePicker
+                    customerId={formData.customer_id}
+                    value={formData.site_id}
+                    onChange={(siteId) =>
+                      setFormData((prev) => ({ ...prev, site_id: siteId }))
+                    }
+                  />
+                </div>
+              )}
 
               <div className="md:col-span-2">
                 <label
@@ -654,29 +685,31 @@ export function JobDetailPage() {
                   />
                 </div>
 
-                <div>
-                  <label
-                    htmlFor="estimated_cost"
-                    className="block text-sm font-medium text-neutral-700 mb-1"
-                  >
-                    Est. Cost ($)
-                  </label>
-                  <input
-                    type="number"
-                    id="estimated_cost"
-                    name="estimated_cost"
-                    value={formData.estimated_cost}
-                    onChange={handleChange}
-                    min="0"
-                    step="0.01"
-                    inputMode="decimal"
-                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                  />
-                  <p className="mt-1 text-xs text-neutral-500">
-                    Extra work over the customer's not-to-exceed limit needs the
-                    approver's OK before it's scheduled.
-                  </p>
-                </div>
+                {seesMoney && (
+                  <div>
+                    <label
+                      htmlFor="estimated_cost"
+                      className="block text-sm font-medium text-neutral-700 mb-1"
+                    >
+                      Est. Cost ($)
+                    </label>
+                    <input
+                      type="number"
+                      id="estimated_cost"
+                      name="estimated_cost"
+                      value={formData.estimated_cost}
+                      onChange={handleChange}
+                      min="0"
+                      step="0.01"
+                      inputMode="decimal"
+                      className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    />
+                    <p className="mt-1 text-xs text-neutral-500">
+                      Extra work over the customer's not-to-exceed limit needs
+                      the approver's OK before it's scheduled.
+                    </p>
+                  </div>
+                )}
               </div>
 
               {canCheckConflicts && startTime && endTime ? (
@@ -713,6 +746,7 @@ export function JobDetailPage() {
                   onAssignmentChange={handleAssignmentChange}
                   startTime={startTime}
                   endTime={endTime}
+                  readOnly={!canAssign}
                 />
               )
             )}
@@ -794,7 +828,7 @@ export function JobDetailPage() {
 
           <div className="flex items-center justify-between pt-4">
             <div>
-              {!isNew && (
+              {!isNew && canDeleteJob && (
                 <Button
                   type="button"
                   variant="danger"
@@ -844,7 +878,7 @@ export function JobDetailPage() {
         </form>
 
         {/* Outside the form: the approval dialog has its own form. */}
-        {!isNew && currentJob && (
+        {!isNew && currentJob && isOffice && (
           <div className="mt-6">
             <JobApprovalsSection job={currentJob} />
           </div>

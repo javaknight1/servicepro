@@ -34,6 +34,10 @@ import {
 import { formatDollars, toAmount } from '@/utils/money';
 import { isValidTimeZone } from '@/utils/epoch';
 import { cn } from '@utils/cn';
+import {
+  APP_PERMISSIONS,
+  useTenantPermissions,
+} from '@/utils/tenantPermissions';
 import { useInvoiceJob } from '@/hooks/useInvoiceJob';
 
 /** Completed jobs that have no invoice yet (creating one moves a job to "invoiced"). */
@@ -51,6 +55,8 @@ interface DashboardData {
   invoices: InvoiceStats | null;
   toInvoice: JobsToInvoice | null;
   aging: ARAgingBucketSummary[] | null;
+  /** A technician's own jobs, soonest first (T035; the API lists only theirs). */
+  myJobs: Job[] | null;
 }
 
 const emptyData: DashboardData = {
@@ -58,6 +64,7 @@ const emptyData: DashboardData = {
   invoices: null,
   toInvoice: null,
   aging: null,
+  myJobs: null,
 };
 
 const OVER_30_DAYS: AgingBucket[] = ['31-60', '61-90', '90+'];
@@ -122,6 +129,10 @@ export function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [tenantsChecked, setTenantsChecked] = useState(false);
   const dates = useDateFormatters(currentTenant?.settings?.timezone);
+  // Money (A/R, collections, invoicing) only for callers who may see it;
+  // technicians get their own jobs instead (T035).
+  const { can } = useTenantPermissions(currentTenant);
+  const seesMoney = can(APP_PERMISSIONS.invoicesRead);
   // "Invoice" on a completed job: the API drafts it, then it opens (T029).
   const {
     invoiceJob,
@@ -150,8 +161,26 @@ export function DashboardPage() {
     checkTenants();
   }, [loadTenants]);
 
-  const loadDashboardData = useCallback(async () => {
+  const loadDashboardData = useCallback(async (withMoney: boolean) => {
     setIsLoading(true);
+    if (!withMoney) {
+      const [jobStats, mine] = await Promise.allSettled([
+        jobService.getStats(),
+        jobService.getJobs({
+          page: 1,
+          page_size: JOBS_TO_INVOICE_SHOWN,
+          sort_by: 'scheduled_start_at',
+          sort_order: 'asc',
+        }),
+      ]);
+      setData({
+        ...emptyData,
+        jobs: jobStats.status === 'fulfilled' ? jobStats.value : null,
+        myJobs: mine.status === 'fulfilled' ? (mine.value.jobs ?? []) : null,
+      });
+      setIsLoading(false);
+      return;
+    }
     const [jobStats, invoiceStats, toInvoice, oldest, aging] =
       await Promise.allSettled([
         jobService.getStats(),
@@ -188,6 +217,7 @@ export function DashboardPage() {
             }
           : null,
       aging: aging.status === 'fulfilled' ? aging.value : null,
+      myJobs: null,
     });
     setIsLoading(false);
   }, []);
@@ -195,11 +225,11 @@ export function DashboardPage() {
   // Only load dashboard data if user has an organization
   useEffect(() => {
     if (currentTenant) {
-      loadDashboardData();
+      loadDashboardData(seesMoney);
     } else {
       setIsLoading(false);
     }
-  }, [currentTenant, loadDashboardData]);
+  }, [currentTenant, seesMoney, loadDashboardData]);
 
   // Show loading while checking tenants
   if (!tenantsChecked || tenantsLoading) {
@@ -281,7 +311,7 @@ export function DashboardPage() {
     );
   }
 
-  const { jobs, invoices, toInvoice, aging } = data;
+  const { jobs, invoices, toInvoice, aging, myJobs } = data;
   const firstName = user?.first_name?.trim() || user?.email?.split('@')[0];
   const loadingValue = '…';
 
@@ -305,12 +335,33 @@ export function DashboardPage() {
         : 'No open invoices';
   }
 
+  const canCreateJob = can(APP_PERMISSIONS.jobsCreate);
   const quickActions = [
-    { label: 'New quote', icon: FileText, to: '/quotes/new' },
-    { label: 'Create invoice', icon: Receipt, to: '/invoices/new' },
-    { label: 'Add customer', icon: Building2, to: '/customers/new' },
-    { label: 'New job', icon: Briefcase, to: '/jobs/new' },
-  ];
+    {
+      label: 'New quote',
+      icon: FileText,
+      to: '/quotes/new',
+      permission: APP_PERMISSIONS.quotesCreate,
+    },
+    {
+      label: 'Create invoice',
+      icon: Receipt,
+      to: '/invoices/new',
+      permission: APP_PERMISSIONS.invoicesCreate,
+    },
+    {
+      label: 'Add customer',
+      icon: Building2,
+      to: '/customers/new',
+      permission: APP_PERMISSIONS.customersCreate,
+    },
+    {
+      label: 'New job',
+      icon: Briefcase,
+      to: '/jobs/new',
+      permission: APP_PERMISSIONS.jobsCreate,
+    },
+  ].filter((action) => can(action.permission));
 
   const agingTotal = aging
     ? aging.reduce((sum, b) => sum + toAmount(b.total_amount), 0)
@@ -323,16 +374,22 @@ export function DashboardPage() {
       <div className="mx-auto max-w-[1440px] p-4 sm:p-6 lg:p-8">
         <PageHeader
           title={`Welcome back${firstName ? `, ${firstName}` : ''}`}
-          subtitle={`${dates.today}. Here's where your jobs and money stand.`}
+          subtitle={
+            seesMoney
+              ? `${dates.today}. Here's where your jobs and money stand.`
+              : `${dates.today}. Here are your jobs.`
+          }
           actions={
-            <Button
-              variant="primary"
-              onClick={() => navigate('/jobs/new')}
-              className="gap-2"
-            >
-              <Plus className="h-4 w-4" />
-              New job
-            </Button>
+            canCreateJob ? (
+              <Button
+                variant="primary"
+                onClick={() => navigate('/jobs/new')}
+                className="gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                New job
+              </Button>
+            ) : undefined
           }
         />
 
@@ -356,249 +413,319 @@ export function DashboardPage() {
           </div>
         )}
 
-        {/* KPI cards */}
-        <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4 lg:gap-6">
-          <StatsCard
-            label="Active jobs"
-            value={isLoading ? loadingValue : activeJobs}
-            icon={<Wrench className="h-6 w-6" />}
-            change={
-              jobs
-                ? `${jobs.scheduled_jobs} scheduled · ${jobs.in_progress_jobs} in progress`
-                : undefined
-            }
-          />
-          <StatsCard
-            label="Jobs needing invoice"
-            value={isLoading ? loadingValue : jobsToInvoiceCount}
-            icon={<Receipt className="h-6 w-6" />}
-            change={
-              toInvoice?.oldestDoneAt
-                ? `Oldest done ${dates.shortEpoch(toInvoice.oldestDoneAt)}`
-                : jobsToInvoiceCount === 0 && !isLoading
-                  ? 'All caught up'
-                  : undefined
-            }
-          />
-          <StatsCard
-            label="Outstanding A/R"
-            value={
-              isLoading
-                ? loadingValue
-                : formatDollars(invoices?.total_outstanding ?? 0, {
-                    wholeUnits: true,
-                  })
-            }
-            icon={<Hourglass className="h-6 w-6" />}
-            change={arSubline}
-            changeType={
-              (over30 ?? 0) > 0 || toAmount(invoices?.overdue_amount) > 0
-                ? 'negative'
-                : 'neutral'
-            }
-          />
-          <StatsCard
-            label={`Collected in ${dates.thisMonth}`}
-            value={
-              isLoading
-                ? loadingValue
-                : formatDollars(invoices?.collected_this_month ?? 0, {
-                    wholeUnits: true,
-                  })
-            }
-            icon={<HandCoins className="h-6 w-6" />}
-            change={`Payments since ${dates.thisMonth} 1`}
-          />
-        </div>
-
-        {invoiceError && (
-          <div
-            role="alert"
-            className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700"
-          >
-            {invoiceError}
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-          {/* Jobs needing invoice */}
-          <ListCard
-            className="lg:col-span-7"
-            title="Jobs needing invoice"
-            count={isLoading ? undefined : jobsToInvoiceCount}
-            action={{ label: 'View all', to: '/jobs' }}
-            bodyClassName="px-2 pb-2"
-            footer={
-              shownJobs.length > 0 ? (
-                <>
-                  <span className="text-sm text-neutral-600">
-                    {moreToInvoice > 0
-                      ? `${moreToInvoice} more ready to invoice`
-                      : 'Each job becomes its own invoice'}
-                  </span>
-                  <Link
-                    to="/invoices"
-                    className="text-sm font-medium text-primary-600 hover:text-primary-700"
-                  >
-                    Go to invoices
-                  </Link>
-                </>
-              ) : undefined
-            }
-          >
-            {isLoading ? (
-              <p className="px-4 py-8 text-center text-sm text-neutral-500">
-                Loading…
-              </p>
-            ) : shownJobs.length === 0 ? (
-              <div className="px-4 py-10 text-center">
-                <p className="font-medium text-neutral-900">
-                  Nothing waiting to be invoiced
+        {!seesMoney ? (
+          <>
+            <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:gap-6">
+              <StatsCard
+                label="Your active jobs"
+                value={isLoading ? loadingValue : activeJobs}
+                icon={<Wrench className="h-6 w-6" />}
+                change={
+                  jobs
+                    ? `${jobs.scheduled_jobs} scheduled · ${jobs.in_progress_jobs} in progress`
+                    : undefined
+                }
+              />
+              <StatsCard
+                label="Completed"
+                value={isLoading ? loadingValue : (jobs?.completed_jobs ?? 0)}
+                icon={<Briefcase className="h-6 w-6" />}
+              />
+            </div>
+            <ListCard
+              title="Your jobs"
+              count={isLoading ? undefined : myJobs?.length}
+              action={{ label: 'View all', to: '/jobs' }}
+              bodyClassName="px-2 pb-2"
+            >
+              {isLoading ? (
+                <p className="px-4 py-8 text-center text-sm text-neutral-500">
+                  Loading…
                 </p>
-                <p className="mt-1 text-sm text-neutral-500">
-                  Completed jobs show up here until they're invoiced.
-                </p>
-              </div>
-            ) : (
-              <ul className="space-y-1">
-                {shownJobs.map((job, i) => {
-                  const amount = jobAmount(job);
-                  const done = job.actual_end_at
-                    ? `done ${dates.shortEpoch(job.actual_end_at)}`
-                    : 'completed';
-                  return (
+              ) : !myJobs || myJobs.length === 0 ? (
+                <div className="px-4 py-10 text-center">
+                  <p className="font-medium text-neutral-900">
+                    No jobs assigned to you
+                  </p>
+                  <p className="mt-1 text-sm text-neutral-500">
+                    Jobs the office assigns to you show up here.
+                  </p>
+                </div>
+              ) : (
+                <ul className="space-y-1">
+                  {myJobs.map((job, i) => (
                     <ListCardRow
                       key={job.id}
                       className={cn(i % 2 === 0 && 'rounded-xl bg-neutral-50')}
                       to={`/jobs/${job.id}`}
                       reference={job.job_number}
                       title={customerName(job)}
-                      subtitle={`${job.title} · ${done}`}
-                      value={
-                        amount !== undefined ? formatDollars(amount) : null
-                      }
-                      trailing={
-                        // Agreement visits go on the consolidated invoice.
-                        job.agreement_id ? (
-                          <span className="mr-3 shrink-0 text-xs text-neutral-500">
-                            On agreement
-                          </span>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => invoiceJob(job.id)}
-                            disabled={invoicingJobId !== null}
-                            className="mr-3 shrink-0 rounded-lg border border-primary-600 px-3 py-1.5 text-sm font-medium text-primary-600 hover:bg-primary-50 disabled:opacity-60"
-                            aria-label={`Create invoice for ${job.job_number}`}
-                          >
-                            {invoicingJobId === job.id
-                              ? 'Invoicing…'
-                              : 'Invoice'}
-                          </button>
-                        )
+                      subtitle={
+                        job.scheduled_start_at
+                          ? `${job.title} · ${dates.shortEpoch(job.scheduled_start_at)}`
+                          : job.title
                       }
                     />
-                  );
-                })}
-              </ul>
-            )}
-          </ListCard>
+                  ))}
+                </ul>
+              )}
+            </ListCard>
+          </>
+        ) : (
+          <>
+            {/* KPI cards */}
+            <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4 lg:gap-6">
+              <StatsCard
+                label="Active jobs"
+                value={isLoading ? loadingValue : activeJobs}
+                icon={<Wrench className="h-6 w-6" />}
+                change={
+                  jobs
+                    ? `${jobs.scheduled_jobs} scheduled · ${jobs.in_progress_jobs} in progress`
+                    : undefined
+                }
+              />
+              <StatsCard
+                label="Jobs needing invoice"
+                value={isLoading ? loadingValue : jobsToInvoiceCount}
+                icon={<Receipt className="h-6 w-6" />}
+                change={
+                  toInvoice?.oldestDoneAt
+                    ? `Oldest done ${dates.shortEpoch(toInvoice.oldestDoneAt)}`
+                    : jobsToInvoiceCount === 0 && !isLoading
+                      ? 'All caught up'
+                      : undefined
+                }
+              />
+              <StatsCard
+                label="Outstanding A/R"
+                value={
+                  isLoading
+                    ? loadingValue
+                    : formatDollars(invoices?.total_outstanding ?? 0, {
+                        wholeUnits: true,
+                      })
+                }
+                icon={<Hourglass className="h-6 w-6" />}
+                change={arSubline}
+                changeType={
+                  (over30 ?? 0) > 0 || toAmount(invoices?.overdue_amount) > 0
+                    ? 'negative'
+                    : 'neutral'
+                }
+              />
+              <StatsCard
+                label={`Collected in ${dates.thisMonth}`}
+                value={
+                  isLoading
+                    ? loadingValue
+                    : formatDollars(invoices?.collected_this_month ?? 0, {
+                        wholeUnits: true,
+                      })
+                }
+                icon={<HandCoins className="h-6 w-6" />}
+                change={`Payments since ${dates.thisMonth} 1`}
+              />
+            </div>
 
-          <div className="flex flex-col gap-6 lg:col-span-5">
-            {/* A/R aging */}
-            <ListCard
-              title="A/R aging"
-              action={
-                <Link
-                  to="/reports/ar-aging"
-                  className="text-[15px] font-semibold text-neutral-900 tabular-nums hover:text-primary-700"
-                  title="Open the A/R aging report"
-                >
-                  {aging ? formatDollars(agingTotal, { wholeUnits: true }) : ''}
-                </Link>
-              }
-              bodyClassName="px-6 pb-6"
-            >
-              {isLoading ? (
-                <p className="py-6 text-center text-sm text-neutral-500">
-                  Loading…
-                </p>
-              ) : !aging ? (
-                <p className="py-6 text-center text-sm text-neutral-500">
-                  Aging isn't available right now.
-                </p>
-              ) : agingTotal <= 0 ? (
-                <p className="py-6 text-center text-sm text-neutral-500">
-                  No money owed right now.
-                </p>
-              ) : (
-                <>
-                  <div
-                    className="mb-4 flex h-3 gap-0.5 overflow-hidden rounded-full bg-neutral-100"
-                    role="img"
-                    aria-label="Outstanding balance by age"
-                  >
-                    {AGING_BUCKETS.map((bucket) => {
-                      const amount = sumBuckets(aging, [bucket]);
-                      if (amount <= 0) return null;
+            {invoiceError && (
+              <div
+                role="alert"
+                className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+              >
+                {invoiceError}
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+              {/* Jobs needing invoice */}
+              <ListCard
+                className="lg:col-span-7"
+                title="Jobs needing invoice"
+                count={isLoading ? undefined : jobsToInvoiceCount}
+                action={{ label: 'View all', to: '/jobs' }}
+                bodyClassName="px-2 pb-2"
+                footer={
+                  shownJobs.length > 0 ? (
+                    <>
+                      <span className="text-sm text-neutral-600">
+                        {moreToInvoice > 0
+                          ? `${moreToInvoice} more ready to invoice`
+                          : 'Each job becomes its own invoice'}
+                      </span>
+                      <Link
+                        to="/invoices"
+                        className="text-sm font-medium text-primary-600 hover:text-primary-700"
+                      >
+                        Go to invoices
+                      </Link>
+                    </>
+                  ) : undefined
+                }
+              >
+                {isLoading ? (
+                  <p className="px-4 py-8 text-center text-sm text-neutral-500">
+                    Loading…
+                  </p>
+                ) : shownJobs.length === 0 ? (
+                  <div className="px-4 py-10 text-center">
+                    <p className="font-medium text-neutral-900">
+                      Nothing waiting to be invoiced
+                    </p>
+                    <p className="mt-1 text-sm text-neutral-500">
+                      Completed jobs show up here until they're invoiced.
+                    </p>
+                  </div>
+                ) : (
+                  <ul className="space-y-1">
+                    {shownJobs.map((job, i) => {
+                      const amount = jobAmount(job);
+                      const done = job.actual_end_at
+                        ? `done ${dates.shortEpoch(job.actual_end_at)}`
+                        : 'completed';
                       return (
-                        <div
-                          key={bucket}
-                          className={AGING_BUCKET_STYLES[bucket].bar}
-                          style={{ width: `${(amount / agingTotal) * 100}%` }}
+                        <ListCardRow
+                          key={job.id}
+                          className={cn(
+                            i % 2 === 0 && 'rounded-xl bg-neutral-50'
+                          )}
+                          to={`/jobs/${job.id}`}
+                          reference={job.job_number}
+                          title={customerName(job)}
+                          subtitle={`${job.title} · ${done}`}
+                          value={
+                            amount !== undefined ? formatDollars(amount) : null
+                          }
+                          trailing={
+                            // Agreement visits go on the consolidated invoice.
+                            job.agreement_id ? (
+                              <span className="mr-3 shrink-0 text-xs text-neutral-500">
+                                On agreement
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => invoiceJob(job.id)}
+                                disabled={invoicingJobId !== null}
+                                className="mr-3 shrink-0 rounded-lg border border-primary-600 px-3 py-1.5 text-sm font-medium text-primary-600 hover:bg-primary-50 disabled:opacity-60"
+                                aria-label={`Create invoice for ${job.job_number}`}
+                              >
+                                {invoicingJobId === job.id
+                                  ? 'Invoicing…'
+                                  : 'Invoice'}
+                              </button>
+                            )
+                          }
                         />
                       );
                     })}
-                  </div>
-                  <ul className="space-y-2">
-                    {AGING_BUCKETS.map((bucket) => (
-                      <li
-                        key={bucket}
-                        className="flex items-center justify-between text-[15px]"
-                      >
-                        <span className="flex items-center gap-2.5 text-neutral-700">
-                          <span
-                            className={cn(
-                              'h-2.5 w-2.5 rounded-full',
-                              AGING_BUCKET_STYLES[bucket].bar
-                            )}
-                          />
-                          {AGING_BUCKET_STYLES[bucket].shortLabel}
-                        </span>
-                        <span className="font-medium text-neutral-900 tabular-nums">
-                          {formatDollars(sumBuckets(aging, [bucket]), {
-                            wholeUnits: true,
-                          })}
-                        </span>
-                      </li>
-                    ))}
                   </ul>
-                </>
-              )}
-            </ListCard>
+                )}
+              </ListCard>
 
-            {/* Quick actions */}
-            <ListCard title="Quick actions" bodyClassName="px-6 pb-6">
-              <div className="grid grid-cols-2 gap-3">
-                {quickActions.map((action) => {
-                  const Icon = action.icon;
-                  return (
+              <div className="flex flex-col gap-6 lg:col-span-5">
+                {/* A/R aging */}
+                <ListCard
+                  title="A/R aging"
+                  action={
                     <Link
-                      key={action.label}
-                      to={action.to}
-                      className="flex items-center gap-3 rounded-xl border border-neutral-200 px-3 py-3 text-[15px] text-neutral-800 transition-colors hover:border-primary-300 hover:bg-primary-50"
+                      to="/reports/ar-aging"
+                      className="text-[15px] font-semibold text-neutral-900 tabular-nums hover:text-primary-700"
+                      title="Open the A/R aging report"
                     >
-                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary-50 text-primary-600">
-                        <Icon className="h-4 w-4" />
-                      </span>
-                      <span className="truncate">{action.label}</span>
+                      {aging
+                        ? formatDollars(agingTotal, { wholeUnits: true })
+                        : ''}
                     </Link>
-                  );
-                })}
+                  }
+                  bodyClassName="px-6 pb-6"
+                >
+                  {isLoading ? (
+                    <p className="py-6 text-center text-sm text-neutral-500">
+                      Loading…
+                    </p>
+                  ) : !aging ? (
+                    <p className="py-6 text-center text-sm text-neutral-500">
+                      Aging isn't available right now.
+                    </p>
+                  ) : agingTotal <= 0 ? (
+                    <p className="py-6 text-center text-sm text-neutral-500">
+                      No money owed right now.
+                    </p>
+                  ) : (
+                    <>
+                      <div
+                        className="mb-4 flex h-3 gap-0.5 overflow-hidden rounded-full bg-neutral-100"
+                        role="img"
+                        aria-label="Outstanding balance by age"
+                      >
+                        {AGING_BUCKETS.map((bucket) => {
+                          const amount = sumBuckets(aging, [bucket]);
+                          if (amount <= 0) return null;
+                          return (
+                            <div
+                              key={bucket}
+                              className={AGING_BUCKET_STYLES[bucket].bar}
+                              style={{
+                                width: `${(amount / agingTotal) * 100}%`,
+                              }}
+                            />
+                          );
+                        })}
+                      </div>
+                      <ul className="space-y-2">
+                        {AGING_BUCKETS.map((bucket) => (
+                          <li
+                            key={bucket}
+                            className="flex items-center justify-between text-[15px]"
+                          >
+                            <span className="flex items-center gap-2.5 text-neutral-700">
+                              <span
+                                className={cn(
+                                  'h-2.5 w-2.5 rounded-full',
+                                  AGING_BUCKET_STYLES[bucket].bar
+                                )}
+                              />
+                              {AGING_BUCKET_STYLES[bucket].shortLabel}
+                            </span>
+                            <span className="font-medium text-neutral-900 tabular-nums">
+                              {formatDollars(sumBuckets(aging, [bucket]), {
+                                wholeUnits: true,
+                              })}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+                </ListCard>
+
+                {/* Quick actions */}
+                {quickActions.length > 0 && (
+                  <ListCard title="Quick actions" bodyClassName="px-6 pb-6">
+                    <div className="grid grid-cols-2 gap-3">
+                      {quickActions.map((action) => {
+                        const Icon = action.icon;
+                        return (
+                          <Link
+                            key={action.label}
+                            to={action.to}
+                            className="flex items-center gap-3 rounded-xl border border-neutral-200 px-3 py-3 text-[15px] text-neutral-800 transition-colors hover:border-primary-300 hover:bg-primary-50"
+                          >
+                            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary-50 text-primary-600">
+                              <Icon className="h-4 w-4" />
+                            </span>
+                            <span className="truncate">{action.label}</span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </ListCard>
+                )}
               </div>
-            </ListCard>
-          </div>
-        </div>
+            </div>
+          </>
+        )}
       </div>
     </DashboardLayout>
   );

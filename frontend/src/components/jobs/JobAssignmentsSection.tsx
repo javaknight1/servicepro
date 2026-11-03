@@ -11,6 +11,8 @@ interface JobAssignmentsSectionProps {
   onAssignmentChange: () => void;
   startTime?: number | null;
   endTime?: number | null;
+  /** List only, without add/remove (callers without jobs.assign, T035). */
+  readOnly?: boolean;
 }
 
 const roleLabels: Record<string, string> = {
@@ -26,6 +28,7 @@ export function JobAssignmentsSection({
   onAssignmentChange,
   startTime,
   endTime,
+  readOnly = false,
 }: JobAssignmentsSectionProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
@@ -56,16 +59,18 @@ export function JobAssignmentsSection({
         <h2 className="text-lg font-semibold text-neutral-900">
           Assigned Members
         </h2>
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          onClick={() => setIsModalOpen(true)}
-          className="flex items-center gap-2"
-        >
-          <UserPlus className="h-4 w-4" />
-          Add Member
-        </Button>
+        {!readOnly && (
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={() => setIsModalOpen(true)}
+            className="flex items-center gap-2"
+          >
+            <UserPlus className="h-4 w-4" />
+            Add Member
+          </Button>
+        )}
       </div>
 
       {error && (
@@ -78,9 +83,11 @@ export function JobAssignmentsSection({
         <div className="text-center py-8 text-neutral-500">
           <Users className="h-12 w-12 mx-auto mb-3 text-neutral-300" />
           <p>No team members assigned to this job yet.</p>
-          <p className="text-sm mt-1">
-            Click "Add Member" to assign someone to this job.
-          </p>
+          {!readOnly && (
+            <p className="text-sm mt-1">
+              Click "Add Member" to assign someone to this job.
+            </p>
+          )}
         </div>
       ) : (
         <ul className="divide-y divide-neutral-200">
@@ -97,19 +104,21 @@ export function JobAssignmentsSection({
                   {roleLabels[assignment.role] || assignment.role}
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => handleRemove(assignment.user_id)}
-                disabled={removingId === assignment.user_id}
-                className="p-2 text-neutral-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
-                title="Remove assignment"
-              >
-                {removingId === assignment.user_id ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <X className="h-4 w-4" />
-                )}
-              </button>
+              {!readOnly && (
+                <button
+                  type="button"
+                  onClick={() => handleRemove(assignment.user_id)}
+                  disabled={removingId === assignment.user_id}
+                  className="p-2 text-neutral-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                  title="Remove assignment"
+                >
+                  {removingId === assignment.user_id ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <X className="h-4 w-4" />
+                  )}
+                </button>
+              )}
             </li>
           ))}
         </ul>

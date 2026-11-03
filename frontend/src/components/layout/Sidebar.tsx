@@ -7,6 +7,11 @@ import { useMembershipStore } from '@store/membershipStore';
 import type { TenantMembership } from '@/types/membership';
 import { TenantSwitcher } from '@components/tenants';
 import {
+  APP_PERMISSIONS,
+  TENANT_PERMISSIONS,
+  useTenantPermissions,
+} from '@/utils/tenantPermissions';
+import {
   LayoutGrid,
   Building2,
   Briefcase,
@@ -34,6 +39,11 @@ interface NavItem {
   /** Path prefixes that also make this item active (e.g. detail pages). */
   match?: string[];
   children?: NavChild[];
+  /**
+   * Shown only to callers with this permission in the current organization
+   * (GET /tenants/:id/me). Technicians (T035) see Dashboard and Jobs only.
+   */
+  permission?: string;
 }
 
 /*
@@ -54,21 +64,42 @@ const orgNavItems: NavItem[] = [
     path: '/customers',
     icon: Building2,
     match: ['/customers'],
+    permission: APP_PERMISSIONS.customersList,
   },
   {
     label: 'Agreements',
     path: '/agreements',
     icon: FilePenLine,
     match: ['/agreements'],
+    permission: APP_PERMISSIONS.jobsViewAll,
   },
-  { label: 'Jobs', path: '/jobs', icon: Briefcase, match: ['/jobs'] },
-  { label: 'Quotes', path: '/quotes', icon: FileText, match: ['/quotes'] },
-  { label: 'Invoices', path: '/invoices', icon: Receipt, match: ['/invoices'] },
+  {
+    label: 'Jobs',
+    path: '/jobs',
+    icon: Briefcase,
+    match: ['/jobs'],
+    permission: APP_PERMISSIONS.jobsList,
+  },
+  {
+    label: 'Quotes',
+    path: '/quotes',
+    icon: FileText,
+    match: ['/quotes'],
+    permission: APP_PERMISSIONS.quotesList,
+  },
+  {
+    label: 'Invoices',
+    path: '/invoices',
+    icon: Receipt,
+    match: ['/invoices'],
+    permission: APP_PERMISSIONS.invoicesList,
+  },
   {
     label: 'Payments',
     path: '/settings/payments',
     icon: CreditCard,
     match: ['/settings/payments'],
+    permission: TENANT_PERMISSIONS.membershipBilling,
   },
   {
     label: 'Reports',
@@ -77,14 +108,22 @@ const orgNavItems: NavItem[] = [
       { label: 'A/R aging', path: '/reports/ar-aging' },
       { label: 'Revenue', path: '/reports/revenue' },
     ],
+    permission: APP_PERMISSIONS.reportsView,
   },
-  { label: 'Team', path: '/team/members', icon: UserCog, match: ['/team'] },
+  {
+    label: 'Team',
+    path: '/team/members',
+    icon: UserCog,
+    match: ['/team'],
+    permission: APP_PERMISSIONS.tenantsRead,
+  },
   // Organization settings; account settings live in the profile menu.
   {
     label: 'Settings',
     path: '/settings/organization',
     icon: Settings,
     match: ['/settings/organization'],
+    permission: APP_PERMISSIONS.tenantsRead,
   },
 ];
 
@@ -238,9 +277,15 @@ export function Sidebar() {
   const { isCollapsed, isMobileOpen, toggleCollapsed, setMobileOpen } =
     useSidebarStore();
   const { currentTenant, tenants } = useTenantStore();
+  const { can } = useTenantPermissions(currentTenant);
   const hasOrganizations = tenants.length > 0;
 
-  const navItems = [...baseNavItems, ...(currentTenant ? orgNavItems : [])];
+  const navItems = [
+    ...baseNavItems,
+    ...(currentTenant
+      ? orgNavItems.filter((item) => !item.permission || can(item.permission))
+      : []),
+  ];
   // The drawer always shows labels, even when the desktop rail is collapsed.
   const collapsed = isCollapsed && !isMobileOpen;
   const closeDrawer = () => {

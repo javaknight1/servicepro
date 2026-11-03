@@ -9,7 +9,7 @@
  * - Job completion workflow
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   render as rtlRender,
   screen,
@@ -82,7 +82,8 @@ vi.mock('@services/customerService', () => ({
 }));
 
 // Tenant permissions come from GET /tenants/:id/me; the tests set them.
-vi.mock('@/utils/tenantPermissions', () => ({
+vi.mock('@/utils/tenantPermissions', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/utils/tenantPermissions')>()),
   useTenantPermissions: vi.fn(),
 }));
 
@@ -115,7 +116,19 @@ import { customerService } from '@services/customerService';
 import { siteService, type Site } from '@services/siteService';
 import { useTenantPermissions } from '@/utils/tenantPermissions';
 
-let grantedPermissions = new Set<string>(['invoices.create']);
+/** Office staff by default (T035 gates the job pages on these). */
+const OFFICE_PERMISSIONS = new Set<string>([
+  'invoices.create',
+  'invoices.read',
+  'customers.list',
+  'customers.read',
+  'jobs.list',
+  'jobs.create',
+  'jobs.delete',
+  'jobs.assign',
+  'jobs.view_all',
+]);
+let grantedPermissions = new Set<string>(OFFICE_PERMISSIONS);
 
 // =============================================================================
 // Test Data
@@ -130,7 +143,13 @@ const mockUser = {
   email_verified: true,
 };
 
-const mockTenant = {
+const mockTenant: {
+  id: string;
+  name: string;
+  slug: string;
+  is_active: boolean;
+  role?: string;
+} = {
   id: 'tenant-123',
   name: 'Test Organization',
   slug: 'test-org',
@@ -264,7 +283,7 @@ vi.mock('react-router', async () => {
 });
 
 const setupMocks = () => {
-  grantedPermissions = new Set<string>(['invoices.create']);
+  grantedPermissions = new Set<string>(OFFICE_PERMISSIONS);
   vi.mocked(useTenantPermissions).mockImplementation(() => ({
     can: (permission: string) => grantedPermissions.has(permission),
     canManageMembers: false,
@@ -1413,5 +1432,123 @@ describe('Job Lifecycle Integration', () => {
         screen.queryByRole('button', { name: /generate invoice/i })
       ).toBeNull();
     });
+  });
+});
+
+// =============================================================================
+// Technicians (T035): their assigned jobs, no money, no dispatch tools
+// =============================================================================
+
+describe('Job pages for technicians (T035)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setupMocks();
+    mockTenant.role = 'technician';
+    grantedPermissions = new Set<string>([
+      'jobs.read',
+      'jobs.list',
+      'jobs.update',
+    ]);
+  });
+
+  afterEach(() => {
+    mockTenant.role = undefined;
+  });
+
+  it('lists jobs without New job or Repeat Job', async () => {
+    const { JobsPage } = await import('../../src/pages/Jobs/JobsPage');
+    render(
+      <MemoryRouter initialEntries={['/jobs']}>
+        <JobsPage />
+      </MemoryRouter>
+    );
+    await waitFor(() => expect(jobService.getJobs).toHaveBeenCalled());
+    expect(
+      screen.queryByRole('button', { name: /new job/i })
+    ).not.toBeInTheDocument();
+  });
+
+  it('works an assigned job: no price, customer list, delete or approvals', async () => {
+    vi.mocked(jobService.getJob).mockResolvedValue({
+      ...mockJobs[0],
+      scheduled_start_at: undefined,
+      estimated_cost: 0,
+    } as unknown as Awaited<ReturnType<typeof jobService.getJob>>);
+    vi.mocked(jobService.updateJob).mockResolvedValue(
+      mockJobs[0] as unknown as Awaited<ReturnType<typeof jobService.updateJob>>
+    );
+    const { JobDetailPage } =
+      await import('../../src/pages/Jobs/JobDetailPage');
+    render(
+      <MemoryRouter initialEntries={['/jobs/job-1']}>
+        <Routes>
+          <Route path="/jobs/:id" element={<JobDetailPage />} />
+          <Route path="/jobs" element={<div>Jobs</div>} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() =>
+      expect(screen.getByLabelText(/title/i)).toHaveValue(mockJobs[0].title)
+    );
+    // The job's own customer, read-only; the customer list isn't requested.
+    expect(
+      await screen.findByRole('option', { name: /John Doe/i })
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText(/customer/i)).toBeDisabled();
+    expect(customerService.getCustomers).not.toHaveBeenCalled();
+    expect(siteService.list).not.toHaveBeenCalled();
+
+    expect(screen.queryByLabelText(/est\. cost/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /delete job/i })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /add member/i })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('region', { name: 'Approvals' })
+    ).not.toBeInTheDocument();
+    expect(jobService.getApprovals).not.toHaveBeenCalled();
+
+    fireEvent.submit(screen.getByLabelText(/title/i).closest('form')!);
+    await waitFor(() => expect(jobService.updateJob).toHaveBeenCalled());
+    const payload = vi.mocked(jobService.updateJob).mock.calls[0][1];
+    expect(payload.estimated_cost).toBeUndefined();
+  });
+
+  it('shows no Generate invoice or View invoice card', async () => {
+    const { JobDetailPage } =
+      await import('../../src/pages/Jobs/JobDetailPage');
+    for (const job of [
+      { ...mockJobs[0], status: 'completed', estimated_cost: 0 },
+      {
+        ...mockJobs[0],
+        status: 'invoiced',
+        estimated_cost: 0,
+        invoice_id: 'inv-1',
+      },
+    ]) {
+      vi.mocked(jobService.getJob).mockResolvedValue(
+        job as unknown as Awaited<ReturnType<typeof jobService.getJob>>
+      );
+      const { unmount } = render(
+        <MemoryRouter initialEntries={['/jobs/job-1']}>
+          <Routes>
+            <Route path="/jobs/:id" element={<JobDetailPage />} />
+          </Routes>
+        </MemoryRouter>
+      );
+      await waitFor(() =>
+        expect(screen.getByLabelText(/title/i)).toHaveValue(mockJobs[0].title)
+      );
+      expect(
+        screen.queryByRole('button', { name: /generate invoice/i })
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: /view invoice/i })
+      ).not.toBeInTheDocument();
+      unmount();
+    }
   });
 });

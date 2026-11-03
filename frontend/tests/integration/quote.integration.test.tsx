@@ -47,7 +47,8 @@ vi.mock('@services/customerService', () => ({
 }));
 
 // Tenant permissions come from GET /tenants/:id/me; the tests set them.
-vi.mock('@/utils/tenantPermissions', () => ({
+vi.mock('@/utils/tenantPermissions', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/utils/tenantPermissions')>()),
   useTenantPermissions: vi.fn(),
 }));
 

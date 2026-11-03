@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import type { Tenant } from '@/types/tenant';
 import type { JobStats } from '@app-types/job';
@@ -53,10 +54,14 @@ vi.mock('@services/invoiceService', () => ({
 vi.mock('@services/arAgingService', () => ({
   arAgingService: { getBucketSummary: vi.fn() },
 }));
+vi.mock('@services/tenantService', () => ({
+  tenantApi: { getMyAccess: vi.fn() },
+}));
 
 import { jobService, JobStatus } from '@services/jobService';
 import { invoiceService } from '@services/invoiceService';
 import { arAgingService } from '@services/arAgingService';
+import { tenantApi } from '@services/tenantService';
 import { DashboardPage } from '../DashboardPage';
 
 const jobStats: JobStats = {
@@ -132,13 +137,31 @@ const card = (label: string) => {
 
 const renderPage = () =>
   render(
-    <MemoryRouter initialEntries={['/dashboard']}>
-      <Routes>
-        <Route path="/dashboard" element={<DashboardPage />} />
-        <Route path="/invoices/:id" element={<p>Invoice page</p>} />
-      </Routes>
-    </MemoryRouter>
+    <QueryClientProvider
+      client={
+        new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      }
+    >
+      <MemoryRouter initialEntries={['/dashboard']}>
+        <Routes>
+          <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/invoices/:id" element={<p>Invoice page</p>} />
+        </Routes>
+      </MemoryRouter>
+    </QueryClientProvider>
   );
+
+/** GET /tenants/:id/me answers with these permissions. */
+const grant = (role: string, permissions: string[]) =>
+  vi.mocked(tenantApi.getMyAccess).mockResolvedValue({
+    data: {
+      tenant_id: 'tenant-1',
+      role_id: `r-${role}`,
+      role,
+      role_level: 30,
+      permissions,
+    },
+  } as unknown as Awaited<ReturnType<typeof tenantApi.getMyAccess>>);
 
 describe('DashboardPage (T269)', () => {
   beforeEach(() => {
@@ -147,6 +170,8 @@ describe('DashboardPage (T269)', () => {
     vi.mocked(invoiceService.getStats).mockResolvedValue(invoiceStats);
     vi.mocked(arAgingService.getBucketSummary).mockResolvedValue(aging);
     vi.mocked(jobService.getJobs).mockResolvedValue(list([completedJob], 7));
+    // The permission list stays loading: the office fallback applies.
+    vi.mocked(tenantApi.getMyAccess).mockReturnValue(new Promise(() => {}));
   });
 
   // T235: an owner who left the onboarding wizard can pick it up again.
@@ -302,5 +327,59 @@ describe('DashboardPage (T269)', () => {
     expect(
       await screen.findByText('Nothing waiting to be invoiced')
     ).toBeInTheDocument();
+  });
+});
+
+describe('DashboardPage for technicians (T035)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(jobService.getStats).mockResolvedValue(jobStats);
+    vi.mocked(jobService.getJobs).mockResolvedValue(
+      list(
+        [
+          {
+            ...completedJob,
+            status: JobStatus.SCHEDULED,
+            estimated_cost: 0,
+          } as Job,
+        ],
+        1
+      )
+    );
+    tenant.role = 'technician';
+    grant('technician', ['jobs.read', 'jobs.list', 'jobs.update']);
+  });
+
+  it('shows their jobs and no money cards, invoice buttons or money requests', async () => {
+    try {
+      renderPage();
+      expect(await screen.findByText('Your jobs')).toBeInTheDocument();
+      expect(await screen.findByText('Polaris Pet Clinic')).toBeInTheDocument();
+      expect(card('Your active jobs')).toHaveTextContent('6');
+
+      for (const label of [
+        'Outstanding A/R',
+        'Jobs needing invoice',
+        'A/R aging',
+        'Quick actions',
+      ]) {
+        expect(screen.queryByText(label)).not.toBeInTheDocument();
+      }
+      expect(screen.queryByText(/^Collected in /)).not.toBeInTheDocument();
+      expect(screen.queryByText(/\$/)).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: /new job/i })
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: /create invoice/i })
+      ).not.toBeInTheDocument();
+      expect(invoiceService.getStats).not.toHaveBeenCalled();
+      expect(arAgingService.getBucketSummary).not.toHaveBeenCalled();
+      expect(jobService.getJobs).not.toHaveBeenCalledWith(
+        expect.objectContaining({ status: JobStatus.COMPLETED })
+      );
+    } finally {
+      tenant.role = undefined;
+    }
   });
 });

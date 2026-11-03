@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Sidebar } from '../Sidebar';
 import { useTenantStore } from '@store/tenantStore';
 import { useMembershipStore } from '@store/membershipStore';
@@ -11,6 +12,12 @@ import type { TenantMembership } from '@/types/membership';
 vi.mock('@components/tenants', () => ({
   TenantSwitcher: () => <div>Tenant switcher</div>,
 }));
+
+vi.mock('@services/tenantService', () => ({
+  tenantApi: { getMyAccess: vi.fn() },
+}));
+
+import { tenantApi } from '@services/tenantService';
 
 const tenant: Tenant = {
   id: 'tenant-1',
@@ -27,15 +34,42 @@ const teamPlan = {
   tier: { display_name: 'Team', features: { team_members: -1 } },
 } as unknown as TenantMembership;
 
+/** GET /tenants/:id/me answers with these permissions. */
+const grant = (role: string, permissions: string[]) =>
+  vi.mocked(tenantApi.getMyAccess).mockResolvedValue({
+    data: {
+      tenant_id: 'tenant-1',
+      role_id: `r-${role}`,
+      role,
+      role_level: 30,
+      permissions,
+    },
+  } as unknown as Awaited<ReturnType<typeof tenantApi.getMyAccess>>);
+
 const renderAt = (path: string) =>
   render(
-    <MemoryRouter initialEntries={[path]}>
-      <Sidebar />
-    </MemoryRouter>
+    <QueryClientProvider
+      client={
+        new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      }
+    >
+      <MemoryRouter initialEntries={[path]}>
+        <Sidebar />
+      </MemoryRouter>
+    </QueryClientProvider>
   );
+
+const linkLabels = () =>
+  screen
+    .getAllByRole('link')
+    .map((a) => a.textContent)
+    .filter((t) => t !== 'ServicePro');
 
 describe('Sidebar (T269)', () => {
   beforeEach(() => {
+    vi.clearAllMocks();
+    // The permission list never arrives: the loading fallback applies.
+    vi.mocked(tenantApi.getMyAccess).mockReturnValue(new Promise(() => {}));
     useSidebarStore.setState({ isCollapsed: false, isMobileOpen: false });
     useTenantStore.setState({ currentTenant: tenant, tenants: [tenant] });
     useMembershipStore.setState({
@@ -46,11 +80,7 @@ describe('Sidebar (T269)', () => {
 
   it('lists the built modules in the mockup order', () => {
     renderAt('/dashboard');
-    const labels = screen
-      .getAllByRole('link')
-      .map((a) => a.textContent)
-      .filter((t) => t !== 'ServicePro');
-    expect(labels).toEqual([
+    expect(linkLabels()).toEqual([
       'Dashboard',
       'Customers & Sites',
       'Agreements',
@@ -93,5 +123,50 @@ describe('Sidebar (T269)', () => {
     expect(screen.getByRole('link', { name: 'Dashboard' })).toBeInTheDocument();
     expect(screen.queryByText('Invoices')).not.toBeInTheDocument();
     expect(screen.queryByText('Team plan')).not.toBeInTheDocument();
+  });
+});
+
+describe('Sidebar for technicians (T035)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    useSidebarStore.setState({ isCollapsed: false, isMobileOpen: false });
+    useMembershipStore.setState({
+      currentMembership: null,
+      loadMembership: vi.fn().mockResolvedValue(undefined),
+    });
+  });
+
+  it('shows only Dashboard and Jobs from the permission list', async () => {
+    const tech = { ...tenant, role: 'technician' };
+    useTenantStore.setState({ currentTenant: tech, tenants: [tech] });
+    grant('technician', ['jobs.read', 'jobs.list', 'jobs.update']);
+    renderAt('/dashboard');
+
+    await waitFor(() => expect(tenantApi.getMyAccess).toHaveBeenCalled());
+    expect(linkLabels()).toEqual(['Dashboard', 'Jobs']);
+    expect(
+      screen.queryByRole('button', { name: /Reports/ })
+    ).not.toBeInTheDocument();
+  });
+
+  it('never flashes money or admin items while the list loads', () => {
+    vi.mocked(tenantApi.getMyAccess).mockReturnValue(new Promise(() => {}));
+    const tech = { ...tenant, role: 'technician' };
+    useTenantStore.setState({ currentTenant: tech, tenants: [tech] });
+    renderAt('/dashboard');
+
+    expect(linkLabels()).toEqual(['Dashboard', 'Jobs']);
+  });
+
+  it('follows the permission list, not the role name', async () => {
+    // A custom role that may see invoices but not reports or the team.
+    const custom = { ...tenant, role: 'billing_clerk' };
+    useTenantStore.setState({ currentTenant: custom, tenants: [custom] });
+    grant('billing_clerk', ['jobs.list', 'invoices.list', 'invoices.read']);
+    renderAt('/dashboard');
+
+    await waitFor(() =>
+      expect(linkLabels()).toEqual(['Dashboard', 'Jobs', 'Invoices'])
+    );
   });
 });

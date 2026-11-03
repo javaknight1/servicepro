@@ -18,10 +18,21 @@ import { Briefcase, Plus, Search, Info, CalendarDays } from 'lucide-react';
 import { getJobStatusLabel, getJobPriorityLabel } from '@app-types';
 import { formatEpochDateTime } from '@/utils/epoch';
 import { useTenantTimezone } from '@/hooks/useTenantTimezone';
+import { useTenantStore } from '@store';
+import {
+  APP_PERMISSIONS,
+  useTenantPermissions,
+} from '@/utils/tenantPermissions';
 
 export function JobsPage() {
   const navigate = useNavigate();
   const timeZone = useTenantTimezone();
+  // Technicians see their assigned jobs (the API filters) and can't create
+  // jobs (T035).
+  const { currentTenant } = useTenantStore();
+  const canCreateJob = useTenantPermissions(currentTenant).can(
+    APP_PERMISSIONS.jobsCreate
+  );
   const [jobs, setJobs] = useState<Job[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -165,7 +176,9 @@ export function JobsPage() {
     {
       key: 'actions',
       header: '',
-      render: (_, row) => <JobActionsMenu jobId={row.id} />,
+      render: (_, row) => (
+        <JobActionsMenu jobId={row.id} canRepeat={canCreateJob} />
+      ),
     },
   ];
 
@@ -194,14 +207,16 @@ export function JobsPage() {
                 <CalendarDays className="h-4 w-4" />
                 Calendar
               </Button>
-              <Button
-                variant="primary"
-                onClick={() => navigate('/jobs/new')}
-                className="gap-2"
-              >
-                <Plus className="h-4 w-4" />
-                New job
-              </Button>
+              {canCreateJob && (
+                <Button
+                  variant="primary"
+                  onClick={() => navigate('/jobs/new')}
+                  className="gap-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  New job
+                </Button>
+              )}
             </>
           }
         />
@@ -229,11 +244,16 @@ export function JobsPage() {
           <EmptyState
             icon={<Briefcase className="h-12 w-12" />}
             title="No jobs yet"
-            description="Create your first job to get started"
-            action={{
-              label: 'New job',
-              onClick: () => navigate('/jobs/new'),
-            }}
+            description={
+              canCreateJob
+                ? 'Create your first job to get started'
+                : 'Jobs assigned to you show up here'
+            }
+            action={
+              canCreateJob
+                ? { label: 'New job', onClick: () => navigate('/jobs/new') }
+                : undefined
+            }
           />
         ) : (
           <DataTable

@@ -4,9 +4,14 @@ import { DropdownMenu, DropdownMenuItem } from '../shared/DropdownMenu';
 
 interface JobActionsMenuProps {
   jobId: string;
+  /** Offer "Repeat Job" (needs jobs.create; technicians can't, T035). */
+  canRepeat?: boolean;
 }
 
-export function JobActionsMenu({ jobId }: JobActionsMenuProps) {
+export function JobActionsMenu({
+  jobId,
+  canRepeat = true,
+}: JobActionsMenuProps) {
   const navigate = useNavigate();
 
   const handleViewHistory = (e: React.MouseEvent, close: () => void) => {
@@ -25,11 +30,13 @@ export function JobActionsMenu({ jobId }: JobActionsMenuProps) {
     <DropdownMenu buttonLabel="Job actions">
       {(close) => (
         <>
-          <DropdownMenuItem
-            onClick={(e) => handleRepeatJob(e, close)}
-            icon={<Copy className="h-4 w-4" />}
-            label="Repeat Job"
-          />
+          {canRepeat && (
+            <DropdownMenuItem
+              onClick={(e) => handleRepeatJob(e, close)}
+              icon={<Copy className="h-4 w-4" />}
+              label="Repeat Job"
+            />
+          )}
           <DropdownMenuItem
             onClick={(e) => handleViewHistory(e, close)}
             icon={<History className="h-4 w-4" />}

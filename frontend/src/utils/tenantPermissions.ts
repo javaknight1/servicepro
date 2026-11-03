@@ -32,6 +32,32 @@ export const TENANT_PERMISSIONS = {
   manageTaxRates: 'tax_rates.manage',
 } as const;
 
+/**
+ * Permission names the app's areas gate on (T035). Technicians hold only the
+ * job ones (their assigned jobs); everything about money, customers, reports
+ * and the team stays hidden from them.
+ */
+export const APP_PERMISSIONS = {
+  customersList: 'customers.list',
+  customersRead: 'customers.read',
+  customersCreate: 'customers.create',
+  /** Every job (office staff); without it the API returns assigned jobs only. */
+  jobsViewAll: 'jobs.view_all',
+  jobsList: 'jobs.list',
+  jobsCreate: 'jobs.create',
+  jobsDelete: 'jobs.delete',
+  jobsAssign: 'jobs.assign',
+  quotesList: 'quotes.list',
+  quotesCreate: 'quotes.create',
+  invoicesList: 'invoices.list',
+  /** Seeing money at all: prices, costs, balances, billing rules. */
+  invoicesRead: 'invoices.read',
+  invoicesCreate: 'invoices.create',
+  reportsView: 'reports.view',
+  /** Team list and organization settings. */
+  tenantsRead: 'tenants.read',
+} as const;
+
 /** Permissions the loading fallback may grant from the role name. */
 const ROLE_FALLBACK_PERMISSIONS: ReadonlySet<string> = new Set([
   TENANT_PERMISSIONS.manageMembers,
@@ -45,7 +71,20 @@ const ROLES_WITHOUT_MANAGE: ReadonlySet<string> = new Set([
   'manager',
   'user',
   'guest',
+  'technician',
 ]);
+
+/**
+ * Office permissions the loading fallback grants every role except
+ * technicians, so office staff don't see their navigation flicker while the
+ * list loads and technicians never see money or admin areas flash by.
+ */
+const OFFICE_FALLBACK_PERMISSIONS: ReadonlySet<string> = new Set(
+  Object.values(APP_PERMISSIONS).filter((p) => p !== APP_PERMISSIONS.jobsList)
+);
+
+/** The built-in field role (T035): assigned jobs only, no money. */
+const FIELD_ROLE = 'technician';
 
 function normalizeRole(role: string | null | undefined): string | null {
   const value = role?.trim().toLowerCase();
@@ -62,8 +101,10 @@ export function hasTenantPermission(
   role?: string | null
 ): boolean {
   if (access) return access.permissions.includes(permission);
-  if (!ROLE_FALLBACK_PERMISSIONS.has(permission)) return false;
   const name = normalizeRole(role);
+  if (permission === APP_PERMISSIONS.jobsList) return true;
+  if (OFFICE_FALLBACK_PERMISSIONS.has(permission)) return name !== FIELD_ROLE;
+  if (!ROLE_FALLBACK_PERMISSIONS.has(permission)) return false;
   return name === null || !ROLES_WITHOUT_MANAGE.has(name);
 }
 
