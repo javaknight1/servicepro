@@ -14,7 +14,7 @@ import (
 	"github.com/javaknight1/servicepro/backend/internal/tenancy"
 )
 
-// T187 on real Postgres (migration 000019): PO numbers on quotes and
+// T187 on real Postgres (migration 000018): PO numbers on quotes and
 // agreements flow to their jobs, and invoices use the most specific PO.
 
 func TestPostgres_PONumber_QuoteToJobToInvoice(t *testing.T) {

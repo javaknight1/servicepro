@@ -15,7 +15,7 @@ import (
 	"github.com/javaknight1/servicepro/backend/internal/repository"
 )
 
-// T187 on real Postgres (migration 000019): customer purchase orders with an
+// T187 on real Postgres (migration 000018): customer purchase orders with an
 // amount, balances across issued invoices, and the send-time guard.
 
 func newPOService(db *gorm.DB) *PurchaseOrderService {

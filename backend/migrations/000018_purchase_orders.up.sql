@@ -1,4 +1,4 @@
--- 000019_purchase_orders (T187)
+-- 000018_purchase_orders (T187)
 -- PO numbers on quotes, service agreements and jobs, and tracked purchase
 -- orders with an authorised amount.
 --
