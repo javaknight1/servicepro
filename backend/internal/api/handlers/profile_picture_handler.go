@@ -172,3 +172,39 @@ func (h *ProfilePictureHandler) DeleteProfilePicture(c *gin.Context) {
 		"message": "Profile picture deleted successfully",
 	})
 }
+
+// GetProfilePicture handles GET /api/v1/users/{id}/profile-picture
+// @Summary		Get profile picture
+// @Description	Redirects to a short-lived link to the user's profile picture. The caller must be that user or share an active organization with them; otherwise, or when there is no picture, 404. The stored profile_picture_url points here.
+// @Tags			Users
+// @Security		BearerAuth
+// @Param			id	path	string	true	"User ID"
+// @Success		302
+// @Failure		401	{object}	models.ErrorResponse
+// @Failure		404	{object}	models.ErrorResponse
+// @Router			/users/{id}/profile-picture [get]
+func (h *ProfilePictureHandler) GetProfilePicture(c *gin.Context) {
+	viewer, err := getUserIDFromContext(c)
+	if err != nil {
+		apierror.WriteResponse(c, http.StatusUnauthorized, models.ErrorResponse{Error: "unauthorized", Message: "User not authenticated"})
+		return
+	}
+	userID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		apierror.WriteResponse(c, http.StatusNotFound, models.ErrorResponse{Error: "not_found", Message: "Profile picture not found"})
+		return
+	}
+
+	url, err := h.service.PictureURL(c.Request.Context(), viewer, userID)
+	if errors.Is(err, services.ErrNoProfilePicture) {
+		apierror.WriteResponse(c, http.StatusNotFound, models.ErrorResponse{Error: "not_found", Message: "Profile picture not found"})
+		return
+	}
+	if err != nil {
+		apierror.Internal(c, err, "Failed to load profile picture")
+		return
+	}
+	// The link lives an hour; let the browser reuse the redirect for a while.
+	c.Header("Cache-Control", "private, max-age=600")
+	c.Redirect(http.StatusFound, url)
+}

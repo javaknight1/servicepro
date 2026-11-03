@@ -9460,6 +9460,33 @@ paths:
       summary: Resend an invitation
       tags:
       - invitations
+  /users/{id}/profile-picture:
+    get:
+      description: Redirects to a short-lived link to the user's profile picture.
+        The caller must be that user or share an active organization with them; otherwise,
+        or when there is no picture, 404. The stored profile_picture_url points here.
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "302":
+          description: Found
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get profile picture
+      tags:
+      - Users
   /users/me:
     get:
       consumes:

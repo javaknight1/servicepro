@@ -21,6 +21,7 @@ func SetupUserRoutes(router *gin.RouterGroup, cfg *routeconfigs.RouteConfig) {
 		if cfg.Handlers.ProfilePicture != nil {
 			users.POST("/me/profile-picture", cfg.Handlers.ProfilePicture.UploadProfilePicture)
 			users.DELETE("/me/profile-picture", cfg.Handlers.ProfilePicture.DeleteProfilePicture)
+			users.GET("/:id/profile-picture", cfg.Handlers.ProfilePicture.GetProfilePicture)
 		}
 	}
 }

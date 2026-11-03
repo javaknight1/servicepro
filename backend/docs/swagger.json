@@ -8782,6 +8782,46 @@
                 ]
             }
         },
+        "/users/{id}/profile-picture": {
+            "get": {
+                "description": "Redirects to a short-lived link to the user's profile picture. The caller must be that user or share an active organization with them; otherwise, or when there is no picture, 404. The stored profile_picture_url points here.",
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Get profile picture",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "302": {
+                        "description": "Found"
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
         "/version": {
             "get": {
                 "description": "Returns the git SHA and app version of the running build (from the GIT_SHA / APP_VERSION env baked into the image). Mounted at the server root, outside /api.",

@@ -11,6 +11,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/javaknight1/servicepro/backend/internal/models"
+	"github.com/javaknight1/servicepro/backend/internal/tenancy"
 	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"
 )
 
@@ -230,6 +231,18 @@ func (r *TenantRepository) UserBelongsToTenant(ctx context.Context, userID, tena
 
 	logging.Info(ctx, "[TENANT-REPO] UserBelongsToTenant result", map[string]any{"count": count, "result": count > 0})
 	return count > 0, nil
+}
+
+// UsersShareTenant reports whether two users are active members of at least
+// one common active tenant (who may see whose profile picture, T160).
+func (r *TenantRepository) UsersShareTenant(ctx context.Context, a, b uuid.UUID) (bool, error) {
+	var shared bool
+	err := r.db.WithContext(tenancy.WithSystem(ctx)).Raw(`SELECT EXISTS (
+		SELECT 1 FROM tenant_users ta
+		JOIN tenant_users tb ON tb.tenant_id = ta.tenant_id AND tb.user_id = ? AND tb.is_active
+		JOIN tenants t ON t.id = ta.tenant_id AND t.is_active AND t.deleted_at IS NULL
+		WHERE ta.user_id = ? AND ta.is_active)`, b, a).Scan(&shared).Error
+	return shared, err
 }
 
 // AddMember adds a user to a tenant

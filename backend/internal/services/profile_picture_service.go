@@ -9,6 +9,7 @@ import (
 	"image/jpeg"
 	_ "image/png" // Register PNG decoder
 	"io"
+	"time"
 
 	"github.com/google/uuid"
 	"golang.org/x/image/draw"
@@ -36,20 +37,69 @@ var (
 	ErrFileTooLarge       = errors.New("file size exceeds maximum allowed (2MB)")
 	ErrInvalidImageFormat = errors.New("invalid image format, only JPEG and PNG are supported")
 	ErrImageProcessing    = errors.New("failed to process image")
+	// ErrNoProfilePicture is returned when the user has no picture or the
+	// viewer may not see it (no shared tenant); both are a 404.
+	ErrNoProfilePicture = errors.New("profile picture not found")
 )
+
+// ProfilePictureLinkTTL is how long a profile picture's presigned link lives.
+const ProfilePictureLinkTTL = time.Hour
+
+// TenantMembership answers whether two users share an active tenant.
+type TenantMembership interface {
+	UsersShareTenant(ctx context.Context, a, b uuid.UUID) (bool, error)
+}
 
 // ProfilePictureService handles profile picture operations
 type ProfilePictureService struct {
 	userRepo      repository.UserRepositoryGormInterface
+	members       TenantMembership
 	storageClient storage.Client
 }
 
 // NewProfilePictureService creates a new profile picture service
-func NewProfilePictureService(userRepo repository.UserRepositoryGormInterface, storageClient storage.Client) *ProfilePictureService {
+func NewProfilePictureService(userRepo repository.UserRepositoryGormInterface, members TenantMembership, storageClient storage.Client) *ProfilePictureService {
 	return &ProfilePictureService{
 		userRepo:      userRepo,
+		members:       members,
 		storageClient: storageClient,
 	}
+}
+
+// profilePictureKey is where a user's picture lives in the (private) bucket.
+func profilePictureKey(userID uuid.UUID) string {
+	return fmt.Sprintf("%s/%s.jpg", StoragePrefix, userID.String())
+}
+
+// profilePicturePath is the stored profile_picture_url: an API path that
+// redirects to a short-lived presigned link (T160: the bucket is private, so a
+// storage URL saved in the database would never load). v busts browser caches
+// when the picture changes.
+func profilePicturePath(userID uuid.UUID, at time.Time) string {
+	return fmt.Sprintf("/api/v1/users/%s/profile-picture?v=%d", userID, at.Unix())
+}
+
+// PictureURL returns a presigned link to userID's picture for viewerID, who
+// must be that user or share an active tenant with them.
+func (s *ProfilePictureService) PictureURL(ctx context.Context, viewerID, userID uuid.UUID) (string, error) {
+	if viewerID != userID {
+		shared, err := s.members.UsersShareTenant(ctx, viewerID, userID)
+		if err != nil {
+			return "", fmt.Errorf("check shared tenant: %w", err)
+		}
+		if !shared {
+			return "", ErrNoProfilePicture
+		}
+	}
+	user, err := s.userRepo.GetByID(userID)
+	if err != nil || user == nil || user.ProfilePictureURL == nil || *user.ProfilePictureURL == "" {
+		return "", ErrNoProfilePicture
+	}
+	url, err := s.storageClient.GetPresignedURL(ctx, profilePictureKey(userID), ProfilePictureLinkTTL)
+	if err != nil {
+		return "", fmt.Errorf("presign profile picture: %w", err)
+	}
+	return url, nil
 }
 
 // UploadProfilePicture handles profile picture upload, resize, and storage
@@ -100,7 +150,7 @@ func (s *ProfilePictureService) UploadProfilePicture(ctx context.Context, userID
 	}
 
 	// Generate unique filename
-	filename := fmt.Sprintf("%s/%s.jpg", StoragePrefix, userID.String())
+	filename := profilePictureKey(userID)
 
 	// Delete existing profile picture if any
 	_ = s.storageClient.Delete(ctx, filename)
@@ -108,21 +158,21 @@ func (s *ProfilePictureService) UploadProfilePicture(ctx context.Context, userID
 	// Upload to storage
 	uploadInput := storage.NewUploadInput(filename).
 		WithContentType("image/jpeg").
-		WithCacheControl("public, max-age=31536000") // Cache for 1 year
+		WithCacheControl("private, max-age=3600")
 
-	output, err := s.storageClient.UploadBytes(ctx, buf.Bytes(), uploadInput)
-	if err != nil {
+	if _, err := s.storageClient.UploadBytes(ctx, buf.Bytes(), uploadInput); err != nil {
 		return "", fmt.Errorf("failed to upload to storage: %w", err)
 	}
 
 	// Update user's profile picture URL
-	if err := s.userRepo.UpdateProfilePicture(userID, &output.URL); err != nil {
+	path := profilePicturePath(userID, time.Now())
+	if err := s.userRepo.UpdateProfilePicture(userID, &path); err != nil {
 		// Try to cleanup the uploaded file
 		_ = s.storageClient.Delete(ctx, filename)
 		return "", fmt.Errorf("failed to update user profile: %w", err)
 	}
 
-	return output.URL, nil
+	return path, nil
 }
 
 // DeleteProfilePicture removes a user's profile picture
@@ -139,7 +189,7 @@ func (s *ProfilePictureService) DeleteProfilePicture(ctx context.Context, userID
 	}
 
 	// Generate the storage key
-	filename := fmt.Sprintf("%s/%s.jpg", StoragePrefix, userID.String())
+	filename := profilePictureKey(userID)
 
 	// Delete from storage
 	if err := s.storageClient.Delete(ctx, filename); err != nil {

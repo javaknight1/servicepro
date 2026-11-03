@@ -116,7 +116,7 @@ func SetupServices(
 
 	// Profile picture service (optional - depends on storage client)
 	if storageClient != nil {
-		svc.ProfilePicture = services.NewProfilePictureService(repos.User, storageClient)
+		svc.ProfilePicture = services.NewProfilePictureService(repos.User, repos.Tenant, storageClient)
 	}
 
 	// Stripe service (optional - depends on configuration)
