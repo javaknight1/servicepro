@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -147,6 +148,25 @@ func TestValidateTenantSettings_OnCreate(t *testing.T) {
 
 	assert.NoError(t, validateTenantSettings(t.Context(), nil, uuid.Nil, &models.TenantSettings{},
 		&models.TenantSettings{Currency: "usd", OnboardingStep: 1}))
+}
+
+// T030: the hourly labor rate is a non-negative amount with at most 2
+// decimals; it round-trips through the settings JSON as a decimal.
+func TestUpdateTenantSettings_LaborRate(t *testing.T) {
+	f, svc := newSettingsService(t)
+	rate := func(s string) *decimal.Decimal { d := decimal.RequireFromString(s); return &d }
+
+	for _, bad := range []string{"-1", "10000.01", "85.125"} {
+		assert.Contains(t, settingsFields(t, f, svc, models.TenantSettings{LaborRate: rate(bad)}), "laborRate", bad)
+	}
+	assert.Nil(t, settingsFields(t, f, svc, models.TenantSettings{LaborRate: rate("85.50")}))
+	tenantID, _ := tenancy.TenantID(f.ctxA)
+	stored := models.TenantSettingsInTx(f.db, tenantID)
+	require.NotNil(t, stored.LaborRate)
+	assert.Equal(t, "85.50", stored.LaborRate.StringFixed(2))
+
+	// Unset is fine (no labor line on job invoices).
+	assert.Nil(t, settingsFields(t, f, svc, models.TenantSettings{}))
 }
 
 func TestIsISO4217Currency(t *testing.T) {

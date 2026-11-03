@@ -9,6 +9,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/google/uuid"
+	"github.com/shopspring/decimal"
 
 	apperrors "github.com/javaknight1/servicepro/backend/internal/errors"
 	"github.com/javaknight1/servicepro/backend/internal/models"
@@ -101,6 +102,10 @@ func validateTenantSettings(ctx context.Context, lookup settingsLookup, tenantID
 		fields["onboardingStep"] = "must be between 0 and 3"
 	}
 
+	if msg := checkLaborRate(next.LaborRate, prev.LaborRate); msg != "" {
+		fields["laborRate"] = msg
+	}
+
 	canLookUp := lookup != nil && tenantID != uuid.Nil
 	if err := checkDefaultRow(canLookUp, "defaultPaymentTermId", next.DefaultPaymentTermID, prev.DefaultPaymentTermID,
 		func(id uuid.UUID) (bool, error) { return lookup.UsablePaymentTerm(ctx, tenantID, id) }, fields); err != nil {
@@ -142,6 +147,24 @@ func checkDefaultRow(canLookUp bool, key string, next, prev *uuid.UUID,
 		fields[key] = "was not found"
 	}
 	return nil
+}
+
+// maxSettingsLaborRate caps the hourly labor rate (T030).
+var maxSettingsLaborRate = decimal.NewFromInt(10000)
+
+// checkLaborRate returns a problem with a new hourly labor rate, or "".
+// Unset (nil) and unchanged values are fine.
+func checkLaborRate(next, prev *decimal.Decimal) string {
+	if next == nil || (prev != nil && next.Equal(*prev)) {
+		return ""
+	}
+	if next.IsNegative() || next.GreaterThan(maxSettingsLaborRate) {
+		return "must be between 0 and 10000"
+	}
+	if !next.Equal(next.Round(2)) {
+		return "must have at most 2 decimal places"
+	}
+	return ""
 }
 
 // checkText returns a problem with a free-text setting, or "".

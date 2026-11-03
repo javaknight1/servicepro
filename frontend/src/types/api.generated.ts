@@ -13974,6 +13974,13 @@ export interface components {
             invoicePrefix?: string;
             isDefault?: boolean;
             jobPrefix?: string;
+            /**
+             * @description LaborRate is the hourly rate an invoice generated from a job bills
+             *     its actual time at (T030; POST /jobs/{id}/invoice). Unset or zero:
+             *     the job's amount is billed as one line instead.
+             * @example 85.00
+             */
+            laborRate?: string;
             maxRemindersPerInvoice?: number;
             onboardingCompletedAt?: string;
             /**

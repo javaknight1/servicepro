@@ -43,6 +43,9 @@ export interface TenantSettings {
   /** New customers inherit these billing rules unless set on create. */
   defaultConsolidatedBilling?: boolean;
   defaultPoRequired?: boolean;
+  /** Hourly rate ("85.00") invoices generated from a job bill its actual
+   * time at (T030); unset = bill the job's amount instead. */
+  laborRate?: string;
   /** Wizard step to resume at (1-3); 0/absent = never started. */
   onboardingStep?: number;
   /** Set when the owner finished or skipped the wizard. */

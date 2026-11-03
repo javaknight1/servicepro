@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 )
 
@@ -77,6 +78,10 @@ type TenantSettings struct {
 	// sets them (T235; the customer's consolidated_billing / po_required).
 	DefaultConsolidatedBilling bool `json:"defaultConsolidatedBilling,omitempty"`
 	DefaultPORequired          bool `json:"defaultPoRequired,omitempty"`
+	// LaborRate is the hourly rate an invoice generated from a job bills
+	// its actual time at (T030; POST /jobs/{id}/invoice). Unset or zero:
+	// the job's amount is billed as one line instead.
+	LaborRate *decimal.Decimal `json:"laborRate,omitempty" swaggertype:"string" example:"85.00"`
 	// OnboardingStep is the wizard step to resume at (1-3); 0 means the
 	// wizard was never started (tenants from before it existed).
 	// OnboardingCompletedAt is set when the owner finishes or skips it.

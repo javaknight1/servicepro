@@ -115,10 +115,40 @@ describe('BillingDefaultsCard', () => {
       jobPrefix: undefined,
       defaultPaymentTermId: 'term-30',
       defaultTaxRateId: 'rate-oh',
+      laborRate: undefined,
     });
     expect(
       await screen.findByText('Billing defaults saved')
     ).toBeInTheDocument();
+  });
+
+  it('saves the hourly labor rate for job invoices (T030)', async () => {
+    updateTenant.mockResolvedValue(tenant);
+    renderCard();
+    const user = userEvent.setup();
+
+    await user.type(screen.getByLabelText('Labor rate (per hour)'), '85.50');
+    await user.click(
+      screen.getByRole('button', { name: 'Save billing defaults' })
+    );
+
+    await waitFor(() => expect(updateTenant).toHaveBeenCalledTimes(1));
+    expect(updateTenant.mock.calls[0][1].settings?.laborRate).toBe('85.50');
+  });
+
+  it('rejects a labor rate that is not an amount before calling the API', async () => {
+    renderCard();
+    const user = userEvent.setup();
+
+    await user.type(screen.getByLabelText('Labor rate (per hour)'), '85.125');
+    await user.click(
+      screen.getByRole('button', { name: 'Save billing defaults' })
+    );
+
+    expect(
+      await screen.findByText('Enter an hourly amount like 85 or 85.50')
+    ).toBeInTheDocument();
+    expect(updateTenant).not.toHaveBeenCalled();
   });
 
   it('shows the API field errors under each control', async () => {

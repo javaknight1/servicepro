@@ -36,7 +36,11 @@ interface FormState {
   jobPrefix: string;
   defaultPaymentTermId: string;
   defaultTaxRateId: string;
+  laborRate: string;
 }
+
+/** An amount like 85 or 85.50 (the API allows 0-10000, 2 decimals). */
+const LABOR_RATE_PATTERN = /^\d{1,5}(\.\d{1,2})?$/;
 
 function formFrom(settings: TenantSettings | undefined): FormState {
   return {
@@ -46,6 +50,7 @@ function formFrom(settings: TenantSettings | undefined): FormState {
     jobPrefix: settings?.jobPrefix ?? '',
     defaultPaymentTermId: settings?.defaultPaymentTermId ?? '',
     defaultTaxRateId: settings?.defaultTaxRateId ?? '',
+    laborRate: settings?.laborRate ?? '',
   };
 }
 
@@ -118,6 +123,10 @@ export function BillingDefaultsCard({
       const problem = prefixError(form[key]);
       if (problem) local[key] = problem;
     }
+    const laborRate = form.laborRate.trim();
+    if (laborRate && !LABOR_RATE_PATTERN.test(laborRate)) {
+      local.laborRate = 'Enter an hourly amount like 85 or 85.50';
+    }
     if (Object.keys(local).length > 0) {
       setFieldErrors(local);
       return;
@@ -135,6 +144,7 @@ export function BillingDefaultsCard({
           jobPrefix: form.jobPrefix.trim() || undefined,
           defaultPaymentTermId: form.defaultPaymentTermId || undefined,
           defaultTaxRateId: form.defaultTaxRateId || undefined,
+          laborRate: laborRate || undefined,
         }),
       });
       setFieldErrors({});
@@ -286,6 +296,21 @@ export function BillingDefaultsCard({
                 </p>
               )}
             </div>
+          </div>
+
+          <div className="max-w-sm">
+            <Input
+              id="billing-laborRate"
+              label="Labor rate (per hour)"
+              inputMode="decimal"
+              value={form.laborRate}
+              onChange={(e) => set('laborRate', e.target.value)}
+              placeholder="85.00"
+              disabled={!canEdit}
+              error={fieldErrors.laborRate}
+              helperText="Invoices generated from a job bill its time on site at this rate. Leave empty to bill the job's amount."
+              fullWidth
+            />
           </div>
 
           {canEdit && (

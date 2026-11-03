@@ -15176,6 +15176,11 @@ const docTemplate = `{
                 "jobPrefix": {
                     "type": "string"
                 },
+                "laborRate": {
+                    "description": "LaborRate is the hourly rate an invoice generated from a job bills\nits actual time at (T030; POST /jobs/{id}/invoice). Unset or zero:\nthe job's amount is billed as one line instead.",
+                    "type": "string",
+                    "example": "85.00"
+                },
                 "maxRemindersPerInvoice": {
                     "type": "integer"
                 },
