@@ -17,9 +17,12 @@ import {
   Invoice,
   InvoiceFilters,
 } from '@services/invoiceService';
-import { Receipt, Plus, Search } from 'lucide-react';
+import { Receipt, Plus, Search, Layers } from 'lucide-react';
 import { getInvoiceStatusLabel } from '@app-types';
-import { InvoiceActionsMenu } from '@components/invoices';
+import {
+  ConsolidatedInvoiceModal,
+  InvoiceActionsMenu,
+} from '@components/invoices';
 import { formatDollars } from '@/utils/money';
 
 export function InvoicesPage() {
@@ -37,6 +40,7 @@ export function InvoicesPage() {
     sort_order: 'desc',
   });
   const [searchQuery, setSearchQuery] = useState('');
+  const [isConsolidateOpen, setIsConsolidateOpen] = useState(false);
 
   const loadInvoices = async () => {
     const requestId = ++requestIdRef.current;
@@ -182,15 +186,31 @@ export function InvoicesPage() {
           title="Invoices"
           subtitle="Send invoices, record payments and see what is still owed."
           actions={
-            <Button
-              variant="primary"
-              onClick={() => navigate('/invoices/new')}
-              className="gap-2"
-            >
-              <Plus className="h-4 w-4" />
-              New invoice
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setIsConsolidateOpen(true)}
+                className="gap-2"
+              >
+                <Layers className="h-4 w-4" />
+                Create consolidated invoice
+              </Button>
+              <Button
+                variant="primary"
+                onClick={() => navigate('/invoices/new')}
+                className="gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                New invoice
+              </Button>
+            </div>
           }
+        />
+        {/* One invoice per customer and period (T188). */}
+        <ConsolidatedInvoiceModal
+          isOpen={isConsolidateOpen}
+          onClose={() => setIsConsolidateOpen(false)}
+          onCreated={(invoice) => navigate(`/invoices/${invoice.id}`)}
         />
 
         <form onSubmit={handleSearch} className="mb-6">

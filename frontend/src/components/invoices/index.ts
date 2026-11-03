@@ -10,3 +10,4 @@ export { RecordPaymentModal } from './RecordPaymentModal';
 export { CancelInvoiceModal } from './CancelInvoiceModal';
 export { InvoicePaymentHistory } from './InvoicePaymentHistory';
 export { RefundModal } from './RefundModal';
+export { ConsolidatedInvoiceModal } from './ConsolidatedInvoiceModal';

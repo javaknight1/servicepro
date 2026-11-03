@@ -7,6 +7,7 @@
  * - Invoice status transitions
  * - Payment recording
  * - Invoice PDF generation
+ * - Consolidated invoices: preview by site, create, grouped detail (T188)
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -34,6 +35,8 @@ vi.mock('@services/invoiceService', () => ({
     recordPayment: vi.fn(),
     recordRefund: vi.fn(),
     cancelInvoice: vi.fn(),
+    previewConsolidatedInvoice: vi.fn(),
+    createConsolidatedInvoice: vi.fn(),
     getStats: vi.fn(),
     downloadInvoicePDF: vi.fn(),
     downloadReceiptPDF: vi.fn(),
@@ -510,7 +513,7 @@ describe('Invoice & Payment Integration', () => {
         expect(invoiceService.getInvoices).toHaveBeenCalled();
       });
 
-      const addButton = screen.getByRole('button', { name: /add|new|create/i });
+      const addButton = screen.getByRole('button', { name: /new invoice/i });
       await user.click(addButton);
 
       expect(mockNavigate).toHaveBeenCalledWith('/invoices/new');
@@ -1726,6 +1729,261 @@ describe('Invoice & Payment Integration', () => {
       expect(
         screen.getByText(/no charges have been made/i)
       ).toBeInTheDocument();
+    });
+  });
+
+  describe('Consolidated invoices (T188)', () => {
+    const preview = {
+      customer_id: 'customer-1',
+      period_start: '2026-10-01',
+      period_end: '2026-10-31',
+      po_number: '7731-HV',
+      lines: [
+        {
+          kind: 'agreement_month' as const,
+          site_id: 'site-1',
+          site_name: 'Harborview Lofts',
+          agreement_id: 'agr-1',
+          description: 'Nightly cleaning, Mon–Fri · 22 visits',
+          month: '2026-10',
+          visits: 22,
+          quantity: '1',
+          unit_price: '2400',
+          amount: '2400',
+        },
+        {
+          kind: 'extra_work' as const,
+          site_id: 'site-1',
+          site_name: 'Harborview Lofts',
+          job_id: 'job-9',
+          job_number: 'J-2291',
+          description: 'Carpet extraction, lobby · J-2291',
+          visits: 0,
+          quantity: '1',
+          unit_price: '450',
+          amount: '450',
+          approver_name: 'Karen Doyle',
+          approval_amount: '450',
+          approval_note: 'Approved by Karen Doyle for 450.00',
+        },
+        {
+          kind: 'agreement_visits' as const,
+          site_id: 'site-2',
+          site_name: 'Riverside Commons',
+          agreement_id: 'agr-2',
+          description: 'Cleaning 3x weekly · 13 visits',
+          visits: 13,
+          quantity: '13',
+          unit_price: '138.46',
+          amount: '1800',
+        },
+      ],
+      sites: 2,
+      visits: 35,
+      extra_work: 1,
+      subtotal: '4650',
+      tax_rate: '0',
+      tax_amount: '0',
+      total: '4650',
+    };
+
+    const consolidated = {
+      ...mockInvoices[0],
+      id: 'invoice-9',
+      invoice_number: 'INV-1042',
+      po_number: '7731-HV',
+      billing_period_start: '2026-10-01T00:00:00Z',
+      billing_period_end: '2026-10-31T00:00:00Z',
+      lines: [
+        {
+          id: 'cl-1',
+          description: 'Nightly cleaning, Mon–Fri · 22 visits',
+          quantity: 1,
+          unit_price: 2400,
+          total: 2400,
+          sort_order: 0,
+          taxable: true,
+          site_name: 'Harborview Lofts',
+        },
+        {
+          id: 'cl-2',
+          description: 'Carpet extraction, lobby · J-2291',
+          quantity: 1,
+          unit_price: 450,
+          total: 450,
+          sort_order: 1,
+          taxable: true,
+          site_name: 'Harborview Lofts',
+          approval_note: 'Approved by Karen Doyle for 450.00',
+        },
+        {
+          id: 'cl-3',
+          description: 'Cleaning 3x weekly · 13 visits',
+          quantity: 13,
+          unit_price: 138.46,
+          total: 1800,
+          sort_order: 2,
+          taxable: true,
+          site_name: 'Riverside Commons',
+        },
+      ],
+    };
+
+    it('previews last month grouped by site and creates the draft', async () => {
+      // Last month, in local time (fake timers would stall the router).
+      const now = new Date();
+      const pad = (n: number) => String(n).padStart(2, '0');
+      const first = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const last = new Date(now.getFullYear(), now.getMonth(), 0);
+      const periodStart = `${first.getFullYear()}-${pad(first.getMonth() + 1)}-01`;
+      const periodEnd = `${last.getFullYear()}-${pad(last.getMonth() + 1)}-${pad(last.getDate())}`;
+      {
+        const user = userEvent.setup({ delay: null });
+        vi.mocked(invoiceService.previewConsolidatedInvoice).mockResolvedValue(
+          preview
+        );
+        vi.mocked(invoiceService.createConsolidatedInvoice).mockResolvedValue(
+          consolidated
+        );
+        const { InvoicesPage } =
+          await import('../../src/pages/Invoices/InvoicesPage');
+        render(
+          <MemoryRouter initialEntries={['/invoices']}>
+            <Routes>
+              <Route path="/invoices" element={<InvoicesPage />} />
+              <Route path="/invoices/:id" element={<div>Invoice Detail</div>} />
+            </Routes>
+          </MemoryRouter>
+        );
+
+        await user.click(
+          await screen.findByRole('button', {
+            name: /create consolidated invoice/i,
+          })
+        );
+        const dialog = await screen.findByRole('dialog');
+        // Default period: last month.
+        expect(within(dialog).getByLabelText('From')).toHaveValue(periodStart);
+        expect(within(dialog).getByLabelText('To')).toHaveValue(periodEnd);
+
+        await user.selectOptions(
+          await within(dialog).findByLabelText('Customer'),
+          'customer-1'
+        );
+        await waitFor(() => {
+          expect(
+            invoiceService.previewConsolidatedInvoice
+          ).toHaveBeenCalledWith({
+            customer_id: 'customer-1',
+            period_start: periodStart,
+            period_end: periodEnd,
+          });
+        });
+        const table = await within(dialog).findByTestId('consolidated-preview');
+        // Each site named once, extra work with its approver, totals.
+        expect(within(table).getAllByText('Harborview Lofts')).toHaveLength(1);
+        expect(
+          within(table).getByText('Riverside Commons')
+        ).toBeInTheDocument();
+        expect(
+          within(table).getByText('Approved by Karen Doyle for 450.00')
+        ).toBeInTheDocument();
+        expect(within(table).getByText(/PO 7731-HV/)).toBeInTheDocument();
+        expect(within(table).getAllByText('$4,650.00')).toHaveLength(2);
+
+        await user.click(
+          within(dialog).getByRole('button', { name: /create draft/i })
+        );
+        await waitFor(() => {
+          expect(invoiceService.createConsolidatedInvoice).toHaveBeenCalledWith(
+            {
+              customer_id: 'customer-1',
+              period_start: periodStart,
+              period_end: periodEnd,
+            }
+          );
+        });
+        expect(mockNavigate).toHaveBeenCalledWith('/invoices/invoice-9');
+      }
+    });
+
+    it('says when there is nothing to invoice', async () => {
+      const user = userEvent.setup({ delay: null });
+      vi.mocked(invoiceService.previewConsolidatedInvoice).mockResolvedValue({
+        ...preview,
+        lines: [],
+        sites: 0,
+        visits: 0,
+        extra_work: 0,
+        subtotal: '0',
+        total: '0',
+      });
+      const { InvoicesPage } =
+        await import('../../src/pages/Invoices/InvoicesPage');
+      render(
+        <MemoryRouter initialEntries={['/invoices']}>
+          <InvoicesPage />
+        </MemoryRouter>
+      );
+      await user.click(
+        await screen.findByRole('button', {
+          name: /create consolidated invoice/i,
+        })
+      );
+      const dialog = await screen.findByRole('dialog');
+      await user.selectOptions(
+        await within(dialog).findByLabelText('Customer'),
+        'customer-1'
+      );
+      expect(
+        await within(dialog).findByText(/nothing to invoice for this period/i)
+      ).toBeInTheDocument();
+      expect(
+        within(dialog).getByRole('button', { name: /create draft/i })
+      ).toBeDisabled();
+    });
+
+    it('shows the invoice grouped by site and keeps sites and notes on save', async () => {
+      const user = userEvent.setup({ delay: null });
+      vi.mocked(invoiceService.getInvoice).mockResolvedValue(consolidated);
+      vi.mocked(invoiceService.updateInvoice).mockResolvedValue(consolidated);
+      const { InvoiceDetailPage } =
+        await import('../../src/pages/Invoices/InvoiceDetailPage');
+      render(
+        <MemoryRouter initialEntries={['/invoices/invoice-9']}>
+          <Routes>
+            <Route path="/invoices/:id" element={<InvoiceDetailPage />} />
+          </Routes>
+        </MemoryRouter>
+      );
+
+      const headings = await screen.findAllByTestId('line-site-heading');
+      expect(headings.map((h) => h.textContent)).toEqual([
+        'Harborview Lofts',
+        'Riverside Commons',
+      ]);
+      expect(screen.getByText('Consolidated · 2 sites')).toBeInTheDocument();
+      expect(
+        screen.getByText(/Oct 1 – Oct 31, 2026 services/)
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText('Approved by Karen Doyle for 450.00')
+      ).toBeInTheDocument();
+
+      await user.click(screen.getByRole('button', { name: /save changes/i }));
+      await waitFor(() => {
+        expect(invoiceService.updateInvoice).toHaveBeenCalled();
+      });
+      const [, body] = vi.mocked(invoiceService.updateInvoice).mock.calls[0];
+      expect(body.lines?.[1]).toEqual(
+        expect.objectContaining({
+          site_name: 'Harborview Lofts',
+          approval_note: 'Approved by Karen Doyle for 450.00',
+        })
+      );
+      expect(body.lines?.[2]).toEqual(
+        expect.objectContaining({ site_name: 'Riverside Commons' })
+      );
     });
   });
 

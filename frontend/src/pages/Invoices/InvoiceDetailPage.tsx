@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { Fragment, useState, useEffect, useCallback } from 'react';
 import {
   Link,
   useLocation,
@@ -92,6 +92,14 @@ interface LineItemFormData {
   /** Kept from the API so an edit doesn't drop it (T237); not editable here. */
   discount_percentage?: number | string;
   discount_amount?: number | string;
+  /** A consolidated invoice's site and approval note (T188), kept on save. */
+  site_name?: string;
+  approval_note?: string;
+}
+
+/** Distinct site names on a consolidated invoice's lines (T188). */
+function siteCount(items: LineItemFormData[]): number {
+  return new Set(items.map((i) => i.site_name).filter(Boolean)).size;
 }
 
 /** A form line's total after its discount, in dollars. */
@@ -317,6 +325,8 @@ export function InvoiceDetailPage() {
               taxable: line.taxable ?? true,
               discount_percentage: line.discount_percentage,
               discount_amount: line.discount_amount,
+              site_name: line.site_name,
+              approval_note: line.approval_note,
             }))
           );
         }
@@ -579,6 +589,8 @@ export function InvoiceDetailPage() {
         toAmount(item.discount_amount) <= 0
           ? undefined
           : toAmount(item.discount_amount),
+      site_name: item.site_name || undefined,
+      approval_note: item.approval_note || undefined,
     }));
 
     try {
@@ -807,6 +819,13 @@ export function InvoiceDetailPage() {
                     Payment pending
                   </Badge>
                 )}
+                {invoice?.billing_period_start && (
+                  <Badge variant="neutral" size="sm">
+                    Consolidated
+                    {siteCount(lineItems) > 0 &&
+                      ` · ${siteCount(lineItems)} site${siteCount(lineItems) === 1 ? '' : 's'}`}
+                  </Badge>
+                )}
               </span>
             )
           }
@@ -815,6 +834,9 @@ export function InvoiceDetailPage() {
               ? 'Bill a customer for completed work.'
               : [
                   customerName,
+                  invoice?.billing_period_start &&
+                    invoice.billing_period_end &&
+                    `${formatShortDate(invoice.billing_period_start)} – ${formatShortDate(invoice.billing_period_end, true)} services`,
                   invoice?.issue_date &&
                     `issued ${formatShortDate(invoice.issue_date)}`,
                 ]
@@ -1057,101 +1079,115 @@ export function InvoiceDetailPage() {
 
               <div className="space-y-3">
                 {lineItems.map((item, index) => (
-                  <div
-                    key={index}
-                    className="flex gap-3 items-start p-3 bg-neutral-50 rounded-lg"
-                  >
-                    <div className="flex-1">
-                      <input
-                        type="text"
-                        value={item.description}
-                        onChange={(e) =>
-                          handleLineItemChange(
-                            index,
-                            'description',
-                            e.target.value
-                          )
-                        }
-                        placeholder="Description"
-                        data-testid="item-description"
-                        required
-                        className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                      />
-                    </div>
-                    <div className="w-24">
-                      <input
-                        type="number"
-                        value={item.quantity}
-                        onChange={(e) =>
-                          handleLineItemChange(
-                            index,
-                            'quantity',
-                            e.target.value
-                          )
-                        }
-                        placeholder="Qty"
-                        data-testid="item-quantity"
-                        min="0"
-                        step="1"
-                        required
-                        className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                      />
-                    </div>
-                    <div className="w-32">
-                      <input
-                        type="number"
-                        value={item.unit_price}
-                        onChange={(e) =>
-                          handleLineItemChange(
-                            index,
-                            'unit_price',
-                            e.target.value
-                          )
-                        }
-                        placeholder="Price"
-                        data-testid="item-price"
-                        min="0"
-                        step="0.01"
-                        required
-                        className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                      />
-                    </div>
-                    <label className="flex items-center gap-1 py-2 text-sm text-neutral-600">
-                      <input
-                        type="checkbox"
-                        checked={item.taxable}
-                        onChange={(e) =>
-                          handleLineItemChange(
-                            index,
-                            'taxable',
-                            e.target.checked
-                          )
-                        }
-                        aria-label={`Line ${index + 1} taxable`}
-                      />
-                      Taxable
-                    </label>
-                    <div className="w-28 text-right py-2 font-medium">
-                      {formatDollars(lineNet(item))}
-                      {lineNet(item) <
-                        lineTotal(item.quantity, item.unit_price) && (
-                        <div className="text-xs font-normal text-neutral-500">
-                          {toAmount(item.discount_percentage) > 0
-                            ? `${toAmount(item.discount_percentage)}% discount`
-                            : `${formatDollars(item.discount_amount)} discount`}
-                        </div>
+                  <Fragment key={index}>
+                    {/* Consolidated invoices group lines by site (T188). */}
+                    {item.site_name &&
+                      item.site_name !== lineItems[index - 1]?.site_name && (
+                        <h3
+                          className="pt-2 text-sm font-semibold text-neutral-900"
+                          data-testid="line-site-heading"
+                        >
+                          {item.site_name}
+                        </h3>
                       )}
+                    <div className="flex gap-3 items-start p-3 bg-neutral-50 rounded-lg">
+                      <div className="flex-1">
+                        <input
+                          type="text"
+                          value={item.description}
+                          onChange={(e) =>
+                            handleLineItemChange(
+                              index,
+                              'description',
+                              e.target.value
+                            )
+                          }
+                          placeholder="Description"
+                          data-testid="item-description"
+                          required
+                          className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                        />
+                        {item.approval_note && (
+                          <span className="mt-1.5 inline-block rounded-full bg-success-50 px-2 py-0.5 text-xs text-success-700">
+                            {item.approval_note}
+                          </span>
+                        )}
+                      </div>
+                      <div className="w-24">
+                        <input
+                          type="number"
+                          value={item.quantity}
+                          onChange={(e) =>
+                            handleLineItemChange(
+                              index,
+                              'quantity',
+                              e.target.value
+                            )
+                          }
+                          placeholder="Qty"
+                          data-testid="item-quantity"
+                          min="0"
+                          step="1"
+                          required
+                          className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                        />
+                      </div>
+                      <div className="w-32">
+                        <input
+                          type="number"
+                          value={item.unit_price}
+                          onChange={(e) =>
+                            handleLineItemChange(
+                              index,
+                              'unit_price',
+                              e.target.value
+                            )
+                          }
+                          placeholder="Price"
+                          data-testid="item-price"
+                          min="0"
+                          step="0.01"
+                          required
+                          className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                        />
+                      </div>
+                      <label className="flex items-center gap-1 py-2 text-sm text-neutral-600">
+                        <input
+                          type="checkbox"
+                          checked={item.taxable}
+                          onChange={(e) =>
+                            handleLineItemChange(
+                              index,
+                              'taxable',
+                              e.target.checked
+                            )
+                          }
+                          aria-label={`Line ${index + 1} taxable`}
+                        />
+                        Taxable
+                      </label>
+                      <div className="w-28 text-right py-2 font-medium">
+                        {formatDollars(lineNet(item))}
+                        {lineNet(item) <
+                          lineTotal(item.quantity, item.unit_price) && (
+                          <div className="text-xs font-normal text-neutral-500">
+                            {toAmount(item.discount_percentage) > 0
+                              ? `${toAmount(item.discount_percentage)}% discount`
+                              : `${formatDollars(item.discount_amount)} discount`}
+                          </div>
+                        )}
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => removeLineItem(index)}
+                        disabled={lineItems.length === 1}
+                        className="text-red-500 hover:text-red-700"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
                     </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      onClick={() => removeLineItem(index)}
-                      disabled={lineItems.length === 1}
-                      className="text-red-500 hover:text-red-700"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
+                  </Fragment>
                 ))}
               </div>
 

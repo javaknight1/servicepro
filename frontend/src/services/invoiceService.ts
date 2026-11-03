@@ -29,6 +29,10 @@ export interface InvoiceLineItem {
   discount_percentage?: string | number;
   /** Line discount in dollars (computed by the server from a percentage). */
   discount_amount?: string | number;
+  /** The site a consolidated invoice's line is for (T188). */
+  site_name?: string;
+  /** Who approved extra work, or that it stayed under the NTE (T188). */
+  approval_note?: string;
 }
 
 /** A configured tax rate (`models.TaxRate`); `rate` is a fraction. */
@@ -67,6 +71,9 @@ export interface Invoice {
   payment_term_id?: string;
   /** Purchase order number (T187). */
   po_number?: string;
+  /** Service period of a consolidated invoice (T188), "YYYY-MM-DD…". */
+  billing_period_start?: string;
+  billing_period_end?: string;
   notes?: string;
   terms_and_conditions?: string;
   lines: InvoiceLineItem[];
@@ -160,6 +167,55 @@ export interface InvoiceLineRequest {
   discount_percentage?: number;
   /** Fixed discount in dollars. */
   discount_amount?: number;
+  /** Kept when a consolidated invoice's lines are edited (T188). */
+  site_name?: string;
+  approval_note?: string;
+}
+
+/** Customer and period of a consolidated invoice (T188); dates are the
+ * tenant's local calendar dates, YYYY-MM-DD, inclusive. */
+export interface ConsolidateInvoiceRequest {
+  customer_id: string;
+  period_start: string;
+  period_end: string;
+  /** Only this site. */
+  site_id?: string;
+}
+
+/** One would-be line of a consolidated invoice. Amounts are API decimals. */
+export interface ConsolidatedInvoiceLine {
+  kind: 'agreement_month' | 'agreement_visits' | 'extra_work';
+  site_id?: string;
+  site_name: string;
+  agreement_id?: string;
+  job_id?: string;
+  job_number?: string;
+  description: string;
+  /** agreement_month: the month billed, YYYY-MM. */
+  month?: string;
+  visits: number;
+  quantity: string | number;
+  unit_price: string | number;
+  amount: string | number;
+  approver_name?: string;
+  approval_amount?: string | number;
+  approval_note?: string;
+}
+
+/** GET /invoices/consolidate/preview. */
+export interface ConsolidatedInvoicePreview {
+  customer_id: string;
+  period_start: string;
+  period_end: string;
+  po_number: string;
+  lines: ConsolidatedInvoiceLine[];
+  sites: number;
+  visits: number;
+  extra_work: number;
+  subtotal: string | number;
+  tax_rate: string | number;
+  tax_amount: string | number;
+  total: string | number;
 }
 
 /** Body of POST /invoices (handlers.CreateInvoiceRequest). */
@@ -240,6 +296,28 @@ class InvoiceService {
 
   async createInvoice(data: CreateInvoiceRequest): Promise<Invoice> {
     const response = await api.post<Invoice>(this.basePath, data);
+    return response.data;
+  }
+
+  /** The lines and totals a consolidated invoice would have (T188). */
+  async previewConsolidatedInvoice(
+    req: ConsolidateInvoiceRequest
+  ): Promise<ConsolidatedInvoicePreview> {
+    const response = await api.get<ConsolidatedInvoicePreview>(
+      `${this.basePath}/consolidate/preview`,
+      { params: buildQueryParams({ ...req }) }
+    );
+    return response.data;
+  }
+
+  /** Creates the consolidated draft and moves its jobs to invoiced (T188). */
+  async createConsolidatedInvoice(
+    req: ConsolidateInvoiceRequest
+  ): Promise<Invoice> {
+    const response = await api.post<Invoice>(
+      `${this.basePath}/consolidate`,
+      req
+    );
     return response.data;
   }
 

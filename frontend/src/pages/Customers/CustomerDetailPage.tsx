@@ -14,6 +14,7 @@ import {
   BillingRulesModal,
   CustomerSitesSection,
 } from '@components/customers';
+import { ConsolidatedInvoiceModal } from '@components/invoices';
 import { customerService, type Customer } from '@services/customerService';
 import { siteService, sitesQueryKey } from '@services/siteService';
 import {
@@ -49,6 +50,7 @@ import {
   ExternalLink,
   Plus,
   Pencil,
+  Receipt,
 } from 'lucide-react';
 
 type CustomerTab = 'sites' | 'agreements' | 'jobs';
@@ -128,6 +130,7 @@ export function CustomerDetailPage() {
   const [activeTab, setActiveTab] = useState<CustomerTab>('sites');
   const [isAddSiteOpen, setIsAddSiteOpen] = useState(false);
   const [isRulesOpen, setIsRulesOpen] = useState(false);
+  const [isConsolidateOpen, setIsConsolidateOpen] = useState(false);
 
   // Shares the Sites tab's query (same key), for the tab count.
   const sitesQuery = useQuery({
@@ -388,7 +391,16 @@ export function CustomerDetailPage() {
             <div className="mb-2">
               <BillingRulesCards customer={customer} />
             </div>
-            <div className="mb-6 flex justify-end">
+            <div className="mb-6 flex justify-end gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsConsolidateOpen(true)}
+                className="gap-1.5 text-primary-600"
+              >
+                <Receipt className="h-3.5 w-3.5" />
+                Create consolidated invoice
+              </Button>
               <Button
                 variant="ghost"
                 size="sm"
@@ -399,6 +411,17 @@ export function CustomerDetailPage() {
                 Edit billing rules
               </Button>
             </div>
+            {/* One invoice for the period, a line per site (T188). */}
+            <ConsolidatedInvoiceModal
+              isOpen={isConsolidateOpen}
+              onClose={() => setIsConsolidateOpen(false)}
+              customerId={customer.id}
+              customerName={
+                customer.company_name ||
+                `${customer.first_name} ${customer.last_name}`.trim()
+              }
+              onCreated={(invoice) => navigate(`/invoices/${invoice.id}`)}
+            />
             <BillingRulesModal
               customer={customer}
               isOpen={isRulesOpen}
@@ -476,6 +499,7 @@ export function CustomerDetailPage() {
                       state: { customerId: id },
                     })
                   }
+                  onConsolidate={() => setIsConsolidateOpen(true)}
                 />
               ) : (
                 <RecentJobs
@@ -1138,6 +1162,8 @@ interface CustomerAgreementsProps {
   isLoading: boolean;
   onOpen: (agreementId: string) => void;
   onNew: () => void;
+  /** Opens "Create consolidated invoice" (T188). */
+  onConsolidate: () => void;
 }
 
 /** The Agreements tab: the customer's service agreements (T167). */
@@ -1146,6 +1172,7 @@ function CustomerAgreements({
   isLoading,
   onOpen,
   onNew,
+  onConsolidate,
 }: CustomerAgreementsProps) {
   if (isLoading) {
     return (
@@ -1194,7 +1221,18 @@ function CustomerAgreements({
           ))}
         </ul>
       )}
-      <div className="mt-2 flex justify-end">
+      <div className="mt-2 flex justify-end gap-2">
+        {list.length > 0 && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onConsolidate}
+            className="gap-2 text-primary-600"
+          >
+            <Receipt className="h-4 w-4" />
+            Invoice a period
+          </Button>
+        )}
         <Button variant="outline" size="sm" onClick={onNew} className="gap-2">
           <Plus className="h-4 w-4" />
           New agreement
