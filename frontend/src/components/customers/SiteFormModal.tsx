@@ -108,6 +108,7 @@ export function SiteFormModal({
       <form
         onSubmit={(e) => {
           e.preventDefault();
+          e.stopPropagation();
           save.mutate(form);
         }}
         className="space-y-4"

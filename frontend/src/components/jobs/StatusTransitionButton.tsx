@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Button } from '@components/shared';
 import { jobService, JobStatus, Job } from '@services/jobService';
 import { getJobStatusLabel } from '@app-types';
-import { getErrorMessage } from '@/utils/error';
+import { getApiErrorInfo, getErrorMessage } from '@/utils/error';
 import { trackEvent, AnalyticsEvents } from '@services/analytics';
 import {
   Loader2,
@@ -17,6 +17,7 @@ import {
   DollarSign,
   Calendar,
 } from 'lucide-react';
+import { RecordApprovalModal } from './RecordApprovalModal';
 
 interface StatusTransitionButtonProps {
   job: Job;
@@ -148,6 +149,13 @@ export function StatusTransitionButton({
     null
   );
   const [error, setError] = useState<string | null>(null);
+  // Set when the API refused a transition with 409 approval_required
+  // (extra work over the customer's not-to-exceed limit, T187): the
+  // status to retry once the approver's OK is recorded, and the message.
+  const [needsApproval, setNeedsApproval] = useState<{
+    status: JobStatus;
+    message?: string;
+  } | null>(null);
 
   const { primary, secondary, backward, cancel } = categorizeTransitions(
     job.status,
@@ -220,11 +228,22 @@ export function StatusTransitionButton({
         });
       }
     } catch (err) {
-      console.error('Failed to transition status:', err);
-      setError(getErrorMessage(err, 'Failed to update status'));
+      const { status, code, message } = getApiErrorInfo(err);
+      if (status === 409 && code === 'approval_required') {
+        setNeedsApproval({ status: toStatus, message });
+      } else {
+        console.error('Failed to transition status:', err);
+        setError(getErrorMessage(err, 'Failed to update status'));
+      }
     } finally {
       setIsTransitioning(null);
     }
+  };
+
+  const retryAfterApproval = () => {
+    const status = needsApproval?.status;
+    setNeedsApproval(null);
+    if (status) void handleTransition(status);
   };
 
   const allTransitions = [...primary, ...secondary, ...backward];
@@ -324,6 +343,16 @@ export function StatusTransitionButton({
       </div>
 
       {error && <p className="text-xs text-red-600">{error}</p>}
+
+      {needsApproval && (
+        <RecordApprovalModal
+          jobId={job.id}
+          isOpen
+          reason={needsApproval.message}
+          onClose={() => setNeedsApproval(null)}
+          onApproved={retryAfterApproval}
+        />
+      )}
     </div>
   );
 }

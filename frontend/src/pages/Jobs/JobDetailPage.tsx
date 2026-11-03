@@ -8,7 +8,9 @@ import {
 import { DashboardLayout } from '@components/layout';
 import { Button } from '@components/shared';
 import {
+  JobApprovalsSection,
   JobAssignmentsSection,
+  JobSitePicker,
   PendingAssignmentsSection,
   StatusTransitionButton,
 } from '@components/jobs';
@@ -36,6 +38,7 @@ interface PendingAssignment extends CreateJobAssignment {
 
 interface JobFormData {
   customer_id: string;
+  site_id: string;
   title: string;
   description: string;
   job_type: JobType;
@@ -43,6 +46,7 @@ interface JobFormData {
   priority: JobPriority;
   scheduled_start_at: string;
   estimated_duration: string;
+  estimated_cost: string;
   internal_notes: string;
   customer_notes: string;
   special_instructions: string;
@@ -51,6 +55,7 @@ interface JobFormData {
 
 const initialFormData: JobFormData = {
   customer_id: '',
+  site_id: '',
   title: '',
   description: '',
   job_type: JobType.MAINTENANCE,
@@ -58,6 +63,7 @@ const initialFormData: JobFormData = {
   priority: JobPriority.NORMAL,
   scheduled_start_at: '',
   estimated_duration: '',
+  estimated_cost: '',
   internal_notes: '',
   customer_notes: '',
   special_instructions: '',
@@ -171,6 +177,7 @@ export function JobDetailPage() {
         setCurrentJob(job);
         setFormData({
           customer_id: job.customer_id || '',
+          site_id: job.site_id || '',
           title: job.title || '',
           description: job.description || '',
           job_type: job.job_type || JobType.MAINTENANCE,
@@ -180,6 +187,9 @@ export function JobDetailPage() {
             ? epochToDatetimeLocal(job.scheduled_start_at, timeZone)
             : '',
           estimated_duration: job.estimated_duration?.toString() || '',
+          estimated_cost: job.estimated_cost
+            ? job.estimated_cost.toString()
+            : '',
           internal_notes: job.internal_notes || '',
           customer_notes: job.customer_notes || '',
           special_instructions: job.special_instructions || '',
@@ -214,6 +224,7 @@ export function JobDetailPage() {
       const job = await jobService.getJob(sourceJobId);
       setFormData({
         customer_id: job.customer_id || '',
+        site_id: job.site_id || '',
         title: job.title || '',
         description: job.description || '',
         job_type: job.job_type || JobType.MAINTENANCE,
@@ -221,6 +232,9 @@ export function JobDetailPage() {
         priority: job.priority || JobPriority.NORMAL,
         scheduled_start_at: '',
         estimated_duration: job.estimated_duration?.toString() || '',
+        estimated_cost: job.estimated_cost
+          ? job.estimated_cost.toString()
+          : '',
         internal_notes: job.internal_notes || '',
         customer_notes: job.customer_notes || '',
         special_instructions: job.special_instructions || '',
@@ -251,8 +265,17 @@ export function JobDetailPage() {
     >
   ) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData((prev) =>
+      // A new customer means a new list of sites.
+      name === 'customer_id'
+        ? { ...prev, customer_id: value, site_id: '' }
+        : { ...prev, [name]: value }
+    );
   };
+
+  const estimatedCost = formData.estimated_cost
+    ? parseFloat(formData.estimated_cost)
+    : undefined;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -293,6 +316,8 @@ export function JobDetailPage() {
         const source = cloneFromId ? 'repeat' : 'manual';
         await jobService.createJob({
           customer_id: formData.customer_id,
+          site_id: formData.site_id || undefined,
+          estimated_cost: estimatedCost,
           title: formData.title,
           description: formData.description || undefined,
           job_type: formData.job_type,
@@ -322,6 +347,9 @@ export function JobDetailPage() {
       } else if (id) {
         // Update existing job
         await jobService.updateJob(id, {
+          // The API can't unset a site; an empty pick leaves it unchanged.
+          site_id: formData.site_id || undefined,
+          estimated_cost: estimatedCost,
           title: formData.title,
           description: formData.description || undefined,
           job_type: formData.job_type,
@@ -466,6 +494,16 @@ export function JobDetailPage() {
               </div>
 
               <div className="md:col-span-2">
+                <JobSitePicker
+                  customerId={formData.customer_id}
+                  value={formData.site_id}
+                  onChange={(siteId) =>
+                    setFormData((prev) => ({ ...prev, site_id: siteId }))
+                  }
+                />
+              </div>
+
+              <div className="md:col-span-2">
                 <label
                   htmlFor="title"
                   className="block text-sm font-medium text-neutral-700 mb-1"
@@ -588,6 +626,30 @@ export function JobDetailPage() {
                     min="0"
                     className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                   />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="estimated_cost"
+                    className="block text-sm font-medium text-neutral-700 mb-1"
+                  >
+                    Est. Cost ($)
+                  </label>
+                  <input
+                    type="number"
+                    id="estimated_cost"
+                    name="estimated_cost"
+                    value={formData.estimated_cost}
+                    onChange={handleChange}
+                    min="0"
+                    step="0.01"
+                    inputMode="decimal"
+                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  />
+                  <p className="mt-1 text-xs text-neutral-500">
+                    Extra work over the customer's not-to-exceed limit needs the
+                    approver's OK before it's scheduled.
+                  </p>
                 </div>
               </div>
 
@@ -754,6 +816,13 @@ export function JobDetailPage() {
             </div>
           </div>
         </form>
+
+        {/* Outside the form: the approval dialog has its own form. */}
+        {!isNew && currentJob && (
+          <div className="mt-6">
+            <JobApprovalsSection job={currentJob} />
+          </div>
+        )}
       </div>
     </DashboardLayout>
   );

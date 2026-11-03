@@ -10,7 +10,15 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import {
+  render as rtlRender,
+  screen,
+  waitFor,
+  fireEvent,
+  within,
+} from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { AxiosError, AxiosHeaders } from 'axios';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Routes, Route } from 'react-router';
 import React from 'react';
@@ -35,7 +43,10 @@ vi.mock('@services/jobService', () => ({
     getScheduledJobs: vi.fn(),
     assignMember: vi.fn(),
     unassignMember: vi.fn(),
+    getApprovals: vi.fn(),
+    recordApproval: vi.fn(),
   },
+  jobApprovalsQueryKey: (jobId: string | null) => ['job-approvals', jobId],
   JobStatus: {
     NEW: 'new',
     SCHEDULED: 'scheduled',
@@ -69,11 +80,33 @@ vi.mock('@services/customerService', () => ({
   },
 }));
 
+vi.mock('@services/siteService', () => ({
+  siteService: { list: vi.fn(), create: vi.fn(), update: vi.fn() },
+  sitesQueryKey: (customerId: string | null, includeInactive = false) => [
+    'customer-sites',
+    customerId,
+    includeInactive,
+  ],
+}));
+
+/** Job pages read sites and approvals through React Query. */
+function render(ui: React.ReactElement) {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+  return rtlRender(ui, {
+    wrapper: ({ children }) => (
+      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    ),
+  });
+}
+
 // Import after mocking
 import { useAuthStore, useTenantStore, useSidebarStore } from '@store';
 import { jobService } from '@services/jobService';
 import type { JobStats } from '@app-types/job';
 import { customerService } from '@services/customerService';
+import { siteService, type Site } from '@services/siteService';
 
 // =============================================================================
 // Test Data
@@ -167,6 +200,36 @@ const mockJobs = [
   },
 ];
 
+const mockSites: Site[] = [
+  {
+    id: 'site-1',
+    customer_id: 'customer-1',
+    name: 'Harborview Lofts',
+    address_street: '220 W Spring St',
+    address_city: 'Columbus',
+    address_state: 'OH',
+    address_zip: '43215',
+    address_full: '220 W Spring St, Columbus, OH 43215',
+    access_notes: 'Key box by the loading dock',
+    is_active: true,
+    created_at: '2024-01-01T00:00:00Z',
+    updated_at: '2024-01-01T00:00:00Z',
+  },
+  {
+    id: 'site-old',
+    customer_id: 'customer-1',
+    name: 'Closed Annex',
+    address_street: '1 Old Rd',
+    address_city: 'Columbus',
+    address_state: 'OH',
+    address_zip: '43215',
+    address_full: '1 Old Rd, Columbus, OH 43215',
+    is_active: false,
+    created_at: '2024-01-01T00:00:00Z',
+    updated_at: '2024-01-01T00:00:00Z',
+  },
+];
+
 const mockJobStats: JobStats = {
   total_jobs: 4,
   pending_jobs: 1,
@@ -246,6 +309,8 @@ const setupMocks = () => {
   });
 
   vi.mocked(jobService.getStats).mockResolvedValue(mockJobStats);
+  vi.mocked(jobService.getApprovals).mockResolvedValue([]);
+  vi.mocked(siteService.list).mockResolvedValue(mockSites);
 
   vi.mocked(customerService.getCustomers).mockResolvedValue({
     customers: [mockCustomer],
@@ -1013,6 +1078,179 @@ describe('Job Lifecycle Integration', () => {
           }
         });
       }
+    });
+  });
+
+  describe('Sites and not-to-exceed approvals (T186, T187)', () => {
+    it('picks one of the customer sites on a new job', async () => {
+      const user = userEvent.setup({ delay: null });
+      vi.mocked(jobService.createJob).mockResolvedValue(mockJobs[0]);
+      const { JobDetailPage } =
+        await import('../../src/pages/Jobs/JobDetailPage');
+      render(
+        <MemoryRouter initialEntries={['/jobs/new']}>
+          <Routes>
+            <Route path="/jobs/new" element={<JobDetailPage />} />
+          </Routes>
+        </MemoryRouter>
+      );
+
+      const siteSelect = await screen.findByLabelText(/^site$/i);
+      expect(siteSelect).toBeDisabled();
+
+      await screen.findByRole('option', { name: /John Doe/i });
+      await user.selectOptions(
+        screen.getByLabelText(/customer/i),
+        'customer-1'
+      );
+      await screen.findByRole('option', { name: 'Harborview Lofts' });
+      // Inactive sites aren't offered.
+      expect(
+        screen.queryByRole('option', { name: /Closed Annex/ })
+      ).not.toBeInTheDocument();
+      await user.selectOptions(screen.getByLabelText(/^site$/i), 'site-1');
+      expect(
+        screen.getByText('Access: Key box by the loading dock')
+      ).toBeInTheDocument();
+
+      await user.type(screen.getByLabelText(/title/i), 'Window cleaning');
+      await user.type(screen.getByLabelText(/est\. cost/i), '750');
+      await user.click(screen.getByRole('button', { name: /create job/i }));
+
+      await waitFor(() => {
+        expect(jobService.createJob).toHaveBeenCalledWith(
+          expect.objectContaining({
+            customer_id: 'customer-1',
+            site_id: 'site-1',
+            estimated_cost: 750,
+          })
+        );
+      });
+    });
+
+    it('shows the site of an existing job', async () => {
+      vi.mocked(jobService.getJob).mockResolvedValue({
+        ...mockJobs[0],
+        site_id: 'site-1',
+      });
+      const { JobDetailPage } =
+        await import('../../src/pages/Jobs/JobDetailPage');
+      render(
+        <MemoryRouter initialEntries={['/jobs/job-1']}>
+          <Routes>
+            <Route path="/jobs/:id" element={<JobDetailPage />} />
+          </Routes>
+        </MemoryRouter>
+      );
+      await waitFor(() =>
+        expect(screen.getByLabelText(/^site$/i)).toHaveValue('site-1')
+      );
+      expect(
+        screen.getByText('220 W Spring St, Columbus, OH 43215')
+      ).toBeInTheDocument();
+    });
+
+    it("records the approver's OK and retries scheduling on approval_required", async () => {
+      const user = userEvent.setup({ delay: null });
+      vi.mocked(jobService.getJob).mockResolvedValue(mockJobs[0]);
+      vi.mocked(jobService.transitionStatus)
+        .mockRejectedValueOnce(
+          new AxiosError('Conflict', 'ERR_BAD_REQUEST', undefined, undefined, {
+            data: {
+              error: 'approval_required',
+              message:
+                "This work is over the customer's not-to-exceed limit; record the approver's OK before scheduling it",
+            },
+            status: 409,
+            statusText: 'Conflict',
+            headers: {},
+            config: { headers: new AxiosHeaders() },
+          })
+        )
+        .mockResolvedValueOnce({
+          ...mockJobs[0],
+          status: 'scheduled' as const,
+        });
+      vi.mocked(jobService.recordApproval).mockResolvedValue({
+        id: 'ap-1',
+        job_id: 'job-1',
+        approver_name: 'Karen Doyle',
+        approver_email: 'karen@example.com',
+        amount: '750.00',
+        approved_at: '2024-01-02T00:00:00Z',
+        recorded_by: 'user-123',
+        created_at: '2024-01-02T00:00:00Z',
+      });
+
+      const { JobDetailPage } =
+        await import('../../src/pages/Jobs/JobDetailPage');
+      render(
+        <MemoryRouter initialEntries={['/jobs/job-1']}>
+          <Routes>
+            <Route path="/jobs/:id" element={<JobDetailPage />} />
+          </Routes>
+        </MemoryRouter>
+      );
+
+      await user.click(
+        await screen.findByRole('button', { name: /^schedule$/i })
+      );
+      const dialog = await screen.findByRole('dialog');
+      expect(
+        within(dialog).getByText("Record the approver's OK")
+      ).toBeInTheDocument();
+      expect(
+        within(dialog).getByText(/over the customer's not-to-exceed limit/)
+      ).toBeInTheDocument();
+      await user.type(within(dialog).getByLabelText(/notes/i), 'OK by phone');
+      await user.click(
+        within(dialog).getByRole('button', { name: /record approval/i })
+      );
+
+      await waitFor(() => {
+        expect(jobService.recordApproval).toHaveBeenCalledWith('job-1', {
+          notes: 'OK by phone',
+        });
+      });
+      await waitFor(() => {
+        expect(jobService.transitionStatus).toHaveBeenCalledTimes(2);
+      });
+      expect(jobService.transitionStatus).toHaveBeenLastCalledWith(
+        'job-1',
+        'scheduled'
+      );
+    });
+
+    it('lists the approvals on the job', async () => {
+      vi.mocked(jobService.getJob).mockResolvedValue(mockJobs[0]);
+      vi.mocked(jobService.getApprovals).mockResolvedValue([
+        {
+          id: 'ap-1',
+          job_id: 'job-1',
+          approver_name: 'Karen Doyle',
+          approver_email: 'karen@example.com',
+          amount: '750.00',
+          approved_at: '2024-01-02T15:00:00Z',
+          recorded_by: 'user-123',
+          created_at: '2024-01-02T15:00:00Z',
+        },
+      ]);
+      const { JobDetailPage } =
+        await import('../../src/pages/Jobs/JobDetailPage');
+      render(
+        <MemoryRouter initialEntries={['/jobs/job-1']}>
+          <Routes>
+            <Route path="/jobs/:id" element={<JobDetailPage />} />
+          </Routes>
+        </MemoryRouter>
+      );
+      const approvals = await screen.findByRole('region', {
+        name: 'Approvals',
+      });
+      expect(
+        await within(approvals).findByText('Karen Doyle')
+      ).toBeInTheDocument();
+      expect(within(approvals).getByText('$750.00')).toBeInTheDocument();
     });
   });
 });

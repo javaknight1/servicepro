@@ -86,6 +86,11 @@ export interface Job {
     company_name?: string;
     phone?: string;
   };
+  /** One of the customer's sites (T186). */
+  site_id?: string;
+  /** Set on visits a service agreement generated (T167); jobs without one
+   *  are extra work, subject to the customer's not-to-exceed limit (T187). */
+  agreement_id?: string;
   title: string;
   description?: string;
   job_type: JobType;
@@ -145,6 +150,8 @@ import type { JobStats } from '../types/job';
 
 export interface CreateJobRequest {
   customer_id: string;
+  /** Must be an active site of the customer (else 400 site_customer_mismatch). */
+  site_id?: string;
   title: string;
   description?: string;
   job_type: JobType;
@@ -177,6 +184,29 @@ export interface JobStatusTransition {
 export interface StatusHistoryResponse {
   transitions: JobStatusTransition[];
   total: number;
+}
+
+/** The customer's approver OK-ing extra work up to `amount` (T187). */
+export interface JobApproval {
+  id: string;
+  job_id: string;
+  approver_name?: string | null;
+  approver_email: string;
+  /** API decimal, e.g. "750.00". */
+  amount: string;
+  approved_at: string;
+  notes?: string | null;
+  recorded_by: string;
+  created_at: string;
+}
+
+/** Body of POST /jobs/{id}/approval. Omitted approver fields default to the
+ *  customer's billing approver, the amount to the job's estimated cost. */
+export interface RecordJobApprovalRequest {
+  approver_name?: string;
+  approver_email?: string;
+  amount?: string;
+  notes?: string;
 }
 
 class JobService {
@@ -266,6 +296,24 @@ class JobService {
     return response.data;
   }
 
+  async recordApproval(
+    jobId: string,
+    data: RecordJobApprovalRequest = {}
+  ): Promise<JobApproval> {
+    const response = await api.post<JobApproval>(
+      `${this.basePath}/${jobId}/approval`,
+      data
+    );
+    return response.data;
+  }
+
+  async getApprovals(jobId: string): Promise<JobApproval[]> {
+    const response = await api.get<{ approvals: JobApproval[] }>(
+      `${this.basePath}/${jobId}/approvals`
+    );
+    return response.data.approvals ?? [];
+  }
+
   async getStatusHistory(
     jobId: string,
     limit: number = 20,
@@ -299,3 +347,7 @@ class JobService {
 }
 
 export const jobService = new JobService();
+
+/** React Query key for a job's approvals. */
+export const jobApprovalsQueryKey = (jobId: string | null | undefined) =>
+  ['job-approvals', jobId ?? null] as const;
