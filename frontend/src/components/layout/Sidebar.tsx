@@ -12,6 +12,7 @@ import {
   Briefcase,
   FileText,
   Receipt,
+  CreditCard,
   BarChart3,
   Settings,
   ChevronLeft,
@@ -37,9 +38,9 @@ interface NavItem {
 /*
  * Order follows the MVP mockup (docs/product/mockups/servicepro-05-dashboard.png):
  * Dashboard, Customers & Sites, Agreements, Schedule, Jobs, Quotes, Invoices,
- * Payments, Reports, Team, Settings. Agreements and Schedule (T167) and
- * Payments (T169/T170) have no pages yet, so they are left out until their
- * tasks ship rather than linking to a 404.
+ * Payments, Reports, Team, Settings. Agreements and Schedule (T167) have
+ * no pages yet, so they are left out until their tasks ship rather than
+ * linking to a 404. Payments is the Stripe payouts page (T169).
  */
 const baseNavItems: NavItem[] = [
   { label: 'Dashboard', path: '/dashboard', icon: LayoutGrid },
@@ -56,6 +57,12 @@ const orgNavItems: NavItem[] = [
   { label: 'Jobs', path: '/jobs', icon: Briefcase, match: ['/jobs'] },
   { label: 'Quotes', path: '/quotes', icon: FileText, match: ['/quotes'] },
   { label: 'Invoices', path: '/invoices', icon: Receipt, match: ['/invoices'] },
+  {
+    label: 'Payments',
+    path: '/settings/payments',
+    icon: CreditCard,
+    match: ['/settings/payments'],
+  },
   {
     label: 'Reports',
     icon: BarChart3,

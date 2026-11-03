@@ -123,6 +123,14 @@ const NewOrgPage = loadable(
   { chunkName: 'new-org', delay: 100 }
 );
 
+const PaymentsSettingsPage = loadable(
+  () =>
+    import(/* webpackChunkName: "page-settings" */ '@pages/Settings').then(
+      (m) => ({ default: m.PaymentsSettingsPage })
+    ),
+  { chunkName: 'payments-settings', delay: 100 }
+);
+
 const ChangeMembershipPage = loadable(
   () =>
     import(/* webpackChunkName: "page-settings" */ '@pages/Settings').then(
@@ -450,6 +458,7 @@ export function AppRoutes() {
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/settings/organization" element={<OrgSettingsPage />} />
         <Route path="/settings/organization/new" element={<NewOrgPage />} />
+        <Route path="/settings/payments" element={<PaymentsSettingsPage />} />
         <Route
           path="/settings/organization/membership/change"
           element={<ChangeMembershipPage />}
@@ -497,6 +506,7 @@ export const routePaths = {
   settings: '/settings',
   orgSettings: '/settings/organization',
   newOrg: '/settings/organization/new',
+  paymentsSettings: '/settings/payments',
   changeMembership: '/settings/organization/membership/change',
   confirmMembership: '/settings/organization/membership/confirm',
   features: '/features',

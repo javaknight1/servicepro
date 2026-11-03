@@ -56,6 +56,7 @@ describe('Sidebar (T269)', () => {
       'Jobs',
       'Quotes',
       'Invoices',
+      'Payments',
       'Team',
       'Settings',
     ]);
@@ -64,7 +65,7 @@ describe('Sidebar (T269)', () => {
 
   it('hides modules whose pages do not exist yet', () => {
     renderAt('/dashboard');
-    for (const name of ['Agreements', 'Schedule', 'Payments']) {
+    for (const name of ['Agreements', 'Schedule']) {
       expect(screen.queryByText(name)).not.toBeInTheDocument();
     }
   });
