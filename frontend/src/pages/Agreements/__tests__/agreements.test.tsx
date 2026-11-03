@@ -56,7 +56,7 @@ import { tenantApi } from '@services/tenantService';
 import { AgreementsPage } from '../AgreementsPage';
 import { AgreementFormPage } from '../AgreementFormPage';
 import { AgreementDetailPage } from '../AgreementDetailPage';
-import { formatVisit } from '../agreementDisplay';
+import { formatClock, formatVisit } from '../agreementDisplay';
 
 const customer = {
   id: 'c-1',
@@ -181,6 +181,12 @@ describe('agreement helpers', () => {
         price_per_period: '150',
       })
     ).toBe(150);
+  });
+
+  it('formats a wall-clock visit time', () => {
+    expect(formatClock('18:00')).toBe('6:00 PM');
+    expect(formatClock('07:30')).toBe('7:30 AM');
+    expect(formatClock('00:15')).toBe('12:15 AM');
   });
 
   it('formats a visit as today, tomorrow or a date', () => {

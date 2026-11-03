@@ -13,6 +13,14 @@ export function customerName(
   );
 }
 
+/** "18:00" (the agreement's wall-clock visit time) → "6:00 PM". */
+export function formatClock(hhmm: string): string {
+  const [h, m] = hhmm.split(':').map(Number);
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return hhmm;
+  const hour12 = h % 12 === 0 ? 12 : h % 12;
+  return `${hour12}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`;
+}
+
 function dayKey(date: Date, timeZone?: string): string {
   return date.toLocaleDateString('en-CA', { timeZone });
 }

@@ -33,7 +33,7 @@ import { tenantApi } from '@services/tenantService';
 import { useTenantStore } from '@store/tenantStore';
 import { formatDollars } from '@/utils/money';
 import { getErrorMessage } from '@/utils/error';
-import { customerName, formatVisit } from './agreementDisplay';
+import { customerName, formatClock, formatVisit } from './agreementDisplay';
 
 const PREVIEW_DAYS = 14;
 
@@ -211,7 +211,7 @@ export function AgreementDetailPage() {
             icon={<Repeat />}
             label="Frequency"
             value={describeFrequency(agreement)}
-            detail={`${agreement.visit_start_time} · ${agreement.visit_duration_minutes} min visits`}
+            detail={`${formatClock(agreement.visit_start_time)} · ${agreement.visit_duration_minutes} min visits`}
           />
           <InfoCard
             icon={<DollarSign />}

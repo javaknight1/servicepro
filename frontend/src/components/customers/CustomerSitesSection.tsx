@@ -128,7 +128,6 @@ export function CustomerSitesSection({
                 <th className="px-4 py-3">Address</th>
                 <th className="px-4 py-3">Agreement</th>
                 <th className="px-4 py-3">Site contact</th>
-                <th className="px-4 py-3">Access notes</th>
                 <th className="px-4 py-3 text-right">Monthly</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-6 py-3">
@@ -154,6 +153,14 @@ export function CustomerSitesSection({
                   </td>
                   <td className="px-4 py-4 text-neutral-700">
                     {site.address_full}
+                    {site.access_notes && (
+                      <p
+                        className="mt-0.5 line-clamp-2 text-sm text-neutral-500"
+                        title={site.access_notes}
+                      >
+                        Access: {site.access_notes}
+                      </p>
+                    )}
                   </td>
                   <td className="px-4 py-4">
                     <SiteAgreements
@@ -166,7 +173,9 @@ export function CustomerSitesSection({
                   <td className="px-4 py-4">
                     {site.contact_name ? (
                       <>
-                        <p className="text-neutral-800">{site.contact_name}</p>
+                        <p className="whitespace-nowrap text-neutral-800">
+                          {site.contact_name}
+                        </p>
                         <p className="text-sm text-neutral-500">
                           {site.contact_phone || site.contact_email || ''}
                         </p>
@@ -174,9 +183,6 @@ export function CustomerSitesSection({
                     ) : (
                       <span className="text-neutral-400">—</span>
                     )}
-                  </td>
-                  <td className="max-w-[16rem] px-4 py-4 text-sm text-neutral-600">
-                    <p className="line-clamp-2">{site.access_notes || '—'}</p>
                   </td>
                   <td className="px-4 py-4 text-right font-semibold text-neutral-900 tabular-nums">
                     {siteMonthly(site.id) > 0
@@ -194,7 +200,7 @@ export function CustomerSitesSection({
                     </Badge>
                   </td>
                   <td className="px-6 py-4">
-                    <div className="flex justify-end gap-1">
+                    <div className="flex justify-end gap-1 whitespace-nowrap">
                       <Button
                         variant="ghost"
                         size="sm"
