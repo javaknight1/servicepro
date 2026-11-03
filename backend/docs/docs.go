@@ -14577,6 +14577,10 @@ const docTemplate = `{
                 },
                 "tier_name": {
                     "type": "string"
+                },
+                "trial_ends_at": {
+                    "description": "set while on (or after) a no-card trial",
+                    "type": "string"
                 }
             }
         },
@@ -14593,18 +14597,29 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "customers": {
-                    "description": "-1 for unlimited",
+                    "description": "legacy; -1 for unlimited",
                     "type": "integer"
+                },
+                "highlights": {
+                    "description": "plan card bullets",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "jobs_per_month": {
-                    "description": "-1 for unlimited",
+                    "description": "legacy; -1 for unlimited",
                     "type": "integer"
                 },
+                "multi_entity": {
+                    "type": "boolean"
+                },
                 "quotes_per_month": {
-                    "description": "-1 for unlimited",
+                    "description": "legacy; -1 for unlimited",
                     "type": "integer"
                 },
                 "storage_gb": {
+                    "description": "legacy",
                     "type": "integer"
                 },
                 "team_members": {

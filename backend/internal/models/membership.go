@@ -27,16 +27,20 @@ const (
 	BillingCycleAnnual  BillingCycle = "annual"
 )
 
-// TierFeatures represents the features available in a membership tier
+// TierFeatures represents the features available in a membership tier.
+// The D15 tiers (solo, team, pro) carry only the user limit; the count
+// limits exist on the legacy Free and Basic tiers only (nil = no limit).
 type TierFeatures struct {
-	TeamMembers       int  `json:"team_members"`     // -1 for unlimited
-	Customers         int  `json:"customers"`        // -1 for unlimited
-	JobsPerMonth      int  `json:"jobs_per_month"`   // -1 for unlimited
-	QuotesPerMonth    int  `json:"quotes_per_month"` // -1 for unlimited
-	StorageGB         int  `json:"storage_gb"`
-	AdvancedReporting bool `json:"advanced_reporting"`
-	APIAccess         bool `json:"api_access"`
-	CustomBranding    bool `json:"custom_branding"`
+	TeamMembers       int      `json:"team_members"`               // -1 for unlimited
+	Customers         *int     `json:"customers,omitempty"`        // legacy; -1 for unlimited
+	JobsPerMonth      *int     `json:"jobs_per_month,omitempty"`   // legacy; -1 for unlimited
+	QuotesPerMonth    *int     `json:"quotes_per_month,omitempty"` // legacy; -1 for unlimited
+	StorageGB         *int     `json:"storage_gb,omitempty"`       // legacy
+	AdvancedReporting bool     `json:"advanced_reporting"`
+	APIAccess         bool     `json:"api_access"`
+	CustomBranding    bool     `json:"custom_branding"`
+	MultiEntity       bool     `json:"multi_entity"`
+	Highlights        []string `json:"highlights,omitempty"` // plan card bullets
 }
 
 // Value implements driver.Valuer for database serialization
@@ -117,8 +121,10 @@ type TenantSubscription struct {
 	CancelledAt        *time.Time       `json:"cancelled_at,omitempty"`
 	ChangedBy          *uuid.UUID       `json:"changed_by,omitempty" gorm:"type:uuid"`
 	ChangeReason       string           `json:"change_reason,omitempty" gorm:"type:text"`
-	CreatedAt          time.Time        `json:"created_at"`
-	UpdatedAt          time.Time        `json:"updated_at"`
+	// TrialEndsAt is the end of a no-card trial (D15); nil when not a trial.
+	TrialEndsAt *time.Time `json:"trial_ends_at,omitempty"`
+	CreatedAt   time.Time  `json:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at"`
 
 	// Stripe integration
 	StripeSubscriptionID *string `json:"stripe_subscription_id,omitempty" gorm:"uniqueIndex;size:255"`
@@ -190,6 +196,7 @@ type TenantSubscriptionResponse struct {
 	CurrentPeriodStart time.Time        `json:"current_period_start"`
 	CurrentPeriodEnd   *time.Time       `json:"current_period_end,omitempty"`
 	CancelAtPeriodEnd  bool             `json:"cancel_at_period_end"`
+	TrialEndsAt        *time.Time       `json:"trial_ends_at,omitempty"` // set while on (or after) a no-card trial
 }
 
 // ToResponse converts a TenantSubscription model to TenantSubscriptionResponse
@@ -206,6 +213,7 @@ func (s *TenantSubscription) ToResponse() TenantSubscriptionResponse {
 		CurrentPeriodStart: s.CurrentPeriodStart,
 		CurrentPeriodEnd:   s.CurrentPeriodEnd,
 		CancelAtPeriodEnd:  s.CancelAtPeriodEnd,
+		TrialEndsAt:        s.TrialEndsAt,
 	}
 
 	if s.Tier != nil {

@@ -13393,17 +13393,23 @@ export interface components {
             tier_display_name?: string;
             tier_id?: string;
             tier_name?: string;
+            /** @description set while on (or after) a no-card trial */
+            trial_ends_at?: string;
         };
         "github_com_javaknight1_servicepro_backend_internal_models.TierFeatures": {
             advanced_reporting?: boolean;
             api_access?: boolean;
             custom_branding?: boolean;
-            /** @description -1 for unlimited */
+            /** @description legacy; -1 for unlimited */
             customers?: number;
-            /** @description -1 for unlimited */
+            /** @description plan card bullets */
+            highlights?: string[];
+            /** @description legacy; -1 for unlimited */
             jobs_per_month?: number;
-            /** @description -1 for unlimited */
+            multi_entity?: boolean;
+            /** @description legacy; -1 for unlimited */
             quotes_per_month?: number;
+            /** @description legacy */
             storage_gb?: number;
             /** @description -1 for unlimited */
             team_members?: number;

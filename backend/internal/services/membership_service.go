@@ -22,8 +22,11 @@ var (
 )
 
 const (
-	// DefaultTierName is the tier assigned to new tenants
-	DefaultTierName = "free"
+	// DefaultTierName is the tier new tenants start on: a no-card Team trial
+	// (D15). Free and Basic are legacy tiers, closed to new sign-ups.
+	DefaultTierName = "team"
+	// TrialDays is the length of the new-tenant trial (D15).
+	TrialDays = 30
 )
 
 // MembershipService handles membership business logic

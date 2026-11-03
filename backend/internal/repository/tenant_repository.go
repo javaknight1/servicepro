@@ -48,11 +48,18 @@ func (r *TenantRepository) Create(ctx context.Context, tenant *models.Tenant) er
 	return r.db.WithContext(ctx).Create(tenant).Error
 }
 
+// StarterPlan is the subscription a new tenant starts on (D15): the tier by
+// name and, when TrialDays > 0, a no-card trial of that many days at price 0.
+type StarterPlan struct {
+	TierName  string
+	TrialDays int
+}
+
 // CreateWithOwner creates the tenant, its owner's membership (role
-// ownerRoleName) and, when that tier exists, the default subscription
-// (tier defaultTierName) in one transaction (T226). Any failure leaves
-// nothing behind, so a failed signup does not keep the slug.
-func (r *TenantRepository) CreateWithOwner(ctx context.Context, tenant *models.Tenant, ownerRoleName, defaultTierName string) error {
+// ownerRoleName) and, when that tier exists, the starter subscription in
+// one transaction (T226). Any failure leaves nothing behind, so a failed
+// signup does not keep the slug.
+func (r *TenantRepository) CreateWithOwner(ctx context.Context, tenant *models.Tenant, ownerRoleName string, plan StarterPlan) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var count int64
 		if err := tx.Model(&models.Tenant{}).
@@ -87,16 +94,15 @@ func (r *TenantRepository) CreateWithOwner(ctx context.Context, tenant *models.T
 		}
 
 		var tier models.MembershipTier
-		err := tx.Where("name = ? AND enabled = ?", defaultTierName, true).First(&tier).Error
+		err := tx.Where("name = ? AND enabled = ?", plan.TierName, true).First(&tier).Error
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			logging.Warn(ctx, "[TENANT-REPO] Default tier not found, tenant created without a subscription", map[string]any{"tier_name": defaultTierName})
+			logging.Warn(ctx, "[TENANT-REPO] Starter tier not found, tenant created without a subscription", map[string]any{"tier_name": plan.TierName})
 			return nil
 		}
 		if err != nil {
-			return fmt.Errorf("load default tier: %w", err)
+			return fmt.Errorf("load starter tier: %w", err)
 		}
-		periodEnd := now.AddDate(0, 1, 0)
-		if err := tx.Create(&models.TenantSubscription{
+		sub := &models.TenantSubscription{
 			ID:                 uuid.New(),
 			TenantID:           tenant.ID,
 			TierID:             tier.ID,
@@ -105,8 +111,19 @@ func (r *TenantRepository) CreateWithOwner(ctx context.Context, tenant *models.T
 			PriceCents:         tier.MonthlyPriceCents,
 			StartedAt:          now,
 			CurrentPeriodStart: now,
-			CurrentPeriodEnd:   &periodEnd,
-		}).Error; err != nil {
+		}
+		if plan.TrialDays > 0 {
+			// A no-card trial (D15): nothing is charged; the period is the trial.
+			trialEnd := now.AddDate(0, 0, plan.TrialDays)
+			sub.PriceCents = 0
+			sub.TrialEndsAt = &trialEnd
+			sub.CurrentPeriodEnd = &trialEnd
+			sub.ChangeReason = "trial"
+		} else {
+			periodEnd := now.AddDate(0, 1, 0)
+			sub.CurrentPeriodEnd = &periodEnd
+		}
+		if err := tx.Create(sub).Error; err != nil {
 			return fmt.Errorf("create default subscription: %w", err)
 		}
 		return nil

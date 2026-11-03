@@ -72,3 +72,34 @@ func TestCreateTenant_IsAtomic(t *testing.T) {
 	_, err = svc.CreateTenant(ctx, req, uuid.New())
 	assert.ErrorIs(t, err, ErrInvalidTenantSlug, "a live tenant still owns the slug")
 }
+
+// D15: a new tenant starts a 30-day Team trial with no card: an active row on
+// the team tier at price 0, trial_ends_at = period end, no Stripe subscription.
+func TestCreateTenant_StartsNoCardTeamTrial(t *testing.T) {
+	db := setupTenantCreateDB(t)
+	svc := NewTenantService(repository.NewTenantRepository(db), nil)
+	ctx := context.Background()
+	now := time.Now()
+	require.NoError(t, db.Exec(`INSERT INTO roles (id, name, hierarchy_level, created_at, updated_at) VALUES (?, 'admin', 80, ?, ?)`,
+		uuid.New().String(), now, now).Error)
+	teamID := uuid.New()
+	require.NoError(t, db.Exec(`INSERT INTO membership_tiers (id, name, enabled, monthly_price_cents, created_at, updated_at) VALUES (?, 'team', true, 9900, ?, ?)`,
+		teamID.String(), now, now).Error)
+	require.NoError(t, db.Exec(`INSERT INTO membership_tiers (id, name, enabled, monthly_price_cents, created_at, updated_at) VALUES (?, 'free', false, 0, ?, ?)`,
+		uuid.New().String(), now, now).Error)
+
+	tenant, err := svc.CreateTenant(ctx, &models.CreateTenantRequest{Name: "Shine Co", Slug: "shine-co"}, uuid.New())
+	require.NoError(t, err)
+
+	var sub models.TenantSubscription
+	require.NoError(t, db.First(&sub, "tenant_id = ?", tenant.ID).Error)
+	assert.Equal(t, "team", DefaultTierName)
+	assert.Equal(t, teamID, sub.TierID, "trial is on Team, not the disabled Free tier")
+	assert.Equal(t, models.MembershipStatusActive, sub.Status)
+	assert.Zero(t, sub.PriceCents, "no card, nothing charged")
+	assert.Nil(t, sub.StripeSubscriptionID)
+	require.NotNil(t, sub.TrialEndsAt)
+	assert.WithinDuration(t, now.AddDate(0, 0, 30), *sub.TrialEndsAt, time.Minute)
+	require.NotNil(t, sub.CurrentPeriodEnd)
+	assert.WithinDuration(t, *sub.TrialEndsAt, *sub.CurrentPeriodEnd, time.Second)
+}

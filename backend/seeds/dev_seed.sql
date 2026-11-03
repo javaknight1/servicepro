@@ -257,10 +257,10 @@ INSERT INTO tenant_users (
     updated_at = CURRENT_TIMESTAMP;
 
 -- ============================================================================
--- 4. ASSIGN FREE TIER MEMBERSHIP TO TENANTS
+-- 4. ASSIGN MEMBERSHIPS TO TENANTS
 -- ============================================================================
 
--- Free tier subscription for Tenant 1
+-- Tenant 1: a 30-day no-card Team trial, like every new sign-up (D15, T210)
 INSERT INTO tenant_subscriptions (
     id,
     tenant_id,
@@ -271,23 +271,27 @@ INSERT INTO tenant_subscriptions (
     started_at,
     current_period_start,
     current_period_end,
+    trial_ends_at,
+    change_reason,
     created_at,
     updated_at
 ) VALUES (
     '55555555-5555-5555-5555-555555555551',
     '22222222-2222-2222-2222-222222222222',
-    '00000000-0000-0000-0001-000000000001', -- free tier
+    '00000000-0000-0000-0001-000000000005', -- team tier
     'active',
     'monthly',
     0,
     CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP,
-    CURRENT_TIMESTAMP + INTERVAL '1 month',
+    CURRENT_TIMESTAMP + INTERVAL '30 days',
+    CURRENT_TIMESTAMP + INTERVAL '30 days',
+    'trial',
     CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
 ) ON CONFLICT DO NOTHING;
 
--- Free tier subscription for Tenant 2
+-- Tenant 2: legacy Free tier (grandfathered; Free is closed to new sign-ups)
 INSERT INTO tenant_subscriptions (
     id,
     tenant_id,

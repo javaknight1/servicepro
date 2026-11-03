@@ -153,9 +153,10 @@ func (s *TenantService) CreateTenant(ctx context.Context, req *models.CreateTena
 		tenant.Settings = *req.Settings
 	}
 
-	// Tenant, owner membership and default tier are created atomically
-	// (T226): a failure leaves nothing behind and does not burn the slug.
-	if err := s.tenantRepo.CreateWithOwner(ctx, tenant, OwnerRoleName, DefaultTierName); err != nil {
+	// Tenant, owner membership and the Team trial are created atomically
+	// (T226, D15): a failure leaves nothing behind and does not burn the slug.
+	starter := repository.StarterPlan{TierName: DefaultTierName, TrialDays: TrialDays}
+	if err := s.tenantRepo.CreateWithOwner(ctx, tenant, OwnerRoleName, starter); err != nil {
 		if errors.Is(err, repository.ErrTenantSlugExists) {
 			return nil, ErrInvalidTenantSlug
 		}
