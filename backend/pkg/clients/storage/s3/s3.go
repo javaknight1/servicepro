@@ -37,6 +37,7 @@ func init() {
 			UsePathStyle:    cfg.S3Compatible.UsePathStyle,
 			DisableSSL:      cfg.S3Compatible.DisableSSL,
 			PublicURL:       cfg.S3Compatible.PublicURL,
+			PresignEndpoint: cfg.S3Compatible.PresignEndpoint,
 		}
 		return NewClient(ctx, s3Cfg)
 	})
@@ -52,7 +53,13 @@ type Config struct {
 	SecretAccessKey string
 	UsePathStyle    bool   // Required for MinIO and some S3-compatible services
 	DisableSSL      bool   // For local development (e.g., MinIO without TLS)
-	PublicURL       string // Optional: base URL for public access (e.g., CDN or MinIO public URL)
+	PublicURL       string // Optional: base URL of genuinely public objects (a public bucket domain or CDN)
+	// PresignEndpoint is the endpoint presigned URLs are signed for, when the
+	// browser reaches the store at a different host than the API does (local
+	// MinIO: the API uses http://minio:9000, the browser http://localhost:9000).
+	// Empty means Endpoint. SigV4 signs the Host header, so a presigned URL
+	// can't be rewritten to another host after signing.
+	PresignEndpoint string
 }
 
 // Client implements the storage.Client interface using S3-compatible storage
@@ -122,8 +129,15 @@ func NewClient(ctx context.Context, cfg *Config) (*Client, error) {
 	// Create uploader
 	uploader := manager.NewUploader(client) //nolint:staticcheck // SA1019 (T247)
 
-	// Create presigner
-	presigner := s3.NewPresignClient(client)
+	// Create presigner, signing for the browser-facing endpoint when it differs
+	presignClient := client
+	if cfg.PresignEndpoint != "" {
+		presignClient = s3.NewFromConfig(awsCfg, append(s3Opts, func(o *s3.Options) {
+			o.BaseEndpoint = aws.String(cfg.PresignEndpoint)
+			o.UsePathStyle = cfg.UsePathStyle
+		})...)
+	}
+	presigner := s3.NewPresignClient(presignClient)
 
 	return &Client{
 		client:    client,
@@ -320,16 +334,7 @@ func (c *Client) GetPresignedURL(ctx context.Context, key string, expiration tim
 		return "", fmt.Errorf("failed to generate presigned URL: %w", err)
 	}
 
-	url := presignResult.URL
-
-	// If PublicURL is configured, replace the internal endpoint with the public one
-	// This is needed for Docker/local development where the internal endpoint (e.g., minio:9000)
-	// is not accessible from the browser
-	if c.config.PublicURL != "" && c.config.Endpoint != "" {
-		url = strings.Replace(url, c.config.Endpoint, strings.TrimSuffix(c.config.PublicURL, "/"), 1)
-	}
-
-	return url, nil
+	return presignResult.URL, nil
 }
 
 // GetPresignedUploadURL implements storage.Client

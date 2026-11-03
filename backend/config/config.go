@@ -86,7 +86,8 @@ type S3CompatibleConfig struct {
 	SecretAccessKey string
 	UsePathStyle    bool   // Required for MinIO and some S3-compatible services
 	DisableSSL      bool   // For local development (e.g., MinIO without TLS)
-	PublicURL       string // Optional: base URL for public access (e.g., CDN URL)
+	PublicURL       string // Optional: base URL of genuinely public objects (public bucket domain or CDN)
+	PresignEndpoint string // Optional: endpoint presigned URLs are signed for (browser-facing; local MinIO)
 }
 
 // ResendConfig holds Resend email service configuration
@@ -480,6 +481,7 @@ func Load() *Config {
 			UsePathStyle:    getEnvAsBool("S3_COMPATIBLE_USE_PATH_STYLE", false),
 			DisableSSL:      getEnvAsBool("S3_COMPATIBLE_DISABLE_SSL", false),
 			PublicURL:       getEnv("S3_COMPATIBLE_PUBLIC_URL", ""),
+			PresignEndpoint: getEnv("S3_COMPATIBLE_PRESIGN_ENDPOINT", ""),
 		},
 		SMTP: SMTPConfig{
 			Host:      getEnv("SMTP_HOST", ""),
