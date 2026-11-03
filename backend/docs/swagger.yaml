@@ -4239,6 +4239,13 @@ definitions:
         type: string
       amount_paid:
         type: string
+      business_location:
+        type: string
+      business_name:
+        description: |-
+          BusinessName and BusinessLocation ("Columbus, OH", may be empty)
+          describe the business that sent the invoice (T170).
+        type: string
       currency:
         type: string
       customer_name:
@@ -4253,6 +4260,15 @@ definitions:
         items:
           $ref: '#/definitions/internal_api_handlers.PublicInvoiceLineResponse'
         type: array
+      pay_methods:
+        description: |-
+          PayMethods are the ways this invoice can be paid online right now,
+          bank first (preferred for B2B); empty when it can't be.
+        items:
+          $ref: '#/definitions/internal_api_handlers.PublicPayMethodResponse'
+        type: array
+      po_number:
+        type: string
       status:
         type: string
       subtotal:
@@ -4260,6 +4276,21 @@ definitions:
       tax_amount:
         type: string
       total_amount:
+        type: string
+    type: object
+  internal_api_handlers.PublicPayMethodResponse:
+    properties:
+      business_fee:
+        description: |-
+          BusinessFee is ServicePro's fee the business pays for this method
+          (the customer pays no fee).
+        example: "10.00"
+        type: string
+      method:
+        description: Method is passed to /public/invoices/pay/{token}?method=.
+        enum:
+        - bank
+        - card
         type: string
     type: object
   internal_api_handlers.QuoteExpiryJobResponse:
@@ -9437,7 +9468,11 @@ paths:
     get:
       consumes:
       - application/json
-      description: Retrieves invoice details for display on a payment page
+      description: 'Retrieves invoice details for the public pay page (mockup 17):
+        the invoice, the business that sent it (name, city/state), and the methods
+        it can be paid with now, each with the fee the business pays ServicePro for
+        it (bank 1% capped at $10, card 0.4%). pay_methods is empty when the invoice
+        can''t be paid online.'
       parameters:
       - description: Payment token
         in: path

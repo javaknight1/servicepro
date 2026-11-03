@@ -34,14 +34,14 @@ func TestInvoicePaymentURL_OnlyWhenOnlinePaymentsOn(t *testing.T) {
 	ready, notReady := uuid.New(), uuid.New()
 	inv := &models.Invoice{TenantID: ready, PaymentToken: &token}
 
-	off := NewInvoiceServiceWithConfig(nil, &InvoiceServiceConfig{BackendURL: "https://api.example.test"})
+	off := NewInvoiceServiceWithConfig(nil, &InvoiceServiceConfig{FrontendURL: "https://app.example.test"})
 	off.SetPayLinkPolicy(payLinksFor{ready: true})
 	assert.Empty(t, off.invoicePaymentURL(ctx, inv), "payments off: no pay link")
 
-	on := NewInvoiceServiceWithConfig(nil, &InvoiceServiceConfig{BackendURL: "https://api.example.test", OnlinePayments: true})
+	on := NewInvoiceServiceWithConfig(nil, &InvoiceServiceConfig{FrontendURL: "https://app.example.test", OnlinePayments: true})
 	assert.Empty(t, on.invoicePaymentURL(ctx, inv), "no Connect policy: no pay link")
 	on.SetPayLinkPolicy(payLinksFor{ready: true})
-	assert.Equal(t, "https://api.example.test/api/v1/public/invoices/pay/tok123", on.invoicePaymentURL(ctx, inv))
+	assert.Equal(t, "https://app.example.test/pay/tok123", on.invoicePaymentURL(ctx, inv))
 	assert.Empty(t, on.invoicePaymentURL(ctx, &models.Invoice{TenantID: ready}), "no token: no pay link")
 	assert.Empty(t, on.invoicePaymentURL(ctx, &models.Invoice{TenantID: notReady, PaymentToken: &token}),
 		"tenant without an active Stripe account: no pay link")

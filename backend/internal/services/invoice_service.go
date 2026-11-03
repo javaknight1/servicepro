@@ -1285,8 +1285,9 @@ func (s *InvoiceService) generatePaymentToken() (string, error) {
 	return base64.URLEncoding.EncodeToString(bytes), nil
 }
 
-// invoicePaymentURL is the emailed "Pay now" link — the backend route that
-// redirects to Stripe Checkout — or "" when online payment is off (T261) or
+// invoicePaymentURL is the emailed "Pay now" link — the public pay page
+// (frontend /pay/<token>, T170), where the customer picks bank or card before
+// going to Stripe Checkout — or "" when online payment is off (T261) or
 // the invoice's tenant can't take payments on its own Stripe account yet
 // (T169), in which case the email has no pay button.
 func (s *InvoiceService) invoicePaymentURL(ctx context.Context, invoice *models.Invoice) string {
@@ -1296,7 +1297,7 @@ func (s *InvoiceService) invoicePaymentURL(ctx context.Context, invoice *models.
 	if s.payLinks == nil || !s.payLinks.CanAcceptPayments(ctx, invoice.TenantID) {
 		return ""
 	}
-	return fmt.Sprintf("%s/api/v1/public/invoices/pay/%s", s.backendURL, *invoice.PaymentToken)
+	return fmt.Sprintf("%s/pay/%s", s.frontendURL, *invoice.PaymentToken)
 }
 
 // sendInvoiceEmail sends the invoice email to the customer with PDF attachment

@@ -38,6 +38,7 @@ describe('public Stripe Checkout return routes', () => {
   it('does not treat the payment return pages as protected', () => {
     expect(isProtectedRoute(PUBLIC_PAYMENT_PATHS.success)).toBe(false);
     expect(isProtectedRoute(PUBLIC_PAYMENT_PATHS.cancelled)).toBe(false);
+    expect(isProtectedRoute('/pay/tok_abc')).toBe(false);
     expect(isProtectedRoute('/invoices/abc')).toBe(true);
   });
 });

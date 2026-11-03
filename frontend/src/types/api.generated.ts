@@ -9113,7 +9113,7 @@ export interface paths {
         };
         /**
          * Get invoice by token
-         * @description Retrieves invoice details for display on a payment page
+         * @description Retrieves invoice details for the public pay page (mockup 17): the invoice, the business that sent it (name, city/state), and the methods it can be paid with now, each with the fee the business pays ServicePro for it (bank 1% capped at $10, card 0.4%). pay_methods is empty when the invoice can't be paid online.
          */
         get: {
             parameters: {
@@ -13844,16 +13844,41 @@ export interface components {
         "internal_api_handlers.PublicInvoiceResponse": {
             amount_due?: string;
             amount_paid?: string;
+            business_location?: string;
+            /**
+             * @description BusinessName and BusinessLocation ("Columbus, OH", may be empty)
+             *     describe the business that sent the invoice (T170).
+             */
+            business_name?: string;
             currency?: string;
             customer_name?: string;
             due_date?: string;
             invoice_number?: string;
             issue_date?: string;
             lines?: components["schemas"]["internal_api_handlers.PublicInvoiceLineResponse"][];
+            /**
+             * @description PayMethods are the ways this invoice can be paid online right now,
+             *     bank first (preferred for B2B); empty when it can't be.
+             */
+            pay_methods?: components["schemas"]["internal_api_handlers.PublicPayMethodResponse"][];
+            po_number?: string;
             status?: string;
             subtotal?: string;
             tax_amount?: string;
             total_amount?: string;
+        };
+        "internal_api_handlers.PublicPayMethodResponse": {
+            /**
+             * @description BusinessFee is ServicePro's fee the business pays for this method
+             *     (the customer pays no fee).
+             * @example 10.00
+             */
+            business_fee?: string;
+            /**
+             * @description Method is passed to /public/invoices/pay/{token}?method=.
+             * @enum {string}
+             */
+            method?: "bank" | "card";
         };
         "internal_api_handlers.QuoteExpiryJobResponse": {
             /** @example 12 */

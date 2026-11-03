@@ -104,7 +104,7 @@ func (h *PublicInvoiceHandler) PayInvoice(c *gin.Context) {
 
 // GetInvoiceByToken retrieves invoice details for a payment token
 // @Summary		Get invoice by token
-// @Description	Retrieves invoice details for display on a payment page
+// @Description	Retrieves invoice details for the public pay page (mockup 17): the invoice, the business that sent it (name, city/state), and the methods it can be paid with now, each with the fee the business pays ServicePro for it (bank 1% capped at $10, card 0.4%). pay_methods is empty when the invoice can't be paid online.
 // @Tags			Public
 // @Accept			json
 // @Produce		json
@@ -125,8 +125,7 @@ func (h *PublicInvoiceHandler) GetInvoiceByToken(c *gin.Context) {
 	// unguessable payment token selects the invoice across tenants.
 	ctx := tenancy.WithSystem(c.Request.Context())
 
-	// Get invoice by token
-	invoice, err := h.invoicePaymentService.GetInvoiceByToken(ctx, token)
+	page, err := h.invoicePaymentService.GetPayPage(ctx, token)
 	if err != nil {
 		statusCode := http.StatusInternalServerError
 		errorMessage := "failed to retrieve invoice"
@@ -145,7 +144,15 @@ func (h *PublicInvoiceHandler) GetInvoiceByToken(c *gin.Context) {
 	}
 
 	// Return a sanitized view of the invoice for public display
-	response := h.buildPublicInvoiceResponse(invoice)
+	response := h.buildPublicInvoiceResponse(page.Invoice)
+	response.BusinessName = page.BusinessName
+	response.BusinessLocation = page.BusinessLocation
+	response.PayMethods = make([]PublicPayMethodResponse, 0, len(page.Methods))
+	for _, m := range page.Methods {
+		response.PayMethods = append(response.PayMethods, PublicPayMethodResponse{
+			Method: m.Method, BusinessFee: m.BusinessFee.StringFixed(2),
+		})
+	}
 
 	c.JSON(http.StatusOK, response)
 }
@@ -214,7 +221,24 @@ type PublicInvoiceResponse struct {
 	AmountDue     string                      `json:"amount_due"`
 	Currency      string                      `json:"currency"`
 	CustomerName  string                      `json:"customer_name,omitempty"`
+	PONumber      string                      `json:"po_number,omitempty"`
 	Lines         []PublicInvoiceLineResponse `json:"lines"`
+	// BusinessName and BusinessLocation ("Columbus, OH", may be empty)
+	// describe the business that sent the invoice (T170).
+	BusinessName     string `json:"business_name"`
+	BusinessLocation string `json:"business_location,omitempty"`
+	// PayMethods are the ways this invoice can be paid online right now,
+	// bank first (preferred for B2B); empty when it can't be.
+	PayMethods []PublicPayMethodResponse `json:"pay_methods"`
+}
+
+// PublicPayMethodResponse is one way to pay on the pay page.
+type PublicPayMethodResponse struct {
+	// Method is passed to /public/invoices/pay/{token}?method=.
+	Method string `json:"method" enums:"bank,card"`
+	// BusinessFee is ServicePro's fee the business pays for this method
+	// (the customer pays no fee).
+	BusinessFee string `json:"business_fee" example:"10.00"`
 }
 
 // PublicInvoiceLineResponse is a sanitized invoice line for public display
@@ -264,6 +288,7 @@ func (h *PublicInvoiceHandler) buildPublicInvoiceResponse(invoice *models.Invoic
 		AmountDue:     amountDue.StringFixed(2),
 		Currency:      models.NormalizeCurrency(invoice.Currency),
 		CustomerName:  customerName,
+		PONumber:      invoice.PONumber,
 		Lines:         lines,
 	}
 }

@@ -7598,7 +7598,7 @@ const docTemplate = `{
         },
         "/public/invoices/details/{token}": {
             "get": {
-                "description": "Retrieves invoice details for display on a payment page",
+                "description": "Retrieves invoice details for the public pay page (mockup 17): the invoice, the business that sent it (name, city/state), and the methods it can be paid with now, each with the fee the business pays ServicePro for it (bank 1% capped at $10, card 0.4%). pay_methods is empty when the invoice can't be paid online.",
                 "consumes": [
                     "application/json"
                 ],
@@ -16000,6 +16000,13 @@ const docTemplate = `{
                 "amount_paid": {
                     "type": "string"
                 },
+                "business_location": {
+                    "type": "string"
+                },
+                "business_name": {
+                    "description": "BusinessName and BusinessLocation (\"Columbus, OH\", may be empty)\ndescribe the business that sent the invoice (T170).",
+                    "type": "string"
+                },
                 "currency": {
                     "type": "string"
                 },
@@ -16021,6 +16028,16 @@ const docTemplate = `{
                         "$ref": "#/definitions/internal_api_handlers.PublicInvoiceLineResponse"
                     }
                 },
+                "pay_methods": {
+                    "description": "PayMethods are the ways this invoice can be paid online right now,\nbank first (preferred for B2B); empty when it can't be.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_api_handlers.PublicPayMethodResponse"
+                    }
+                },
+                "po_number": {
+                    "type": "string"
+                },
                 "status": {
                     "type": "string"
                 },
@@ -16032,6 +16049,24 @@ const docTemplate = `{
                 },
                 "total_amount": {
                     "type": "string"
+                }
+            }
+        },
+        "internal_api_handlers.PublicPayMethodResponse": {
+            "type": "object",
+            "properties": {
+                "business_fee": {
+                    "description": "BusinessFee is ServicePro's fee the business pays for this method\n(the customer pays no fee).",
+                    "type": "string",
+                    "example": "10.00"
+                },
+                "method": {
+                    "description": "Method is passed to /public/invoices/pay/{token}?method=.",
+                    "type": "string",
+                    "enum": [
+                        "bank",
+                        "card"
+                    ]
                 }
             }
         },

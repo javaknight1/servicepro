@@ -278,6 +278,15 @@ const PaymentSuccessPage = loadable(
   { chunkName: 'payment-success', delay: 100 }
 );
 
+// Public pay page: the emailed "Pay now" link (backend invoicePaymentURL).
+const PayInvoicePage = loadable(
+  () =>
+    import('@pages/Invoices/PayInvoicePage').then((m) => ({
+      default: m.PayInvoicePage,
+    })),
+  { chunkName: 'pay-invoice', delay: 100 }
+);
+
 const PaymentCancelledPage = loadable(
   () =>
     import('@pages/Invoices/PaymentCancelledPage').then((m) => ({
@@ -399,6 +408,8 @@ export const preloadHandlers = {
 export const PUBLIC_PAYMENT_PATHS = {
   success: '/invoices/payment-success',
   cancelled: '/invoices/payment-cancelled',
+  /** Pay page; must match the backend's invoicePaymentURL (FRONTEND_URL/pay/<token>). */
+  pay: '/pay/:token',
 } as const;
 
 export function AppRoutes() {
@@ -437,6 +448,7 @@ export function AppRoutes() {
         path={PUBLIC_PAYMENT_PATHS.cancelled}
         element={<PaymentCancelledPage />}
       />
+      <Route path={PUBLIC_PAYMENT_PATHS.pay} element={<PayInvoicePage />} />
 
       {/* Protected routes - require authentication */}
       <Route element={<ProtectedRoute />}>

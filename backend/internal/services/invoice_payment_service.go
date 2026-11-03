@@ -241,12 +241,79 @@ func (s *InvoicePaymentService) buildCheckoutParams(invoice *models.Invoice, cur
 	return params, balance, fee
 }
 
-// GetInvoiceByToken retrieves an invoice by payment token for display purposes
-func (s *InvoicePaymentService) GetInvoiceByToken(ctx context.Context, token string) (*models.Invoice, error) {
-	return s.invoiceService.GetInvoiceByPaymentToken(ctx, token)
-}
-
 // ValidateToken validates a payment token without creating a checkout session
 func (s *InvoicePaymentService) ValidateToken(ctx context.Context, token string) (*models.Invoice, error) {
 	return s.invoiceService.ValidatePaymentToken(ctx, token)
+}
+
+// PayOption is one way a customer can pay an invoice on the pay page
+// (mockup 17), with what ServicePro's fee for it costs the business.
+type PayOption struct {
+	Method      string          // stripeClient.PayMethodBank or PayMethodCard
+	BusinessFee decimal.Decimal // major units of the invoice currency
+}
+
+// PayPage is what the public pay page shows: the invoice, the business that
+// sent it, and the methods it can be paid with right now.
+type PayPage struct {
+	Invoice          *models.Invoice
+	BusinessName     string
+	BusinessLocation string      // "Columbus, OH"; "" when not set
+	Methods          []PayOption // bank first; empty when it can't be paid online
+}
+
+// GetPayPage loads what the public pay page needs for a payment token. The
+// business is the invoice's own tenant (never a client-supplied ID). Methods
+// are listed only when online payment is on, the link is still valid, the
+// invoice has a balance, and the tenant's own Stripe account can take them;
+// each carries the fee CreateCheckoutSessionForInvoice would charge.
+func (s *InvoicePaymentService) GetPayPage(ctx context.Context, token string) (*PayPage, error) {
+	invoice, err := s.invoiceService.GetInvoiceByPaymentToken(ctx, token)
+	if err != nil {
+		return nil, err
+	}
+	page := &PayPage{Invoice: invoice, Methods: []PayOption{}}
+
+	var tenant models.Tenant
+	if err := s.invoiceService.db.WithContext(ctx).Select("id", "name", "settings").
+		First(&tenant, "id = ?", invoice.TenantID).Error; err != nil {
+		return nil, fmt.Errorf("load invoice business: %w", err)
+	}
+	page.BusinessName = tenant.Name
+	page.BusinessLocation = businessLocation(tenant.Settings)
+
+	if !s.enabled || s.accounts == nil || !invoice.IsPaymentTokenValid() {
+		return page, nil
+	}
+	acct, err := s.accounts.Account(ctx, invoice.TenantID)
+	if err != nil {
+		return nil, fmt.Errorf("load connected account: %w", err)
+	}
+	if !acct.CanAcceptCards() {
+		return page, nil
+	}
+	currency := invoiceCurrency(invoice)
+	units := stripeClient.ToMinorUnits(invoice.BalanceDue(), currency)
+	option := func(method string) PayOption {
+		fee := stripeClient.ApplicationFee(units, currency, method)
+		return PayOption{Method: method, BusinessFee: stripeClient.FromMinorUnits(fee, currency)}
+	}
+	if acct.CanAcceptACH() {
+		page.Methods = append(page.Methods, option(stripeClient.PayMethodBank))
+	}
+	page.Methods = append(page.Methods, option(stripeClient.PayMethodCard))
+	return page, nil
+}
+
+// businessLocation is "City, ST" from the tenant's settings, or whichever
+// half is set.
+func businessLocation(st models.TenantSettings) string {
+	city, state := strings.TrimSpace(st.BusinessCity), strings.TrimSpace(st.BusinessState)
+	switch {
+	case city != "" && state != "":
+		return city + ", " + state
+	case city != "":
+		return city
+	}
+	return state
 }
