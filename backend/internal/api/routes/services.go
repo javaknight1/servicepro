@@ -53,6 +53,9 @@ func SetupServices(
 	// Job service
 	svc.Job = services.NewJobService(repos.Job, repos.Customer, db)
 
+	// Customer sites (T186)
+	svc.Sites = services.NewSiteService(db, repos.Sites)
+
 	// Document PDF service (for generating quote/invoice/receipt PDFs)
 	// Without a storage client (production until R2, T160) PDFs are generated
 	// on demand and attached to emails, just not cached or linked (T256).

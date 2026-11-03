@@ -28,6 +28,7 @@ func DefaultTables() map[string]Mode {
 		// Webhooks resolve it with WithSystem by Stripe account ID, then
 		// switch to the owning tenant (T169).
 		"stripe_connected_accounts": Owned,
+		"service_locations":         Owned, // T186, RLS policy in migration 000010
 		"payment_terms":             SharedRead,
 		"tax_rates":                 SharedRead,
 		"invoice_templates":         SharedRead,

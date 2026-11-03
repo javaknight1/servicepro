@@ -704,6 +704,26 @@ ON CONFLICT (id) DO UPDATE SET
     is_active = EXCLUDED.is_active,
     updated_at = CURRENT_TIMESTAMP;
 
+-- ============================================================================
+-- 10. CUSTOMER SITES (for Johnson Corp in Tenant 1; T186)
+-- ============================================================================
+INSERT INTO service_locations (id, tenant_id, customer_id, name, address_street, address_city,
+                               address_state, address_zip, access_notes, contact_name, contact_phone,
+                               contact_email, is_active)
+VALUES
+    ('aaaaaaaa-0000-0000-0000-000000000001', '22222222-2222-2222-2222-222222222222',
+     '66666666-6666-6666-6666-666666666663', 'Johnson Corp HQ', '789 Business Blvd', 'San Francisco',
+     'CA', '94105', 'Badge in at the loading dock after 6 PM.', 'Ray Burke', '555-555-7001',
+     'ray.burke@johnsoncorp.example.com', TRUE),
+    ('aaaaaaaa-0000-0000-0000-000000000002', '22222222-2222-2222-2222-222222222222',
+     '66666666-6666-6666-6666-666666666663', 'Johnson Corp Warehouse', '1200 Harbor Way', 'Oakland',
+     'CA', '94607', 'Gate code 4417.', 'Dana Ortiz', '555-555-7002',
+     'dana.ortiz@johnsoncorp.example.com', TRUE)
+ON CONFLICT (id) DO UPDATE SET
+    name = EXCLUDED.name,
+    access_notes = EXCLUDED.access_notes,
+    updated_at = CURRENT_TIMESTAMP;
+
 COMMIT;
 
 -- ============================================================================
@@ -732,5 +752,6 @@ COMMIT;
 --   - 4 quotes in Acme Services (various statuses)
 --   - Quote line items for each quote
 --   - 2 tax rates in Acme Services
+--   - 2 sites for Johnson Corp (plus one default site per customer from migration 000010)
 --
 -- ============================================================================

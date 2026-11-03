@@ -1359,6 +1359,305 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/customers/{id}/sites": {
+            "get": {
+                "description": "The customer's service locations, by name. Inactive sites are left out unless include_inactive=true.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sites"
+                ],
+                "summary": "List a customer's sites",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Customer ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Include inactive sites",
+                        "name": "include_inactive",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.SiteListResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid ID",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Customer not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "description": "Creates a service location (address, access notes, site contact) for the customer.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sites"
+                ],
+                "summary": "Add a site to a customer",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Customer ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Site",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.CreateSiteRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.SiteResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Customer not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/customers/{id}/sites/{siteId}": {
+            "get": {
+                "description": "One of the customer's service locations.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sites"
+                ],
+                "summary": "Get a customer's site",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Customer ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Site ID",
+                        "name": "siteId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.SiteResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid ID",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Customer or site not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            },
+            "put": {
+                "description": "Changes the fields present in the body; is_active=false retires the site for new jobs.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sites"
+                ],
+                "summary": "Update a customer's site",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Customer ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Site ID",
+                        "name": "siteId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Fields to change",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.UpdateSiteRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.SiteResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Customer or site not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "description": "Soft-deletes the site. Existing jobs keep their reference; new jobs can't use it.",
+                "tags": [
+                    "sites"
+                ],
+                "summary": "Delete a customer's site",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Customer ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Site ID",
+                        "name": "siteId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Deleted"
+                    },
+                    "400": {
+                        "description": "Invalid ID",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Customer or site not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/v1/exports": {
             "get": {
                 "description": "Lists recent export jobs for the current user",
@@ -9705,6 +10004,10 @@ const docTemplate = `{
                 "service_address": {
                     "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ServiceAddress"
                 },
+                "site_id": {
+                    "description": "SiteID must be one of the customer's active sites (T186). When the\nservice address is empty, the site's address is used.",
+                    "type": "string"
+                },
                 "special_instructions": {
                     "type": "string"
                 },
@@ -9719,6 +10022,57 @@ const docTemplate = `{
             "properties": {
                 "client_secret": {
                     "type": "string"
+                }
+            }
+        },
+        "github_com_javaknight1_servicepro_backend_internal_models.CreateSiteRequest": {
+            "type": "object",
+            "required": [
+                "address_city",
+                "address_state",
+                "address_street",
+                "address_zip",
+                "name"
+            ],
+            "properties": {
+                "access_notes": {
+                    "type": "string",
+                    "maxLength": 5000
+                },
+                "address_city": {
+                    "type": "string",
+                    "maxLength": 50
+                },
+                "address_state": {
+                    "type": "string"
+                },
+                "address_street": {
+                    "type": "string",
+                    "maxLength": 100
+                },
+                "address_zip": {
+                    "type": "string",
+                    "maxLength": 10
+                },
+                "contact_email": {
+                    "type": "string",
+                    "maxLength": 255
+                },
+                "contact_name": {
+                    "type": "string",
+                    "maxLength": 100
+                },
+                "contact_phone": {
+                    "type": "string",
+                    "maxLength": 20
+                },
+                "is_active": {
+                    "description": "IsActive defaults to true when omitted.",
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string",
+                    "maxLength": 200
                 }
             }
         },
@@ -10933,6 +11287,10 @@ const docTemplate = `{
                 "service_address": {
                     "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ServiceAddress"
                 },
+                "site_id": {
+                    "description": "one of the customer's sites (T186)",
+                    "type": "string"
+                },
                 "special_instructions": {
                     "type": "string"
                 },
@@ -11311,6 +11669,9 @@ const docTemplate = `{
                 },
                 "service_address": {
                     "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ServiceAddress"
+                },
+                "site_id": {
+                    "type": "string"
                 },
                 "special_instructions": {
                     "type": "string"
@@ -12698,6 +13059,70 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_javaknight1_servicepro_backend_internal_models.SiteListResponse": {
+            "type": "object",
+            "properties": {
+                "sites": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.SiteResponse"
+                    }
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_javaknight1_servicepro_backend_internal_models.SiteResponse": {
+            "type": "object",
+            "properties": {
+                "access_notes": {
+                    "type": "string"
+                },
+                "address_city": {
+                    "type": "string"
+                },
+                "address_full": {
+                    "type": "string"
+                },
+                "address_state": {
+                    "type": "string"
+                },
+                "address_street": {
+                    "type": "string"
+                },
+                "address_zip": {
+                    "type": "string"
+                },
+                "contact_email": {
+                    "type": "string"
+                },
+                "contact_name": {
+                    "type": "string"
+                },
+                "contact_phone": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "customer_id": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "is_active": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_javaknight1_servicepro_backend_internal_models.StatusChangeRequest": {
             "type": "object",
             "required": [
@@ -13331,6 +13756,10 @@ const docTemplate = `{
                 "service_address": {
                     "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ServiceAddress"
                 },
+                "site_id": {
+                    "description": "one of the job's customer's active sites (T186)",
+                    "type": "string"
+                },
                 "special_instructions": {
                     "type": "string"
                 },
@@ -13407,6 +13836,50 @@ const docTemplate = `{
                 },
                 "last_name": {
                     "type": "string"
+                }
+            }
+        },
+        "github_com_javaknight1_servicepro_backend_internal_models.UpdateSiteRequest": {
+            "type": "object",
+            "properties": {
+                "access_notes": {
+                    "type": "string",
+                    "maxLength": 5000
+                },
+                "address_city": {
+                    "type": "string",
+                    "maxLength": 50
+                },
+                "address_state": {
+                    "type": "string"
+                },
+                "address_street": {
+                    "type": "string",
+                    "maxLength": 100
+                },
+                "address_zip": {
+                    "type": "string",
+                    "maxLength": 10
+                },
+                "contact_email": {
+                    "type": "string",
+                    "maxLength": 255
+                },
+                "contact_name": {
+                    "type": "string",
+                    "maxLength": 100
+                },
+                "contact_phone": {
+                    "type": "string",
+                    "maxLength": 20
+                },
+                "is_active": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string",
+                    "maxLength": 200,
+                    "minLength": 1
                 }
             }
         },

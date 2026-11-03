@@ -1679,6 +1679,320 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/customers/{id}/sites": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List a customer's sites
+         * @description The customer's service locations, by name. Inactive sites are left out unless include_inactive=true.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Include inactive sites */
+                    include_inactive?: boolean;
+                };
+                header?: never;
+                path: {
+                    /** @description Customer ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.SiteListResponse"];
+                    };
+                };
+                /** @description Invalid ID */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Customer not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Internal server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * Add a site to a customer
+         * @description Creates a service location (address, access notes, site contact) for the customer.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Customer ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            /** @description Site */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.CreateSiteRequest"];
+                };
+            };
+            responses: {
+                /** @description Created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.SiteResponse"];
+                    };
+                };
+                /** @description Invalid request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Customer not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Internal server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/customers/{id}/sites/{siteId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a customer's site
+         * @description One of the customer's service locations.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Customer ID */
+                    id: string;
+                    /** @description Site ID */
+                    siteId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.SiteResponse"];
+                    };
+                };
+                /** @description Invalid ID */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Customer or site not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Internal server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        /**
+         * Update a customer's site
+         * @description Changes the fields present in the body; is_active=false retires the site for new jobs.
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Customer ID */
+                    id: string;
+                    /** @description Site ID */
+                    siteId: string;
+                };
+                cookie?: never;
+            };
+            /** @description Fields to change */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.UpdateSiteRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.SiteResponse"];
+                    };
+                };
+                /** @description Invalid request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Customer or site not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Internal server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /**
+         * Delete a customer's site
+         * @description Soft-deletes the site. Existing jobs keep their reference; new jobs can't use it.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Customer ID */
+                    id: string;
+                    /** @description Site ID */
+                    siteId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Deleted */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Invalid ID */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Customer or site not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Internal server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/exports": {
         parameters: {
             query?: never;
@@ -11012,11 +11326,29 @@ export interface components {
             scheduled_end_at?: number;
             scheduled_start_at?: number;
             service_address?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ServiceAddress"];
+            /**
+             * @description SiteID must be one of the customer's active sites (T186). When the
+             *     service address is empty, the site's address is used.
+             */
+            site_id?: string;
             special_instructions?: string;
             title: string;
         };
         "github_com_javaknight1_servicepro_backend_internal_models.CreateSetupIntentResponse": {
             client_secret?: string;
+        };
+        "github_com_javaknight1_servicepro_backend_internal_models.CreateSiteRequest": {
+            access_notes?: string;
+            address_city: string;
+            address_state: string;
+            address_street: string;
+            address_zip: string;
+            contact_email?: string;
+            contact_name?: string;
+            contact_phone?: string;
+            /** @description IsActive defaults to true when omitted. */
+            is_active?: boolean;
+            name: string;
         };
         "github_com_javaknight1_servicepro_backend_internal_models.CreateTenantRequest": {
             email?: string;
@@ -11436,6 +11768,8 @@ export interface components {
             scheduled_end_at?: number;
             scheduled_start_at?: number;
             service_address?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ServiceAddress"];
+            /** @description one of the customer's sites (T186) */
+            site_id?: string;
             special_instructions?: string;
             status?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.JobStatus"];
             tax_amount?: number;
@@ -11565,6 +11899,7 @@ export interface components {
             scheduled_end_at?: number;
             scheduled_start_at?: number;
             service_address?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ServiceAddress"];
+            site_id?: string;
             special_instructions?: string;
             status?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.JobStatus"];
             tax_amount?: number;
@@ -12012,6 +12347,27 @@ export interface components {
             street?: string;
             zip?: string;
         };
+        "github_com_javaknight1_servicepro_backend_internal_models.SiteListResponse": {
+            sites?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.SiteResponse"][];
+            total?: number;
+        };
+        "github_com_javaknight1_servicepro_backend_internal_models.SiteResponse": {
+            access_notes?: string;
+            address_city?: string;
+            address_full?: string;
+            address_state?: string;
+            address_street?: string;
+            address_zip?: string;
+            contact_email?: string;
+            contact_name?: string;
+            contact_phone?: string;
+            created_at?: string;
+            customer_id?: string;
+            id?: string;
+            is_active?: boolean;
+            name?: string;
+            updated_at?: string;
+        };
         "github_com_javaknight1_servicepro_backend_internal_models.StatusChangeRequest": {
             job_id?: string;
             notes?: string;
@@ -12197,6 +12553,8 @@ export interface components {
             scheduled_end_at?: number;
             scheduled_start_at?: number;
             service_address?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ServiceAddress"];
+            /** @description one of the job's customer's active sites (T186) */
+            site_id?: string;
             special_instructions?: string;
             /** @enum {unknown} */
             status?: "new" | "scheduled" | "en_route" | "in_progress" | "on_hold" | "completed" | "invoiced" | "paid" | "cancelled";
@@ -12215,6 +12573,18 @@ export interface components {
         "github_com_javaknight1_servicepro_backend_internal_models.UpdateProfileRequest": {
             first_name?: string;
             last_name?: string;
+        };
+        "github_com_javaknight1_servicepro_backend_internal_models.UpdateSiteRequest": {
+            access_notes?: string;
+            address_city?: string;
+            address_state?: string;
+            address_street?: string;
+            address_zip?: string;
+            contact_email?: string;
+            contact_name?: string;
+            contact_phone?: string;
+            is_active?: boolean;
+            name?: string;
         };
         "github_com_javaknight1_servicepro_backend_internal_models.UpdateTenantRequest": {
             email?: string;

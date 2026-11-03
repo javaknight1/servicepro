@@ -48,6 +48,7 @@ func SetupHandlers(
 
 	// Customer handler
 	h.Customer = handlers.NewCustomerHandler(repos.Customer)
+	h.Site = handlers.NewSiteHandler(svc.Sites)
 
 	// Job handler
 	h.Job = handlers.NewJobHandler(svc.Job)

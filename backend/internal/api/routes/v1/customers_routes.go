@@ -88,6 +88,23 @@ func SetupCustomerRoutes(router *gin.RouterGroup, cfg *routeconfigs.RouteConfig)
 			cfg.Middleware.PermMiddleware.RequirePermission(permissions.CustomersRead),
 			cfg.Handlers.Job.GetCustomerJobs)
 
+		// Customer sites (service locations, T186) - customers.* permissions
+		customers.GET("/:id/sites",
+			cfg.Middleware.PermMiddleware.RequirePermission(permissions.CustomersRead),
+			cfg.Handlers.Site.ListSites)
+		customers.POST("/:id/sites",
+			cfg.Middleware.PermMiddleware.RequirePermission(permissions.CustomersUpdate),
+			cfg.Handlers.Site.CreateSite)
+		customers.GET("/:id/sites/:siteId",
+			cfg.Middleware.PermMiddleware.RequirePermission(permissions.CustomersRead),
+			cfg.Handlers.Site.GetSite)
+		customers.PUT("/:id/sites/:siteId",
+			cfg.Middleware.PermMiddleware.RequirePermission(permissions.CustomersUpdate),
+			cfg.Handlers.Site.UpdateSite)
+		customers.DELETE("/:id/sites/:siteId",
+			cfg.Middleware.PermMiddleware.RequirePermission(permissions.CustomersUpdate),
+			cfg.Handlers.Site.DeleteSite)
+
 		// Customer quotes - nested under customers
 		customers.GET("/:id/quotes",
 			cfg.Middleware.PermMiddleware.RequirePermission(permissions.CustomersRead),

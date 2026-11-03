@@ -499,6 +499,11 @@ definitions:
         type: integer
       service_address:
         $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ServiceAddress'
+      site_id:
+        description: |-
+          SiteID must be one of the customer's active sites (T186). When the
+          service address is empty, the site's address is used.
+        type: string
       special_instructions:
         type: string
       title:
@@ -513,6 +518,44 @@ definitions:
     properties:
       client_secret:
         type: string
+    type: object
+  github_com_javaknight1_servicepro_backend_internal_models.CreateSiteRequest:
+    properties:
+      access_notes:
+        maxLength: 5000
+        type: string
+      address_city:
+        maxLength: 50
+        type: string
+      address_state:
+        type: string
+      address_street:
+        maxLength: 100
+        type: string
+      address_zip:
+        maxLength: 10
+        type: string
+      contact_email:
+        maxLength: 255
+        type: string
+      contact_name:
+        maxLength: 100
+        type: string
+      contact_phone:
+        maxLength: 20
+        type: string
+      is_active:
+        description: IsActive defaults to true when omitted.
+        type: boolean
+      name:
+        maxLength: 200
+        type: string
+    required:
+    - address_city
+    - address_state
+    - address_street
+    - address_zip
+    - name
     type: object
   github_com_javaknight1_servicepro_backend_internal_models.CreateTenantRequest:
     properties:
@@ -1354,6 +1397,9 @@ definitions:
         type: integer
       service_address:
         $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ServiceAddress'
+      site_id:
+        description: one of the customer's sites (T186)
+        type: string
       special_instructions:
         type: string
       status:
@@ -1612,6 +1658,8 @@ definitions:
         type: integer
       service_address:
         $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ServiceAddress'
+      site_id:
+        type: string
       special_instructions:
         type: string
       status:
@@ -2564,6 +2612,48 @@ definitions:
       zip:
         type: string
     type: object
+  github_com_javaknight1_servicepro_backend_internal_models.SiteListResponse:
+    properties:
+      sites:
+        items:
+          $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.SiteResponse'
+        type: array
+      total:
+        type: integer
+    type: object
+  github_com_javaknight1_servicepro_backend_internal_models.SiteResponse:
+    properties:
+      access_notes:
+        type: string
+      address_city:
+        type: string
+      address_full:
+        type: string
+      address_state:
+        type: string
+      address_street:
+        type: string
+      address_zip:
+        type: string
+      contact_email:
+        type: string
+      contact_name:
+        type: string
+      contact_phone:
+        type: string
+      created_at:
+        type: string
+      customer_id:
+        type: string
+      id:
+        type: string
+      is_active:
+        type: boolean
+      name:
+        type: string
+      updated_at:
+        type: string
+    type: object
   github_com_javaknight1_servicepro_backend_internal_models.StatusChangeRequest:
     properties:
       job_id:
@@ -2999,6 +3089,9 @@ definitions:
         type: integer
       service_address:
         $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ServiceAddress'
+      site_id:
+        description: one of the job's customer's active sites (T186)
+        type: string
       special_instructions:
         type: string
       status:
@@ -3049,6 +3142,38 @@ definitions:
       first_name:
         type: string
       last_name:
+        type: string
+    type: object
+  github_com_javaknight1_servicepro_backend_internal_models.UpdateSiteRequest:
+    properties:
+      access_notes:
+        maxLength: 5000
+        type: string
+      address_city:
+        maxLength: 50
+        type: string
+      address_state:
+        type: string
+      address_street:
+        maxLength: 100
+        type: string
+      address_zip:
+        maxLength: 10
+        type: string
+      contact_email:
+        maxLength: 255
+        type: string
+      contact_name:
+        maxLength: 100
+        type: string
+      contact_phone:
+        maxLength: 20
+        type: string
+      is_active:
+        type: boolean
+      name:
+        maxLength: 200
+        minLength: 1
         type: string
     type: object
   github_com_javaknight1_servicepro_backend_internal_models.UpdateTenantRequest:
@@ -4595,6 +4720,203 @@ paths:
       summary: Get customer quotes
       tags:
       - quotes
+  /api/v1/customers/{id}/sites:
+    get:
+      description: The customer's service locations, by name. Inactive sites are left
+        out unless include_inactive=true.
+      parameters:
+      - description: Customer ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Include inactive sites
+        in: query
+        name: include_inactive
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.SiteListResponse'
+        "400":
+          description: Invalid ID
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "404":
+          description: Customer not found
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List a customer's sites
+      tags:
+      - sites
+    post:
+      consumes:
+      - application/json
+      description: Creates a service location (address, access notes, site contact)
+        for the customer.
+      parameters:
+      - description: Customer ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Site
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.CreateSiteRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.SiteResponse'
+        "400":
+          description: Invalid request
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "404":
+          description: Customer not found
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Add a site to a customer
+      tags:
+      - sites
+  /api/v1/customers/{id}/sites/{siteId}:
+    delete:
+      description: Soft-deletes the site. Existing jobs keep their reference; new
+        jobs can't use it.
+      parameters:
+      - description: Customer ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Site ID
+        in: path
+        name: siteId
+        required: true
+        type: string
+      responses:
+        "204":
+          description: Deleted
+        "400":
+          description: Invalid ID
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "404":
+          description: Customer or site not found
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete a customer's site
+      tags:
+      - sites
+    get:
+      description: One of the customer's service locations.
+      parameters:
+      - description: Customer ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Site ID
+        in: path
+        name: siteId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.SiteResponse'
+        "400":
+          description: Invalid ID
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "404":
+          description: Customer or site not found
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get a customer's site
+      tags:
+      - sites
+    put:
+      consumes:
+      - application/json
+      description: Changes the fields present in the body; is_active=false retires
+        the site for new jobs.
+      parameters:
+      - description: Customer ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Site ID
+        in: path
+        name: siteId
+        required: true
+        type: string
+      - description: Fields to change
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.UpdateSiteRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.SiteResponse'
+        "400":
+          description: Invalid request
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "404":
+          description: Customer or site not found
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update a customer's site
+      tags:
+      - sites
   /api/v1/customers/advanced-search:
     get:
       description: Search customers using PostgreSQL full-text search with ranking

@@ -51,6 +51,7 @@ type Job struct {
 	JobNumber           string          `json:"job_number" gorm:"type:varchar(50);uniqueIndex;not null"`
 	CustomerID          uuid.UUID       `json:"customer_id" gorm:"type:uuid;not null;index"`
 	Customer            *Customer       `json:"customer,omitempty" gorm:"foreignKey:CustomerID;constraint:OnDelete:RESTRICT"`
+	SiteID              *uuid.UUID      `json:"site_id,omitempty" gorm:"type:uuid"` // one of the customer's sites (T186)
 	Title               string          `json:"title" gorm:"type:varchar(200);not null"`
 	Description         string          `json:"description" gorm:"type:text"`
 	JobType             JobType         `json:"job_type" gorm:"type:varchar(50);not null;index"`
@@ -188,7 +189,10 @@ type CreateJobAssignmentRequest struct {
 
 // CreateJobRequest represents the request payload for creating a job
 type CreateJobRequest struct {
-	CustomerID          uuid.UUID                    `json:"customer_id" binding:"required"`
+	CustomerID uuid.UUID `json:"customer_id" binding:"required"`
+	// SiteID must be one of the customer's active sites (T186). When the
+	// service address is empty, the site's address is used.
+	SiteID              *uuid.UUID                   `json:"site_id"`
 	Title               string                       `json:"title" binding:"required,max=200"`
 	Description         string                       `json:"description" binding:"omitempty,max=5000"`
 	JobType             JobType                      `json:"job_type" binding:"required,oneof=installation maintenance repair inspection emergency"`
@@ -208,6 +212,7 @@ type CreateJobRequest struct {
 // UpdateJobRequest represents the request payload for updating a job
 type UpdateJobRequest struct {
 	Title               *string         `json:"title" binding:"omitempty,max=200"`
+	SiteID              *uuid.UUID      `json:"site_id"` // one of the job's customer's active sites (T186)
 	Description         *string         `json:"description" binding:"omitempty,max=5000"`
 	JobType             *JobType        `json:"job_type" binding:"omitempty,oneof=installation maintenance repair inspection emergency"`
 	Status              *JobStatus      `json:"status" binding:"omitempty,oneof=new scheduled en_route in_progress on_hold completed invoiced paid cancelled"`
@@ -236,6 +241,7 @@ type JobResponse struct {
 	JobNumber           string                  `json:"job_number"`
 	CustomerID          uuid.UUID               `json:"customer_id"`
 	Customer            *CustomerResponse       `json:"customer,omitempty"`
+	SiteID              *uuid.UUID              `json:"site_id,omitempty"`
 	Title               string                  `json:"title"`
 	Description         string                  `json:"description"`
 	JobType             JobType                 `json:"job_type"`
@@ -383,6 +389,7 @@ func (j *Job) ToResponse() JobResponse {
 		ID:                  j.ID,
 		JobNumber:           j.JobNumber,
 		CustomerID:          j.CustomerID,
+		SiteID:              j.SiteID,
 		Title:               j.Title,
 		Description:         j.Description,
 		JobType:             j.JobType,

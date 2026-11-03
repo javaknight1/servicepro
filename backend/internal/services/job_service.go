@@ -156,6 +156,15 @@ func (s *JobService) WithContext(ctx context.Context) JobServiceInterface {
 	return &cp
 }
 
+// ctx is the context the service was bound to with WithContext (it carries
+// the caller's tenant).
+func (s *JobService) ctx() context.Context {
+	if s.db != nil && s.db.Statement != nil && s.db.Statement.Context != nil {
+		return s.db.Statement.Context
+	}
+	return context.Background()
+}
+
 // CreateJob creates a new job with validation
 func (s *JobService) CreateJob(req *models.CreateJobRequest, createdBy uuid.UUID) (*models.JobResponse, error) {
 	// Validate request
@@ -166,14 +175,26 @@ func (s *JobService) CreateJob(req *models.CreateJobRequest, createdBy uuid.UUID
 	// Verify customer exists
 	customer, err := s.customerRepo.GetByID(req.CustomerID)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if errors.Is(err, gorm.ErrRecordNotFound) || errors.Is(err, repository.ErrCustomerNotFound) {
 			return nil, ErrCustomerNotFound
 		}
 		return nil, err
 	}
 
-	// Use customer's address as service address if not provided
+	// The site, if any, must be one of this customer's active sites (T186).
+	var site *models.Site
+	if req.SiteID != nil {
+		site, err = resolveJobSite(s.ctx(), s.db, customer.ID, *req.SiteID)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// Use the site's (else the customer's) address as service address if not provided
 	serviceAddress := req.ServiceAddress
+	if serviceAddress.Street == "" && serviceAddress.City == "" && site != nil {
+		serviceAddress = site.ServiceAddress()
+	}
 	if serviceAddress.Street == "" && serviceAddress.City == "" {
 		serviceAddress = models.ServiceAddress{
 			Street: customer.BillingAddressStreet,
@@ -187,6 +208,7 @@ func (s *JobService) CreateJob(req *models.CreateJobRequest, createdBy uuid.UUID
 	job := &models.Job{
 		ID:                  uuid.New(),
 		CustomerID:          req.CustomerID,
+		SiteID:              req.SiteID,
 		Title:               req.Title,
 		Description:         req.Description,
 		JobType:             req.JobType,
@@ -327,6 +349,14 @@ func (s *JobService) UpdateJob(id uuid.UUID, req *models.UpdateJobRequest, userI
 	// Validate update request
 	if err := s.validator.ValidateUpdateRequest(req, job); err != nil {
 		return nil, invalidJobData(err)
+	}
+
+	// A new site must be one of the job's customer's active sites (T186).
+	if req.SiteID != nil {
+		if _, err := resolveJobSite(s.ctx(), s.db, job.CustomerID, *req.SiteID); err != nil {
+			return nil, err
+		}
+		job.SiteID = req.SiteID
 	}
 
 	// Apply updates

@@ -55,6 +55,8 @@ type Repositories struct {
 	Schedule          repository.ScheduleRepositoryInterface
 	// ConnectedAccounts stores each tenant's Stripe Connect account (T169).
 	ConnectedAccounts *repository.ConnectedAccountRepository
+	// Sites are customers' service locations (T186).
+	Sites repository.SiteRepositoryInterface
 }
 
 // Services holds all service instances
@@ -91,6 +93,7 @@ type Services struct {
 	PaymentsConnect *services.PaymentsConnectService
 	Conflict        *conflict.ConflictDetector
 	PaymentReminder *services.PaymentReminderService
+	Sites           *services.SiteService
 }
 
 // Middleware holds all middleware instances
@@ -137,4 +140,5 @@ type Handlers struct {
 	Conflict          *handlers.ConflictHandler
 	PaymentReminder   *handlers.PaymentReminderHandler
 	NeonAuth          *handlers.NeonAuthHandler
+	Site              *handlers.SiteHandler
 }
