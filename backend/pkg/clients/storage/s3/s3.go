@@ -56,7 +56,7 @@ type Config struct {
 	PublicURL       string // Optional: base URL of genuinely public objects (a public bucket domain or CDN)
 	// PresignEndpoint is the endpoint presigned URLs are signed for, when the
 	// browser reaches the store at a different host than the API does (local
-	// MinIO: the API uses http://minio:9000, the browser http://localhost:9000).
+	// Docker store: the API uses http://minio:9000, the browser http://localhost:9000).
 	// Empty means Endpoint. SigV4 signs the Host header, so a presigned URL
 	// can't be rewritten to another host after signing.
 	PresignEndpoint string

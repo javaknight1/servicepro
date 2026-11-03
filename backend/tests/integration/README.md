@@ -45,7 +45,7 @@ Makefile in this directory).
 ### 1. Start Test Environment
 
 ```bash
-# From the repo root: the normal compose stack (postgres, redis, mailpit, minio, api)
+# From the repo root: the normal compose stack (postgres, redis, mailpit, S3 store, api)
 make docker-dev-d
 ```
 

@@ -95,7 +95,7 @@ dev: dev-db ## Start db services and print how to run backend + frontend
 	@echo "  make dev-backend   # http://localhost:8080"
 	@echo "  make dev-frontend  # http://localhost:3000"
 
-dev-db: ## Start PostgreSQL, Redis, MinIO and Mailpit containers
+dev-db: ## Start PostgreSQL, Redis, the S3 store (RustFS) and Mailpit containers
 	@docker compose up -d postgres redis minio minio-init mailpit
 	@docker compose ps
 

@@ -22,7 +22,7 @@ Cloud Run "servicepro-api" (us-east5) — Go / Gin
    ├──► Neon Auth (managed Better Auth)          JWTs verified via JWKS (SPA switch: T158)
    ├──► Redis (optional: Upstash or none)        rate limits, tokens; in-memory fallback
    ├──► Email: Resend (T159); SMTP/Mailpit locally
-   ├──► Object storage: S3 API (Cloudflare R2 target; MinIO locally)
+   ├──► Object storage: S3 API (Cloudflare R2 target; RustFS locally)
    └──► Stripe, Sentry, PostHog
 
 GitHub Actions: v* tag ──► migrate (Neon) ──► deploy API ──► deploy Worker
@@ -63,7 +63,7 @@ GitHub Actions: v* tag ──► migrate (Neon) ──► deploy API ──► d
 | PostgreSQL 18         | Primary database (Neon in production, Docker locally)          |
 | Redis (optional)      | Rate limits, short-lived tokens; in-memory fallback without it |
 | Resend                | Email (target, T159); Mailpit locally                          |
-| S3-compatible storage | Files (Cloudflare R2 target; MinIO locally)                    |
+| S3-compatible storage | Files (Cloudflare R2 target; RustFS locally)                   |
 | Stripe                | Payments (Stripe Connect planned, T169)                        |
 
 ## Backend Architecture

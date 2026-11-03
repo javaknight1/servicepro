@@ -11,7 +11,7 @@
 | Auth           | Neon's managed Better Auth — the API verifies its JWTs; the SPA still signs in with the API's own JWT cookies until T158 lands |
 | Redis          | Optional (Upstash or none; without it the API uses an in-memory, per-instance store)                                           |
 | Email          | Resend (T159)                                                                                                                  |
-| Object storage | Cloudflare R2 (target; MinIO locally)                                                                                          |
+| Object storage | Cloudflare R2 (target; RustFS locally)                                                                                         |
 | Backups        | Nightly `pg_dump` to R2 bucket `servicepro-backups` — wired, not activated yet (T209)                                          |
 
 ## Where to look

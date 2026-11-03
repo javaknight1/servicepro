@@ -27,7 +27,7 @@ This will:
 
 - Install all dependencies (backend & frontend)
 - Install the versioned hooks (`make install-hooks`)
-- Start PostgreSQL, Redis, MinIO and Mailpit containers
+- Start PostgreSQL, Redis, the local S3 store (RustFS, bucket `servicepro-uploads`) and Mailpit containers
 - Run database migrations and load the dev seed (login `dev@servicepro.local` / `password123`)
 
 Then in **two separate terminals**:
@@ -56,7 +56,7 @@ make docker-dev                        # foreground; make docker-dev-d to detach
 make seed                              # optional test data
 ```
 
-This starts PostgreSQL (5432), Redis (6379), Mailpit (8025), MinIO, the backend
+This starts PostgreSQL (5432), Redis (6379), Mailpit (8025), the S3 store (RustFS: API 9000, console 9001), the backend
 (8080, migrates its own database on startup), the frontend (3000) and Grafana
 (3001).
 
@@ -67,7 +67,7 @@ Open http://localhost:3000 in your browser.
 ### Option 3: Step-by-Step Setup
 
 ```bash
-# 1. Start databases (PostgreSQL, Redis, MinIO, Mailpit)
+# 1. Start databases (PostgreSQL, Redis, S3 store, Mailpit)
 make dev-db
 
 # 2. Install dependencies
@@ -98,7 +98,7 @@ make help          # Show all available commands
 
 # Development
 make dev           # Start databases (then use dev-backend and dev-frontend)
-make dev-db        # Start PostgreSQL, Redis, MinIO and Mailpit
+make dev-db        # Start PostgreSQL, Redis, S3 store (RustFS) and Mailpit
 make dev-backend   # Run backend server
 make dev-frontend  # Run frontend dev server
 make migrate       # Run database migrations

@@ -48,7 +48,7 @@ backend/
 
 ```bash
 # From project root
-make dev-db       # Start postgres, redis, minio, mailpit
+make dev-db       # Start postgres, redis, S3 store (RustFS), mailpit
 make dev-backend  # Run the API on :8080
 make down         # Stop containers
 ```

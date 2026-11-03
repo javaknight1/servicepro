@@ -34,7 +34,7 @@ ServicePro provides tools for managing:
 - **Authentication**: own JWT in httpOnly cookies + bcrypt today; Neon's managed Better Auth JWTs are
   already verified by the API and the SPA moves to it in T158
 - **Email**: Resend (target, T159); SMTP/Mailpit locally
-- **Storage**: S3-compatible (MinIO locally; Cloudflare R2 target)
+- **Storage**: S3-compatible (RustFS locally; Cloudflare R2 in production)
 
 ### Frontend
 
@@ -57,7 +57,7 @@ ServicePro provides tools for managing:
 
 ```bash
 cp backend/.env.example backend/.env   # first time only
-make docker-dev                        # postgres, redis, mailpit, minio, api, web, grafana
+make docker-dev                        # postgres, redis, mailpit, S3 store (RustFS), api, web, grafana
 ```
 
 The API container migrates its own database on startup

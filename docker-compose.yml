@@ -47,41 +47,54 @@ services:
       timeout: 5s
       retries: 5
 
+  # Local S3-compatible object store (production uses Cloudflare R2).
+  # Decision (T271, 2026-11-03): MinIO images are no longer anonymously
+  # pullable (Docker Hub and quay.io both refuse), so this runs RustFS — an
+  # Apache-2.0, MinIO-compatible server on Docker Hub (SigV4, path-style,
+  # presigned GET/PUT). Local dev only; no production vendor change.
+  # Considered: Garage (needs a layout + key bootstrap), SeaweedFS (heavier,
+  # multi-component), versitygw (works, no console), LocalStack / s3mock
+  # (mocks, not stores). The service keeps the name `minio` and port 9000 so
+  # the S3_COMPATIBLE_* settings below and in backend/.env keep working.
+  # Console: http://localhost:9001 (minioadmin / minioadmin).
   minio:
-    # FIXME: minio/minio and minio/mc are no longer publicly pullable from
-    # Docker Hub (registry answers UNAUTHORIZED as of 2026-10), so there is no
-    # tag to pin. Existing local caches keep working; fresh machines need a
-    # replacement S3 emulator (or a dev R2 bucket) — see README.
-    image: minio/minio:latest
-    container_name: servicepro-minio
+    image: rustfs/rustfs:1.0.4
+    container_name: servicepro-s3
     ports:
-      - '9000:9000'
-      - '9001:9001'
+      - '9000:9000' # S3 API
+      - '9001:9001' # Web console
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
+      RUSTFS_ADDRESS: ':9000'
+      RUSTFS_ACCESS_KEY: minioadmin
+      RUSTFS_SECRET_KEY: minioadmin
+      RUSTFS_REGION: us-east-1
+      RUSTFS_CONSOLE_ENABLE: 'true'
+      RUSTFS_CONSOLE_ADDRESS: ':9001'
     volumes:
-      - minio_data:/data
-    command: server /data --console-address ":9001"
+      - s3_data:/data
     healthcheck:
-      test: ['CMD', 'mc', 'ready', 'local']
+      test: ['CMD', 'curl', '-fsS', '-o', '/dev/null', 'http://localhost:9000/health']
       interval: 10s
       timeout: 5s
       retries: 5
 
+  # Creates the private uploads bucket. Idempotent: on later runs the store
+  # answers 409 (already owned by you), which counts as done. Files are only
+  # served through presigned links, like the private R2 bucket in production.
   minio-init:
-    image: minio/mc:latest
-    container_name: servicepro-minio-init
+    image: rustfs/rustfs:1.0.4
+    container_name: servicepro-s3-init
     depends_on:
       minio:
         condition: service_healthy
-    entrypoint: >
-      /bin/sh -c "
-      mc alias set myminio http://minio:9000 minioadmin minioadmin;
-      mc mb myminio/servicepro-uploads --ignore-existing;
-      mc anonymous set download myminio/servicepro-uploads;
-      exit 0;
-      "
+    entrypoint: ['/bin/sh', '-c']
+    command:
+      - |
+        code=$$(curl -s -o /dev/null -w '%{http_code}' -X PUT \
+          --aws-sigv4 'aws:amz:us-east-1:s3' --user 'minioadmin:minioadmin' \
+          http://minio:9000/servicepro-uploads)
+        echo "create bucket servicepro-uploads: HTTP $$code"
+        [ "$$code" = 200 ] || [ "$$code" = 409 ]
 
   backend:
     # Keep the minor in step with the `go` line in backend/go.mod.
@@ -106,7 +119,7 @@ services:
       - APP_VERSION=${APP_VERSION:-dev}
       - FRONTEND_URL=http://localhost:3000
       - BACKEND_URL=http://localhost:8080
-      # S3-compatible storage (MinIO)
+      # S3-compatible storage (local RustFS, compose service `minio`)
       - S3_COMPATIBLE_ENDPOINT=http://minio:9000
       - S3_COMPATIBLE_BUCKET=servicepro-uploads
       - S3_COMPATIBLE_REGION=us-east-1
@@ -213,7 +226,7 @@ services:
 volumes:
   postgres18_data:
   redis_data:
-  minio_data:
+  s3_data:
   grafana_data:
   go-mod-cache:
   stripe_webhook_secret:

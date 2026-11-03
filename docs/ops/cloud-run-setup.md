@@ -50,7 +50,7 @@ Two service accounts on purpose: the **deploy SA** is what CI impersonates
 | Region         | `us-east5` (Columbus)                    | Closest Cloud Run region to Neon's `aws-us-east-2` (Ohio)                                             |
 | Auth           | Neon's managed Better Auth (OD-9)        | The API verifies its JWTs (`NEON_AUTH_BASE_URL`); the SPA still uses the API's own JWT cookies (T158) |
 | Redis          | Optional: Upstash (`rediss://`) or none  | Without `REDIS_URL` the API boots with an in-memory, per-instance store                               |
-| Object storage | Cloudflare R2 (S3 API)                   | Local dev uses MinIO                                                                                  |
+| Object storage | Cloudflare R2 (S3 API)                   | Local dev uses RustFS                                                                                 |
 | Email          | Resend (T159)                            | `RESEND_API_KEY` secret                                                                               |
 
 ---

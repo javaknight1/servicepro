@@ -87,7 +87,7 @@ type S3CompatibleConfig struct {
 	UsePathStyle    bool   // Required for MinIO and some S3-compatible services
 	DisableSSL      bool   // For local development (e.g., MinIO without TLS)
 	PublicURL       string // Optional: base URL of genuinely public objects (public bucket domain or CDN)
-	PresignEndpoint string // Optional: endpoint presigned URLs are signed for (browser-facing; local MinIO)
+	PresignEndpoint string // Optional: endpoint presigned URLs are signed for (browser-facing; local Docker store)
 }
 
 // ResendConfig holds Resend email service configuration
