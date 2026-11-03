@@ -14,8 +14,7 @@ import {
   Avatar,
   PageHeader,
 } from '@components/shared';
-import type { BadgeVariant } from '@components/shared';
-import { useTenantStore } from '@store';
+import { useAuthStore, useTenantStore } from '@store';
 import { roleApi } from '@services/roleApi';
 import { tenantApi } from '@services/tenantService';
 import { getTenantErrorMessage } from '@/utils/error';
@@ -34,25 +33,23 @@ import {
 import { getDisplayName } from '@/utils/avatar';
 import type { TenantMember, Invitation } from '@/types/tenant';
 import type { Role } from '@/types/role';
-
-/** Role pill colours from mockup 13: owner orange, office teal, the rest grey. */
-function roleBadgeVariant(roleName: string): BadgeVariant {
-  const name = roleName.toLowerCase();
-  if (name === 'owner' || name === 'admin' || name === 'super_admin')
-    return 'info';
-  if (name === 'manager' || name.includes('office')) return 'teal';
-  return 'neutral';
-}
+import { RolePills } from './RolePills';
+import { RoleAccessCard } from './RoleAccessCard';
+import { roleBadgeVariant, roleLabel, teamRoleOptions } from './teamRoles';
 
 export function TeamMembersPage() {
   const { currentTenant, getMembers, removeMember, updateMemberRole } =
     useTenantStore();
+  const currentUserId = useAuthStore((state) => state.user?.id);
 
   const [members, setMembers] = useState<TenantMember[]>([]);
   const [pendingInvitations, setPendingInvitations] = useState<Invitation[]>(
     []
   );
   const [roles, setRoles] = useState<Role[]>([]);
+  // Owner / Office manager / Technician (T035); user, guest and super_admin
+  // aren't offered.
+  const roleOptions = teamRoleOptions(roles);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -220,7 +217,10 @@ export function TeamMembersPage() {
 
   const openChangeRoleModal = (member: TenantMember) => {
     setSelectedMember(member);
-    setSelectedRoleId(member.role_id);
+    // Members on a role that isn't offered (user, guest) start unselected.
+    setSelectedRoleId(
+      roleOptions.some((o) => o.id === member.role_id) ? member.role_id : ''
+    );
     setShowRoleModal(true);
   };
 
@@ -234,6 +234,7 @@ export function TeamMembersPage() {
     return (
       member.email.toLowerCase().includes(searchLower) ||
       member.role_name.toLowerCase().includes(searchLower) ||
+      roleLabel(member.role_name).toLowerCase().includes(searchLower) ||
       displayName.toLowerCase().includes(searchLower)
     );
   });
@@ -297,20 +298,14 @@ export function TeamMembersPage() {
                   className="gap-2"
                 >
                   <UserPlus className="h-4 w-4" />
-                  Invite member
+                  Invite teammate
                 </Button>
               )}
             </>
           }
         />
 
-        <div
-          className={
-            roles.length > 0
-              ? 'grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_360px]'
-              : undefined
-          }
-        >
+        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
           <Card variant="elevated" padding="lg" className="min-w-0">
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -397,21 +392,24 @@ export function TeamMembersPage() {
                                     variant={roleBadgeVariant(member.role_name)}
                                     size="sm"
                                   >
-                                    {member.role_name}
+                                    {roleLabel(member.role_name)}
                                   </Badge>
                                 </div>
                               </div>
                             </div>
                             {canManage && (
                               <div className="flex items-center space-x-2">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => openChangeRoleModal(member)}
-                                  title="Change role"
-                                >
-                                  <Shield className="h-4 w-4" />
-                                </Button>
+                                {/* Nobody changes their own role (the API refuses it too). */}
+                                {member.user_id !== currentUserId && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => openChangeRoleModal(member)}
+                                    title="Change role"
+                                  >
+                                    <Shield className="h-4 w-4" />
+                                  </Button>
+                                )}
                                 <Button
                                   variant="ghost"
                                   size="sm"
@@ -451,8 +449,12 @@ export function TeamMembersPage() {
                                   {invitation.email}
                                 </p>
                                 <div className="flex items-center mt-1 space-x-2">
-                                  <Badge variant="neutral">
-                                    {invitation.role_name}
+                                  <Badge
+                                    variant={roleBadgeVariant(
+                                      invitation.role_name
+                                    )}
+                                  >
+                                    {roleLabel(invitation.role_name)}
                                   </Badge>
                                   <Badge variant="warning">
                                     {invitation.user_registered
@@ -502,37 +504,8 @@ export function TeamMembersPage() {
             </CardContent>
           </Card>
 
-          {/* The roles this organization has (fixed three-role model: T035) */}
-          {roles.length > 0 && (
-            <Card variant="elevated" padding="lg">
-              <CardHeader>
-                <CardTitle>Roles</CardTitle>
-                <CardDescription>What each role can do here.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="mt-4 divide-y divide-neutral-200">
-                  {roles.map((role) => (
-                    <li key={role.id} className="py-3">
-                      <Badge variant={roleBadgeVariant(role.name)} size="sm">
-                        {role.name}
-                      </Badge>
-                      {role.description && (
-                        <p className="mt-1.5 text-sm text-neutral-600">
-                          {role.description}
-                        </p>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-                <Link
-                  to="/team/roles"
-                  className="mt-2 inline-block text-sm font-medium text-primary-600 hover:text-primary-700"
-                >
-                  See permissions by role
-                </Link>
-              </CardContent>
-            </Card>
-          )}
+          {/* The fixed three-role model (T035, mockup 13) */}
+          <RoleAccessCard />
         </div>
       </div>
 
@@ -545,7 +518,7 @@ export function TeamMembersPage() {
           setNewMemberRoleId('');
           setInviteError(null);
         }}
-        title="Invite Team Member"
+        title="Invite teammate"
       >
         <form onSubmit={handleInviteMember} className="space-y-4">
           <p className="text-sm text-neutral-600">
@@ -570,22 +543,15 @@ export function TeamMembersPage() {
           />
 
           <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-1">
+            <p className="block text-sm font-medium text-neutral-700 mb-2">
               Role
-            </label>
-            <select
+            </p>
+            <RolePills
+              label="Role"
+              options={roleOptions}
               value={newMemberRoleId}
-              onChange={(e) => setNewMemberRoleId(e.target.value)}
-              className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-primary-500"
-              required
-            >
-              <option value="">Select a role</option>
-              {roles.map((role) => (
-                <option key={role.id} value={role.id}>
-                  {role.name} - {role.description}
-                </option>
-              ))}
-            </select>
+              onChange={setNewMemberRoleId}
+            />
           </div>
 
           <div className="flex justify-end space-x-3 pt-4">
@@ -626,20 +592,15 @@ export function TeamMembersPage() {
           )}
 
           <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-1">
-              New Role
-            </label>
-            <select
+            <p className="block text-sm font-medium text-neutral-700 mb-2">
+              New role
+            </p>
+            <RolePills
+              label="New role"
+              options={roleOptions}
               value={selectedRoleId}
-              onChange={(e) => setSelectedRoleId(e.target.value)}
-              className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-primary-500"
-            >
-              {roles.map((role) => (
-                <option key={role.id} value={role.id}>
-                  {role.name} - {role.description}
-                </option>
-              ))}
-            </select>
+              onChange={setSelectedRoleId}
+            />
           </div>
 
           <div className="flex justify-end space-x-3 pt-4">
@@ -650,7 +611,12 @@ export function TeamMembersPage() {
             >
               Cancel
             </Button>
-            <Button type="button" variant="primary" onClick={handleChangeRole}>
+            <Button
+              type="button"
+              variant="primary"
+              onClick={handleChangeRole}
+              disabled={!selectedRoleId}
+            >
               Update Role
             </Button>
           </div>

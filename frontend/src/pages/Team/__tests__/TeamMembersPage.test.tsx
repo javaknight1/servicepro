@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
@@ -14,13 +15,16 @@ vi.mock('@components/layout', () => ({
 const getMembers = vi.fn();
 let currentTenant: Tenant | null = null;
 vi.mock('@store', () => ({
+  useAuthStore: (select: (s: { user: { id: string } }) => unknown) =>
+    select({ user: { id: 'owner-1' } }),
   useTenantStore: () => ({
     currentTenant,
     getMembers,
     removeMember: vi.fn(),
-    updateMemberRole: vi.fn(),
+    updateMemberRole,
   }),
 }));
+const updateMemberRole = vi.fn();
 
 vi.mock('@services/tenantService', () => ({
   tenantApi: {
@@ -107,7 +111,7 @@ describe('TeamMembersPage permissions', () => {
 
     expect(await screen.findByText('tech@example.com')).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: /invite member/i })
+      screen.getByRole('button', { name: /invite teammate/i })
     ).toBeInTheDocument();
     expect(screen.getByTitle('Remove member')).toBeInTheDocument();
     expect(tenantApi.getPendingInvitations).toHaveBeenCalledWith('tenant-1');
@@ -121,7 +125,7 @@ describe('TeamMembersPage permissions', () => {
 
     expect(await screen.findByText('tech@example.com')).toBeInTheDocument();
     expect(
-      screen.queryByRole('button', { name: /invite member/i })
+      screen.queryByRole('button', { name: /invite teammate/i })
     ).not.toBeInTheDocument();
     expect(screen.queryByTitle('Remove member')).not.toBeInTheDocument();
     expect(screen.queryByTitle('Change role')).not.toBeInTheDocument();
@@ -137,7 +141,7 @@ describe('TeamMembersPage permissions', () => {
 
     expect(await screen.findByText('tech@example.com')).toBeInTheDocument();
     expect(
-      await screen.findByRole('button', { name: /invite member/i })
+      await screen.findByRole('button', { name: /invite teammate/i })
     ).toBeInTheDocument();
     expect(tenantApi.getMyAccess).toHaveBeenCalledWith('tenant-1');
   });
@@ -154,7 +158,7 @@ describe('TeamMembersPage permissions', () => {
     // wait for the settled state rather than the first match.
     await waitFor(() =>
       expect(
-        screen.queryByRole('button', { name: /invite member/i })
+        screen.queryByRole('button', { name: /invite teammate/i })
       ).not.toBeInTheDocument()
     );
     expect(await screen.findByText('tech@example.com')).toBeInTheDocument();
@@ -181,5 +185,135 @@ describe('TeamMembersPage permissions', () => {
       await screen.findByText("You don't have access to this organization.")
     ).toBeInTheDocument();
     expect(screen.queryByText(/no members found/i)).not.toBeInTheDocument();
+  });
+});
+
+const role = (id: string, name: string, level: number) => ({
+  id,
+  name,
+  description: `${name} role`,
+  hierarchy_level: level,
+  created_at: '2026-01-01T00:00:00Z',
+  updated_at: '2026-01-01T00:00:00Z',
+});
+
+const allRoles = [
+  role('r-super', 'super_admin', 100),
+  role('r-admin', 'admin', 80),
+  role('r-manager', 'manager', 60),
+  role('r-user', 'user', 40),
+  role('r-tech', 'technician', 30),
+  role('r-guest', 'guest', 20),
+];
+
+const ownerMember: TenantMember = {
+  ...member,
+  id: 'm-owner',
+  user_id: 'owner-1',
+  email: 'dana@example.com',
+  role_id: 'r-admin',
+  role_name: 'admin',
+};
+
+const techMember: TenantMember = {
+  ...member,
+  id: 'm-tech',
+  user_id: 'u-tech',
+  email: 'marcus@example.com',
+  role_id: 'r-tech',
+  role_name: 'technician',
+};
+
+describe('TeamMembersPage roles (T035)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    currentTenant = tenant('admin');
+    grant('admin', ['tenants.read', 'tenants.manage']);
+    getMembers.mockResolvedValue([ownerMember, techMember]);
+    vi.mocked(tenantApi.getPendingInvitations).mockResolvedValue({
+      data: [],
+    } as unknown as Awaited<
+      ReturnType<typeof tenantApi.getPendingInvitations>
+    >);
+    vi.mocked(roleApi.getRoles).mockResolvedValue({
+      data: allRoles,
+    } as unknown as Awaited<ReturnType<typeof roleApi.getRoles>>);
+    vi.mocked(tenantApi.inviteMember).mockResolvedValue(
+      {} as unknown as Awaited<ReturnType<typeof tenantApi.inviteMember>>
+    );
+  });
+
+  it('labels members Owner / Technician and shows what each role can see', async () => {
+    renderPage();
+    expect(await screen.findByText('marcus@example.com')).toBeInTheDocument();
+    const memberRow = (email: string) => {
+      const row = screen.getByText(email).closest<HTMLElement>('div.ml-4');
+      if (!row) throw new Error(`no row for ${email}`);
+      return row;
+    };
+    expect(
+      within(memberRow('dana@example.com')).getByText('Owner')
+    ).toBeInTheDocument();
+    expect(
+      within(memberRow('marcus@example.com')).getByText('Technician')
+    ).toBeInTheDocument();
+    expect(screen.getByText('What each role can see')).toBeInTheDocument();
+    expect(screen.getByText('Technicians never see money')).toBeInTheDocument();
+  });
+
+  it('invites a technician from the three role pills', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(
+      await screen.findByRole('button', { name: /invite teammate/i })
+    );
+    const pills = await screen.findByRole('radiogroup', { name: 'Role' });
+    expect(
+      within(pills)
+        .getAllByRole('radio')
+        .map((r) => r.textContent)
+    ).toEqual(['Owner', 'Office manager', 'Technician']);
+
+    await user.type(screen.getByLabelText(/email address/i), 'new@example.com');
+    await user.click(within(pills).getByRole('radio', { name: 'Technician' }));
+    expect(
+      within(pills).getByRole('radio', { name: 'Technician' })
+    ).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByText(/never sees prices/i)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /send invitation/i }));
+
+    await waitFor(() =>
+      expect(tenantApi.inviteMember).toHaveBeenCalledWith('tenant-1', {
+        email: 'new@example.com',
+        role_id: 'r-tech',
+      })
+    );
+  });
+
+  it('sets a member as Technician, but never offers a change of your own role', async () => {
+    const user = userEvent.setup();
+    getMembers.mockResolvedValue([
+      ownerMember,
+      { ...member, role_id: 'r-manager', role_name: 'manager' },
+    ]);
+    updateMemberRole.mockResolvedValue(undefined);
+    renderPage();
+
+    await screen.findByText('tech@example.com');
+    // Only the other member has a Change role button (the caller is owner-1).
+    const changeButtons = await screen.findAllByTitle('Change role');
+    expect(changeButtons).toHaveLength(1);
+    await user.click(changeButtons[0]);
+
+    const pills = await screen.findByRole('radiogroup', { name: 'New role' });
+    expect(
+      within(pills).getByRole('radio', { name: 'Office manager' })
+    ).toHaveAttribute('aria-checked', 'true');
+    await user.click(within(pills).getByRole('radio', { name: 'Technician' }));
+    await user.click(screen.getByRole('button', { name: /update role/i }));
+
+    await waitFor(() =>
+      expect(updateMemberRole).toHaveBeenCalledWith('tenant-1', 'u-1', 'r-tech')
+    );
   });
 });
