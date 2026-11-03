@@ -18,6 +18,15 @@ func optionalText(v string) *string {
 	return &v
 }
 
+// CleanPONumber trims a PO number from a request; nil, "" and blanks mean
+// "no PO" (nil).
+func CleanPONumber(v *string) *string {
+	if v == nil {
+		return nil
+	}
+	return optionalText(*v)
+}
+
 // Apply copies the fields present in r onto b, validating them. It returns a
 // 400 validation error naming the bad fields.
 func (r *BillingRulesRequest) Apply(b *BillingRules) error {

@@ -58,6 +58,7 @@ type consolidatedLine struct {
 	month    *time.Time  // agreement_month: the calendar month claimed
 	visitIDs []uuid.UUID // visits claimed by this line
 	jobIDs   []uuid.UUID // jobs moved to invoiced with this line
+	poNumber *string     // the agreement's or job's PO (T187)
 }
 
 // consolidation is everything one consolidated invoice would bill.
@@ -119,6 +120,7 @@ type consolidationJob struct {
 	JobNumber string
 	Title     string
 	SiteID    *uuid.UUID
+	PONumber  *string
 	Amount    decimal.Decimal
 }
 
@@ -252,6 +254,7 @@ func (s *InvoiceService) addAgreementLines(db *gorm.DB, tenantID uuid.UUID, c *c
 		case models.BillingPeriodVisit:
 			var line consolidatedLine
 			line.ConsolidatedInvoiceLine = base
+			line.poNumber = a.PONumber
 			for _, v := range byAgreement[a.ID] {
 				if v.VisitDate.Before(c.start) || v.VisitDate.After(c.end) {
 					continue
@@ -276,6 +279,7 @@ func (s *InvoiceService) addAgreementLines(db *gorm.DB, tenantID uuid.UUID, c *c
 				}
 				var line consolidatedLine
 				line.ConsolidatedInvoiceLine = base
+				line.poNumber = a.PONumber
 				for _, v := range byAgreement[a.ID] {
 					if !v.VisitDate.Before(m) && !v.VisitDate.After(mEnd) {
 						line.visitIDs = append(line.visitIDs, v.ID)
@@ -319,7 +323,7 @@ func (s *InvoiceService) addExtraWorkLines(db *gorm.DB, tenantID uuid.UUID, c *c
 	// End of the period's last day in the tenant's time zone.
 	cutoff := time.Date(c.end.Year(), c.end.Month(), c.end.Day()+1, 0, 0, 0, 0, loc).Unix()
 	sql := `
-		SELECT j.id, j.job_number, j.title, j.site_id,
+		SELECT j.id, j.job_number, j.title, j.site_id, j.po_number,
 		       COALESCE(NULLIF(j.total_amount, 0), NULLIF(j.actual_cost, 0), j.estimated_cost, 0) AS amount
 		FROM jobs j
 		WHERE j.tenant_id = ? AND j.customer_id = ? AND j.agreement_id IS NULL
@@ -366,7 +370,8 @@ func (s *InvoiceService) addExtraWorkLines(db *gorm.DB, tenantID uuid.UUID, c *c
 				Description: fmt.Sprintf("%s · %s", j.Title, j.JobNumber),
 				Quantity:    decimal.NewFromInt(1), UnitPrice: amount, Amount: amount,
 			},
-			jobIDs: []uuid.UUID{j.ID},
+			jobIDs:   []uuid.UUID{j.ID},
+			poNumber: j.PONumber,
 		}
 		if j.SiteID != nil {
 			line.SiteName = siteNames[*j.SiteID]
@@ -386,6 +391,26 @@ func (s *InvoiceService) addExtraWorkLines(db *gorm.DB, tenantID uuid.UUID, c *c
 		c.lines = append(c.lines, line)
 	}
 	return nil
+}
+
+// poNumber is the invoice's PO (T187): each line bills under its
+// agreement's or job's PO, else the customer's default; when every line
+// agrees that is the invoice's PO, otherwise (work under different POs) the
+// customer's default.
+func (c *consolidation) poNumber() string {
+	fallback := invoicePONumber(c.customer, nil)
+	po := ""
+	for i, l := range c.lines {
+		linePO := invoicePONumber(c.customer, l.poNumber)
+		if i > 0 && linePO != po {
+			return fallback
+		}
+		po = linePO
+	}
+	if len(c.lines) == 0 {
+		return fallback
+	}
+	return po
 }
 
 // invoiceLines turns the consolidation into invoice lines (all taxable).
@@ -457,9 +482,7 @@ func (s *InvoiceService) PreviewConsolidatedInvoice(ctx context.Context, req *mo
 		Lines: make([]models.ConsolidatedInvoiceLine, len(c.lines)), Subtotal: totals.Subtotal,
 		TaxRate: rate, TaxAmount: totals.Tax, Total: totals.Total,
 	}
-	if c.customer.DefaultPONumber != nil {
-		p.PONumber = *c.customer.DefaultPONumber
-	}
+	p.PONumber = c.poNumber()
 	sites := map[string]bool{}
 	for i, l := range c.lines {
 		p.Lines[i] = l.ConsolidatedInvoiceLine
@@ -526,9 +549,7 @@ func (s *InvoiceService) consolidateInTx(ctx context.Context, tx *gorm.DB, tenan
 		BillingPeriodStart: &start, BillingPeriodEnd: &end,
 		Lines: c.invoiceLines(), CreatedBy: userID,
 	}
-	if c.customer.DefaultPONumber != nil {
-		invoice.PONumber = *c.customer.DefaultPONumber
-	}
+	invoice.PONumber = c.poNumber()
 	due, err := s.calculateDueDate(ctx, issue, invoice.PaymentTermID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to calculate due date: %w", err)

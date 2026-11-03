@@ -247,6 +247,7 @@ func (s *JobService) CreateJob(req *models.CreateJobRequest, createdBy uuid.UUID
 		CustomerNotes:       req.CustomerNotes,
 		SpecialInstructions: req.SpecialInstructions,
 		RequiredMaterials:   req.RequiredMaterials,
+		PONumber:            models.CleanPONumber(req.PONumber),
 		CreatedBy:           createdBy,
 	}
 
@@ -448,6 +449,9 @@ func (s *JobService) UpdateJob(id uuid.UUID, req *models.UpdateJobRequest, userI
 	}
 	if req.RequiredMaterials != nil {
 		job.RequiredMaterials = req.RequiredMaterials
+	}
+	if req.PONumber != nil {
+		job.PONumber = models.CleanPONumber(req.PONumber)
 	}
 	if req.RequiresFollowUp != nil {
 		job.RequiresFollowUp = *req.RequiresFollowUp

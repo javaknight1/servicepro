@@ -77,6 +77,9 @@ type ServiceAgreement struct {
 	JobType              JobType         `json:"job_type" gorm:"type:varchar(50);not null"`
 	Status               AgreementStatus `json:"status" gorm:"type:varchar(10);not null"`
 	Notes                *string         `json:"notes" gorm:"type:text"`
+	// PONumber is the customer's PO for the service (T187); generated visits
+	// carry it to their jobs and consolidated invoices use it.
+	PONumber *string `json:"po_number" gorm:"column:po_number;type:varchar(100)"`
 
 	CreatedBy uuid.UUID      `json:"created_by" gorm:"type:uuid;not null"`
 	CreatedAt time.Time      `json:"created_at"`
@@ -132,6 +135,8 @@ type CreateAgreementRequest struct {
 	AssignedTechnicianID *uuid.UUID    `json:"assigned_technician_id"`
 	JobType              JobType       `json:"job_type" binding:"omitempty,oneof=installation maintenance repair inspection emergency"`
 	Notes                *string       `json:"notes" binding:"omitempty,max=5000"`
+	// PONumber is the customer's PO for this service (T187).
+	PONumber *string `json:"po_number" binding:"omitempty,max=100"`
 }
 
 // UpdateAgreementRequest is PUT /agreements/{id}; omitted fields are left
@@ -152,6 +157,8 @@ type UpdateAgreementRequest struct {
 	ClearTechnician      bool                    `json:"clear_technician"`
 	JobType              *JobType                `json:"job_type" binding:"omitempty,oneof=installation maintenance repair inspection emergency"`
 	Notes                *string                 `json:"notes" binding:"omitempty,max=5000"`
+	// PONumber replaces the PO when present; "" clears it (T187).
+	PONumber *string `json:"po_number" binding:"omitempty,max=100"`
 }
 
 // AgreementResponse is an agreement as the API returns it.
@@ -174,6 +181,7 @@ type AgreementResponse struct {
 	JobType              JobType            `json:"job_type"`
 	Status               AgreementStatus    `json:"status"`
 	Notes                *string            `json:"notes,omitempty"`
+	PONumber             *string            `json:"po_number,omitempty"`
 	CreatedAt            time.Time          `json:"created_at"`
 	UpdatedAt            time.Time          `json:"updated_at"`
 }

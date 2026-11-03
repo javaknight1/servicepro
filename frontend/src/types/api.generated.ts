@@ -12541,6 +12541,7 @@ export interface components {
             id?: string;
             job_type?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.JobType"];
             notes?: string;
+            po_number?: string;
             /** @example 2400.00 */
             price_per_period?: string;
             site_id?: string;
@@ -12704,6 +12705,8 @@ export interface components {
             /** @enum {unknown} */
             job_type?: "installation" | "maintenance" | "repair" | "inspection" | "emergency";
             notes?: string;
+            /** @description PONumber is the customer's PO for this service (T187). */
+            po_number?: string;
             /** @example 2400.00 */
             price_per_period?: string;
             site_id: string;
@@ -12795,6 +12798,8 @@ export interface components {
             internal_notes?: string;
             /** @enum {unknown} */
             job_type: "installation" | "maintenance" | "repair" | "inspection" | "emergency";
+            /** @description PONumber is the customer's PO for the work (T187); its invoice uses it. */
+            po_number?: string;
             /** @enum {unknown} */
             priority?: "low" | "normal" | "high" | "urgent";
             required_materials?: string;
@@ -13314,6 +13319,8 @@ export interface components {
             job_type?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.JobType"];
             materials?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.JobMaterial"][];
             notes?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.JobNote"][];
+            /** @description the customer's PO for this work (T187) */
+            po_number?: string;
             priority?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.JobPriority"];
             /** @description the accepted quote this job was converted from (T028) */
             quote_id?: string;
@@ -13472,6 +13479,8 @@ export interface components {
             materials?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.JobMaterialResponse"][];
             next_status?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.JobStatus"];
             notes?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.JobNoteResponse"][];
+            /** @description PONumber is the customer's PO for the work (T187). */
+            po_number?: string;
             priority?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.JobPriority"];
             /** @description QuoteID is the accepted quote the job was converted from (T028). */
             quote_id?: string;
@@ -13757,6 +13766,11 @@ export interface components {
             items: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.QuoteItemRequest"][];
             notes?: string;
             /**
+             * @description PONumber is the customer's PO for the work (T187); "" or omitted
+             *     leaves the quote without one.
+             */
+            po_number?: string;
+            /**
              * @description TaxRate is a fraction (0.0825 = 8.25%). Omitted on create, the
              *     tenant's default tax rate applies (T127); omitted on update, the
              *     quote keeps its current rate.
@@ -13777,6 +13791,7 @@ export interface components {
             /** @description JobID is the job the quote was converted to, once it has been (T028). */
             job_id?: string;
             notes?: string;
+            po_number?: string;
             quote_number?: string;
             status?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.QuoteStatus"];
             subtotal?: number;
@@ -14167,6 +14182,8 @@ export interface components {
             /** @enum {unknown} */
             job_type?: "installation" | "maintenance" | "repair" | "inspection" | "emergency";
             notes?: string;
+            /** @description PONumber replaces the PO when present; "" clears it (T187). */
+            po_number?: string;
             /** @example 2400.00 */
             price_per_period?: string;
             /** @description Schedule replaces the whole frequency when present. */
@@ -14232,6 +14249,8 @@ export interface components {
             internal_notes?: string;
             /** @enum {unknown} */
             job_type?: "installation" | "maintenance" | "repair" | "inspection" | "emergency";
+            /** @description PONumber replaces the job's PO when present; "" clears it (T187). */
+            po_number?: string;
             /** @enum {unknown} */
             priority?: "low" | "normal" | "high" | "urgent";
             required_materials?: string;

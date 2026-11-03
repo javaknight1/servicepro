@@ -12,28 +12,31 @@ import (
 
 // Quote represents a customer quote
 type Quote struct {
-	ID            uuid.UUID       `json:"id" gorm:"type:uuid;primary_key;default:uuid_generate_v4()"`
-	TenantID      uuid.UUID       `json:"tenant_id" gorm:"type:uuid;not null;index"` // set from the caller's tenant (internal/tenancy)
-	CustomerID    uuid.UUID       `json:"customer_id" gorm:"type:uuid;not null;index"`
-	Customer      *Customer       `json:"customer,omitempty" gorm:"foreignKey:CustomerID;constraint:OnDelete:CASCADE"`
-	QuoteNumber   string          `json:"quote_number" gorm:"type:varchar(50);uniqueIndex;not null"`
-	Status        QuoteStatus     `json:"status" gorm:"type:quote_status;not null;default:'draft';index"`
-	ValidUntil    time.Time       `json:"valid_until" gorm:"not null;index"`
-	Subtotal      decimal.Decimal `json:"subtotal" gorm:"type:decimal(12,2);not null;default:0.00"`
-	TaxRate       decimal.Decimal `json:"tax_rate" gorm:"type:decimal(5,4);not null;default:0.0000"`
-	TaxAmount     decimal.Decimal `json:"tax_amount" gorm:"type:decimal(12,2);not null;default:0.00"`
-	Total         decimal.Decimal `json:"total" gorm:"type:decimal(12,2);not null;default:0.00"`
-	Currency      string          `json:"currency" gorm:"type:varchar(3);not null;default:'USD'"` // ISO 4217, from the tenant setting at create time
-	Notes         *string         `json:"notes,omitempty" gorm:"type:text"`
-	Terms         *string         `json:"terms,omitempty" gorm:"type:text"`
-	Items         []QuoteItem     `json:"items,omitempty" gorm:"foreignKey:QuoteID;constraint:OnDelete:CASCADE"`
-	CreatedBy     uuid.UUID       `json:"created_by" gorm:"type:uuid;not null"`
-	CreatedByUser *User           `json:"created_by_user,omitempty" gorm:"foreignKey:CreatedBy"`
-	UpdatedBy     *uuid.UUID      `json:"updated_by,omitempty" gorm:"type:uuid"`
-	UpdatedByUser *User           `json:"updated_by_user,omitempty" gorm:"foreignKey:UpdatedBy"`
-	CreatedAt     time.Time       `json:"created_at"`
-	UpdatedAt     time.Time       `json:"updated_at"`
-	DeletedAt     gorm.DeletedAt  `json:"-" gorm:"index"`
+	ID          uuid.UUID       `json:"id" gorm:"type:uuid;primary_key;default:uuid_generate_v4()"`
+	TenantID    uuid.UUID       `json:"tenant_id" gorm:"type:uuid;not null;index"` // set from the caller's tenant (internal/tenancy)
+	CustomerID  uuid.UUID       `json:"customer_id" gorm:"type:uuid;not null;index"`
+	Customer    *Customer       `json:"customer,omitempty" gorm:"foreignKey:CustomerID;constraint:OnDelete:CASCADE"`
+	QuoteNumber string          `json:"quote_number" gorm:"type:varchar(50);uniqueIndex;not null"`
+	Status      QuoteStatus     `json:"status" gorm:"type:quote_status;not null;default:'draft';index"`
+	ValidUntil  time.Time       `json:"valid_until" gorm:"not null;index"`
+	Subtotal    decimal.Decimal `json:"subtotal" gorm:"type:decimal(12,2);not null;default:0.00"`
+	TaxRate     decimal.Decimal `json:"tax_rate" gorm:"type:decimal(5,4);not null;default:0.0000"`
+	TaxAmount   decimal.Decimal `json:"tax_amount" gorm:"type:decimal(12,2);not null;default:0.00"`
+	Total       decimal.Decimal `json:"total" gorm:"type:decimal(12,2);not null;default:0.00"`
+	Currency    string          `json:"currency" gorm:"type:varchar(3);not null;default:'USD'"` // ISO 4217, from the tenant setting at create time
+	Notes       *string         `json:"notes,omitempty" gorm:"type:text"`
+	Terms       *string         `json:"terms,omitempty" gorm:"type:text"`
+	// PONumber is the customer's PO for the quoted work (T187); the job
+	// converted from the quote carries it to its invoice.
+	PONumber      *string        `json:"po_number,omitempty" gorm:"column:po_number;type:varchar(100)"`
+	Items         []QuoteItem    `json:"items,omitempty" gorm:"foreignKey:QuoteID;constraint:OnDelete:CASCADE"`
+	CreatedBy     uuid.UUID      `json:"created_by" gorm:"type:uuid;not null"`
+	CreatedByUser *User          `json:"created_by_user,omitempty" gorm:"foreignKey:CreatedBy"`
+	UpdatedBy     *uuid.UUID     `json:"updated_by,omitempty" gorm:"type:uuid"`
+	UpdatedByUser *User          `json:"updated_by_user,omitempty" gorm:"foreignKey:UpdatedBy"`
+	CreatedAt     time.Time      `json:"created_at"`
+	UpdatedAt     time.Time      `json:"updated_at"`
+	DeletedAt     gorm.DeletedAt `json:"-" gorm:"index"`
 
 	// JobID is the job this quote was converted to (T028; jobs.quote_id).
 	// Read-only, filled by QuoteRepository.GetByID.
@@ -308,10 +311,13 @@ type QuoteRequest struct {
 	// TaxRate is a fraction (0.0825 = 8.25%). Omitted on create, the
 	// tenant's default tax rate applies (T127); omitted on update, the
 	// quote keeps its current rate.
-	TaxRate *decimal.Decimal   `json:"tax_rate,omitempty"`
-	Notes   *string            `json:"notes"`
-	Terms   *string            `json:"terms"`
-	Items   []QuoteItemRequest `json:"items" binding:"required,min=1,dive"`
+	TaxRate *decimal.Decimal `json:"tax_rate,omitempty"`
+	Notes   *string          `json:"notes"`
+	Terms   *string          `json:"terms"`
+	// PONumber is the customer's PO for the work (T187); "" or omitted
+	// leaves the quote without one.
+	PONumber *string            `json:"po_number" binding:"omitempty,max=100"`
+	Items    []QuoteItemRequest `json:"items" binding:"required,min=1,dive"`
 }
 
 // QuoteItemRequest represents a request to create or update a quote item
@@ -338,6 +344,7 @@ type QuoteResponse struct {
 	Currency    string              `json:"currency"`
 	Notes       *string             `json:"notes,omitempty"`
 	Terms       *string             `json:"terms,omitempty"`
+	PONumber    *string             `json:"po_number,omitempty"`
 	Items       []QuoteItemResponse `json:"items"`
 	// JobID is the job the quote was converted to, once it has been (T028).
 	JobID     *uuid.UUID `json:"job_id,omitempty"`
@@ -381,6 +388,7 @@ func (q *Quote) ToResponse() QuoteResponse {
 		Currency:    q.Currency,
 		Notes:       q.Notes,
 		Terms:       q.Terms,
+		PONumber:    q.PONumber,
 		JobID:       q.JobID,
 		CreatedBy:   q.CreatedBy,
 		UpdatedBy:   q.UpdatedBy,

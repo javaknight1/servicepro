@@ -118,6 +118,7 @@ func (s *QuoteConversionService) ConvertToJob(ctx context.Context, quoteID uuid.
 			CustomerID:          customer.ID,
 			SiteID:              req.SiteID,
 			QuoteID:             &qid,
+			PONumber:            quote.PONumber, // the quote's PO goes to the job and its invoice (T187)
 			Title:               title,
 			Description:         quoteJobDescription(&quote, items),
 			JobType:             jobType,

@@ -155,6 +155,7 @@ func (s *QuoteService) CreateQuote(req *models.QuoteRequest, userID uuid.UUID) (
 		ValidUntil: req.ValidUntil,
 		Notes:      req.Notes,
 		Terms:      req.Terms,
+		PONumber:   models.CleanPONumber(req.PONumber),
 		CreatedBy:  userID,
 		Status:     models.QuoteStatusDraft,
 	}
@@ -277,6 +278,7 @@ func (s *QuoteService) UpdateQuote(id uuid.UUID, req *models.QuoteRequest, userI
 	}
 	existingQuote.Notes = req.Notes
 	existingQuote.Terms = req.Terms
+	existingQuote.PONumber = models.CleanPONumber(req.PONumber)
 	existingQuote.UpdatedBy = &userID
 
 	// Update quote items

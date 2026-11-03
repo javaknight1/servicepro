@@ -81,7 +81,7 @@ func (r *AgreementRepository) List(ctx context.Context, tenantID uuid.UUID, filt
 var agreementColumns = []string{
 	"title", "frequency", "weekday_mask", "times_per_week", "day_of_month", "start_date", "end_date",
 	"visit_start_minutes", "visit_duration_minutes", "price_per_period", "billing_period",
-	"assigned_technician_id", "job_type", "notes", "updated_at",
+	"assigned_technician_id", "job_type", "notes", "po_number", "updated_at",
 }
 
 // Update saves a's editable columns (Select writes zero and nil values too).

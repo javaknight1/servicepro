@@ -173,6 +173,7 @@ func (s *AgreementService) Create(ctx context.Context, req *models.CreateAgreeme
 		JobType:              models.JobTypeMaintenance,
 		Status:               models.AgreementStatusActive,
 		Notes:                req.Notes,
+		PONumber:             models.CleanPONumber(req.PONumber),
 		CreatedBy:            userID,
 	}
 	applySchedule(a, &req.AgreementScheduleInput)
@@ -274,6 +275,9 @@ func (s *AgreementService) Update(ctx context.Context, id uuid.UUID, req *models
 	}
 	if req.Notes != nil {
 		a.Notes = req.Notes
+	}
+	if req.PONumber != nil {
+		a.PONumber = models.CleanPONumber(req.PONumber)
 	}
 	if err := validateAgreement(a, fields); err != nil {
 		return nil, err

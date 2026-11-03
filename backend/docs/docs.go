@@ -10766,6 +10766,9 @@ const docTemplate = `{
                 "notes": {
                     "type": "string"
                 },
+                "po_number": {
+                    "type": "string"
+                },
                 "price_per_period": {
                     "type": "string",
                     "example": "2400.00"
@@ -11228,6 +11231,11 @@ const docTemplate = `{
                     "type": "string",
                     "maxLength": 5000
                 },
+                "po_number": {
+                    "description": "PONumber is the customer's PO for this service (T187).",
+                    "type": "string",
+                    "maxLength": 100
+                },
                 "price_per_period": {
                     "type": "string",
                     "example": "2400.00"
@@ -11517,6 +11525,11 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.JobType"
                         }
                     ]
+                },
+                "po_number": {
+                    "description": "PONumber is the customer's PO for the work (T187); its invoice uses it.",
+                    "type": "string",
+                    "maxLength": 100
                 },
                 "priority": {
                     "enum": [
@@ -12915,6 +12928,10 @@ const docTemplate = `{
                         "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.JobNote"
                     }
                 },
+                "po_number": {
+                    "description": "the customer's PO for this work (T187)",
+                    "type": "string"
+                },
                 "priority": {
                     "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.JobPriority"
                 },
@@ -13353,6 +13370,10 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.JobNoteResponse"
                     }
+                },
+                "po_number": {
+                    "description": "PONumber is the customer's PO for the work (T187).",
+                    "type": "string"
                 },
                 "priority": {
                     "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.JobPriority"
@@ -14269,6 +14290,11 @@ const docTemplate = `{
                 "notes": {
                     "type": "string"
                 },
+                "po_number": {
+                    "description": "PONumber is the customer's PO for the work (T187); \"\" or omitted\nleaves the quote without one.",
+                    "type": "string",
+                    "maxLength": 100
+                },
                 "tax_rate": {
                     "description": "TaxRate is a fraction (0.0825 = 8.25%). Omitted on create, the\ntenant's default tax rate applies (T127); omitted on update, the\nquote keeps its current rate.",
                     "type": "number"
@@ -14316,6 +14342,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "notes": {
+                    "type": "string"
+                },
+                "po_number": {
                     "type": "string"
                 },
                 "quote_number": {
@@ -15467,6 +15496,11 @@ const docTemplate = `{
                     "type": "string",
                     "maxLength": 5000
                 },
+                "po_number": {
+                    "description": "PONumber replaces the PO when present; \"\" clears it (T187).",
+                    "type": "string",
+                    "maxLength": 100
+                },
                 "price_per_period": {
                     "type": "string",
                     "example": "2400.00"
@@ -15691,6 +15725,11 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.JobType"
                         }
                     ]
+                },
+                "po_number": {
+                    "description": "PONumber replaces the job's PO when present; \"\" clears it (T187).",
+                    "type": "string",
+                    "maxLength": 100
                 },
                 "priority": {
                     "enum": [

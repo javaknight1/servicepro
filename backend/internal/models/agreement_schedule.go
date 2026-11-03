@@ -215,6 +215,7 @@ func (a *ServiceAgreement) ToResponse() AgreementResponse {
 		VisitDurationMinutes: a.VisitDurationMinutes,
 		PricePerPeriod:       a.PricePerPeriod, BillingPeriod: a.BillingPeriod,
 		AssignedTechnicianID: a.AssignedTechnicianID, JobType: a.JobType, Status: a.Status, Notes: a.Notes,
+		PONumber:  a.PONumber,
 		CreatedAt: a.CreatedAt, UpdatedAt: a.UpdatedAt,
 	}
 	// Show the days visits actually fall on for the implicit frequencies.

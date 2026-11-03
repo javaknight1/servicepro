@@ -45,8 +45,8 @@ var secondsPerHour = decimal.NewFromInt(3600)
 //   - then each billable material at its unit cost.
 //
 // Every line carries the job's site name. The job's completion notes and
-// customer-visible notes go into the invoice notes; the customer's standing
-// PO, the tenant's default payment term and tax rate apply. Totals are
+// customer-visible notes go into the invoice notes; the job's PO (from its
+// quote or agreement, T187), else the customer's standing PO, the tenant's default payment term and tax rate apply. Totals are
 // computed by insertInvoice like any other invoice. The job is looked up in
 // the caller's tenant (another tenant's job is ErrJobNotFound).
 func (s *InvoiceService) InvoiceJob(ctx context.Context, jobID, userID uuid.UUID) (*models.Invoice, error) {
@@ -113,9 +113,7 @@ func (s *InvoiceService) jobInvoiceDraft(ctx context.Context, tx *gorm.DB, tenan
 		CustomerID: customer.ID, JobID: &jobID, Status: models.InvoiceStatusDraft,
 		IssueDate: models.CivilDate(time.Now(), loc),
 	}
-	if customer.DefaultPONumber != nil {
-		invoice.PONumber = *customer.DefaultPONumber
-	}
+	invoice.PONumber = invoicePONumber(customer, job.PONumber)
 	if err := s.applyTenantInvoiceDefaults(ctx, invoice); err != nil {
 		return nil, err
 	}
@@ -352,4 +350,17 @@ func consolidatedInvoiceForJob(tx *gorm.DB, job *models.Job) (*uuid.UUID, error)
 		return nil, nil
 	}
 	return &ids[0], nil
+}
+
+// invoicePONumber is the PO an invoice is billed under (T187): the most
+// specific one, the work's own PO (job, quote or agreement), else the
+// customer's standing PO, else none.
+func invoicePONumber(customer *models.Customer, workPO *string) string {
+	if workPO != nil && strings.TrimSpace(*workPO) != "" {
+		return strings.TrimSpace(*workPO)
+	}
+	if customer != nil && customer.DefaultPONumber != nil {
+		return strings.TrimSpace(*customer.DefaultPONumber)
+	}
+	return ""
 }

@@ -124,6 +124,7 @@ func generateVisit(ctx context.Context, db *gorm.DB, a *models.ServiceAgreement,
 			CustomerID:          a.CustomerID,
 			SiteID:              &siteID,
 			AgreementID:         &agreementID,
+			PONumber:            a.PONumber, // the agreement's PO (T187)
 			Title:               a.Title,
 			JobType:             a.JobType,
 			Status:              models.JobStatusScheduled,
