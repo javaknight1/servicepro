@@ -5,6 +5,7 @@ import {
   QuoteSortField,
   QuoteStats,
 } from '../types/quote';
+import type { Job } from '../types/job';
 import { downloadPDF } from '../utils/fileDownload';
 
 export interface PDFDownloadResponse {
@@ -108,6 +109,17 @@ class QuoteService {
    */
   async acceptQuote(id: string): Promise<Quote> {
     const response = await api.post<Quote>(`${this.basePath}/${id}/accept`);
+    return response.data;
+  }
+
+  /**
+   * Convert an accepted quote to a job (T028). Once per quote: a second call
+   * answers 409 already_converted with the job's ID in resource_id.
+   */
+  async convertToJob(id: string): Promise<Job> {
+    const response = await api.post<Job>(
+      `${this.basePath}/${id}/convert-to-job`
+    );
     return response.data;
   }
 

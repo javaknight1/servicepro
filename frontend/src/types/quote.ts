@@ -48,6 +48,8 @@ export interface Quote {
   notes?: string;
   terms?: string;
   items: LineItem[];
+  /** The job this quote was converted to (T028). */
+  job_id?: string;
   created_by: string;
   updated_by?: string;
   created_at: string;

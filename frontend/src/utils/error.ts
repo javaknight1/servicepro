@@ -86,6 +86,8 @@ export interface ApiErrorInfo {
   requestId?: string;
   /** Validation errors: request field -> problem. */
   fields?: Record<string, string>;
+  /** A 409's existing resource, e.g. the job a quote already became. */
+  resourceId?: string;
 }
 
 function isStringRecord(value: unknown): value is Record<string, string> {
@@ -139,6 +141,13 @@ export function getApiErrorInfo(error: unknown): ApiErrorInfo {
     }
     if ('fields' in data && isStringRecord(data.fields)) {
       info.fields = data.fields;
+    }
+    if (
+      'resource_id' in data &&
+      typeof data.resource_id === 'string' &&
+      data.resource_id !== ''
+    ) {
+      info.resourceId = data.resource_id;
     }
   }
   info.requestId ??= headerRequestId(response);

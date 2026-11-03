@@ -6,6 +6,7 @@
  * - Quote creation with line items
  * - Quote status transitions (draft → sent → accepted/declined)
  * - Quote PDF generation
+ * - Converting an accepted quote to a job (T028)
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -32,6 +33,7 @@ vi.mock('@services/quoteService', () => ({
     acceptQuote: vi.fn(),
     rejectQuote: vi.fn(),
     reviseQuote: vi.fn(),
+    convertToJob: vi.fn(),
     getStats: vi.fn(),
     downloadQuotePDF: vi.fn(),
   },
@@ -42,6 +44,11 @@ vi.mock('@services/customerService', () => ({
     getCustomers: vi.fn(),
     getCustomer: vi.fn(),
   },
+}));
+
+// Tenant permissions come from GET /tenants/:id/me; the tests set them.
+vi.mock('@/utils/tenantPermissions', () => ({
+  useTenantPermissions: vi.fn(),
 }));
 
 vi.mock('@services/taxRateService', () => ({
@@ -55,6 +62,9 @@ import { useAuthStore, useTenantStore, useSidebarStore } from '@store';
 import { quoteService } from '@services/quoteService';
 import { customerService } from '@services/customerService';
 import { taxRateService, type TaxRate } from '@services/taxRateService';
+import { useTenantPermissions } from '@/utils/tenantPermissions';
+
+let grantedPermissions = new Set<string>(['jobs.create']);
 
 const mockTaxRates: TaxRate[] = [
   {
@@ -261,6 +271,18 @@ const setupMocks = () => {
   });
 
   vi.mocked(quoteService.getStats).mockResolvedValue(mockQuoteStats);
+
+  grantedPermissions = new Set<string>(['jobs.create']);
+  vi.mocked(useTenantPermissions).mockImplementation(() => ({
+    can: (permission: string) => grantedPermissions.has(permission),
+    canManageMembers: false,
+    canUpdateTenant: false,
+    canChangePlan: false,
+    canManageBilling: false,
+    canDeleteTenant: false,
+    canManageTaxRates: false,
+    isLoading: false,
+  }));
 
   // No configured tax rates unless a test sets some (typed-rate input only)
   vi.mocked(taxRateService.listTaxRates).mockResolvedValue([]);
@@ -717,6 +739,149 @@ describe('Quote Workflow Integration', () => {
       await waitFor(() => expect(saveButton).toBeEnabled());
       expect(screen.queryByRole('button', { name: /revise/i })).toBeNull();
       expect(screen.getByText('Draft')).toBeInTheDocument();
+    });
+  });
+
+  describe('Convert to job (T028)', () => {
+    const renderQuote = async (quoteId: string) => {
+      const { QuoteDetailPage } =
+        await import('../../src/pages/Quotes/QuoteDetailPage');
+      render(
+        <MemoryRouter initialEntries={[`/quotes/${quoteId}`]}>
+          <Routes>
+            <Route path="/quotes/:id" element={<QuoteDetailPage />} />
+          </Routes>
+        </MemoryRouter>
+      );
+      await waitFor(() => {
+        expect(quoteService.getQuote).toHaveBeenCalledWith(quoteId);
+      });
+    };
+
+    const convertedJob = {
+      id: 'job-77',
+      job_number: 'JOB-000077',
+      customer_id: 'customer-1',
+      quote_id: 'quote-3',
+      title: 'Electrical Work',
+      description: 'From quote QT-003 (accepted):',
+      job_type: 'maintenance',
+      status: 'new',
+      priority: 'normal',
+      service_address: { street: '', city: '', state: '', zip: '' },
+      estimated_duration: 0,
+      actual_duration: 0,
+      estimated_cost: 1500,
+      actual_cost: 0,
+      tax_amount: 0,
+      total_amount: 0,
+      requires_follow_up: false,
+      created_at: '2024-01-05T00:00:00Z',
+      updated_at: '2024-01-05T00:00:00Z',
+    } as unknown as Awaited<ReturnType<typeof quoteService.convertToJob>>;
+
+    it('converts an accepted quote and opens the new job', async () => {
+      const user = userEvent.setup({ delay: null });
+      vi.mocked(quoteService.getQuote).mockResolvedValue(mockQuotes[2]);
+      vi.mocked(quoteService.convertToJob).mockResolvedValue(convertedJob);
+
+      await renderQuote('quote-3');
+      await user.click(
+        await screen.findByRole('button', { name: /convert to job/i })
+      );
+
+      await waitFor(() => {
+        expect(quoteService.convertToJob).toHaveBeenCalledWith('quote-3');
+      });
+      expect(mockNavigate).toHaveBeenCalledWith('/jobs/job-77');
+    });
+
+    it('shows "View job" instead once the quote has a job', async () => {
+      const user = userEvent.setup({ delay: null });
+      vi.mocked(quoteService.getQuote).mockResolvedValue({
+        ...mockQuotes[2],
+        job_id: 'job-77',
+      });
+
+      await renderQuote('quote-3');
+      await user.click(await screen.findByRole('button', { name: /view job/i }));
+
+      expect(mockNavigate).toHaveBeenCalledWith('/jobs/job-77');
+      expect(
+        screen.queryByRole('button', { name: /convert to job/i })
+      ).toBeNull();
+    });
+
+    it('only offers conversion on accepted quotes', async () => {
+      vi.mocked(quoteService.getQuote).mockResolvedValue(mockQuotes[1]); // sent
+
+      await renderQuote('quote-2');
+      expect(
+        await screen.findByRole('button', { name: /^accept$/i })
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: /convert to job/i })
+      ).toBeNull();
+    });
+
+    it('hides conversion without the jobs.create permission', async () => {
+      grantedPermissions = new Set<string>();
+      vi.mocked(quoteService.getQuote).mockResolvedValue(mockQuotes[2]);
+
+      await renderQuote('quote-3');
+      expect(await screen.findByText('Accepted')).toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: /convert to job/i })
+      ).toBeNull();
+    });
+
+    it('opens the existing job when the quote was converted meanwhile', async () => {
+      const user = userEvent.setup({ delay: null });
+      vi.mocked(quoteService.getQuote).mockResolvedValue(mockQuotes[2]);
+      vi.mocked(quoteService.convertToJob).mockRejectedValue({
+        response: {
+          status: 409,
+          data: {
+            error: 'already_converted',
+            message: 'This quote has already been converted to a job',
+            resource_id: 'job-12',
+          },
+        },
+      });
+
+      await renderQuote('quote-3');
+      await user.click(
+        await screen.findByRole('button', { name: /convert to job/i })
+      );
+
+      await waitFor(() => {
+        expect(mockNavigate).toHaveBeenCalledWith('/jobs/job-12');
+      });
+    });
+
+    it("shows the API's reason when conversion is refused", async () => {
+      const user = userEvent.setup({ delay: null });
+      vi.mocked(quoteService.getQuote).mockResolvedValue(mockQuotes[2]);
+      vi.mocked(quoteService.convertToJob).mockRejectedValue({
+        response: {
+          status: 409,
+          data: {
+            error: 'already_invoiced',
+            message: 'This quote has already been invoiced',
+            resource_id: 'inv-1',
+          },
+        },
+      });
+
+      await renderQuote('quote-3');
+      await user.click(
+        await screen.findByRole('button', { name: /convert to job/i })
+      );
+
+      expect(
+        await screen.findByText('This quote has already been invoiced')
+      ).toBeInTheDocument();
+      expect(mockNavigate).not.toHaveBeenCalledWith('/jobs/inv-1');
     });
   });
 

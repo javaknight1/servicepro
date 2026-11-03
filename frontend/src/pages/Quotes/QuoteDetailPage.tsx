@@ -21,6 +21,7 @@ import type { Customer } from '@services/customerService';
 import { fetchAllCustomers } from '@services/customerLookup';
 import { useTenantStore } from '@store';
 import { useTaxRates } from '@/hooks/useTaxRates';
+import { useTenantPermissions } from '@/utils/tenantPermissions';
 import type { Quote, LineItemFormData } from '@app-types/quote';
 import {
   ArrowLeft,
@@ -34,6 +35,7 @@ import {
   Check,
   XCircle,
   Pencil,
+  Briefcase,
 } from 'lucide-react';
 
 /** The API's message for a failed quote action (e.g. "Quote cannot be
@@ -94,11 +96,15 @@ export function QuoteDetailPage() {
   const [isAcceptingQuote, setIsAcceptingQuote] = useState(false);
   const [isDecliningQuote, setIsDecliningQuote] = useState(false);
   const [isRevisingQuote, setIsRevisingQuote] = useState(false);
+  const [isConverting, setIsConverting] = useState(false);
+  // The job an accepted quote was converted to (T028): "View job".
+  const [jobId, setJobId] = useState<string | null>(null);
   const [isDownloadingPDF, setIsDownloadingPDF] = useState(false);
   const [quoteStatus, setQuoteStatus] = useState<string>('draft');
   const [quoteNumber, setQuoteNumber] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const { currentTenant } = useTenantStore();
+  const { can } = useTenantPermissions(currentTenant);
   const defaultTaxRateId = currentTenant?.settings?.defaultTaxRateId;
   const { taxRates, loaded: taxRatesLoaded } = useTaxRates();
   // A loaded quote's rate percent, until it is matched to a configured rate
@@ -190,6 +196,7 @@ export function QuoteDetailPage() {
       }
       setQuoteStatus(quote.status || 'draft');
       setQuoteNumber(quote.quote_number || '');
+      setJobId(quote.job_id ?? null);
     } catch (err) {
       console.error('Failed to load quote:', err);
       setError('Failed to load quote details');
@@ -428,6 +435,31 @@ export function QuoteDetailPage() {
     }
   };
 
+  // Accepted quote -> job (T028), then open the job to schedule it. If it
+  // was converted meanwhile (409 already_converted), open that job instead.
+  const handleConvertToJob = async () => {
+    if (!id || isNew) return;
+
+    setIsConverting(true);
+    setError(null);
+    try {
+      const job = await quoteService.convertToJob(id);
+      setJobId(job.id);
+      navigate(`/jobs/${job.id}`);
+    } catch (err: unknown) {
+      const { code, resourceId } = getApiErrorInfo(err);
+      if (code === 'already_converted' && resourceId) {
+        setJobId(resourceId);
+        navigate(`/jobs/${resourceId}`);
+        return;
+      }
+      console.error('Failed to convert quote:', err);
+      setError(quoteActionError(err, 'Failed to convert the quote to a job'));
+    } finally {
+      setIsConverting(false);
+    }
+  };
+
   const handleDeclineQuote = async () => {
     if (!id || isNew) return;
 
@@ -462,6 +494,8 @@ export function QuoteDetailPage() {
   };
 
   const canAcceptDecline = quoteStatus === 'sent' || quoteStatus === 'viewed';
+  const canConvert =
+    quoteStatus === 'accepted' && !jobId && can('jobs.create');
   // Only drafts can be edited; sent/viewed/expired/declined quotes are
   // revised back to draft first (accepted quotes are final).
   const isEditable = isNew || quoteStatus === 'draft';
@@ -562,6 +596,33 @@ export function QuoteDetailPage() {
                     <Pencil className="h-4 w-4" />
                   )}
                   Revise
+                </Button>
+              )}
+              {jobId && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => navigate(`/jobs/${jobId}`)}
+                  className="flex items-center gap-2"
+                >
+                  <Briefcase className="h-4 w-4" />
+                  View job
+                </Button>
+              )}
+              {canConvert && (
+                <Button
+                  type="button"
+                  variant="primary"
+                  onClick={handleConvertToJob}
+                  disabled={isConverting}
+                  className="flex items-center gap-2"
+                >
+                  {isConverting ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Briefcase className="h-4 w-4" />
+                  )}
+                  Convert to job
                 </Button>
               )}
               {canAcceptDecline && (
