@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/javaknight1/servicepro/backend/internal/api/apierror"
+	apperrors "github.com/javaknight1/servicepro/backend/internal/errors"
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/services"
 )
@@ -44,12 +45,12 @@ func (h *AgreementHandler) respondOne(c *gin.Context, status int, a *models.Serv
 // @Failure 500 {object} models.ErrorResponse "Internal server error"
 // @Router /api/v1/agreements [get]
 func (h *AgreementHandler) ListAgreements(c *gin.Context) {
-	var filter models.AgreementListFilter
-	if err := c.ShouldBindQuery(&filter); err != nil {
-		apierror.BindError(c, err)
+	filter, err := agreementListFilter(c)
+	if err != nil {
+		apierror.Respond(c, err, "Invalid filter")
 		return
 	}
-	list, err := h.agreements.List(c.Request.Context(), &filter)
+	list, err := h.agreements.List(c.Request.Context(), filter)
 	if err != nil {
 		apierror.Respond(c, err, "Failed to list agreements")
 		return
@@ -59,6 +60,39 @@ func (h *AgreementHandler) ListAgreements(c *gin.Context) {
 		resp.Agreements[i] = list[i].ToResponse()
 	}
 	c.JSON(http.StatusOK, resp)
+}
+
+// agreementListFilter reads GET /agreements' query. The IDs are parsed by
+// hand: Gin's query binding can't fill a *uuid.UUID (a byte array), so
+// ?customer_id=… was a 400.
+func agreementListFilter(c *gin.Context) (*models.AgreementListFilter, error) {
+	filter := &models.AgreementListFilter{}
+	fields := map[string]string{}
+	parseID := func(name string) *uuid.UUID {
+		raw := c.Query(name)
+		if raw == "" {
+			return nil
+		}
+		id, err := uuid.Parse(raw)
+		if err != nil {
+			fields[name] = "must be a UUID"
+			return nil
+		}
+		return &id
+	}
+	filter.CustomerID = parseID("customer_id")
+	filter.SiteID = parseID("site_id")
+	switch status := models.AgreementStatus(c.Query("status")); status {
+	case "":
+	case models.AgreementStatusActive, models.AgreementStatusPaused:
+		filter.Status = &status
+	default:
+		fields["status"] = "must be active or paused"
+	}
+	if len(fields) > 0 {
+		return nil, apperrors.Validation("Invalid filter", fields)
+	}
+	return filter, nil
 }
 
 // GetAgreement handles GET /api/v1/agreements/:id

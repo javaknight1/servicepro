@@ -50,8 +50,9 @@ func TestRunAgreementVisits(t *testing.T) {
 
 // fakeAgreements answers every lookup with not-found except one ID.
 type fakeAgreements struct {
-	known    uuid.UUID
-	lastDays int
+	known      uuid.UUID
+	lastDays   int
+	lastFilter *models.AgreementListFilter
 }
 
 func (f *fakeAgreements) get(id uuid.UUID) (*models.ServiceAgreement, error) {
@@ -62,7 +63,8 @@ func (f *fakeAgreements) get(id uuid.UUID) (*models.ServiceAgreement, error) {
 		StartDate: time.Date(2026, 11, 2, 0, 0, 0, 0, time.UTC), VisitStartMinutes: 18 * 60, Status: models.AgreementStatusActive}, nil
 }
 
-func (f *fakeAgreements) List(context.Context, *models.AgreementListFilter) ([]models.ServiceAgreement, error) {
+func (f *fakeAgreements) List(_ context.Context, filter *models.AgreementListFilter) ([]models.ServiceAgreement, error) {
+	f.lastFilter = filter
 	a, _ := f.get(f.known)
 	return []models.ServiceAgreement{*a}, nil
 }
@@ -112,6 +114,19 @@ func TestAgreementHandler(t *testing.T) {
 	require.Equal(t, http.StatusOK, w.Code)
 	assert.Contains(t, w.Body.String(), `"visit_start_time":"18:00"`)
 	assert.Contains(t, w.Body.String(), `"start_date":"2026-11-02"`)
+
+	// Filters: IDs in the query used to fail Gin's binding (400).
+	customerID, siteID := uuid.New(), uuid.New()
+	w = doJSON(t, r, http.MethodGet, "/agreements?customer_id="+customerID.String()+"&site_id="+siteID.String()+"&status=paused", nil)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	require.NotNil(t, f.lastFilter.CustomerID)
+	assert.Equal(t, customerID, *f.lastFilter.CustomerID)
+	assert.Equal(t, siteID, *f.lastFilter.SiteID)
+	assert.Equal(t, models.AgreementStatusPaused, *f.lastFilter.Status)
+	w = doJSON(t, r, http.MethodGet, "/agreements?customer_id=nope&status=gone", nil)
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.Contains(t, w.Body.String(), `"customer_id"`)
+	assert.Contains(t, w.Body.String(), `"status"`)
 
 	w = doJSON(t, r, http.MethodPost, "/agreements", map[string]any{"title": "x"})
 	assert.Equal(t, http.StatusBadRequest, w.Code, "missing required fields")
