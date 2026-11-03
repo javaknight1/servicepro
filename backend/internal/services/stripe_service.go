@@ -17,6 +17,7 @@ import (
 	"github.com/javaknight1/servicepro/backend/config"
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/repository"
+	stripeClient "github.com/javaknight1/servicepro/backend/internal/services/stripe"
 	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"
 )
 
@@ -35,6 +36,7 @@ type StripeService struct {
 	tenantRepo     *repository.TenantRepository
 	membershipRepo *repository.MembershipRepository
 	paymentRepo    *repository.PaymentRepository
+	prices         *catalogPrices
 }
 
 // NewStripeService creates a new Stripe service
@@ -49,12 +51,16 @@ func NewStripeService(
 		stripe.Key = cfg.SecretKey
 	}
 
-	return &StripeService{
+	svc := &StripeService{
 		config:         cfg,
 		tenantRepo:     tenantRepo,
 		membershipRepo: membershipRepo,
 		paymentRepo:    paymentRepo,
 	}
+	if cfg.SecretKey != "" {
+		svc.prices = newCatalogPrices(stripeClient.NewBillingClient(cfg.SecretKey))
+	}
+	return svc
 }
 
 // IsConfigured checks if Stripe is properly configured
@@ -293,24 +299,14 @@ func (s *StripeService) DeletePaymentMethod(ctx context.Context, tenantID, payme
 // Subscription Management
 // ============================================================================
 
-// GetPriceIDForTier gets the Stripe price ID for a tier and billing cycle
-func (s *StripeService) GetPriceIDForTier(tierName string, billingCycle models.BillingCycle) (string, error) {
-	switch tierName {
-	case "free":
-		return s.config.Prices.FreeMonthly, nil
-	case "basic":
-		if billingCycle == models.BillingCycleAnnual {
-			return s.config.Prices.BasicYearly, nil
-		}
-		return s.config.Prices.BasicMonthly, nil
-	case "pro":
-		if billingCycle == models.BillingCycleAnnual {
-			return s.config.Prices.ProYearly, nil
-		}
-		return s.config.Prices.ProMonthly, nil
-	default:
-		return "", fmt.Errorf("unknown tier: %s", tierName)
+// GetPriceIDForTier gets the Stripe price ID for a tier and billing cycle by
+// its lookup key (sp_<tier>_<cycle>, D15). Only catalog tiers have prices;
+// legacy Free and Basic can't be bought.
+func (s *StripeService) GetPriceIDForTier(ctx context.Context, tierName string, billingCycle models.BillingCycle) (string, error) {
+	if s.prices == nil {
+		return "", ErrStripeNotConfigured
 	}
+	return s.prices.priceID(ctx, tierName, string(billingCycle))
 }
 
 // CreateSubscription creates a Stripe subscription for a tenant
@@ -326,12 +322,9 @@ func (s *StripeService) CreateSubscription(ctx context.Context, tenantID uuid.UU
 	}
 
 	// Get price ID
-	priceID, err := s.GetPriceIDForTier(tierName, billingCycle)
+	priceID, err := s.GetPriceIDForTier(ctx, tierName, billingCycle)
 	if err != nil {
 		return nil, err
-	}
-	if priceID == "" {
-		return nil, fmt.Errorf("price ID not configured for tier %s", tierName)
 	}
 
 	// Get default payment method
@@ -421,12 +414,9 @@ func (s *StripeService) ChangeSubscription(ctx context.Context, stripeSubscripti
 	}
 
 	// Get new price ID
-	newPriceID, err := s.GetPriceIDForTier(newTierName, billingCycle)
+	newPriceID, err := s.GetPriceIDForTier(ctx, newTierName, billingCycle)
 	if err != nil {
 		return nil, err
-	}
-	if newPriceID == "" {
-		return nil, fmt.Errorf("price ID not configured for tier %s", newTierName)
 	}
 
 	// Update subscription with new price
@@ -574,7 +564,7 @@ func (s *StripeService) previewStripeInvoice(ctx context.Context, tenantID uuid.
 	}
 
 	// Get the new price ID
-	newPriceID, err := s.GetPriceIDForTier(newTierName, billingCycle)
+	newPriceID, err := s.GetPriceIDForTier(ctx, newTierName, billingCycle)
 	if err != nil {
 		return nil, err
 	}

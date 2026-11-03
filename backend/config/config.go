@@ -262,7 +262,8 @@ type StripeConfig struct {
 	WebhookSecret  string
 	LogLevel       string
 	MaxRetries     int
-	Prices         StripePrices
+	// Plan prices are not configured here: they are found in Stripe by
+	// lookup_key (sp_<tier>_<cycle>, D15/T210; `make stripe-catalog`).
 	// InvoicePaymentsEnabled turns on online invoice payment (the emailed
 	// "Pay now" link and /public/invoices/pay). Master off-switch (T261):
 	// even when on, a tenant gets pay links only once its own Stripe
@@ -275,15 +276,6 @@ type StripeConfig struct {
 	// V2WebhookSecret verifies the v2 event destination
 	// (/stripe/webhooks/v2) that receives thin v2.core.account[...] events (T169).
 	V2WebhookSecret string
-}
-
-// StripePrices holds Stripe price IDs for subscription tiers
-type StripePrices struct {
-	FreeMonthly  string
-	BasicMonthly string
-	BasicYearly  string
-	ProMonthly   string
-	ProYearly    string
 }
 
 // SentryConfig holds error tracking configuration
@@ -518,13 +510,6 @@ func Load() *Config {
 			InvoicePaymentsEnabled: getEnvAsBool("INVOICE_PAYMENTS_ENABLED", false),
 			ConnectWebhookSecret:   getEnv("STRIPE_CONNECT_WEBHOOK_SECRET", ""),
 			V2WebhookSecret:        getEnv("STRIPE_V2_WEBHOOK_SECRET", ""),
-			Prices: StripePrices{
-				FreeMonthly:  getEnv("STRIPE_PRICE_FREE_MONTHLY", ""),
-				BasicMonthly: getEnv("STRIPE_PRICE_BASIC_MONTHLY", ""),
-				BasicYearly:  getEnv("STRIPE_PRICE_BASIC_YEARLY", ""),
-				ProMonthly:   getEnv("STRIPE_PRICE_PRO_MONTHLY", ""),
-				ProYearly:    getEnv("STRIPE_PRICE_PRO_YEARLY", ""),
-			},
 		},
 		Sentry: SentryConfig{
 			DSN:         getEnv("SENTRY_DSN", ""),

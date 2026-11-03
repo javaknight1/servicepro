@@ -163,7 +163,7 @@ func (s *MembershipService) UpdateTenantMembership(ctx context.Context, tenantID
 		// Get the updated subscription to update its Stripe ID
 		updatedSub, err := s.membershipRepo.GetTenantSubscription(ctx, tenantID)
 		if err == nil && updatedSub != nil {
-			priceID, _ := s.stripeService.GetPriceIDForTier(newTier.Name, req.BillingCycle)
+			priceID, _ := s.stripeService.GetPriceIDForTier(ctx, newTier.Name, req.BillingCycle)
 			if err := s.membershipRepo.UpdateSubscriptionStripeID(ctx, updatedSub.ID, stripeSubscriptionID, priceID); err != nil {
 				logging.Warn(ctx, "[MEMBERSHIP] Failed to save Stripe subscription ID", map[string]any{"error": err})
 			}
