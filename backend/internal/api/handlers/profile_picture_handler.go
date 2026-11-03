@@ -33,6 +33,7 @@ func NewProfilePictureHandler(service *services.ProfilePictureService) *ProfileP
 // @Success		200		{object}	models.ProfilePictureUploadResponse
 // @Failure		400		{object}	models.ErrorResponse
 // @Failure		401		{object}	models.ErrorResponse
+// @Failure		413		{object}	models.ErrorResponse
 // @Failure		500		{object}	models.ErrorResponse
 // @Router			/users/me/profile-picture [post]
 func (h *ProfilePictureHandler) UploadProfilePicture(c *gin.Context) {
@@ -69,8 +70,19 @@ func (h *ProfilePictureHandler) UploadProfilePicture(c *gin.Context) {
 	}
 
 	// Get uploaded file
+	// Cap the body before the multipart form is parsed (T160), so an
+	// oversized upload is refused instead of being spooled to disk.
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, services.MaxUploadSize+64<<10)
 	file, header, err := c.Request.FormFile("file")
 	if err != nil {
+		var tooBig *http.MaxBytesError
+		if errors.As(err, &tooBig) {
+			apierror.WriteResponse(c, http.StatusRequestEntityTooLarge, models.ErrorResponse{
+				Error:   "file_too_large",
+				Message: "File size exceeds maximum allowed (2MB)",
+			})
+			return
+		}
 		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{
 			Error:   "bad_request",
 			Message: "No file uploaded",
