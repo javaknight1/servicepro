@@ -347,7 +347,11 @@ func (s *DocumentPDFService) buildInvoicePDFData(invoice *models.Invoice) *pdf.I
 			Notes:          invoice.Notes,
 		},
 		InvoiceNumber: invoice.InvoiceNumber,
+		PurchaseOrder: invoice.PONumber,
 		Status:        string(invoice.Status),
+	}
+	if invoice.BillingPeriodStart != nil && invoice.BillingPeriodEnd != nil {
+		data.ServicePeriod = invoice.BillingPeriodStart.Format("Jan 2, 2006") + " – " + invoice.BillingPeriodEnd.Format("Jan 2, 2006")
 	}
 
 	// Set customer info (Invoice uses Customer model)
@@ -381,6 +385,12 @@ func (s *DocumentPDFService) buildInvoicePDFData(invoice *models.Invoice) *pdf.I
 			// Net of the line's own discount, so the lines add up to the
 			// subtotal (audit 7.M7).
 			Amount: lineNet(line).InexactFloat64(),
+		}
+		if line.SiteName != nil {
+			lineItem.Site = *line.SiteName
+		}
+		if line.ApprovalNote != nil {
+			lineItem.Note = *line.ApprovalNote
 		}
 		data.LineItems = append(data.LineItems, lineItem)
 	}

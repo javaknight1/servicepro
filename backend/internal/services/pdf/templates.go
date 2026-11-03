@@ -71,6 +71,9 @@ type InvoiceData struct {
 	InvoiceNumber string `json:"invoice_number"`
 	PurchaseOrder string `json:"purchase_order,omitempty"`
 	Status        string `json:"status,omitempty"`
+	// ServicePeriod is a consolidated invoice's period ("Oct 1 – Oct 31,
+	// 2026"); its lines carry a Site and are printed grouped by site (T188).
+	ServicePeriod string `json:"service_period,omitempty"`
 
 	// Line items
 	LineItems []InvoiceLineItem `json:"line_items"`
@@ -98,6 +101,10 @@ type InvoiceLineItem struct {
 	Amount      float64 `json:"amount"`
 	TaxRate     float64 `json:"tax_rate,omitempty"`
 	Discount    float64 `json:"discount,omitempty"`
+	// Site groups a consolidated invoice's lines; Note (who approved extra
+	// work) is printed under the line (T188).
+	Site string `json:"site,omitempty"`
+	Note string `json:"note,omitempty"`
 }
 
 // GetType returns the template type for invoice
@@ -434,22 +441,30 @@ func renderInvoiceTemplate(pdf *gofpdf.Fpdf, data TemplateData, config *Config) 
 	if invoiceData.PurchaseOrder != "" {
 		renderKeyValuePair(pdf, config, "PO Number:", invoiceData.PurchaseOrder)
 	}
+	if invoiceData.ServicePeriod != "" {
+		tr := pdf.UnicodeTranslatorFromDescriptor("")
+		renderKeyValuePair(pdf, config, "Service Period:", tr(invoiceData.ServicePeriod))
+	}
 
 	// Line items table
 	pdf.SetY(pdf.GetY() + 10)
 	headers := []string{"Description", "Qty", "Unit Price", "Amount"}
 	widths := []float64{90, 20, 35, 35}
 
-	var rows [][]string
-	for _, item := range invoiceData.LineItems {
-		rows = append(rows, []string{
-			item.Description,
-			fmt.Sprintf("%.2f", item.Quantity),
-			formatCurrency(item.UnitPrice),
-			formatCurrency(item.Amount),
-		})
+	if invoiceData.hasSites() {
+		renderSiteGroupedLines(pdf, config, headers, widths, invoiceData.LineItems)
+	} else {
+		var rows [][]string
+		for _, item := range invoiceData.LineItems {
+			rows = append(rows, []string{
+				item.Description,
+				fmt.Sprintf("%.2f", item.Quantity),
+				formatCurrency(item.UnitPrice),
+				formatCurrency(item.Amount),
+			})
+		}
+		renderTable(pdf, config, headers, widths, rows)
 	}
-	renderTable(pdf, config, headers, widths, rows)
 
 	// Totals
 	pdf.SetY(pdf.GetY() + 5)
@@ -1000,6 +1015,81 @@ func renderTable(pdf *gofpdf.Fpdf, config *Config, headers []string, widths []fl
 			pdf.CellFormat(widths[i], 6, cell, "1", 0, align, fill, 0, "")
 		}
 		pdf.Ln(-1)
+	}
+}
+
+// hasSites reports whether the invoice's lines are grouped by site.
+func (d *InvoiceData) hasSites() bool {
+	for _, item := range d.LineItems {
+		if item.Site != "" {
+			return true
+		}
+	}
+	return false
+}
+
+// renderSiteGroupedLines prints a consolidated invoice's lines under a
+// heading per site (lines arrive ordered by site), each approval note on a
+// smaller line under its item (T188). Lines without a site come last under
+// "Other work".
+func renderSiteGroupedLines(pdf *gofpdf.Fpdf, config *Config, headers []string, widths []float64, items []InvoiceLineItem) {
+	tr := pdf.UnicodeTranslatorFromDescriptor("")
+	r, g, b := hexToRGB(config.Branding.PrimaryColor)
+	pdf.SetFillColor(r, g, b)
+	pdf.SetTextColor(255, 255, 255)
+	pdf.SetFont(config.Fonts.DefaultFamily, "B", config.Fonts.SizeSmall)
+	for i, header := range headers {
+		pdf.CellFormat(widths[i], 7, header, "1", 0, "C", true, 0, "")
+	}
+	pdf.Ln(-1)
+
+	full := 0.0
+	for _, w := range widths {
+		full += w
+	}
+	mr, mg, mb := hexToRGB(config.Branding.MutedColor)
+	pdf.SetTextColor(0, 0, 0)
+	current := "\x00"
+	for _, item := range items {
+		if item.Site != current {
+			current = item.Site
+			heading := item.Site
+			if heading == "" {
+				heading = "Other work"
+			}
+			pdf.SetFillColor(243, 244, 246)
+			pdf.SetFont(config.Fonts.DefaultFamily, "B", config.Fonts.SizeSmall)
+			pdf.CellFormat(full, 7, fitText(pdf, tr(heading), full), "1", 1, "L", true, 0, "")
+		}
+		pdf.SetFont(config.Fonts.DefaultFamily, "", config.Fonts.SizeSmall)
+		border := "1"
+		if item.Note != "" {
+			border = "LTR"
+		}
+		cells := []string{
+			fitText(pdf, tr(item.Description), widths[0]),
+			fmt.Sprintf("%.2f", item.Quantity),
+			formatCurrency(item.UnitPrice),
+			formatCurrency(item.Amount),
+		}
+		for i, cell := range cells {
+			align := "L"
+			if i > 0 {
+				align = "R"
+			}
+			pdf.CellFormat(widths[i], 6, cell, border, 0, align, false, 0, "")
+		}
+		pdf.Ln(-1)
+		if item.Note != "" {
+			pdf.SetFont(config.Fonts.DefaultFamily, "I", config.Fonts.SizeSmall-1)
+			pdf.SetTextColor(mr, mg, mb)
+			pdf.CellFormat(widths[0], 5, fitText(pdf, tr(item.Note), widths[0]), "LBR", 0, "L", false, 0, "")
+			for _, w := range widths[1:] {
+				pdf.CellFormat(w, 5, "", "LBR", 0, "", false, 0, "")
+			}
+			pdf.Ln(-1)
+			pdf.SetTextColor(0, 0, 0)
+		}
 	}
 }
 
