@@ -1551,4 +1551,27 @@ describe('Job pages for technicians (T035)', () => {
       unmount();
     }
   });
+
+  it("shows Job not found for a job that isn't theirs (API 404)", async () => {
+    vi.mocked(jobService.getJob).mockRejectedValue(
+      new AxiosError('Not Found', 'ERR_BAD_REQUEST', undefined, undefined, {
+        data: { error: 'job_not_found', message: 'Job not found' },
+        status: 404,
+        statusText: 'Not Found',
+        headers: {},
+        config: { headers: new AxiosHeaders() },
+      })
+    );
+    const { JobDetailPage } =
+      await import('../../src/pages/Jobs/JobDetailPage');
+    render(
+      <MemoryRouter initialEntries={['/jobs/job-9']}>
+        <Routes>
+          <Route path="/jobs/:id" element={<JobDetailPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+    expect(await screen.findByText('Job not found')).toBeInTheDocument();
+    expect(screen.queryByLabelText(/title/i)).not.toBeInTheDocument();
+  });
 });

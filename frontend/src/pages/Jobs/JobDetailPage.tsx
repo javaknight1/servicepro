@@ -6,7 +6,7 @@ import {
   useLocation,
 } from 'react-router';
 import { DashboardLayout } from '@components/layout';
-import { Button } from '@components/shared';
+import { Button, EmptyState } from '@components/shared';
 import {
   JobApprovalsSection,
   JobAssignmentsSection,
@@ -26,7 +26,7 @@ import {
 } from '@services/jobService';
 import type { Customer } from '@services/customerService';
 import { fetchAllCustomers } from '@services/customerLookup';
-import { getErrorMessage } from '@/utils/error';
+import { getErrorMessage, isAxiosErrorWithStatus } from '@/utils/error';
 import { trackEvent, AnalyticsEvents } from '@services/analytics';
 import { datetimeLocalToEpoch, epochToDatetimeLocal } from '@/utils/epoch';
 import { useTenantTimezone } from '@/hooks/useTenantTimezone';
@@ -108,6 +108,9 @@ export function JobDetailPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // 404: no such job in this organization, or (for a technician) not one
+  // assigned to them (T035).
+  const [notFound, setNotFound] = useState(false);
   const [hasConflicts, setHasConflicts] = useState(false);
   const { currentTenant } = useTenantStore();
   const { can } = useTenantPermissions(currentTenant);
@@ -205,6 +208,7 @@ export function JobDetailPage() {
     async (jobId: string) => {
       setIsLoading(true);
       setError(null);
+      setNotFound(false);
       try {
         const job = await jobService.getJob(jobId);
         setCurrentJob(job);
@@ -231,7 +235,11 @@ export function JobDetailPage() {
         setAssignments(job.assignments || []);
       } catch (err) {
         console.error('Failed to load job:', err);
-        setError('Failed to load job details');
+        if (isAxiosErrorWithStatus(err, 404)) {
+          setNotFound(true);
+        } else {
+          setError('Failed to load job details');
+        }
       } finally {
         setIsLoading(false);
       }
@@ -439,6 +447,20 @@ export function JobDetailPage() {
       <DashboardLayout>
         <div className="flex items-center justify-center min-h-96">
           <Loader2 className="h-8 w-8 animate-spin text-primary-500" />
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (notFound) {
+    return (
+      <DashboardLayout>
+        <div className="mx-auto max-w-5xl p-4 sm:p-6 lg:p-8">
+          <EmptyState
+            title="Job not found"
+            description="This job doesn't exist or isn't one you can see."
+            action={{ label: 'Back to jobs', onClick: () => navigate('/jobs') }}
+          />
         </div>
       </DashboardLayout>
     );
