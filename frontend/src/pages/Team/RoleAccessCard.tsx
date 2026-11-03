@@ -67,9 +67,9 @@ export function RoleAccessCard() {
                 <th className="py-2 text-left font-normal">
                   <span className="sr-only">Area</span>
                 </th>
-                <th className="py-2 font-medium">Owner</th>
-                <th className="py-2 font-medium">Office</th>
-                <th className="py-2 font-medium">Technician</th>
+                <th className="px-2 py-2 font-medium">Owner</th>
+                <th className="px-2 py-2 font-medium">Office</th>
+                <th className="px-2 py-2 font-medium">Technician</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-200">
