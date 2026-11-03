@@ -10,7 +10,13 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import {
+  render as rtlRender,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Routes, Route } from 'react-router';
 import React from 'react';
@@ -34,9 +40,35 @@ vi.mock('@services/customerService', () => ({
   },
 }));
 
+vi.mock('@services/siteService', () => ({
+  siteService: {
+    list: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+  },
+  sitesQueryKey: (customerId: string | null, includeInactive = false) => [
+    'customer-sites',
+    customerId,
+    includeInactive,
+  ],
+}));
+
+/** Pages read sites and billing rules through React Query. */
+function render(ui: React.ReactElement) {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+  return rtlRender(ui, {
+    wrapper: ({ children }) => (
+      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    ),
+  });
+}
+
 // Import after mocking
 import { useAuthStore, useTenantStore, useSidebarStore } from '@store';
 import { customerService } from '@services/customerService';
+import { siteService, type Site } from '@services/siteService';
 import type { CustomerStats } from '@app-types/customer';
 
 // =============================================================================
@@ -123,6 +155,25 @@ const mockCustomers = [
     marketing_consent: false,
     created_at: '2024-01-03T00:00:00Z',
     updated_at: '2024-01-03T00:00:00Z',
+  },
+];
+
+const mockSites: Site[] = [
+  {
+    id: 'site-1',
+    customer_id: 'customer-1',
+    name: 'Harborview Lofts',
+    address_street: '220 W Spring St',
+    address_city: 'Columbus',
+    address_state: 'OH',
+    address_zip: '43215',
+    address_full: '220 W Spring St, Columbus, OH 43215',
+    access_notes: 'Key box by the loading dock',
+    contact_name: 'Ray Burke',
+    contact_phone: '614-555-0101',
+    is_active: true,
+    created_at: '2024-01-01T00:00:00Z',
+    updated_at: '2024-01-01T00:00:00Z',
   },
 ];
 
@@ -223,6 +274,7 @@ const setupMocks = () => {
   });
 
   vi.mocked(customerService.getStats).mockResolvedValue(mockCustomerStats);
+  vi.mocked(siteService.list).mockResolvedValue(mockSites);
 };
 
 // =============================================================================
@@ -725,6 +777,161 @@ describe('Customer CRUD Integration', () => {
       expect(
         await screen.findByText(/email already exists/i)
       ).toBeInTheDocument();
+    });
+  });
+
+  describe('Customer sites and billing rules (T186, T187)', () => {
+    async function renderCustomer() {
+      const { CustomerDetailPage } =
+        await import('../../src/pages/Customers/CustomerDetailPage');
+      render(
+        <MemoryRouter initialEntries={['/customers/customer-1']}>
+          <Routes>
+            <Route path="/customers/:id" element={<CustomerDetailPage />} />
+          </Routes>
+        </MemoryRouter>
+      );
+    }
+
+    it('lists the customer sites in the Sites tab', async () => {
+      vi.mocked(customerService.getCustomer).mockResolvedValue(
+        mockCustomers[0]
+      );
+      await renderCustomer();
+
+      const sites = await screen.findByRole('region', { name: 'Sites' });
+      expect(
+        await within(sites).findByText('Harborview Lofts')
+      ).toBeInTheDocument();
+      expect(
+        within(sites).getByText('220 W Spring St, Columbus, OH 43215')
+      ).toBeInTheDocument();
+      expect(within(sites).getByText('Ray Burke')).toBeInTheDocument();
+      expect(siteService.list).toHaveBeenCalledWith('customer-1', true);
+      expect(screen.getByRole('tab', { name: /sites/i })).toHaveAttribute(
+        'aria-selected',
+        'true'
+      );
+    });
+
+    it('adds a site from the header button', async () => {
+      const user = userEvent.setup({ delay: null });
+      vi.mocked(customerService.getCustomer).mockResolvedValue(
+        mockCustomers[0]
+      );
+      vi.mocked(siteService.create).mockResolvedValue({
+        ...mockSites[0],
+        id: 'site-2',
+        name: 'Riverside Commons',
+      });
+      await renderCustomer();
+
+      await user.click(
+        await screen.findByRole('button', { name: /^add site$/i })
+      );
+      const dialog = await screen.findByRole('dialog');
+      await user.type(
+        within(dialog).getByLabelText(/site name/i),
+        'Riverside Commons'
+      );
+      await user.type(
+        within(dialog).getByLabelText(/street address/i),
+        '1450 Riverside Dr'
+      );
+      await user.type(within(dialog).getByLabelText(/^city/i), 'Columbus');
+      await user.type(within(dialog).getByLabelText(/^state/i), 'oh');
+      await user.type(within(dialog).getByLabelText(/^zip/i), '43212');
+      await user.click(
+        within(dialog).getByRole('button', { name: /add site/i })
+      );
+
+      await waitFor(() => {
+        expect(siteService.create).toHaveBeenCalledWith(
+          'customer-1',
+          expect.objectContaining({
+            name: 'Riverside Commons',
+            address_street: '1450 Riverside Dr',
+            address_state: 'OH',
+            access_notes: undefined,
+          })
+        );
+      });
+    });
+
+    it('deactivates a site after confirmation', async () => {
+      const user = userEvent.setup({ delay: null });
+      vi.mocked(customerService.getCustomer).mockResolvedValue(
+        mockCustomers[0]
+      );
+      vi.mocked(siteService.update).mockResolvedValue({
+        ...mockSites[0],
+        is_active: false,
+      });
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+      await renderCustomer();
+
+      await user.click(
+        await screen.findByRole('button', { name: /deactivate/i })
+      );
+      await waitFor(() => {
+        expect(siteService.update).toHaveBeenCalledWith(
+          'customer-1',
+          'site-1',
+          {
+            is_active: false,
+          }
+        );
+      });
+      confirmSpy.mockRestore();
+    });
+
+    it('shows and edits the billing rules', async () => {
+      const user = userEvent.setup({ delay: null });
+      const withRules = {
+        ...mockCustomers[0],
+        po_required: true,
+        default_po_number: '7731-HV',
+        billing_approver_name: 'Karen Doyle',
+        billing_approver_email: 'karen@example.com',
+        nte_limit: '500',
+        consolidated_billing: true,
+      };
+      vi.mocked(customerService.getCustomer).mockResolvedValue(withRules);
+      vi.mocked(customerService.updateCustomer).mockResolvedValue({
+        ...withRules,
+        nte_limit: null,
+      });
+      await renderCustomer();
+
+      expect(await screen.findByText('PO required')).toBeInTheDocument();
+      expect(screen.getByText('Current PO 7731-HV')).toBeInTheDocument();
+      expect(screen.getByText('Karen Doyle')).toBeInTheDocument();
+      expect(screen.getByText('$500 not-to-exceed')).toBeInTheDocument();
+      expect(screen.getByText('Consolidated monthly')).toBeInTheDocument();
+
+      await user.click(
+        screen.getByRole('button', { name: /edit billing rules/i })
+      );
+      const dialog = await screen.findByRole('dialog');
+      await user.clear(within(dialog).getByLabelText(/extra work limit/i));
+      await user.click(
+        within(dialog).getByRole('button', { name: /save rules/i })
+      );
+
+      await waitFor(() => {
+        expect(customerService.updateCustomer).toHaveBeenCalledWith(
+          'customer-1',
+          {
+            consolidated_billing: true,
+            po_required: true,
+            default_po_number: '7731-HV',
+            billing_approver_name: 'Karen Doyle',
+            billing_approver_email: 'karen@example.com',
+            clear_nte_limit: true,
+          }
+        );
+      });
+      expect(await screen.findByText('No limit')).toBeInTheDocument();
     });
   });
 });

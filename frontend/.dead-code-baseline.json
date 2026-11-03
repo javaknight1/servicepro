@@ -61,7 +61,6 @@
     "src/utils/cache.ts:574 - sessionCache",
     "src/utils/epoch.ts:186 - formatEpochTime",
     "src/utils/epoch.ts:244 - epochToDate",
-    "src/utils/error.ts:149 - getFieldErrors",
     "src/utils/error.ts:69 - isAxiosErrorWithStatus",
     "src/utils/fileDownload.ts:65 - openBlobInNewTab",
     "src/utils/fileDownload.ts:74 - downloadFromDataURL",

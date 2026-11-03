@@ -73,16 +73,3 @@ export const getCustomerTypeLabel = (type: CustomerType): string => {
   };
   return labels[type] || type;
 };
-
-export const getPreferredContactMethodLabel = (
-  method: PreferredContactMethod
-): string => {
-  const labels: Record<PreferredContactMethod, string> = {
-    email: 'Email',
-    phone: 'Phone',
-    sms: 'SMS',
-    mail: 'Mail',
-    any: 'Any',
-  };
-  return labels[method] || method;
-};

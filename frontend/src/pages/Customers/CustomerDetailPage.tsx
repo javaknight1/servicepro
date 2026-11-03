@@ -1,16 +1,22 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router';
+import { useQuery } from '@tanstack/react-query';
 import { DashboardLayout } from '@components/layout';
 import {
   Button,
   Badge,
   Avatar,
-  InfoCard,
   PageHeader,
-  ListCard,
   getStatusBadgeVariant,
 } from '@components/shared';
+import {
+  BillingRulesCards,
+  BillingRulesModal,
+  CustomerSitesSection,
+} from '@components/customers';
 import { customerService, type Customer } from '@services/customerService';
+import { siteService, sitesQueryKey } from '@services/siteService';
+import { cn } from '@utils/cn';
 import { jobService, Job } from '@services/jobService';
 import { getErrorMessage } from '@/utils/error';
 import {
@@ -26,21 +32,18 @@ import type {
   CustomerStatus,
   PreferredContactMethod,
 } from '@app-types/customer';
-import { getPreferredContactMethodLabel } from '@app-types/customer';
 import {
   ArrowLeft,
   Save,
   Trash2,
   Loader2,
-  Briefcase,
   Copy,
   ExternalLink,
   Plus,
-  UserRound,
-  Phone,
-  MapPin,
-  MessageSquare,
+  Pencil,
 } from 'lucide-react';
+
+type CustomerTab = 'sites' | 'jobs';
 
 interface CustomerFormData {
   email: string;
@@ -114,6 +117,19 @@ export function CustomerDetailPage() {
   // The customer as last loaded, for the summary above the form.
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [isLoadingJobs, setIsLoadingJobs] = useState(false);
+  const [activeTab, setActiveTab] = useState<CustomerTab>('sites');
+  const [isAddSiteOpen, setIsAddSiteOpen] = useState(false);
+  const [isRulesOpen, setIsRulesOpen] = useState(false);
+
+  // Shares the Sites tab's query (same key), for the tab count.
+  const sitesQuery = useQuery({
+    queryKey: sitesQueryKey(id, true),
+    queryFn: () => siteService.list(id as string, true),
+    enabled: !isNew && !!id,
+  });
+  const activeSiteCount = (sitesQuery.data ?? []).filter(
+    (s) => s.is_active
+  ).length;
 
   const loadCustomer = async (customerId: string) => {
     setIsLoading(true);
@@ -316,74 +332,136 @@ export function CustomerDetailPage() {
                   {getCustomerStatusLabel(customer.status)}
                 </Badge>
               }
-              subtitle={`${getCustomerTypeLabel(customer.customer_type)} · customer since ${new Date(
+              subtitle={`${getCustomerTypeLabel(customer.customer_type)}${
+                sitesQuery.data
+                  ? ` · ${activeSiteCount} ${activeSiteCount === 1 ? 'site' : 'sites'}`
+                  : ''
+              } · customer since ${new Date(
                 customer.created_at
               ).toLocaleDateString('en-US', {
                 month: 'long',
                 year: 'numeric',
               })}`}
               actions={
-                <Button
-                  variant="primary"
-                  onClick={() =>
-                    navigate(`/jobs/new`, {
-                      state: { prefillCustomerId: id },
-                    })
-                  }
-                  className="gap-2"
-                >
-                  <Plus className="h-4 w-4" />
-                  New job
-                </Button>
+                <>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setActiveTab('sites');
+                      setIsAddSiteOpen(true);
+                    }}
+                    className="gap-2"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add site
+                  </Button>
+                  <Button
+                    variant="primary"
+                    onClick={() =>
+                      navigate(`/jobs/new`, {
+                        state: { prefillCustomerId: id },
+                      })
+                    }
+                    className="gap-2"
+                  >
+                    <Plus className="h-4 w-4" />
+                    New job
+                  </Button>
+                </>
               }
             />
-            {/* Contact and billing facts. Billing rules (terms, POs,
-                approver, not-to-exceed) and sites arrive with T187/T186. */}
-            <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <InfoCard
-                icon={<UserRound />}
-                label="Contact"
-                value={
-                  `${customer.first_name} ${customer.last_name}`.trim() || '—'
-                }
-                detail={customer.email || 'No email'}
-              />
-              <InfoCard
-                icon={<Phone />}
-                label="Phone"
-                value={customer.phone_primary || '—'}
-                detail={customer.phone_secondary || undefined}
-              />
-              <InfoCard
-                icon={<MapPin />}
-                label="Billing address"
-                value={customer.billing_address_street || '—'}
-                detail={[
-                  customer.billing_address_city,
-                  customer.billing_address_state,
-                  customer.billing_address_zip,
-                ]
-                  .filter(Boolean)
-                  .join(', ')}
-              />
-              <InfoCard
-                icon={<MessageSquare />}
-                label="Prefers"
-                value={getPreferredContactMethodLabel(
-                  customer.preferred_contact_method
-                )}
-                detail={
-                  [
-                    customer.do_not_email && 'no email',
-                    customer.do_not_call && 'no calls',
-                    customer.do_not_sms && 'no texts',
-                    customer.do_not_mail && 'no mail',
-                  ]
-                    .filter(Boolean)
-                    .join(' · ') || 'Any channel is fine'
-                }
-              />
+            {/* Billing rules (T187), mockup 06. */}
+            <div className="mb-2">
+              <BillingRulesCards customer={customer} />
             </div>
+            <div className="mb-6 flex justify-end">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsRulesOpen(true)}
+                className="gap-1.5 text-primary-600"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+                Edit billing rules
+              </Button>
+            </div>
+            <BillingRulesModal
+              customer={customer}
+              isOpen={isRulesOpen}
+              onClose={() => setIsRulesOpen(false)}
+              onSaved={setCustomer}
+            />
+
+            {/* Tabs (mockup 06). */}
+            <div
+              role="tablist"
+              aria-label="Customer"
+              className="mb-4 flex gap-6 border-b border-neutral-200"
+            >
+              {(
+                [
+                  [
+                    'sites',
+                    'Sites',
+                    sitesQuery.data ? activeSiteCount : undefined,
+                  ],
+                  [
+                    'jobs',
+                    'Jobs',
+                    isLoadingJobs ? undefined : recentJobs.length,
+                  ],
+                ] as const
+              ).map(([tab, label, count]) => (
+                <button
+                  key={tab}
+                  type="button"
+                  role="tab"
+                  aria-selected={activeTab === tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={cn(
+                    '-mb-px flex items-center gap-2 border-b-2 px-0.5 pb-3 text-[15px] font-medium transition-colors',
+                    activeTab === tab
+                      ? 'border-primary-600 text-primary-600'
+                      : 'border-transparent text-neutral-700 hover:text-neutral-900'
+                  )}
+                >
+                  {label}
+                  {count !== undefined && (
+                    <span
+                      className={cn(
+                        'rounded-full px-2 py-0.5 text-xs',
+                        activeTab === tab
+                          ? 'bg-primary-50 text-primary-700'
+                          : 'bg-neutral-100 text-neutral-600'
+                      )}
+                    >
+                      {count}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+            <div className="mb-8" role="tabpanel">
+              {activeTab === 'sites' && id ? (
+                <CustomerSitesSection
+                  customerId={id}
+                  consolidatedBilling={!!customer.consolidated_billing}
+                  isAddOpen={isAddSiteOpen}
+                  onAddOpenChange={setIsAddSiteOpen}
+                />
+              ) : (
+                <RecentJobs
+                  jobs={recentJobs}
+                  isLoading={isLoadingJobs}
+                  timeZone={timeZone}
+                  onView={(jobId) => navigate(`/jobs/${jobId}`)}
+                  onRepeat={(jobId) => navigate(`/jobs/new?clone=${jobId}`)}
+                />
+              )}
+            </div>
+            <h2 className="mb-4 text-xl font-semibold text-neutral-900">
+              Customer details
+            </h2>
           </>
         )}
 
@@ -938,99 +1016,91 @@ export function CustomerDetailPage() {
             </div>
           </div>
         </form>
-
-        {/* Recent Jobs Section */}
-        {!isNew && (
-          <ListCard
-            className="mt-8"
-            title="Recent jobs"
-            count={isLoadingJobs ? undefined : recentJobs.length}
-            bodyClassName="px-6 pb-6"
-            action={
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  navigate(`/jobs/new`, {
-                    state: { prefillCustomerId: id },
-                  })
-                }
-                className="gap-2"
-              >
-                <Briefcase className="h-4 w-4" />
-                New job
-              </Button>
-            }
-          >
-            {isLoadingJobs ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin text-neutral-400" />
-              </div>
-            ) : recentJobs.length === 0 ? (
-              <p className="text-sm text-neutral-500 py-4 text-center">
-                No jobs yet for this customer.
-              </p>
-            ) : (
-              <div className="space-y-3">
-                {recentJobs.map((job) => (
-                  <div
-                    key={job.id}
-                    className="flex items-center justify-between rounded-xl border border-neutral-200 p-3 transition-colors hover:border-neutral-300"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-sm text-primary-600">
-                          {job.job_number}
-                        </span>
-                        <span className="font-medium text-neutral-900 truncate">
-                          {job.title}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2 mt-1">
-                        <Badge
-                          variant={getStatusBadgeVariant(job.status)}
-                          size="sm"
-                        >
-                          {getJobStatusLabel(job.status)}
-                        </Badge>
-                        <span className="text-xs text-neutral-500">
-                          {getJobTypeLabel(job.job_type)}
-                        </span>
-                        {job.scheduled_start_at && (
-                          <span className="text-xs text-neutral-500">
-                            {formatEpochDateTime(
-                              job.scheduled_start_at,
-                              timeZone
-                            )}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1 ml-3 shrink-0">
-                      <Button
-                        variant="ghost"
-                        onClick={() => navigate(`/jobs/${job.id}`)}
-                        className="flex items-center gap-1 text-xs px-2 py-1"
-                      >
-                        <ExternalLink className="h-3.5 w-3.5" />
-                        View
-                      </Button>
-                      <Button
-                        variant="outline"
-                        onClick={() => navigate(`/jobs/new?clone=${job.id}`)}
-                        className="flex items-center gap-1 text-xs px-2 py-1"
-                      >
-                        <Copy className="h-3.5 w-3.5" />
-                        Repeat job
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </ListCard>
-        )}
       </div>
     </DashboardLayout>
+  );
+}
+
+interface RecentJobsProps {
+  jobs: Job[];
+  isLoading: boolean;
+  timeZone: string | undefined;
+  onView: (jobId: string) => void;
+  onRepeat: (jobId: string) => void;
+}
+
+/** The Jobs tab: the customer's five most recent jobs. */
+function RecentJobs({
+  jobs,
+  isLoading,
+  timeZone,
+  onView,
+  onRepeat,
+}: RecentJobsProps) {
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center rounded-2xl border border-neutral-200 bg-white py-8">
+        <Loader2 className="h-6 w-6 animate-spin text-neutral-400" />
+      </div>
+    );
+  }
+  if (jobs.length === 0) {
+    return (
+      <p className="rounded-2xl border border-neutral-200 bg-white py-8 text-center text-sm text-neutral-500">
+        No jobs yet for this customer.
+      </p>
+    );
+  }
+  return (
+    <div className="space-y-3 rounded-2xl border border-neutral-200 bg-white p-4">
+      {jobs.map((job) => (
+        <div
+          key={job.id}
+          className="flex items-center justify-between rounded-xl border border-neutral-200 p-3 transition-colors hover:border-neutral-300"
+        >
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-sm text-primary-600">
+                {job.job_number}
+              </span>
+              <span className="truncate font-medium text-neutral-900">
+                {job.title}
+              </span>
+            </div>
+            <div className="mt-1 flex items-center gap-2">
+              <Badge variant={getStatusBadgeVariant(job.status)} size="sm">
+                {getJobStatusLabel(job.status)}
+              </Badge>
+              <span className="text-xs text-neutral-500">
+                {getJobTypeLabel(job.job_type)}
+              </span>
+              {job.scheduled_start_at && (
+                <span className="text-xs text-neutral-500">
+                  {formatEpochDateTime(job.scheduled_start_at, timeZone)}
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="ml-3 flex shrink-0 items-center gap-1">
+            <Button
+              variant="ghost"
+              onClick={() => onView(job.id)}
+              className="flex items-center gap-1 px-2 py-1 text-xs"
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+              View
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => onRepeat(job.id)}
+              className="flex items-center gap-1 px-2 py-1 text-xs"
+            >
+              <Copy className="h-3.5 w-3.5" />
+              Repeat job
+            </Button>
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }

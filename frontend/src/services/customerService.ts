@@ -37,8 +37,31 @@ export interface Customer {
   // Marketing consent
   marketing_consent: boolean;
   marketing_consent_at?: string;
+  // Billing rules (T187)
+  po_required?: boolean;
+  default_po_number?: string | null;
+  billing_approver_name?: string | null;
+  billing_approver_email?: string | null;
+  /** Not-to-exceed limit for extra work, an API decimal ("500.00"); null = none. */
+  nte_limit?: string | null;
+  consolidated_billing?: boolean;
   created_at: string;
   updated_at: string;
+}
+
+/**
+ * Billing rules on a customer update (models.BillingRulesRequest). Omitted
+ * fields are left unchanged; "" clears a text field; `clear_nte_limit`
+ * removes the not-to-exceed limit.
+ */
+export interface CustomerBillingRulesUpdate {
+  po_required?: boolean;
+  default_po_number?: string;
+  billing_approver_name?: string;
+  billing_approver_email?: string;
+  nte_limit?: string;
+  clear_nte_limit?: boolean;
+  consolidated_billing?: boolean;
 }
 
 export interface CustomerFilters {
@@ -93,7 +116,10 @@ class CustomerService {
     return response.data;
   }
 
-  async updateCustomer(id: string, data: Partial<Customer>): Promise<Customer> {
+  async updateCustomer(
+    id: string,
+    data: Partial<Customer> | CustomerBillingRulesUpdate
+  ): Promise<Customer> {
     const response = await api.put<Customer>(`${this.basePath}/${id}`, data);
     return response.data;
   }
