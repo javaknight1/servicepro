@@ -28,7 +28,7 @@ its **customers** are the people/companies it does work for.
 | Auth     | Own JWT (httpOnly cookies) + bcrypt                                | Neon's managed Better Auth, JWKS-verified in the API (T158, OD-9) |
 | Web      | React 19, Vite 8, TS strict, Zustand + React Query, Tailwind v4    | React 19, TanStack Query for all server state, Tailwind v4 tokens |
 | Email    | Resend / SES / SMTP (Mailpit locally)                              | Resend only                                                       |
-| Storage  | S3-compatible (MinIO locally)                                      | Cloudflare R2                                                     |
+| Storage  | S3-compatible (RustFS locally, `minio` compose service)            | Cloudflare R2                                                     |
 | Payments | Stripe (platform account; pay links off until T169 — T261)         | Connect Accounts v2, direct charges (D9, T169)                    |
 | Obs.     | Sentry, PostHog, Prometheus `/metrics`, Grafana (local only)       | + Better Stack uptime/status                                      |
 | Hosting  | Cloudflare Worker (static assets + `/api` proxy) → Cloud Run us-east5 | same                                                            |
