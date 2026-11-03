@@ -7,9 +7,9 @@
 -- Test User Credentials (all use password: password123):
 --   dev@servicepro.local       - Admin
 --   sarah.chen@servicepro.local    - Manager
---   marcus.jones@servicepro.local  - Technician
---   lisa.patel@servicepro.local    - Technician
---   james.wilson@servicepro.local  - Technician
+--   marcus.jones@servicepro.local  - Technician (assigned JOB-2024-001, -002)
+--   lisa.patel@servicepro.local    - Technician (assigned JOB-2024-003)
+--   james.wilson@servicepro.local  - Technician (no jobs assigned)
 --   ana.martinez@servicepro.local  - Guest
 --
 -- DO NOT run this in production!
@@ -184,38 +184,38 @@ INSERT INTO tenant_users (
 ) ON CONFLICT ON CONSTRAINT unique_tenant_user DO UPDATE SET
     role_id = EXCLUDED.role_id, is_active = EXCLUDED.is_active, updated_at = CURRENT_TIMESTAMP;
 
--- Marcus Jones as user (technician) of Tenant 1
+-- Marcus Jones as technician of Tenant 1 (T035: assigned jobs only, no money)
 INSERT INTO tenant_users (
     id, tenant_id, user_id, role_id, is_active, accepted_at, created_at, updated_at
 ) VALUES (
     '44444444-4444-4444-4444-444444444444',
     '22222222-2222-2222-2222-222222222222',
     '11111111-1111-1111-1111-111111111103',
-    '00000000-0000-0000-0000-000000000004', -- user role
+    '00000000-0000-0000-0000-000000000006', -- technician role
     TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
 ) ON CONFLICT ON CONSTRAINT unique_tenant_user DO UPDATE SET
     role_id = EXCLUDED.role_id, is_active = EXCLUDED.is_active, updated_at = CURRENT_TIMESTAMP;
 
--- Lisa Patel as user (technician) of Tenant 1
+-- Lisa Patel as technician of Tenant 1 (T035: assigned jobs only, no money)
 INSERT INTO tenant_users (
     id, tenant_id, user_id, role_id, is_active, accepted_at, created_at, updated_at
 ) VALUES (
     '44444444-4444-4444-4444-444444444445',
     '22222222-2222-2222-2222-222222222222',
     '11111111-1111-1111-1111-111111111104',
-    '00000000-0000-0000-0000-000000000004', -- user role
+    '00000000-0000-0000-0000-000000000006', -- technician role
     TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
 ) ON CONFLICT ON CONSTRAINT unique_tenant_user DO UPDATE SET
     role_id = EXCLUDED.role_id, is_active = EXCLUDED.is_active, updated_at = CURRENT_TIMESTAMP;
 
--- James Wilson as user (technician) of Tenant 1
+-- James Wilson as technician of Tenant 1 (T035: assigned jobs only, no money)
 INSERT INTO tenant_users (
     id, tenant_id, user_id, role_id, is_active, accepted_at, created_at, updated_at
 ) VALUES (
     '44444444-4444-4444-4444-444444444446',
     '22222222-2222-2222-2222-222222222222',
     '11111111-1111-1111-1111-111111111105',
-    '00000000-0000-0000-0000-000000000004', -- user role
+    '00000000-0000-0000-0000-000000000006', -- technician role
     TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
 ) ON CONFLICT ON CONSTRAINT unique_tenant_user DO UPDATE SET
     role_id = EXCLUDED.role_id, is_active = EXCLUDED.is_active, updated_at = CURRENT_TIMESTAMP;
@@ -564,6 +564,20 @@ ON CONFLICT (tenant_id, job_number) DO UPDATE SET
     title = EXCLUDED.title,
     status = EXCLUDED.status,
     updated_at = CURRENT_TIMESTAMP;
+
+-- ============================================================================
+-- 6b. JOB ASSIGNMENTS (T035: technicians see only these jobs)
+-- ============================================================================
+
+INSERT INTO job_assignments (id, job_id, user_id, role, assigned_at)
+SELECT a.id::uuid, j.id, a.user_id::uuid, 'technician', EXTRACT(EPOCH FROM CURRENT_TIMESTAMP)::BIGINT
+FROM (VALUES
+    ('dddddddd-0000-0000-0000-000000000001', 'JOB-2024-001', '11111111-1111-1111-1111-111111111103'),
+    ('dddddddd-0000-0000-0000-000000000002', 'JOB-2024-002', '11111111-1111-1111-1111-111111111103'),
+    ('dddddddd-0000-0000-0000-000000000003', 'JOB-2024-003', '11111111-1111-1111-1111-111111111104')
+) AS a(id, job_number, user_id)
+JOIN jobs j ON j.tenant_id = '22222222-2222-2222-2222-222222222222' AND j.job_number = a.job_number
+ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================
 -- 7. TEST QUOTES (for Tenant 1)
