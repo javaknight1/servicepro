@@ -38,6 +38,8 @@ interface AgreementForm {
   assigned_technician_id: string;
   job_type: JobType;
   notes: string;
+  /** The customer's PO for the service (T187). */
+  po_number: string;
 }
 
 function today(): string {
@@ -61,6 +63,7 @@ const emptyForm = (): AgreementForm => ({
   assigned_technician_id: '',
   job_type: JobType.MAINTENANCE,
   notes: '',
+  po_number: '',
 });
 
 function toForm(a: Agreement): AgreementForm {
@@ -81,6 +84,7 @@ function toForm(a: Agreement): AgreementForm {
     assigned_technician_id: a.assigned_technician_id ?? '',
     job_type: a.job_type,
     notes: a.notes ?? '',
+    po_number: a.po_number ?? '',
   };
 }
 
@@ -176,6 +180,7 @@ export function AgreementFormPage() {
         billing_period: f.billing_period,
         job_type: f.job_type,
         notes: f.notes.trim(),
+        po_number: f.po_number.trim(),
       };
       if (isNew) {
         return agreementService.create({
@@ -186,6 +191,7 @@ export function AgreementFormPage() {
           end_date: f.end_date || undefined,
           assigned_technician_id: f.assigned_technician_id || undefined,
           notes: common.notes || undefined,
+          po_number: common.po_number || undefined,
         });
       }
       return agreementService.update(id as string, {
@@ -505,6 +511,17 @@ export function AgreementFormPage() {
                   <option value="visit">Visit</option>
                 </select>
               </div>
+              <Input
+                id="po_number"
+                label="PO number"
+                value={form.po_number}
+                onChange={set('po_number')}
+                maxLength={100}
+                placeholder="Customer's purchase order"
+                helperText="Visits and their invoices use this PO."
+                error={fieldErrors.po_number}
+                fullWidth
+              />
               <div>
                 <label htmlFor="assigned_technician_id" className={labelClass}>
                   Lead tech

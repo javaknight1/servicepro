@@ -32,6 +32,9 @@ export interface Agreement {
   job_type: JobType;
   status: AgreementStatus;
   notes?: string;
+  /** The customer's PO for the service (T187); visits and their invoices
+   * carry it. */
+  po_number?: string;
   created_at: string;
   updated_at: string;
 }
@@ -58,6 +61,7 @@ export interface CreateAgreementRequest extends AgreementSchedule {
   assigned_technician_id?: string;
   job_type?: JobType;
   notes?: string;
+  po_number?: string;
 }
 
 /** Body of PUT /agreements/{id}; omitted fields are left unchanged. */
@@ -76,6 +80,8 @@ export interface UpdateAgreementRequest {
   clear_technician?: boolean;
   job_type?: JobType;
   notes?: string;
+  /** "" clears the PO. */
+  po_number?: string;
 }
 
 export interface AgreementFilters {

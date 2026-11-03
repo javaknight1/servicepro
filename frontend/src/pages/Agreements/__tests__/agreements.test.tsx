@@ -278,6 +278,7 @@ describe('AgreementFormPage', () => {
     await user.type(screen.getByLabelText(/price \(\$\)/i), '1180');
     await screen.findByRole('option', { name: 'Marcus Lee' });
     await user.selectOptions(screen.getByLabelText(/lead tech/i), 'u-1');
+    await user.type(screen.getByLabelText(/po number/i), 'PO-7731-HV');
     await user.click(screen.getByRole('button', { name: /create agreement/i }));
 
     await waitFor(() =>
@@ -293,6 +294,7 @@ describe('AgreementFormPage', () => {
           visit_start_time: '18:00',
           assigned_technician_id: 'u-1',
           end_date: undefined,
+          po_number: 'PO-7731-HV',
         })
       )
     );
@@ -331,6 +333,7 @@ describe('AgreementFormPage', () => {
           schedule: { frequency: 'monthly', day_of_month: 15 },
           clear_end_date: true,
           clear_technician: true,
+          po_number: '',
         })
       )
     );

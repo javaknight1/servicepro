@@ -442,6 +442,8 @@ describe('Quote Workflow Integration', () => {
       const price = screen.getAllByPlaceholderText(/price/i)[0];
       await user.clear(price);
       await user.type(price, '250');
+      // The customer's PO for the work (T187)
+      await user.type(screen.getByLabelText(/po number/i), ' PO-4410 ');
 
       // Submit form
       const saveButton = screen.getByRole('button', {
@@ -453,6 +455,7 @@ describe('Quote Workflow Integration', () => {
         expect(quoteService.createQuote).toHaveBeenCalledWith(
           expect.objectContaining({
             customer_id: 'customer-1',
+            po_number: 'PO-4410',
             items: [
               expect.objectContaining({
                 description: 'Test Service',
@@ -568,7 +571,10 @@ describe('Quote Workflow Integration', () => {
 
     it("shows the configured rate matching a quote's rate and saves a newly picked one", async () => {
       const user = userEvent.setup({ delay: null });
-      vi.mocked(quoteService.getQuote).mockResolvedValue(mockQuotes[0]); // 8%
+      vi.mocked(quoteService.getQuote).mockResolvedValue({
+        ...mockQuotes[0],
+        po_number: 'PO-9',
+      }); // 8%
       vi.mocked(quoteService.updateQuote).mockResolvedValue(mockQuotes[0]);
 
       const { QuoteDetailPage } =
@@ -585,12 +591,16 @@ describe('Quote Workflow Integration', () => {
       await waitFor(() => expect(picker).toHaveValue('tax-rate-2'));
 
       await user.selectOptions(picker, 'tax-rate-1');
+      // The loaded PO is kept; clearing it sends "" (T187).
+      const po = screen.getByLabelText(/po number/i);
+      expect(po).toHaveValue('PO-9');
+      await user.clear(po);
       await user.click(screen.getByRole('button', { name: /save changes/i }));
 
       await waitFor(() => {
         expect(quoteService.updateQuote).toHaveBeenCalledWith(
           'quote-1',
-          expect.objectContaining({ tax_rate: 0.0825 })
+          expect.objectContaining({ tax_rate: 0.0825, po_number: '' })
         );
       });
     });

@@ -58,6 +58,8 @@ interface QuoteFormData {
   tax_rate: string;
   notes: string;
   terms: string;
+  /** The customer's PO for the work (T187). */
+  po_number: string;
 }
 
 const initialFormData: QuoteFormData = {
@@ -67,6 +69,7 @@ const initialFormData: QuoteFormData = {
   tax_rate: '0',
   notes: '',
   terms: '',
+  po_number: '',
 };
 
 const emptyLineItem: LineItemFormData = {
@@ -184,6 +187,7 @@ export function QuoteDetailPage() {
         tax_rate: taxRatePercent,
         notes: quote.notes || '',
         terms: quote.terms || '',
+        po_number: quote.po_number || '',
       });
       if (quote.items && quote.items.length > 0) {
         setLineItems(
@@ -223,6 +227,7 @@ export function QuoteDetailPage() {
         tax_rate: taxRatePercent,
         notes: quote.notes || '',
         terms: quote.terms || '',
+        po_number: quote.po_number || '',
       });
       if (quote.items && quote.items.length > 0) {
         setLineItems(
@@ -331,6 +336,8 @@ export function QuoteDetailPage() {
       tax_rate: taxFromDefault ? undefined : taxRateDecimal,
       notes: formData.notes || undefined,
       terms: formData.terms || undefined,
+      // Always sent: "" clears it (the update replaces the whole quote).
+      po_number: formData.po_number.trim(),
       items: lineItems.map((item, index) => ({
         description: item.description,
         quantity:
@@ -717,6 +724,28 @@ export function QuoteDetailPage() {
                   required
                   className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                 />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="po_number"
+                  className="block text-sm font-medium text-neutral-700 mb-1"
+                >
+                  PO number
+                </label>
+                <input
+                  type="text"
+                  id="po_number"
+                  name="po_number"
+                  value={formData.po_number}
+                  onChange={handleChange}
+                  maxLength={100}
+                  placeholder="Customer's purchase order"
+                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                />
+                <p className="mt-1 text-xs text-neutral-500">
+                  The job and its invoice use this PO.
+                </p>
               </div>
 
               <TaxRatePicker

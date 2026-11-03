@@ -217,11 +217,14 @@ export function AgreementDetailPage() {
             icon={<DollarSign />}
             label="Price"
             value={`${formatDollars(agreement.price_per_period)}/${agreement.billing_period}`}
-            detail={
+            detail={[
               agreement.billing_period === 'visit'
                 ? `About ${formatDollars(monthlyAmount(agreement), { wholeUnits: true })}/mo`
-                : 'Before sales tax'
-            }
+                : 'Before sales tax',
+              agreement.po_number ? `PO ${agreement.po_number}` : '',
+            ]
+              .filter(Boolean)
+              .join(' · ')}
           />
           <InfoCard
             icon={<CalendarRange />}

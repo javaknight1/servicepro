@@ -47,6 +47,9 @@ export interface Quote {
   total: number;
   notes?: string;
   terms?: string;
+  /** The customer's PO for the quoted work (T187); the job and its invoice
+   * carry it. */
+  po_number?: string;
   items: LineItem[];
   /** The job this quote was converted to (T028). */
   job_id?: string;
@@ -62,6 +65,8 @@ export interface QuoteRequest {
   tax_rate: number;
   notes?: string;
   terms?: string;
+  /** "" clears the PO (T187). */
+  po_number?: string;
   items: LineItemFormData[];
 }
 
