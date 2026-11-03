@@ -1,5 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
+import {
+  Link,
+  useLocation,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from 'react-router';
 import { DashboardLayout } from '@components/layout';
 import {
   Button,
@@ -20,7 +26,7 @@ import {
   paymentReminderService,
   type PaymentReminderResponse,
 } from '@services/paymentReminderService';
-import { getErrorMessage } from '@/utils/error';
+import { getApiErrorInfo, getErrorMessage } from '@/utils/error';
 import {
   CancelInvoiceModal,
   InvoicePaymentHistory,
@@ -72,6 +78,8 @@ interface InvoiceFormData {
   tax_rate_id: string;
   /** Percent ("8.25"); a custom rate is sent as a direct rate fraction. */
   tax_rate: string;
+  /** Purchase order number (T187). */
+  po_number: string;
   notes: string;
   terms_and_conditions: string;
 }
@@ -180,6 +188,7 @@ const initialFormData: InvoiceFormData = {
   due_date: '',
   tax_rate_id: '',
   tax_rate: '0',
+  po_number: '',
   notes: '',
   terms_and_conditions: '',
 };
@@ -198,6 +207,11 @@ export function InvoiceDetailPage() {
   // "Create invoice" from a completed job (dashboard, T269): /invoices/new?job_id=…
   const [searchParams] = useSearchParams();
   const sourceJobId = isNew ? searchParams.get('job_id') : null;
+  // The list's Send hit 409 po_required: open the send dialog asking for it.
+  const location = useLocation();
+  const poRequiredOnArrival = !!(
+    location.state as { poRequired?: boolean } | null
+  )?.poRequired;
   const [sourceJob, setSourceJob] = useState<Job | null>(null);
 
   const [formData, setFormData] = useState<InvoiceFormData>(initialFormData);
@@ -217,7 +231,12 @@ export function InvoiceDetailPage() {
     InvoiceStatus.DRAFT
   );
   const [invoiceNumber, setInvoiceNumber] = useState<string>('');
-  const [showSendConfirmation, setShowSendConfirmation] = useState(false);
+  const [showSendConfirmation, setShowSendConfirmation] = useState(
+    poRequiredOnArrival && !isNew
+  );
+  // Send was refused with 409 po_required (T187): ask for the PO inline.
+  const [poRequired, setPoRequired] = useState(poRequiredOnArrival);
+  const [poDraft, setPoDraft] = useState('');
   const [customerEmail, setCustomerEmail] = useState<string>('');
   const [reminders, setReminders] = useState<PaymentReminderResponse[]>([]);
   const [remindersLoading, setRemindersLoading] = useState(false);
@@ -285,6 +304,7 @@ export function InvoiceDetailPage() {
           due_date: invoice.due_date ? invoice.due_date.split('T')[0] : '',
           tax_rate_id: invoice.tax_rate_id || '',
           tax_rate: taxRatePercent,
+          po_number: invoice.po_number || '',
           notes: invoice.notes || '',
           terms_and_conditions: invoice.terms_and_conditions || '',
         });
@@ -572,6 +592,8 @@ export function InvoiceDetailPage() {
           tax_rate_id: formData.tax_rate_id || undefined,
           tax_rate:
             formData.tax_rate_id || taxFromDefault ? undefined : taxRateDecimal,
+          // Empty: the server uses the customer's current PO, if any.
+          po_number: formData.po_number.trim() || undefined,
           notes: formData.notes || undefined,
           terms_and_conditions: formData.terms_and_conditions || undefined,
           lines,
@@ -596,6 +618,7 @@ export function InvoiceDetailPage() {
           tax_rate:
             taxUnchanged || formData.tax_rate_id ? undefined : taxRateDecimal,
           // Empty strings clear the stored values
+          po_number: formData.po_number.trim(),
           notes: formData.notes,
           terms_and_conditions: formData.terms_and_conditions,
           lines,
@@ -635,15 +658,32 @@ export function InvoiceDetailPage() {
     setIsSending(true);
     setError(null);
     try {
+      if (poRequired) {
+        // Save the PO the dialog asked for, then send (T187).
+        const po = poDraft.trim();
+        const saved = await invoiceService.updateInvoice(id, {
+          po_number: po,
+        });
+        setInvoice(saved);
+        setFormData((prev) => ({ ...prev, po_number: po }));
+      }
       const updatedInvoice = await invoiceService.sendInvoice(id);
+      setPoRequired(false);
       setInvoiceStatus(updatedInvoice.status || InvoiceStatus.SENT);
       setShowSendConfirmation(false);
       trackEvent(AnalyticsEvents.INVOICE_SENT, { total: calculateTotal() });
       // Show success message or navigate
       alert('Invoice sent successfully!');
     } catch (err) {
-      console.error('Failed to send invoice:', err);
-      setError(getErrorMessage(err, 'Failed to send invoice'));
+      const { status, code } = getApiErrorInfo(err);
+      if (status === 409 && code === 'po_required') {
+        // Keep the dialog open and ask for the PO there.
+        setPoRequired(true);
+        setPoDraft(formData.po_number);
+      } else {
+        console.error('Failed to send invoice:', err);
+        setError(getErrorMessage(err, 'Failed to send invoice'));
+      }
     } finally {
       setIsSending(false);
     }
@@ -948,6 +988,29 @@ export function InvoiceDetailPage() {
                   {isNew && defaultTermName && (
                     <p className="mt-1 text-xs text-neutral-500">
                       Payment term: {defaultTermName}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="po_number"
+                    className="block text-sm font-medium text-neutral-700 mb-1"
+                  >
+                    PO Number
+                  </label>
+                  <input
+                    type="text"
+                    id="po_number"
+                    name="po_number"
+                    value={formData.po_number}
+                    onChange={handleChange}
+                    maxLength={100}
+                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  />
+                  {isNew && (
+                    <p className="mt-1 text-xs text-neutral-500">
+                      Leave empty to use the customer's current PO.
                     </p>
                   )}
                 </div>
@@ -1524,6 +1587,33 @@ export function InvoiceDetailPage() {
                 </p>
               </div>
 
+              {poRequired && (
+                <div
+                  role="alert"
+                  className="mb-4 rounded-lg border border-warning-200 bg-warning-50 p-3"
+                >
+                  <p className="text-sm font-medium text-warning-800">
+                    This customer requires a PO number before the invoice can be
+                    sent.
+                  </p>
+                  <label
+                    htmlFor="send_po_number"
+                    className="mt-3 mb-1 block text-sm font-medium text-neutral-700"
+                  >
+                    PO number
+                  </label>
+                  <input
+                    id="send_po_number"
+                    type="text"
+                    value={poDraft}
+                    onChange={(e) => setPoDraft(e.target.value)}
+                    maxLength={100}
+                    autoFocus
+                    className="w-full rounded-lg border border-neutral-300 px-3 py-2 focus:border-primary-500 focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
+              )}
+
               {!customerEmail && (
                 <p className="text-amber-600 text-sm mb-4">
                   Warning: The customer does not have an email address. The
@@ -1535,7 +1625,10 @@ export function InvoiceDetailPage() {
                 <Button
                   type="button"
                   variant="secondary"
-                  onClick={() => setShowSendConfirmation(false)}
+                  onClick={() => {
+                    setShowSendConfirmation(false);
+                    setPoRequired(false);
+                  }}
                   disabled={isSending}
                 >
                   Cancel
@@ -1544,7 +1637,7 @@ export function InvoiceDetailPage() {
                   type="button"
                   variant="primary"
                   onClick={handleSendInvoice}
-                  disabled={isSending}
+                  disabled={isSending || (poRequired && !poDraft.trim())}
                   data-testid="confirm-send"
                   className="flex items-center gap-2"
                 >
@@ -1553,7 +1646,11 @@ export function InvoiceDetailPage() {
                   ) : (
                     <Send className="h-4 w-4" />
                   )}
-                  {isSending ? 'Sending...' : 'Confirm & Send'}
+                  {isSending
+                    ? 'Sending...'
+                    : poRequired
+                      ? 'Save PO & Send'
+                      : 'Confirm & Send'}
                 </Button>
               </div>
             </div>

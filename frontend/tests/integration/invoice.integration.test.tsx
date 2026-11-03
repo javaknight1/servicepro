@@ -14,6 +14,7 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Routes, Route } from 'react-router';
 import React from 'react';
+import { AxiosError, AxiosHeaders } from 'axios';
 
 // Mock modules
 vi.mock('@store', () => ({
@@ -1059,6 +1060,102 @@ describe('Invoice & Payment Integration', () => {
         expect(invoiceService.sendInvoice).toHaveBeenCalledWith('invoice-1');
       });
       alertSpy.mockRestore();
+    });
+  });
+
+  describe('Purchase orders (T187)', () => {
+    const poRequiredError = () =>
+      new AxiosError('Conflict', 'ERR_BAD_REQUEST', undefined, undefined, {
+        data: {
+          error: 'po_required',
+          message:
+            'This customer requires a PO number before the invoice can be sent',
+        },
+        status: 409,
+        statusText: 'Conflict',
+        headers: {},
+        config: { headers: new AxiosHeaders() },
+      });
+
+    const renderDraft = async (state?: { poRequired: boolean }) => {
+      vi.mocked(invoiceService.getInvoice).mockResolvedValue(mockInvoices[0]);
+      const { InvoiceDetailPage } =
+        await import('../../src/pages/Invoices/InvoiceDetailPage');
+      render(
+        <MemoryRouter
+          initialEntries={[{ pathname: '/invoices/invoice-1', state }]}
+        >
+          <Routes>
+            <Route path="/invoices/:id" element={<InvoiceDetailPage />} />
+          </Routes>
+        </MemoryRouter>
+      );
+    };
+
+    it('saves an edited PO number', async () => {
+      const user = userEvent.setup({ delay: null });
+      vi.mocked(invoiceService.updateInvoice).mockResolvedValue(
+        mockInvoices[0]
+      );
+      await renderDraft();
+      const po = await screen.findByLabelText(/po number/i);
+      await user.type(po, '7731-HV');
+      await user.click(screen.getByRole('button', { name: /save changes/i }));
+      await waitFor(() => {
+        expect(invoiceService.updateInvoice).toHaveBeenCalledWith(
+          'invoice-1',
+          expect.objectContaining({ po_number: '7731-HV' })
+        );
+      });
+    });
+
+    it('asks for the PO when send is refused with po_required, then saves it and sends', async () => {
+      const user = userEvent.setup({ delay: null });
+      vi.mocked(invoiceService.sendInvoice)
+        .mockRejectedValueOnce(poRequiredError())
+        .mockResolvedValueOnce({ ...mockInvoices[0], status: 'sent' as const });
+      vi.mocked(invoiceService.updateInvoice).mockResolvedValue({
+        ...mockInvoices[0],
+        po_number: 'PO-42',
+      });
+      const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+      await renderDraft();
+
+      await user.click(
+        await screen.findByRole('button', { name: /send invoice/i })
+      );
+      await user.click(screen.getByTestId('confirm-send'));
+
+      expect(
+        await screen.findByText(
+          /this customer requires a po number before the invoice can be sent/i
+        )
+      ).toBeInTheDocument();
+      // No PO typed yet: can't send.
+      expect(screen.getByTestId('confirm-send')).toBeDisabled();
+      await user.type(
+        screen.getByLabelText(/^po number$/i, { selector: '#send_po_number' }),
+        'PO-42'
+      );
+      await user.click(screen.getByRole('button', { name: /save po & send/i }));
+
+      await waitFor(() => {
+        expect(invoiceService.sendInvoice).toHaveBeenCalledTimes(2);
+      });
+      expect(invoiceService.updateInvoice).toHaveBeenCalledWith('invoice-1', {
+        po_number: 'PO-42',
+      });
+      alertSpy.mockRestore();
+    });
+
+    it('opens the PO prompt when the list sent us here for a PO', async () => {
+      await renderDraft({ poRequired: true });
+      expect(
+        await screen.findByText(/this customer requires a po number/i)
+      ).toBeInTheDocument();
+      expect(screen.getByTestId('confirm-send')).toHaveTextContent(
+        /save po & send/i
+      );
     });
   });
 

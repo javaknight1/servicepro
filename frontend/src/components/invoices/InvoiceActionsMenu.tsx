@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router';
+import { getApiErrorInfo } from '@/utils/error';
 import { Send, Download, FileText } from 'lucide-react';
 import { invoiceService, InvoiceStatus } from '../../services/invoiceService';
 import { DropdownMenu, DropdownMenuItem } from '../shared/DropdownMenu';
@@ -16,6 +18,7 @@ export function InvoiceActionsMenu({
   onSendInvoice,
   onInvoiceSent,
 }: InvoiceActionsMenuProps) {
+  const navigate = useNavigate();
   const [isSending, setIsSending] = useState(false);
   const [isDownloadingInvoice, setIsDownloadingInvoice] = useState(false);
   const [isDownloadingReceipt, setIsDownloadingReceipt] = useState(false);
@@ -33,7 +36,13 @@ export function InvoiceActionsMenu({
         onInvoiceSent?.();
       }
     } catch (error) {
-      console.error('Failed to send invoice:', error);
+      const { status, code } = getApiErrorInfo(error);
+      if (status === 409 && code === 'po_required') {
+        // The invoice page asks for the PO and sends it (T187).
+        navigate(`/invoices/${invoiceId}`, { state: { poRequired: true } });
+      } else {
+        console.error('Failed to send invoice:', error);
+      }
     } finally {
       setIsSending(false);
       close();

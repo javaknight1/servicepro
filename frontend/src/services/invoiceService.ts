@@ -65,6 +65,8 @@ export interface Invoice {
   /** The preloaded tax-rate row for `tax_rate_id` (an object, not a number). */
   tax_rate?: InvoiceTaxRate;
   payment_term_id?: string;
+  /** Purchase order number (T187). */
+  po_number?: string;
   notes?: string;
   terms_and_conditions?: string;
   lines: InvoiceLineItem[];
@@ -172,6 +174,8 @@ export interface CreateInvoiceRequest {
   /** Direct rate as a fraction (0.0825 = 8.25%); overrides tax_rate_id.
    * Omitted, the tenant's default tax rate applies. */
   tax_rate?: number;
+  /** Omitted, the customer's current PO (if any) is used (T187). */
+  po_number?: string;
   notes?: string;
   terms_and_conditions?: string;
   lines: InvoiceLineRequest[];
@@ -185,6 +189,8 @@ export interface UpdateInvoiceRequest {
   tax_rate_id?: string;
   /** Direct rate as a fraction; omitted, the invoice keeps its rate. */
   tax_rate?: number;
+  /** "" clears the PO number. */
+  po_number?: string;
   notes?: string;
   terms_and_conditions?: string;
   lines?: InvoiceLineRequest[];
