@@ -37,6 +37,16 @@ export interface TenantSettings {
   /** Shown to customers under the business name on the pay page (T170). */
   businessCity?: string;
   businessState?: string;
+  /** Onboarding (T235): commercial_cleaning | facility_maintenance | other. */
+  trade?: string;
+  technicianCount?: number;
+  /** New customers inherit these billing rules unless set on create. */
+  defaultConsolidatedBilling?: boolean;
+  defaultPoRequired?: boolean;
+  /** Wizard step to resume at (1-3); 0/absent = never started. */
+  onboardingStep?: number;
+  /** Set when the owner finished or skipped the wizard. */
+  onboardingCompletedAt?: string;
 }
 
 /** The caller's access in one tenant (`GET /tenants/:id/me`). */

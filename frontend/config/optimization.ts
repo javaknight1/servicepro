@@ -98,6 +98,7 @@ const appChunks: Array<[name: string, test: (id: string) => boolean]> = [
       id.includes('/services/userService') ||
       id.includes('/services/paymentsService') ||
       id.includes('/utils/redirect') ||
+      id.includes('/utils/tenantSettings') ||
       id.includes('/types/membership') ||
       id.includes('/types/payment'),
   ],

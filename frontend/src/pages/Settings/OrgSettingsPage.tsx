@@ -20,8 +20,11 @@ import {
   paymentReminderService,
   type PaymentReminderSettings,
 } from '@services/paymentReminderService';
-import { getTenantErrorMessage } from '@/utils/error';
+import { getFieldErrors, getTenantErrorMessage } from '@/utils/error';
 import { useTenantPermissions } from '@/utils/tenantPermissions';
+import { mergeSettings, timezoneOptions } from '@/utils/tenantSettings';
+import { BillingDefaultsCard } from '@components/settings/BillingDefaultsCard';
+import { TaxRatesCard } from '@components/settings/TaxRatesCard';
 import {
   Building2,
   Users,
@@ -35,6 +38,8 @@ import {
   Clock,
   Bell,
   Plus,
+  Receipt,
+  Percent,
 } from 'lucide-react';
 import { MembershipTab } from '@components/membership';
 import type {
@@ -45,10 +50,18 @@ import type {
 import type { Role } from '@/types/role';
 
 type TabId =
-  'general' | 'members' | 'membership' | 'notifications' | 'timezone';
+  | 'general'
+  | 'billing'
+  | 'taxRates'
+  | 'members'
+  | 'membership'
+  | 'notifications'
+  | 'timezone';
 
 const TAB_IDS: readonly TabId[] = [
   'general',
+  'billing',
+  'taxRates',
   'members',
   'membership',
   'notifications',
@@ -94,6 +107,7 @@ export function OrgSettingsPage() {
     canManageMembers: canManage,
     canUpdateTenant: canEditSettings,
     canDeleteTenant: canDelete,
+    canManageTaxRates,
   } = useTenantPermissions(currentTenant);
 
   // Form state for general settings
@@ -103,6 +117,9 @@ export function OrgSettingsPage() {
   const [city, setCity] = useState('');
   const [state, setState] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [generalFieldErrors, setGeneralFieldErrors] = useState<
+    Record<string, string>
+  >({});
 
   // Modal state for inviting member
   const [showAddMemberModal, setShowAddMemberModal] = useState(false);
@@ -138,6 +155,8 @@ export function OrgSettingsPage() {
 
   const tabs = [
     { id: 'general' as const, label: 'Business', icon: Settings },
+    { id: 'billing' as const, label: 'Billing defaults', icon: Receipt },
+    { id: 'taxRates' as const, label: 'Tax rates', icon: Percent },
     { id: 'members' as const, label: 'Members', icon: Users },
     { id: 'membership' as const, label: 'Plan', icon: CreditCard },
     { id: 'notifications' as const, label: 'Notifications', icon: Bell },
@@ -243,13 +262,17 @@ export function OrgSettingsPage() {
     setTimezoneError(null);
     setTimezoneSuccess(false);
     try {
-      const mergedSettings = { ...currentTenant.settings, timezone };
-      await updateTenant(currentTenant.id, { settings: mergedSettings });
+      await updateTenant(currentTenant.id, {
+        settings: mergeSettings(currentTenant, { timezone }),
+      });
       setTimezoneSuccess(true);
       setTimeout(() => setTimezoneSuccess(false), 3000);
     } catch (err) {
       console.error('Failed to save timezone:', err);
-      setTimezoneError(getTenantErrorMessage(err, 'Failed to save timezone'));
+      setTimezoneError(
+        getFieldErrors(err).timezone ??
+          getTenantErrorMessage(err, 'Failed to save timezone')
+      );
     } finally {
       setTimezoneSaving(false);
     }
@@ -308,15 +331,16 @@ export function OrgSettingsPage() {
         email: email.trim() || undefined,
         phone: phone.trim() || undefined,
         // Settings are replaced as a whole: keep everything else.
-        settings: {
-          ...currentTenant.settings,
+        settings: mergeSettings(currentTenant, {
           businessCity: city.trim() || undefined,
           businessState: state.trim() || undefined,
-        },
+        }),
       };
       await updateTenant(currentTenant.id, data);
+      setGeneralFieldErrors({});
     } catch (err) {
       console.error('Failed to save:', err);
+      setGeneralFieldErrors(getFieldErrors(err));
     } finally {
       setIsSaving(false);
     }
@@ -547,6 +571,7 @@ export function OrgSettingsPage() {
                             maxLength={100}
                             fullWidth
                             disabled={!canEditSettings}
+                            error={generalFieldErrors.businessCity}
                             helperText="Shown to customers on your pay page"
                           />
                         </div>
@@ -559,6 +584,7 @@ export function OrgSettingsPage() {
                           maxLength={50}
                           fullWidth
                           disabled={!canEditSettings}
+                          error={generalFieldErrors.businessState}
                         />
                       </div>
 
@@ -633,6 +659,17 @@ export function OrgSettingsPage() {
                   </Card>
                 )}
               </>
+            )}
+
+            {activeTab === 'billing' && (
+              <BillingDefaultsCard
+                tenant={currentTenant}
+                canEdit={canEditSettings}
+              />
+            )}
+
+            {activeTab === 'taxRates' && (
+              <TaxRatesCard canManage={canManageTaxRates} />
             )}
 
             {activeTab === 'members' && (
@@ -1007,18 +1044,11 @@ export function OrgSettingsPage() {
                         onChange={(e) => setTimezone(e.target.value)}
                         className="w-full max-w-xs px-3 py-2 border border-neutral-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
                       >
-                        <option value="America/New_York">
-                          Eastern (America/New_York)
-                        </option>
-                        <option value="America/Chicago">
-                          Central (America/Chicago)
-                        </option>
-                        <option value="America/Denver">
-                          Mountain (America/Denver)
-                        </option>
-                        <option value="America/Los_Angeles">
-                          Pacific (America/Los_Angeles)
-                        </option>
+                        {timezoneOptions(timezone).map((tz) => (
+                          <option key={tz.value} value={tz.value}>
+                            {tz.label}
+                          </option>
+                        ))}
                       </select>
                     </div>
 

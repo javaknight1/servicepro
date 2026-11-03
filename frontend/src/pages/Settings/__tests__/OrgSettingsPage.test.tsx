@@ -54,6 +54,7 @@ vi.mock('@/utils/tenantPermissions', () => ({
     canChangePlan: false,
     canManageBilling: false,
     canDeleteTenant: false,
+    canManageTaxRates: false,
     isLoading: false,
   }),
 }));

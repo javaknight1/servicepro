@@ -28,6 +28,8 @@ export const TENANT_PERMISSIONS = {
   membershipUpdate: 'membership.update',
   /** Payment methods and billing. */
   membershipBilling: 'membership.billing',
+  /** Creating, editing and deactivating tax rates (T237). */
+  manageTaxRates: 'tax_rates.manage',
 } as const;
 
 /** Permissions the loading fallback may grant from the role name. */
@@ -82,6 +84,8 @@ export interface TenantPermissions {
   canManageBilling: boolean;
   /** tenants.delete: deleting the organization. */
   canDeleteTenant: boolean;
+  /** tax_rates.manage: adding and changing tax rates. */
+  canManageTaxRates: boolean;
   /** True until the API's permission list for this tenant has loaded. */
   isLoading: boolean;
 }
@@ -116,6 +120,7 @@ export function useTenantPermissions(
     canChangePlan: can(TENANT_PERMISSIONS.membershipUpdate),
     canManageBilling: can(TENANT_PERMISSIONS.membershipBilling),
     canDeleteTenant: can(TENANT_PERMISSIONS.delete),
+    canManageTaxRates: can(TENANT_PERMISSIONS.manageTaxRates),
     isLoading: !!tenantId && isLoading,
   };
 }
