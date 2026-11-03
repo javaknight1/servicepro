@@ -81,6 +81,12 @@ func SetupJobRoutes(router *gin.RouterGroup, cfg *routeconfigs.RouteConfig) {
 			cfg.Middleware.PermMiddleware.RequirePermission(permissions.JobsRead),
 			cfg.Handlers.JobApproval.ListApprovals)
 
+		// Invoice a completed job (T029) - creates an invoice, so it
+		// requires "invoices.create"
+		jobs.POST("/:id/invoice",
+			cfg.Middleware.PermMiddleware.RequirePermission(permissions.InvoicesCreate),
+			cfg.Handlers.Invoice.InvoiceJob)
+
 		// Status history endpoint
 		jobs.GET("/:id/status-history",
 			cfg.Middleware.PermMiddleware.RequirePermission(permissions.JobsRead),

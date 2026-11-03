@@ -176,42 +176,7 @@ func (s *InvoiceService) CreateInvoice(ctx context.Context, invoice *models.Invo
 
 	// Create invoice in transaction
 	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		// A job or quote is invoiced at most once (audit 7.M5). Locking the
-		// source row serialises concurrent creates for the same job/quote.
-		if err := guardInvoiceSource(tx, invoice); err != nil {
-			return err
-		}
-
-		// Totals are always computed here, never taken from the client.
-		rate, err := resolveTaxRate(tx, invoice.ApplyTaxRate, invoice.TaxRateID, nil)
-		if err != nil {
-			return err
-		}
-		totals, err := calculateInvoiceTotals(invoice.Lines, invoice.DiscountAmount, rate)
-		if err != nil {
-			return err
-		}
-		setInvoiceTotals(invoice, totals)
-		for i := range invoice.Lines {
-			if invoice.Lines[i].ID == uuid.Nil {
-				invoice.Lines[i].ID = uuid.New()
-			}
-		}
-
-		if err := tx.Create(invoice).Error; err != nil {
-			return fmt.Errorf("failed to create invoice: %w", err)
-		}
-		if err := moveInvoiceJob(tx, invoice, models.JobStatusCompleted, models.JobStatusInvoiced,
-			fmt.Sprintf("Invoice %s created", invoice.InvoiceNumber), userID); err != nil {
-			return err
-		}
-
-		// Load relationships
-		if err := tx.Preload("Lines").First(invoice, invoice.ID).Error; err != nil {
-			return fmt.Errorf("failed to load invoice: %w", err)
-		}
-
-		return nil
+		return insertInvoice(tx, invoice, userID)
 	})
 
 	if err != nil {
@@ -219,6 +184,47 @@ func (s *InvoiceService) CreateInvoice(ctx context.Context, invoice *models.Invo
 	}
 
 	return invoice, nil
+}
+
+// insertInvoice writes a prepared new invoice inside tx: the double-invoicing
+// guard on its job/quote, server-side totals, the invoice and its lines, and
+// the job's move to invoiced (T124), then reloads its lines.
+func insertInvoice(tx *gorm.DB, invoice *models.Invoice, userID uuid.UUID) error {
+	// A job or quote is invoiced at most once (audit 7.M5). Locking the
+	// source row serialises concurrent creates for the same job/quote.
+	if err := guardInvoiceSource(tx, invoice); err != nil {
+		return err
+	}
+
+	// Totals are always computed here, never taken from the client.
+	rate, err := resolveTaxRate(tx, invoice.ApplyTaxRate, invoice.TaxRateID, nil)
+	if err != nil {
+		return err
+	}
+	totals, err := calculateInvoiceTotals(invoice.Lines, invoice.DiscountAmount, rate)
+	if err != nil {
+		return err
+	}
+	setInvoiceTotals(invoice, totals)
+	for i := range invoice.Lines {
+		if invoice.Lines[i].ID == uuid.Nil {
+			invoice.Lines[i].ID = uuid.New()
+		}
+	}
+
+	if err := tx.Create(invoice).Error; err != nil {
+		return fmt.Errorf("failed to create invoice: %w", err)
+	}
+	if err := moveInvoiceJob(tx, invoice, models.JobStatusCompleted, models.JobStatusInvoiced,
+		fmt.Sprintf("Invoice %s created", invoice.InvoiceNumber), userID); err != nil {
+		return err
+	}
+
+	// Load relationships
+	if err := tx.Preload("Lines").First(invoice, invoice.ID).Error; err != nil {
+		return fmt.Errorf("failed to load invoice: %w", err)
+	}
+	return nil
 }
 
 // GetInvoice retrieves an invoice by ID
@@ -512,6 +518,12 @@ func guardInvoiceSource(tx *gorm.DB, invoice *models.Invoice) error {
 		}
 		if err := requireNoActiveInvoice(tx, "job_id", *invoice.JobID); err != nil {
 			return err
+		}
+		// Nor billed on a consolidated invoice (T188 claims).
+		if id, err := consolidatedInvoiceForJob(tx, &job); err != nil {
+			return err
+		} else if id != nil {
+			return ErrAlreadyInvoiced
 		}
 	}
 	if invoice.QuoteID != nil {

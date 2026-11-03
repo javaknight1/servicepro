@@ -41,6 +41,8 @@ func setupIsolation(t *testing.T) *isolationFixture {
 		&models.JobMaterial{}, &models.JobNote{}, &models.Quote{}, &models.QuoteItem{},
 		&models.Invoice{}, &models.InvoiceLine{}, &models.InvoicePayment{},
 		&models.PaymentTerm{}, &models.TaxRate{}, &models.ExportJob{}, &models.InvoiceAuditLog{}, &models.JobStatusTransition{}, &models.InvoiceRefund{},
+		// consolidated-billing claims, read by the job invoicing guard (T029)
+		&models.InvoiceBilledItem{},
 	} {
 		createSQLiteTableForModel(t, db, m, "")
 	}

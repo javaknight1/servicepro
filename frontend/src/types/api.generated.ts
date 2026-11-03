@@ -4125,6 +4125,102 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/jobs/{id}/invoice": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Generate the invoice for a completed job
+         * @description Creates a draft invoice from a completed job and moves the job to invoiced, all in one transaction (T029). Lines are built by the server (T030): a job converted from a quote bills the quote's lines (and links the quote); otherwise labor = actual time on site (actual start/end, else actual duration) × the tenant's laborRate setting, or — no rate or no time recorded — one line for the job's amount (total, else actual cost, else estimate); then each billable material at its unit cost. Lines carry the job's site name; the job's completion notes and non-internal notes become the invoice notes; the customer's default PO and the tenant's default payment term and tax rate apply; totals are computed server-side. Idempotent: a job is invoiced once — a second (or concurrent) call answers 409 already_invoiced with the existing invoice's ID in resource_id, including when a consolidated invoice billed the job. 409 job_not_completed for other statuses; 409 agreement_visit for agreement visits (billed on the consolidated invoice).
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Job ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.Invoice"];
+                    };
+                };
+                /** @description Invalid job ID */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Missing invoices.create permission */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Job not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Not completed, an agreement visit, or already invoiced (resource_id = the invoice) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Internal server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/jobs/{id}/materials": {
         parameters: {
             query?: never;
@@ -13357,6 +13453,11 @@ export interface components {
             follow_up_date?: number;
             id?: string;
             internal_notes?: string;
+            /**
+             * @description InvoiceID is an invoiced job's invoice (its own, or the consolidated
+             *     one that billed it). Set by GET /jobs/{id} only.
+             */
+            invoice_id?: string;
             job_number?: string;
             job_type?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.JobType"];
             materials?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.JobMaterialResponse"][];

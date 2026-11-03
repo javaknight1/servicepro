@@ -248,7 +248,10 @@ type JobResponse struct {
 	// jobs without one are extra work (not-to-exceed rule, T187).
 	AgreementID *uuid.UUID `json:"agreement_id,omitempty"`
 	// QuoteID is the accepted quote the job was converted from (T028).
-	QuoteID             *uuid.UUID              `json:"quote_id,omitempty"`
+	QuoteID *uuid.UUID `json:"quote_id,omitempty"`
+	// InvoiceID is an invoiced job's invoice (its own, or the consolidated
+	// one that billed it). Set by GET /jobs/{id} only.
+	InvoiceID           *uuid.UUID              `json:"invoice_id,omitempty"`
 	Title               string                  `json:"title"`
 	Description         string                  `json:"description"`
 	JobType             JobType                 `json:"job_type"`

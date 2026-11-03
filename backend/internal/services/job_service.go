@@ -308,6 +308,14 @@ func (s *JobService) GetJobByID(id uuid.UUID, userID uuid.UUID, userRole models.
 	}
 
 	response := job.ToResponse()
+	// An invoiced job names its invoice ("View invoice", T029).
+	if s.db != nil && (job.Status == models.JobStatusInvoiced || job.Status == models.JobStatusPaid) {
+		invoiceID, err := jobInvoiceID(s.db.WithContext(s.ctx()), job)
+		if err != nil {
+			return nil, err
+		}
+		response.InvoiceID = invoiceID
+	}
 	return &response, nil
 }
 
