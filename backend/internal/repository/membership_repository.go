@@ -228,6 +228,23 @@ func (r *MembershipRepository) UpdateSubscriptionFromStripe(ctx context.Context,
 		}).Error
 }
 
+// ActiveTierName returns the tier name of the tenant's active subscription,
+// or "" when it has none (platform fee schedule, T210).
+func (r *MembershipRepository) ActiveTierName(ctx context.Context, tenantID uuid.UUID) (string, error) {
+	var names []string
+	err := r.db.WithContext(ctx).
+		Table("tenant_subscriptions AS ts").
+		Select("mt.name").
+		Joins("JOIN membership_tiers mt ON mt.id = ts.tier_id").
+		Where("ts.tenant_id = ? AND ts.status = ?", tenantID, models.MembershipStatusActive).
+		Limit(1).
+		Pluck("mt.name", &names).Error
+	if err != nil || len(names) == 0 {
+		return "", err
+	}
+	return names[0], nil
+}
+
 // StripeActivation is a paid subscription that Stripe reports active for a
 // tenant (billing webhook, T210).
 type StripeActivation struct {

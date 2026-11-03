@@ -3,6 +3,7 @@ package stripe
 import (
 	"testing"
 
+	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -31,6 +32,28 @@ func TestApplicationFee(t *testing.T) {
 			assert.Equal(t, tc.want, ApplicationFee(tc.units, "usd", tc.method))
 		})
 	}
+}
+
+// D15: every plan pays the D10 fees for now, through the per-plan mapping;
+// legacy and unknown tiers fall back to the default.
+func TestPlatformFeesForTier(t *testing.T) {
+	for _, tier := range []string{"solo", "team", "pro", "free", "basic", ""} {
+		f := PlatformFeesForTier(tier)
+		assert.Equal(t, int64(40), f.CardBps, tier)
+		assert.Equal(t, int64(100), f.BankBps, tier)
+		assert.True(t, f.BankCap.Equal(DefaultPlatformFees.BankCap), tier)
+		assert.Equal(t, int64(1000), f.ApplicationFee(500000, "usd", PayMethodBank), tier)
+		assert.Equal(t, int64(384), f.ApplicationFee(96000, "usd", PayMethodCard), tier)
+	}
+	for _, p := range PlanCatalog {
+		_, ok := feesByTier[p.Tier]
+		assert.True(t, ok, "catalog plan %s has a fee entry", p.Tier)
+	}
+
+	// A plan with its own schedule is honored (mapping, not hard-coded rates).
+	custom := PlatformFees{CardBps: 25, BankBps: 50, BankCap: decimal.NewFromInt(1)}
+	assert.Equal(t, int64(240), custom.ApplicationFee(96000, "usd", PayMethodCard), "0.25%")
+	assert.Equal(t, int64(100), custom.ApplicationFee(500000, "usd", PayMethodBank), "0.5% capped at $1")
 }
 
 // The $10 cap is in the charge currency's minor units.

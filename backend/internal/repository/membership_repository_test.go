@@ -67,6 +67,17 @@ func TestActivateStripeSubscription_TenantScopedAndIdempotent(t *testing.T) {
 	assert.Equal(t, teamTierID, subB.TierID, "tenant B's trial is untouched")
 	assert.NotNil(t, subB.TrialEndsAt)
 
+	// ActiveTierName reads each tenant's own plan (cross-tenant).
+	nameA, err := repo.ActiveTierName(ctx, a.ID)
+	require.NoError(t, err)
+	assert.Equal(t, "solo", nameA)
+	nameB, err := repo.ActiveTierName(ctx, b.ID)
+	require.NoError(t, err)
+	assert.Equal(t, "team", nameB)
+	none, err := repo.ActiveTierName(ctx, uuid.New())
+	require.NoError(t, err)
+	assert.Empty(t, none)
+
 	created, err = repo.ActivateStripeSubscription(ctx, a.ID, act)
 	require.NoError(t, err)
 	assert.False(t, created, "redelivery is a no-op")

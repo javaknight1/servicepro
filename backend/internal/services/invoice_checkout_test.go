@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/javaknight1/servicepro/backend/internal/models"
+	stripeClient "github.com/javaknight1/servicepro/backend/internal/services/stripe"
 )
 
 // T119 / audit 7.C2: Checkout charges exactly total_amount - amount_paid as
@@ -26,7 +27,7 @@ func TestBuildCheckoutParams_ChargesBalanceDue(t *testing.T) {
 	setInvoiceTotals(inv, totals)
 
 	now := time.Date(2026, 10, 16, 14, 5, 0, 0, time.UTC)
-	params, balance, fee := svc.buildCheckoutParams(inv, "usd", now, "acct_tenant", "card")
+	params, balance, fee := svc.buildCheckoutParams(inv, "usd", now, "acct_tenant", "card", stripeClient.DefaultPlatformFees)
 	require.NotNil(t, params)
 	require.Len(t, params.LineItems, 1)
 	li := params.LineItems[0]
@@ -44,14 +45,14 @@ func TestBuildCheckoutParams_ChargesBalanceDue(t *testing.T) {
 	assert.Equal(t, int64(49), fee, "0.4% of 122.28 = 0.489 -> 49 cents")
 	assert.Equal(t, int64(49), *params.PaymentIntentData.ApplicationFeeAmount)
 
-	again, _, _ := svc.buildCheckoutParams(inv, "usd", now.Add(10*time.Minute), "acct_tenant", "card")
+	again, _, _ := svc.buildCheckoutParams(inv, "usd", now.Add(10*time.Minute), "acct_tenant", "card", stripeClient.DefaultPlatformFees)
 	assert.Equal(t, *params.IdempotencyKey, *again.IdempotencyKey, "a retry within the hour reuses the session")
 	inv.AmountPaid = dec("50")
-	other, _, _ := svc.buildCheckoutParams(inv, "usd", now, "acct_tenant", "card")
+	other, _, _ := svc.buildCheckoutParams(inv, "usd", now, "acct_tenant", "card", stripeClient.DefaultPlatformFees)
 	assert.NotEqual(t, *params.IdempotencyKey, *other.IdempotencyKey, "a different balance gets a new session")
 
 	inv.AmountPaid = inv.TotalAmount
-	none, _, _ := svc.buildCheckoutParams(inv, "usd", now, "acct_tenant", "card")
+	none, _, _ := svc.buildCheckoutParams(inv, "usd", now, "acct_tenant", "card", stripeClient.DefaultPlatformFees)
 	assert.Nil(t, none, "nothing owed, no session")
 }
 

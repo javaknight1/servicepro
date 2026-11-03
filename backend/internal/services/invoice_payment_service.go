@@ -40,12 +40,33 @@ type ConnectedAccountLookup interface {
 	Account(ctx context.Context, tenantID uuid.UUID) (*models.StripeConnectedAccount, error)
 }
 
+// TenantPlanLookup returns the tier name of a tenant's active plan ("" when
+// it has none). Implemented by repository.MembershipRepository.
+type TenantPlanLookup interface {
+	ActiveTierName(ctx context.Context, tenantID uuid.UUID) (string, error)
+}
+
+// platformFeesFor is the application-fee schedule of the tenant's plan (D15):
+// the default D10 fees when the plan can't be read.
+func platformFeesFor(ctx context.Context, plans TenantPlanLookup, tenantID uuid.UUID) stripeClient.PlatformFees {
+	if plans == nil {
+		return stripeClient.DefaultPlatformFees
+	}
+	tier, err := plans.ActiveTierName(ctx, tenantID)
+	if err != nil {
+		logging.Warn(ctx, "[INVOICE-PAYMENT] Could not read the tenant's plan; default fees", map[string]any{"tenant_id": tenantID, "error": err})
+		return stripeClient.DefaultPlatformFees
+	}
+	return stripeClient.PlatformFeesForTier(tier)
+}
+
 // InvoicePaymentService creates Stripe Checkout sessions for invoice
 // payments as direct charges on the tenant's own Stripe account (D9, T169).
 type InvoicePaymentService struct {
 	stripeClient   *stripeClient.Client
 	invoiceService *InvoiceService
 	accounts       ConnectedAccountLookup
+	plans          TenantPlanLookup // optional: per-plan fees (T210)
 	successURL     string
 	cancelURL      string
 	enabled        bool
@@ -59,7 +80,10 @@ type InvoicePaymentServiceConfig struct {
 	InvoiceService *InvoiceService
 	// Accounts looks up the invoice's tenant's connected account. Without
 	// it no session is ever created.
-	Accounts   ConnectedAccountLookup
+	Accounts ConnectedAccountLookup
+	// Plans gives the tenant's plan for its application-fee schedule;
+	// without it the default D10 fees apply.
+	Plans      TenantPlanLookup
 	SuccessURL string // URL to redirect after successful payment
 	CancelURL  string // URL to redirect if payment is cancelled
 	// Enabled is the INVOICE_PAYMENTS_ENABLED master switch (T261); each
@@ -89,6 +113,7 @@ func NewInvoicePaymentService(cfg *InvoicePaymentServiceConfig) (*InvoicePayment
 		stripeClient:   cfg.StripeClient,
 		invoiceService: cfg.InvoiceService,
 		accounts:       cfg.Accounts,
+		plans:          cfg.Plans,
 		successURL:     cfg.SuccessURL,
 		cancelURL:      cfg.CancelURL,
 		enabled:        cfg.Enabled,
@@ -150,7 +175,8 @@ func (s *InvoicePaymentService) CreateCheckoutSessionForInvoice(ctx context.Cont
 		return nil, ErrPaymentMethodUnavailable
 	}
 
-	params, balance, fee := s.buildCheckoutParams(invoice, invoiceCurrency(invoice), time.Now(), acct.StripeAccountID, method)
+	fees := platformFeesFor(ctx, s.plans, invoice.TenantID)
+	params, balance, fee := s.buildCheckoutParams(invoice, invoiceCurrency(invoice), time.Now(), acct.StripeAccountID, method, fees)
 	if params == nil {
 		return nil, ErrInvoiceNotPayable
 	}
@@ -197,13 +223,13 @@ func invoiceCurrency(invoice *models.Invoice) string {
 // hour, so a double-click or client retry reuses one session instead of
 // creating several, while a new payment link after a partial payment
 // (different amount), another method or a later visit gets a fresh session.
-func (s *InvoicePaymentService) buildCheckoutParams(invoice *models.Invoice, currency string, now time.Time, accountID, method string) (*stripe.CheckoutSessionParams, decimal.Decimal, int64) {
+func (s *InvoicePaymentService) buildCheckoutParams(invoice *models.Invoice, currency string, now time.Time, accountID, method string, fees stripeClient.PlatformFees) (*stripe.CheckoutSessionParams, decimal.Decimal, int64) {
 	balance := invoice.BalanceDue()
 	units := stripeClient.ToMinorUnits(balance, currency)
 	if units <= 0 {
 		return nil, balance, 0
 	}
-	fee := stripeClient.ApplicationFee(units, currency, method)
+	fee := fees.ApplicationFee(units, currency, method)
 
 	metadata := map[string]string{
 		"invoice_id":   invoice.ID.String(),

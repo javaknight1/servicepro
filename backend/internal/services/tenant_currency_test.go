@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/javaknight1/servicepro/backend/internal/models"
+	stripeClient "github.com/javaknight1/servicepro/backend/internal/services/stripe"
 )
 
 // T127: invoices and quotes are billed in the tenant's currency setting,
@@ -61,7 +62,7 @@ func TestInvoiceCurrency_ForStripe(t *testing.T) {
 	svc := &InvoicePaymentService{successURL: "https://x/s", cancelURL: "https://x/c"}
 	inv := &models.Invoice{ID: uuid.New(), InvoiceNumber: "INV-1", Currency: "JPY",
 		TotalAmount: dec("1500"), AmountPaid: dec("0")}
-	params, _, _ := svc.buildCheckoutParams(inv, invoiceCurrency(inv), time.Now(), "acct_tenant", "card")
+	params, _, _ := svc.buildCheckoutParams(inv, invoiceCurrency(inv), time.Now(), "acct_tenant", "card", stripeClient.DefaultPlatformFees)
 	require.NotNil(t, params)
 	li := params.LineItems[0]
 	assert.Equal(t, "jpy", *li.PriceData.Currency)

@@ -190,6 +190,7 @@ func SetupServices(
 				SuccessURL:     cfg.Server.FrontendURL + "/invoices/payment-success",
 				CancelURL:      cfg.Server.FrontendURL + "/invoices/payment-cancelled",
 				Accounts:       svc.PaymentsConnect,
+				Plans:          repos.Membership,
 				Enabled:        cfg.Stripe.InvoicePaymentsEnabled,
 			})
 			if err != nil {
