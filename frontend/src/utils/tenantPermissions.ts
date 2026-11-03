@@ -108,6 +108,17 @@ export function hasTenantPermission(
   return name === null || !ROLES_WITHOUT_MANAGE.has(name);
 }
 
+/**
+ * Whether the caller works in the field only (T173): they see neither every
+ * job nor money (technicians), so they land on My day instead of the
+ * office dashboard.
+ */
+export function isFieldUser(can: (permission: string) => boolean): boolean {
+  return (
+    !can(APP_PERMISSIONS.jobsViewAll) && !can(APP_PERMISSIONS.invoicesRead)
+  );
+}
+
 /** React Query key for the caller's access in one tenant. */
 export const tenantAccessQueryKey = (tenantId: string | null | undefined) =>
   ['tenant-access', tenantId ?? null] as const;

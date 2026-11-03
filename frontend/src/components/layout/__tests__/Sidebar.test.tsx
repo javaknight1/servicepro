@@ -82,6 +82,7 @@ describe('Sidebar (T269)', () => {
     renderAt('/dashboard');
     expect(linkLabels()).toEqual([
       'Dashboard',
+      'My day',
       'Customers & Sites',
       'Agreements',
       'Jobs',
@@ -136,14 +137,19 @@ describe('Sidebar for technicians (T035)', () => {
     });
   });
 
-  it('shows only Dashboard and Jobs from the permission list', async () => {
+  // T173: technicians land on My day; the office dashboard isn't theirs.
+  it('shows only My day and Jobs from the permission list', async () => {
     const tech = { ...tenant, role: 'technician' };
     useTenantStore.setState({ currentTenant: tech, tenants: [tech] });
     grant('technician', ['jobs.read', 'jobs.list', 'jobs.update']);
-    renderAt('/dashboard');
+    renderAt('/my-day');
 
     await waitFor(() => expect(tenantApi.getMyAccess).toHaveBeenCalled());
-    expect(linkLabels()).toEqual(['Dashboard', 'Jobs']);
+    expect(linkLabels()).toEqual(['My day', 'Jobs']);
+    expect(screen.getByRole('link', { name: 'My day' })).toHaveAttribute(
+      'aria-current',
+      'page'
+    );
     expect(
       screen.queryByRole('button', { name: /Reports/ })
     ).not.toBeInTheDocument();
@@ -155,7 +161,7 @@ describe('Sidebar for technicians (T035)', () => {
     useTenantStore.setState({ currentTenant: tech, tenants: [tech] });
     renderAt('/dashboard');
 
-    expect(linkLabels()).toEqual(['Dashboard', 'Jobs']);
+    expect(linkLabels()).toEqual(['My day', 'Jobs']);
   });
 
   it('follows the permission list, not the role name', async () => {
@@ -166,7 +172,7 @@ describe('Sidebar for technicians (T035)', () => {
     renderAt('/dashboard');
 
     await waitFor(() =>
-      expect(linkLabels()).toEqual(['Dashboard', 'Jobs', 'Invoices'])
+      expect(linkLabels()).toEqual(['Dashboard', 'My day', 'Jobs', 'Invoices'])
     );
   });
 });

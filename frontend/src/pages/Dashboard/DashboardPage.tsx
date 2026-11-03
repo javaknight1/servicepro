@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { Link, Navigate, useNavigate } from 'react-router';
 import { DashboardLayout } from '@components/layout';
 import {
   Card,
@@ -36,6 +36,7 @@ import { isValidTimeZone } from '@/utils/epoch';
 import { cn } from '@utils/cn';
 import {
   APP_PERMISSIONS,
+  isFieldUser,
   useTenantPermissions,
 } from '@/utils/tenantPermissions';
 import { useInvoiceJob } from '@/hooks/useInvoiceJob';
@@ -133,6 +134,8 @@ export function DashboardPage() {
   // technicians get their own jobs instead (T035).
   const { can } = useTenantPermissions(currentTenant);
   const seesMoney = can(APP_PERMISSIONS.invoicesRead);
+  // Field users (technicians) work from My day instead (T173).
+  const fieldUser = !!currentTenant && isFieldUser(can);
   // "Invoice" on a completed job: the API drafts it, then it opens (T029).
   const {
     invoiceJob,
@@ -224,12 +227,12 @@ export function DashboardPage() {
 
   // Only load dashboard data if user has an organization
   useEffect(() => {
-    if (currentTenant) {
+    if (currentTenant && !fieldUser) {
       loadDashboardData(seesMoney);
     } else {
       setIsLoading(false);
     }
-  }, [currentTenant, seesMoney, loadDashboardData]);
+  }, [currentTenant, fieldUser, seesMoney, loadDashboardData]);
 
   // Show loading while checking tenants
   if (!tenantsChecked || tenantsLoading) {
@@ -243,6 +246,10 @@ export function DashboardPage() {
         </div>
       </DashboardLayout>
     );
+  }
+
+  if (fieldUser) {
+    return <Navigate to="/my-day" replace />;
   }
 
   // Show onboarding if user has no organization

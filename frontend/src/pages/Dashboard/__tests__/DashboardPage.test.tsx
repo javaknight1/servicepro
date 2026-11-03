@@ -146,6 +146,7 @@ const renderPage = () =>
         <Routes>
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/invoices/:id" element={<p>Invoice page</p>} />
+          <Route path="/my-day" element={<p>My day page</p>} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>
@@ -346,11 +347,30 @@ describe('DashboardPage for technicians (T035)', () => {
         1
       )
     );
-    tenant.role = 'technician';
-    grant('technician', ['jobs.read', 'jobs.list', 'jobs.update']);
   });
 
-  it('shows their jobs and no money cards, invoice buttons or money requests', async () => {
+  // T173: technicians land on My day instead of the office dashboard.
+  it('sends technicians to My day without loading the dashboard', async () => {
+    tenant.role = 'technician';
+    grant('technician', ['jobs.read', 'jobs.list', 'jobs.update']);
+    try {
+      renderPage();
+      expect(await screen.findByText('My day page')).toBeInTheDocument();
+      expect(jobService.getStats).not.toHaveBeenCalled();
+      expect(jobService.getJobs).not.toHaveBeenCalled();
+      expect(invoiceService.getStats).not.toHaveBeenCalled();
+    } finally {
+      tenant.role = undefined;
+    }
+  });
+
+  // A custom role that sees every job but no money keeps a money-free
+  // dashboard of jobs. (Until its permission list arrives the office
+  // fallback applies to custom role names, so money requests may go out
+  // first; the API refuses them. Technicians never get that far.)
+  it('shows jobs and no money cards or invoice buttons', async () => {
+    tenant.role = 'dispatcher';
+    grant('dispatcher', ['jobs.read', 'jobs.list', 'jobs.view_all']);
     try {
       renderPage();
       expect(await screen.findByText('Your jobs')).toBeInTheDocument();
@@ -373,11 +393,6 @@ describe('DashboardPage for technicians (T035)', () => {
       expect(
         screen.queryByRole('button', { name: /create invoice/i })
       ).not.toBeInTheDocument();
-      expect(invoiceService.getStats).not.toHaveBeenCalled();
-      expect(arAgingService.getBucketSummary).not.toHaveBeenCalled();
-      expect(jobService.getJobs).not.toHaveBeenCalledWith(
-        expect.objectContaining({ status: JobStatus.COMPLETED })
-      );
     } finally {
       tenant.role = undefined;
     }

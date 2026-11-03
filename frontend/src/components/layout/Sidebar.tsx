@@ -9,10 +9,12 @@ import { TenantSwitcher } from '@components/tenants';
 import {
   APP_PERMISSIONS,
   TENANT_PERMISSIONS,
+  isFieldUser,
   useTenantPermissions,
 } from '@/utils/tenantPermissions';
 import {
   LayoutGrid,
+  CalendarCheck,
   Building2,
   Briefcase,
   FileText,
@@ -59,6 +61,15 @@ const baseNavItems: NavItem[] = [
 
 // Items that need an organization to be selected.
 const orgNavItems: NavItem[] = [
+  // The caller's own visits for the day, phone-first (T173): technicians
+  // land here, and anyone else who goes out on jobs can use it too.
+  {
+    label: 'My day',
+    path: '/my-day',
+    icon: CalendarCheck,
+    match: ['/my-day'],
+    permission: APP_PERMISSIONS.jobsList,
+  },
   {
     label: 'Customers & Sites',
     path: '/customers',
@@ -280,8 +291,10 @@ export function Sidebar() {
   const { can } = useTenantPermissions(currentTenant);
   const hasOrganizations = tenants.length > 0;
 
+  // Field users (technicians) land on My day instead of the dashboard (T173).
+  const fieldUser = !!currentTenant && isFieldUser(can);
   const navItems = [
-    ...baseNavItems,
+    ...(fieldUser ? [] : baseNavItems),
     ...(currentTenant
       ? orgNavItems.filter((item) => !item.permission || can(item.permission))
       : []),
