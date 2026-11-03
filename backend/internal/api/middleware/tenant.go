@@ -11,6 +11,7 @@ import (
 
 	"github.com/javaknight1/servicepro/backend/internal/api/apierror"
 	"github.com/javaknight1/servicepro/backend/internal/models"
+	"github.com/javaknight1/servicepro/backend/internal/permissions"
 	"github.com/javaknight1/servicepro/backend/internal/tenancy"
 )
 
@@ -41,9 +42,21 @@ type TenantRepository interface {
 	GetUserTenantMembership(ctx context.Context, userID, tenantID uuid.UUID) (*models.TenantUser, error)
 }
 
+// AccessScopeFunc adds the caller's per-tenant access limits (assigned jobs
+// only, money hidden — see tenancy.WithAssignedJobsOnly) to a request context
+// that already carries the tenant.
+type AccessScopeFunc func(ctx context.Context, userID, tenantID uuid.UUID) (context.Context, error)
+
 // TenantMiddleware handles tenant context for multi-tenancy
 type TenantMiddleware struct {
-	tenantRepo TenantRepository
+	tenantRepo  TenantRepository
+	accessScope AccessScopeFunc
+}
+
+// SetAccessScope makes every tenant-bound request carry the caller's access
+// limits (T035). The server always sets it (routes.setupMiddleware).
+func (tm *TenantMiddleware) SetAccessScope(scope AccessScopeFunc) {
+	tm.accessScope = scope
 }
 
 // NewTenantMiddleware creates a new tenant middleware
@@ -171,8 +184,49 @@ func (tm *TenantMiddleware) bindTenant(c *gin.Context, userID, tenantID uuid.UUI
 	} else {
 		c.Set(TenantRoleLevelKey, 0)
 	}
-	c.Request = c.Request.WithContext(tenancy.WithTenant(ctx, tenantID))
+	scoped := tenancy.WithTenant(ctx, tenantID)
+	if tm.accessScope != nil {
+		scoped, err = tm.accessScope(scoped, userID, tenantID)
+		if err != nil {
+			log.Printf("[TENANT] Failed to resolve access scope for user %s: %v", userID, err)
+			apierror.Internal(c, err, "Failed to verify permissions")
+			return false
+		}
+	}
+	c.Request = c.Request.WithContext(scoped)
 	return true
+}
+
+// TenantPermissionChecker is the per-tenant permission lookup AccessScope uses
+// (*permissions.PermissionChecker).
+type TenantPermissionChecker interface {
+	CheckPermission(ctx context.Context, userID, tenantID uuid.UUID, permissionName string) (bool, error)
+}
+
+// AccessScope derives the caller's access limits from their permissions in
+// the tenant (T035), so roles are never matched by name:
+//   - without jobs.view_all, job queries return only the caller's assigned
+//     jobs (a row filter in the job repository; other jobs are 404);
+//   - without invoices.read, job responses carry no prices, costs or
+//     customer billing rules.
+func AccessScope(checker TenantPermissionChecker) AccessScopeFunc {
+	return func(ctx context.Context, userID, tenantID uuid.UUID) (context.Context, error) {
+		viewAll, err := checker.CheckPermission(ctx, userID, tenantID, permissions.JobsViewAll)
+		if err != nil {
+			return nil, err
+		}
+		if !viewAll {
+			ctx = tenancy.WithAssignedJobsOnly(ctx, userID)
+		}
+		seesMoney, err := checker.CheckPermission(ctx, userID, tenantID, permissions.InvoicesRead)
+		if err != nil {
+			return nil, err
+		}
+		if !seesMoney {
+			ctx = tenancy.WithMoneyHidden(ctx)
+		}
+		return ctx, nil
+	}
 }
 
 // authenticatedUserID returns the user set by RequireAuth or aborts with 401.

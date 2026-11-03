@@ -187,8 +187,8 @@ func (h *JobHandler) GetJobByNumber(c *gin.Context) {
 // @Success 200 {object} models.JobResponse
 // @Failure 400 {object} models.ErrorResponse "Invalid request"
 // @Failure 401 {object} models.ErrorResponse "Unauthorized"
-// @Failure 403 {object} models.ErrorResponse "Forbidden"
-// @Failure 404 {object} models.ErrorResponse "Job not found"
+// @Failure 403 {object} models.ErrorResponse "Forbidden (a caller who can't see money setting costs or tax)"
+// @Failure 404 {object} models.ErrorResponse "Job not found (or not assigned to a technician caller)"
 // @Failure 500 {object} models.ErrorResponse "Internal server error"
 // @Router /api/v1/jobs/{id} [put]
 func (h *JobHandler) UpdateJob(c *gin.Context) {
@@ -565,8 +565,8 @@ func (h *JobHandler) UnassignTechnician(c *gin.Context) {
 // @Success 201 {object} object{message=string}
 // @Failure 400 {object} models.ErrorResponse "Invalid request"
 // @Failure 401 {object} models.ErrorResponse "Unauthorized"
-// @Failure 403 {object} models.ErrorResponse "Forbidden"
-// @Failure 404 {object} models.ErrorResponse "Job not found"
+// @Failure 403 {object} models.ErrorResponse "Forbidden (a caller who can't see money setting a unit cost)"
+// @Failure 404 {object} models.ErrorResponse "Job not found (or not assigned to a technician caller)"
 // @Failure 500 {object} models.ErrorResponse "Internal server error"
 // @Router /api/v1/jobs/{id}/materials [post]
 func (h *JobHandler) AddMaterial(c *gin.Context) {
@@ -827,6 +827,7 @@ func (h *JobHandler) TransitionStatus(c *gin.Context) {
 // @Success 200 {object} models.StatusHistoryResponse
 // @Failure 400 {object} models.ErrorResponse "Invalid request"
 // @Failure 401 {object} models.ErrorResponse "Unauthorized"
+// @Failure 404 {object} models.ErrorResponse "Job not found (or not assigned to a technician caller)"
 // @Failure 500 {object} models.ErrorResponse "Internal server error"
 // @Router /api/v1/jobs/{id}/status-history [get]
 func (h *JobHandler) GetStatusHistory(c *gin.Context) {

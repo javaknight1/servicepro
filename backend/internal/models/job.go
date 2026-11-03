@@ -526,3 +526,21 @@ func (j *Job) ToResponse() JobResponse {
 
 	return response
 }
+
+// HideMoney clears everything about money from the response — prices, costs,
+// tax, totals, material costs, the customer's billing rules (not-to-exceed
+// limit, PO, approver) and the cost-variance warnings — for callers who may
+// not see it (technicians, T035). Customer contact details and the service
+// address stay: the technician needs them to do the job.
+func (r *JobResponse) HideMoney() {
+	r.EstimatedCost, r.ActualCost, r.TaxAmount, r.TotalAmount = 0, 0, 0, 0
+	r.InvoiceID = nil
+	for i := range r.Materials {
+		r.Materials[i].UnitCost = 0
+		r.Materials[i].TotalCost = 0
+	}
+	if r.Customer != nil {
+		r.Customer.BillingRules = BillingRules{}
+	}
+	r.Warnings = nil
+}

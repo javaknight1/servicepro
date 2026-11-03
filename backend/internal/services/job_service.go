@@ -11,6 +11,7 @@ import (
 	apperrors "github.com/javaknight1/servicepro/backend/internal/errors"
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/repository"
+	"github.com/javaknight1/servicepro/backend/internal/tenancy"
 	"github.com/javaknight1/servicepro/backend/internal/utils/epoch"
 	"github.com/javaknight1/servicepro/backend/pkg/validators"
 )
@@ -42,6 +43,10 @@ var (
 	// ErrAssigneeNotFound: the user to assign is unknown or not an active
 	// member of the job's tenant (T238; other tenants' users look unknown)
 	ErrAssigneeNotFound = apperrors.NotFound("assignee_not_found", "The specified user is not an active member of this account")
+
+	// ErrJobPricesForbidden: a caller who can't see money (technicians,
+	// T035) tried to set a job's cost, tax or a material's unit cost.
+	ErrJobPricesForbidden = apperrors.Forbidden("forbidden", "You can't change prices or costs on this job")
 )
 
 // requireAssignee returns ErrAssigneeNotFound unless userID is an active
@@ -165,6 +170,25 @@ func (s *JobService) ctx() context.Context {
 	return context.Background()
 }
 
+// respond builds the API response for job; callers who may not see money
+// (technicians, T035) get it without prices, costs or billing rules.
+func (s *JobService) respond(job *models.Job) models.JobResponse {
+	response := job.ToResponse()
+	if tenancy.MoneyHidden(s.ctx()) {
+		response.HideMoney()
+	}
+	return response
+}
+
+// respondAll is respond for a list of jobs.
+func (s *JobService) respondAll(jobs []models.Job) []models.JobResponse {
+	responses := make([]models.JobResponse, len(jobs))
+	for i := range jobs {
+		responses[i] = s.respond(&jobs[i])
+	}
+	return responses
+}
+
 // CreateJob creates a new job with validation
 func (s *JobService) CreateJob(req *models.CreateJobRequest, createdBy uuid.UUID) (*models.JobResponse, error) {
 	// Validate request
@@ -284,7 +308,7 @@ func (s *JobService) CreateJob(req *models.CreateJobRequest, createdBy uuid.UUID
 	// Generate business rule warnings
 	warnings := s.validator.ValidateBusinessRules(createdJob)
 
-	response := createdJob.ToResponse()
+	response := s.respond(createdJob)
 	if len(warnings) > 0 {
 		response.Warnings = warnings
 	}
@@ -307,9 +331,11 @@ func (s *JobService) GetJobByID(id uuid.UUID, userID uuid.UUID, userRole models.
 		return nil, ErrUnauthorized
 	}
 
-	response := job.ToResponse()
-	// An invoiced job names its invoice ("View invoice", T029).
-	if s.db != nil && (job.Status == models.JobStatusInvoiced || job.Status == models.JobStatusPaid) {
+	response := s.respond(job)
+	// An invoiced job names its invoice ("View invoice", T029) — not for
+	// callers who can't see money (technicians, T035).
+	if s.db != nil && !tenancy.MoneyHidden(s.ctx()) &&
+		(job.Status == models.JobStatusInvoiced || job.Status == models.JobStatusPaid) {
 		invoiceID, err := jobInvoiceID(s.db.WithContext(s.ctx()), job)
 		if err != nil {
 			return nil, err
@@ -334,7 +360,7 @@ func (s *JobService) GetJobByJobNumber(jobNumber string, userID uuid.UUID, userR
 		return nil, ErrUnauthorized
 	}
 
-	response := job.ToResponse()
+	response := s.respond(job)
 	return &response, nil
 }
 
@@ -352,6 +378,11 @@ func (s *JobService) UpdateJob(id uuid.UUID, req *models.UpdateJobRequest, userI
 	// Check permissions
 	if err := s.validator.CanUserModifyJob(job, userID, userRole); err != nil {
 		return nil, ErrUnauthorized
+	}
+
+	// Callers who can't see money can't set it either (T035).
+	if tenancy.MoneyHidden(s.ctx()) && (req.EstimatedCost != nil || req.ActualCost != nil || req.TaxAmount != nil) {
+		return nil, ErrJobPricesForbidden
 	}
 
 	// Validate update request
@@ -444,7 +475,7 @@ func (s *JobService) UpdateJob(id uuid.UUID, req *models.UpdateJobRequest, userI
 	// Generate business rule warnings
 	warnings := s.validator.ValidateBusinessRules(updatedJob)
 
-	response := updatedJob.ToResponse()
+	response := s.respond(updatedJob)
 	if len(warnings) > 0 {
 		response.Warnings = warnings
 	}
@@ -488,12 +519,7 @@ func (s *JobService) ListJobs(filter *models.JobListFilter, userID uuid.UUID, us
 		return nil, 0, err
 	}
 
-	responses := make([]models.JobResponse, len(jobs))
-	for i, job := range jobs {
-		responses[i] = job.ToResponse()
-	}
-
-	return responses, total, nil
+	return s.respondAll(jobs), total, nil
 }
 
 // GetCustomerJobs retrieves all jobs for a customer
@@ -503,12 +529,7 @@ func (s *JobService) GetCustomerJobs(customerID uuid.UUID, limit, offset int) ([
 		return nil, 0, err
 	}
 
-	responses := make([]models.JobResponse, len(jobs))
-	for i, job := range jobs {
-		responses[i] = job.ToResponse()
-	}
-
-	return responses, total, nil
+	return s.respondAll(jobs), total, nil
 }
 
 // GetMyJobs retrieves jobs assigned to the current user
@@ -518,12 +539,7 @@ func (s *JobService) GetMyJobs(userID uuid.UUID) ([]models.JobResponse, error) {
 		return nil, err
 	}
 
-	responses := make([]models.JobResponse, len(jobs))
-	for i, job := range jobs {
-		responses[i] = job.ToResponse()
-	}
-
-	return responses, nil
+	return s.respondAll(jobs), nil
 }
 
 // GetScheduledJobs retrieves jobs scheduled within a date range
@@ -533,12 +549,7 @@ func (s *JobService) GetScheduledJobs(start, end int64) ([]models.JobResponse, e
 		return nil, err
 	}
 
-	responses := make([]models.JobResponse, len(jobs))
-	for i, job := range jobs {
-		responses[i] = job.ToResponse()
-	}
-
-	return responses, nil
+	return s.respondAll(jobs), nil
 }
 
 // GetOverdueJobs retrieves overdue jobs
@@ -548,12 +559,7 @@ func (s *JobService) GetOverdueJobs() ([]models.JobResponse, error) {
 		return nil, err
 	}
 
-	responses := make([]models.JobResponse, len(jobs))
-	for i, job := range jobs {
-		responses[i] = job.ToResponse()
-	}
-
-	return responses, nil
+	return s.respondAll(jobs), nil
 }
 
 // AssignTechnician assigns a technician to a job
@@ -637,6 +643,11 @@ func (s *JobService) AddMaterial(jobID uuid.UUID, material *models.JobMaterial, 
 	}
 
 	material.JobID = jobID
+	// Callers who can't see money log quantities only; the office sets the
+	// unit cost (T035).
+	if tenancy.MoneyHidden(s.ctx()) && material.UnitCost != 0 {
+		return ErrJobPricesForbidden
+	}
 
 	// Validate material
 	if err := s.validator.ValidateMaterial(material); err != nil {
@@ -829,7 +840,7 @@ func (s *JobService) TransitionStatus(jobID uuid.UUID, toStatus models.JobStatus
 		if err := models.ValidateTransition(job, toStatus, notes); err != nil {
 			return nil, err
 		}
-		response := job.ToResponse()
+		response := s.respond(job)
 		return &response, nil
 	}
 
@@ -843,7 +854,7 @@ func (s *JobService) TransitionStatus(jobID uuid.UUID, toStatus models.JobStatus
 		return nil, err
 	}
 
-	response := updatedJob.ToResponse()
+	response := s.respond(updatedJob)
 	return &response, nil
 }
 
@@ -855,6 +866,15 @@ func (s *JobService) GetStatusHistory(jobID uuid.UUID, limit, offset int, sortOr
 	}
 	if sortOrder != "asc" && sortOrder != "desc" {
 		sortOrder = "desc"
+	}
+
+	// job_status_transitions has no tenant_id: only read the history of a
+	// job the caller can see (their tenant's; a technician's assigned ones).
+	if _, err := s.jobRepo.GetByID(jobID); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrJobNotFound
+		}
+		return nil, err
 	}
 
 	transitions, total, err := s.jobRepo.GetStatusHistory(jobID, limit, offset, sortOrder)

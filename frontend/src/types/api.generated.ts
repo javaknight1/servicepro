@@ -3671,7 +3671,7 @@ export interface paths {
                         "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
-                /** @description Forbidden */
+                /** @description Forbidden (a caller who can't see money setting costs or tax) */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -3680,7 +3680,7 @@ export interface paths {
                         "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
-                /** @description Job not found */
+                /** @description Job not found (or not assigned to a technician caller) */
                 404: {
                     headers: {
                         [name: string]: unknown;
@@ -4280,7 +4280,7 @@ export interface paths {
                         "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
-                /** @description Forbidden */
+                /** @description Forbidden (a caller who can't see money setting a unit cost) */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -4289,7 +4289,7 @@ export interface paths {
                         "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
                     };
                 };
-                /** @description Job not found */
+                /** @description Job not found (or not assigned to a technician caller) */
                 404: {
                     headers: {
                         [name: string]: unknown;
@@ -4453,6 +4453,15 @@ export interface paths {
                 };
                 /** @description Unauthorized */
                 401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Job not found (or not assigned to a technician caller) */
+                404: {
                     headers: {
                         [name: string]: unknown;
                     };

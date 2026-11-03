@@ -3033,13 +3033,13 @@ const docTemplate = `{
                         }
                     },
                     "403": {
-                        "description": "Forbidden",
+                        "description": "Forbidden (a caller who can't see money setting costs or tax)",
                         "schema": {
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     },
                     "404": {
-                        "description": "Job not found",
+                        "description": "Job not found (or not assigned to a technician caller)",
                         "schema": {
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
@@ -3536,13 +3536,13 @@ const docTemplate = `{
                         }
                     },
                     "403": {
-                        "description": "Forbidden",
+                        "description": "Forbidden (a caller who can't see money setting a unit cost)",
                         "schema": {
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
                     },
                     "404": {
-                        "description": "Job not found",
+                        "description": "Job not found (or not assigned to a technician caller)",
                         "schema": {
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
@@ -3696,6 +3696,12 @@ const docTemplate = `{
                     },
                     "401": {
                         "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Job not found (or not assigned to a technician caller)",
                         "schema": {
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }

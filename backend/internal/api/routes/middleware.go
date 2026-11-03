@@ -49,6 +49,9 @@ func SetupMiddleware(
 
 	// Tenant middleware
 	tenantMW := middleware.NewTenantMiddleware(repos.Tenant)
+	// Assigned-jobs-only and money-hidden limits from the caller's
+	// permissions in the tenant (T035).
+	tenantMW.SetAccessScope(middleware.AccessScope(permChecker))
 
 	// Rate limiters
 	rateLimiter := middleware.NewRateLimiter(redisClient, &cfg.Auth)

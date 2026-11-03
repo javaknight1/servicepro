@@ -14,6 +14,8 @@ func SetupConflictRoutes(router *gin.RouterGroup, cfg *routeconfigs.RouteConfig)
 	conflicts.Use(cfg.Middleware.TenantMW.RequireTenant())
 	{
 		conflicts.POST("/check",
+			// Dispatch tool: reveals every tech's schedule (office only, T035)
+			cfg.Middleware.PermMiddleware.RequirePermission(permissions.JobsViewAll),
 			cfg.Middleware.PermMiddleware.RequirePermission(permissions.JobsRead),
 			cfg.Handlers.Conflict.CheckConflicts)
 	}

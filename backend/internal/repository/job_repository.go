@@ -11,6 +11,7 @@ import (
 	"gorm.io/gorm/clause"
 
 	"github.com/javaknight1/servicepro/backend/internal/models"
+	"github.com/javaknight1/servicepro/backend/internal/tenancy"
 	"github.com/javaknight1/servicepro/backend/internal/utils"
 )
 
@@ -31,6 +32,22 @@ func (r *JobRepository) WithContext(ctx context.Context) JobRepositoryInterface 
 	return &JobRepository{db: r.db.WithContext(ctx)}
 }
 
+// assignedJobsOnly is the row filter for callers limited to their assigned
+// jobs (tenancy.WithAssignedJobsOnly, set from the caller's permissions by the
+// tenant middleware — T035): only jobs with an active assignment of that user.
+const assignedJobsOnly = "jobs.id IN (SELECT ja.job_id FROM job_assignments ja " +
+	"WHERE ja.user_id = ? AND ja.deleted_at IS NULL AND ja.unassigned_at IS NULL)"
+
+// jobs returns the handle for reading jobs: the tenant plugin scopes it to the
+// caller's tenant, and a caller limited to assigned jobs (technicians) gets
+// the assignment row filter, so other jobs simply don't exist for them (404).
+func (r *JobRepository) jobs() *gorm.DB {
+	if userID, ok := tenancy.AssignedJobsUser(r.db.Statement.Context); ok {
+		return r.db.Where(assignedJobsOnly, userID)
+	}
+	return r.db
+}
+
 // Create creates a new job
 func (r *JobRepository) Create(job *models.Job) error {
 	return r.db.Create(job).Error
@@ -39,7 +56,7 @@ func (r *JobRepository) Create(job *models.Job) error {
 // GetByID retrieves a job by ID with all relationships
 func (r *JobRepository) GetByID(id uuid.UUID) (*models.Job, error) {
 	var job models.Job
-	err := r.db.
+	err := r.jobs().
 		Preload("Customer").
 		Preload("Assignments").
 		Preload("Assignments.User").
@@ -57,7 +74,7 @@ func (r *JobRepository) GetByID(id uuid.UUID) (*models.Job, error) {
 // GetByJobNumber retrieves a job by job number
 func (r *JobRepository) GetByJobNumber(jobNumber string) (*models.Job, error) {
 	var job models.Job
-	err := r.db.
+	err := r.jobs().
 		Preload("Customer").
 		Preload("Assignments").
 		Preload("Assignments.User").
@@ -87,7 +104,7 @@ func (r *JobRepository) List(filter *models.JobListFilter) ([]models.Job, int64,
 	var jobs []models.Job
 	var total int64
 
-	query := r.db.Model(&models.Job{})
+	query := r.jobs().Model(&models.Job{})
 
 	// Apply filters
 	if filter.CustomerID != nil {
@@ -165,7 +182,7 @@ func (r *JobRepository) GetByCustomer(customerID uuid.UUID, limit, offset int) (
 	var jobs []models.Job
 	var total int64
 
-	query := r.db.Model(&models.Job{}).Where("customer_id = ?", customerID)
+	query := r.jobs().Model(&models.Job{}).Where("customer_id = ?", customerID)
 
 	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
@@ -186,7 +203,7 @@ func (r *JobRepository) GetByCustomer(customerID uuid.UUID, limit, offset int) (
 // GetByStatus retrieves jobs by status
 func (r *JobRepository) GetByStatus(status models.JobStatus) ([]models.Job, error) {
 	var jobs []models.Job
-	err := r.db.
+	err := r.jobs().
 		Where("status = ?", status).
 		Preload("Customer").
 		Preload("Assignments").
@@ -217,7 +234,7 @@ func (r *JobRepository) GetByAssignedUser(userID uuid.UUID) ([]models.Job, error
 // GetScheduledJobs retrieves jobs scheduled within a date range
 func (r *JobRepository) GetScheduledJobs(start, end int64) ([]models.Job, error) {
 	var jobs []models.Job
-	err := r.db.
+	err := r.jobs().
 		Where("scheduled_start_at BETWEEN ? AND ?", start, end).
 		Where("status IN ?", []models.JobStatus{
 			models.JobStatusScheduled,
@@ -235,7 +252,7 @@ func (r *JobRepository) GetScheduledJobs(start, end int64) ([]models.Job, error)
 // GetJobsByTechnicianAndDateRange finds jobs assigned to a technician that overlap a time range
 func (r *JobRepository) GetJobsByTechnicianAndDateRange(techID uuid.UUID, start, end int64) ([]models.Job, error) {
 	var jobs []models.Job
-	err := r.db.
+	err := r.jobs().
 		Joins("JOIN job_assignments ON job_assignments.job_id = jobs.id AND job_assignments.unassigned_at IS NULL").
 		Where("job_assignments.user_id = ?", techID).
 		Where("jobs.scheduled_start_at < ? AND jobs.scheduled_end_at > ?", end, start).
@@ -253,7 +270,7 @@ func (r *JobRepository) GetOverdueJobs() ([]models.Job, error) {
 	var jobs []models.Job
 	now := epoch.NowEpoch()
 
-	err := r.db.
+	err := r.jobs().
 		Where("scheduled_end_at < ?", now).
 		Where("status IN ?", []models.JobStatus{
 			models.JobStatusScheduled,
@@ -272,7 +289,7 @@ func (r *JobRepository) GetOverdueJobs() ([]models.Job, error) {
 // GetJobsRequiringFollowUp retrieves jobs requiring follow-up
 func (r *JobRepository) GetJobsRequiringFollowUp() ([]models.Job, error) {
 	var jobs []models.Job
-	err := r.db.
+	err := r.jobs().
 		Where("requires_follow_up = ?", true).
 		Where("follow_up_date IS NOT NULL").
 		Preload("Customer").
@@ -307,7 +324,7 @@ func (r *JobRepository) IsActiveTenantMember(tenantID, userID uuid.UUID) (bool, 
 // another tenant's user).
 func (r *JobRepository) AddAssignment(assignment *models.JobAssignment) error {
 	var job models.Job
-	if err := r.db.Select("id", "tenant_id").Where("id = ?", assignment.JobID).Take(&job).Error; err != nil {
+	if err := r.jobs().Select("id", "tenant_id").Where("id = ?", assignment.JobID).Take(&job).Error; err != nil {
 		return err
 	}
 	ok, err := r.IsActiveTenantMember(job.TenantID, assignment.UserID)
@@ -389,7 +406,7 @@ func (r *JobRepository) GetJobStats() (*models.JobStats, error) {
 		Status string
 		Count  int64
 	}
-	if err := r.db.Model(&models.Job{}).
+	if err := r.jobs().Model(&models.Job{}).
 		Select("status, COUNT(*) as count").
 		Group("status").
 		Scan(&statusCounts).Error; err != nil {

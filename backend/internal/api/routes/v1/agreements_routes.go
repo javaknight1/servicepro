@@ -13,6 +13,9 @@ func SetupAgreementRoutes(router *gin.RouterGroup, cfg *routeconfigs.RouteConfig
 	agreements := router.Group("/agreements")
 	agreements.Use(cfg.Middleware.PermMiddleware.RequireAuth())
 	agreements.Use(cfg.Middleware.TenantMW.RequireTenant())
+	// Agreements carry prices and drive the office schedule: office staff
+	// only (technicians lack jobs.view_all, T035).
+	agreements.Use(cfg.Middleware.PermMiddleware.RequirePermission(permissions.JobsViewAll))
 	perm := cfg.Middleware.PermMiddleware.RequirePermission
 	h := cfg.Handlers.Agreement
 	{

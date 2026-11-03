@@ -51,6 +51,23 @@ const (
 	JobsDelete = "jobs.delete"
 	JobsList   = "jobs.list"
 	JobsAssign = "jobs.assign"
+	// JobsViewAll lets the caller see and work on every job in the tenant
+	// (office staff). Without it the job repository only returns jobs the
+	// caller is assigned to (technicians, T035), and office-only job tools
+	// (agreements, approvals, dispatch conflict checks, other techs'
+	// workload) are refused.
+	JobsViewAll = "jobs.view_all"
+)
+
+// Built-in role names (roles are global rows; a tenant membership points at one).
+const (
+	RoleSuperAdmin = "super_admin"
+	RoleAdmin      = "admin"
+	RoleManager    = "manager"
+	RoleUser       = "user"
+	RoleGuest      = "guest"
+	// RoleTechnician is a field worker (T035): their assigned jobs only, no money.
+	RoleTechnician = "technician"
 )
 
 // Quote permissions
@@ -176,6 +193,7 @@ func AllPermissions() []PermissionDefinition {
 		{JobsDelete, "Delete jobs", ResourceJobs, ActionDelete},
 		{JobsList, "List all jobs", ResourceJobs, ActionList},
 		{JobsAssign, "Assign technicians to jobs", ResourceJobs, ActionAssign},
+		{JobsViewAll, "View and manage every job, not only assigned ones", ResourceJobs, ActionView},
 
 		// Quotes
 		{QuotesCreate, "Create new quotes", ResourceQuotes, ActionCreate},
@@ -262,11 +280,11 @@ type RolePermissions struct {
 func DefaultRolePermissions() []RolePermissions {
 	return []RolePermissions{
 		{
-			RoleName: "super_admin",
+			RoleName: RoleSuperAdmin,
 			Permissions: []string{
 				// All permissions
 				CustomersCreate, CustomersRead, CustomersUpdate, CustomersDelete, CustomersList,
-				JobsCreate, JobsRead, JobsUpdate, JobsDelete, JobsList, JobsAssign,
+				JobsCreate, JobsRead, JobsUpdate, JobsDelete, JobsList, JobsAssign, JobsViewAll,
 				QuotesCreate, QuotesRead, QuotesUpdate, QuotesDelete, QuotesList, QuotesApprove,
 				InvoicesCreate, InvoicesRead, InvoicesUpdate, InvoicesDelete, InvoicesList, InvoicesExecute,
 				PaymentsCreate, PaymentsRead, PaymentsList, PaymentsRefund,
@@ -282,11 +300,11 @@ func DefaultRolePermissions() []RolePermissions {
 			},
 		},
 		{
-			RoleName: "admin",
+			RoleName: RoleAdmin,
 			Permissions: []string{
 				// All except tenant deletion and some role management
 				CustomersCreate, CustomersRead, CustomersUpdate, CustomersDelete, CustomersList,
-				JobsCreate, JobsRead, JobsUpdate, JobsDelete, JobsList, JobsAssign,
+				JobsCreate, JobsRead, JobsUpdate, JobsDelete, JobsList, JobsAssign, JobsViewAll,
 				QuotesCreate, QuotesRead, QuotesUpdate, QuotesDelete, QuotesList, QuotesApprove,
 				InvoicesCreate, InvoicesRead, InvoicesUpdate, InvoicesDelete, InvoicesList, InvoicesExecute,
 				PaymentsCreate, PaymentsRead, PaymentsList, PaymentsRefund,
@@ -302,11 +320,11 @@ func DefaultRolePermissions() []RolePermissions {
 			},
 		},
 		{
-			RoleName: "manager",
+			RoleName: RoleManager,
 			Permissions: []string{
 				// CRUD on business resources, reports view
 				CustomersCreate, CustomersRead, CustomersUpdate, CustomersList,
-				JobsCreate, JobsRead, JobsUpdate, JobsList, JobsAssign,
+				JobsCreate, JobsRead, JobsUpdate, JobsList, JobsAssign, JobsViewAll,
 				QuotesCreate, QuotesRead, QuotesUpdate, QuotesList, QuotesApprove,
 				InvoicesCreate, InvoicesRead, InvoicesUpdate, InvoicesList, InvoicesExecute,
 				PaymentsCreate, PaymentsRead, PaymentsList,
@@ -321,11 +339,11 @@ func DefaultRolePermissions() []RolePermissions {
 			},
 		},
 		{
-			RoleName: "user",
+			RoleName: RoleUser,
 			Permissions: []string{
 				// Standard user access
 				CustomersRead, CustomersList,
-				JobsRead, JobsList,
+				JobsRead, JobsList, JobsViewAll,
 				QuotesRead, QuotesList,
 				InvoicesRead, InvoicesList,
 				PaymentsRead, PaymentsList,
@@ -340,17 +358,26 @@ func DefaultRolePermissions() []RolePermissions {
 			},
 		},
 		{
-			RoleName: "guest",
+			RoleName: RoleGuest,
 			Permissions: []string{
 				// Minimal read-only access
 				CustomersRead,
-				JobsRead,
+				JobsRead, JobsViewAll,
 				QuotesRead,
 				InvoicesRead,
 				PaymentTermsRead,
 				TaxRatesRead,
 				TenantsRead,
 				SettingsRead,
+			},
+		},
+		{
+			RoleName: RoleTechnician,
+			Permissions: []string{
+				// Their assigned jobs only (no JobsViewAll): view them and
+				// update status, notes and materials. No customers, quotes,
+				// invoices, payments, reports or settings (T035).
+				JobsRead, JobsList, JobsUpdate,
 			},
 		},
 	}
@@ -360,7 +387,7 @@ func DefaultRolePermissions() []RolePermissions {
 func PermissionsByResource() map[string][]string {
 	return map[string][]string{
 		ResourceCustomers:    {CustomersCreate, CustomersRead, CustomersUpdate, CustomersDelete, CustomersList},
-		ResourceJobs:         {JobsCreate, JobsRead, JobsUpdate, JobsDelete, JobsList, JobsAssign},
+		ResourceJobs:         {JobsCreate, JobsRead, JobsUpdate, JobsDelete, JobsList, JobsAssign, JobsViewAll},
 		ResourceQuotes:       {QuotesCreate, QuotesRead, QuotesUpdate, QuotesDelete, QuotesList, QuotesApprove},
 		ResourceInvoices:     {InvoicesCreate, InvoicesRead, InvoicesUpdate, InvoicesDelete, InvoicesList, InvoicesExecute},
 		ResourcePayments:     {PaymentsCreate, PaymentsRead, PaymentsList, PaymentsRefund},

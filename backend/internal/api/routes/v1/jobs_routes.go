@@ -42,8 +42,10 @@ func SetupJobRoutes(router *gin.RouterGroup, cfg *routeconfigs.RouteConfig) {
 			cfg.Middleware.PermMiddleware.RequirePermission(permissions.JobsList),
 			cfg.Handlers.Job.GetJobStats)
 
-		// Get technician workload - requires "jobs.list" permission
+		// Get technician workload - requires "jobs.list" and, since it covers
+		// any technician, "jobs.view_all" (office only, T035)
 		jobs.GET("/technicians/:id/workload",
+			cfg.Middleware.PermMiddleware.RequirePermission(permissions.JobsViewAll),
 			cfg.Middleware.PermMiddleware.RequirePermission(permissions.JobsList),
 			cfg.Handlers.Job.GetTechnicianWorkload)
 
@@ -73,11 +75,14 @@ func SetupJobRoutes(router *gin.RouterGroup, cfg *routeconfigs.RouteConfig) {
 			cfg.Handlers.Job.TransitionStatus)
 
 		// Approver OKs for extra work over the customer's not-to-exceed
-		// limit (T187): recorded by office staff
+		// limit (T187): recorded by office staff. Approvals carry amounts, so
+		// both need "jobs.view_all" (technicians lack it, T035).
 		jobs.POST("/:id/approval",
+			cfg.Middleware.PermMiddleware.RequirePermission(permissions.JobsViewAll),
 			cfg.Middleware.PermMiddleware.RequirePermission(permissions.JobsUpdate),
 			cfg.Handlers.JobApproval.RecordApproval)
 		jobs.GET("/:id/approvals",
+			cfg.Middleware.PermMiddleware.RequirePermission(permissions.JobsViewAll),
 			cfg.Middleware.PermMiddleware.RequirePermission(permissions.JobsRead),
 			cfg.Handlers.JobApproval.ListApprovals)
 

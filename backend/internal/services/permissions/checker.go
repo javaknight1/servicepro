@@ -19,9 +19,11 @@ import (
 
 const (
 	// Cache key prefix for user permissions. Full key:
-	//   permissions:user:<userID>:tenant:<tenantID>
+	//   permissions:v2:user:<userID>:tenant:<tenantID>
 	// Permissions are evaluated per tenant (F-2), so the cache must be too.
-	permissionsCachePrefix = "permissions:user:"
+	// v2 (T035): lists cached before jobs.view_all existed would scope office
+	// staff to their assigned jobs until they expired.
+	permissionsCachePrefix = "permissions:v2:user:"
 	// Cache TTL for permissions (5 minutes)
 	permissionsCacheTTL = 5 * time.Minute
 )
