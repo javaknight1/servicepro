@@ -28,7 +28,7 @@ func NewCustomerHandler(customerRepo repository.CustomerRepositoryInterface) *Cu
 
 // CreateCustomer handles POST /api/v1/customers
 // @Summary Create a new customer
-// @Description Create a new customer with the provided information
+// @Description Create a new customer with the provided information. consolidated_billing and po_required default to the tenant's onboarding defaults when omitted.
 // @Tags customers
 // @Accept json
 // @Produce json
@@ -99,11 +99,13 @@ func (h *CustomerHandler) CreateCustomer(c *gin.Context) {
 	if req.MarketingConsent != nil {
 		customer.MarketingConsent = *req.MarketingConsent
 	}
-	// Billing rules: PO, approver, not-to-exceed, consolidated billing (T187)
+	// Billing rules: PO, approver, not-to-exceed, consolidated billing (T187).
+	// Rules the request leaves out come from the tenant's defaults (T235).
 	if err := req.Apply(&customer.BillingRules); err != nil {
 		apierror.Respond(c, err, "Invalid billing rules")
 		return
 	}
+	customer.InheritTenantBillingDefaults(&req.BillingRulesRequest)
 
 	// Set default preferred contact method if not provided
 	if customer.PreferredContactMethod == "" {

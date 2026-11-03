@@ -76,6 +76,40 @@ type Customer struct {
 	CreatedAt time.Time      `json:"created_at"`
 	UpdatedAt time.Time      `json:"updated_at"`
 	DeletedAt gorm.DeletedAt `json:"-" gorm:"index"`
+
+	// Billing rules to take from the tenant's defaults on insert (T235);
+	// unexported, so GORM never maps them.
+	inheritConsolidated bool
+	inheritPORequired   bool
+}
+
+// InheritTenantBillingDefaults makes the customer, when inserted, take the
+// tenant's default consolidated-billing and PO-required rules
+// (TenantSettings.DefaultConsolidatedBilling / DefaultPORequired, set in
+// onboarding) for each rule the create request left out (T235).
+func (c *Customer) InheritTenantBillingDefaults(r *BillingRulesRequest) {
+	c.inheritConsolidated = r == nil || r.ConsolidatedBilling == nil
+	c.inheritPORequired = r == nil || r.PORequired == nil
+}
+
+// BeforeCreate applies the tenant's billing defaults requested with
+// InheritTenantBillingDefaults, read in the insert's transaction.
+func (c *Customer) BeforeCreate(tx *gorm.DB) error {
+	if !c.inheritConsolidated && !c.inheritPORequired {
+		return nil
+	}
+	tenantID := documentTenantID(tx, c.TenantID)
+	if tenantID == uuid.Nil {
+		return nil
+	}
+	settings := TenantSettingsInTx(tx.Session(&gorm.Session{NewDB: true}), tenantID)
+	if c.inheritConsolidated {
+		c.ConsolidatedBilling = settings.DefaultConsolidatedBilling
+	}
+	if c.inheritPORequired {
+		c.PORequired = settings.DefaultPORequired
+	}
+	return nil
 }
 
 // BillingRules are a customer's purchase-order, approval and invoicing

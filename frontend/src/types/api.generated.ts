@@ -1494,7 +1494,7 @@ export interface paths {
         put?: never;
         /**
          * Create a new customer
-         * @description Create a new customer with the provided information
+         * @description Create a new customer with the provided information. consolidated_billing and po_required default to the tenant's onboarding defaults when omitted.
          */
         post: {
             parameters: {
