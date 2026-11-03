@@ -90,6 +90,15 @@ owner).
     replacement is chosen.
 14. **D14 — Production data safety.** Move Neon to the Launch plan and activate nightly R2 backups with a restore drill
     (T209) before the first paying tenant.
+15. **D15 — Plan catalog and trial (Proposed 2026-11-03, for T210; Rob to confirm or overturn).** Solo $39/mo (1 user),
+    Team $99/mo (unlimited users), Pro $199/mo (unlimited users; multi-entity later); annual = 10× monthly ($390 /
+    $990 / $1,990, two months free). New tenants start a 30-day Team trial with no card; when it ends they pick a
+    plan, with a banner and no lockout during the invite-only beta (enforcement is a pre-launch task). Legacy Free and
+    Basic tiers are disabled for new sign-ups and existing subscriptions keep their locked-in price; the old Pro row
+    becomes the new Pro. Founding offer: Team at $59/mo for life via a Stripe coupon ($40 off, forever, max 25
+    redemptions), applied at checkout while invoice payments are on and redemptions remain. Platform fees are the D10
+    fees on every plan, mapped per plan in code so they can differ later. Stripe Products/Prices are found by
+    `lookup_key` (created idempotently by a script in test mode first), replacing the `STRIPE_PRICE_*` env vars.
 
 ---
 
