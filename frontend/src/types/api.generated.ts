@@ -201,6 +201,510 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/agreements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List service agreements
+         * @description The account's service agreements, newest first; filter by customer, site or status.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Customer ID */
+                    customer_id?: string;
+                    /** @description Site ID */
+                    site_id?: string;
+                    /** @description active or paused */
+                    status?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.AgreementListResponse"];
+                    };
+                };
+                /** @description Invalid filter */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Internal server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * Create a service agreement
+         * @description Recurring work at one of the customer's sites: frequency (weekdays, weekly on given weekdays, N times a week, monthly on a day), start/end dates, local visit start time, price per month or visit, optional technician. Visits are generated as scheduled jobs up to 14 days ahead.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            /** @description Agreement */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.CreateAgreementRequest"];
+                };
+            };
+            responses: {
+                /** @description Created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.AgreementResponse"];
+                    };
+                };
+                /** @description Invalid request, or the site isn't the customer's */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Customer or technician not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Internal server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/agreements/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a service agreement */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Agreement ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.AgreementResponse"];
+                    };
+                };
+                /** @description Invalid ID */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Agreement not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Internal server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        /**
+         * Update a service agreement
+         * @description Changes the fields present in the body. Visits already generated (the next 14 days) keep their jobs.
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Agreement ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            /** @description Fields to change */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.UpdateAgreementRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.AgreementResponse"];
+                    };
+                };
+                /** @description Invalid request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Agreement or technician not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Internal server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /**
+         * Delete a service agreement
+         * @description Soft-deletes the agreement; jobs it generated stay.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Agreement ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Deleted */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Invalid ID */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Agreement not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Internal server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/agreements/{id}/pause": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Pause a service agreement
+         * @description No new visits are generated while paused; jobs already generated stay.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Agreement ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.AgreementResponse"];
+                    };
+                };
+                /** @description Invalid ID */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Agreement not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Internal server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/agreements/{id}/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Preview an agreement's next visits
+         * @description The visit dates and start/end times over the next days (default 14, at most 92), in the tenant's time zone. Empty when paused.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Days ahead (default 14, max 92) */
+                    days?: number;
+                };
+                header?: never;
+                path: {
+                    /** @description Agreement ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.AgreementPreviewResponse"];
+                    };
+                };
+                /** @description Invalid ID or days */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Agreement not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Internal server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/agreements/{id}/resume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Resume a paused service agreement
+         * @description Visits are generated again from the next generator run.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Agreement ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.AgreementResponse"];
+                    };
+                };
+                /** @description Invalid ID */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Agreement not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Internal server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/login": {
         parameters: {
             query?: never;
@@ -6410,6 +6914,75 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/internal/jobs/agreement-visits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run agreement visits job
+         * @description Internal job endpoint (auth: X-Internal-Jobs-Token header = INTERNAL_JOBS_SECRET; 404 when the secret is unset). Creates a scheduled job for every visit of every active service agreement over the next 14 days (each tenant's local dates). Idempotent: each (agreement, date) is claimed once. Mounted at the server root (/internal/jobs/agreement-visits), outside /api.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description Internal jobs secret */
+                    "X-Internal-Jobs-Token": string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_api_handlers.AgreementVisitsJobResponse"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Internal Server Error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/internal/jobs/imports": {
         parameters: {
             query?: never;
@@ -11387,6 +11960,65 @@ export interface components {
         /** @enum {string} */
         "github_com_javaknight1_servicepro_backend_internal_models.AgingBucket": "current" | "1-30" | "31-60" | "61-90" | "90+";
         /** @enum {string} */
+        "github_com_javaknight1_servicepro_backend_internal_models.AgreementFrequency": "weekdays" | "weekly" | "times_per_week" | "monthly";
+        "github_com_javaknight1_servicepro_backend_internal_models.AgreementListResponse": {
+            agreements?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.AgreementResponse"][];
+            total?: number;
+        };
+        "github_com_javaknight1_servicepro_backend_internal_models.AgreementPreviewResponse": {
+            agreement_id?: string;
+            /** @example America/New_York */
+            timezone?: string;
+            visits?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.AgreementVisitPreview"][];
+        };
+        "github_com_javaknight1_servicepro_backend_internal_models.AgreementResponse": {
+            assigned_technician_id?: string;
+            billing_period?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.BillingPeriod"];
+            created_at?: string;
+            customer_id?: string;
+            day_of_month?: number;
+            /** @example 2027-10-31 */
+            end_date?: string;
+            frequency?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.AgreementFrequency"];
+            id?: string;
+            job_type?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.JobType"];
+            notes?: string;
+            /** @example 2400.00 */
+            price_per_period?: string;
+            site_id?: string;
+            /** @example 2026-11-02 */
+            start_date?: string;
+            status?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.AgreementStatus"];
+            times_per_week?: number;
+            title?: string;
+            updated_at?: string;
+            visit_duration_minutes?: number;
+            /** @example 18:00 */
+            visit_start_time?: string;
+            weekdays?: number[];
+        };
+        "github_com_javaknight1_servicepro_backend_internal_models.AgreementScheduleInput": {
+            /** @description DayOfMonth (1–31): required for monthly. */
+            day_of_month?: number;
+            /** @enum {unknown} */
+            frequency: "weekdays" | "weekly" | "times_per_week" | "monthly";
+            /** @description TimesPerWeek (1–7): required for times_per_week. */
+            times_per_week?: number;
+            /**
+             * @description Weekdays (0 = Sunday … 6 = Saturday): required for weekly; optional
+             *     for times_per_week (exactly times_per_week of them).
+             */
+            weekdays?: number[];
+        };
+        /** @enum {string} */
+        "github_com_javaknight1_servicepro_backend_internal_models.AgreementStatus": "active" | "paused";
+        "github_com_javaknight1_servicepro_backend_internal_models.AgreementVisitPreview": {
+            /** @example 2026-11-02 */
+            date?: string;
+            ends_at?: string;
+            starts_at?: string;
+        };
+        /** @enum {string} */
         "github_com_javaknight1_servicepro_backend_internal_models.BillingCycle": "monthly" | "annual";
         "github_com_javaknight1_servicepro_backend_internal_models.BillingEventResponse": {
             amount_cents?: number;
@@ -11400,6 +12032,8 @@ export interface components {
         };
         /** @enum {string} */
         "github_com_javaknight1_servicepro_backend_internal_models.BillingEventStatus": "succeeded" | "failed" | "pending";
+        /** @enum {string} */
+        "github_com_javaknight1_servicepro_backend_internal_models.BillingPeriod": "month" | "visit";
         "github_com_javaknight1_servicepro_backend_internal_models.CSVExportOptions": {
             /** @description Include UTF-8 BOM for Excel compatibility */
             bom?: boolean;
@@ -11414,6 +12048,47 @@ export interface components {
         "github_com_javaknight1_servicepro_backend_internal_models.ConflictSeverity": "low" | "medium" | "high" | "critical";
         /** @enum {string} */
         "github_com_javaknight1_servicepro_backend_internal_models.ConflictType": "technician_overlap" | "location_overlap" | "equipment_overlap" | "time_overlap" | "business_hours" | "workload_excess";
+        "github_com_javaknight1_servicepro_backend_internal_models.CreateAgreementRequest": {
+            assigned_technician_id?: string;
+            /**
+             * @description BillingPeriod: what the price is for — "month" (default) or "visit".
+             * @enum {unknown}
+             */
+            billing_period?: "month" | "visit";
+            customer_id: string;
+            /** @description DayOfMonth (1–31): required for monthly. */
+            day_of_month?: number;
+            /** @example 2027-10-31 */
+            end_date?: string;
+            /** @enum {unknown} */
+            frequency: "weekdays" | "weekly" | "times_per_week" | "monthly";
+            /** @enum {unknown} */
+            job_type?: "installation" | "maintenance" | "repair" | "inspection" | "emergency";
+            notes?: string;
+            /** @example 2400.00 */
+            price_per_period?: string;
+            site_id: string;
+            /**
+             * @description StartDate / EndDate are YYYY-MM-DD (end optional, inclusive).
+             * @example 2026-11-02
+             */
+            start_date: string;
+            /** @description TimesPerWeek (1–7): required for times_per_week. */
+            times_per_week?: number;
+            title: string;
+            visit_duration_minutes?: number;
+            /**
+             * @description VisitStartTime is the local start time, HH:MM (24-hour) in the
+             *     tenant's time zone. Default 18:00.
+             * @example 18:00
+             */
+            visit_start_time?: string;
+            /**
+             * @description Weekdays (0 = Sunday … 6 = Saturday): required for weekly; optional
+             *     for times_per_week (exactly times_per_week of them).
+             */
+            weekdays?: number[];
+        };
         "github_com_javaknight1_servicepro_backend_internal_models.CreateCustomerRequest": {
             billing_address_city: string;
             billing_address_state: string;
@@ -11935,6 +12610,8 @@ export interface components {
             actual_duration?: number;
             actual_end_at?: number;
             actual_start_at?: number;
+            /** @description set on visits generated by a service agreement (T167) */
+            agreement_id?: string;
             assignments?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.JobAssignment"][];
             completion_notes?: string;
             created_at?: string;
@@ -12076,6 +12753,11 @@ export interface components {
             actual_duration?: number;
             actual_end_at?: number;
             actual_start_at?: number;
+            /**
+             * @description AgreementID is set on visits a service agreement generated (T167);
+             *     jobs without one are extra work (not-to-exceed rule, T187).
+             */
+            agreement_id?: string;
             /**
              * @description AllowedTransitions are the statuses POST /jobs/{id}/transition accepts
              *     next, from the job state machine (job_status.go). The UI's status
@@ -12715,6 +13397,28 @@ export interface components {
         };
         /** @enum {string} */
         "github_com_javaknight1_servicepro_backend_internal_models.TransactionType": "payment" | "refund" | "chargeback" | "adjustment";
+        "github_com_javaknight1_servicepro_backend_internal_models.UpdateAgreementRequest": {
+            assigned_technician_id?: string;
+            /** @enum {unknown} */
+            billing_period?: "month" | "visit";
+            clear_end_date?: boolean;
+            clear_technician?: boolean;
+            /** @example 2027-10-31 */
+            end_date?: string;
+            /** @enum {unknown} */
+            job_type?: "installation" | "maintenance" | "repair" | "inspection" | "emergency";
+            notes?: string;
+            /** @example 2400.00 */
+            price_per_period?: string;
+            /** @description Schedule replaces the whole frequency when present. */
+            schedule?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.AgreementScheduleInput"];
+            /** @example 2026-11-02 */
+            start_date?: string;
+            title?: string;
+            visit_duration_minutes?: number;
+            /** @example 18:00 */
+            visit_start_time?: string;
+        };
         "github_com_javaknight1_servicepro_backend_internal_models.UpdateCustomerRequest": {
             billing_address_city?: string;
             billing_address_state?: string;
@@ -12919,6 +13623,18 @@ export interface components {
             time?: string;
             /** @description Valid is true if Time is not NULL */
             valid?: boolean;
+        };
+        "internal_api_handlers.AgreementVisitsJobResponse": {
+            /** @example 31 */
+            agreements?: number;
+            /** @example 12 */
+            created?: number;
+            /** @example 40 */
+            duration_ms?: number;
+            /** @example 0 */
+            failed?: number;
+            /** @example agreement-visits */
+            job?: string;
         };
         "internal_api_handlers.CalculateDiscountRequest": {
             invoice_amount: number;

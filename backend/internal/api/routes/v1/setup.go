@@ -16,6 +16,7 @@ func Setup(router *gin.RouterGroup, cfg *routeconfigs.RouteConfig) {
 	SetupUserRoutes(router, cfg)
 	SetupCustomerRoutes(router, cfg)
 	SetupJobRoutes(router, cfg)
+	SetupAgreementRoutes(router, cfg)
 	SetupQuoteRoutes(router, cfg)
 	SetupInvoiceRoutes(router, cfg)
 	SetupReportRoutes(router, cfg)

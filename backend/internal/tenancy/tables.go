@@ -30,6 +30,8 @@ func DefaultTables() map[string]Mode {
 		"stripe_connected_accounts": Owned,
 		"service_locations":         Owned, // T186, RLS policy in migration 000010
 		"job_approvals":             Owned, // T187, RLS policy in migration 000011
+		"service_agreements":        Owned, // T167, RLS policy in migration 000012
+		"agreement_visits":          Owned, // T167, RLS policy in migration 000012
 		"payment_terms":             SharedRead,
 		"tax_rates":                 SharedRead,
 		"invoice_templates":         SharedRead,

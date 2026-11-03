@@ -94,9 +94,13 @@ var siteColumns = []string{
 
 // Update saves the site's editable columns.
 func (r *SiteRepository) Update(ctx context.Context, tenantID uuid.UUID, site *models.Site) error {
+	// The caller's tenant, never the value's: another tenant's row is then
+	// simply not found.
+	cp := *site
+	cp.TenantID = tenantID
 	res := r.db.WithContext(ctx).Model(&models.Site{}).
 		Where("tenant_id = ? AND customer_id = ? AND id = ?", tenantID, site.CustomerID, site.ID).
-		Select(siteColumns).Updates(site)
+		Select(siteColumns).Updates(&cp)
 	if res.Error != nil {
 		return res.Error
 	}

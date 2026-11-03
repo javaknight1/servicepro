@@ -106,6 +106,10 @@ func setupInternalJobRoutes(router *gin.Engine, routeCfg *RouteConfig, cfg *conf
 			return services.MarkOverdueInvoices(ctx, db, now)
 		}))
 		endpoints += ", /internal/jobs/invoice-overdue"
+		group.POST("/agreement-visits", handlers.RunAgreementVisits(func(ctx context.Context, now time.Time) (*services.AgreementVisitsResult, error) {
+			return services.GenerateAgreementVisits(ctx, db, now)
+		}))
+		endpoints += ", /internal/jobs/agreement-visits"
 	}
 	if routeCfg.Services != nil && routeCfg.Services.Import != nil {
 		group.POST("/imports", handlers.RunImports(routeCfg.Services.Import.ProcessPending))

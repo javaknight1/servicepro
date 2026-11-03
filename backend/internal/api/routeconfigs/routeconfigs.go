@@ -59,6 +59,8 @@ type Repositories struct {
 	Sites repository.SiteRepositoryInterface
 	// JobApprovals are approvers' OKs for extra work (T187).
 	JobApprovals repository.JobApprovalRepositoryInterface
+	// Agreements are recurring service agreements (T167).
+	Agreements repository.AgreementRepositoryInterface
 }
 
 // Services holds all service instances
@@ -97,6 +99,7 @@ type Services struct {
 	PaymentReminder *services.PaymentReminderService
 	Sites           *services.SiteService
 	JobApprovals    *services.JobApprovalService
+	Agreements      *services.AgreementService
 }
 
 // Middleware holds all middleware instances
@@ -145,4 +148,5 @@ type Handlers struct {
 	NeonAuth          *handlers.NeonAuthHandler
 	Site              *handlers.SiteHandler
 	JobApproval       *handlers.JobApprovalHandler
+	Agreement         *handlers.AgreementHandler
 }

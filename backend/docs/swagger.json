@@ -171,6 +171,437 @@
                 ]
             }
         },
+        "/api/v1/agreements": {
+            "get": {
+                "description": "The account's service agreements, newest first; filter by customer, site or status.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "agreements"
+                ],
+                "summary": "List service agreements",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Customer ID",
+                        "name": "customer_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Site ID",
+                        "name": "site_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "active or paused",
+                        "name": "status",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.AgreementListResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid filter",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "description": "Recurring work at one of the customer's sites: frequency (weekdays, weekly on given weekdays, N times a week, monthly on a day), start/end dates, local visit start time, price per month or visit, optional technician. Visits are generated as scheduled jobs up to 14 days ahead.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "agreements"
+                ],
+                "summary": "Create a service agreement",
+                "parameters": [
+                    {
+                        "description": "Agreement",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.CreateAgreementRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.AgreementResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request, or the site isn't the customer's",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Customer or technician not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/agreements/{id}": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "agreements"
+                ],
+                "summary": "Get a service agreement",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Agreement ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.AgreementResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid ID",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Agreement not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            },
+            "put": {
+                "description": "Changes the fields present in the body. Visits already generated (the next 14 days) keep their jobs.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "agreements"
+                ],
+                "summary": "Update a service agreement",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Agreement ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Fields to change",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.UpdateAgreementRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.AgreementResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Agreement or technician not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "description": "Soft-deletes the agreement; jobs it generated stay.",
+                "tags": [
+                    "agreements"
+                ],
+                "summary": "Delete a service agreement",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Agreement ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Deleted"
+                    },
+                    "400": {
+                        "description": "Invalid ID",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Agreement not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/agreements/{id}/pause": {
+            "post": {
+                "description": "No new visits are generated while paused; jobs already generated stay.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "agreements"
+                ],
+                "summary": "Pause a service agreement",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Agreement ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.AgreementResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid ID",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Agreement not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/agreements/{id}/preview": {
+            "get": {
+                "description": "The visit dates and start/end times over the next days (default 14, at most 92), in the tenant's time zone. Empty when paused.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "agreements"
+                ],
+                "summary": "Preview an agreement's next visits",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Agreement ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Days ahead (default 14, max 92)",
+                        "name": "days",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.AgreementPreviewResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid ID or days",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Agreement not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/agreements/{id}/resume": {
+            "post": {
+                "description": "Visits are generated again from the next generator run.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "agreements"
+                ],
+                "summary": "Resume a paused service agreement",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Agreement ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.AgreementResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid ID",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Agreement not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/v1/auth/login": {
             "post": {
                 "description": "Authenticate user and return JWT tokens",
@@ -5311,6 +5742,53 @@
                 }
             }
         },
+        "/internal/jobs/agreement-visits": {
+            "post": {
+                "description": "Internal job endpoint (auth: X-Internal-Jobs-Token header = INTERNAL_JOBS_SECRET; 404 when the secret is unset). Creates a scheduled job for every visit of every active service agreement over the next 14 days (each tenant's local dates). Idempotent: each (agreement, date) is claimed once. Mounted at the server root (/internal/jobs/agreement-visits), outside /api.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Internal"
+                ],
+                "summary": "Run agreement visits job",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Internal jobs secret",
+                        "name": "X-Internal-Jobs-Token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_api_handlers.AgreementVisitsJobResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/internal/jobs/imports": {
             "post": {
                 "description": "Internal job endpoint (auth: X-Internal-Jobs-Token header = INTERNAL_JOBS_SECRET; 404 when the secret is unset). Runs queued customer CSV imports for every tenant: each job is claimed atomically (pending → processing, FOR UPDATE SKIP LOCKED) before it runs, so overlapping runs never import a job twice; each job imports into its own tenant only. Jobs stuck in processing for 15 minutes are marked failed. Runs up to 20 jobs or 4 minutes per call. Mounted at the server root (/internal/jobs/imports), outside /api.",
@@ -9762,6 +10240,191 @@
                 "AgingBucket90Plus"
             ]
         },
+        "github_com_javaknight1_servicepro_backend_internal_models.AgreementFrequency": {
+            "type": "string",
+            "enum": [
+                "weekdays",
+                "weekly",
+                "times_per_week",
+                "monthly"
+            ],
+            "x-enum-varnames": [
+                "FrequencyWeekdays",
+                "FrequencyWeekly",
+                "FrequencyTimesPerWeek",
+                "FrequencyMonthly"
+            ]
+        },
+        "github_com_javaknight1_servicepro_backend_internal_models.AgreementListResponse": {
+            "type": "object",
+            "properties": {
+                "agreements": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.AgreementResponse"
+                    }
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_javaknight1_servicepro_backend_internal_models.AgreementPreviewResponse": {
+            "type": "object",
+            "properties": {
+                "agreement_id": {
+                    "type": "string"
+                },
+                "timezone": {
+                    "type": "string",
+                    "example": "America/New_York"
+                },
+                "visits": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.AgreementVisitPreview"
+                    }
+                }
+            }
+        },
+        "github_com_javaknight1_servicepro_backend_internal_models.AgreementResponse": {
+            "type": "object",
+            "properties": {
+                "assigned_technician_id": {
+                    "type": "string"
+                },
+                "billing_period": {
+                    "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.BillingPeriod"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "customer_id": {
+                    "type": "string"
+                },
+                "day_of_month": {
+                    "type": "integer"
+                },
+                "end_date": {
+                    "type": "string",
+                    "example": "2027-10-31"
+                },
+                "frequency": {
+                    "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.AgreementFrequency"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "job_type": {
+                    "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.JobType"
+                },
+                "notes": {
+                    "type": "string"
+                },
+                "price_per_period": {
+                    "type": "string",
+                    "example": "2400.00"
+                },
+                "site_id": {
+                    "type": "string"
+                },
+                "start_date": {
+                    "type": "string",
+                    "example": "2026-11-02"
+                },
+                "status": {
+                    "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.AgreementStatus"
+                },
+                "times_per_week": {
+                    "type": "integer"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "visit_duration_minutes": {
+                    "type": "integer"
+                },
+                "visit_start_time": {
+                    "type": "string",
+                    "example": "18:00"
+                },
+                "weekdays": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "github_com_javaknight1_servicepro_backend_internal_models.AgreementScheduleInput": {
+            "type": "object",
+            "required": [
+                "frequency"
+            ],
+            "properties": {
+                "day_of_month": {
+                    "description": "DayOfMonth (1–31): required for monthly.",
+                    "type": "integer",
+                    "maximum": 31,
+                    "minimum": 1
+                },
+                "frequency": {
+                    "enum": [
+                        "weekdays",
+                        "weekly",
+                        "times_per_week",
+                        "monthly"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.AgreementFrequency"
+                        }
+                    ]
+                },
+                "times_per_week": {
+                    "description": "TimesPerWeek (1–7): required for times_per_week.",
+                    "type": "integer",
+                    "maximum": 7,
+                    "minimum": 1
+                },
+                "weekdays": {
+                    "description": "Weekdays (0 = Sunday … 6 = Saturday): required for weekly; optional\nfor times_per_week (exactly times_per_week of them).",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "github_com_javaknight1_servicepro_backend_internal_models.AgreementStatus": {
+            "type": "string",
+            "enum": [
+                "active",
+                "paused"
+            ],
+            "x-enum-varnames": [
+                "AgreementStatusActive",
+                "AgreementStatusPaused"
+            ]
+        },
+        "github_com_javaknight1_servicepro_backend_internal_models.AgreementVisitPreview": {
+            "type": "object",
+            "properties": {
+                "date": {
+                    "type": "string",
+                    "example": "2026-11-02"
+                },
+                "ends_at": {
+                    "type": "string"
+                },
+                "starts_at": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_javaknight1_servicepro_backend_internal_models.BillingCycle": {
             "type": "string",
             "enum": [
@@ -9813,6 +10476,17 @@
                 "BillingEventStatusSucceeded",
                 "BillingEventStatusFailed",
                 "BillingEventStatusPending"
+            ]
+        },
+        "github_com_javaknight1_servicepro_backend_internal_models.BillingPeriod": {
+            "type": "string",
+            "enum": [
+                "month",
+                "visit"
+            ],
+            "x-enum-varnames": [
+                "BillingPeriodMonth",
+                "BillingPeriodVisit"
             ]
         },
         "github_com_javaknight1_servicepro_backend_internal_models.CSVExportOptions": {
@@ -9871,6 +10545,116 @@
                 "ConflictTypeBusinessHours",
                 "ConflictTypeWorkloadExcess"
             ]
+        },
+        "github_com_javaknight1_servicepro_backend_internal_models.CreateAgreementRequest": {
+            "type": "object",
+            "required": [
+                "customer_id",
+                "frequency",
+                "site_id",
+                "start_date",
+                "title"
+            ],
+            "properties": {
+                "assigned_technician_id": {
+                    "type": "string"
+                },
+                "billing_period": {
+                    "description": "BillingPeriod: what the price is for — \"month\" (default) or \"visit\".",
+                    "enum": [
+                        "month",
+                        "visit"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.BillingPeriod"
+                        }
+                    ]
+                },
+                "customer_id": {
+                    "type": "string"
+                },
+                "day_of_month": {
+                    "description": "DayOfMonth (1–31): required for monthly.",
+                    "type": "integer",
+                    "maximum": 31,
+                    "minimum": 1
+                },
+                "end_date": {
+                    "type": "string",
+                    "example": "2027-10-31"
+                },
+                "frequency": {
+                    "enum": [
+                        "weekdays",
+                        "weekly",
+                        "times_per_week",
+                        "monthly"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.AgreementFrequency"
+                        }
+                    ]
+                },
+                "job_type": {
+                    "enum": [
+                        "installation",
+                        "maintenance",
+                        "repair",
+                        "inspection",
+                        "emergency"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.JobType"
+                        }
+                    ]
+                },
+                "notes": {
+                    "type": "string",
+                    "maxLength": 5000
+                },
+                "price_per_period": {
+                    "type": "string",
+                    "example": "2400.00"
+                },
+                "site_id": {
+                    "type": "string"
+                },
+                "start_date": {
+                    "description": "StartDate / EndDate are YYYY-MM-DD (end optional, inclusive).",
+                    "type": "string",
+                    "example": "2026-11-02"
+                },
+                "times_per_week": {
+                    "description": "TimesPerWeek (1–7): required for times_per_week.",
+                    "type": "integer",
+                    "maximum": 7,
+                    "minimum": 1
+                },
+                "title": {
+                    "type": "string",
+                    "maxLength": 200
+                },
+                "visit_duration_minutes": {
+                    "type": "integer",
+                    "maximum": 1440,
+                    "minimum": 1
+                },
+                "visit_start_time": {
+                    "description": "VisitStartTime is the local start time, HH:MM (24-hour) in the\ntenant's time zone. Default 18:00.",
+                    "type": "string",
+                    "example": "18:00"
+                },
+                "weekdays": {
+                    "description": "Weekdays (0 = Sunday … 6 = Saturday): required for weekly; optional\nfor times_per_week (exactly times_per_week of them).",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
         },
         "github_com_javaknight1_servicepro_backend_internal_models.CreateCustomerRequest": {
             "type": "object",
@@ -11398,6 +12182,10 @@
                 "actual_start_at": {
                     "type": "integer"
                 },
+                "agreement_id": {
+                    "description": "set on visits generated by a service agreement (T167)",
+                    "type": "string"
+                },
                 "assignments": {
                     "type": "array",
                     "items": {
@@ -11818,6 +12606,10 @@
                 },
                 "actual_start_at": {
                     "type": "integer"
+                },
+                "agreement_id": {
+                    "description": "AgreementID is set on visits a service agreement generated (T167);\njobs without one are extra work (not-to-exceed rule, T187).",
+                    "type": "string"
                 },
                 "allowed_transitions": {
                     "description": "AllowedTransitions are the statuses POST /jobs/{id}/transition accepts\nnext, from the job state machine (job_status.go). The UI's status\nactions read this instead of keeping their own copy (T267).",
@@ -13819,6 +14611,83 @@
                 "TransactionTypeAdjustment"
             ]
         },
+        "github_com_javaknight1_servicepro_backend_internal_models.UpdateAgreementRequest": {
+            "type": "object",
+            "properties": {
+                "assigned_technician_id": {
+                    "type": "string"
+                },
+                "billing_period": {
+                    "enum": [
+                        "month",
+                        "visit"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.BillingPeriod"
+                        }
+                    ]
+                },
+                "clear_end_date": {
+                    "type": "boolean"
+                },
+                "clear_technician": {
+                    "type": "boolean"
+                },
+                "end_date": {
+                    "type": "string",
+                    "example": "2027-10-31"
+                },
+                "job_type": {
+                    "enum": [
+                        "installation",
+                        "maintenance",
+                        "repair",
+                        "inspection",
+                        "emergency"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.JobType"
+                        }
+                    ]
+                },
+                "notes": {
+                    "type": "string",
+                    "maxLength": 5000
+                },
+                "price_per_period": {
+                    "type": "string",
+                    "example": "2400.00"
+                },
+                "schedule": {
+                    "description": "Schedule replaces the whole frequency when present.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.AgreementScheduleInput"
+                        }
+                    ]
+                },
+                "start_date": {
+                    "type": "string",
+                    "example": "2026-11-02"
+                },
+                "title": {
+                    "type": "string",
+                    "maxLength": 200,
+                    "minLength": 1
+                },
+                "visit_duration_minutes": {
+                    "type": "integer",
+                    "maximum": 1440,
+                    "minimum": 1
+                },
+                "visit_start_time": {
+                    "type": "string",
+                    "example": "18:00"
+                }
+            }
+        },
         "github_com_javaknight1_servicepro_backend_internal_models.UpdateCustomerRequest": {
             "type": "object",
             "properties": {
@@ -14505,6 +15374,31 @@
                 "valid": {
                     "description": "Valid is true if Time is not NULL",
                     "type": "boolean"
+                }
+            }
+        },
+        "internal_api_handlers.AgreementVisitsJobResponse": {
+            "type": "object",
+            "properties": {
+                "agreements": {
+                    "type": "integer",
+                    "example": 31
+                },
+                "created": {
+                    "type": "integer",
+                    "example": 12
+                },
+                "duration_ms": {
+                    "type": "integer",
+                    "example": 40
+                },
+                "failed": {
+                    "type": "integer",
+                    "example": 0
+                },
+                "job": {
+                    "type": "string",
+                    "example": "agreement-visits"
                 }
             }
         },

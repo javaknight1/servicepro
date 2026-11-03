@@ -39,9 +39,9 @@ func jobCost(job *models.Job) decimal.Decimal {
 }
 
 // isExtraWork reports whether the job is extra work: anything not generated
-// by a service agreement. Until agreements generate jobs (T167) every job is.
-func isExtraWork(_ *models.Job) bool {
-	return true
+// by a service agreement (T167).
+func isExtraWork(job *models.Job) bool {
+	return job.AgreementID == nil
 }
 
 // loadJobCustomer returns job.Customer, loading it (tenant-scoped) if needed.

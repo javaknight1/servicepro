@@ -734,6 +734,30 @@ UPDATE customers SET
     consolidated_billing = TRUE
 WHERE id = '66666666-6666-6666-6666-666666666663';
 
+-- ============================================================================
+-- 11. SERVICE AGREEMENTS (Johnson Corp sites; T167)
+-- POST /internal/jobs/agreement-visits (or the dev ticker) turns them into
+-- scheduled visits for the next 14 days.
+-- ============================================================================
+INSERT INTO service_agreements (id, tenant_id, customer_id, site_id, title, frequency, weekday_mask,
+                                times_per_week, day_of_month, start_date, visit_start_minutes,
+                                visit_duration_minutes, price_per_period, billing_period,
+                                assigned_technician_id, job_type, status, created_by)
+VALUES
+    ('bbbbbbbb-0000-0000-0000-000000000001', '22222222-2222-2222-2222-222222222222',
+     '66666666-6666-6666-6666-666666666663', 'aaaaaaaa-0000-0000-0000-000000000001',
+     'Nightly cleaning, Mon–Fri', 'weekdays', 0, NULL, NULL, '2026-10-01', 1080, 120,
+     2400.00, 'month', '11111111-1111-1111-1111-111111111103', 'maintenance', 'active',
+     '11111111-1111-1111-1111-111111111111'),
+    ('bbbbbbbb-0000-0000-0000-000000000002', '22222222-2222-2222-2222-222222222222',
+     '66666666-6666-6666-6666-666666666663', 'aaaaaaaa-0000-0000-0000-000000000002',
+     'Warehouse cleaning 3x weekly (M/W/F)', 'times_per_week', 42, 3, NULL, '2026-10-01', 1155, 90,
+     1800.00, 'month', NULL, 'maintenance', 'active',
+     '11111111-1111-1111-1111-111111111111')
+ON CONFLICT (id) DO UPDATE SET
+    title = EXCLUDED.title,
+    updated_at = CURRENT_TIMESTAMP;
+
 COMMIT;
 
 -- ============================================================================
@@ -763,5 +787,6 @@ COMMIT;
 --   - Quote line items for each quote
 --   - 2 tax rates in Acme Services
 --   - 2 sites for Johnson Corp (plus one default site per customer from migration 000010)
+--   - Johnson Corp billing rules (PO required, approver, $500 NTE) and 2 service agreements
 --
 -- ============================================================================

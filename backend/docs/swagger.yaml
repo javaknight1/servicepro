@@ -248,6 +248,136 @@ definitions:
     - AgingBucket31To60
     - AgingBucket61To90
     - AgingBucket90Plus
+  github_com_javaknight1_servicepro_backend_internal_models.AgreementFrequency:
+    enum:
+    - weekdays
+    - weekly
+    - times_per_week
+    - monthly
+    type: string
+    x-enum-varnames:
+    - FrequencyWeekdays
+    - FrequencyWeekly
+    - FrequencyTimesPerWeek
+    - FrequencyMonthly
+  github_com_javaknight1_servicepro_backend_internal_models.AgreementListResponse:
+    properties:
+      agreements:
+        items:
+          $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.AgreementResponse'
+        type: array
+      total:
+        type: integer
+    type: object
+  github_com_javaknight1_servicepro_backend_internal_models.AgreementPreviewResponse:
+    properties:
+      agreement_id:
+        type: string
+      timezone:
+        example: America/New_York
+        type: string
+      visits:
+        items:
+          $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.AgreementVisitPreview'
+        type: array
+    type: object
+  github_com_javaknight1_servicepro_backend_internal_models.AgreementResponse:
+    properties:
+      assigned_technician_id:
+        type: string
+      billing_period:
+        $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.BillingPeriod'
+      created_at:
+        type: string
+      customer_id:
+        type: string
+      day_of_month:
+        type: integer
+      end_date:
+        example: "2027-10-31"
+        type: string
+      frequency:
+        $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.AgreementFrequency'
+      id:
+        type: string
+      job_type:
+        $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.JobType'
+      notes:
+        type: string
+      price_per_period:
+        example: "2400.00"
+        type: string
+      site_id:
+        type: string
+      start_date:
+        example: "2026-11-02"
+        type: string
+      status:
+        $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.AgreementStatus'
+      times_per_week:
+        type: integer
+      title:
+        type: string
+      updated_at:
+        type: string
+      visit_duration_minutes:
+        type: integer
+      visit_start_time:
+        example: "18:00"
+        type: string
+      weekdays:
+        items:
+          type: integer
+        type: array
+    type: object
+  github_com_javaknight1_servicepro_backend_internal_models.AgreementScheduleInput:
+    properties:
+      day_of_month:
+        description: 'DayOfMonth (1–31): required for monthly.'
+        maximum: 31
+        minimum: 1
+        type: integer
+      frequency:
+        allOf:
+        - $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.AgreementFrequency'
+        enum:
+        - weekdays
+        - weekly
+        - times_per_week
+        - monthly
+      times_per_week:
+        description: 'TimesPerWeek (1–7): required for times_per_week.'
+        maximum: 7
+        minimum: 1
+        type: integer
+      weekdays:
+        description: |-
+          Weekdays (0 = Sunday … 6 = Saturday): required for weekly; optional
+          for times_per_week (exactly times_per_week of them).
+        items:
+          type: integer
+        type: array
+    required:
+    - frequency
+    type: object
+  github_com_javaknight1_servicepro_backend_internal_models.AgreementStatus:
+    enum:
+    - active
+    - paused
+    type: string
+    x-enum-varnames:
+    - AgreementStatusActive
+    - AgreementStatusPaused
+  github_com_javaknight1_servicepro_backend_internal_models.AgreementVisitPreview:
+    properties:
+      date:
+        example: "2026-11-02"
+        type: string
+      ends_at:
+        type: string
+      starts_at:
+        type: string
+    type: object
   github_com_javaknight1_servicepro_backend_internal_models.BillingCycle:
     enum:
     - monthly
@@ -285,6 +415,14 @@ definitions:
     - BillingEventStatusSucceeded
     - BillingEventStatusFailed
     - BillingEventStatusPending
+  github_com_javaknight1_servicepro_backend_internal_models.BillingPeriod:
+    enum:
+    - month
+    - visit
+    type: string
+    x-enum-varnames:
+    - BillingPeriodMonth
+    - BillingPeriodVisit
   github_com_javaknight1_servicepro_backend_internal_models.CSVExportOptions:
     properties:
       bom:
@@ -329,6 +467,89 @@ definitions:
     - ConflictTypeTimeOverlap
     - ConflictTypeBusinessHours
     - ConflictTypeWorkloadExcess
+  github_com_javaknight1_servicepro_backend_internal_models.CreateAgreementRequest:
+    properties:
+      assigned_technician_id:
+        type: string
+      billing_period:
+        allOf:
+        - $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.BillingPeriod'
+        description: 'BillingPeriod: what the price is for — "month" (default) or
+          "visit".'
+        enum:
+        - month
+        - visit
+      customer_id:
+        type: string
+      day_of_month:
+        description: 'DayOfMonth (1–31): required for monthly.'
+        maximum: 31
+        minimum: 1
+        type: integer
+      end_date:
+        example: "2027-10-31"
+        type: string
+      frequency:
+        allOf:
+        - $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.AgreementFrequency'
+        enum:
+        - weekdays
+        - weekly
+        - times_per_week
+        - monthly
+      job_type:
+        allOf:
+        - $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.JobType'
+        enum:
+        - installation
+        - maintenance
+        - repair
+        - inspection
+        - emergency
+      notes:
+        maxLength: 5000
+        type: string
+      price_per_period:
+        example: "2400.00"
+        type: string
+      site_id:
+        type: string
+      start_date:
+        description: StartDate / EndDate are YYYY-MM-DD (end optional, inclusive).
+        example: "2026-11-02"
+        type: string
+      times_per_week:
+        description: 'TimesPerWeek (1–7): required for times_per_week.'
+        maximum: 7
+        minimum: 1
+        type: integer
+      title:
+        maxLength: 200
+        type: string
+      visit_duration_minutes:
+        maximum: 1440
+        minimum: 1
+        type: integer
+      visit_start_time:
+        description: |-
+          VisitStartTime is the local start time, HH:MM (24-hour) in the
+          tenant's time zone. Default 18:00.
+        example: "18:00"
+        type: string
+      weekdays:
+        description: |-
+          Weekdays (0 = Sunday … 6 = Saturday): required for weekly; optional
+          for times_per_week (exactly times_per_week of them).
+        items:
+          type: integer
+        type: array
+    required:
+    - customer_id
+    - frequency
+    - site_id
+    - start_date
+    - title
+    type: object
   github_com_javaknight1_servicepro_backend_internal_models.CreateCustomerRequest:
     properties:
       billing_address_city:
@@ -1405,6 +1626,9 @@ definitions:
         type: integer
       actual_start_at:
         type: integer
+      agreement_id:
+        description: set on visits generated by a service agreement (T167)
+        type: string
       assignments:
         items:
           $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.JobAssignment'
@@ -1688,6 +1912,11 @@ definitions:
         type: integer
       actual_start_at:
         type: integer
+      agreement_id:
+        description: |-
+          AgreementID is set on visits a service agreement generated (T167);
+          jobs without one are extra work (not-to-exceed rule, T187).
+        type: string
       allowed_transitions:
         description: |-
           AllowedTransitions are the statuses POST /jobs/{id}/transition accepts
@@ -3064,6 +3293,57 @@ definitions:
     - TransactionTypeRefund
     - TransactionTypeChargeback
     - TransactionTypeAdjustment
+  github_com_javaknight1_servicepro_backend_internal_models.UpdateAgreementRequest:
+    properties:
+      assigned_technician_id:
+        type: string
+      billing_period:
+        allOf:
+        - $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.BillingPeriod'
+        enum:
+        - month
+        - visit
+      clear_end_date:
+        type: boolean
+      clear_technician:
+        type: boolean
+      end_date:
+        example: "2027-10-31"
+        type: string
+      job_type:
+        allOf:
+        - $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.JobType'
+        enum:
+        - installation
+        - maintenance
+        - repair
+        - inspection
+        - emergency
+      notes:
+        maxLength: 5000
+        type: string
+      price_per_period:
+        example: "2400.00"
+        type: string
+      schedule:
+        allOf:
+        - $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.AgreementScheduleInput'
+        description: Schedule replaces the whole frequency when present.
+      start_date:
+        example: "2026-11-02"
+        type: string
+      title:
+        maxLength: 200
+        minLength: 1
+        type: string
+      visit_duration_minutes:
+        maximum: 1440
+        minimum: 1
+        type: integer
+      visit_start_time:
+        example: "18:00"
+        type: string
+    type: object
   github_com_javaknight1_servicepro_backend_internal_models.UpdateCustomerRequest:
     properties:
       billing_address_city:
@@ -3530,6 +3810,24 @@ definitions:
       valid:
         description: Valid is true if Time is not NULL
         type: boolean
+    type: object
+  internal_api_handlers.AgreementVisitsJobResponse:
+    properties:
+      agreements:
+        example: 31
+        type: integer
+      created:
+        example: 12
+        type: integer
+      duration_ms:
+        example: 40
+        type: integer
+      failed:
+        example: 0
+        type: integer
+      job:
+        example: agreement-visits
+        type: string
     type: object
   internal_api_handlers.CalculateDiscountRequest:
     properties:
@@ -4238,6 +4536,287 @@ paths:
       summary: Revoke invite code
       tags:
       - Admin
+  /api/v1/agreements:
+    get:
+      description: The account's service agreements, newest first; filter by customer,
+        site or status.
+      parameters:
+      - description: Customer ID
+        in: query
+        name: customer_id
+        type: string
+      - description: Site ID
+        in: query
+        name: site_id
+        type: string
+      - description: active or paused
+        in: query
+        name: status
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.AgreementListResponse'
+        "400":
+          description: Invalid filter
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List service agreements
+      tags:
+      - agreements
+    post:
+      consumes:
+      - application/json
+      description: 'Recurring work at one of the customer''s sites: frequency (weekdays,
+        weekly on given weekdays, N times a week, monthly on a day), start/end dates,
+        local visit start time, price per month or visit, optional technician. Visits
+        are generated as scheduled jobs up to 14 days ahead.'
+      parameters:
+      - description: Agreement
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.CreateAgreementRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.AgreementResponse'
+        "400":
+          description: Invalid request, or the site isn't the customer's
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "404":
+          description: Customer or technician not found
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a service agreement
+      tags:
+      - agreements
+  /api/v1/agreements/{id}:
+    delete:
+      description: Soft-deletes the agreement; jobs it generated stay.
+      parameters:
+      - description: Agreement ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: Deleted
+        "400":
+          description: Invalid ID
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "404":
+          description: Agreement not found
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete a service agreement
+      tags:
+      - agreements
+    get:
+      parameters:
+      - description: Agreement ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.AgreementResponse'
+        "400":
+          description: Invalid ID
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "404":
+          description: Agreement not found
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get a service agreement
+      tags:
+      - agreements
+    put:
+      consumes:
+      - application/json
+      description: Changes the fields present in the body. Visits already generated
+        (the next 14 days) keep their jobs.
+      parameters:
+      - description: Agreement ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Fields to change
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.UpdateAgreementRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.AgreementResponse'
+        "400":
+          description: Invalid request
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "404":
+          description: Agreement or technician not found
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update a service agreement
+      tags:
+      - agreements
+  /api/v1/agreements/{id}/pause:
+    post:
+      description: No new visits are generated while paused; jobs already generated
+        stay.
+      parameters:
+      - description: Agreement ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.AgreementResponse'
+        "400":
+          description: Invalid ID
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "404":
+          description: Agreement not found
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Pause a service agreement
+      tags:
+      - agreements
+  /api/v1/agreements/{id}/preview:
+    get:
+      description: The visit dates and start/end times over the next days (default
+        14, at most 92), in the tenant's time zone. Empty when paused.
+      parameters:
+      - description: Agreement ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Days ahead (default 14, max 92)
+        in: query
+        name: days
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.AgreementPreviewResponse'
+        "400":
+          description: Invalid ID or days
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "404":
+          description: Agreement not found
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Preview an agreement's next visits
+      tags:
+      - agreements
+  /api/v1/agreements/{id}/resume:
+    post:
+      description: Visits are generated again from the next generator run.
+      parameters:
+      - description: Agreement ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.AgreementResponse'
+        "400":
+          description: Invalid ID
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "404":
+          description: Agreement not found
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Resume a paused service agreement
+      tags:
+      - agreements
   /api/v1/auth/login:
     post:
       consumes:
@@ -7636,6 +8215,41 @@ paths:
       summary: Readiness probe
       tags:
       - Health
+  /internal/jobs/agreement-visits:
+    post:
+      description: 'Internal job endpoint (auth: X-Internal-Jobs-Token header = INTERNAL_JOBS_SECRET;
+        404 when the secret is unset). Creates a scheduled job for every visit of
+        every active service agreement over the next 14 days (each tenant''s local
+        dates). Idempotent: each (agreement, date) is claimed once. Mounted at the
+        server root (/internal/jobs/agreement-visits), outside /api.'
+      parameters:
+      - description: Internal jobs secret
+        in: header
+        name: X-Internal-Jobs-Token
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_api_handlers.AgreementVisitsJobResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+      summary: Run agreement visits job
+      tags:
+      - Internal
   /internal/jobs/imports:
     post:
       description: 'Internal job endpoint (auth: X-Internal-Jobs-Token header = INTERNAL_JOBS_SECRET;
