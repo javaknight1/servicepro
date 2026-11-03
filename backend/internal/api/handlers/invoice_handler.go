@@ -79,6 +79,10 @@ type CreateLineItemRequest struct {
 	Taxable            *bool           `json:"taxable,omitempty"`
 	ProductID          *uuid.UUID      `json:"product_id,omitempty"`
 	ServiceID          *uuid.UUID      `json:"service_id,omitempty"`
+	// SiteName and ApprovalNote keep a consolidated invoice's site grouping
+	// and approval notes when its lines are edited (T188).
+	SiteName     *string `json:"site_name,omitempty" binding:"omitempty,max=200"`
+	ApprovalNote *string `json:"approval_note,omitempty" binding:"omitempty,max=300"`
 }
 
 // UpdateInvoiceRequest represents the request to update an invoice
@@ -709,6 +713,8 @@ func toInvoiceLines(reqLines []CreateLineItemRequest) []models.InvoiceLine {
 			Taxable:            taxable,
 			ProductID:          l.ProductID,
 			ServiceID:          l.ServiceID,
+			SiteName:           l.SiteName,
+			ApprovalNote:       l.ApprovalNote,
 			SortOrder:          i,
 		}
 	}

@@ -162,6 +162,8 @@ func setupTestDB(t *testing.T) *gorm.DB {
 			stripe_payment_intent_id TEXT,
 			payment_pending_at DATETIME,
 			payment_pending_session_id TEXT,
+			billing_period_start DATE,
+			billing_period_end DATE,
 			created_by TEXT NOT NULL,
 			updated_by TEXT,
 			created_at DATETIME,
@@ -188,6 +190,8 @@ func setupTestDB(t *testing.T) *gorm.DB {
 			line_total_with_tax REAL DEFAULT 0,
 			product_id TEXT,
 			service_id TEXT,
+			site_name TEXT,
+			approval_note TEXT,
 			sort_order INTEGER DEFAULT 0,
 			created_at DATETIME,
 			updated_at DATETIME

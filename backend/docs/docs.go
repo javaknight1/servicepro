@@ -6300,6 +6300,153 @@ const docTemplate = `{
                 ]
             }
         },
+        "/invoices/consolidate": {
+            "post": {
+                "description": "Creates one draft invoice for the customer's unbilled work in the period (see the preview), a line per site per agreement plus extra work, with the customer's default PO, and moves the included jobs to invoiced — all in one transaction (T188). Each month, visit and job is billed once: work already on another invoice is skipped; 409 nothing_to_invoice when nothing is left, 409 already_invoiced when a concurrent request billed some of it first. Cancelling or deleting the invoice releases the work.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "invoices"
+                ],
+                "summary": "Create a consolidated invoice",
+                "parameters": [
+                    {
+                        "description": "Customer and period",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ConsolidateInvoiceRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.Invoice"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/invoices/consolidate/preview": {
+            "get": {
+                "description": "The lines and totals POST /invoices/consolidate would create for one customer and period, without writing anything (T188). Monthly agreements bill price_per_period once per calendar month the period touches; per-visit agreements bill completed visits in the period × price; each completed extra-work job finished by the end of the period is its own line with its approval. Work already billed is left out. Dates are the tenant's local calendar dates, inclusive.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "invoices"
+                ],
+                "summary": "Preview a consolidated invoice",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Customer ID",
+                        "name": "customer_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "First day of the period (YYYY-MM-DD)",
+                        "name": "period_start",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Last day of the period (YYYY-MM-DD)",
+                        "name": "period_end",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Only this site",
+                        "name": "site_id",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ConsolidatedInvoicePreview"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
         "/invoices/stats": {
             "get": {
                 "description": "Receivables for the caller's tenant: unpaid balance and count of open invoices (sent, viewed, partially paid, overdue), the part of it past due, and payments less refunds dated this calendar month (UTC)",
@@ -10640,6 +10787,145 @@ const docTemplate = `{
                 "ConflictTypeWorkloadExcess"
             ]
         },
+        "github_com_javaknight1_servicepro_backend_internal_models.ConsolidateInvoiceRequest": {
+            "type": "object",
+            "required": [
+                "customer_id",
+                "period_end",
+                "period_start"
+            ],
+            "properties": {
+                "customer_id": {
+                    "type": "string"
+                },
+                "period_end": {
+                    "type": "string",
+                    "example": "2026-10-31"
+                },
+                "period_start": {
+                    "type": "string",
+                    "example": "2026-10-01"
+                },
+                "site_id": {
+                    "description": "SiteID limits the invoice to one of the customer's sites.",
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_javaknight1_servicepro_backend_internal_models.ConsolidatedInvoiceLine": {
+            "type": "object",
+            "properties": {
+                "agreement_id": {
+                    "type": "string"
+                },
+                "amount": {
+                    "type": "string",
+                    "example": "2400.00"
+                },
+                "approval_amount": {
+                    "type": "string",
+                    "example": "450.00"
+                },
+                "approval_note": {
+                    "description": "ApprovalNote is printed under the line: who approved it, or that it\nstayed under the customer's not-to-exceed limit.",
+                    "type": "string"
+                },
+                "approver_name": {
+                    "description": "ApproverName and ApprovalAmount come from the job's latest recorded\napproval (extra work only).",
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "job_id": {
+                    "type": "string"
+                },
+                "job_number": {
+                    "type": "string"
+                },
+                "kind": {
+                    "description": "Kind: agreement_month (a monthly agreement for one calendar month),\nagreement_visits (completed visits × price) or extra_work (a job).",
+                    "type": "string",
+                    "enum": [
+                        "agreement_month",
+                        "agreement_visits",
+                        "extra_work"
+                    ]
+                },
+                "month": {
+                    "description": "Month is the calendar month billed (agreement_month), YYYY-MM.",
+                    "type": "string",
+                    "example": "2026-10"
+                },
+                "quantity": {
+                    "type": "string",
+                    "example": "1"
+                },
+                "site_id": {
+                    "type": "string"
+                },
+                "site_name": {
+                    "type": "string"
+                },
+                "unit_price": {
+                    "type": "string",
+                    "example": "2400.00"
+                },
+                "visits": {
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_javaknight1_servicepro_backend_internal_models.ConsolidatedInvoicePreview": {
+            "type": "object",
+            "properties": {
+                "customer_id": {
+                    "type": "string"
+                },
+                "extra_work": {
+                    "type": "integer"
+                },
+                "lines": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ConsolidatedInvoiceLine"
+                    }
+                },
+                "period_end": {
+                    "type": "string",
+                    "example": "2026-10-31"
+                },
+                "period_start": {
+                    "type": "string",
+                    "example": "2026-10-01"
+                },
+                "po_number": {
+                    "type": "string"
+                },
+                "sites": {
+                    "type": "integer"
+                },
+                "subtotal": {
+                    "type": "string",
+                    "example": "9150.00"
+                },
+                "tax_amount": {
+                    "type": "string",
+                    "example": "732.00"
+                },
+                "tax_rate": {
+                    "type": "string",
+                    "example": "0.08"
+                },
+                "total": {
+                    "type": "string",
+                    "example": "9882.00"
+                },
+                "visits": {
+                    "type": "integer"
+                }
+            }
+        },
         "github_com_javaknight1_servicepro_backend_internal_models.CreateAgreementRequest": {
             "type": "object",
             "required": [
@@ -11913,6 +12199,13 @@ const docTemplate = `{
                 "amount_paid": {
                     "type": "number"
                 },
+                "billing_period_end": {
+                    "type": "string"
+                },
+                "billing_period_start": {
+                    "description": "BillingPeriodStart/End mark a consolidated invoice (T188): the service\nperiod it covers, as tenant-local calendar dates. Nil on other invoices.",
+                    "type": "string"
+                },
                 "created_at": {
                     "type": "string"
                 },
@@ -12066,6 +12359,10 @@ const docTemplate = `{
         "github_com_javaknight1_servicepro_backend_internal_models.InvoiceLine": {
             "type": "object",
             "properties": {
+                "approval_note": {
+                    "description": "ApprovalNote says who approved extra work and for how much, or that it\nstayed under the customer's not-to-exceed limit (T188).",
+                    "type": "string"
+                },
                 "created_at": {
                     "description": "Metadata",
                     "type": "string"
@@ -12110,6 +12407,10 @@ const docTemplate = `{
                     "type": "number"
                 },
                 "service_id": {
+                    "type": "string"
+                },
+                "site_name": {
+                    "description": "SiteName is the site a consolidated invoice's line is for (T188), a\nsnapshot so a later rename doesn't change an issued invoice. Lines are\ngrouped by it on screen and in the PDF.",
                     "type": "string"
                 },
                 "sort_order": {
@@ -15789,6 +16090,10 @@ const docTemplate = `{
                 "unit_price"
             ],
             "properties": {
+                "approval_note": {
+                    "type": "string",
+                    "maxLength": 300
+                },
                 "description": {
                     "type": "string"
                 },
@@ -15806,6 +16111,11 @@ const docTemplate = `{
                 },
                 "service_id": {
                     "type": "string"
+                },
+                "site_name": {
+                    "description": "SiteName and ApprovalNote keep a consolidated invoice's site grouping\nand approval notes when its lines are edited (T188).",
+                    "type": "string",
+                    "maxLength": 200
                 },
                 "taxable": {
                     "type": "boolean"
@@ -16007,6 +16317,13 @@ const docTemplate = `{
                 },
                 "amount_paid": {
                     "type": "number"
+                },
+                "billing_period_end": {
+                    "type": "string"
+                },
+                "billing_period_start": {
+                    "description": "BillingPeriodStart/End mark a consolidated invoice (T188): the service\nperiod it covers, as tenant-local calendar dates. Nil on other invoices.",
+                    "type": "string"
                 },
                 "created_at": {
                     "type": "string"

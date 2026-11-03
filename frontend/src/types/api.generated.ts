@@ -7590,6 +7590,179 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/invoices/consolidate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create a consolidated invoice
+         * @description Creates one draft invoice for the customer's unbilled work in the period (see the preview), a line per site per agreement plus extra work, with the customer's default PO, and moves the included jobs to invoiced — all in one transaction (T188). Each month, visit and job is billed once: work already on another invoice is skipped; 409 nothing_to_invoice when nothing is left, 409 already_invoiced when a concurrent request billed some of it first. Cancelling or deleting the invoice releases the work.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            /** @description Customer and period */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ConsolidateInvoiceRequest"];
+                };
+            };
+            responses: {
+                /** @description Created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.Invoice"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Internal Server Error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/invoices/consolidate/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Preview a consolidated invoice
+         * @description The lines and totals POST /invoices/consolidate would create for one customer and period, without writing anything (T188). Monthly agreements bill price_per_period once per calendar month the period touches; per-visit agreements bill completed visits in the period × price; each completed extra-work job finished by the end of the period is its own line with its approval. Work already billed is left out. Dates are the tenant's local calendar dates, inclusive.
+         */
+        get: {
+            parameters: {
+                query: {
+                    /** @description Customer ID */
+                    customer_id: string;
+                    /** @description First day of the period (YYYY-MM-DD) */
+                    period_start: string;
+                    /** @description Last day of the period (YYYY-MM-DD) */
+                    period_end: string;
+                    /** @description Only this site */
+                    site_id?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ConsolidatedInvoicePreview"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Internal Server Error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/invoices/stats": {
         parameters: {
             query?: never;
@@ -12158,6 +12331,73 @@ export interface components {
         "github_com_javaknight1_servicepro_backend_internal_models.ConflictSeverity": "low" | "medium" | "high" | "critical";
         /** @enum {string} */
         "github_com_javaknight1_servicepro_backend_internal_models.ConflictType": "technician_overlap" | "location_overlap" | "equipment_overlap" | "time_overlap" | "business_hours" | "workload_excess";
+        "github_com_javaknight1_servicepro_backend_internal_models.ConsolidateInvoiceRequest": {
+            customer_id: string;
+            /** @example 2026-10-31 */
+            period_end: string;
+            /** @example 2026-10-01 */
+            period_start: string;
+            /** @description SiteID limits the invoice to one of the customer's sites. */
+            site_id?: string;
+        };
+        "github_com_javaknight1_servicepro_backend_internal_models.ConsolidatedInvoiceLine": {
+            agreement_id?: string;
+            /** @example 2400.00 */
+            amount?: string;
+            /** @example 450.00 */
+            approval_amount?: string;
+            /**
+             * @description ApprovalNote is printed under the line: who approved it, or that it
+             *     stayed under the customer's not-to-exceed limit.
+             */
+            approval_note?: string;
+            /**
+             * @description ApproverName and ApprovalAmount come from the job's latest recorded
+             *     approval (extra work only).
+             */
+            approver_name?: string;
+            description?: string;
+            job_id?: string;
+            job_number?: string;
+            /**
+             * @description Kind: agreement_month (a monthly agreement for one calendar month),
+             *     agreement_visits (completed visits × price) or extra_work (a job).
+             * @enum {string}
+             */
+            kind?: "agreement_month" | "agreement_visits" | "extra_work";
+            /**
+             * @description Month is the calendar month billed (agreement_month), YYYY-MM.
+             * @example 2026-10
+             */
+            month?: string;
+            /** @example 1 */
+            quantity?: string;
+            site_id?: string;
+            site_name?: string;
+            /** @example 2400.00 */
+            unit_price?: string;
+            visits?: number;
+        };
+        "github_com_javaknight1_servicepro_backend_internal_models.ConsolidatedInvoicePreview": {
+            customer_id?: string;
+            extra_work?: number;
+            lines?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ConsolidatedInvoiceLine"][];
+            /** @example 2026-10-31 */
+            period_end?: string;
+            /** @example 2026-10-01 */
+            period_start?: string;
+            po_number?: string;
+            sites?: number;
+            /** @example 9150.00 */
+            subtotal?: string;
+            /** @example 732.00 */
+            tax_amount?: string;
+            /** @example 0.08 */
+            tax_rate?: string;
+            /** @example 9882.00 */
+            total?: string;
+            visits?: number;
+        };
         "github_com_javaknight1_servicepro_backend_internal_models.CreateAgreementRequest": {
             assigned_technician_id?: string;
             /**
@@ -12587,6 +12827,12 @@ export interface components {
             /** @description Computed column */
             amount_due?: number;
             amount_paid?: number;
+            billing_period_end?: string;
+            /**
+             * @description BillingPeriodStart/End mark a consolidated invoice (T188): the service
+             *     period it covers, as tenant-local calendar dates. Nil on other invoices.
+             */
+            billing_period_start?: string;
             created_at?: string;
             /** @description Metadata */
             created_by?: string;
@@ -12648,6 +12894,11 @@ export interface components {
             viewed_date?: string;
         };
         "github_com_javaknight1_servicepro_backend_internal_models.InvoiceLine": {
+            /**
+             * @description ApprovalNote says who approved extra work and for how much, or that it
+             *     stayed under the customer's not-to-exceed limit (T188).
+             */
+            approval_note?: string;
             /** @description Metadata */
             created_at?: string;
             /** @description Line item details */
@@ -12666,6 +12917,12 @@ export interface components {
             product_id?: string;
             quantity?: number;
             service_id?: string;
+            /**
+             * @description SiteName is the site a consolidated invoice's line is for (T188), a
+             *     snapshot so a later rename doesn't change an issued invoice. Lines are
+             *     grouped by it on screen and in the PDF.
+             */
+            site_name?: string;
             /** @description Ordering */
             sort_order?: number;
             tax_amount?: number;
@@ -13850,12 +14107,18 @@ export interface components {
             terms_and_conditions?: string;
         };
         "internal_api_handlers.CreateLineItemRequest": {
+            approval_note?: string;
             description: string;
             discount_amount?: number;
             discount_percentage?: number;
             product_id?: string;
             quantity: number;
             service_id?: string;
+            /**
+             * @description SiteName and ApprovalNote keep a consolidated invoice's site grouping
+             *     and approval notes when its lines are edited (T188).
+             */
+            site_name?: string;
             taxable?: boolean;
             unit_of_measure?: string;
             unit_price: number;
@@ -13926,6 +14189,12 @@ export interface components {
             /** @description Computed column */
             amount_due?: number;
             amount_paid?: number;
+            billing_period_end?: string;
+            /**
+             * @description BillingPeriodStart/End mark a consolidated invoice (T188): the service
+             *     period it covers, as tenant-local calendar dates. Nil on other invoices.
+             */
+            billing_period_start?: string;
             created_at?: string;
             /** @description Metadata */
             created_by?: string;

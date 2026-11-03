@@ -125,6 +125,11 @@ type Invoice struct {
 	PaymentTermID *uuid.UUID `gorm:"type:uuid" json:"payment_term_id,omitempty"`
 	TaxRateID     *uuid.UUID `gorm:"type:uuid" json:"tax_rate_id,omitempty"`
 
+	// BillingPeriodStart/End mark a consolidated invoice (T188): the service
+	// period it covers, as tenant-local calendar dates. Nil on other invoices.
+	BillingPeriodStart *time.Time `gorm:"type:date" json:"billing_period_start,omitempty"`
+	BillingPeriodEnd   *time.Time `gorm:"type:date" json:"billing_period_end,omitempty"`
+
 	// Additional information
 	PONumber           string `gorm:"type:varchar(100)" json:"po_number,omitempty"`
 	Notes              string `gorm:"type:text" json:"notes,omitempty"`
@@ -244,6 +249,14 @@ type InvoiceLine struct {
 	// References
 	ProductID *uuid.UUID `gorm:"type:uuid;index" json:"product_id,omitempty"`
 	ServiceID *uuid.UUID `gorm:"type:uuid;index" json:"service_id,omitempty"`
+
+	// SiteName is the site a consolidated invoice's line is for (T188), a
+	// snapshot so a later rename doesn't change an issued invoice. Lines are
+	// grouped by it on screen and in the PDF.
+	SiteName *string `gorm:"type:varchar(200)" json:"site_name,omitempty"`
+	// ApprovalNote says who approved extra work and for how much, or that it
+	// stayed under the customer's not-to-exceed limit (T188).
+	ApprovalNote *string `gorm:"type:varchar(300)" json:"approval_note,omitempty"`
 
 	// Ordering
 	SortOrder int `gorm:"not null;default:0" json:"sort_order"`

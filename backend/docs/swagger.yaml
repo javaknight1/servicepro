@@ -467,6 +467,111 @@ definitions:
     - ConflictTypeTimeOverlap
     - ConflictTypeBusinessHours
     - ConflictTypeWorkloadExcess
+  github_com_javaknight1_servicepro_backend_internal_models.ConsolidateInvoiceRequest:
+    properties:
+      customer_id:
+        type: string
+      period_end:
+        example: "2026-10-31"
+        type: string
+      period_start:
+        example: "2026-10-01"
+        type: string
+      site_id:
+        description: SiteID limits the invoice to one of the customer's sites.
+        type: string
+    required:
+    - customer_id
+    - period_end
+    - period_start
+    type: object
+  github_com_javaknight1_servicepro_backend_internal_models.ConsolidatedInvoiceLine:
+    properties:
+      agreement_id:
+        type: string
+      amount:
+        example: "2400.00"
+        type: string
+      approval_amount:
+        example: "450.00"
+        type: string
+      approval_note:
+        description: |-
+          ApprovalNote is printed under the line: who approved it, or that it
+          stayed under the customer's not-to-exceed limit.
+        type: string
+      approver_name:
+        description: |-
+          ApproverName and ApprovalAmount come from the job's latest recorded
+          approval (extra work only).
+        type: string
+      description:
+        type: string
+      job_id:
+        type: string
+      job_number:
+        type: string
+      kind:
+        description: |-
+          Kind: agreement_month (a monthly agreement for one calendar month),
+          agreement_visits (completed visits × price) or extra_work (a job).
+        enum:
+        - agreement_month
+        - agreement_visits
+        - extra_work
+        type: string
+      month:
+        description: Month is the calendar month billed (agreement_month), YYYY-MM.
+        example: 2026-10
+        type: string
+      quantity:
+        example: "1"
+        type: string
+      site_id:
+        type: string
+      site_name:
+        type: string
+      unit_price:
+        example: "2400.00"
+        type: string
+      visits:
+        type: integer
+    type: object
+  github_com_javaknight1_servicepro_backend_internal_models.ConsolidatedInvoicePreview:
+    properties:
+      customer_id:
+        type: string
+      extra_work:
+        type: integer
+      lines:
+        items:
+          $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ConsolidatedInvoiceLine'
+        type: array
+      period_end:
+        example: "2026-10-31"
+        type: string
+      period_start:
+        example: "2026-10-01"
+        type: string
+      po_number:
+        type: string
+      sites:
+        type: integer
+      subtotal:
+        example: "9150.00"
+        type: string
+      tax_amount:
+        example: "732.00"
+        type: string
+      tax_rate:
+        example: "0.08"
+        type: string
+      total:
+        example: "9882.00"
+        type: string
+      visits:
+        type: integer
+    type: object
   github_com_javaknight1_servicepro_backend_internal_models.CreateAgreementRequest:
     properties:
       assigned_technician_id:
@@ -1374,6 +1479,13 @@ definitions:
         type: number
       amount_paid:
         type: number
+      billing_period_end:
+        type: string
+      billing_period_start:
+        description: |-
+          BillingPeriodStart/End mark a consolidated invoice (T188): the service
+          period it covers, as tenant-local calendar dates. Nil on other invoices.
+        type: string
       created_at:
         type: string
       created_by:
@@ -1482,6 +1594,11 @@ definitions:
     type: object
   github_com_javaknight1_servicepro_backend_internal_models.InvoiceLine:
     properties:
+      approval_note:
+        description: |-
+          ApprovalNote says who approved extra work and for how much, or that it
+          stayed under the customer's not-to-exceed limit (T188).
+        type: string
       created_at:
         description: Metadata
         type: string
@@ -1512,6 +1629,12 @@ definitions:
       quantity:
         type: number
       service_id:
+        type: string
+      site_name:
+        description: |-
+          SiteName is the site a consolidated invoice's line is for (T188), a
+          snapshot so a later rename doesn't change an issued invoice. Lines are
+          grouped by it on screen and in the PDF.
         type: string
       sort_order:
         description: Ordering
@@ -4034,6 +4157,9 @@ definitions:
     type: object
   internal_api_handlers.CreateLineItemRequest:
     properties:
+      approval_note:
+        maxLength: 300
+        type: string
       description:
         type: string
       discount_amount:
@@ -4045,6 +4171,12 @@ definitions:
       quantity:
         type: number
       service_id:
+        type: string
+      site_name:
+        description: |-
+          SiteName and ApprovalNote keep a consolidated invoice's site grouping
+          and approval notes when its lines are edited (T188).
+        maxLength: 200
         type: string
       taxable:
         type: boolean
@@ -4189,6 +4321,13 @@ definitions:
         type: number
       amount_paid:
         type: number
+      billing_period_end:
+        type: string
+      billing_period_start:
+        description: |-
+          BillingPeriodStart/End mark a consolidated invoice (T188): the service
+          period it covers, as tenant-local calendar dates. Nil on other invoices.
+        type: string
       created_at:
         type: string
       created_by:
@@ -9180,6 +9319,112 @@ paths:
       security:
       - BearerAuth: []
       summary: Send invoice
+      tags:
+      - invoices
+  /invoices/consolidate:
+    post:
+      consumes:
+      - application/json
+      description: 'Creates one draft invoice for the customer''s unbilled work in
+        the period (see the preview), a line per site per agreement plus extra work,
+        with the customer''s default PO, and moves the included jobs to invoiced —
+        all in one transaction (T188). Each month, visit and job is billed once: work
+        already on another invoice is skipped; 409 nothing_to_invoice when nothing
+        is left, 409 already_invoiced when a concurrent request billed some of it
+        first. Cancelling or deleting the invoice releases the work.'
+      parameters:
+      - description: Customer and period
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ConsolidateInvoiceRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.Invoice'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a consolidated invoice
+      tags:
+      - invoices
+  /invoices/consolidate/preview:
+    get:
+      description: The lines and totals POST /invoices/consolidate would create for
+        one customer and period, without writing anything (T188). Monthly agreements
+        bill price_per_period once per calendar month the period touches; per-visit
+        agreements bill completed visits in the period × price; each completed extra-work
+        job finished by the end of the period is its own line with its approval. Work
+        already billed is left out. Dates are the tenant's local calendar dates, inclusive.
+      parameters:
+      - description: Customer ID
+        in: query
+        name: customer_id
+        required: true
+        type: string
+      - description: First day of the period (YYYY-MM-DD)
+        in: query
+        name: period_start
+        required: true
+        type: string
+      - description: Last day of the period (YYYY-MM-DD)
+        in: query
+        name: period_end
+        required: true
+        type: string
+      - description: Only this site
+        in: query
+        name: site_id
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ConsolidatedInvoicePreview'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Preview a consolidated invoice
       tags:
       - invoices
   /invoices/stats:

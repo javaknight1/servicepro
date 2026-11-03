@@ -18,7 +18,6 @@ import (
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/tenancy"
 	"github.com/javaknight1/servicepro/backend/internal/utils"
-	"github.com/javaknight1/servicepro/backend/internal/utils/epoch"
 	"github.com/javaknight1/servicepro/backend/pkg/clients/email"
 	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"
 )
@@ -574,6 +573,10 @@ func (s *InvoiceService) DeleteInvoice(ctx context.Context, id uuid.UUID) error 
 			return ErrInvoiceHasPayments
 		}
 
+		// A deleted consolidated draft gives its work back (T188).
+		if err := releaseConsolidatedInvoice(tx, invoice, fmt.Sprintf("Invoice %s deleted", invoice.InvoiceNumber)); err != nil {
+			return err
+		}
 		result := tx.Delete(&models.Invoice{}, "id = ?", id)
 		if result.Error != nil {
 			return fmt.Errorf("failed to delete invoice: %w", result.Error)
@@ -909,27 +912,32 @@ func applyPayment(tx *gorm.DB, invoice *models.Invoice, amount decimal.Decimal, 
 // invoice is paid, back again on cancel/refund), with a history row in the
 // same transaction (T124/T225, audit 7.M5). Jobs in any other status are
 // left alone (e.g. a deposit invoice for a job still in progress).
+//
+// A consolidated invoice (T188) moves every job it billed the same way.
 func moveInvoiceJob(tx *gorm.DB, invoice *models.Invoice, from, to models.JobStatus, note string, by uuid.UUID) error {
-	if invoice.JobID == nil {
-		return nil
+	jobIDs, err := consolidatedJobIDs(tx, invoice)
+	if err != nil {
+		return fmt.Errorf("load invoice jobs: %w", err)
 	}
-	var job models.Job
-	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&job, "id = ?", *invoice.JobID).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil // job deleted since
+	if invoice.JobID != nil {
+		jobIDs = append(jobIDs, *invoice.JobID)
+	}
+	for _, id := range jobIDs {
+		var job models.Job
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&job, "id = ?", id).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				continue // job deleted since
+			}
+			return err
 		}
-		return err
+		if job.Status != from || !models.CanTransition(from, to) {
+			continue
+		}
+		if err := moveJob(tx, &job, to, note, by); err != nil {
+			return err
+		}
 	}
-	if job.Status != from || !models.CanTransition(from, to) {
-		return nil
-	}
-	if err := tx.Model(&models.Job{}).Where("id = ?", job.ID).Update("status", to).Error; err != nil {
-		return fmt.Errorf("failed to update job status: %w", err)
-	}
-	return tx.Create(&models.JobStatusTransition{
-		ID: uuid.New(), JobID: job.ID, FromStatus: from, ToStatus: to,
-		Reason: models.ReasonOther, Notes: &note, ChangedBy: by, TransitionedAt: epoch.NowEpoch(),
-	}).Error
+	return nil
 }
 
 // nonEmpty returns nil for "" so optional reference columns stay NULL.
@@ -1060,9 +1068,13 @@ func (s *InvoiceService) CancelInvoice(ctx context.Context, id uuid.UUID, reason
 		if err := recordInvoiceTransition(tx, id, invoice.Status, models.InvoiceStatusCancelled, "cancelled", nil); err != nil {
 			return err
 		}
-		// The job can be invoiced again.
-		return moveInvoiceJob(tx, invoice, models.JobStatusInvoiced, models.JobStatusCompleted,
-			fmt.Sprintf("Invoice %s cancelled", invoice.InvoiceNumber), invoice.CreatedBy)
+		// The job can be invoiced again; a consolidated invoice also
+		// releases its claims (T188).
+		note := fmt.Sprintf("Invoice %s cancelled", invoice.InvoiceNumber)
+		if invoice.BillingPeriodStart != nil {
+			return releaseConsolidatedInvoice(tx, invoice, note)
+		}
+		return moveInvoiceJob(tx, invoice, models.JobStatusInvoiced, models.JobStatusCompleted, note, invoice.CreatedBy)
 	})
 	if err != nil {
 		return nil, err

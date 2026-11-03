@@ -35,6 +35,17 @@ func SetupInvoiceRoutes(router *gin.RouterGroup, cfg *routeconfigs.RouteConfig) 
 			cfg.Middleware.PermMiddleware.RequirePermission(permissions.InvoicesList),
 			cfg.Handlers.Invoice.GetInvoiceStats)
 
+		// Consolidated invoice for a customer and period (T188) - requires
+		// "invoices.create". Literal paths, registered before /:id.
+		invoices.GET("/consolidate/preview",
+			listRateLimiter.RateLimit(),
+			cfg.Middleware.PermMiddleware.RequirePermission(permissions.InvoicesCreate),
+			cfg.Handlers.Invoice.PreviewConsolidatedInvoice)
+		invoices.POST("/consolidate",
+			createRateLimiter.RateLimit(),
+			cfg.Middleware.PermMiddleware.RequirePermission(permissions.InvoicesCreate),
+			cfg.Handlers.Invoice.ConsolidateInvoice)
+
 		// Get single invoice - requires "invoices.read" permission
 		invoices.GET("/:id",
 			cfg.Middleware.PermMiddleware.RequirePermission(permissions.InvoicesRead),
