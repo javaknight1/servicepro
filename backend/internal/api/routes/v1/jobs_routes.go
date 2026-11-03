@@ -27,6 +27,12 @@ func SetupJobRoutes(router *gin.RouterGroup, cfg *routeconfigs.RouteConfig) {
 		jobs.GET("/my",
 			cfg.Handlers.Job.GetMyJobs)
 
+		// The caller's visits for one day, with sites (T173) - requires
+		// "jobs.read" (technicians hold it for their assigned jobs)
+		jobs.GET("/my-day",
+			cfg.Middleware.PermMiddleware.RequirePermission(permissions.JobsRead),
+			cfg.Handlers.Job.GetMyDay)
+
 		// Get scheduled jobs - requires "jobs.list" permission
 		jobs.GET("/scheduled",
 			cfg.Middleware.PermMiddleware.RequirePermission(permissions.JobsList),

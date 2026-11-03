@@ -363,6 +363,32 @@ func (h *JobHandler) GetMyJobs(c *gin.Context) {
 	c.JSON(http.StatusOK, jobs)
 }
 
+// GetMyDay handles GET /api/v1/jobs/my-day
+// @Summary Get my visits for a day
+// @Description The technician's day (T173): the visits assigned to the caller whose scheduled start falls on `date` in the tenant's time zone (today when omitted), cancelled visits left out, in time order. Each visit carries its site (name, address, access notes, site contact). Callers who can't see money get no prices.
+// @Tags jobs
+// @Produce json
+// @Security BearerAuth
+// @Param date query string false "Calendar date, YYYY-MM-DD in the tenant's time zone (default: today)"
+// @Success 200 {object} models.MyDayResponse
+// @Failure 400 {object} models.ErrorResponse "date isn't YYYY-MM-DD"
+// @Failure 401 {object} models.ErrorResponse "Unauthorized"
+// @Failure 403 {object} models.ErrorResponse "Forbidden"
+// @Failure 500 {object} models.ErrorResponse "Internal server error"
+// @Router /api/v1/jobs/my-day [get]
+func (h *JobHandler) GetMyDay(c *gin.Context) {
+	userID, _, err := h.getUserContext(c)
+	if err != nil {
+		return // response already sent
+	}
+	day, err := h.jobService.WithContext(c.Request.Context()).GetMyDay(userID, c.Query("date"))
+	if err != nil {
+		apierror.Respond(c, err, "Failed to get your day")
+		return
+	}
+	c.JSON(http.StatusOK, day)
+}
+
 // GetScheduledJobs handles GET /api/v1/jobs/scheduled
 // @Summary Get scheduled jobs in date range
 // @Description Retrieve jobs scheduled within a specific date range

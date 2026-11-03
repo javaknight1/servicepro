@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -101,6 +102,9 @@ type JobServiceInterface interface {
 	ListJobs(filter *models.JobListFilter, userID uuid.UUID, userRole models.UserRole) ([]models.JobResponse, int64, error)
 	GetCustomerJobs(customerID uuid.UUID, limit, offset int) ([]models.JobResponse, int64, error)
 	GetMyJobs(userID uuid.UUID) ([]models.JobResponse, error)
+	// GetMyDay lists the caller's visits on date (YYYY-MM-DD in the tenant's
+	// time zone; "" is today) with their sites (T173).
+	GetMyDay(userID uuid.UUID, date string) (*models.MyDayResponse, error)
 	GetScheduledJobs(start, end int64) ([]models.JobResponse, error)
 	GetOverdueJobs() ([]models.JobResponse, error)
 
@@ -333,6 +337,13 @@ func (s *JobService) GetJobByID(id uuid.UUID, userID uuid.UUID, userRole models.
 	}
 
 	response := s.respond(job)
+	// The site's address, access notes and contact, for the technician's
+	// visit page (T173).
+	responses := []models.JobResponse{response}
+	if err := s.attachSites([]models.Job{*job}, responses); err != nil {
+		return nil, err
+	}
+	response = responses[0]
 	// An invoiced job names its invoice ("View invoice", T029) — not for
 	// callers who can't see money (technicians, T035).
 	if s.db != nil && !tenancy.MoneyHidden(s.ctx()) &&
@@ -544,6 +555,75 @@ func (s *JobService) GetMyJobs(userID uuid.UUID) ([]models.JobResponse, error) {
 	}
 
 	return s.respondAll(jobs), nil
+}
+
+// ErrInvalidDay: GET /jobs/my-day's date isn't a YYYY-MM-DD date.
+var ErrInvalidDay = apperrors.BadRequest("invalid_date", "date must be a calendar date (YYYY-MM-DD)")
+
+// GetMyDay lists the visits assigned to userID that start on date in the
+// tenant's time zone (today when date is ""), in time order, each with its
+// site (T173). Money is hidden for callers who can't see it, as everywhere.
+func (s *JobService) GetMyDay(userID uuid.UUID, date string) (*models.MyDayResponse, error) {
+	tenantID, ok := tenancy.TenantID(s.ctx())
+	if !ok || s.db == nil {
+		return nil, errors.New("job service: no tenant in context")
+	}
+	loc, tzName, err := tenantLocation(s.ctx(), s.db, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	var day time.Time
+	if date == "" {
+		day = models.CivilDate(time.Now(), loc)
+	} else if day, err = time.Parse(models.DateLayout, date); err != nil {
+		return nil, ErrInvalidDay
+	}
+	// Local midnight to the next local midnight (23 or 25 hours across DST).
+	start := time.Date(day.Year(), day.Month(), day.Day(), 0, 0, 0, 0, loc)
+	end := time.Date(day.Year(), day.Month(), day.Day()+1, 0, 0, 0, 0, loc)
+
+	jobs, err := s.jobRepo.GetAssignedScheduledBetween(userID, start.Unix(), end.Unix())
+	if err != nil {
+		return nil, err
+	}
+	visits := s.respondAll(jobs)
+	if err := s.attachSites(jobs, visits); err != nil {
+		return nil, err
+	}
+	return &models.MyDayResponse{Date: day.Format(models.DateLayout), Timezone: tzName, Visits: visits}, nil
+}
+
+// attachSites sets each response's Site from its job's SiteID (responses[i]
+// is jobs[i]); a site the tenant no longer has is left out.
+func (s *JobService) attachSites(jobs []models.Job, responses []models.JobResponse) error {
+	var ids []uuid.UUID
+	seen := map[uuid.UUID]bool{}
+	for _, j := range jobs {
+		if j.SiteID != nil && !seen[*j.SiteID] {
+			seen[*j.SiteID] = true
+			ids = append(ids, *j.SiteID)
+		}
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	sites, err := s.jobRepo.GetSites(ids)
+	if err != nil {
+		return err
+	}
+	byID := make(map[uuid.UUID]*models.Site, len(sites))
+	for i := range sites {
+		byID[sites[i].ID] = &sites[i]
+	}
+	for i, j := range jobs {
+		if j.SiteID == nil {
+			continue
+		}
+		if site, ok := byID[*j.SiteID]; ok {
+			responses[i].Site = site.Summary()
+		}
+	}
+	return nil
 }
 
 // GetScheduledJobs retrieves jobs scheduled within a date range

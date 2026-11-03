@@ -94,6 +94,12 @@ type JobRepositoryInterface interface {
 	GetOverdueJobs() ([]models.Job, error)
 	GetJobsRequiringFollowUp() ([]models.Job, error)
 	GetJobsByTechnicianAndDateRange(techID uuid.UUID, start, end int64) ([]models.Job, error)
+	// GetAssignedScheduledBetween lists the jobs actively assigned to userID
+	// whose scheduled start is in [start, end), cancelled ones left out, in
+	// time order (the technician's day, T173).
+	GetAssignedScheduledBetween(userID uuid.UUID, start, end int64) ([]models.Job, error)
+	// GetSites returns the caller's tenant's sites with these IDs (T173).
+	GetSites(ids []uuid.UUID) ([]models.Site, error)
 
 	// Assignment operations
 	// IsActiveTenantMember reports whether the user is an active member of

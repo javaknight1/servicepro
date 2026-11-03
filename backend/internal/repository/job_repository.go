@@ -265,6 +265,35 @@ func (r *JobRepository) GetJobsByTechnicianAndDateRange(techID uuid.UUID, start,
 	return jobs, err
 }
 
+// GetAssignedScheduledBetween lists the jobs actively assigned to userID
+// whose scheduled start is in [start, end), without cancelled ones, ordered
+// by start time then job number (T173). Tenant-scoped; a technician caller is
+// still limited to their own assigned jobs by jobs().
+func (r *JobRepository) GetAssignedScheduledBetween(userID uuid.UUID, start, end int64) ([]models.Job, error) {
+	var jobs []models.Job
+	err := r.jobs().
+		Where(assignedJobsOnly, userID).
+		Where("jobs.scheduled_start_at >= ? AND jobs.scheduled_start_at < ?", start, end).
+		Where("jobs.status <> ?", models.JobStatusCancelled).
+		Preload("Customer").
+		Preload("Assignments").
+		Preload("Assignments.User").
+		Order("jobs.scheduled_start_at ASC, jobs.job_number ASC").
+		Find(&jobs).Error
+	return jobs, err
+}
+
+// GetSites returns the sites with these IDs in the caller's tenant (the
+// tenant plugin scopes service_locations): other tenants' sites are absent.
+func (r *JobRepository) GetSites(ids []uuid.UUID) ([]models.Site, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	var sites []models.Site
+	err := r.db.Where("id IN ?", ids).Find(&sites).Error
+	return sites, err
+}
+
 // GetOverdueJobs retrieves jobs that are overdue
 func (r *JobRepository) GetOverdueJobs() ([]models.Job, error) {
 	var jobs []models.Job

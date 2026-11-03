@@ -249,6 +249,10 @@ type JobResponse struct {
 	CustomerID uuid.UUID         `json:"customer_id"`
 	Customer   *CustomerResponse `json:"customer,omitempty"`
 	SiteID     *uuid.UUID        `json:"site_id,omitempty"`
+	// Site is the visit's site (name, address, access notes, site contact)
+	// for the technician's day (T173). Set by GET /jobs/{id} and
+	// GET /jobs/my-day only.
+	Site *JobSiteSummary `json:"site,omitempty"`
 	// AgreementID is set on visits a service agreement generated (T167);
 	// jobs without one are extra work (not-to-exceed rule, T187).
 	AgreementID *uuid.UUID `json:"agreement_id,omitempty"`
@@ -293,6 +297,16 @@ type JobResponse struct {
 	Warnings           []string    `json:"warnings,omitempty"`
 	CreatedAt          time.Time   `json:"created_at"`
 	UpdatedAt          time.Time   `json:"updated_at"`
+}
+
+// MyDayResponse is GET /jobs/my-day (T173): the caller's visits on one
+// calendar day in the tenant's time zone, in time order.
+type MyDayResponse struct {
+	// Date is the day shown, YYYY-MM-DD in Timezone.
+	Date string `json:"date" example:"2026-11-03"`
+	// Timezone is the tenant's IANA time zone the day is read in.
+	Timezone string        `json:"timezone" example:"America/New_York"`
+	Visits   []JobResponse `json:"visits"`
 }
 
 // JobAssignmentResponse represents the response for a job assignment

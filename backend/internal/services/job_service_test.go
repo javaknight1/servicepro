@@ -72,6 +72,16 @@ func (m *MockJobRepository) GetByAssignedUser(userID uuid.UUID) ([]models.Job, e
 	return args.Get(0).([]models.Job), args.Error(1)
 }
 
+func (m *MockJobRepository) GetAssignedScheduledBetween(userID uuid.UUID, start, end int64) ([]models.Job, error) {
+	args := m.Called(userID, start, end)
+	return args.Get(0).([]models.Job), args.Error(1)
+}
+
+func (m *MockJobRepository) GetSites(ids []uuid.UUID) ([]models.Site, error) {
+	args := m.Called(ids)
+	return args.Get(0).([]models.Site), args.Error(1)
+}
+
 func (m *MockJobRepository) GetScheduledJobs(start, end int64) ([]models.Job, error) {
 	args := m.Called(start, end)
 	return args.Get(0).([]models.Job), args.Error(1)

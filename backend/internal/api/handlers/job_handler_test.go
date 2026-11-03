@@ -74,6 +74,14 @@ func (m *MockJobService) GetMyJobs(userID uuid.UUID) ([]models.JobResponse, erro
 	return args.Get(0).([]models.JobResponse), args.Error(1)
 }
 
+func (m *MockJobService) GetMyDay(userID uuid.UUID, date string) (*models.MyDayResponse, error) {
+	args := m.Called(userID, date)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.MyDayResponse), args.Error(1)
+}
+
 func (m *MockJobService) GetScheduledJobs(start, end int64) ([]models.JobResponse, error) {
 	args := m.Called(start, end)
 	return args.Get(0).([]models.JobResponse), args.Error(1)

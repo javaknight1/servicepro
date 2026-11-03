@@ -3484,6 +3484,84 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/jobs/my-day": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get my visits for a day
+         * @description The technician's day (T173): the visits assigned to the caller whose scheduled start falls on `date` in the tenant's time zone (today when omitted), cancelled visits left out, in time order. Each visit carries its site (name, address, access notes, site contact). Callers who can't see money get no prices.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Calendar date, YYYY-MM-DD in the tenant's time zone (default: today) */
+                    date?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.MyDayResponse"];
+                    };
+                };
+                /** @description date isn't YYYY-MM-DD */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Internal server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/jobs/number/{jobNumber}": {
         parameters: {
             query?: never;
@@ -13788,6 +13866,12 @@ export interface components {
             scheduled_end_at?: number;
             scheduled_start_at?: number;
             service_address?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ServiceAddress"];
+            /**
+             * @description Site is the visit's site (name, address, access notes, site contact)
+             *     for the technician's day (T173). Set by GET /jobs/{id} and
+             *     GET /jobs/my-day only.
+             */
+            site?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.JobSiteSummary"];
             site_id?: string;
             special_instructions?: string;
             status?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.JobStatus"];
@@ -13796,6 +13880,14 @@ export interface components {
             total_amount?: number;
             updated_at?: string;
             warnings?: string[];
+        };
+        "github_com_javaknight1_servicepro_backend_internal_models.JobSiteSummary": {
+            access_notes?: string;
+            address?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ServiceAddress"];
+            contact_name?: string;
+            contact_phone?: string;
+            id?: string;
+            name?: string;
         };
         "github_com_javaknight1_servicepro_backend_internal_models.JobStats": {
             by_status?: {
@@ -13867,6 +13959,19 @@ export interface components {
             monthly_price_cents?: number;
             name?: string;
             sort_order?: number;
+        };
+        "github_com_javaknight1_servicepro_backend_internal_models.MyDayResponse": {
+            /**
+             * @description Date is the day shown, YYYY-MM-DD in Timezone.
+             * @example 2026-11-03
+             */
+            date?: string;
+            /**
+             * @description Timezone is the tenant's IANA time zone the day is read in.
+             * @example America/New_York
+             */
+            timezone?: string;
+            visits?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.JobResponse"][];
         };
         "github_com_javaknight1_servicepro_backend_internal_models.NeonProvisionRequest": {
             invitation_token?: string;

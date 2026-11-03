@@ -2214,6 +2214,13 @@ definitions:
         type: integer
       service_address:
         $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ServiceAddress'
+      site:
+        allOf:
+        - $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.JobSiteSummary'
+        description: |-
+          Site is the visit's site (name, address, access notes, site contact)
+          for the technician's day (T173). Set by GET /jobs/{id} and
+          GET /jobs/my-day only.
       site_id:
         type: string
       special_instructions:
@@ -2232,6 +2239,21 @@ definitions:
         items:
           type: string
         type: array
+    type: object
+  github_com_javaknight1_servicepro_backend_internal_models.JobSiteSummary:
+    properties:
+      access_notes:
+        type: string
+      address:
+        $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ServiceAddress'
+      contact_name:
+        type: string
+      contact_phone:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
     type: object
   github_com_javaknight1_servicepro_backend_internal_models.JobStats:
     properties:
@@ -2403,6 +2425,21 @@ definitions:
         type: string
       sort_order:
         type: integer
+    type: object
+  github_com_javaknight1_servicepro_backend_internal_models.MyDayResponse:
+    properties:
+      date:
+        description: Date is the day shown, YYYY-MM-DD in Timezone.
+        example: "2026-11-03"
+        type: string
+      timezone:
+        description: Timezone is the tenant's IANA time zone the day is read in.
+        example: America/New_York
+        type: string
+      visits:
+        items:
+          $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.JobResponse'
+        type: array
     type: object
   github_com_javaknight1_servicepro_backend_internal_models.NeonProvisionRequest:
     properties:
@@ -7442,6 +7479,47 @@ paths:
       security:
       - BearerAuth: []
       summary: Get my assigned jobs
+      tags:
+      - jobs
+  /api/v1/jobs/my-day:
+    get:
+      description: 'The technician''s day (T173): the visits assigned to the caller
+        whose scheduled start falls on `date` in the tenant''s time zone (today when
+        omitted), cancelled visits left out, in time order. Each visit carries its
+        site (name, address, access notes, site contact). Callers who can''t see money
+        get no prices.'
+      parameters:
+      - description: 'Calendar date, YYYY-MM-DD in the tenant''s time zone (default:
+          today)'
+        in: query
+        name: date
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.MyDayResponse'
+        "400":
+          description: date isn't YYYY-MM-DD
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get my visits for a day
       tags:
       - jobs
   /api/v1/jobs/number/{jobNumber}:

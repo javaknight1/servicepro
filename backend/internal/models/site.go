@@ -49,6 +49,25 @@ func (s *Site) ServiceAddress() ServiceAddress {
 	return ServiceAddress{Street: s.AddressStreet, City: s.AddressCity, State: s.AddressState, Zip: s.AddressZip}
 }
 
+// JobSiteSummary is what a technician needs about a visit's site (T173):
+// where it is, how to get in and who to call. No billing details.
+type JobSiteSummary struct {
+	ID           uuid.UUID      `json:"id"`
+	Name         string         `json:"name"`
+	Address      ServiceAddress `json:"address"`
+	AccessNotes  *string        `json:"access_notes,omitempty"`
+	ContactName  *string        `json:"contact_name,omitempty"`
+	ContactPhone *string        `json:"contact_phone,omitempty"`
+}
+
+// Summary is the site as a JobSiteSummary.
+func (s *Site) Summary() *JobSiteSummary {
+	return &JobSiteSummary{
+		ID: s.ID, Name: s.Name, Address: s.ServiceAddress(),
+		AccessNotes: s.AccessNotes, ContactName: s.ContactName, ContactPhone: s.ContactPhone,
+	}
+}
+
 // CreateSiteRequest is POST /customers/{id}/sites.
 type CreateSiteRequest struct {
 	Name          string  `json:"name" binding:"required,max=200"`

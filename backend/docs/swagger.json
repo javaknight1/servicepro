@@ -2912,6 +2912,63 @@
                 ]
             }
         },
+        "/api/v1/jobs/my-day": {
+            "get": {
+                "description": "The technician's day (T173): the visits assigned to the caller whose scheduled start falls on `date` in the tenant's time zone (today when omitted), cancelled visits left out, in time order. Each visit carries its site (name, address, access notes, site contact). Callers who can't see money get no prices.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "jobs"
+                ],
+                "summary": "Get my visits for a day",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Calendar date, YYYY-MM-DD in the tenant's time zone (default: today)",
+                        "name": "date",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.MyDayResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "date isn't YYYY-MM-DD",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/v1/jobs/number/{jobNumber}": {
             "get": {
                 "description": "Retrieve a job by its job number",
@@ -13682,6 +13739,14 @@
                 "service_address": {
                     "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ServiceAddress"
                 },
+                "site": {
+                    "description": "Site is the visit's site (name, address, access notes, site contact)\nfor the technician's day (T173). Set by GET /jobs/{id} and\nGET /jobs/my-day only.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.JobSiteSummary"
+                        }
+                    ]
+                },
                 "site_id": {
                     "type": "string"
                 },
@@ -13708,6 +13773,29 @@
                     "items": {
                         "type": "string"
                     }
+                }
+            }
+        },
+        "github_com_javaknight1_servicepro_backend_internal_models.JobSiteSummary": {
+            "type": "object",
+            "properties": {
+                "access_notes": {
+                    "type": "string"
+                },
+                "address": {
+                    "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ServiceAddress"
+                },
+                "contact_name": {
+                    "type": "string"
+                },
+                "contact_phone": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
                 }
             }
         },
@@ -13949,6 +14037,27 @@
                 },
                 "sort_order": {
                     "type": "integer"
+                }
+            }
+        },
+        "github_com_javaknight1_servicepro_backend_internal_models.MyDayResponse": {
+            "type": "object",
+            "properties": {
+                "date": {
+                    "description": "Date is the day shown, YYYY-MM-DD in Timezone.",
+                    "type": "string",
+                    "example": "2026-11-03"
+                },
+                "timezone": {
+                    "description": "Timezone is the tenant's IANA time zone the day is read in.",
+                    "type": "string",
+                    "example": "America/New_York"
+                },
+                "visits": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.JobResponse"
+                    }
                 }
             }
         },
