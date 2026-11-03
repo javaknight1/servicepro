@@ -14093,6 +14093,7 @@ const docTemplate = `{
             ],
             "properties": {
                 "amount": {
+                    "description": "\u003e 0, checked in RecordPayment",
                     "type": "number"
                 },
                 "notes": {

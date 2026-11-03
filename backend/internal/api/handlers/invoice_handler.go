@@ -99,7 +99,7 @@ type UpdateInvoiceRequest struct {
 
 // RecordPaymentRequest represents a payment recording request
 type RecordPaymentRequest struct {
-	Amount          decimal.Decimal `json:"amount" binding:"required,gt=0"`
+	Amount          decimal.Decimal `json:"amount" binding:"required"` // > 0, checked in RecordPayment
 	PaymentDate     *time.Time      `json:"payment_date,omitempty"`
 	PaymentMethod   string          `json:"payment_method,omitempty"`
 	ReferenceNumber string          `json:"reference_number,omitempty"`
@@ -519,6 +519,11 @@ func (h *InvoiceHandler) RecordPayment(c *gin.Context) {
 	var req RecordPaymentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		apierror.BindError(c, err)
+		return
+	}
+	// decimal.Decimal doesn't support gt/gte validators (they panic)
+	if !req.Amount.IsPositive() {
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{Error: "amount must be greater than 0"})
 		return
 	}
 

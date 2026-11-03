@@ -12228,6 +12228,7 @@ export interface components {
             job?: string;
         };
         "internal_api_handlers.RecordPaymentRequest": {
+            /** @description > 0, checked in RecordPayment */
             amount: number;
             notes?: string;
             payment_date?: string;

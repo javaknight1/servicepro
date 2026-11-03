@@ -3660,6 +3660,7 @@ definitions:
   internal_api_handlers.RecordPaymentRequest:
     properties:
       amount:
+        description: '> 0, checked in RecordPayment'
         type: number
       notes:
         type: string
