@@ -95,6 +95,9 @@ has_enabled_version() {
 #   RESEND_WEBHOOK_SECRET  Resend webhook signing secret (bounce/complaint suppression, T159)
 #   STRIPE_SECRET_KEY      payments
 #   STRIPE_WEBHOOK_SECRET  Stripe webhook signature verification
+#   STRIPE_CONNECT_WEBHOOK_SECRET  Connect webhook endpoint (connected-account payments, T169)
+#   STRIPE_V2_WEBHOOK_SECRET       v2 event destination (account requirements/capabilities, T169)
+#   S3_COMPATIBLE_ACCESS_KEY_ID / S3_COMPATIBLE_SECRET_ACCESS_KEY  R2 API token (uploads bucket, T160)
 #   POSTHOG_API_KEY        product analytics
 #   REDIS_URL              Upstash (rediss://...) once Redis is provisioned
 #   TEXTBELT_API_KEY       SMS
@@ -106,6 +109,10 @@ OPTIONAL_SECRETS=(
   RESEND_WEBHOOK_SECRET
   STRIPE_SECRET_KEY
   STRIPE_WEBHOOK_SECRET
+  STRIPE_CONNECT_WEBHOOK_SECRET
+  STRIPE_V2_WEBHOOK_SECRET
+  S3_COMPATIBLE_ACCESS_KEY_ID
+  S3_COMPATIBLE_SECRET_ACCESS_KEY
   POSTHOG_API_KEY
   REDIS_URL
   TEXTBELT_API_KEY

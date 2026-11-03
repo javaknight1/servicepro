@@ -128,7 +128,9 @@ gcloud iam service-accounts add-iam-policy-binding "$RUNTIME_SA" \
 Required (attached once in §7): `DATABASE_URL`, `JWT_SECRET`.
 Optional (attached by `scripts/deploy-cloudrun.sh` on each release **only if
 they have an enabled version**): `SENTRY_DSN`, `RESEND_API_KEY`,
-`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `POSTHOG_API_KEY`, `REDIS_URL`,
+`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_CONNECT_WEBHOOK_SECRET`,
+`STRIPE_V2_WEBHOOK_SECRET`, `S3_COMPATIBLE_ACCESS_KEY_ID`,
+`S3_COMPATIBLE_SECRET_ACCESS_KEY`, `POSTHOG_API_KEY`, `REDIS_URL`,
 `TEXTBELT_API_KEY`, `INTERNAL_JOBS_SECRET`, `EDGE_PROXY_SECRET`.
 
 ```bash
@@ -155,6 +157,31 @@ DB_MAX_OPEN_CONNS` under the database's limit.
   session.
 - `INTERNAL_JOBS_SECRET` must match the GitHub secret of the same name used by
   `scheduled-jobs.yml`. `EDGE_PROXY_SECRET` must match the Worker secret (§9).
+
+### File storage: Cloudflare R2 (T160)
+
+Without storage the API runs (PDFs are generated on demand and attached; the
+profile-picture upload route isn't registered). To turn files on:
+
+1. Cloudflare dashboard → R2: create the private bucket `servicepro-uploads`
+   (no public access, no custom domain). Create an R2 API token with
+   **Object Read & Write** on that bucket only; save it in Bitwarden
+   (Dev & Cloud → `Cloudflare R2 (servicepro-uploads)`).
+2. Secrets `S3_COMPATIBLE_ACCESS_KEY_ID` and `S3_COMPATIBLE_SECRET_ACCESS_KEY`:
+   create them with the loop above, then add versions piped from Bitwarden
+   (`gcloud secrets versions add … --data-file=-`).
+3. Plain settings, once (`--update-env-vars` merges):
+
+   ```bash
+   gcloud run services update servicepro-api --region="$GCP_REGION" \
+     --update-env-vars="S3_COMPATIBLE_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com,S3_COMPATIBLE_BUCKET=servicepro-uploads,S3_COMPATIBLE_REGION=auto,S3_COMPATIBLE_USE_PATH_STYLE=true"
+   ```
+
+   Leave `S3_COMPATIBLE_PUBLIC_URL` and `S3_COMPATIBLE_PRESIGN_ENDPOINT` unset:
+   the bucket stays private, PDFs use presigned links and profile pictures are
+   served through `GET /api/v1/users/{id}/profile-picture`.
+4. The next release attaches the two secrets. Check: upload a profile picture
+   and open an invoice PDF link.
 
 ### Row-level security (T154, off until switched on)
 
