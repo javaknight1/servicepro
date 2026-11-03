@@ -53,6 +53,20 @@ vi.mock('@services/siteService', () => ({
   ],
 }));
 
+vi.mock('@services/purchaseOrderService', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@services/purchaseOrderService')>();
+  return {
+    ...actual,
+    purchaseOrderService: {
+      list: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      remove: vi.fn(),
+    },
+  };
+});
+
 vi.mock('@services/agreementService', async (importOriginal) => {
   const actual =
     await importOriginal<typeof import('@services/agreementService')>();
@@ -76,6 +90,10 @@ import { useAuthStore, useTenantStore, useSidebarStore } from '@store';
 import { customerService } from '@services/customerService';
 import { siteService, type Site } from '@services/siteService';
 import { agreementService, type Agreement } from '@services/agreementService';
+import {
+  purchaseOrderService,
+  type PurchaseOrder,
+} from '@services/purchaseOrderService';
 import type { CustomerStats } from '@app-types/customer';
 
 // =============================================================================
@@ -90,6 +108,23 @@ const mockUser = {
   is_active: true,
   email_verified: true,
 };
+
+const mockPurchaseOrders: PurchaseOrder[] = [
+  {
+    id: 'po-1',
+    customer_id: 'customer-1',
+    po_number: 'PO-7731-HV',
+    amount: '30000.00',
+    billed: '27400.00',
+    remaining: '2600.00',
+    invoice_count: 11,
+    expires_on: '2027-09-30',
+    expired: false,
+    notes: 'Annual janitorial PO',
+    created_at: '2026-10-01T00:00:00Z',
+    updated_at: '2026-10-01T00:00:00Z',
+  },
+];
 
 const mockTenant = {
   id: 'tenant-123',
@@ -303,6 +338,7 @@ const setupMocks = () => {
   vi.mocked(customerService.getStats).mockResolvedValue(mockCustomerStats);
   vi.mocked(siteService.list).mockResolvedValue(mockSites);
   vi.mocked(agreementService.list).mockResolvedValue(mockAgreements);
+  vi.mocked(purchaseOrderService.list).mockResolvedValue(mockPurchaseOrders);
 };
 
 // =============================================================================
@@ -969,6 +1005,55 @@ describe('Customer CRUD Integration', () => {
         );
       });
       expect(await screen.findByText('No limit')).toBeInTheDocument();
+    });
+
+    it('lists purchase orders with their remaining balance and adds one (T187)', async () => {
+      const user = userEvent.setup({ delay: null });
+      vi.mocked(customerService.getCustomer).mockResolvedValue(
+        mockCustomers[0]
+      );
+      vi.mocked(purchaseOrderService.create).mockResolvedValue({
+        ...mockPurchaseOrders[0],
+        id: 'po-2',
+        po_number: 'PO-8800',
+      });
+      await renderCustomer();
+
+      await user.click(
+        await screen.findByRole('tab', { name: /purchase orders/i })
+      );
+      const section = await screen.findByRole('region', {
+        name: 'Purchase orders',
+      });
+      expect(
+        await within(section).findByText('PO-7731-HV')
+      ).toBeInTheDocument();
+      expect(within(section).getByText('$30,000.00')).toBeInTheDocument();
+      expect(within(section).getByText('$27,400.00')).toBeInTheDocument();
+      expect(within(section).getByText('$2,600.00')).toBeInTheDocument();
+      expect(within(section).getByText('11 invoices')).toBeInTheDocument();
+      expect(within(section).getByText('Sep 30, 2027')).toBeInTheDocument();
+      expect(purchaseOrderService.list).toHaveBeenCalledWith('customer-1');
+
+      await user.click(
+        within(section).getByRole('button', { name: /add purchase order/i })
+      );
+      const dialog = await screen.findByRole('dialog');
+      await user.type(within(dialog).getByLabelText(/po number/i), ' PO-8800 ');
+      await user.type(
+        within(dialog).getByLabelText(/authorised amount/i),
+        '12000'
+      );
+      await user.click(within(dialog).getByRole('button', { name: /add po/i }));
+
+      await waitFor(() => {
+        expect(purchaseOrderService.create).toHaveBeenCalledWith('customer-1', {
+          po_number: 'PO-8800',
+          amount: '12000',
+          expires_on: undefined,
+          notes: undefined,
+        });
+      });
     });
   });
 });

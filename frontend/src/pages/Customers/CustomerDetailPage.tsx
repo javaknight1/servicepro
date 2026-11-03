@@ -13,10 +13,15 @@ import {
   BillingRulesCards,
   BillingRulesModal,
   CustomerSitesSection,
+  CustomerPurchaseOrdersSection,
 } from '@components/customers';
 import { ConsolidatedInvoiceModal } from '@components/invoices';
 import { customerService, type Customer } from '@services/customerService';
 import { siteService, sitesQueryKey } from '@services/siteService';
+import {
+  purchaseOrderService,
+  purchaseOrdersQueryKey,
+} from '@services/purchaseOrderService';
 import {
   agreementKeys,
   agreementService,
@@ -53,7 +58,7 @@ import {
   Receipt,
 } from 'lucide-react';
 
-type CustomerTab = 'sites' | 'agreements' | 'jobs';
+type CustomerTab = 'sites' | 'agreements' | 'jobs' | 'purchase_orders';
 
 interface CustomerFormData {
   email: string;
@@ -141,6 +146,12 @@ export function CustomerDetailPage() {
   const activeSiteCount = (sitesQuery.data ?? []).filter(
     (s) => s.is_active
   ).length;
+  // Shares the Purchase orders tab's query (same key), for the tab count.
+  const purchaseOrdersQuery = useQuery({
+    queryKey: purchaseOrdersQueryKey(id ?? ''),
+    queryFn: () => purchaseOrderService.list(id as string),
+    enabled: !isNew && !!id,
+  });
   // Shares the Sites tab's agreements query (same key).
   const agreementsQuery = useQuery({
     queryKey: agreementKeys.list({ customer_id: id }),
@@ -448,6 +459,11 @@ export function CustomerDetailPage() {
                     'Jobs',
                     isLoadingJobs ? undefined : recentJobs.length,
                   ],
+                  [
+                    'purchase_orders',
+                    'Purchase orders',
+                    purchaseOrdersQuery.data?.length,
+                  ],
                 ] as const
               ).map(([tab, label, count]) => (
                 <button
@@ -501,6 +517,8 @@ export function CustomerDetailPage() {
                   }
                   onConsolidate={() => setIsConsolidateOpen(true)}
                 />
+              ) : activeTab === 'purchase_orders' && id ? (
+                <CustomerPurchaseOrdersSection customerId={id} />
               ) : (
                 <RecentJobs
                   jobs={recentJobs}

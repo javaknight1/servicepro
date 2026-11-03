@@ -12,6 +12,14 @@ vi.mock('@services/siteService', async (importOriginal) => {
     siteService: { list: vi.fn(), create: vi.fn(), update: vi.fn() },
   };
 });
+vi.mock('@services/purchaseOrderService', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@services/purchaseOrderService')>();
+  return {
+    ...actual,
+    purchaseOrderService: { create: vi.fn(), update: vi.fn() },
+  };
+});
 vi.mock('@services/customerService', () => ({
   customerService: { updateCustomer: vi.fn() },
 }));
@@ -21,6 +29,11 @@ import { customerService, type Customer } from '@services/customerService';
 import { BillingRulesCards } from '../BillingRulesCards';
 import { BillingRulesModal } from '../BillingRulesModal';
 import { SiteFormModal } from '../SiteFormModal';
+import { PurchaseOrderFormModal } from '../PurchaseOrderFormModal';
+import {
+  purchaseOrderService,
+  type PurchaseOrder,
+} from '@services/purchaseOrderService';
 
 function renderWithClient(ui: ReactElement) {
   const client = new QueryClient({
@@ -175,5 +188,80 @@ describe('SiteFormModal', () => {
       )
     );
     expect(onClose).toHaveBeenCalled();
+  });
+});
+
+describe('PurchaseOrderFormModal', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  const po: PurchaseOrder = {
+    id: 'po-1',
+    customer_id: 'c-1',
+    po_number: 'PO-7731-HV',
+    amount: '30000.00',
+    billed: '1000.00',
+    remaining: '29000.00',
+    invoice_count: 1,
+    expires_on: '2027-09-30',
+    expired: false,
+    created_at: '2026-01-01T00:00:00Z',
+    updated_at: '2026-01-01T00:00:00Z',
+  };
+
+  it('edits the amount and clears the expiry (T187)', async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    vi.mocked(purchaseOrderService.update).mockResolvedValue(po);
+    renderWithClient(
+      <PurchaseOrderFormModal
+        customerId="c-1"
+        purchaseOrder={po}
+        isOpen
+        onClose={onClose}
+      />
+    );
+    const dialog = screen.getByRole('dialog');
+    const amount = within(dialog).getByLabelText(/authorised amount/i);
+    expect(amount).toHaveValue(30000);
+    await user.clear(amount);
+    await user.type(amount, '35000');
+    await user.clear(within(dialog).getByLabelText(/expires/i));
+    await user.click(within(dialog).getByRole('button', { name: /save po/i }));
+    await waitFor(() =>
+      expect(purchaseOrderService.update).toHaveBeenCalledWith('c-1', 'po-1', {
+        po_number: 'PO-7731-HV',
+        amount: '35000',
+        notes: '',
+        clear_expires_on: true,
+      })
+    );
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it('shows a duplicate PO number as an error', async () => {
+    const user = userEvent.setup();
+    vi.mocked(purchaseOrderService.create).mockRejectedValue(
+      new AxiosError('Conflict', 'ERR_BAD_REQUEST', undefined, undefined, {
+        data: {
+          error: 'purchase_order_exists',
+          message:
+            'This customer already has a purchase order with that number',
+        },
+        status: 409,
+        statusText: 'Conflict',
+        headers: {},
+        config: { headers: new AxiosHeaders() },
+      })
+    );
+    renderWithClient(
+      <PurchaseOrderFormModal customerId="c-1" isOpen onClose={vi.fn()} />
+    );
+    const dialog = screen.getByRole('dialog');
+    await user.type(within(dialog).getByLabelText(/po number/i), 'PO-1');
+    await user.type(within(dialog).getByLabelText(/authorised amount/i), '50');
+    await user.click(within(dialog).getByRole('button', { name: /add po/i }));
+    expect(
+      await within(dialog).findByText(/already has a purchase order/i)
+    ).toBeInTheDocument();
   });
 });
