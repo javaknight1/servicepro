@@ -49,7 +49,6 @@ type DaySchedule struct {
 type TenantSettings struct {
 	IsDefault            bool       `json:"isDefault,omitempty"`
 	Timezone             string     `json:"timezone,omitempty"`
-	DateFormat           string     `json:"dateFormat,omitempty"`
 	Currency             string     `json:"currency,omitempty"`
 	InvoicePrefix        string     `json:"invoicePrefix,omitempty"`
 	QuotePrefix          string     `json:"quotePrefix,omitempty"`
@@ -69,7 +68,28 @@ type TenantSettings struct {
 	// public pay page (T170, mockup 17). Optional.
 	BusinessCity  string `json:"businessCity,omitempty"`
 	BusinessState string `json:"businessState,omitempty"`
+
+	// Onboarding wizard (T235, mockups 02-04). Trade is one of the
+	// TenantTrade* values; TechnicianCount is what the owner told us.
+	Trade           string `json:"trade,omitempty"`
+	TechnicianCount int    `json:"technicianCount,omitempty"`
+	// New customers inherit these billing rules unless the create request
+	// sets them (T235; the customer's consolidated_billing / po_required).
+	DefaultConsolidatedBilling bool `json:"defaultConsolidatedBilling,omitempty"`
+	DefaultPORequired          bool `json:"defaultPoRequired,omitempty"`
+	// OnboardingStep is the wizard step to resume at (1-3); 0 means the
+	// wizard was never started (tenants from before it existed).
+	// OnboardingCompletedAt is set when the owner finishes or skips it.
+	OnboardingStep        int        `json:"onboardingStep,omitempty"`
+	OnboardingCompletedAt *time.Time `json:"onboardingCompletedAt,omitempty"`
 }
+
+// Trades a tenant can pick in onboarding (T235, D7).
+const (
+	TenantTradeCommercialCleaning  = "commercial_cleaning"
+	TenantTradeFacilityMaintenance = "facility_maintenance"
+	TenantTradeOther               = "other"
+)
 
 // Value implements driver.Valuer for database serialization
 func (s TenantSettings) Value() (driver.Value, error) {

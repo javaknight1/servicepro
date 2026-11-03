@@ -391,3 +391,26 @@ func (r *TenantRepository) UpdateStripeCustomerID(ctx context.Context, tenantID 
 		Where("id = ?", tenantID).
 		Update("stripe_customer_id", stripeCustomerID).Error
 }
+
+// UsablePaymentTerm reports whether id is an active payment term the tenant
+// may use as its default (T235): one of its own rows or a shared global row
+// (tenant_id IS NULL). Another tenant's row, or an inactive one, is not.
+func (r *TenantRepository) UsablePaymentTerm(ctx context.Context, tenantID, id uuid.UUID) (bool, error) {
+	return r.usableSharedRow(ctx, &models.PaymentTerm{}, tenantID, id)
+}
+
+// UsableTaxRate is UsablePaymentTerm for tax rates (T235).
+func (r *TenantRepository) UsableTaxRate(ctx context.Context, tenantID, id uuid.UUID) (bool, error) {
+	return r.usableSharedRow(ctx, &models.TaxRate{}, tenantID, id)
+}
+
+func (r *TenantRepository) usableSharedRow(ctx context.Context, model any, tenantID, id uuid.UUID) (bool, error) {
+	var count int64
+	err := r.db.WithContext(tenancy.WithTenant(ctx, tenantID)).Model(model).
+		Where("id = ? AND (tenant_id = ? OR tenant_id IS NULL) AND is_active = ?", id, tenantID, true).
+		Count(&count).Error
+	if err != nil {
+		return false, fmt.Errorf("look up default row: %w", err)
+	}
+	return count > 0, nil
+}

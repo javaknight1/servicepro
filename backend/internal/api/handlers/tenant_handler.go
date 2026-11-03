@@ -141,7 +141,7 @@ func (h *TenantHandler) CreateTenant(c *gin.Context) {
 				Message: "Invalid or already used slug",
 			})
 		default:
-			apierror.Internal(c, err, "Failed to create organization")
+			apierror.Respond(c, err, "Failed to create organization")
 		}
 		return
 	}
@@ -191,7 +191,7 @@ func (h *TenantHandler) GetTenant(c *gin.Context) {
 
 // UpdateTenant updates a tenant
 // @Summary		Update tenant
-// @Description	Updates an existing tenant
+// @Description	Updates an existing tenant. Settings are replaced as a whole and validated on save (T235): currency must be an ISO 4217 code, invoice/quote/job prefixes at most 20 characters without control characters, timezone an IANA name, and the default payment term / tax rate the tenant's own (or global) active rows. Bad values answer 400 validation_failed with per-setting field errors.
 // @Tags			Tenants
 // @Accept			json
 // @Produce		json
@@ -239,7 +239,7 @@ func (h *TenantHandler) UpdateTenant(c *gin.Context) {
 				Message: "Invalid or already used slug",
 			})
 		default:
-			apierror.Internal(c, err, "Failed to update organization")
+			apierror.Respond(c, err, "Failed to update organization")
 		}
 		return
 	}

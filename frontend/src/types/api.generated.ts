@@ -9935,7 +9935,7 @@ export interface paths {
         };
         /**
          * Update tenant
-         * @description Updates an existing tenant
+         * @description Updates an existing tenant. Settings are replaced as a whole and validated on save (T235): currency must be an ISO 4217 code, invoice/quote/job prefixes at most 20 characters without control characters, timezone an IANA name, and the default payment term / tax rate the tenant's own (or global) active rows. Bad values answer 400 validation_failed with per-setting field errors.
          */
         put: {
             parameters: {
@@ -13836,18 +13836,36 @@ export interface components {
             };
             businessState?: string;
             currency?: string;
-            dateFormat?: string;
+            /**
+             * @description New customers inherit these billing rules unless the create request
+             *     sets them (T235; the customer's consolidated_billing / po_required).
+             */
+            defaultConsolidatedBilling?: boolean;
             defaultPaymentTermId?: string;
+            defaultPoRequired?: boolean;
             defaultTaxRateId?: string;
             invoicePrefix?: string;
             isDefault?: boolean;
             jobPrefix?: string;
             maxRemindersPerInvoice?: number;
+            onboardingCompletedAt?: string;
+            /**
+             * @description OnboardingStep is the wizard step to resume at (1-3); 0 means the
+             *     wizard was never started (tenants from before it existed).
+             *     OnboardingCompletedAt is set when the owner finishes or skips it.
+             */
+            onboardingStep?: number;
             /** @description Payment reminder settings */
             paymentRemindersEnabled?: boolean;
             quotePrefix?: string;
             reminderDaysAfterDue?: number[];
+            technicianCount?: number;
             timezone?: string;
+            /**
+             * @description Onboarding wizard (T235, mockups 02-04). Trade is one of the
+             *     TenantTrade* values; TechnicianCount is what the owner told us.
+             */
+            trade?: string;
         };
         "github_com_javaknight1_servicepro_backend_internal_models.TenantSubscriptionResponse": {
             billing_cycle?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.BillingCycle"];

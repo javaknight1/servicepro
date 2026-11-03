@@ -150,7 +150,12 @@ func (s *TenantService) CreateTenant(ctx context.Context, req *models.CreateTena
 	}
 
 	if req.Settings != nil {
-		tenant.Settings = *req.Settings
+		settings := *req.Settings
+		// No tenant rows exist yet, so default term/tax IDs can't be set here.
+		if err := validateTenantSettings(ctx, nil, uuid.Nil, &models.TenantSettings{}, &settings); err != nil {
+			return nil, err
+		}
+		tenant.Settings = settings
 	}
 
 	// Tenant, owner membership and the Team trial are created atomically
@@ -216,7 +221,13 @@ func (s *TenantService) UpdateTenant(ctx context.Context, id uuid.UUID, req *mod
 	}
 
 	if req.Settings != nil {
-		tenant.Settings = *req.Settings
+		// Validated on save (T235); id is the path tenant the caller is a
+		// member of (RequireTenantFromPath), so lookups are scoped to it.
+		settings := *req.Settings
+		if err := validateTenantSettings(ctx, s.tenantRepo, tenant.ID, &tenant.Settings, &settings); err != nil {
+			return nil, err
+		}
+		tenant.Settings = settings
 	}
 
 	if err := s.tenantRepo.Update(ctx, tenant); err != nil {

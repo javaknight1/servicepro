@@ -24,7 +24,6 @@ export interface DaySchedule {
 export interface TenantSettings {
   isDefault?: boolean;
   timezone?: string;
-  dateFormat?: string;
   currency?: string;
   invoicePrefix?: string;
   quotePrefix?: string;
