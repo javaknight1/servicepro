@@ -75,6 +75,33 @@ export interface JobNote {
   created_at: string;
 }
 
+/** What a technician needs about a visit's site (T173). No billing. */
+export interface JobSiteSummary {
+  id: string;
+  name: string;
+  address: ServiceAddress;
+  access_notes?: string;
+  contact_name?: string;
+  contact_phone?: string;
+}
+
+/** GET /jobs/my-day: the caller's visits on one tenant-local day (T173). */
+export interface MyDayResponse {
+  /** YYYY-MM-DD in `timezone`. */
+  date: string;
+  /** The tenant's IANA time zone. */
+  timezone: string;
+  /** In time order. */
+  visits: Job[];
+}
+
+/** Body of POST /jobs/{id}/materials from the field: quantities only. */
+export interface AddJobMaterialRequest {
+  name: string;
+  quantity: number;
+  unit: string;
+}
+
 export interface Job {
   id: string;
   job_number: string;
@@ -86,9 +113,14 @@ export interface Job {
     last_name: string;
     company_name?: string;
     phone?: string;
+    /** The customer's main phone (the API's field name). */
+    phone_primary?: string;
   };
   /** One of the customer's sites (T186). */
   site_id?: string;
+  /** The site's address, access notes and contact (GET /jobs/{id} and
+   *  GET /jobs/my-day only, T173). */
+  site?: JobSiteSummary;
   /** Set on visits a service agreement generated (T167); jobs without one
    *  are extra work, subject to the customer's not-to-exceed limit (T187). */
   agreement_id?: string;
@@ -238,6 +270,33 @@ class JobService {
   async getJob(id: string): Promise<Job> {
     const response = await api.get<Job>(`${this.basePath}/${id}`);
     return response.data;
+  }
+
+  /**
+   * The caller's visits on `date` (YYYY-MM-DD in the tenant's time zone;
+   * the server's today when omitted), in time order, with sites (T173).
+   */
+  async getMyDay(date?: string): Promise<MyDayResponse> {
+    const response = await api.get<MyDayResponse>(`${this.basePath}/my-day`, {
+      params: date ? { date } : undefined,
+    });
+    return response.data;
+  }
+
+  /** Add a note to a job (shown on the job and the visit page). */
+  async addNote(jobId: string, note: string): Promise<void> {
+    await api.post(`${this.basePath}/${jobId}/notes`, { note });
+  }
+
+  /**
+   * Log a material used on a job. No unit cost: the office prices it, and
+   * the API refuses a cost from callers who can't see money (T035).
+   */
+  async addMaterial(
+    jobId: string,
+    material: AddJobMaterialRequest
+  ): Promise<void> {
+    await api.post(`${this.basePath}/${jobId}/materials`, material);
   }
 
   async getJobByNumber(jobNumber: string): Promise<Job> {

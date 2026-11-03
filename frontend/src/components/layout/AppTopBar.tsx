@@ -15,6 +15,7 @@ export interface Breadcrumb {
 /** Page titles by path prefix, most specific first. */
 const PAGE_TITLES: [string, string][] = [
   ['/dashboard', 'Dashboard'],
+  ['/my-day', 'My day'],
   ['/customers', 'Customers & Sites'],
   ['/jobs/calendar', 'Job calendar'],
   ['/jobs', 'Jobs'],

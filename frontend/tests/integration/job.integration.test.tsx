@@ -46,6 +46,9 @@ vi.mock('@services/jobService', () => ({
     getApprovals: vi.fn(),
     recordApproval: vi.fn(),
     invoiceJob: vi.fn(),
+    getMyDay: vi.fn(),
+    addNote: vi.fn(),
+    addMaterial: vi.fn(),
   },
   jobApprovalsQueryKey: (jobId: string | null) => ['job-approvals', jobId],
   JobStatus: {
@@ -1573,5 +1576,147 @@ describe('Job pages for technicians (T035)', () => {
     );
     expect(await screen.findByText('Job not found')).toBeInTheDocument();
     expect(screen.queryByLabelText(/title/i)).not.toBeInTheDocument();
+  });
+});
+
+// =============================================================================
+// The technician's day on a phone (T173): start a visit, open it, log notes
+// and materials — no money anywhere
+// =============================================================================
+
+describe("Technician's day (T173)", () => {
+  const today = new Intl.DateTimeFormat('en-CA').format(new Date());
+  const start = Math.floor(Date.now() / 1000) + 3600;
+  const visit = {
+    ...mockJobs[0],
+    status: 'scheduled' as const,
+    allowed_transitions: [
+      'en_route' as const,
+      'in_progress' as const,
+      'cancelled' as const,
+    ],
+    scheduled_start_at: start,
+    scheduled_end_at: start + 3600,
+    estimated_cost: 0,
+    site_id: 'site-1',
+    site: {
+      id: 'site-1',
+      name: 'Harborview Lofts',
+      address: {
+        street: '220 W Spring St',
+        city: 'Columbus',
+        state: 'OH',
+        zip: '43215',
+      },
+      access_notes: 'Key box by the loading dock',
+      contact_name: 'Ray Burke',
+      contact_phone: '555-0100',
+    },
+  };
+  const started = {
+    ...visit,
+    status: 'in_progress' as const,
+    allowed_transitions: [
+      'on_hold' as const,
+      'completed' as const,
+      'cancelled' as const,
+    ],
+    actual_start_at: Math.floor(Date.now() / 1000),
+  };
+  type DayVisit = Awaited<
+    ReturnType<typeof jobService.getMyDay>
+  >['visits'][number];
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setupMocks();
+    mockTenant.role = 'technician';
+    grantedPermissions = new Set<string>([
+      'jobs.read',
+      'jobs.list',
+      'jobs.update',
+    ]);
+    vi.mocked(jobService.getMyDay).mockResolvedValue({
+      date: today,
+      timezone: 'UTC',
+      visits: [visit as unknown as DayVisit],
+    });
+    vi.mocked(jobService.getJob).mockResolvedValue(
+      started as unknown as Awaited<ReturnType<typeof jobService.getJob>>
+    );
+    vi.mocked(jobService.addNote).mockResolvedValue(undefined);
+    vi.mocked(jobService.addMaterial).mockResolvedValue(undefined);
+  });
+
+  afterEach(() => {
+    mockTenant.role = undefined;
+  });
+
+  it('starts a visit, opens it and logs a note and a material', async () => {
+    const { MyDayPage, VisitPage } = await import('../../src/pages/MyDay');
+    render(
+      <MemoryRouter initialEntries={['/my-day']}>
+        <Routes>
+          <Route path="/my-day" element={<MyDayPage />} />
+          <Route path="/my-day/:jobId" element={<VisitPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+    const user = userEvent.setup();
+
+    // The day: the visit with its site, how to get in and who to call.
+    expect(
+      await screen.findByRole('link', { name: 'Harborview Lofts' })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('Site note: Key box by the loading dock')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: /Ray Burke · 555-0100/ })
+    ).toHaveAttribute('href', 'tel:5550100');
+
+    // Start → the job state machine; the day reloads with Complete.
+    vi.mocked(jobService.transitionStatus).mockResolvedValue(
+      started as unknown as Awaited<
+        ReturnType<typeof jobService.transitionStatus>
+      >
+    );
+    vi.mocked(jobService.getMyDay).mockResolvedValue({
+      date: today,
+      timezone: 'UTC',
+      visits: [started as unknown as DayVisit],
+    });
+    await user.click(
+      screen.getByRole('button', { name: 'Start Harborview Lofts' })
+    );
+    expect(jobService.transitionStatus).toHaveBeenCalledWith(
+      'job-1',
+      'in_progress'
+    );
+    expect(
+      await screen.findByRole('button', { name: 'Complete Harborview Lofts' })
+    ).toBeInTheDocument();
+
+    // Open the visit: what to do, notes and materials.
+    await user.click(screen.getByRole('link', { name: 'Harborview Lofts' }));
+    expect(
+      await screen.findByRole('heading', { name: 'Harborview Lofts' })
+    ).toBeInTheDocument();
+    expect(jobService.getJob).toHaveBeenCalledWith('job-1');
+    expect(screen.getByText('Install new HVAC system')).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText('Add a note'), 'Filter replaced');
+    await user.click(screen.getByRole('button', { name: 'Save note' }));
+    expect(jobService.addNote).toHaveBeenCalledWith('job-1', 'Filter replaced');
+
+    await user.type(screen.getByLabelText('Material'), 'Air filter 20x25');
+    await user.click(screen.getByRole('button', { name: 'Add material' }));
+    expect(jobService.addMaterial).toHaveBeenCalledWith('job-1', {
+      name: 'Air filter 20x25',
+      quantity: 1,
+      unit: 'each',
+    });
+
+    expect(screen.queryByText(/\$/)).not.toBeInTheDocument();
   });
 });

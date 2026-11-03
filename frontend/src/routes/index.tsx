@@ -284,6 +284,23 @@ const JobCalendarPage = loadable(
   { chunkName: 'job-calendar', delay: 100 }
 );
 
+// The technician's day on a phone (T173)
+const MyDayPage = loadable(
+  () =>
+    import(/* webpackChunkName: "page-my-day" */ '@pages/MyDay').then((m) => ({
+      default: m.MyDayPage,
+    })),
+  { chunkName: 'my-day', delay: 100 }
+);
+
+const VisitPage = loadable(
+  () =>
+    import(/* webpackChunkName: "page-my-day" */ '@pages/MyDay').then((m) => ({
+      default: m.VisitPage,
+    })),
+  { chunkName: 'visit', delay: 100 }
+);
+
 const QuoteDetailPage = loadable(
   () =>
     import(/* webpackChunkName: "page-quotes" */ '@pages/Quotes').then((m) => ({
@@ -497,6 +514,8 @@ export function AppRoutes() {
         <Route path="/jobs/new" element={<JobDetailPage />} />
         <Route path="/jobs/:id" element={<JobDetailPage />} />
         <Route path="/jobs/:id/history" element={<JobStatusHistoryPage />} />
+        <Route path="/my-day" element={<MyDayPage />} />
+        <Route path="/my-day/:jobId" element={<VisitPage />} />
         <Route path="/quotes" element={<QuotesPage />} />
         <Route path="/quotes/new" element={<QuoteDetailPage />} />
         <Route path="/quotes/:id" element={<QuoteDetailPage />} />
@@ -551,6 +570,7 @@ export const routePaths = {
   agreements: '/agreements',
   jobs: '/jobs',
   jobCalendar: '/jobs/calendar',
+  myDay: '/my-day',
   quotes: '/quotes',
   invoices: '/invoices',
   settings: '/settings',
@@ -586,6 +606,7 @@ export function isProtectedRoute(path: string): boolean {
     '/customers',
     '/agreements',
     '/jobs',
+    '/my-day',
     '/quotes',
     '/invoices',
     '/settings',
