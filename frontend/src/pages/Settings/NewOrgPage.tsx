@@ -5,6 +5,7 @@ import { Card, CardContent, Button, Input } from '@components/shared';
 import { useTenantStore } from '@store';
 import { Building2 } from 'lucide-react';
 import type { CreateTenantRequest } from '@/types/tenant';
+import { browserTimezone } from '@/utils/tenantSettings';
 
 export function NewOrgPage() {
   const navigate = useNavigate();
@@ -39,12 +40,13 @@ export function NewOrgPage() {
         slug: slug.trim(),
         email: email.trim() || undefined,
         phone: phone.trim() || undefined,
+        // Starts the onboarding wizard (T235): resumable until finished.
+        settings: { onboardingStep: 1, timezone: browserTimezone() },
       };
 
       const newTenant = await createTenant(data);
       setCurrentTenant(newTenant);
-      // Navigate to dashboard after creating organization
-      navigate('/dashboard');
+      navigate('/onboarding');
     } catch (err) {
       console.error('Failed to create organization:', err);
     }

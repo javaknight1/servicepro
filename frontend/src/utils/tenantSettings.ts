@@ -36,9 +36,7 @@ const COMMON_CURRENCIES = ['USD', 'CAD', 'EUR', 'GBP', 'AUD'];
 
 function currencyName(code: string): string {
   try {
-    return (
-      new Intl.DisplayNames(['en'], { type: 'currency' }).of(code) ?? code
-    );
+    return new Intl.DisplayNames(['en'], { type: 'currency' }).of(code) ?? code;
   } catch {
     return code;
   }
@@ -98,3 +96,32 @@ export function mergeSettings(
 ): TenantSettings {
   return { ...(tenant.settings ?? {}), ...patch };
 }
+/** The zone the browser runs in, when it is one we offer. */
+export function browserTimezone(): string {
+  try {
+    const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (TIMEZONES.some((z) => z.value === zone)) return zone;
+  } catch {
+    // fall through
+  }
+  return 'America/New_York';
+}
+
+/** Trades offered in onboarding step 1 (D7). */
+export const TRADE_OPTIONS = [
+  {
+    value: 'commercial_cleaning',
+    label: 'Commercial cleaning',
+    description: 'Janitorial, day porter, floor care',
+  },
+  {
+    value: 'facility_maintenance',
+    label: 'Facility maintenance',
+    description: 'Preventive maintenance, repairs, work orders',
+  },
+  {
+    value: 'other',
+    label: 'Something else',
+    description: 'Another kind of commercial service work',
+  },
+] as const;

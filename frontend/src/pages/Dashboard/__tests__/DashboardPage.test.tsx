@@ -27,8 +27,13 @@ const tenant: Tenant = {
 
 vi.mock('@store', () => ({
   useAuthStore: (
-    select: (s: { user: { email: string; first_name: string } }) => unknown
-  ) => select({ user: { email: 'owner@acme.test', first_name: 'Dana' } }),
+    select: (s: {
+      user: { id: string; email: string; first_name: string };
+    }) => unknown
+  ) =>
+    select({
+      user: { id: 'owner-1', email: 'owner@acme.test', first_name: 'Dana' },
+    }),
   useTenantStore: () => ({
     currentTenant: tenant,
     tenants: [tenant],
@@ -138,6 +143,36 @@ describe('DashboardPage (T269)', () => {
     vi.mocked(invoiceService.getStats).mockResolvedValue(invoiceStats);
     vi.mocked(arAgingService.getBucketSummary).mockResolvedValue(aging);
     vi.mocked(jobService.getJobs).mockResolvedValue(list([completedJob], 7));
+  });
+
+  // T235: an owner who left the onboarding wizard can pick it up again.
+  it('offers to resume an unfinished onboarding', async () => {
+    tenant.settings = { onboardingStep: 2 };
+    try {
+      renderPage();
+      expect(
+        await screen.findByText('Finish setting up your workspace')
+      ).toBeInTheDocument();
+      expect(screen.getByText(/Step 2 of 3/)).toBeInTheDocument();
+    } finally {
+      tenant.settings = { timezone: 'America/New_York' };
+    }
+  });
+
+  it('hides the onboarding prompt once finished', async () => {
+    tenant.settings = {
+      onboardingStep: 3,
+      onboardingCompletedAt: '2026-11-03T00:00:00Z',
+    };
+    try {
+      renderPage();
+      await screen.findByRole('heading', { name: 'Welcome back, Dana' });
+      expect(
+        screen.queryByText('Finish setting up your workspace')
+      ).not.toBeInTheDocument();
+    } finally {
+      tenant.settings = { timezone: 'America/New_York' };
+    }
   });
 
   it('greets the user by first name', async () => {

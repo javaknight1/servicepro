@@ -121,6 +121,13 @@ export function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [tenantsChecked, setTenantsChecked] = useState(false);
   const dates = useDateFormatters(currentTenant?.settings?.timezone);
+  // The owner started the onboarding wizard (T235) and hasn't finished it.
+  const settings = currentTenant?.settings;
+  const resumeOnboarding =
+    !!user &&
+    currentTenant?.owner_id === user.id &&
+    (settings?.onboardingStep ?? 0) > 0 &&
+    !settings?.onboardingCompletedAt;
 
   // Load tenants on mount to check if user has any organizations
   useEffect(() => {
@@ -321,6 +328,26 @@ export function DashboardPage() {
             </Button>
           }
         />
+
+        {resumeOnboarding && (
+          <div
+            role="status"
+            className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary-200 bg-primary-50 px-5 py-4"
+          >
+            <div>
+              <p className="font-medium text-neutral-900">
+                Finish setting up your workspace
+              </p>
+              <p className="text-sm text-neutral-600">
+                Step {settings?.onboardingStep} of 3: billing defaults, tax and
+                payouts.
+              </p>
+            </div>
+            <Button variant="primary" onClick={() => navigate('/onboarding')}>
+              Continue setup
+            </Button>
+          </div>
+        )}
 
         {/* KPI cards */}
         <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4 lg:gap-6">
