@@ -3,6 +3,7 @@ package smtp
 import (
 	"context"
 	"crypto/tls"
+	"encoding/base64"
 	"fmt"
 	"html"
 	"net"
@@ -95,7 +96,34 @@ func (c *Client) Send(ctx context.Context, msg *email.EmailMessage) (*email.Send
 	allRecipients = append(allRecipients, msg.CC...)
 	allRecipients = append(allRecipients, msg.BCC...)
 
-	// Build email headers and body
+	raw, messageID := c.buildMessage(ctx, msg, from)
+
+	// Send via SMTP
+	err := c.sendMail(ctx, from, allRecipients, raw)
+	if err != nil {
+		return &email.SendResult{
+			Success:  false,
+			Provider: email.ProviderSMTP,
+			SentAt:   time.Now(),
+			Error:    err.Error(),
+		}, fmt.Errorf("failed to send email via SMTP: %w", err)
+	}
+
+	return &email.SendResult{
+		Success:   true,
+		MessageID: messageID,
+		Provider:  email.ProviderSMTP,
+		SentAt:    time.Now(),
+		Metadata: map[string]string{
+			"smtp_host": c.config.Host,
+		},
+	}, nil
+}
+
+// buildMessage renders msg as an RFC 5322 message and returns it with its
+// Message-ID. Attachments (invoice/quote/receipt PDFs) go in a
+// multipart/mixed wrapper around the body, base64-encoded.
+func (c *Client) buildMessage(ctx context.Context, msg *email.EmailMessage, from string) ([]byte, string) {
 	var emailBuilder strings.Builder
 
 	// From header: "<Business> via ServicePro" when a tenant sender is in ctx (T265)
@@ -135,29 +163,69 @@ func (c *Client) Send(ctx context.Context, msg *email.EmailMessage) (*email.Send
 	}
 
 	// Content type and body
+	if len(msg.Attachments) == 0 {
+		writeBody(&emailBuilder, msg)
+		return []byte(emailBuilder.String()), messageID
+	}
+
+	// With attachments: multipart/mixed = body part + one part per file.
+	mixed := fmt.Sprintf("mixed_%d", time.Now().UnixNano())
+	fmt.Fprintf(&emailBuilder, "Content-Type: multipart/mixed; boundary=\"%s\"\r\n", mixed)
+	emailBuilder.WriteString("\r\n")
+	fmt.Fprintf(&emailBuilder, "--%s\r\n", mixed)
+	writeBody(&emailBuilder, msg)
+	emailBuilder.WriteString("\r\n")
+	for _, att := range msg.Attachments {
+		contentType := att.ContentType
+		if contentType == "" {
+			contentType = "application/octet-stream"
+		}
+		filename := strings.NewReplacer(`"`, "", "\r", "", "\n", "").Replace(att.Filename)
+		disposition := "attachment"
+		if att.Inline {
+			disposition = "inline"
+		}
+		fmt.Fprintf(&emailBuilder, "--%s\r\n", mixed)
+		fmt.Fprintf(&emailBuilder, "Content-Type: %s; name=\"%s\"\r\n", contentType, filename)
+		emailBuilder.WriteString("Content-Transfer-Encoding: base64\r\n")
+		fmt.Fprintf(&emailBuilder, "Content-Disposition: %s; filename=\"%s\"\r\n", disposition, filename)
+		if att.ContentID != "" {
+			fmt.Fprintf(&emailBuilder, "Content-ID: <%s>\r\n", att.ContentID)
+		}
+		emailBuilder.WriteString("\r\n")
+		writeBase64Lines(&emailBuilder, att.Content)
+	}
+	fmt.Fprintf(&emailBuilder, "--%s--\r\n", mixed)
+
+	return []byte(emailBuilder.String()), messageID
+}
+
+// writeBody writes the Content-Type header, a blank line and the body
+// (multipart/alternative when the message has both text and HTML).
+func writeBody(emailBuilder *strings.Builder, msg *email.EmailMessage) {
 	switch {
 	case msg.HTMLBody != "" && msg.TextBody != "":
 		// Multipart message
 		boundary := fmt.Sprintf("boundary_%d", time.Now().UnixNano())
-		fmt.Fprintf(&emailBuilder, "Content-Type: multipart/alternative; boundary=\"%s\"\r\n", boundary)
+		fmt.Fprintf(emailBuilder, "Content-Type: multipart/alternative; boundary=\"%s\"\r\n", boundary)
 		emailBuilder.WriteString("\r\n")
 
 		// Text part
-		fmt.Fprintf(&emailBuilder, "--%s\r\n", boundary)
+		fmt.Fprintf(emailBuilder, "--%s\r\n", boundary)
 		emailBuilder.WriteString("Content-Type: text/plain; charset=\"UTF-8\"\r\n")
 		emailBuilder.WriteString("\r\n")
 		emailBuilder.WriteString(msg.TextBody)
 		emailBuilder.WriteString("\r\n")
 
 		// HTML part
-		fmt.Fprintf(&emailBuilder, "--%s\r\n", boundary)
+		fmt.Fprintf(emailBuilder, "--%s\r\n", boundary)
 		emailBuilder.WriteString("Content-Type: text/html; charset=\"UTF-8\"\r\n")
 		emailBuilder.WriteString("\r\n")
 		emailBuilder.WriteString(msg.HTMLBody)
 		emailBuilder.WriteString("\r\n")
 
 		// End boundary
-		fmt.Fprintf(&emailBuilder, "--%s--\r\n", boundary)
+		fmt.Fprintf(emailBuilder, "--%s--\r\n", boundary)
 	case msg.HTMLBody != "":
 		emailBuilder.WriteString("Content-Type: text/html; charset=\"UTF-8\"\r\n")
 		emailBuilder.WriteString("\r\n")
@@ -167,27 +235,30 @@ func (c *Client) Send(ctx context.Context, msg *email.EmailMessage) (*email.Send
 		emailBuilder.WriteString("\r\n")
 		emailBuilder.WriteString(msg.TextBody)
 	}
+}
 
-	// Send via SMTP
-	err := c.sendMail(ctx, from, allRecipients, []byte(emailBuilder.String()))
-	if err != nil {
-		return &email.SendResult{
-			Success:  false,
-			Provider: email.ProviderSMTP,
-			SentAt:   time.Now(),
-			Error:    err.Error(),
-		}, fmt.Errorf("failed to send email via SMTP: %w", err)
+// writeBase64Lines writes content base64-encoded in 76-character lines
+// (RFC 2045).
+func writeBase64Lines(emailBuilder *strings.Builder, content []byte) {
+	encoded := base64.StdEncoding.EncodeToString(content)
+	for len(encoded) > 76 {
+		emailBuilder.WriteString(encoded[:76])
+		emailBuilder.WriteString("\r\n")
+		encoded = encoded[76:]
 	}
+	if encoded != "" {
+		emailBuilder.WriteString(encoded)
+		emailBuilder.WriteString("\r\n")
+	}
+}
 
-	return &email.SendResult{
-		Success:   true,
-		MessageID: messageID,
-		Provider:  email.ProviderSMTP,
-		SentAt:    time.Now(),
-		Metadata: map[string]string{
-			"smtp_host": c.config.Host,
-		},
-	}, nil
+// downloadLinkHTML is the "Download PDF" paragraph for document emails, or
+// "" when there is no stored PDF to link to (no object storage).
+func downloadLinkHTML(downloadURL string) string {
+	if downloadURL == "" {
+		return ""
+	}
+	return fmt.Sprintf(`<p><a href="%s">Download PDF</a></p>`, html.EscapeString(downloadURL))
 }
 
 // sendMail sends the email using the configured SMTP settings
@@ -606,10 +677,11 @@ func (c *Client) SendQuoteEmail(ctx context.Context, to string, quote *models.Qu
 			<p><strong>Quote Number:</strong> %s</p>
 			<p><strong>Total Amount:</strong> $%s</p>
 			<p><strong>Valid Until:</strong> %s</p>
+			%s
 			<p>Best regards,<br>{{BUSINESS}}</p>
 		</body>
 		</html>
-	`, customerName, quote.QuoteNumber, quote.Total.StringFixed(2), quote.ValidUntil.Format("January 2, 2006"))
+	`, customerName, quote.QuoteNumber, quote.Total.StringFixed(2), quote.ValidUntil.Format("January 2, 2006"), downloadLinkHTML(downloadURL))
 
 	body = strings.ReplaceAll(body, "{{BUSINESS}}", html.EscapeString(email.BusinessName(ctx)))
 	msg := email.NewEmailMessage(to, subject, body)
@@ -642,10 +714,11 @@ func (c *Client) SendInvoiceEmail(ctx context.Context, to string, invoice *model
 			<p><strong>Total Amount:</strong> $%s</p>
 			<p><strong>Due Date:</strong> %s</p>
 			%s
+			%s
 			<p>Best regards,<br>{{BUSINESS}}</p>
 		</body>
 		</html>
-	`, customerName, invoice.InvoiceNumber, invoice.TotalAmount.StringFixed(2), invoice.DueDate.Format("January 2, 2006"), email.PayNowButtonHTML(paymentURL))
+	`, customerName, invoice.InvoiceNumber, invoice.TotalAmount.StringFixed(2), invoice.DueDate.Format("January 2, 2006"), email.PayNowButtonHTML(paymentURL), downloadLinkHTML(downloadURL))
 
 	body = strings.ReplaceAll(body, "{{BUSINESS}}", html.EscapeString(email.BusinessName(ctx)))
 	msg := email.NewEmailMessage(to, subject, body)
@@ -676,10 +749,11 @@ func (c *Client) SendPaymentReceiptEmail(ctx context.Context, to string, invoice
 			<p>Thank you for your payment! This confirms we have received payment for:</p>
 			<p><strong>Invoice Number:</strong> %s</p>
 			<p><strong>Amount Paid:</strong> $%s</p>
+			%s
 			<p>Best regards,<br>{{BUSINESS}}</p>
 		</body>
 		</html>
-	`, customerName, invoice.InvoiceNumber, invoice.AmountPaid.StringFixed(2))
+	`, customerName, invoice.InvoiceNumber, invoice.AmountPaid.StringFixed(2), downloadLinkHTML(downloadURL))
 
 	body = strings.ReplaceAll(body, "{{BUSINESS}}", html.EscapeString(email.BusinessName(ctx)))
 	msg := email.NewEmailMessage(to, subject, body)
