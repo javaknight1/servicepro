@@ -67,7 +67,8 @@ type ARAgingInvoice struct {
 	Status        InvoiceStatus   `json:"status"`
 }
 
-// ARAgingCustomerSummary represents A/R summary for a single customer
+// ARAgingCustomerSummary represents A/R summary for a single customer.
+// Bucket fields need explicit columns: GORM names Days1To30 "days1_to30".
 type ARAgingCustomerSummary struct {
 	CustomerID    uuid.UUID       `json:"customer_id"`
 	CustomerName  string          `json:"customer_name"`
@@ -76,10 +77,10 @@ type ARAgingCustomerSummary struct {
 	InvoiceCount  int             `json:"invoice_count"`
 	TotalOwed     decimal.Decimal `json:"total_owed"`
 	Current       decimal.Decimal `json:"current"`
-	Days1To30     decimal.Decimal `json:"days_1_to_30"`
-	Days31To60    decimal.Decimal `json:"days_31_to_60"`
-	Days61To90    decimal.Decimal `json:"days_61_to_90"`
-	Days90Plus    decimal.Decimal `json:"days_90_plus"`
+	Days1To30     decimal.Decimal `json:"days_1_to_30" gorm:"column:days_1_to_30"`
+	Days31To60    decimal.Decimal `json:"days_31_to_60" gorm:"column:days_31_to_60"`
+	Days61To90    decimal.Decimal `json:"days_61_to_90" gorm:"column:days_61_to_90"`
+	Days90Plus    decimal.Decimal `json:"days_90_plus" gorm:"column:days_90_plus"`
 	OldestInvoice *time.Time      `json:"oldest_invoice,omitempty"`
 	LastPayment   *time.Time      `json:"last_payment,omitempty"`
 }

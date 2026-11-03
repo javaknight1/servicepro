@@ -257,8 +257,11 @@ func (s *arAgingService) GetCustomerSummary(ctx context.Context, tenantID uuid.U
 			COALESCE(SUM(CASE WHEN ?::date - invoices.due_date BETWEEN 31 AND 60 THEN invoices.total_amount - invoices.amount_paid ELSE 0 END), 0) as days_31_to_60,
 			COALESCE(SUM(CASE WHEN ?::date - invoices.due_date BETWEEN 61 AND 90 THEN invoices.total_amount - invoices.amount_paid ELSE 0 END), 0) as days_61_to_90,
 			COALESCE(SUM(CASE WHEN ?::date - invoices.due_date > 90 THEN invoices.total_amount - invoices.amount_paid ELSE 0 END), 0) as days_90_plus,
-			MIN(invoices.issue_date) as oldest_invoice
-		`, asOfDate, asOfDate, asOfDate, asOfDate, asOfDate).
+			MIN(invoices.issue_date) as oldest_invoice,
+			(SELECT MAX(p.payment_date) FROM invoice_payments p
+				JOIN invoices pi ON pi.id = p.invoice_id
+				WHERE pi.customer_id = invoices.customer_id AND pi.tenant_id = ?) as last_payment
+		`, asOfDate, asOfDate, asOfDate, asOfDate, asOfDate, tenantID).
 		Joins("LEFT JOIN customers ON customers.id = invoices.customer_id").
 		Where("invoices.tenant_id = ?", tenantID).
 		Where("invoices.deleted_at IS NULL").
@@ -284,18 +287,6 @@ func (s *arAgingService) GetCustomerSummary(ctx context.Context, tenantID uuid.U
 	var summaries []models.ARAgingCustomerSummary
 	if err := db.Scan(&summaries).Error; err != nil {
 		return nil, err
-	}
-
-	// Get last payment date for each customer
-	for i, summary := range summaries {
-		var lastPayment *time.Time
-		s.db.WithContext(ctx).Table("invoice_payments").
-			Select("MAX(payment_date)").
-			Joins("INNER JOIN invoices ON invoices.id = invoice_payments.invoice_id").
-			Where("invoices.customer_id = ?", summary.CustomerID).
-			Where("invoices.tenant_id = ?", tenantID).
-			Scan(&lastPayment)
-		summaries[i].LastPayment = lastPayment
 	}
 
 	return summaries, nil
