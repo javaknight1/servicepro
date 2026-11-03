@@ -377,8 +377,19 @@ export function JobDetailPage() {
   }
 
   return (
-    <DashboardLayout>
-      <div className="p-6 lg:p-8 max-w-4xl mx-auto">
+    <DashboardLayout
+      breadcrumbs={[
+        { label: 'Jobs', to: '/jobs' },
+        {
+          label: isNew
+            ? cloneFromId
+              ? 'Repeat job'
+              : 'New job'
+            : currentJob?.job_number || 'Job',
+        },
+      ]}
+    >
+      <div className="mx-auto max-w-5xl p-4 sm:p-6 lg:p-8">
         <div className="flex items-center gap-4 mb-4">
           <Button
             variant="ghost"
@@ -388,8 +399,12 @@ export function JobDetailPage() {
             <ArrowLeft className="h-4 w-4" />
             Back
           </Button>
-          <h1 className="text-2xl font-bold text-neutral-900">
-            {isNew ? (cloneFromId ? 'Repeat Job' : 'Create Job') : 'Edit Job'}
+          <h1 className="text-2xl font-bold tracking-tight text-neutral-900 md:text-3xl">
+            {isNew
+              ? cloneFromId
+                ? 'Repeat job'
+                : 'New job'
+              : currentJob?.job_number || 'Edit job'}
           </h1>
         </div>
 
@@ -416,7 +431,7 @@ export function JobDetailPage() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="bg-white rounded-lg border border-neutral-200 p-6">
+          <div className="bg-white rounded-2xl border border-neutral-200 p-6">
             <h2 className="text-lg font-semibold text-neutral-900 mb-4">
               Job Details
             </h2>
@@ -528,12 +543,11 @@ export function JobDetailPage() {
                   <option value={JobPriority.URGENT}>Urgent</option>
                 </select>
               </div>
-
             </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-white rounded-lg border border-neutral-200 p-6">
+            <div className="bg-white rounded-2xl border border-neutral-200 p-6">
               <h2 className="text-lg font-semibold text-neutral-900 mb-4">
                 Scheduling
               </h2>
@@ -616,7 +630,7 @@ export function JobDetailPage() {
             )}
           </div>
 
-          <div className="bg-white rounded-lg border border-neutral-200 p-6">
+          <div className="bg-white rounded-2xl border border-neutral-200 p-6">
             <h2 className="text-lg font-semibold text-neutral-900 mb-4">
               Job Instructions
             </h2>
@@ -660,7 +674,7 @@ export function JobDetailPage() {
             </div>
           </div>
 
-          <div className="bg-white rounded-lg border border-neutral-200 p-6">
+          <div className="bg-white rounded-2xl border border-neutral-200 p-6">
             <h2 className="text-lg font-semibold text-neutral-900 mb-4">
               Customer Notes
             </h2>
@@ -675,7 +689,7 @@ export function JobDetailPage() {
             />
           </div>
 
-          <div className="bg-white rounded-lg border border-neutral-200 p-6">
+          <div className="bg-white rounded-2xl border border-neutral-200 p-6">
             <h2 className="text-lg font-semibold text-neutral-900 mb-4">
               Internal Notes
             </h2>

@@ -8,6 +8,8 @@ import {
   EmptyState,
   ErrorState,
   Button,
+  PageHeader,
+  Avatar,
   getStatusBadgeVariant,
 } from '@components/shared';
 import type { Column } from '@components/shared';
@@ -70,13 +72,22 @@ export function CustomersPage() {
       header: 'Name',
       sortable: true,
       render: (_, row) => (
-        <div>
-          <div className="font-medium text-neutral-900">
-            {row.first_name} {row.last_name}
+        <div className="flex items-center gap-3">
+          <Avatar
+            email={row.email || row.id}
+            firstName={row.company_name || row.first_name}
+            lastName={row.company_name ? undefined : row.last_name}
+            shape="tile"
+            size="md"
+          />
+          <div className="min-w-0">
+            <div className="font-medium text-neutral-900">
+              {row.first_name} {row.last_name}
+            </div>
+            {row.company_name && (
+              <div className="text-sm text-neutral-500">{row.company_name}</div>
+            )}
           </div>
-          {row.company_name && (
-            <div className="text-sm text-neutral-500">{row.company_name}</div>
-          )}
         </div>
       ),
     },
@@ -100,7 +111,7 @@ export function CustomersPage() {
       header: 'Type',
       sortable: true,
       render: (value) => (
-        <Badge variant="info" size="sm">
+        <Badge variant="neutral" size="sm">
           {getCustomerTypeLabel(value as Customer['customer_type'])}
         </Badge>
       ),
@@ -119,23 +130,25 @@ export function CustomersPage() {
 
   return (
     <DashboardLayout>
-      <div className="p-6 lg:p-8">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-neutral-900">Customers</h1>
-            <p className="text-neutral-600 mt-1">
-              Manage your customer database
-            </p>
-          </div>
-          <Button
-            variant="primary"
-            onClick={() => navigate('/customers/new')}
-            className="flex items-center gap-2"
-          >
-            <Plus className="h-4 w-4" />
-            Add Customer
-          </Button>
-        </div>
+      <div className="mx-auto max-w-[1440px] p-4 sm:p-6 lg:p-8">
+        <PageHeader
+          title="Customers"
+          subtitle={
+            total > 0
+              ? `${total} ${total === 1 ? 'customer' : 'customers'} · the businesses you bill`
+              : 'The businesses and people you bill'
+          }
+          actions={
+            <Button
+              variant="primary"
+              onClick={() => navigate('/customers/new')}
+              className="gap-2"
+            >
+              <Plus className="h-4 w-4" />
+              Add customer
+            </Button>
+          }
+        />
 
         <form onSubmit={handleSearch} className="mb-6">
           <div className="relative max-w-md">
@@ -145,7 +158,7 @@ export function CustomersPage() {
               placeholder="Search customers..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              className="w-full rounded-xl border border-neutral-300 bg-white py-2.5 pl-10 pr-4 text-[15px] focus:border-primary-500 focus:ring-2 focus:ring-primary-500"
             />
           </div>
         </form>
@@ -162,7 +175,7 @@ export function CustomersPage() {
             title="No customers yet"
             description="Get started by adding your first customer"
             action={{
-              label: 'Add Customer',
+              label: 'Add customer',
               onClick: () => navigate('/customers/new'),
             }}
           />

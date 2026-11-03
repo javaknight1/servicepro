@@ -1,4 +1,4 @@
-import { Fragment } from 'react';
+import { Fragment, useEffect } from 'react';
 import { Link, useLocation } from 'react-router';
 import { ChevronRight, Menu } from 'lucide-react';
 import { useTenantStore } from '@store';
@@ -44,7 +44,17 @@ interface AppTopBarProps {
 export function AppTopBar({ breadcrumbs }: AppTopBarProps) {
   const { pathname } = useLocation();
   const hasOrganizations = useTenantStore((s) => s.tenants.length > 0);
+  const loadTenants = useTenantStore((s) => s.loadTenants);
   const setMobileOpen = useSidebarStore((s) => s.setMobileOpen);
+
+  // A deep link straight after sign-in has no organizations loaded yet; the
+  // sidebar and switcher need them on every page, not just the dashboard.
+  useEffect(() => {
+    if (!hasOrganizations) {
+      Promise.resolve(loadTenants?.()).catch(() => undefined);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const trail: Breadcrumb[] =
     breadcrumbs && breadcrumbs.length > 0
       ? breadcrumbs

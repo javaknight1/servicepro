@@ -76,7 +76,7 @@ export function JobStatusHistoryPage() {
 
   return (
     <DashboardLayout>
-      <div className="p-6 lg:p-8 max-w-4xl mx-auto">
+      <div className="mx-auto max-w-5xl p-4 sm:p-6 lg:p-8">
         <div className="flex items-center gap-4 mb-6">
           <Button
             variant="ghost"
@@ -87,7 +87,7 @@ export function JobStatusHistoryPage() {
             Back to Jobs
           </Button>
           <div>
-            <h1 className="text-2xl font-bold text-neutral-900">
+            <h1 className="text-2xl font-bold tracking-tight text-neutral-900 md:text-3xl">
               Status History
             </h1>
             {job && (
@@ -104,7 +104,7 @@ export function JobStatusHistoryPage() {
           </div>
         )}
 
-        <div className="bg-white rounded-lg border border-neutral-200">
+        <div className="bg-white rounded-2xl border border-neutral-200">
           <div className="px-6 py-4 border-b border-neutral-200 flex items-center justify-between">
             <h2 className="text-lg font-semibold text-neutral-900">
               Transition History

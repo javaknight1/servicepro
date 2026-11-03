@@ -296,10 +296,11 @@ describe('Job Lifecycle Integration', () => {
       );
 
       await waitFor(() => {
-        // Check for status badges/indicators
+        // Check for status badges/indicators (exact text: the header's
+        // "New job" button also contains "new")
         expect(
-          screen.getByText(/new|scheduled|in progress/i)
-        ).toBeInTheDocument();
+          screen.getAllByText(/^(new|scheduled|in progress)$/i).length
+        ).toBeGreaterThan(0);
       });
     });
 

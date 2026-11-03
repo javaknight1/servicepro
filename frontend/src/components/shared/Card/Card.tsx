@@ -14,7 +14,7 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
     const variants = {
       default: 'bg-white border border-neutral-200',
       bordered: 'bg-white border-2 border-neutral-300',
-      elevated: 'bg-white shadow-medium',
+      elevated: 'bg-white border border-neutral-200 shadow-xs',
     };
 
     const paddings = {
@@ -28,7 +28,7 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
       <div
         ref={ref}
         className={cn(
-          'rounded-lg',
+          'rounded-2xl',
           variants[variant],
           paddings[padding],
           className
@@ -65,7 +65,7 @@ export const CardTitle = forwardRef<
   <h3
     ref={ref}
     className={cn(
-      'text-2xl font-semibold leading-none tracking-tight',
+      'text-lg font-semibold leading-tight tracking-tight text-neutral-900',
       className
     )}
     {...props}

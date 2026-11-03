@@ -4,6 +4,7 @@ import { DashboardLayout } from '@components/layout';
 import {
   Button,
   Badge,
+  PageHeader,
   getStatusBadgeVariant,
   TaxRatePicker,
 } from '@components/shared';
@@ -59,6 +60,8 @@ import {
   DollarSign,
   Ban,
   Undo2,
+  CheckCircle2,
+  Circle,
 } from 'lucide-react';
 
 interface InvoiceFormData {
@@ -106,6 +109,65 @@ function addDays(date: string, days: number): string {
   const d = new Date(date + 'T00:00:00Z');
   d.setUTCDate(d.getUTCDate() + days);
   return d.toISOString().split('T')[0];
+}
+
+/** "Nov 1" (or "Nov 1, 2026") from an ISO date, read as a calendar date. */
+function formatShortDate(iso: string, withYear = false): string {
+  return new Date(iso.split('T')[0] + 'T00:00:00Z').toLocaleDateString(
+    'en-US',
+    {
+      month: 'short',
+      day: 'numeric',
+      ...(withYear ? { year: 'numeric' } : {}),
+      timeZone: 'UTC',
+    }
+  );
+}
+
+/** "in 29 days", "due today" or "12 days late". */
+function dueInWords(dueIso: string): string {
+  const due = Date.parse(dueIso.split('T')[0] + 'T00:00:00Z');
+  const today = Date.parse(
+    new Date().toISOString().split('T')[0] + 'T00:00:00Z'
+  );
+  const days = Math.round((due - today) / 86_400_000);
+  if (days === 0) return 'due today';
+  if (days > 0) return `in ${days} ${days === 1 ? 'day' : 'days'}`;
+  return `${-days} ${days === -1 ? 'day' : 'days'} late`;
+}
+
+/** Where the invoice is: created, sent, paid (from its status). */
+function invoiceSteps(
+  invoice: Invoice,
+  status: InvoiceStatus
+): { label: string; detail?: string; done: boolean }[] {
+  const sent = status !== InvoiceStatus.DRAFT;
+  const paid =
+    status === InvoiceStatus.PAID || status === InvoiceStatus.REFUNDED;
+  const steps = [
+    {
+      label: 'Created',
+      detail: invoice.created_at
+        ? formatShortDate(invoice.created_at)
+        : undefined,
+      done: true,
+    },
+    { label: 'Sent to customer', done: sent },
+  ];
+  if (status === InvoiceStatus.VIEWED) {
+    steps.push({ label: 'Viewed by customer', done: true });
+  }
+  if (status === InvoiceStatus.CANCELLED) {
+    return [...steps, { label: 'Cancelled', done: true }];
+  }
+  return [
+    ...steps,
+    {
+      label: status === InvoiceStatus.PARTIALLY_PAID ? 'Partly paid' : 'Paid',
+      detail: paid ? undefined : 'Waiting',
+      done: paid,
+    },
+  ];
 }
 
 function storedTaxRate(invoice: Invoice): string | number | undefined {
@@ -676,84 +738,101 @@ export function InvoiceDetailPage() {
   }
 
   return (
-    <DashboardLayout>
-      <div className="p-6 lg:p-8 max-w-4xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              onClick={() => navigate('/invoices')}
-              className="flex items-center gap-2"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Back
-            </Button>
-            <h1 className="text-2xl font-bold text-neutral-900">
-              {isNew ? 'Create Invoice' : `Invoice ${invoiceNumber}`}
-            </h1>
-            {!isNew && (
-              <Badge variant={getStatusBadgeVariant(invoiceStatus)}>
+    <DashboardLayout
+      breadcrumbs={[
+        { label: 'Invoices', to: '/invoices' },
+        { label: isNew ? 'New invoice' : invoiceNumber || 'Invoice' },
+      ]}
+    >
+      <div className="mx-auto max-w-[1440px] p-4 sm:p-6 lg:p-8">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => navigate('/invoices')}
+          className="mb-3 -ml-2 gap-2 text-neutral-600"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back
+        </Button>
+        <PageHeader
+          title={isNew ? 'New invoice' : invoiceNumber || 'Invoice'}
+          badge={
+            !isNew && (
+              <Badge variant={getStatusBadgeVariant(invoiceStatus)} size="sm">
                 {getInvoiceStatusLabel(invoiceStatus)}
               </Badge>
-            )}
-          </div>
-          {!isNew && invoiceStatus === InvoiceStatus.DRAFT && (
-            <Button
-              type="button"
-              variant="primary"
-              onClick={() => setShowSendConfirmation(true)}
-              className="flex items-center gap-2"
-            >
-              <Send className="h-4 w-4" />
-              Send Invoice
-            </Button>
-          )}
-          {!isNew && invoiceStatus === InvoiceStatus.SENT && (
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => setShowSendConfirmation(true)}
-              className="flex items-center gap-2"
-            >
-              <Send className="h-4 w-4" />
-              Resend Invoice
-            </Button>
-          )}
-          {!isNew && (
-            <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={handleDownloadInvoicePDF}
-                disabled={isDownloadingInvoice}
-                className="flex items-center gap-2"
-              >
-                {isDownloadingInvoice ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Download className="h-4 w-4" />
-                )}
-                Download PDF
-              </Button>
-              {invoiceStatus === InvoiceStatus.PAID && (
+            )
+          }
+          subtitle={
+            isNew
+              ? 'Bill a customer for completed work.'
+              : [
+                  customerName,
+                  invoice?.issue_date &&
+                    `issued ${formatShortDate(invoice.issue_date)}`,
+                ]
+                  .filter(Boolean)
+                  .join(' · ')
+          }
+          actions={
+            !isNew && (
+              <>
                 <Button
                   type="button"
                   variant="secondary"
-                  onClick={handleDownloadReceiptPDF}
-                  disabled={isDownloadingReceipt}
-                  className="flex items-center gap-2"
+                  onClick={handleDownloadInvoicePDF}
+                  disabled={isDownloadingInvoice}
+                  className="gap-2"
                 >
-                  {isDownloadingReceipt ? (
+                  {isDownloadingInvoice ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
-                    <FileText className="h-4 w-4" />
+                    <Download className="h-4 w-4" />
                   )}
-                  Download Receipt
+                  Download PDF
                 </Button>
-              )}
-            </div>
-          )}
-        </div>
+                {invoiceStatus === InvoiceStatus.PAID && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={handleDownloadReceiptPDF}
+                    disabled={isDownloadingReceipt}
+                    className="gap-2"
+                  >
+                    {isDownloadingReceipt ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <FileText className="h-4 w-4" />
+                    )}
+                    Download Receipt
+                  </Button>
+                )}
+                {invoiceStatus === InvoiceStatus.DRAFT && (
+                  <Button
+                    type="button"
+                    variant="primary"
+                    onClick={() => setShowSendConfirmation(true)}
+                    className="gap-2"
+                  >
+                    <Send className="h-4 w-4" />
+                    Send Invoice
+                  </Button>
+                )}
+                {invoiceStatus === InvoiceStatus.SENT && (
+                  <Button
+                    type="button"
+                    variant="primary"
+                    onClick={() => setShowSendConfirmation(true)}
+                    className="gap-2"
+                  >
+                    <Send className="h-4 w-4" />
+                    Resend Invoice
+                  </Button>
+                )}
+              </>
+            )
+          }
+        />
 
         {error && (
           <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
@@ -761,514 +840,574 @@ export function InvoiceDetailPage() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="bg-white rounded-lg border border-neutral-200 p-6">
-            <h2 className="text-lg font-semibold text-neutral-900 mb-4">
-              Invoice Details
-            </h2>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="md:col-span-2">
-                <label
-                  htmlFor="customer_id"
-                  className="block text-sm font-medium text-neutral-700 mb-1"
-                >
-                  Customer *
-                </label>
-                <select
-                  id="customer_id"
-                  name="customer_id"
-                  value={formData.customer_id}
-                  onChange={handleCustomerChange}
-                  required
-                  // An invoice for a job bills that job's customer.
-                  disabled={isLoadingCustomers || Boolean(sourceJob)}
-                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                >
-                  <option value="">Select a customer</option>
-                  {sourceJob?.customer &&
-                    !customers.some((c) => c.id === sourceJob.customer_id) && (
-                      <option value={sourceJob.customer_id}>
-                        {sourceJob.customer.company_name ||
-                          `${sourceJob.customer.first_name} ${sourceJob.customer.last_name}`}
-                      </option>
-                    )}
-                  {customers.map((customer) => (
-                    <option key={customer.id} value={customer.id}>
-                      {customer.first_name} {customer.last_name}
-                      {customer.company_name
-                        ? ` (${customer.company_name})`
-                        : ''}
-                    </option>
-                  ))}
-                </select>
-                {sourceJob && (
-                  <p className="mt-2 text-sm text-neutral-600">
-                    Invoicing job{' '}
-                    <Link
-                      to={`/jobs/${sourceJob.id}`}
-                      className="font-mono text-primary-600 hover:underline"
-                    >
-                      {sourceJob.job_number}
-                    </Link>{' '}
-                    · {sourceJob.title}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label
-                  htmlFor="issue_date"
-                  className="block text-sm font-medium text-neutral-700 mb-1"
-                >
-                  Issue Date *
-                </label>
-                <input
-                  type="date"
-                  id="issue_date"
-                  name="issue_date"
-                  value={formData.issue_date}
-                  onChange={handleChange}
-                  required
-                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                />
-              </div>
-
-              <div>
-                <label
-                  htmlFor="due_date"
-                  className="block text-sm font-medium text-neutral-700 mb-1"
-                >
-                  Due Date *
-                </label>
-                <input
-                  type="date"
-                  id="due_date"
-                  name="due_date"
-                  value={formData.due_date}
-                  onChange={handleChange}
-                  required
-                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                />
-                {isNew && defaultTermName && (
-                  <p className="mt-1 text-xs text-neutral-500">
-                    Payment term: {defaultTermName}
-                  </p>
-                )}
-              </div>
-
-              <TaxRatePicker
-                taxRates={pickerRates}
-                taxRateId={formData.tax_rate_id}
-                percent={formData.tax_rate}
-                defaultTaxRateId={defaultTaxRateId}
-                placeholder={
-                  isNew && defaultTaxRateId ? 'Default rate' : undefined
-                }
-                hint={
-                  taxFromDefault
-                    ? 'Left blank, your default tax rate applies.'
-                    : undefined
-                }
-                onChange={({ taxRateId, percent }) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    tax_rate_id: taxRateId,
-                    tax_rate: percent,
-                  }))
-                }
-              />
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg border border-neutral-200 p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-neutral-900">
-                Line Items
+        <div
+          className={
+            !isNew && invoice
+              ? 'grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]'
+              : 'mx-auto max-w-4xl'
+          }
+        >
+          <form onSubmit={handleSubmit} className="min-w-0 space-y-6">
+            <div className="bg-white rounded-2xl border border-neutral-200 p-6">
+              <h2 className="text-lg font-semibold text-neutral-900 mb-4">
+                Invoice Details
               </h2>
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={addLineItem}
-                className="flex items-center gap-2"
-              >
-                <Plus className="h-4 w-4" />
-                Add Item
-              </Button>
-            </div>
 
-            <div className="space-y-3">
-              {lineItems.map((item, index) => (
-                <div
-                  key={index}
-                  className="flex gap-3 items-start p-3 bg-neutral-50 rounded-lg"
-                >
-                  <div className="flex-1">
-                    <input
-                      type="text"
-                      value={item.description}
-                      onChange={(e) =>
-                        handleLineItemChange(
-                          index,
-                          'description',
-                          e.target.value
-                        )
-                      }
-                      placeholder="Description"
-                      data-testid="item-description"
-                      required
-                      className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                    />
-                  </div>
-                  <div className="w-24">
-                    <input
-                      type="number"
-                      value={item.quantity}
-                      onChange={(e) =>
-                        handleLineItemChange(index, 'quantity', e.target.value)
-                      }
-                      placeholder="Qty"
-                      data-testid="item-quantity"
-                      min="0"
-                      step="1"
-                      required
-                      className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                    />
-                  </div>
-                  <div className="w-32">
-                    <input
-                      type="number"
-                      value={item.unit_price}
-                      onChange={(e) =>
-                        handleLineItemChange(
-                          index,
-                          'unit_price',
-                          e.target.value
-                        )
-                      }
-                      placeholder="Price"
-                      data-testid="item-price"
-                      min="0"
-                      step="0.01"
-                      required
-                      className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                    />
-                  </div>
-                  <label className="flex items-center gap-1 py-2 text-sm text-neutral-600">
-                    <input
-                      type="checkbox"
-                      checked={item.taxable}
-                      onChange={(e) =>
-                        handleLineItemChange(index, 'taxable', e.target.checked)
-                      }
-                      aria-label={`Line ${index + 1} taxable`}
-                    />
-                    Taxable
-                  </label>
-                  <div className="w-28 text-right py-2 font-medium">
-                    {formatDollars(lineNet(item))}
-                    {lineNet(item) <
-                      lineTotal(item.quantity, item.unit_price) && (
-                      <div className="text-xs font-normal text-neutral-500">
-                        {toAmount(item.discount_percentage) > 0
-                          ? `${toAmount(item.discount_percentage)}% discount`
-                          : `${formatDollars(item.discount_amount)} discount`}
-                      </div>
-                    )}
-                  </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={() => removeLineItem(index)}
-                    disabled={lineItems.length === 1}
-                    className="text-red-500 hover:text-red-700"
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="md:col-span-2">
+                  <label
+                    htmlFor="customer_id"
+                    className="block text-sm font-medium text-neutral-700 mb-1"
                   >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-4 pt-4 border-t border-neutral-200">
-              <div className="flex justify-end space-y-1">
-                <div className="w-64 space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-neutral-600">Subtotal:</span>
-                    <span className="font-medium" data-testid="subtotal">
-                      {formatDollars(calculateSubtotal())}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-neutral-600">
-                      {taxFromDefault
-                        ? 'Tax (default rate):'
-                        : `Tax (${formData.tax_rate}%):`}
-                    </span>
-                    <span className="font-medium" data-testid="tax">
-                      {taxFromDefault
-                        ? 'Set on save'
-                        : formatDollars(calculateTax())}
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-lg font-semibold pt-2 border-t">
-                    <span>Total:</span>
-                    <span data-testid="total">
-                      {taxFromDefault
-                        ? `${formatDollars(calculateSubtotal())} + tax`
-                        : formatDollars(calculateTotal())}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg border border-neutral-200 p-6">
-            <h2 className="text-lg font-semibold text-neutral-900 mb-4">
-              Notes & Terms
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label
-                  htmlFor="notes"
-                  className="block text-sm font-medium text-neutral-700 mb-1"
-                >
-                  Notes
-                </label>
-                <textarea
-                  id="notes"
-                  name="notes"
-                  value={formData.notes}
-                  onChange={handleChange}
-                  rows={3}
-                  placeholder="Additional notes..."
-                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                />
-              </div>
-              <div>
-                <label
-                  htmlFor="terms_and_conditions"
-                  className="block text-sm font-medium text-neutral-700 mb-1"
-                >
-                  Terms & Conditions
-                </label>
-                <textarea
-                  id="terms_and_conditions"
-                  name="terms_and_conditions"
-                  value={formData.terms_and_conditions}
-                  onChange={handleChange}
-                  rows={3}
-                  placeholder="Terms and conditions..."
-                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                />
-              </div>
-            </div>
-          </div>
-
-          {!isNew && invoice && (
-            <InvoicePaymentHistory
-              invoice={invoice}
-              actions={
-                <>
-                  {canRecordPayment && (
-                    <Button
-                      type="button"
-                      variant="primary"
-                      onClick={() => setShowPaymentModal(true)}
-                      className="flex items-center gap-2"
-                    >
-                      <DollarSign className="h-4 w-4" />
-                      Record Payment
-                    </Button>
-                  )}
-                  {canRefund && (
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      onClick={() => setShowRefundModal(true)}
-                      className="flex items-center gap-2"
-                    >
-                      <Undo2 className="h-4 w-4" />
-                      Record Refund
-                    </Button>
-                  )}
-                  {canCancel && (
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      onClick={() => setShowCancelModal(true)}
-                      className="flex items-center gap-2"
-                    >
-                      <Ban className="h-4 w-4" />
-                      Cancel Invoice
-                    </Button>
-                  )}
-                </>
-              }
-            />
-          )}
-
-          {/* Payment Reminders Section - only for non-draft invoices */}
-          {!isNew && invoiceStatus !== InvoiceStatus.DRAFT && (
-            <div className="bg-white rounded-lg border border-neutral-200 p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-neutral-900 flex items-center gap-2">
-                  <Bell className="h-5 w-5" />
-                  Payment Reminders
-                </h2>
-                {invoiceStatus !== InvoiceStatus.PAID &&
-                  invoiceStatus !== InvoiceStatus.CANCELLED &&
-                  invoiceStatus !== InvoiceStatus.REFUNDED && (
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      onClick={() => setShowReminderConfirmation(true)}
-                      disabled={isSendingReminder}
-                      className="flex items-center gap-2"
-                    >
-                      {isSendingReminder ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Send className="h-4 w-4" />
+                    Customer *
+                  </label>
+                  <select
+                    id="customer_id"
+                    name="customer_id"
+                    value={formData.customer_id}
+                    onChange={handleCustomerChange}
+                    required
+                    // An invoice for a job bills that job's customer.
+                    disabled={isLoadingCustomers || Boolean(sourceJob)}
+                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  >
+                    <option value="">Select a customer</option>
+                    {sourceJob?.customer &&
+                      !customers.some(
+                        (c) => c.id === sourceJob.customer_id
+                      ) && (
+                        <option value={sourceJob.customer_id}>
+                          {sourceJob.customer.company_name ||
+                            `${sourceJob.customer.first_name} ${sourceJob.customer.last_name}`}
+                        </option>
                       )}
-                      Send Reminder
-                    </Button>
+                    {customers.map((customer) => (
+                      <option key={customer.id} value={customer.id}>
+                        {customer.first_name} {customer.last_name}
+                        {customer.company_name
+                          ? ` (${customer.company_name})`
+                          : ''}
+                      </option>
+                    ))}
+                  </select>
+                  {sourceJob && (
+                    <p className="mt-2 text-sm text-neutral-600">
+                      Invoicing job{' '}
+                      <Link
+                        to={`/jobs/${sourceJob.id}`}
+                        className="font-mono text-primary-600 hover:underline"
+                      >
+                        {sourceJob.job_number}
+                      </Link>{' '}
+                      · {sourceJob.title}
+                    </p>
                   )}
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="issue_date"
+                    className="block text-sm font-medium text-neutral-700 mb-1"
+                  >
+                    Issue Date *
+                  </label>
+                  <input
+                    type="date"
+                    id="issue_date"
+                    name="issue_date"
+                    value={formData.issue_date}
+                    onChange={handleChange}
+                    required
+                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="due_date"
+                    className="block text-sm font-medium text-neutral-700 mb-1"
+                  >
+                    Due Date *
+                  </label>
+                  <input
+                    type="date"
+                    id="due_date"
+                    name="due_date"
+                    value={formData.due_date}
+                    onChange={handleChange}
+                    required
+                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  />
+                  {isNew && defaultTermName && (
+                    <p className="mt-1 text-xs text-neutral-500">
+                      Payment term: {defaultTermName}
+                    </p>
+                  )}
+                </div>
+
+                <TaxRatePicker
+                  taxRates={pickerRates}
+                  taxRateId={formData.tax_rate_id}
+                  percent={formData.tax_rate}
+                  defaultTaxRateId={defaultTaxRateId}
+                  placeholder={
+                    isNew && defaultTaxRateId ? 'Default rate' : undefined
+                  }
+                  hint={
+                    taxFromDefault
+                      ? 'Left blank, your default tax rate applies.'
+                      : undefined
+                  }
+                  onChange={({ taxRateId, percent }) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      tax_rate_id: taxRateId,
+                      tax_rate: percent,
+                    }))
+                  }
+                />
               </div>
-
-              {remindersLoading ? (
-                <div className="py-4 text-center text-neutral-500">
-                  Loading reminders...
-                </div>
-              ) : reminders.length === 0 ? (
-                <div className="py-4 text-center text-neutral-500">
-                  No reminders sent yet
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-neutral-200">
-                        <th className="text-left py-2 px-3 font-medium text-neutral-600">
-                          #
-                        </th>
-                        <th className="text-left py-2 px-3 font-medium text-neutral-600">
-                          Channel
-                        </th>
-                        <th className="text-left py-2 px-3 font-medium text-neutral-600">
-                          Status
-                        </th>
-                        <th className="text-left py-2 px-3 font-medium text-neutral-600">
-                          Tone
-                        </th>
-                        <th className="text-left py-2 px-3 font-medium text-neutral-600">
-                          Sent At
-                        </th>
-                        <th className="text-left py-2 px-3 font-medium text-neutral-600">
-                          Recipient
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {reminders.map((reminder) => (
-                        <tr
-                          key={reminder.id}
-                          className="border-b border-neutral-100"
-                        >
-                          <td className="py-2 px-3">
-                            {reminder.is_manual
-                              ? `Manual #${reminder.reminder_number}`
-                              : reminder.reminder_number}
-                          </td>
-                          <td className="py-2 px-3">
-                            <Badge
-                              variant={
-                                reminder.channel === 'email'
-                                  ? 'info'
-                                  : 'neutral'
-                              }
-                            >
-                              {reminder.channel}
-                            </Badge>
-                          </td>
-                          <td className="py-2 px-3">
-                            <Badge
-                              variant={
-                                reminder.status === 'sent'
-                                  ? 'success'
-                                  : reminder.status === 'failed'
-                                    ? 'error'
-                                    : 'warning'
-                              }
-                            >
-                              {reminder.status}
-                            </Badge>
-                          </td>
-                          <td className="py-2 px-3 capitalize">
-                            {reminder.tone}
-                          </td>
-                          <td className="py-2 px-3">
-                            {reminder.sent_at
-                              ? new Date(
-                                  reminder.sent_at * 1000
-                                ).toLocaleString()
-                              : '-'}
-                          </td>
-                          <td className="py-2 px-3 text-neutral-600">
-                            {reminder.recipient}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
             </div>
-          )}
 
-          <div className="flex items-center justify-between pt-4">
-            <div>
-              {!isNew && (
+            <div className="bg-white rounded-2xl border border-neutral-200 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-neutral-900">
+                  Line Items
+                </h2>
                 <Button
                   type="button"
-                  variant="danger"
-                  onClick={handleDelete}
-                  disabled={isDeleting}
+                  variant="secondary"
+                  onClick={addLineItem}
                   className="flex items-center gap-2"
                 >
-                  {isDeleting ? (
+                  <Plus className="h-4 w-4" />
+                  Add Item
+                </Button>
+              </div>
+
+              <div className="space-y-3">
+                {lineItems.map((item, index) => (
+                  <div
+                    key={index}
+                    className="flex gap-3 items-start p-3 bg-neutral-50 rounded-lg"
+                  >
+                    <div className="flex-1">
+                      <input
+                        type="text"
+                        value={item.description}
+                        onChange={(e) =>
+                          handleLineItemChange(
+                            index,
+                            'description',
+                            e.target.value
+                          )
+                        }
+                        placeholder="Description"
+                        data-testid="item-description"
+                        required
+                        className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                      />
+                    </div>
+                    <div className="w-24">
+                      <input
+                        type="number"
+                        value={item.quantity}
+                        onChange={(e) =>
+                          handleLineItemChange(
+                            index,
+                            'quantity',
+                            e.target.value
+                          )
+                        }
+                        placeholder="Qty"
+                        data-testid="item-quantity"
+                        min="0"
+                        step="1"
+                        required
+                        className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                      />
+                    </div>
+                    <div className="w-32">
+                      <input
+                        type="number"
+                        value={item.unit_price}
+                        onChange={(e) =>
+                          handleLineItemChange(
+                            index,
+                            'unit_price',
+                            e.target.value
+                          )
+                        }
+                        placeholder="Price"
+                        data-testid="item-price"
+                        min="0"
+                        step="0.01"
+                        required
+                        className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                      />
+                    </div>
+                    <label className="flex items-center gap-1 py-2 text-sm text-neutral-600">
+                      <input
+                        type="checkbox"
+                        checked={item.taxable}
+                        onChange={(e) =>
+                          handleLineItemChange(
+                            index,
+                            'taxable',
+                            e.target.checked
+                          )
+                        }
+                        aria-label={`Line ${index + 1} taxable`}
+                      />
+                      Taxable
+                    </label>
+                    <div className="w-28 text-right py-2 font-medium">
+                      {formatDollars(lineNet(item))}
+                      {lineNet(item) <
+                        lineTotal(item.quantity, item.unit_price) && (
+                        <div className="text-xs font-normal text-neutral-500">
+                          {toAmount(item.discount_percentage) > 0
+                            ? `${toAmount(item.discount_percentage)}% discount`
+                            : `${formatDollars(item.discount_amount)} discount`}
+                        </div>
+                      )}
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => removeLineItem(index)}
+                      disabled={lineItems.length === 1}
+                      className="text-red-500 hover:text-red-700"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-4 pt-4 border-t border-neutral-200">
+                <div className="flex justify-end space-y-1">
+                  <div className="w-64 space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-neutral-600">Subtotal:</span>
+                      <span className="font-medium" data-testid="subtotal">
+                        {formatDollars(calculateSubtotal())}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-neutral-600">
+                        {taxFromDefault
+                          ? 'Tax (default rate):'
+                          : `Tax (${formData.tax_rate}%):`}
+                      </span>
+                      <span className="font-medium" data-testid="tax">
+                        {taxFromDefault
+                          ? 'Set on save'
+                          : formatDollars(calculateTax())}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-lg font-semibold pt-2 border-t">
+                      <span>Total:</span>
+                      <span data-testid="total">
+                        {taxFromDefault
+                          ? `${formatDollars(calculateSubtotal())} + tax`
+                          : formatDollars(calculateTotal())}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl border border-neutral-200 p-6">
+              <h2 className="text-lg font-semibold text-neutral-900 mb-4">
+                Notes & Terms
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label
+                    htmlFor="notes"
+                    className="block text-sm font-medium text-neutral-700 mb-1"
+                  >
+                    Notes
+                  </label>
+                  <textarea
+                    id="notes"
+                    name="notes"
+                    value={formData.notes}
+                    onChange={handleChange}
+                    rows={3}
+                    placeholder="Additional notes..."
+                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="terms_and_conditions"
+                    className="block text-sm font-medium text-neutral-700 mb-1"
+                  >
+                    Terms & Conditions
+                  </label>
+                  <textarea
+                    id="terms_and_conditions"
+                    name="terms_and_conditions"
+                    value={formData.terms_and_conditions}
+                    onChange={handleChange}
+                    rows={3}
+                    placeholder="Terms and conditions..."
+                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {!isNew && invoice && (
+              <InvoicePaymentHistory
+                invoice={invoice}
+                actions={
+                  <>
+                    {canRecordPayment && (
+                      <Button
+                        type="button"
+                        variant="primary"
+                        onClick={() => setShowPaymentModal(true)}
+                        className="flex items-center gap-2"
+                      >
+                        <DollarSign className="h-4 w-4" />
+                        Record Payment
+                      </Button>
+                    )}
+                    {canRefund && (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={() => setShowRefundModal(true)}
+                        className="flex items-center gap-2"
+                      >
+                        <Undo2 className="h-4 w-4" />
+                        Record Refund
+                      </Button>
+                    )}
+                    {canCancel && (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={() => setShowCancelModal(true)}
+                        className="flex items-center gap-2"
+                      >
+                        <Ban className="h-4 w-4" />
+                        Cancel Invoice
+                      </Button>
+                    )}
+                  </>
+                }
+              />
+            )}
+
+            {/* Payment Reminders Section - only for non-draft invoices */}
+            {!isNew && invoiceStatus !== InvoiceStatus.DRAFT && (
+              <div className="bg-white rounded-2xl border border-neutral-200 p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-semibold text-neutral-900 flex items-center gap-2">
+                    <Bell className="h-5 w-5" />
+                    Payment Reminders
+                  </h2>
+                  {invoiceStatus !== InvoiceStatus.PAID &&
+                    invoiceStatus !== InvoiceStatus.CANCELLED &&
+                    invoiceStatus !== InvoiceStatus.REFUNDED && (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={() => setShowReminderConfirmation(true)}
+                        disabled={isSendingReminder}
+                        className="flex items-center gap-2"
+                      >
+                        {isSendingReminder ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Send className="h-4 w-4" />
+                        )}
+                        Send Reminder
+                      </Button>
+                    )}
+                </div>
+
+                {remindersLoading ? (
+                  <div className="py-4 text-center text-neutral-500">
+                    Loading reminders...
+                  </div>
+                ) : reminders.length === 0 ? (
+                  <div className="py-4 text-center text-neutral-500">
+                    No reminders sent yet
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-neutral-200">
+                          <th className="text-left py-2 px-3 font-medium text-neutral-600">
+                            #
+                          </th>
+                          <th className="text-left py-2 px-3 font-medium text-neutral-600">
+                            Channel
+                          </th>
+                          <th className="text-left py-2 px-3 font-medium text-neutral-600">
+                            Status
+                          </th>
+                          <th className="text-left py-2 px-3 font-medium text-neutral-600">
+                            Tone
+                          </th>
+                          <th className="text-left py-2 px-3 font-medium text-neutral-600">
+                            Sent At
+                          </th>
+                          <th className="text-left py-2 px-3 font-medium text-neutral-600">
+                            Recipient
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {reminders.map((reminder) => (
+                          <tr
+                            key={reminder.id}
+                            className="border-b border-neutral-100"
+                          >
+                            <td className="py-2 px-3">
+                              {reminder.is_manual
+                                ? `Manual #${reminder.reminder_number}`
+                                : reminder.reminder_number}
+                            </td>
+                            <td className="py-2 px-3">
+                              <Badge
+                                variant={
+                                  reminder.channel === 'email'
+                                    ? 'info'
+                                    : 'neutral'
+                                }
+                              >
+                                {reminder.channel}
+                              </Badge>
+                            </td>
+                            <td className="py-2 px-3">
+                              <Badge
+                                variant={
+                                  reminder.status === 'sent'
+                                    ? 'success'
+                                    : reminder.status === 'failed'
+                                      ? 'error'
+                                      : 'warning'
+                                }
+                              >
+                                {reminder.status}
+                              </Badge>
+                            </td>
+                            <td className="py-2 px-3 capitalize">
+                              {reminder.tone}
+                            </td>
+                            <td className="py-2 px-3">
+                              {reminder.sent_at
+                                ? new Date(
+                                    reminder.sent_at * 1000
+                                  ).toLocaleString()
+                                : '-'}
+                            </td>
+                            <td className="py-2 px-3 text-neutral-600">
+                              {reminder.recipient}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="flex items-center justify-between pt-4">
+              <div>
+                {!isNew && (
+                  <Button
+                    type="button"
+                    variant="danger"
+                    onClick={handleDelete}
+                    disabled={isDeleting}
+                    className="flex items-center gap-2"
+                  >
+                    {isDeleting ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4" />
+                    )}
+                    Delete Invoice
+                  </Button>
+                )}
+              </div>
+              <div className="flex items-center gap-3">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => navigate('/invoices')}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  disabled={isSaving}
+                  className="flex items-center gap-2"
+                >
+                  {isSaving ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
-                    <Trash2 className="h-4 w-4" />
+                    <Save className="h-4 w-4" />
                   )}
-                  Delete Invoice
+                  {isNew ? 'Create Invoice' : 'Save Changes'}
                 </Button>
-              )}
+              </div>
             </div>
-            <div className="flex items-center gap-3">
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => navigate('/invoices')}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                variant="primary"
-                disabled={isSaving}
-                className="flex items-center gap-2"
-              >
-                {isSaving ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Save className="h-4 w-4" />
+          </form>
+
+          {!isNew && invoice && (
+            <aside className="space-y-6 lg:sticky lg:top-24">
+              <div className="rounded-2xl border border-neutral-200 bg-white p-6">
+                <p className="text-[15px] text-neutral-600">Balance due</p>
+                <p className="mt-1 text-3xl font-bold tracking-tight text-neutral-900 tabular-nums">
+                  {formatDollars(amountDue)}
+                </p>
+                {invoice.due_date && (
+                  <p className="mt-1 text-[15px] text-neutral-500">
+                    Due {formatShortDate(invoice.due_date, true)}
+                    {amountDue > 0 && ` · ${dueInWords(invoice.due_date)}`}
+                  </p>
                 )}
-                {isNew ? 'Create Invoice' : 'Save Changes'}
-              </Button>
-            </div>
-          </div>
-        </form>
+                <ol className="mt-5 space-y-3">
+                  {invoiceSteps(invoice, invoiceStatus).map((step) => (
+                    <li key={step.label} className="flex items-start gap-3">
+                      {step.done ? (
+                        <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-success-600" />
+                      ) : (
+                        <Circle className="mt-0.5 h-5 w-5 shrink-0 text-neutral-300" />
+                      )}
+                      <div>
+                        <p
+                          className={
+                            step.done ? 'text-neutral-900' : 'text-neutral-500'
+                          }
+                        >
+                          {step.label}
+                        </p>
+                        {step.detail && (
+                          <p className="text-sm text-neutral-500">
+                            {step.detail}
+                          </p>
+                        )}
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            </aside>
+          )}
+        </div>
 
         {!isNew && id && (
           <>

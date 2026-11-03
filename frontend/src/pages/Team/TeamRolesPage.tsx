@@ -80,7 +80,7 @@ export function TeamRolesPage() {
   if (!currentTenant) {
     return (
       <DashboardLayout>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mx-auto max-w-[1440px] p-4 sm:p-6 lg:p-8">
           <Card variant="elevated" padding="lg">
             <CardContent>
               <div className="text-center py-8">
@@ -100,23 +100,30 @@ export function TeamRolesPage() {
   }
 
   return (
-    <DashboardLayout>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-neutral-900">
-            Roles & Permissions
+    <DashboardLayout
+      breadcrumbs={[
+        { label: 'Team', to: '/team/members' },
+        { label: 'Roles & permissions' },
+      ]}
+    >
+      <div className="mx-auto max-w-[1440px] p-4 sm:p-6 lg:p-8">
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold tracking-tight text-neutral-900 md:text-3xl">
+            Roles & permissions
           </h1>
-          <p className="text-neutral-600 mt-2">
-            View the available roles and their permissions
+          <p className="mt-1 text-base text-neutral-600">
+            What each role can see and do
           </p>
         </div>
 
         {/* Info Banner */}
-        <div className="mb-6 flex items-start gap-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <Info className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
+        <div className="mb-6 flex items-start gap-3 rounded-2xl border border-secondary-200 bg-secondary-50 p-4">
+          <Info className="mt-0.5 h-5 w-5 shrink-0 text-secondary-700" />
           <div>
-            <p className="text-sm text-blue-900 font-medium">System Roles</p>
-            <p className="text-sm text-blue-700">
+            <p className="text-[15px] font-medium text-secondary-800">
+              System roles
+            </p>
+            <p className="text-sm text-secondary-700">
               These are the default roles available in your organization. Each
               role has a predefined set of permissions that determine what
               actions members can perform.

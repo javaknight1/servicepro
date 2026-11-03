@@ -480,8 +480,19 @@ export function QuoteDetailPage() {
   }
 
   return (
-    <DashboardLayout>
-      <div className="p-6 lg:p-8 max-w-4xl mx-auto">
+    <DashboardLayout
+      breadcrumbs={[
+        { label: 'Quotes', to: '/quotes' },
+        {
+          label: isCloning
+            ? 'Clone quote'
+            : isNew
+              ? 'New quote'
+              : quoteNumber || 'Quote',
+        },
+      ]}
+    >
+      <div className="mx-auto max-w-5xl p-4 sm:p-6 lg:p-8">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
             <Button
@@ -492,14 +503,14 @@ export function QuoteDetailPage() {
               <ArrowLeft className="h-4 w-4" />
               Back
             </Button>
-            <h1 className="text-2xl font-bold text-neutral-900">
+            <h1 className="text-2xl font-bold tracking-tight text-neutral-900 md:text-3xl">
               {isCloning
-                ? 'Clone Quote'
+                ? 'Clone quote'
                 : isNew
-                  ? 'Create Quote'
+                  ? 'New quote'
                   : quoteNumber
                     ? `Quote ${quoteNumber}`
-                    : 'Edit Quote'}
+                    : 'Edit quote'}
             </h1>
             {!isNew && (
               <Badge variant={getStatusBadgeVariant(quoteStatus)}>
@@ -596,7 +607,7 @@ export function QuoteDetailPage() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="bg-white rounded-lg border border-neutral-200 p-6">
+          <div className="bg-white rounded-2xl border border-neutral-200 p-6">
             <h2 className="text-lg font-semibold text-neutral-900 mb-4">
               Quote Details
             </h2>
@@ -672,7 +683,7 @@ export function QuoteDetailPage() {
             </div>
           </div>
 
-          <div className="bg-white rounded-lg border border-neutral-200 p-6">
+          <div className="bg-white rounded-2xl border border-neutral-200 p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-neutral-900">
                 Line Items
@@ -792,7 +803,7 @@ export function QuoteDetailPage() {
             </div>
           </div>
 
-          <div className="bg-white rounded-lg border border-neutral-200 p-6">
+          <div className="bg-white rounded-2xl border border-neutral-200 p-6">
             <h2 className="text-lg font-semibold text-neutral-900 mb-4">
               Notes & Terms
             </h2>

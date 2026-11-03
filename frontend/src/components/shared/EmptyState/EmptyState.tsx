@@ -28,7 +28,7 @@ export function EmptyState({
       )}
     >
       {icon && (
-        <div className="mb-4 p-4 bg-neutral-100 rounded-full text-neutral-400">
+        <div className="mb-4 p-4 bg-primary-50 rounded-full text-primary-600">
           {icon}
         </div>
       )}

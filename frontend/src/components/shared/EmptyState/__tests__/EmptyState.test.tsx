@@ -62,7 +62,7 @@ describe('EmptyState', () => {
         />
       );
 
-      const iconContainer = container.querySelector('.bg-neutral-100');
+      const iconContainer = container.querySelector('.bg-primary-50');
       expect(iconContainer).toBeInTheDocument();
       expect(iconContainer).toHaveClass('rounded-full');
     });
@@ -70,9 +70,7 @@ describe('EmptyState', () => {
     it('should not render icon container when not provided', () => {
       const { container } = render(<EmptyState title="No data" />);
 
-      expect(
-        container.querySelector('.bg-neutral-100')
-      ).not.toBeInTheDocument();
+      expect(container.querySelector('.bg-primary-50')).not.toBeInTheDocument();
     });
   });
 

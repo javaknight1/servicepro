@@ -70,25 +70,16 @@ export function SettingsPage() {
     setSaveMessage(null);
   };
 
-  const tabs = [
-    { id: 'profile' as const, label: 'Profile', icon: User },
-  ];
+  const tabs = [{ id: 'profile' as const, label: 'Profile', icon: User }];
 
   return (
-    <DashboardLayout>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-neutral-900">
-            Account Settings
-          </h1>
-          <p className="text-neutral-600 mt-2">
-            Manage your account profile.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+    <DashboardLayout
+      breadcrumbs={[{ label: 'Account settings' }, { label: 'Profile' }]}
+    >
+      <div className="mx-auto max-w-[1440px] p-4 sm:p-6 lg:p-8">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
           {/* Sidebar */}
-          <div className="lg:col-span-1">
+          <div className="lg:sticky lg:top-24 lg:self-start">
             <Card variant="elevated" padding="sm">
               <nav className="space-y-1">
                 {tabs.map((tab) => {
@@ -97,13 +88,14 @@ export function SettingsPage() {
                     <button
                       key={tab.id}
                       onClick={() => setActiveTab(tab.id)}
-                      className={`w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+                      aria-current={activeTab === tab.id ? 'page' : undefined}
+                      className={`w-full flex items-center px-4 py-3 text-[15px] rounded-xl transition-colors ${
                         activeTab === tab.id
-                          ? 'bg-primary-50 text-primary-700'
-                          : 'text-neutral-700 hover:bg-neutral-50'
+                          ? 'bg-primary-50 text-primary-600'
+                          : 'text-neutral-800 hover:bg-neutral-50'
                       }`}
                     >
-                      <Icon className="h-5 w-5 mr-3" />
+                      <Icon className="h-5 w-5 mr-3" strokeWidth={1.75} />
                       {tab.label}
                     </button>
                   );
@@ -113,7 +105,15 @@ export function SettingsPage() {
           </div>
 
           {/* Content */}
-          <div className="lg:col-span-3">
+          <div className="min-w-0 space-y-6">
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight text-neutral-900 md:text-3xl">
+                Account settings
+              </h1>
+              <p className="mt-1 text-base text-neutral-600">
+                Your own profile, the same in every organization.
+              </p>
+            </div>
             {activeTab === 'profile' && (
               <Card variant="elevated" padding="lg">
                 <CardHeader>

@@ -26,28 +26,28 @@ describe('Badge', () => {
     it('should render success variant', () => {
       render(<Badge variant="success">Success</Badge>);
       const badge = screen.getByText('Success');
-      expect(badge).toHaveClass('bg-success-100');
+      expect(badge).toHaveClass('bg-success-50');
       expect(badge).toHaveClass('text-success-700');
     });
 
     it('should render warning variant', () => {
       render(<Badge variant="warning">Warning</Badge>);
       const badge = screen.getByText('Warning');
-      expect(badge).toHaveClass('bg-warning-100');
+      expect(badge).toHaveClass('bg-warning-50');
       expect(badge).toHaveClass('text-warning-700');
     });
 
     it('should render error variant', () => {
       render(<Badge variant="error">Error</Badge>);
       const badge = screen.getByText('Error');
-      expect(badge).toHaveClass('bg-error-100');
+      expect(badge).toHaveClass('bg-error-50');
       expect(badge).toHaveClass('text-error-700');
     });
 
     it('should render info variant', () => {
       render(<Badge variant="info">Info</Badge>);
       const badge = screen.getByText('Info');
-      expect(badge).toHaveClass('bg-primary-100');
+      expect(badge).toHaveClass('bg-primary-50');
       expect(badge).toHaveClass('text-primary-700');
     });
 

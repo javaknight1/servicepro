@@ -9,6 +9,7 @@ import {
   ErrorState,
   Button,
   getStatusBadgeVariant,
+  PageHeader,
 } from '@components/shared';
 import type { Column } from '@components/shared';
 import { jobService, Job, JobFilters } from '@services/jobService';
@@ -170,38 +171,40 @@ export function JobsPage() {
 
   return (
     <DashboardLayout>
-      <div className="p-6 lg:p-8">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold text-neutral-900">Jobs</h1>
+      <div className="mx-auto max-w-[1440px] p-4 sm:p-6 lg:p-8">
+        <PageHeader
+          title="Jobs"
+          badge={
             <button
               onClick={() => setIsFlowModalOpen(true)}
-              className="p-1 rounded-full hover:bg-neutral-100"
+              className="rounded-full p-1 hover:bg-neutral-100"
               aria-label="View job flow info"
             >
               <Info className="h-5 w-5 text-neutral-400" />
             </button>
-          </div>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={() => navigate('/jobs/calendar')}
-              className="flex items-center gap-2"
-            >
-              <CalendarDays className="h-4 w-4" />
-              Calendar
-            </Button>
-            <Button
-              variant="primary"
-              onClick={() => navigate('/jobs/new')}
-              className="flex items-center gap-2"
-            >
-              <Plus className="h-4 w-4" />
-              Create Job
-            </Button>
-          </div>
-        </div>
-        <p className="text-neutral-600 mb-6">Track and manage service jobs</p>
+          }
+          subtitle="Every work order, from first call to done."
+          actions={
+            <>
+              <Button
+                variant="secondary"
+                onClick={() => navigate('/jobs/calendar')}
+                className="gap-2"
+              >
+                <CalendarDays className="h-4 w-4" />
+                Calendar
+              </Button>
+              <Button
+                variant="primary"
+                onClick={() => navigate('/jobs/new')}
+                className="gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                New job
+              </Button>
+            </>
+          }
+        />
 
         <form onSubmit={handleSearch} className="mb-6">
           <div className="relative max-w-md">
@@ -211,7 +214,7 @@ export function JobsPage() {
               placeholder="Search jobs..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              className="w-full rounded-xl border border-neutral-300 bg-white py-2.5 pl-10 pr-4 text-[15px] focus:border-primary-500 focus:ring-2 focus:ring-primary-500"
             />
           </div>
         </form>
@@ -228,7 +231,7 @@ export function JobsPage() {
             title="No jobs yet"
             description="Create your first job to get started"
             action={{
-              label: 'Create Job',
+              label: 'New job',
               onClick: () => navigate('/jobs/new'),
             }}
           />

@@ -41,7 +41,7 @@ describe('Card', () => {
     it('should apply elevated variant classes', () => {
       const { container } = render(<Card variant="elevated">Content</Card>);
 
-      expect(container.firstChild).toHaveClass('bg-white', 'shadow-medium');
+      expect(container.firstChild).toHaveClass('bg-white', 'shadow-xs');
     });
 
     it('should apply default md padding', () => {
@@ -76,10 +76,10 @@ describe('Card', () => {
       expect(container.firstChild).toHaveClass('custom-class');
     });
 
-    it('should have rounded-lg class', () => {
+    it('should have rounded-2xl class', () => {
       const { container } = render(<Card>Content</Card>);
 
-      expect(container.firstChild).toHaveClass('rounded-lg');
+      expect(container.firstChild).toHaveClass('rounded-2xl');
     });
 
     it('should pass additional props', () => {
@@ -146,9 +146,9 @@ describe('Card', () => {
       const { container } = render(<CardTitle>Title</CardTitle>);
 
       expect(container.firstChild).toHaveClass(
-        'text-2xl',
+        'text-lg',
         'font-semibold',
-        'leading-none',
+        'leading-tight',
         'tracking-tight'
       );
     });

@@ -39,8 +39,9 @@ describe('Button', () => {
       );
 
       expect(container.firstChild).toHaveClass(
-        'bg-secondary-600',
-        'text-white'
+        'border-neutral-300',
+        'bg-white',
+        'text-neutral-800'
       );
     });
 
@@ -48,7 +49,7 @@ describe('Button', () => {
       const { container } = render(<Button variant="outline">Outline</Button>);
 
       expect(container.firstChild).toHaveClass(
-        'border-2',
+        'border-[1.5px]',
         'border-primary-600',
         'text-primary-600'
       );
@@ -71,7 +72,7 @@ describe('Button', () => {
     it('should apply md size by default', () => {
       const { container } = render(<Button>Medium</Button>);
 
-      expect(container.firstChild).toHaveClass('px-4', 'py-2', 'text-base');
+      expect(container.firstChild).toHaveClass('px-4', 'py-2', 'text-[15px]');
     });
 
     it('should apply sm size', () => {
@@ -83,7 +84,7 @@ describe('Button', () => {
     it('should apply lg size', () => {
       const { container } = render(<Button size="lg">Large</Button>);
 
-      expect(container.firstChild).toHaveClass('px-6', 'py-3', 'text-lg');
+      expect(container.firstChild).toHaveClass('px-6', 'py-3', 'text-base');
     });
   });
 

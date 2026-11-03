@@ -12,7 +12,9 @@ import {
   Modal,
   Badge,
   Avatar,
+  PageHeader,
 } from '@components/shared';
+import type { BadgeVariant } from '@components/shared';
 import { useTenantStore } from '@store';
 import { roleApi } from '@services/roleApi';
 import { tenantApi } from '@services/tenantService';
@@ -32,6 +34,15 @@ import {
 import { getDisplayName } from '@/utils/avatar';
 import type { TenantMember, Invitation } from '@/types/tenant';
 import type { Role } from '@/types/role';
+
+/** Role pill colours from mockup 13: owner orange, office teal, the rest grey. */
+function roleBadgeVariant(roleName: string): BadgeVariant {
+  const name = roleName.toLowerCase();
+  if (name === 'owner' || name === 'admin' || name === 'super_admin')
+    return 'info';
+  if (name === 'manager' || name.includes('office')) return 'teal';
+  return 'neutral';
+}
 
 export function TeamMembersPage() {
   const { currentTenant, getMembers, removeMember, updateMemberRole } =
@@ -238,7 +249,7 @@ export function TeamMembersPage() {
   if (!currentTenant) {
     return (
       <DashboardLayout>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mx-auto max-w-[1440px] p-4 sm:p-6 lg:p-8">
           <Card variant="elevated" padding="lg">
             <CardContent>
               <div className="text-center py-8">
@@ -259,217 +270,270 @@ export function TeamMembersPage() {
 
   return (
     <DashboardLayout>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8 flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-neutral-900">
-              Team Members
-            </h1>
-            <p className="text-neutral-600 mt-2">
-              Manage who has access to{' '}
+      <div className="mx-auto max-w-[1440px] p-4 sm:p-6 lg:p-8">
+        <PageHeader
+          title="Team"
+          subtitle={
+            <>
+              {isLoading
+                ? 'People with access to '
+                : `${members.length} ${members.length === 1 ? 'person' : 'people'} with access to `}
               <span className="font-medium">{currentTenant.name}</span>
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            {/* The sidebar's Team item opens this page; roles live one click away. */}
-            <Link
-              to="/team/roles"
-              className="text-sm font-medium text-primary-600 hover:text-primary-700"
-            >
-              Roles & permissions
-            </Link>
-            {canManage && !loadError && (
-              <Button variant="primary" onClick={() => setShowAddModal(true)}>
-                <UserPlus className="h-4 w-4 mr-2" />
-                Invite Member
-              </Button>
-            )}
-          </div>
-        </div>
-
-        <Card variant="elevated" padding="lg">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>Members ({members.length})</CardTitle>
-                <CardDescription>
-                  People with access to this organization
-                </CardDescription>
-              </div>
-              <div className="relative w-64">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
-                <Input
-                  type="text"
-                  placeholder="Search members..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                  fullWidth
-                />
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {actionError && (
-              <div
-                role="alert"
-                className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm"
+            </>
+          }
+          actions={
+            <>
+              {/* The sidebar's Team item opens this page; roles live one click away. */}
+              <Link
+                to="/team/roles"
+                className="inline-flex items-center rounded-lg border border-neutral-300 bg-white px-4 py-2 text-[15px] font-medium text-neutral-800 hover:bg-neutral-50"
               >
-                {actionError}
-              </div>
-            )}
-            {isLoading ? (
-              <div className="py-8 text-center text-neutral-500">
-                Loading members...
-              </div>
-            ) : loadError ? (
-              <div role="alert" className="py-8 text-center text-neutral-600">
-                {loadError}
-              </div>
-            ) : filteredMembers.length === 0 &&
-              filteredInvitations.length === 0 ? (
-              <div className="py-8 text-center text-neutral-500">
-                {searchQuery
-                  ? 'No members match your search'
-                  : 'No members found'}
-              </div>
-            ) : (
-              <div className="space-y-6">
-                {/* Active Members */}
-                {filteredMembers.length > 0 && (
-                  <div className="divide-y divide-neutral-200">
-                    {filteredMembers.map((member) => {
-                      const memberDisplayName = getDisplayName(
-                        member.email,
-                        member.first_name,
-                        member.last_name
-                      );
-                      const hasName = member.first_name || member.last_name;
+                Roles & permissions
+              </Link>
+              {canManage && !loadError && (
+                <Button
+                  variant="primary"
+                  onClick={() => setShowAddModal(true)}
+                  className="gap-2"
+                >
+                  <UserPlus className="h-4 w-4" />
+                  Invite member
+                </Button>
+              )}
+            </>
+          }
+        />
 
-                      return (
-                        <div
-                          key={member.id}
-                          className="flex items-center justify-between py-4"
-                        >
-                          <div className="flex items-center">
-                            <Avatar
-                              email={member.email}
-                              firstName={member.first_name}
-                              lastName={member.last_name}
-                              profilePictureUrl={member.profile_picture_url}
-                              size="md"
-                            />
-                            <div className="ml-4">
-                              <p className="text-sm font-medium text-neutral-900">
-                                {memberDisplayName}
-                              </p>
-                              {hasName && (
-                                <p className="text-xs text-neutral-500">
-                                  {member.email}
+        <div
+          className={
+            roles.length > 0
+              ? 'grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_360px]'
+              : undefined
+          }
+        >
+          <Card variant="elevated" padding="lg" className="min-w-0">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Members ({members.length})</CardTitle>
+                  <CardDescription>
+                    People with access to this organization
+                  </CardDescription>
+                </div>
+                <div className="relative w-64">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
+                  <Input
+                    type="text"
+                    placeholder="Search members..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10"
+                    fullWidth
+                  />
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {actionError && (
+                <div
+                  role="alert"
+                  className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm"
+                >
+                  {actionError}
+                </div>
+              )}
+              {isLoading ? (
+                <div className="py-8 text-center text-neutral-500">
+                  Loading members...
+                </div>
+              ) : loadError ? (
+                <div role="alert" className="py-8 text-center text-neutral-600">
+                  {loadError}
+                </div>
+              ) : filteredMembers.length === 0 &&
+                filteredInvitations.length === 0 ? (
+                <div className="py-8 text-center text-neutral-500">
+                  {searchQuery
+                    ? 'No members match your search'
+                    : 'No members found'}
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {/* Active Members */}
+                  {filteredMembers.length > 0 && (
+                    <div className="divide-y divide-neutral-200">
+                      {filteredMembers.map((member) => {
+                        const memberDisplayName = getDisplayName(
+                          member.email,
+                          member.first_name,
+                          member.last_name
+                        );
+                        const hasName = member.first_name || member.last_name;
+
+                        return (
+                          <div
+                            key={member.id}
+                            className="flex items-center justify-between py-4"
+                          >
+                            <div className="flex items-center">
+                              <Avatar
+                                email={member.email}
+                                firstName={member.first_name}
+                                lastName={member.last_name}
+                                profilePictureUrl={member.profile_picture_url}
+                                size="md"
+                              />
+                              <div className="ml-4">
+                                <p className="text-[15px] font-medium text-neutral-900">
+                                  {memberDisplayName}
                                 </p>
-                              )}
-                              <div className="flex items-center mt-1 space-x-2">
-                                <Badge variant="neutral">
-                                  {member.role_name}
-                                </Badge>
+                                {hasName && (
+                                  <p className="text-sm text-neutral-500">
+                                    {member.email}
+                                  </p>
+                                )}
+                                <div className="flex items-center mt-1 space-x-2">
+                                  <Badge
+                                    variant={roleBadgeVariant(member.role_name)}
+                                    size="sm"
+                                  >
+                                    {member.role_name}
+                                  </Badge>
+                                </div>
                               </div>
                             </div>
+                            {canManage && (
+                              <div className="flex items-center space-x-2">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => openChangeRoleModal(member)}
+                                  title="Change role"
+                                >
+                                  <Shield className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleRemoveMember(member)}
+                                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                  title="Remove member"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            )}
                           </div>
-                          {canManage && (
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Pending Invitations */}
+                  {filteredInvitations.length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-medium text-neutral-700 mb-3 flex items-center">
+                        <Clock className="h-4 w-4 mr-2" />
+                        Pending Invitations ({filteredInvitations.length})
+                      </h3>
+                      <div className="divide-y divide-neutral-200 bg-neutral-50 rounded-lg">
+                        {filteredInvitations.map((invitation) => (
+                          <div
+                            key={invitation.id}
+                            className="flex items-center justify-between py-4 px-4"
+                          >
+                            <div className="flex items-center">
+                              <div className="h-10 w-10 rounded-full bg-neutral-200 flex items-center justify-center">
+                                <Mail className="h-5 w-5 text-neutral-500" />
+                              </div>
+                              <div className="ml-4">
+                                <p className="text-sm font-medium text-neutral-900">
+                                  {invitation.email}
+                                </p>
+                                <div className="flex items-center mt-1 space-x-2">
+                                  <Badge variant="neutral">
+                                    {invitation.role_name}
+                                  </Badge>
+                                  <Badge variant="warning">
+                                    {invitation.user_registered
+                                      ? 'Awaiting Acceptance'
+                                      : 'Awaiting Registration'}
+                                  </Badge>
+                                </div>
+                                <p className="text-xs text-neutral-500 mt-1">
+                                  Invited by {invitation.invited_by_name} &bull;
+                                  Expires{' '}
+                                  {new Date(
+                                    invitation.expires_at
+                                  ).toLocaleDateString()}
+                                </p>
+                              </div>
+                            </div>
                             <div className="flex items-center space-x-2">
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => openChangeRoleModal(member)}
-                                title="Change role"
+                                onClick={() =>
+                                  handleResendInvitation(invitation)
+                                }
+                                title="Resend invitation"
                               >
-                                <Shield className="h-4 w-4" />
+                                <RefreshCw className="h-4 w-4" />
                               </Button>
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => handleRemoveMember(member)}
+                                onClick={() =>
+                                  handleCancelInvitation(invitation)
+                                }
                                 className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                title="Remove member"
+                                title="Cancel invitation"
                               >
-                                <Trash2 className="h-4 w-4" />
+                                <X className="h-4 w-4" />
                               </Button>
                             </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {/* Pending Invitations */}
-                {filteredInvitations.length > 0 && (
-                  <div>
-                    <h3 className="text-sm font-medium text-neutral-700 mb-3 flex items-center">
-                      <Clock className="h-4 w-4 mr-2" />
-                      Pending Invitations ({filteredInvitations.length})
-                    </h3>
-                    <div className="divide-y divide-neutral-200 bg-neutral-50 rounded-lg">
-                      {filteredInvitations.map((invitation) => (
-                        <div
-                          key={invitation.id}
-                          className="flex items-center justify-between py-4 px-4"
-                        >
-                          <div className="flex items-center">
-                            <div className="h-10 w-10 rounded-full bg-neutral-200 flex items-center justify-center">
-                              <Mail className="h-5 w-5 text-neutral-500" />
-                            </div>
-                            <div className="ml-4">
-                              <p className="text-sm font-medium text-neutral-900">
-                                {invitation.email}
-                              </p>
-                              <div className="flex items-center mt-1 space-x-2">
-                                <Badge variant="neutral">
-                                  {invitation.role_name}
-                                </Badge>
-                                <Badge variant="warning">
-                                  {invitation.user_registered
-                                    ? 'Awaiting Acceptance'
-                                    : 'Awaiting Registration'}
-                                </Badge>
-                              </div>
-                              <p className="text-xs text-neutral-500 mt-1">
-                                Invited by {invitation.invited_by_name} &bull;
-                                Expires{' '}
-                                {new Date(
-                                  invitation.expires_at
-                                ).toLocaleDateString()}
-                              </p>
-                            </div>
                           </div>
-                          <div className="flex items-center space-x-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleResendInvitation(invitation)}
-                              title="Resend invitation"
-                            >
-                              <RefreshCw className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleCancelInvitation(invitation)}
-                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                              title="Cancel invitation"
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* The roles this organization has (fixed three-role model: T035) */}
+          {roles.length > 0 && (
+            <Card variant="elevated" padding="lg">
+              <CardHeader>
+                <CardTitle>Roles</CardTitle>
+                <CardDescription>What each role can do here.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ul className="mt-4 divide-y divide-neutral-200">
+                  {roles.map((role) => (
+                    <li key={role.id} className="py-3">
+                      <Badge variant={roleBadgeVariant(role.name)} size="sm">
+                        {role.name}
+                      </Badge>
+                      {role.description && (
+                        <p className="mt-1.5 text-sm text-neutral-600">
+                          {role.description}
+                        </p>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+                <Link
+                  to="/team/roles"
+                  className="mt-2 inline-block text-sm font-medium text-primary-600 hover:text-primary-700"
+                >
+                  See permissions by role
+                </Link>
+              </CardContent>
+            </Card>
+          )}
+        </div>
       </div>
 
       {/* Invite Member Modal */}

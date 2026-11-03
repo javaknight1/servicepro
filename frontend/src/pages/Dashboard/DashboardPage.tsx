@@ -16,6 +16,10 @@ import { invoiceService, InvoiceStats } from '@services/invoiceService';
 import { arAgingService } from '@services/arAgingService';
 import type { ARAgingBucketSummary, AgingBucket } from '@app-types/arAging';
 import {
+  AGING_BUCKETS,
+  AGING_BUCKET_STYLES,
+} from '@components/reports/agingStyles';
+import {
   Users,
   Briefcase,
   FileText,
@@ -55,21 +59,6 @@ const emptyData: DashboardData = {
   aging: null,
 };
 
-/** A/R aging bucket colours: green for current, warming to red as debt ages. */
-const BUCKET_STYLES: Record<AgingBucket, { bar: string; label: string }> = {
-  current: { bar: 'bg-success-600', label: 'Current' },
-  '1-30': { bar: 'bg-primary-300', label: '1–30 days' },
-  '31-60': { bar: 'bg-primary-500', label: '31–60' },
-  '61-90': { bar: 'bg-primary-700', label: '61–90' },
-  '90+': { bar: 'bg-error-600', label: '90+' },
-};
-const BUCKET_ORDER: AgingBucket[] = [
-  'current',
-  '1-30',
-  '31-60',
-  '61-90',
-  '90+',
-];
 const OVER_30_DAYS: AgingBucket[] = ['31-60', '61-90', '90+'];
 
 function customerName(job: Job): string {
@@ -495,20 +484,20 @@ export function DashboardPage() {
                     role="img"
                     aria-label="Outstanding balance by age"
                   >
-                    {BUCKET_ORDER.map((bucket) => {
+                    {AGING_BUCKETS.map((bucket) => {
                       const amount = sumBuckets(aging, [bucket]);
                       if (amount <= 0) return null;
                       return (
                         <div
                           key={bucket}
-                          className={BUCKET_STYLES[bucket].bar}
+                          className={AGING_BUCKET_STYLES[bucket].bar}
                           style={{ width: `${(amount / agingTotal) * 100}%` }}
                         />
                       );
                     })}
                   </div>
                   <ul className="space-y-2">
-                    {BUCKET_ORDER.map((bucket) => (
+                    {AGING_BUCKETS.map((bucket) => (
                       <li
                         key={bucket}
                         className="flex items-center justify-between text-[15px]"
@@ -517,10 +506,10 @@ export function DashboardPage() {
                           <span
                             className={cn(
                               'h-2.5 w-2.5 rounded-full',
-                              BUCKET_STYLES[bucket].bar
+                              AGING_BUCKET_STYLES[bucket].bar
                             )}
                           />
-                          {BUCKET_STYLES[bucket].label}
+                          {AGING_BUCKET_STYLES[bucket].shortLabel}
                         </span>
                         <span className="font-medium text-neutral-900 tabular-nums">
                           {formatDollars(sumBuckets(aging, [bucket]), {

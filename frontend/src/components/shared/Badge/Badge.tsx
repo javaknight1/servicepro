@@ -1,7 +1,8 @@
 /* eslint-disable react-refresh/only-export-components */
 import { cn } from '@utils/cn';
 
-export type BadgeVariant = 'success' | 'warning' | 'error' | 'info' | 'neutral';
+export type BadgeVariant =
+  'success' | 'warning' | 'error' | 'info' | 'teal' | 'neutral';
 
 export interface BadgeProps {
   children: React.ReactNode;
@@ -17,10 +18,11 @@ export function Badge({
   className,
 }: BadgeProps) {
   const variants = {
-    success: 'bg-success-100 text-success-700 border-success-200',
-    warning: 'bg-warning-100 text-warning-700 border-warning-200',
-    error: 'bg-error-100 text-error-700 border-error-200',
-    info: 'bg-primary-100 text-primary-700 border-primary-200',
+    success: 'bg-success-50 text-success-700 border-success-200',
+    warning: 'bg-warning-50 text-warning-700 border-warning-200',
+    error: 'bg-error-50 text-error-700 border-error-200',
+    info: 'bg-primary-50 text-primary-700 border-primary-200',
+    teal: 'bg-secondary-50 text-secondary-700 border-secondary-200',
     neutral: 'bg-neutral-100 text-neutral-700 border-neutral-200',
   };
 
@@ -61,8 +63,12 @@ export function getStatusBadgeVariant(status: string): BadgeVariant {
     expired: 'warning',
 
     // Job statuses
+    new: 'neutral',
     scheduled: 'info',
+    en_route: 'warning',
     in_progress: 'warning',
+    on_hold: 'neutral',
+    invoiced: 'teal',
 
     // Invoice statuses
     paid: 'success',

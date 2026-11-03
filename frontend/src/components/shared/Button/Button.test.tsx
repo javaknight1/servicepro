@@ -36,7 +36,7 @@ describe('Button Component', () => {
   describe('Variants', () => {
     const variants = [
       { variant: 'primary' as const, expectedClass: 'bg-primary-600' },
-      { variant: 'secondary' as const, expectedClass: 'bg-secondary-600' },
+      { variant: 'secondary' as const, expectedClass: 'border-neutral-300' },
       { variant: 'outline' as const, expectedClass: 'border-primary-600' },
       { variant: 'ghost' as const, expectedClass: 'text-neutral-700' },
       { variant: 'danger' as const, expectedClass: 'bg-error-600' },
@@ -56,8 +56,8 @@ describe('Button Component', () => {
   describe('Sizes', () => {
     const sizes = [
       { size: 'sm' as const, expectedClass: 'px-3 py-1.5 text-sm' },
-      { size: 'md' as const, expectedClass: 'px-4 py-2 text-base' },
-      { size: 'lg' as const, expectedClass: 'px-6 py-3 text-lg' },
+      { size: 'md' as const, expectedClass: 'px-4 py-2 text-[15px]' },
+      { size: 'lg' as const, expectedClass: 'px-6 py-3 text-base' },
     ];
 
     sizes.forEach(({ size, expectedClass }) => {

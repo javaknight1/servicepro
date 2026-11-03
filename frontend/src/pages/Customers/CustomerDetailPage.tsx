@@ -1,11 +1,24 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { DashboardLayout } from '@components/layout';
-import { Button, Badge, getStatusBadgeVariant } from '@components/shared';
-import { customerService } from '@services/customerService';
+import {
+  Button,
+  Badge,
+  Avatar,
+  InfoCard,
+  PageHeader,
+  ListCard,
+  getStatusBadgeVariant,
+} from '@components/shared';
+import { customerService, type Customer } from '@services/customerService';
 import { jobService, Job } from '@services/jobService';
 import { getErrorMessage } from '@/utils/error';
-import { getJobStatusLabel, getJobTypeLabel } from '@app-types';
+import {
+  getJobStatusLabel,
+  getJobTypeLabel,
+  getCustomerStatusLabel,
+  getCustomerTypeLabel,
+} from '@app-types';
 import { formatEpochDateTime } from '@/utils/epoch';
 import { useTenantTimezone } from '@/hooks/useTenantTimezone';
 import type {
@@ -13,6 +26,7 @@ import type {
   CustomerStatus,
   PreferredContactMethod,
 } from '@app-types/customer';
+import { getPreferredContactMethodLabel } from '@app-types/customer';
 import {
   ArrowLeft,
   Save,
@@ -21,6 +35,11 @@ import {
   Briefcase,
   Copy,
   ExternalLink,
+  Plus,
+  UserRound,
+  Phone,
+  MapPin,
+  MessageSquare,
 } from 'lucide-react';
 
 interface CustomerFormData {
@@ -92,6 +111,8 @@ export function CustomerDetailPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [recentJobs, setRecentJobs] = useState<Job[]>([]);
+  // The customer as last loaded, for the summary above the form.
+  const [customer, setCustomer] = useState<Customer | null>(null);
   const [isLoadingJobs, setIsLoadingJobs] = useState(false);
 
   const loadCustomer = async (customerId: string) => {
@@ -99,6 +120,7 @@ export function CustomerDetailPage() {
     setError(null);
     try {
       const customer = await customerService.getCustomer(customerId);
+      setCustomer(customer);
       setFormData({
         email: customer.email || '',
         first_name: customer.first_name || '',
@@ -238,22 +260,132 @@ export function CustomerDetailPage() {
     );
   }
 
+  const crumbName = isNew
+    ? 'New customer'
+    : customer?.company_name ||
+      (customer ? `${customer.first_name} ${customer.last_name}`.trim() : '');
   return (
-    <DashboardLayout>
-      <div className="p-6 lg:p-8 max-w-4xl mx-auto">
-        <div className="flex items-center gap-4 mb-6">
-          <Button
-            variant="ghost"
-            onClick={() => navigate('/customers')}
-            className="flex items-center gap-2"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back
-          </Button>
-          <h1 className="text-2xl font-bold text-neutral-900">
-            {isNew ? 'New Customer' : 'Edit Customer'}
-          </h1>
-        </div>
+    <DashboardLayout
+      breadcrumbs={[
+        { label: 'Customers & Sites', to: '/customers' },
+        { label: crumbName || 'Customer' },
+      ]}
+    >
+      <div className="mx-auto max-w-[1200px] p-4 sm:p-6 lg:p-8">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => navigate('/customers')}
+          className="mb-3 -ml-2 gap-2 text-neutral-600"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Customers
+        </Button>
+        {isNew || !customer ? (
+          <PageHeader
+            title={isNew ? 'New customer' : 'Edit customer'}
+            subtitle={
+              isNew
+                ? 'Who you do the work for and where to bill it.'
+                : undefined
+            }
+          />
+        ) : (
+          <>
+            <PageHeader
+              leading={
+                <Avatar
+                  email={customer.email || customer.id}
+                  firstName={customer.company_name || customer.first_name}
+                  lastName={
+                    customer.company_name ? undefined : customer.last_name
+                  }
+                  shape="tile"
+                  size="xl"
+                />
+              }
+              title={
+                customer.company_name ||
+                `${customer.first_name} ${customer.last_name}`.trim()
+              }
+              badge={
+                <Badge
+                  variant={getStatusBadgeVariant(customer.status)}
+                  size="sm"
+                >
+                  {getCustomerStatusLabel(customer.status)}
+                </Badge>
+              }
+              subtitle={`${getCustomerTypeLabel(customer.customer_type)} · customer since ${new Date(
+                customer.created_at
+              ).toLocaleDateString('en-US', {
+                month: 'long',
+                year: 'numeric',
+              })}`}
+              actions={
+                <Button
+                  variant="primary"
+                  onClick={() =>
+                    navigate(`/jobs/new`, {
+                      state: { prefillCustomerId: id },
+                    })
+                  }
+                  className="gap-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  New job
+                </Button>
+              }
+            />
+            {/* Contact and billing facts. Billing rules (terms, POs,
+                approver, not-to-exceed) and sites arrive with T187/T186. */}
+            <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <InfoCard
+                icon={<UserRound />}
+                label="Contact"
+                value={
+                  `${customer.first_name} ${customer.last_name}`.trim() || '—'
+                }
+                detail={customer.email || 'No email'}
+              />
+              <InfoCard
+                icon={<Phone />}
+                label="Phone"
+                value={customer.phone_primary || '—'}
+                detail={customer.phone_secondary || undefined}
+              />
+              <InfoCard
+                icon={<MapPin />}
+                label="Billing address"
+                value={customer.billing_address_street || '—'}
+                detail={[
+                  customer.billing_address_city,
+                  customer.billing_address_state,
+                  customer.billing_address_zip,
+                ]
+                  .filter(Boolean)
+                  .join(', ')}
+              />
+              <InfoCard
+                icon={<MessageSquare />}
+                label="Prefers"
+                value={getPreferredContactMethodLabel(
+                  customer.preferred_contact_method
+                )}
+                detail={
+                  [
+                    customer.do_not_email && 'no email',
+                    customer.do_not_call && 'no calls',
+                    customer.do_not_sms && 'no texts',
+                    customer.do_not_mail && 'no mail',
+                  ]
+                    .filter(Boolean)
+                    .join(' · ') || 'Any channel is fine'
+                }
+              />
+            </div>
+          </>
+        )}
 
         {error && (
           <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
@@ -263,7 +395,7 @@ export function CustomerDetailPage() {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Basic Information */}
-          <div className="bg-white rounded-lg border border-neutral-200 p-6">
+          <div className="bg-white rounded-2xl border border-neutral-200 p-6">
             <h2 className="text-lg font-semibold text-neutral-900 mb-4">
               Basic Information
             </h2>
@@ -385,7 +517,7 @@ export function CustomerDetailPage() {
           </div>
 
           {/* Billing Address */}
-          <div className="bg-white rounded-lg border border-neutral-200 p-6">
+          <div className="bg-white rounded-2xl border border-neutral-200 p-6">
             <h2 className="text-lg font-semibold text-neutral-900 mb-4">
               Billing Address
             </h2>
@@ -474,7 +606,7 @@ export function CustomerDetailPage() {
           </div>
 
           {/* Service Address */}
-          <div className="bg-white rounded-lg border border-neutral-200 p-6">
+          <div className="bg-white rounded-2xl border border-neutral-200 p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-neutral-900">
                 Service Address
@@ -577,7 +709,7 @@ export function CustomerDetailPage() {
           </div>
 
           {/* Classification */}
-          <div className="bg-white rounded-lg border border-neutral-200 p-6">
+          <div className="bg-white rounded-2xl border border-neutral-200 p-6">
             <h2 className="text-lg font-semibold text-neutral-900 mb-4">
               Classification
             </h2>
@@ -643,7 +775,7 @@ export function CustomerDetailPage() {
           </div>
 
           {/* Contact Preferences */}
-          <div className="bg-white rounded-lg border border-neutral-200 p-6">
+          <div className="bg-white rounded-2xl border border-neutral-200 p-6">
             <h2 className="text-lg font-semibold text-neutral-900 mb-4">
               Contact Preferences
             </h2>
@@ -809,28 +941,27 @@ export function CustomerDetailPage() {
 
         {/* Recent Jobs Section */}
         {!isNew && (
-          <div className="mt-8 bg-white rounded-lg border border-neutral-200 p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <Briefcase className="h-5 w-5 text-neutral-500" />
-                <h2 className="text-lg font-semibold text-neutral-900">
-                  Recent Jobs
-                </h2>
-              </div>
+          <ListCard
+            className="mt-8"
+            title="Recent jobs"
+            count={isLoadingJobs ? undefined : recentJobs.length}
+            bodyClassName="px-6 pb-6"
+            action={
               <Button
-                variant="primary"
+                variant="outline"
+                size="sm"
                 onClick={() =>
                   navigate(`/jobs/new`, {
                     state: { prefillCustomerId: id },
                   })
                 }
-                className="flex items-center gap-2 text-sm"
+                className="gap-2"
               >
                 <Briefcase className="h-4 w-4" />
-                New Job
+                New job
               </Button>
-            </div>
-
+            }
+          >
             {isLoadingJobs ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-6 w-6 animate-spin text-neutral-400" />
@@ -844,7 +975,7 @@ export function CustomerDetailPage() {
                 {recentJobs.map((job) => (
                   <div
                     key={job.id}
-                    className="flex items-center justify-between p-3 border border-neutral-200 rounded-lg hover:border-neutral-300 transition-colors"
+                    className="flex items-center justify-between rounded-xl border border-neutral-200 p-3 transition-colors hover:border-neutral-300"
                   >
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
@@ -890,14 +1021,14 @@ export function CustomerDetailPage() {
                         className="flex items-center gap-1 text-xs px-2 py-1"
                       >
                         <Copy className="h-3.5 w-3.5" />
-                        Repeat Job
+                        Repeat job
                       </Button>
                     </div>
                   </div>
                 ))}
               </div>
             )}
-          </div>
+          </ListCard>
         )}
       </div>
     </DashboardLayout>

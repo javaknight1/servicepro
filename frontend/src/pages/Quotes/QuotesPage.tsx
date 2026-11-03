@@ -9,6 +9,7 @@ import {
   ErrorState,
   Button,
   getStatusBadgeVariant,
+  PageHeader,
 } from '@components/shared';
 import type { Column } from '@components/shared';
 import { quoteService, QuoteFilters } from '@services/quoteService';
@@ -178,23 +179,21 @@ export function QuotesPage() {
 
   return (
     <DashboardLayout>
-      <div className="p-6 lg:p-8">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-neutral-900">Quotes</h1>
-            <p className="text-neutral-600 mt-1">
-              Create and manage customer quotes
-            </p>
-          </div>
-          <Button
-            variant="primary"
-            onClick={() => navigate('/quotes/new')}
-            className="flex items-center gap-2"
-          >
-            <Plus className="h-4 w-4" />
-            Create Quote
-          </Button>
-        </div>
+      <div className="mx-auto max-w-[1440px] p-4 sm:p-6 lg:p-8">
+        <PageHeader
+          title="Quotes"
+          subtitle="Price the work, send it, and turn a yes into a job."
+          actions={
+            <Button
+              variant="primary"
+              onClick={() => navigate('/quotes/new')}
+              className="gap-2"
+            >
+              <Plus className="h-4 w-4" />
+              New quote
+            </Button>
+          }
+        />
 
         <form onSubmit={handleSearch} className="mb-6">
           <div className="relative max-w-md">
@@ -204,7 +203,7 @@ export function QuotesPage() {
               placeholder="Search quotes..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              className="w-full rounded-xl border border-neutral-300 bg-white py-2.5 pl-10 pr-4 text-[15px] focus:border-primary-500 focus:ring-2 focus:ring-primary-500"
             />
           </div>
         </form>

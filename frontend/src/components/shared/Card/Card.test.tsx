@@ -23,7 +23,7 @@ describe('Card Component', () => {
       const { container } = render(<Card>Default Card</Card>);
       const card = container.firstChild;
 
-      expect(card).toHaveClass('rounded-lg');
+      expect(card).toHaveClass('rounded-2xl');
       expect(card).toHaveClass('bg-white');
       expect(card).toHaveClass('border');
       expect(card).toHaveClass('p-6'); // default md padding
@@ -43,7 +43,7 @@ describe('Card Component', () => {
     const variants = [
       { variant: 'default' as const, expectedClass: 'border-neutral-200' },
       { variant: 'bordered' as const, expectedClass: 'border-2' },
-      { variant: 'elevated' as const, expectedClass: 'shadow-medium' },
+      { variant: 'elevated' as const, expectedClass: 'shadow-xs' },
     ];
 
     variants.forEach(({ variant, expectedClass }) => {
@@ -100,7 +100,7 @@ describe('Card Component', () => {
       const card = container.firstChild;
 
       expect(card).toHaveClass('custom-class');
-      expect(card).toHaveClass('rounded-lg');
+      expect(card).toHaveClass('rounded-2xl');
       expect(card).toHaveClass('bg-white');
     });
 
@@ -144,7 +144,7 @@ describe('Card Component', () => {
       );
       const card = container.firstChild;
 
-      expect(card).toHaveClass('shadow-medium');
+      expect(card).toHaveClass('shadow-xs');
       expect(card).toHaveClass('p-8');
       expect(card).toHaveClass('custom-class');
       expect(card).toHaveAttribute('data-testid', 'combo-card');
@@ -202,9 +202,9 @@ describe('CardTitle Component', () => {
     const { container } = render(<CardTitle>Title</CardTitle>);
     const title = container.firstChild;
 
-    expect(title).toHaveClass('text-2xl');
+    expect(title).toHaveClass('text-lg');
     expect(title).toHaveClass('font-semibold');
-    expect(title).toHaveClass('leading-none');
+    expect(title).toHaveClass('leading-tight');
     expect(title).toHaveClass('tracking-tight');
   });
 

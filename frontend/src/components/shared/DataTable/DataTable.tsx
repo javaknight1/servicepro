@@ -103,7 +103,7 @@ export function DataTable<T extends object>({
   return (
     <div
       className={cn(
-        'bg-white rounded-xl border border-neutral-200 overflow-hidden',
+        'bg-white rounded-2xl border border-neutral-200 overflow-hidden',
         className
       )}
     >
@@ -115,7 +115,7 @@ export function DataTable<T extends object>({
                 <th
                   key={column.key}
                   className={cn(
-                    'px-4 py-3 text-left text-sm font-semibold text-neutral-700',
+                    'px-5 py-3.5 text-left text-sm font-medium text-neutral-900',
                     column.sortable &&
                       'cursor-pointer select-none hover:bg-neutral-100',
                     column.className
@@ -164,7 +164,10 @@ export function DataTable<T extends object>({
                   {columns.map((column) => (
                     <td
                       key={column.key}
-                      className={cn('px-4 py-3 text-sm', column.className)}
+                      className={cn(
+                        'px-5 py-3.5 text-[15px] text-neutral-800',
+                        column.className
+                      )}
                     >
                       {column.render
                         ? column.render(
@@ -184,7 +187,7 @@ export function DataTable<T extends object>({
       </div>
 
       {pagination && totalPages > 1 && (
-        <div className="flex items-center justify-between px-4 py-3 border-t border-neutral-200 bg-neutral-50">
+        <div className="flex items-center justify-between px-5 py-3 border-t border-neutral-200 bg-neutral-50">
           <div className="text-sm text-neutral-600">
             Showing {(pagination.page - 1) * pagination.pageSize + 1} to{' '}
             {Math.min(pagination.page * pagination.pageSize, pagination.total)}{' '}

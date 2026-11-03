@@ -9,6 +9,8 @@ export interface AvatarProps {
   lastName?: string | null;
   profilePictureUrl?: string | null;
   size?: AvatarSize;
+  /** "tile" is the rounded square used for customers (mockup 06). */
+  shape?: 'circle' | 'tile';
   className?: string;
 }
 
@@ -26,8 +28,10 @@ export function Avatar({
   lastName,
   profilePictureUrl,
   size = 'md',
+  shape = 'circle',
   className,
 }: AvatarProps) {
+  const rounding = shape === 'tile' ? 'rounded-xl' : 'rounded-full';
   const colors = getAvatarColor(email);
   const initials = getInitials(email, firstName, lastName);
   const displayName = getDisplayName(email, firstName, lastName);
@@ -38,7 +42,7 @@ export function Avatar({
       <img
         src={profilePictureUrl}
         alt={`${displayName}'s avatar`}
-        className={clsx('rounded-full object-cover', sizeClass, className)}
+        className={clsx(rounding, 'object-cover', sizeClass, className)}
       />
     );
   }
@@ -46,7 +50,8 @@ export function Avatar({
   return (
     <div
       className={clsx(
-        'rounded-full flex items-center justify-center font-medium',
+        rounding,
+        'flex shrink-0 items-center justify-center font-medium',
         sizeClass,
         colors.bg,
         colors.text,

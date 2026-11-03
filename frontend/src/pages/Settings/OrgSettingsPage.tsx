@@ -45,11 +45,7 @@ import type {
 import type { Role } from '@/types/role';
 
 type TabId =
-  | 'general'
-  | 'members'
-  | 'membership'
-  | 'notifications'
-  | 'timezone';
+  'general' | 'members' | 'membership' | 'notifications' | 'timezone';
 
 export function OrgSettingsPage() {
   const navigate = useNavigate();
@@ -123,12 +119,14 @@ export function OrgSettingsPage() {
   const [timezoneError, setTimezoneError] = useState<string | null>(null);
 
   const tabs = [
-    { id: 'general' as const, label: 'General', icon: Settings },
+    { id: 'general' as const, label: 'Business', icon: Settings },
     { id: 'members' as const, label: 'Members', icon: Users },
-    { id: 'membership' as const, label: 'Membership', icon: CreditCard },
+    { id: 'membership' as const, label: 'Plan', icon: CreditCard },
     { id: 'notifications' as const, label: 'Notifications', icon: Bell },
-    { id: 'timezone' as const, label: 'Time Zone', icon: Clock },
+    { id: 'timezone' as const, label: 'Time zone', icon: Clock },
   ];
+  const activeTabLabel =
+    tabs.find((tab) => tab.id === activeTab)?.label ?? 'Settings';
 
   // Load current tenant data into form
   useEffect(() => {
@@ -385,7 +383,7 @@ export function OrgSettingsPage() {
   if (!currentTenant) {
     return (
       <DashboardLayout>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mx-auto max-w-[1440px] p-4 sm:p-6 lg:p-8">
           <Card variant="elevated" padding="lg">
             <CardContent>
               <div className="text-center py-8">
@@ -411,27 +409,22 @@ export function OrgSettingsPage() {
   }
 
   return (
-    <DashboardLayout>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-neutral-900">
-            Organization Settings
-          </h1>
-          <p className="text-neutral-600 mt-2">
-            Manage settings for{' '}
-            <span className="font-medium">{currentTenant.name}</span>
-          </p>
-        </div>
-
+    <DashboardLayout
+      breadcrumbs={[
+        { label: 'Settings', to: '/settings/organization' },
+        { label: activeTabLabel },
+      ]}
+    >
+      <div className="mx-auto max-w-[1440px] p-4 sm:p-6 lg:p-8">
         {error && (
           <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
             {error}
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
           {/* Sidebar */}
-          <div className="lg:col-span-1">
+          <div className="lg:sticky lg:top-24 lg:self-start">
             <Card variant="elevated" padding="sm">
               <nav className="space-y-1">
                 {tabs.map((tab) => {
@@ -440,13 +433,14 @@ export function OrgSettingsPage() {
                     <button
                       key={tab.id}
                       onClick={() => setActiveTab(tab.id)}
-                      className={`w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+                      aria-current={activeTab === tab.id ? 'page' : undefined}
+                      className={`w-full flex items-center px-4 py-3 text-[15px] rounded-xl transition-colors ${
                         activeTab === tab.id
-                          ? 'bg-primary-50 text-primary-700'
-                          : 'text-neutral-700 hover:bg-neutral-50'
+                          ? 'bg-primary-50 text-primary-600'
+                          : 'text-neutral-800 hover:bg-neutral-50'
                       }`}
                     >
-                      <Icon className="h-5 w-5 mr-3" />
+                      <Icon className="h-5 w-5 mr-3" strokeWidth={1.75} />
                       {tab.label}
                     </button>
                   );
@@ -456,7 +450,16 @@ export function OrgSettingsPage() {
           </div>
 
           {/* Content */}
-          <div className="lg:col-span-3 space-y-6">
+          <div className="min-w-0 space-y-6">
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight text-neutral-900 md:text-3xl">
+                {activeTabLabel}
+              </h1>
+              <p className="mt-1 text-base text-neutral-600">
+                Settings for{' '}
+                <span className="font-medium">{currentTenant.name}</span>
+              </p>
+            </div>
             {activeTab === 'general' && (
               <>
                 <Card variant="elevated" padding="lg">

@@ -30,8 +30,8 @@ describe('avatar utilities', () => {
     it('should return valid color classes', () => {
       const color = getAvatarColor('test@example.com');
 
-      expect(color.bg).toMatch(/^bg-\w+-100$/);
-      expect(color.text).toMatch(/^text-\w+-700$/);
+      expect(color.bg).toMatch(/^bg-\w+-(50|100)$/);
+      expect(color.text).toMatch(/^text-\w+-(600|700)$/);
     });
 
     it('should handle empty email', () => {
