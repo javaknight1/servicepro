@@ -12484,6 +12484,13 @@ export interface components {
             lines?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.InvoiceLine"][];
             notes?: string;
             paid_date?: string;
+            /**
+             * @description PaymentPendingAt is set while a bank (ACH) payment the customer made
+             *     on the pay page settles (T170): reminders skip the invoice and no
+             *     second payment can start. Cleared when that payment succeeds or fails;
+             *     the status itself never changes for it.
+             */
+            payment_pending_at?: string;
             payment_term?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.PaymentTerm"];
             /** @description References */
             payment_term_id?: string;
@@ -13785,6 +13792,13 @@ export interface components {
             lines?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.InvoiceLine"][];
             notes?: string;
             paid_date?: string;
+            /**
+             * @description PaymentPendingAt is set while a bank (ACH) payment the customer made
+             *     on the pay page settles (T170): reminders skip the invoice and no
+             *     second payment can start. Cleared when that payment succeeds or fails;
+             *     the status itself never changes for it.
+             */
+            payment_pending_at?: string;
             payment_term?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.PaymentTerm"];
             /** @description References */
             payment_term_id?: string;
@@ -13861,6 +13875,11 @@ export interface components {
              *     bank first (preferred for B2B); empty when it can't be.
              */
             pay_methods?: components["schemas"]["internal_api_handlers.PublicPayMethodResponse"][];
+            /**
+             * @description PaymentPending: the customer's bank payment is still settling
+             *     (pay_methods is then empty).
+             */
+            payment_pending?: boolean;
             po_number?: string;
             status?: string;
             subtotal?: string;

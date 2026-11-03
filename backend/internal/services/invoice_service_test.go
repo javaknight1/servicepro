@@ -160,6 +160,8 @@ func setupTestDB(t *testing.T) *gorm.DB {
 			payment_token_voided_at DATETIME,
 			stripe_checkout_session_id TEXT,
 			stripe_payment_intent_id TEXT,
+			payment_pending_at DATETIME,
+			payment_pending_session_id TEXT,
 			created_by TEXT NOT NULL,
 			updated_by TEXT,
 			created_at DATETIME,

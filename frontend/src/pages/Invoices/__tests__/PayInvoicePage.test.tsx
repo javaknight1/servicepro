@@ -36,6 +36,7 @@ function invoice(overrides: Partial<PublicInvoice> = {}): PublicInvoice {
       { method: 'card', business_fee: '39.53' },
     ],
     lines: [],
+    payment_pending: false,
     ...overrides,
   };
 }
@@ -138,6 +139,16 @@ describe('PayInvoicePage (T170, mockup 17)', () => {
 
     expect(await screen.findByText('This invoice is paid')).toBeInTheDocument();
     expect(screen.queryByRole('radio')).not.toBeInTheDocument();
+  });
+
+  it('shows a pending bank payment instead of a second payment', async () => {
+    renderPage(invoice({ payment_pending: true, pay_methods: [] }));
+
+    expect(
+      await screen.findByText('Your bank payment is processing')
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('radio')).not.toBeInTheDocument();
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
   });
 
   it('explains an invalid link', async () => {

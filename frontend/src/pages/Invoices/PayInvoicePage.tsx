@@ -232,6 +232,13 @@ export function PayInvoicePage() {
         <div className="mt-6">
           <Notice title="This invoice is paid">Thank you!</Notice>
         </div>
+      ) : invoice.payment_pending ? (
+        <div className="mt-6">
+          <Notice title="Your bank payment is processing">
+            Bank payments take a few business days to clear. You'll get a
+            receipt by email once it does.
+          </Notice>
+        </div>
       ) : invoice.pay_methods.length === 0 ? (
         <div className="mt-6">
           <Notice title="Online payment isn't available for this invoice">

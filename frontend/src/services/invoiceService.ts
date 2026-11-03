@@ -72,6 +72,11 @@ export interface Invoice {
   payments?: InvoicePayment[];
   /** Money returned to the customer (manual and Stripe). */
   refunds?: InvoiceRefund[];
+  /**
+   * Set while the customer's bank (ACH) payment settles (T170): reminders
+   * skip the invoice until it succeeds or fails.
+   */
+  payment_pending_at?: string;
   created_at: string;
   updated_at: string;
 }

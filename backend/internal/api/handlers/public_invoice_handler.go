@@ -79,6 +79,9 @@ func (h *PublicInvoiceHandler) PayInvoice(c *gin.Context) {
 		case errors.Is(err, services.ErrInvoicePaymentDisabled):
 			statusCode = http.StatusConflict
 			errorMessage = "online payment isn't available for this invoice. Please contact the business to pay"
+		case errors.Is(err, services.ErrPaymentPending):
+			statusCode = http.StatusConflict
+			errorMessage = "a bank payment for this invoice is already processing"
 		case errors.Is(err, services.ErrPaymentMethodUnavailable):
 			statusCode = http.StatusConflict
 			errorMessage = "this business can't take that payment method yet. Please choose another way to pay"
@@ -147,6 +150,7 @@ func (h *PublicInvoiceHandler) GetInvoiceByToken(c *gin.Context) {
 	response := h.buildPublicInvoiceResponse(page.Invoice)
 	response.BusinessName = page.BusinessName
 	response.BusinessLocation = page.BusinessLocation
+	response.PaymentPending = page.PaymentPending
 	response.PayMethods = make([]PublicPayMethodResponse, 0, len(page.Methods))
 	for _, m := range page.Methods {
 		response.PayMethods = append(response.PayMethods, PublicPayMethodResponse{
@@ -230,6 +234,9 @@ type PublicInvoiceResponse struct {
 	// PayMethods are the ways this invoice can be paid online right now,
 	// bank first (preferred for B2B); empty when it can't be.
 	PayMethods []PublicPayMethodResponse `json:"pay_methods"`
+	// PaymentPending: the customer's bank payment is still settling
+	// (pay_methods is then empty).
+	PaymentPending bool `json:"payment_pending"`
 }
 
 // PublicPayMethodResponse is one way to pay on the pay page.

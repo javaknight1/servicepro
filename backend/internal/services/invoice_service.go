@@ -1267,6 +1267,11 @@ func (s *InvoiceService) MarkInvoiceAsPaid(ctx context.Context, id uuid.UUID, am
 		if stripePaymentIntentID != "" {
 			extra["stripe_payment_intent_id"] = stripePaymentIntentID
 		}
+		if pendingFrom(invoice, stripeCheckoutSessionID) {
+			for k, v := range clearPendingUpdates() { // its bank payment settled (T170)
+				extra[k] = v
+			}
+		}
 		return applyPayment(tx, invoice, amountPaid, now, extra)
 	})
 	if err != nil {

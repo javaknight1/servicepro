@@ -36,7 +36,8 @@ PaymentIntent with a 0.4% fee.
    onboarding. Required before live onboarding.
 3. **Connect webhook endpoint** (Developers → Webhooks → "Events on connected accounts") at
    `https://<api>/api/v1/stripe/webhooks/connect` for `checkout.session.completed`,
-   `checkout.session.async_payment_succeeded`, `charge.refunded`, `account.updated`; its signing secret goes in
+   `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`, `charge.refunded`,
+   `account.updated`; its signing secret goes in
    `STRIPE_CONNECT_WEBHOOK_SECRET`.
 4. **Event destination for v2 events** (Developers → Event destinations, "thin" payload) at
    `https://<api>/api/v1/stripe/webhooks/v2` for `v2.core.account[requirements].updated` and
@@ -97,7 +98,10 @@ Stripe).
 
 ### Invoice payment (direct charge)
 
-The pay link is `GET /api/v1/public/invoices/pay/:token?method=bank|card`. Pay links appear only when
+The emailed pay link is the SPA page `<FRONTEND_URL>/pay/:token` (T170, mockup 17). It reads
+`GET /api/v1/public/invoices/details/:token` (invoice, business name and city/state, and `pay_methods`: bank first
+when ACH is active, each with the fee the business pays, from the same `ApplicationFee` helper) and sends the customer
+to `GET /api/v1/public/invoices/pay/:token?method=bank|card`, which creates the session. Pay links appear only when
 `INVOICE_PAYMENTS_ENABLED=true` (T261 master switch) **and** the invoice's tenant has `card_payments` active.
 
 Checkout Session created **on the connected account** (`Stripe-Account: acct_…`, `params.SetStripeAccount`):
@@ -124,5 +128,14 @@ All three verify the signature and claim the event ID in `stripe_webhook_events`
 The invoice handlers only apply a connected-account payment when `event.account` equals the stored account of the
 invoice's tenant; anything else is logged and ignored. Payments are recorded through the existing
 `MarkInvoiceAsPaid` ledger path (deduplicated per Checkout Session). ACH completes later:
-`checkout.session.completed` arrives `unpaid`, then `checkout.session.async_payment_succeeded` records it (the
-pending-state UI is T170).
+`checkout.session.completed` arrives `unpaid`, then `checkout.session.async_payment_succeeded` records it.
+
+### Payment pending (ACH, T170)
+
+A bank session that completes `unpaid` sets `invoices.payment_pending_at` (+ `payment_pending_session_id`, never
+sent to clients; migration 000013). It is a column, not an invoice status: the status machine is unchanged, so a
+failed payment just clears it and the invoice is in the status it always had. While it is set, automatic and manual
+reminders skip the invoice, the pay page shows "processing" and the pay route refuses a second session (409).
+`async_payment_succeeded` clears it in the same transaction that records the payment; `async_payment_failed` clears
+it (only for the session that set it). Under the invoice row lock it is never set for a session already credited or
+an invoice that no longer takes payments, so replays and out-of-order deliveries are harmless.

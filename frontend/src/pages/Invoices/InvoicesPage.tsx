@@ -107,10 +107,17 @@ export function InvoicesPage() {
       key: 'status',
       header: 'Status',
       sortable: true,
-      render: (value) => (
-        <Badge variant={getStatusBadgeVariant(value as string)} size="sm">
-          {getInvoiceStatusLabel(value as Invoice['status'])}
-        </Badge>
+      render: (value, row) => (
+        <span className="inline-flex flex-wrap gap-1">
+          <Badge variant={getStatusBadgeVariant(value as string)} size="sm">
+            {getInvoiceStatusLabel(value as Invoice['status'])}
+          </Badge>
+          {row.payment_pending_at && (
+            <Badge variant="teal" size="sm">
+              Payment pending
+            </Badge>
+          )}
+        </span>
       ),
     },
     {

@@ -162,6 +162,8 @@ func (s *PaymentReminderService) ProcessTenantReminders(ctx context.Context, ten
 			models.InvoiceStatusPartiallyPaid,
 		}).
 		Where("invoices.due_date < ?", time.Now()).
+		// A bank payment is settling: no reminder unless it fails (T170).
+		Where("invoices.payment_pending_at IS NULL").
 		Joins("JOIN customers ON customers.id = invoices.customer_id AND customers.deleted_at IS NULL").
 		Where("customers.tenant_id = ?", tenant.ID).
 		Find(&invoices).Error; err != nil {
@@ -357,6 +359,9 @@ func (s *PaymentReminderService) SendManualReminder(ctx context.Context, tenantI
 	switch invoice.Status {
 	case models.InvoiceStatusPaid, models.InvoiceStatusCancelled, models.InvoiceStatusRefunded, models.InvoiceStatusDraft:
 		return nil, ErrReminderNotAllowed.WithMessage(fmt.Sprintf("Reminders can't be sent for %s invoices", invoice.Status))
+	}
+	if invoice.PaymentPendingAt != nil {
+		return nil, ErrReminderNotAllowed.WithMessage("The customer's bank payment for this invoice is still processing")
 	}
 
 	// Load tenant

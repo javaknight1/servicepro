@@ -758,9 +758,16 @@ export function InvoiceDetailPage() {
           title={isNew ? 'New invoice' : invoiceNumber || 'Invoice'}
           badge={
             !isNew && (
-              <Badge variant={getStatusBadgeVariant(invoiceStatus)} size="sm">
-                {getInvoiceStatusLabel(invoiceStatus)}
-              </Badge>
+              <span className="inline-flex flex-wrap gap-1">
+                <Badge variant={getStatusBadgeVariant(invoiceStatus)} size="sm">
+                  {getInvoiceStatusLabel(invoiceStatus)}
+                </Badge>
+                {invoice?.payment_pending_at && (
+                  <Badge variant="teal" size="sm">
+                    Payment pending
+                  </Badge>
+                )}
+              </span>
             )
           }
           subtitle={

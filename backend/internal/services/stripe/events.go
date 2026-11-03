@@ -156,6 +156,8 @@ const (
 	EventCheckoutSessionExpired   = "checkout.session.expired"
 	// EventCheckoutSessionAsyncPaymentSucceeded: a delayed method (ACH) settled.
 	EventCheckoutSessionAsyncPaymentSucceeded = "checkout.session.async_payment_succeeded"
+	// EventCheckoutSessionAsyncPaymentFailed: a delayed method (ACH) failed.
+	EventCheckoutSessionAsyncPaymentFailed = "checkout.session.async_payment_failed"
 
 	// Connect events (T169)
 	EventAccountUpdated = "account.updated"

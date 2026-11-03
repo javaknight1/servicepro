@@ -37,12 +37,13 @@ export function PaymentSuccessPage() {
         </h1>
 
         <p className="text-gray-600 mb-6">
-          Thank you for your payment. A receipt has been sent to your email
-          address.
+          Thank you for your payment. A receipt is emailed to you once it
+          clears.
         </p>
 
         <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-sm mb-6">
-          Your invoice has been paid. You can close this window.
+          Card payments are confirmed right away. Bank payments take a few
+          business days to clear. You can close this window.
         </div>
 
         <p className="text-sm text-gray-500">

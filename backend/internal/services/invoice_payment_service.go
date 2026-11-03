@@ -29,6 +29,9 @@ var (
 	ErrPaymentMethodUnavailable = errors.New("payment method is not available for this invoice")
 	// ErrInvalidPaymentMethod is returned for a method other than bank/card.
 	ErrInvalidPaymentMethod = errors.New("invalid payment method")
+	// ErrPaymentPending is returned while a bank payment for the invoice is
+	// still settling (T170).
+	ErrPaymentPending = errors.New("a payment for this invoice is already processing")
 )
 
 // ConnectedAccountLookup returns a tenant's Stripe connected account (nil
@@ -123,6 +126,10 @@ func (s *InvoicePaymentService) CreateCheckoutSessionForInvoice(ctx context.Cont
 	invoice, err := s.invoiceService.ValidatePaymentToken(ctx, token)
 	if err != nil {
 		return nil, err
+	}
+	// A bank payment is already settling: a second one would overpay (T170).
+	if invoice.PaymentPendingAt != nil {
+		return nil, ErrPaymentPending
 	}
 
 	// The money goes to the tenant's own Stripe account: no account that
@@ -260,6 +267,8 @@ type PayPage struct {
 	BusinessName     string
 	BusinessLocation string      // "Columbus, OH"; "" when not set
 	Methods          []PayOption // bank first; empty when it can't be paid online
+	// PaymentPending: a bank payment is settling; no methods are offered.
+	PaymentPending bool
 }
 
 // GetPayPage loads what the public pay page needs for a payment token. The
@@ -282,7 +291,8 @@ func (s *InvoicePaymentService) GetPayPage(ctx context.Context, token string) (*
 	page.BusinessName = tenant.Name
 	page.BusinessLocation = businessLocation(tenant.Settings)
 
-	if !s.enabled || s.accounts == nil || !invoice.IsPaymentTokenValid() {
+	page.PaymentPending = invoice.PaymentPendingAt != nil
+	if page.PaymentPending || !s.enabled || s.accounts == nil || !invoice.IsPaymentTokenValid() {
 		return page, nil
 	}
 	acct, err := s.accounts.Account(ctx, invoice.TenantID)

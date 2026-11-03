@@ -209,6 +209,11 @@ func SetupServices(
 					stripeService.EventCheckoutSessionAsyncPaymentSucceeded,
 					invoicePaymentHandler.CreateCheckoutCompletedHandler(),
 				)
+				// ACH that fails clears the invoice's payment pending (T170).
+				svc.StripeEvents.RegisterHandler(
+					stripeService.EventCheckoutSessionAsyncPaymentFailed,
+					invoicePaymentHandler.CreateCheckoutAsyncFailedHandler(),
+				)
 				// Refunds lower the invoice's amount_paid (T125)
 				svc.StripeEvents.RegisterHandler(
 					stripeService.EventChargeRefunded,

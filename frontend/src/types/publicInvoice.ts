@@ -25,6 +25,8 @@ export interface PublicInvoice {
   business_location?: string;
   /** Bank first; empty when the invoice can't be paid online. */
   pay_methods: PublicPayMethod[];
+  /** The customer's bank payment is still settling (no methods offered). */
+  payment_pending: boolean;
   lines: Array<{
     description: string;
     quantity: string;

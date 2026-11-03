@@ -262,3 +262,26 @@ func TestTenantDaysOverdue_UsesTenantTimezone(t *testing.T) {
 	future := &models.Invoice{DueDate: time.Now().AddDate(0, 0, 3)}
 	assert.Equal(t, 0, tenantDaysOverdue(&models.Tenant{}, future))
 }
+
+// T170: while the customer's bank payment settles, neither automatic nor
+// manual reminders go out; they resume once pending is cleared.
+func TestReminders_SkipPaymentPendingInvoices(t *testing.T) {
+	f := setupReminderFixture(t)
+	ctx := context.Background()
+	require.NoError(t, f.db.Exec(`UPDATE invoices SET payment_pending_at = ?, payment_pending_session_id = 'cs_1' WHERE id = ?`,
+		time.Now(), f.invoiceID.String()).Error)
+
+	res := f.svc.ProcessTenantReminders(ctx, f.tenant)
+	assert.Equal(t, 0, res.Sent)
+	assert.Empty(t, f.email.GetSentEmails())
+
+	_, err := f.svc.SendManualReminder(ctx, f.tenant.ID, f.invoiceID)
+	assert.ErrorIs(t, err, ErrReminderNotAllowed)
+	assert.Empty(t, f.email.GetSentEmails())
+
+	// The bank payment failed: reminders resume.
+	require.NoError(t, f.db.Exec(`UPDATE invoices SET payment_pending_at = NULL, payment_pending_session_id = NULL WHERE id = ?`,
+		f.invoiceID.String()).Error)
+	res = f.svc.ProcessTenantReminders(ctx, f.tenant)
+	assert.Equal(t, 1, res.Sent)
+}

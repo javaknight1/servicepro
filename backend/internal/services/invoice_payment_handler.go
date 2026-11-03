@@ -103,65 +103,77 @@ func (a *InvoicePaymentHandlerAdapter) SendInvoiceReceiptEmail(ctx context.Conte
 	return nil
 }
 
+// invoiceCheckout resolves a Checkout Session event to the invoice it pays:
+// in the tenant that owns the event's connected account, from our own
+// invoice_id metadata. ok is false (nothing to do) for sessions that aren't
+// invoice payments, events from accounts that aren't ours, and invoices of
+// another tenant.
+func (a *InvoicePaymentHandlerAdapter) invoiceCheckout(ctx context.Context, event *stripe.Event) (context.Context, *stripeClient.CheckoutSessionData, uuid.UUID, bool, error) {
+	// Signed Stripe event: no tenant session. The invoice is identified by
+	// our own invoice_id metadata set when we created the session, within
+	// the tenant that owns the connected account the event came from.
+	ctx, err := a.scopeToEventAccount(ctx, event)
+	if errors.Is(err, errSkipEvent) {
+		return ctx, nil, uuid.Nil, false, nil
+	}
+	if err != nil {
+		return ctx, nil, uuid.Nil, false, err
+	}
+	session, err := stripeClient.ParseCheckoutSession(event)
+	if err != nil {
+		return ctx, nil, uuid.Nil, false, fmt.Errorf("failed to parse checkout session: %w", err)
+	}
+
+	// Check if this is an invoice payment (via metadata)
+	invoiceIDStr, ok := session.Metadata["invoice_id"]
+	if !ok || session.Metadata["payment_type"] != "invoice" {
+		logging.Info(ctx, "[INVOICE-PAYMENT-HANDLER] Checkout session is not an invoice payment, skipping", map[string]any{"session_id": session.ID})
+		return ctx, nil, uuid.Nil, false, nil
+	}
+	invoiceID, err := uuid.Parse(invoiceIDStr)
+	if err != nil {
+		return ctx, nil, uuid.Nil, false, fmt.Errorf("invalid invoice ID: %w", err)
+	}
+	if event.Account != "" {
+		// The invoice must belong to the account's tenant (scoped read).
+		if _, err := a.invoiceService.GetInvoice(ctx, invoiceID); err != nil {
+			if errors.Is(err, ErrInvoiceNotFound) {
+				logging.Error(ctx, "[INVOICE-PAYMENT-HANDLER] Connected-account payment for an invoice of another tenant ignored", map[string]any{"event_id": event.ID, "account_id": event.Account, "invoice_id": invoiceID})
+				return ctx, nil, uuid.Nil, false, nil
+			}
+			return ctx, nil, uuid.Nil, false, fmt.Errorf("failed to load invoice: %w", err)
+		}
+	}
+	return ctx, session, invoiceID, true, nil
+}
+
 // CreateCheckoutCompletedHandler returns an EventHandler for
 // checkout.session.completed and checkout.session.async_payment_succeeded
 // (ACH settles days after the session completes unpaid). Recording is
-// idempotent per Checkout Session, so the pair can never credit twice.
+// idempotent per Checkout Session, so the pair can never credit twice. A
+// bank session that completes unpaid marks the invoice payment pending
+// (T170) until it settles.
 func (a *InvoicePaymentHandlerAdapter) CreateCheckoutCompletedHandler() stripeClient.EventHandler {
 	return func(ctx context.Context, event *stripe.Event) error {
-		// Signed Stripe event: no tenant session. The invoice is identified by
-		// our own invoice_id metadata set when we created the session, within
-		// the tenant that owns the connected account the event came from.
-		ctx, err := a.scopeToEventAccount(ctx, event)
-		if errors.Is(err, errSkipEvent) {
-			return nil
-		}
-		if err != nil {
+		ctx, session, invoiceID, ok, err := a.invoiceCheckout(ctx, event)
+		if err != nil || !ok {
 			return err
 		}
-		// Parse the checkout session
-		session, err := stripeClient.ParseCheckoutSession(event)
-		if err != nil {
-			return fmt.Errorf("failed to parse checkout session: %w", err)
-		}
 
-		// Check if this is an invoice payment (via metadata)
-		invoiceIDStr, ok := session.Metadata["invoice_id"]
-		if !ok {
-			// Not an invoice payment, ignore
-			logging.Info(ctx, "[INVOICE-PAYMENT-HANDLER] Checkout session has no invoice_id metadata, skipping", map[string]any{"session_id": session.ID})
-			return nil
-		}
-
-		paymentType, _ := session.Metadata["payment_type"]
-		if paymentType != "invoice" {
-			// Not an invoice payment type, ignore
-			logging.Info(ctx, "[INVOICE-PAYMENT-HANDLER] Checkout session is not an invoice payment, skipping", map[string]any{"session_id": session.ID})
-			return nil
-		}
-
-		// Verify payment was successful
 		if session.PaymentStatus != "paid" {
+			if string(event.Type) == stripeClient.EventCheckoutSessionCompleted &&
+				session.PaymentStatus == "unpaid" && session.Metadata["pay_method"] == stripeClient.PayMethodBank {
+				if err := a.invoiceService.MarkPaymentPending(ctx, invoiceID, session.ID); err != nil {
+					return fmt.Errorf("failed to mark invoice payment pending: %w", err)
+				}
+				return nil
+			}
 			logging.Info(ctx, "[INVOICE-PAYMENT-HANDLER] Checkout session payment status is not paid", map[string]any{"session_id": session.ID, "payment_status": session.PaymentStatus})
 			return nil
 		}
 
-		logging.Info(ctx, "[INVOICE-PAYMENT-HANDLER] Processing invoice payment", map[string]any{"invoice_id": invoiceIDStr, "session_id": session.ID, "amount": session.AmountTotal})
+		logging.Info(ctx, "[INVOICE-PAYMENT-HANDLER] Processing invoice payment", map[string]any{"invoice_id": invoiceID, "session_id": session.ID, "amount": session.AmountTotal})
 
-		invoiceID, err := uuid.Parse(invoiceIDStr)
-		if err != nil {
-			return fmt.Errorf("invalid invoice ID: %w", err)
-		}
-		if event.Account != "" {
-			// The invoice must belong to the account's tenant (scoped read).
-			if _, err := a.invoiceService.GetInvoice(ctx, invoiceID); err != nil {
-				if errors.Is(err, ErrInvoiceNotFound) {
-					logging.Error(ctx, "[INVOICE-PAYMENT-HANDLER] Connected-account payment for an invoice of another tenant ignored", map[string]any{"event_id": event.ID, "account_id": event.Account, "invoice_id": invoiceID})
-					return nil
-				}
-				return fmt.Errorf("failed to load invoice: %w", err)
-			}
-		}
 		// Stripe reports the amount in the session currency's minor units.
 		amount := stripeClient.FromMinorUnits(session.AmountTotal, session.Currency)
 		if err := a.applyCheckoutPayment(ctx, invoiceID, amount, session.ID, session.PaymentIntentID); err != nil {
@@ -169,11 +181,27 @@ func (a *InvoicePaymentHandlerAdapter) CreateCheckoutCompletedHandler() stripeCl
 		}
 
 		// Send receipt email
-		if err := a.SendInvoiceReceiptEmail(ctx, invoiceIDStr); err != nil {
+		if err := a.SendInvoiceReceiptEmail(ctx, invoiceID.String()); err != nil {
 			// Log but don't fail - payment was already processed
-			logging.Error(ctx, "[INVOICE-PAYMENT-HANDLER] Failed to send receipt email for invoice", map[string]any{"invoice_id": invoiceIDStr, "error": err})
+			logging.Error(ctx, "[INVOICE-PAYMENT-HANDLER] Failed to send receipt email for invoice", map[string]any{"invoice_id": invoiceID, "error": err})
 		}
 
+		return nil
+	}
+}
+
+// CreateCheckoutAsyncFailedHandler returns an EventHandler for
+// checkout.session.async_payment_failed: the bank payment did not settle, so
+// the invoice stops being payment pending and reminders resume (T170).
+func (a *InvoicePaymentHandlerAdapter) CreateCheckoutAsyncFailedHandler() stripeClient.EventHandler {
+	return func(ctx context.Context, event *stripe.Event) error {
+		ctx, session, invoiceID, ok, err := a.invoiceCheckout(ctx, event)
+		if err != nil || !ok {
+			return err
+		}
+		if err := a.invoiceService.ClearPaymentPending(ctx, invoiceID, session.ID); err != nil {
+			return fmt.Errorf("failed to clear invoice payment pending: %w", err)
+		}
 		return nil
 	}
 }

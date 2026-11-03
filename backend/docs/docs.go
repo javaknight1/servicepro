@@ -11852,6 +11852,10 @@ const docTemplate = `{
                 "paid_date": {
                     "type": "string"
                 },
+                "payment_pending_at": {
+                    "description": "PaymentPendingAt is set while a bank (ACH) payment the customer made\non the pay page settles (T170): reminders skip the invoice and no\nsecond payment can start. Cleared when that payment succeeds or fails;\nthe status itself never changes for it.",
+                    "type": "string"
+                },
                 "payment_term": {
                     "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.PaymentTerm"
                 },
@@ -15852,6 +15856,10 @@ const docTemplate = `{
                 "paid_date": {
                     "type": "string"
                 },
+                "payment_pending_at": {
+                    "description": "PaymentPendingAt is set while a bank (ACH) payment the customer made\non the pay page settles (T170): reminders skip the invoice and no\nsecond payment can start. Cleared when that payment succeeds or fails;\nthe status itself never changes for it.",
+                    "type": "string"
+                },
                 "payment_term": {
                     "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.PaymentTerm"
                 },
@@ -16034,6 +16042,10 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/internal_api_handlers.PublicPayMethodResponse"
                     }
+                },
+                "payment_pending": {
+                    "description": "PaymentPending: the customer's bank payment is still settling\n(pay_methods is then empty).",
+                    "type": "boolean"
                 },
                 "po_number": {
                     "type": "string"

@@ -433,6 +433,29 @@ describe('Invoice & Payment Integration', () => {
       });
     });
 
+    it('marks an invoice whose bank payment is settling (T170)', async () => {
+      vi.mocked(invoiceService.getInvoices).mockResolvedValue({
+        invoices: [
+          { ...mockInvoices[0], payment_pending_at: '2026-11-03T10:00:00Z' },
+          mockInvoices[1],
+        ],
+        total: 2,
+        page: 1,
+        page_size: 10,
+      });
+      const { InvoicesPage } =
+        await import('../../src/pages/Invoices/InvoicesPage');
+
+      render(
+        <MemoryRouter initialEntries={['/invoices']}>
+          <InvoicesPage />
+        </MemoryRouter>
+      );
+
+      expect(await screen.findByText('INV-001')).toBeInTheDocument();
+      expect(screen.getAllByText('Payment pending')).toHaveLength(1);
+    });
+
     it('should highlight overdue invoices', async () => {
       const { InvoicesPage } =
         await import('../../src/pages/Invoices/InvoicesPage');

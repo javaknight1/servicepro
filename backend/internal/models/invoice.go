@@ -140,6 +140,14 @@ type Invoice struct {
 	StripeCheckoutSessionID *string `gorm:"type:varchar(255)" json:"stripe_checkout_session_id,omitempty"`
 	StripePaymentIntentID   *string `gorm:"type:varchar(255)" json:"stripe_payment_intent_id,omitempty"`
 
+	// PaymentPendingAt is set while a bank (ACH) payment the customer made
+	// on the pay page settles (T170): reminders skip the invoice and no
+	// second payment can start. Cleared when that payment succeeds or fails;
+	// the status itself never changes for it.
+	PaymentPendingAt *time.Time `gorm:"type:timestamptz" json:"payment_pending_at,omitempty"`
+	// PaymentPendingSessionID is the Checkout Session that set it.
+	PaymentPendingSessionID *string `gorm:"type:varchar(255)" json:"-" swaggerignore:"true"`
+
 	// Metadata
 	CreatedBy uuid.UUID      `gorm:"type:uuid;not null" json:"created_by"`
 	UpdatedBy *uuid.UUID     `gorm:"type:uuid" json:"updated_by,omitempty"`
