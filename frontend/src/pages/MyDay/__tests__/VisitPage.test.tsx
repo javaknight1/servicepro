@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -51,6 +51,16 @@ vi.mock('@services/jobAttachmentService', async (importOriginal) => ({
   },
 }));
 
+vi.mock('@services/jobSignoffService', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@services/jobSignoffService')>()),
+  jobSignoffService: {
+    get: vi.fn(),
+    capture: vi.fn(),
+    emailReport: vi.fn(),
+    reportLink: vi.fn(),
+  },
+}));
+
 vi.mock('@services/jobService', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@services/jobService')>()),
   jobService: {
@@ -63,6 +73,7 @@ vi.mock('@services/jobService', async (importOriginal) => ({
 
 import { jobService, JobStatus, JobType } from '@services/jobService';
 import { jobAttachmentService } from '@services/jobAttachmentService';
+import { jobSignoffService } from '@services/jobSignoffService';
 import { VisitPage } from '../VisitPage';
 
 // 2026-11-03 17:32 CST
@@ -166,6 +177,10 @@ describe('VisitPage (T173)', () => {
     vi.mocked(jobService.addNote).mockResolvedValue(undefined);
     vi.mocked(jobService.addMaterial).mockResolvedValue(undefined);
     vi.mocked(jobAttachmentService.list).mockResolvedValue([]);
+    vi.mocked(jobSignoffService.get).mockResolvedValue({
+      signoff: null,
+      recipients: ['ap@harborview.test'],
+    });
   });
 
   it('shows what to do, the site, notes and materials', async () => {
@@ -199,7 +214,7 @@ describe('VisitPage (T173)', () => {
       )
     ).toBeInTheDocument();
 
-    // Back to the same day; no money, no signature placeholder yet.
+    // Back to the same day; no money; unsigned, so no sign-off card.
     expect(screen.getByRole('link', { name: 'My day' })).toHaveAttribute(
       'href',
       '/my-day?date=2026-11-03'
@@ -208,7 +223,89 @@ describe('VisitPage (T173)', () => {
     expect(
       await screen.findByRole('heading', { name: 'Photos' })
     ).toBeInTheDocument();
-    expect(screen.queryByText(/signature/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('heading', { name: 'Sign-off' })
+    ).not.toBeInTheDocument();
+  });
+
+  it('gets the signature full screen (T176)', async () => {
+    const signed = {
+      id: 'so-1',
+      job_id: 'job-1',
+      signer_name: 'Ray Burke',
+      signer_title: 'Site manager',
+      signed_at: '2026-11-03T23:58:00Z',
+      captured_by_name: 'Tasha Green',
+      signature_url: 'https://store/sig.png',
+      signature_path: '/api/v1/jobs/job-1/signoff/signature',
+      report_path: '/api/v1/jobs/job-1/signoff/report',
+      report_recipients: [],
+      report_email_count: 0,
+      suggested_recipients: ['ap@harborview.test'],
+      locked: false,
+    };
+    vi.mocked(jobSignoffService.capture).mockResolvedValue(signed);
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null);
+    vi.spyOn(HTMLCanvasElement.prototype, 'toDataURL').mockReturnValue(
+      'data:image/png;base64,SIG'
+    );
+    renderPage();
+    const user = userEvent.setup();
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Get signature' })
+    );
+    const dialog = screen.getByRole('dialog', { name: 'Customer sign-off' });
+    // The site contact is the default signer.
+    expect(within(dialog).getByLabelText("Signer's name")).toHaveValue(
+      'Ray Burke'
+    );
+    const canvas = within(dialog).getByTestId('signature-canvas');
+    fireEvent.pointerDown(canvas, { clientX: 10, clientY: 40, pointerId: 1 });
+    fireEvent.pointerMove(canvas, { clientX: 90, clientY: 40, pointerId: 1 });
+    fireEvent.pointerUp(canvas, { pointerId: 1 });
+
+    vi.mocked(jobSignoffService.get).mockResolvedValue({
+      signoff: signed,
+      recipients: ['ap@harborview.test'],
+    });
+    await user.click(
+      within(dialog).getByRole('button', { name: 'Submit signature' })
+    );
+    expect(jobSignoffService.capture).toHaveBeenCalledWith('job-1', {
+      signer_name: 'Ray Burke',
+      signer_title: '',
+      signer_email: '',
+      signature: 'data:image/png;base64,SIG',
+    });
+
+    // Signed: the card shows it and the bottom-bar button is gone.
+    expect(
+      await screen.findByText('Ray Burke, Site manager')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('dialog', { name: 'Customer sign-off' })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Get signature' })
+    ).not.toBeInTheDocument();
+    vi.restoreAllMocks();
+  });
+
+  it('asks to start the visit before the signature', async () => {
+    vi.mocked(jobService.getJob).mockResolvedValue({
+      ...job,
+      status: JobStatus.SCHEDULED,
+      actual_start_at: undefined,
+      allowed_transitions: [JobStatus.IN_PROGRESS],
+    });
+    renderPage();
+    expect(
+      await screen.findByRole('button', { name: 'Get signature' })
+    ).toBeDisabled();
+    expect(
+      screen.getByText("Start the visit to get the site manager's sign-off")
+    ).toBeInTheDocument();
   });
 
   it('completes the visit', async () => {

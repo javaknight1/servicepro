@@ -8,3 +8,6 @@ export { JobSitePicker } from './JobSitePicker';
 export { JobApprovalsSection } from './JobApprovalsSection';
 export { RecordApprovalModal } from './RecordApprovalModal';
 export { JobPhotosSection } from './JobPhotosSection';
+export { JobSignoffSection, SignoffCapture } from './JobSignoffSection';
+export { useJobSignoff } from './jobSignoff';
+export { SignaturePad } from './SignaturePad';

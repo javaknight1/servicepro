@@ -102,6 +102,18 @@ vi.mock('@services/jobAttachmentService', async (importOriginal) => ({
   },
 }));
 
+vi.mock('@services/jobSignoffService', async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import('../../src/services/jobSignoffService')
+  >()),
+  jobSignoffService: {
+    get: vi.fn(),
+    capture: vi.fn(),
+    emailReport: vi.fn(),
+    reportLink: vi.fn(),
+  },
+}));
+
 vi.mock('@services/siteService', () => ({
   siteService: { list: vi.fn(), create: vi.fn(), update: vi.fn() },
   sitesQueryKey: (customerId: string | null, includeInactive = false) => [
@@ -129,6 +141,7 @@ import { jobService } from '@services/jobService';
 import type { JobStats } from '@app-types/job';
 import { customerService } from '@services/customerService';
 import { jobAttachmentService } from '@services/jobAttachmentService';
+import { jobSignoffService } from '@services/jobSignoffService';
 import { siteService, type Site } from '@services/siteService';
 import { useTenantPermissions } from '@/utils/tenantPermissions';
 
@@ -368,6 +381,10 @@ const setupMocks = () => {
   vi.mocked(jobService.getApprovals).mockResolvedValue([]);
   vi.mocked(siteService.list).mockResolvedValue(mockSites);
   vi.mocked(jobAttachmentService.list).mockResolvedValue([]);
+  vi.mocked(jobSignoffService.get).mockResolvedValue({
+    signoff: null,
+    recipients: [],
+  });
 
   vi.mocked(customerService.getCustomers).mockResolvedValue({
     customers: [mockCustomer],
@@ -1789,5 +1806,76 @@ describe('Job photos (T174)', () => {
     await waitFor(() =>
       expect(jobAttachmentService.remove).toHaveBeenCalledWith('job-1', 'p1')
     );
+  });
+});
+
+describe('Proof of service: sign-off and report (T176)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setupMocks();
+    vi.mocked(jobService.getJob).mockResolvedValue({
+      ...mockJobs[2],
+      id: 'job-1',
+    } as unknown as Awaited<ReturnType<typeof jobService.getJob>>);
+  });
+
+  it('shows the signature and emails the report from the job page', async () => {
+    const signoff = {
+      id: 'so-1',
+      job_id: 'job-1',
+      signer_name: 'Ray Burke',
+      signer_title: 'Site manager',
+      signed_at: '2026-11-02T23:58:00Z',
+      captured_by_name: 'Tasha Green',
+      signature_url: 'https://store/sig.png',
+      signature_path: '/api/v1/jobs/job-1/signoff/signature',
+      report_path: '/api/v1/jobs/job-1/signoff/report',
+      report_recipients: [],
+      report_email_count: 0,
+      suggested_recipients: ['karen@harborview.test'],
+      locked: false,
+    };
+    vi.mocked(jobSignoffService.get).mockResolvedValue({
+      signoff,
+      recipients: ['karen@harborview.test'],
+    });
+    vi.mocked(jobSignoffService.emailReport).mockResolvedValue({
+      sent: true,
+      signoff: {
+        ...signoff,
+        report_emailed_at: '2026-11-02T23:59:00Z',
+        report_recipients: ['karen@harborview.test'],
+        report_email_count: 1,
+        locked: true,
+      },
+    });
+    const { JobDetailPage } =
+      await import('../../src/pages/Jobs/JobDetailPage');
+    render(
+      <MemoryRouter initialEntries={['/jobs/job-1']}>
+        <Routes>
+          <Route path="/jobs/:id" element={<JobDetailPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect(
+      await screen.findByRole('img', { name: 'Signature of Ray Burke' })
+    ).toBeInTheDocument();
+    expect(jobSignoffService.get).toHaveBeenCalledWith('job-1');
+    expect(screen.getByText('Ray Burke, Site manager')).toBeInTheDocument();
+    expect(
+      screen.getByText('Service report not emailed yet')
+    ).toBeInTheDocument();
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Email report' }));
+    expect(jobSignoffService.emailReport).toHaveBeenCalledWith('job-1', false);
+    expect(
+      await screen.findByText('Service report emailed to karen@harborview.test')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Resend report' })
+    ).toBeInTheDocument();
   });
 });

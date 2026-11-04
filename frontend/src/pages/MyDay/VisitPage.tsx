@@ -1,8 +1,10 @@
 /**
  * One visit on a phone (T173, mockup 16 where it applies today): what to do,
  * how to get in, notes and materials used, and the big Start / Complete
- * action, and photos (T174: "Add photo" opens the camera). Checklists (T175)
- * and the sign-off (T176) slot in here later. Never shows money.
+ * action, photos (T174: "Add photo" opens the camera) and the customer's
+ * sign-off (T176: "Get signature" opens a full-screen signature pad; once
+ * the visit is done the service report can be emailed). Checklists (T175)
+ * slot in here later. Never shows money.
  */
 import { useRef, useState, type FormEvent } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router';
@@ -17,9 +19,16 @@ import {
   PenLine,
   Phone,
   Play,
+  Signature,
 } from 'lucide-react';
 import { DashboardLayout } from '@components/layout';
 import { JobPhotosSection } from '@components/jobs/JobPhotosSection';
+import {
+  JobSignoffSection,
+  SignoffCapture,
+} from '@components/jobs/JobSignoffSection';
+import { useJobSignoff } from '@components/jobs/jobSignoff';
+import { SIGNABLE_STATUSES } from '@services/jobSignoffService';
 import { useAuthStore, useTenantStore } from '@store';
 import {
   APP_PERMISSIONS,
@@ -254,6 +263,8 @@ export function VisitPage() {
   const photoRef = useRef<HTMLInputElement>(null);
   const userId = useAuthStore((s) => s.user?.id);
   const { can } = useTenantPermissions(currentTenant);
+  const [signing, setSigning] = useState(false);
+  const signoff = useJobSignoff(jobId);
 
   const {
     data: job,
@@ -318,6 +329,15 @@ export function VisitPage() {
     crew.join(', ') || null,
   ].filter(Boolean);
   const busy = action.pendingJobId === job.id;
+  // "Get signature" once the visit is under way, until someone has signed
+  // (re-signing is in the sign-off card); shown greyed before the start,
+  // hidden where sign-off isn't available. Like notes and materials, the
+  // API checks jobs.update (technicians hold it for their assigned jobs).
+  const signable = SIGNABLE_STATUSES.has(job.status);
+  const offerSignature =
+    signoff.isSuccess &&
+    !signoff.data.signoff &&
+    job.status !== JobStatus.CANCELLED;
 
   return (
     <DashboardLayout>
@@ -419,6 +439,15 @@ export function VisitPage() {
             inputRef={photoRef}
             timeZone={timeZone}
           />
+          <JobSignoffSection
+            jobId={job.id}
+            jobStatus={job.status}
+            variant="phone"
+            canEdit
+            timeZone={timeZone}
+            siteName={visitTitle(job)}
+            defaultSignerName={job.site?.contact_name}
+          />
           <NotesSection job={job} noteRef={noteRef} />
           <MaterialsSection job={job} />
         </div>
@@ -442,6 +471,24 @@ export function VisitPage() {
               Add note
             </button>
           </div>
+          {offerSignature && (
+            <>
+              <button
+                type="button"
+                onClick={() => setSigning(true)}
+                disabled={!signable}
+                className="mt-3 flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-primary-600 text-lg font-semibold text-white hover:bg-primary-700 active:bg-primary-800 disabled:bg-primary-300"
+              >
+                <Signature className="h-6 w-6" aria-hidden="true" />
+                Get signature
+              </button>
+              {!signable && (
+                <p className="mt-1.5 text-center text-sm text-neutral-500">
+                  Start the visit to get the site manager&apos;s sign-off
+                </p>
+              )}
+            </>
+          )}
           {next && (
             <div className="mt-3 flex">
               <button
@@ -466,6 +513,14 @@ export function VisitPage() {
           )}
         </div>
       </div>
+      {signing && (
+        <SignoffCapture
+          jobId={job.id}
+          subtitle={visitTitle(job)}
+          defaultSignerName={job.site?.contact_name}
+          onClose={() => setSigning(false)}
+        />
+      )}
     </DashboardLayout>
   );
 }

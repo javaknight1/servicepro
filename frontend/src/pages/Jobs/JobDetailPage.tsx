@@ -11,6 +11,7 @@ import {
   JobApprovalsSection,
   JobAssignmentsSection,
   JobPhotosSection,
+  JobSignoffSection,
   JobSitePicker,
   PendingAssignmentsSection,
   StatusTransitionButton,
@@ -909,6 +910,20 @@ export function JobDetailPage() {
               currentUserId={currentUserId}
               canManageAll={isOffice}
               timeZone={timeZone}
+            />
+          </div>
+        )}
+
+        {/* Proof of service: sign-off and the service report (T176). */}
+        {!isNew && currentJob && (
+          <div className="mt-6">
+            <JobSignoffSection
+              jobId={currentJob.id}
+              jobStatus={currentJob.status}
+              canEdit
+              timeZone={timeZone}
+              siteName={currentJob.site?.name || currentJob.title}
+              defaultSignerName={currentJob.site?.contact_name}
             />
           </div>
         )}
