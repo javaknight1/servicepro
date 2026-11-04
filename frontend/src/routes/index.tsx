@@ -141,9 +141,9 @@ const PaymentsSettingsPage = loadable(
 
 const ImportDataPage = loadable(
   () =>
-    import(/* webpackChunkName: "page-settings" */ '@pages/Settings').then(
-      (m) => ({ default: m.ImportDataPage })
-    ),
+    import(/* webpackChunkName: "page-import" */ '@pages/Import').then((m) => ({
+      default: m.ImportDataPage,
+    })),
   { chunkName: 'import-data', delay: 100 }
 );
 

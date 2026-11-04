@@ -3,7 +3,7 @@
 T193. New tenants bring their customers, sites, jobs and open invoices over from
 Jobber, Housecall Pro or any spreadsheet. The web page is **Settings → Import data**
 (`/settings/import`, linked from onboarding step 3 and the customers list).
-Code: `backend/internal/imports` (parsing, column mapping, validation — pure),
+Page: `frontend/src/pages/Import`. Code: `backend/internal/imports` (parsing, column mapping, validation — pure),
 `backend/internal/services/import_mapped.go` (writing rows) and
 `import_service.go` (the job runner); fixtures in `backend/internal/imports/testdata`.
 
