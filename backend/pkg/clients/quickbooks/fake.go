@@ -44,6 +44,9 @@ type Fake struct {
 	Calls map[string]int
 	// failures are errors to return from the next calls of an operation.
 	failures map[string][]error
+	// lose counts calls of an operation that succeed in QuickBooks but whose
+	// answer is lost (the caller sees a 503).
+	lose map[string]int
 	// Hook runs (unlocked) at the start of every call, e.g. to slow a
 	// refresh down in a concurrency test.
 	Hook func(op string)
@@ -82,6 +85,7 @@ func NewFake(redirectURI string) *Fake {
 		Items:       map[string]*FakeRecord{},
 		Calls:       map[string]int{},
 		failures:    map[string][]error{},
+		lose:        map[string]int{},
 		Accounts: []FakeAccount{
 			{Ref{Value: "79", Name: "Cleaning Services"}, AccountTypeIncome},
 			{Ref{Value: "80", Name: "Maintenance Income"}, AccountTypeIncome},
@@ -100,6 +104,14 @@ func (f *Fake) FailNext(op string, errs ...error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.failures[op] = append(f.failures[op], errs...)
+}
+
+// LoseNextResponse makes the next call of op succeed in QuickBooks but
+// answer 503, as when the response is lost on the way back.
+func (f *Fake) LoseNextResponse(op string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.lose[op]++
 }
 
 // Revoked lists revoked tokens.
@@ -243,7 +255,12 @@ func (f *Fake) call(op string, s Session, fn func() (*Entity, error)) (*Entity, 
 	if err := f.authorize(s); err != nil {
 		return nil, err
 	}
-	return fn()
+	e, err := fn()
+	if err == nil && f.lose[op] > 0 {
+		f.lose[op]--
+		return nil, &APIError{Status: 503, Message: "Service Unavailable"}
+	}
+	return e, err
 }
 
 // CompanyName implements Client.
