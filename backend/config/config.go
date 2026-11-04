@@ -592,7 +592,32 @@ func Load() *Config {
 // Missing or insecure values will cause the application to exit in ALL environments.
 // Security should be consistent - there's no good reason to run with insecure defaults.
 func validateConfig(cfg *Config) {
+	errors := configErrors(cfg, os.Getenv("K_SERVICE"))
+
+	// Any configuration errors are fatal
+	if len(errors) > 0 {
+		log.Println("[CONFIG] Configuration errors detected:")
+		for _, err := range errors {
+			log.Printf("[CONFIG]   - %s", err)
+		}
+		log.Println("[CONFIG]")
+		log.Println("[CONFIG] To fix: copy .env.example to .env and configure the required values")
+		log.Println("[CONFIG] Generate a secure JWT secret with: openssl rand -base64 32")
+		log.Fatal("[CONFIG] Application cannot start with insecure configuration.")
+	}
+}
+
+// configErrors returns every configuration problem that must stop startup.
+// cloudRunService is the K_SERVICE variable Cloud Run sets on every
+// container (empty elsewhere).
+func configErrors(cfg *Config, cloudRunService string) []string {
 	var errors []string
+
+	// An unset ENV means development: open registration, Swagger, insecure
+	// cookies, startup migrations, in-process workers. Never on Cloud Run.
+	if cloudRunService != "" && cfg.Server.Env == "development" {
+		errors = append(errors, "ENV is unset or \"development\" on Cloud Run (K_SERVICE is set) - set ENV=production")
+	}
 
 	// Check JWT secret - required in all environments
 	switch {
@@ -615,17 +640,7 @@ func validateConfig(cfg *Config) {
 		errors = append(errors, "STRIPE_WEBHOOK_SECRET is required when Stripe is configured - webhooks without signature verification are a security risk")
 	}
 
-	// Any configuration errors are fatal
-	if len(errors) > 0 {
-		log.Println("[CONFIG] Configuration errors detected:")
-		for _, err := range errors {
-			log.Printf("[CONFIG]   - %s", err)
-		}
-		log.Println("[CONFIG]")
-		log.Println("[CONFIG] To fix: copy .env.example to .env and configure the required values")
-		log.Println("[CONFIG] Generate a secure JWT secret with: openssl rand -base64 32")
-		log.Fatal("[CONFIG] Application cannot start with insecure configuration.")
-	}
+	return errors
 }
 
 // getEnv reads an environment variable or returns a default value
