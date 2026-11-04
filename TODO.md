@@ -1,6 +1,6 @@
 # ServicePro — Roadmap
 
-**Last Updated**: 2026-11-04 (T212 config review done. T158 SPA on Neon Auth behind a flag (D17 proposed). T193 imports done (migration 000022). T251/T252/T213 code done (needs Rob to run setup). T272, T273 fixed (migration 000019 timestamptz); T174 job photos (000020) and T176 signature + service report (000021) done — phase E complete; master CI bundle check fixed.)
+**Last Updated**: 2026-11-04 (T192 QuickBooks code done (migration 000023, needs the Intuit app). T212 config review done. T158 SPA on Neon Auth behind a flag (D17 proposed). T193 imports done (migration 000022). T251/T252/T213 code done (needs Rob to run setup). T272, T273 fixed (migration 000019 timestamptz); T174 job photos (000020) and T176 signature + service report (000021) done — phase E complete; master CI bundle check fixed.)
 
 > **How to read this file.** Every task has an ID (T###). The **Task Index** lists all of them: completed rows
 > (struck through) first by ID, then open rows by Phase → ID. Each open task has exactly one detailed section under
@@ -2282,7 +2282,7 @@ QuickBooks (the #1 B2B buying gate), import mappers, and partner integrations in
 
 #### T192 — QuickBooks Online sync (customers, invoices, payments; one-way first)
 
-**Phase**: 11 · **Category**: Integration · **Hours**: 32 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: T118, T102
+**Phase**: 11 · **Category**: Integration · **Hours**: 32 · **Status**: Blocked — code done 2026-11-04 against a fake QuickBooks; needs the Intuit developer app (see "Blocked — needs Rob") · **MVP Gate**: Yes · **Depends on**: T118, T102
 
 **What it is** — Customers, invoices and payments created in ServicePro appear in the tenant's QuickBooks Online.
 
@@ -2292,6 +2292,8 @@ QuickBooks (the #1 B2B buying gate), import mappers, and partner integrations in
 
 **Notes** — `docs/product/competitive-research-2026-10.md` §2 row 22, §5 MVP #6. MVP plan (2026-10-25): start with a 4h spike (OAuth app, customer/invoice/payment create, sales-tax mapping, Intuit production app review lead time).
 
+
+**Code done (2026-11-04)** — `17b7ba2`…`cad3128`. Off until `QUICKBOOKS_CLIENT_ID`/`_SECRET` and `INTEGRATIONS_ENCRYPTION_KEY` are set. Migration 000023: `quickbooks_connections` (AES-256-GCM-sealed tokens bound to tenant, sync lease) and `quickbooks_sync_map` (requestid, SyncToken, payload hash, backoff), RLS; new `integrations.manage` permission (admin, super_admin). OAuth with an HMAC-signed single-use state; token refresh under `FOR UPDATE` (no double refresh); reconnect prompt on a rejected refresh token. One-way sync of customers, invoices issued since connecting (lines net of discounts, discount line, ServicePro tax total) and payments (manual + Stripe), queued after commit plus a sweep; idempotent creates (stored requestid + lookup by DisplayName/DocNumber), exponential backoff, per-record errors with Retry; `POST /internal/jobs/quickbooks-sync` hourly at :15. Integrations settings tab per mockup 14; onboarding links to it when configured. Tested against an in-memory fake only (no live Intuit call). Not built: refunds/voids/deletes, Stripe payouts and fees as deposits, two-way sync; sales-tax behaviour with QuickBooks automated tax must be checked on the sandbox. Setup: `docs/ops/quickbooks.md`.
 ---
 
 #### T193 — Import mappers for Jobber / Housecall Pro exports + generic CSV
@@ -3230,6 +3232,7 @@ Validate the beachhead before the Phase 9–10 build-out, then publish positioni
   - **PostHog off** — decide; if wanted, add a version to `POSTHOG_API_KEY` and GitHub secret `POSTHOG_API_KEY_WEB`.
   - **Default compute service account has project Editor** (nothing uses it) — `gcloud projects remove-iam-policy-binding service-pro-512609 --member=serviceAccount:736486908135-compute@developer.gserviceaccount.com --role=roles/editor`.
   - **Check `DATABASE_URL` uses the `-pooler` host** (couldn't read the secret).
+- **T192 QuickBooks** — sign up at developer.intuit.com (Bitwarden: Dev & Cloud → "Intuit Developer"), create a "QuickBooks Online and Payments" app with scope `com.intuit.quickbooks.accounting` and redirect URIs `https://servicepro.sharkfins.xyz/api/v1/integrations/quickbooks/callback` + `http://localhost:5173/api/v1/integrations/quickbooks/callback`; save the development keys in Bitwarden as "Intuit QuickBooks (ServicePro)". I then test on the sandbox company. Production keys need Intuit's app assessment (days to weeks, needs the T207 terms/privacy URLs) — start it early. Steps: `docs/ops/quickbooks.md`.
 - **T210 / D15 confirm + live Stripe catalog** — read D15 (plans, 30-day Team trial, Free/Basic closed to new sign-ups, founding coupon) and confirm or change it **before the next release**: migration 000014 and the sign-up trial go live with it. Then, in live mode: `make stripe-catalog -- -live` (creates products, prices and the founding coupon; key from Bitwarden via `$(…)`), and make sure the platform webhook endpoint sends `customer.subscription.created`, `customer.subscription.updated` and `customer.subscription.deleted`. Optional local tidy-up: the `STRIPE_PRICE_*` lines in `backend/.env` are unused now.
 
 ## Open Decisions
@@ -3497,6 +3500,7 @@ Dated history from the original "Completed Items" list:
 
 ### 2026-11-04
 
+- **T192 (code)** — QuickBooks Online one-way sync (customers, invoices, payments) with OAuth, sealed tokens, idempotent retries and an Integrations tab; migration 000023; off until the Intuit app exists. `17b7ba2`…`cad3128`.
 - **T212** — Production config review (`docs/ops/production-config-review-2026-11.md`); API now fails fast on unsafe production config. `822e65f`…`3418716`.
 - **T158 (SPA)** — Neon Auth sign-in screens, client, interceptor and store behind `VITE_NEON_AUTH_URL`; provision records terms; bearer beats leftover cookie; verified on the Neon dev branch. D17 proposed. `2c05de3`…`6392173`.
 - **T193** — Jobber / Housecall Pro / CSV-XLSX import with preview, idempotent re-import (migration 000022), chunked resumable runs and F-23 caps; imported invoices' reminders count from the import day. `b254a54`…`eba6cda`.
