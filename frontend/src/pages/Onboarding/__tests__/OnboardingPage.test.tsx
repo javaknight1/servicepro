@@ -314,8 +314,16 @@ describe('OnboardingPage', () => {
     const user = userEvent.setup();
 
     expect(await screen.findByText('Stripe + 0.4%')).toBeInTheDocument();
-    // Honesty gate: nothing unbuilt is offered as if it worked.
-    expect(screen.getAllByText('Coming soon')).toHaveLength(4);
+    // Honesty gate: nothing unbuilt is offered as if it worked. Imports
+    // are built (T193) and link to the import page; QuickBooks isn't.
+    expect(screen.getAllByText('Coming soon')).toHaveLength(1);
+    expect(
+      screen.getByRole('link', { name: /Import from Jobber/ })
+    ).toHaveAttribute('href', '/settings/import?source=jobber');
+    expect(screen.getByRole('link', { name: /Upload a CSV/ })).toHaveAttribute(
+      'href',
+      '/settings/import?source=generic'
+    );
     expect(
       screen.getByRole('button', { name: 'Connect QuickBooks' })
     ).toBeDisabled();

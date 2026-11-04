@@ -15,7 +15,7 @@ import {
 import type { Column } from '@components/shared';
 import { customerService } from '@services/customerService';
 import type { Customer, CustomerFilters } from '@services/customerService';
-import { Users, Plus, Search } from 'lucide-react';
+import { Users, Plus, Search, Upload } from 'lucide-react';
 import { getCustomerStatusLabel, getCustomerTypeLabel } from '@app-types';
 
 export function CustomersPage() {
@@ -139,14 +139,24 @@ export function CustomersPage() {
               : 'The businesses and people you bill'
           }
           actions={
-            <Button
-              variant="primary"
-              onClick={() => navigate('/customers/new')}
-              className="gap-2"
-            >
-              <Plus className="h-4 w-4" />
-              Add customer
-            </Button>
+            <>
+              <Button
+                variant="outline"
+                onClick={() => navigate('/settings/import')}
+                className="gap-2"
+              >
+                <Upload className="h-4 w-4" />
+                Import
+              </Button>
+              <Button
+                variant="primary"
+                onClick={() => navigate('/customers/new')}
+                className="gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                Add customer
+              </Button>
+            </>
           }
         />
 

@@ -1,6 +1,12 @@
 import { useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { CreditCard, FileSpreadsheet, Landmark } from 'lucide-react';
+import {
+  ChevronRight,
+  CreditCard,
+  FileSpreadsheet,
+  Landmark,
+} from 'lucide-react';
+import { Link } from 'react-router';
 import { paymentsApi, paymentsStatusQueryKey } from '@services/paymentsService';
 import { getErrorMessage } from '@/utils/error';
 import { redirectTo } from '@/utils/redirect';
@@ -32,8 +38,9 @@ function shortMoney(amount: string, currency: string): string {
 
 /**
  * Onboarding 3 — get paid (mockup 04): Stripe payouts through the T169
- * Connect endpoint, with QuickBooks and imports shown as coming soon (D11:
- * nothing that isn't built is offered as if it were). Connecting can fail
+ * Connect endpoint, imports from Jobber / Housecall Pro / CSV (T193, the
+ * import page) and QuickBooks shown as coming soon (D11: nothing that isn't
+ * built is offered as if it were). Connecting can fail
  * today (Connect isn't enabled on the platform yet): the error is shown and
  * the step can still be skipped or finished.
  */
@@ -167,24 +174,29 @@ export function GetPaidStep({
             Bring your customers
           </h2>
           <p className="mt-1 text-sm text-neutral-600">
-            Customers, sites and recurring visits.
+            Customers, sites, jobs and open invoices.
           </p>
           <ul className="mt-4 space-y-2">
             {[
-              { icon: 'J', label: 'Import from Jobber' },
-              { icon: 'H', label: 'Import from Housecall Pro' },
-              { icon: null, label: 'Upload a CSV' },
+              { icon: 'J', label: 'Import from Jobber', source: 'jobber' },
+              {
+                icon: 'H',
+                label: 'Import from Housecall Pro',
+                source: 'housecall_pro',
+              },
+              { icon: null, label: 'Upload a CSV', source: 'generic' },
             ].map((row) => (
-              <li
-                key={row.label}
-                aria-disabled="true"
-                className="flex items-center gap-3 rounded-xl border border-neutral-200 p-3 text-neutral-500"
-              >
-                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-neutral-100 font-medium text-neutral-600">
-                  {row.icon ?? <FileSpreadsheet className="h-4 w-4" />}
-                </span>
-                <span className="flex-1">{row.label}</span>
-                <ComingSoon />
+              <li key={row.label}>
+                <Link
+                  to={`/settings/import?source=${row.source}`}
+                  className="flex items-center gap-3 rounded-xl border border-neutral-200 p-3 text-neutral-800 hover:border-primary-600"
+                >
+                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-neutral-100 font-medium text-neutral-600">
+                    {row.icon ?? <FileSpreadsheet className="h-4 w-4" />}
+                  </span>
+                  <span className="flex-1">{row.label}</span>
+                  <ChevronRight className="h-4 w-4 text-neutral-400" />
+                </Link>
               </li>
             ))}
           </ul>

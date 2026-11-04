@@ -139,6 +139,14 @@ const PaymentsSettingsPage = loadable(
   { chunkName: 'payments-settings', delay: 100 }
 );
 
+const ImportDataPage = loadable(
+  () =>
+    import(/* webpackChunkName: "page-settings" */ '@pages/Settings').then(
+      (m) => ({ default: m.ImportDataPage })
+    ),
+  { chunkName: 'import-data', delay: 100 }
+);
+
 const ChangeMembershipPage = loadable(
   () =>
     import(/* webpackChunkName: "page-settings" */ '@pages/Settings').then(
@@ -527,6 +535,7 @@ export function AppRoutes() {
         <Route path="/settings/organization/new" element={<NewOrgPage />} />
         <Route path="/onboarding" element={<OnboardingPage />} />
         <Route path="/settings/payments" element={<PaymentsSettingsPage />} />
+        <Route path="/settings/import" element={<ImportDataPage />} />
         <Route
           path="/settings/organization/membership/change"
           element={<ChangeMembershipPage />}
@@ -578,6 +587,7 @@ export const routePaths = {
   newOrg: '/settings/organization/new',
   onboarding: '/onboarding',
   paymentsSettings: '/settings/payments',
+  importData: '/settings/import',
   changeMembership: '/settings/organization/membership/change',
   confirmMembership: '/settings/organization/membership/confirm',
   features: '/features',

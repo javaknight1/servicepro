@@ -4,3 +4,4 @@ export { NewOrgPage } from './NewOrgPage';
 export { PaymentsSettingsPage } from './PaymentsSettingsPage';
 export { ChangeMembershipPage } from './ChangeMembershipPage';
 export { ConfirmMembershipPage } from './ConfirmMembershipPage';
+export { ImportDataPage } from './ImportDataPage';
