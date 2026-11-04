@@ -2,9 +2,9 @@
 # Build the API image, push it to Artifact Registry, and deploy it to Cloud Run.
 # Called by .github/workflows/release-deploy.yml after migrations have applied.
 #
-# NOT LIVE YET: the GCP project does not exist. release-deploy.yml skips the job
-# that calls this script until the repo variable GCP_PROJECT_ID is set. One-time
-# setup: docs/ops/cloud-run-setup.md.
+# Live since v0.9.0 (2026-10-24). release-deploy.yml skips the job that calls
+# this script while the repo variable GCP_PROJECT_ID is unset. One-time setup:
+# docs/ops/cloud-run-setup.md.
 #
 # We build in CI (not Cloud Build) because ci.yml's docker-build job already
 # builds this exact backend/Dockerfile on every PR — a release ships the image
@@ -30,6 +30,26 @@ set -euo pipefail
 
 : "${GCP_PROJECT_ID:?}" "${GCP_REGION:?}" "${AR_REPOSITORY:?}"
 : "${SERVICE_NAME:?}" "${GIT_SHA:?}" "${RELEASE_TAG:?}"
+
+# ─── Connection + cost ceiling (T213) ──────────────────────────────────────
+# Cloud Run instances x the API's DB pool is the most Postgres connections the
+# API can ever hold. It must leave room for the release migrate job, the
+# nightly pg_dump, psql sessions and Neon Auth. The floor we size against is
+# Neon at 0.25 CU (fixed): max_connections 104, 7 reserved for Neon = 97 usable;
+# the pooled endpoint's per-user pool is 0.9 x 104 = 93. Free's default
+# 0.25-2 CU autoscaling gives 839, but don't count on it.
+# Budget 40 = under half of 97. Raise instances and pool TOGETHER, and only
+# after checking `SHOW max_connections;` — see docs/ops/cost-guardrails.md.
+MAX_INSTANCES="${MAX_INSTANCES:-4}"
+DB_MAX_OPEN_CONNS="${DB_MAX_OPEN_CONNS:-5}"
+DB_CONNECTION_BUDGET="${DB_CONNECTION_BUDGET:-40}"
+if [ $(( MAX_INSTANCES * DB_MAX_OPEN_CONNS )) -gt "$DB_CONNECTION_BUDGET" ]; then
+  echo "error: --max-instances=${MAX_INSTANCES} x DB_MAX_OPEN_CONNS=${DB_MAX_OPEN_CONNS}" \
+       "= $(( MAX_INSTANCES * DB_MAX_OPEN_CONNS )) DB connections, over the budget of ${DB_CONNECTION_BUDGET}." >&2
+  echo "       See docs/ops/cost-guardrails.md before raising either." >&2
+  exit 1
+fi
+echo "--- Ceiling: ${MAX_INSTANCES} instances x ${DB_MAX_OPEN_CONNS} DB conns = $(( MAX_INSTANCES * DB_MAX_OPEN_CONNS )) (budget ${DB_CONNECTION_BUDGET})"
 
 cd "$(git rev-parse --show-toplevel)"
 
@@ -130,8 +150,9 @@ for s in "${OPTIONAL_SECRETS[@]}"; do
 done
 
 # Scaling is pinned HERE, not left to whatever was last set in the console.
-# --max-instances x DB_MAX_OPEN_CONNS must stay under the Postgres connection
-# limit (docs/ops/cloud-run-setup.md). --update-env-vars MERGES (it never drops
+# --max-instances x DB_MAX_OPEN_CONNS is checked against the connection budget
+# at the top of this script (docs/ops/cost-guardrails.md); both are set on
+# every deploy so the console can't drift. --update-env-vars MERGES (it never drops
 # the other vars or secret refs): production must never migrate at startup (the
 # release `migrate` job owns that) or run in-process tickers (scheduled-jobs.yml
 # drives them through /internal/jobs/*), because Cloud Run throttles CPU between
@@ -143,11 +164,12 @@ gcloud run deploy "$SERVICE_NAME" \
   --image="$IMAGE_SHA" \
   --revision-suffix="$REVISION_SUFFIX" \
   --concurrency=40 \
-  --max-instances=4 \
+  --min-instances=0 \
+  --max-instances="$MAX_INSTANCES" \
   --cpu=1 \
   --memory=512Mi \
   --timeout=60 \
-  --update-env-vars="RUN_MIGRATIONS_ON_STARTUP=false,RUN_BACKGROUND_WORKERS=false" \
+  --update-env-vars="RUN_MIGRATIONS_ON_STARTUP=false,RUN_BACKGROUND_WORKERS=false,DB_MAX_OPEN_CONNS=${DB_MAX_OPEN_CONNS}" \
   ${SECRET_FLAGS[@]+"${SECRET_FLAGS[@]}"} \
   --no-traffic \
   --quiet

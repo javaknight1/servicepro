@@ -151,7 +151,8 @@ openssl rand -hex 32 | gcloud secrets versions add JWT_SECRET --data-file=-
   host suits a scale-to-zero service. If prepared statements fail behind the
   pooler, set `DB_SIMPLE_PROTOCOL=true` (a URL on port 6543 turns it on
   automatically; Neon's pooler is on 5432). Keep `max-instances ×
-DB_MAX_OPEN_CONNS` under the database's limit.
+DB_MAX_OPEN_CONNS` under the database's limit — the deploy script pins both and
+  enforces a budget ([`cost-guardrails.md`](./cost-guardrails.md)).
 - `MIGRATION_DATABASE_URL` (GitHub secret, §8) is a **different** value: Neon's
   direct (non-pooler) host, port 5432 — golang-migrate and `pg_dump` need a
   session.
@@ -248,13 +249,13 @@ gcloud run services update "$SERVICE" --region="$REGION" \
 
 `--set-env-vars` splits on commas — escape a comma inside a value as `\,`.
 
-| Setting                   | Why                                                                               |
-| ------------------------- | --------------------------------------------------------------------------------- |
-| `--min-instances=0`       | Scale to zero, stays in the free tier; costs a cold start                         |
-| `--max-instances=4`       | Cost cap and DB-connection cap (4 × `DB_MAX_OPEN_CONNS=5`)                        |
-| `--timeout=60s`           | Above the server's own write timeout                                              |
-| `--allow-unauthenticated` | The API does its own JWT auth; this only disables Cloud Run's IAM check           |
-| `RUN_*=false`             | Migrations run in the release `migrate` job; tickers run via `scheduled-jobs.yml` |
+| Setting                   | Why                                                                                                      |
+| ------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `--min-instances=0`       | Scale to zero, stays in the free tier; costs a cold start                                                |
+| `--max-instances=4`       | Cost cap and DB-connection cap (4 × `DB_MAX_OPEN_CONNS=5`; [`cost-guardrails.md`](./cost-guardrails.md)) |
+| `--timeout=60s`           | Above the server's own write timeout                                                                     |
+| `--allow-unauthenticated` | The API does its own JWT auth; this only disables Cloud Run's IAM check                                  |
+| `RUN_*=false`             | Migrations run in the release `migrate` job; tickers run via `scheduled-jobs.yml`                        |
 
 Startup probe: point it at the API's readiness endpoint (`/health/ready`) so a
 revision that can't reach the database never takes traffic.

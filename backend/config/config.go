@@ -390,7 +390,10 @@ func Load() *Config {
 	env := getEnv("ENV", "development")
 	isDev := env == "development"
 
-	defaultMaxOpenConns := 10 // MaxOpenConns x max instances must fit the Neon connection limit
+	// MaxOpenConns x Cloud Run max instances must fit the Neon connection
+	// limit; production pins DB_MAX_OPEN_CONNS in scripts/deploy-cloudrun.sh,
+	// which refuses to deploy over budget (docs/ops/cost-guardrails.md, T213).
+	defaultMaxOpenConns := 10
 	defaultRedisURL := ""
 	if isDev {
 		defaultMaxOpenConns = 25
