@@ -1,6 +1,6 @@
 # ServicePro — Roadmap
 
-**Last Updated**: 2026-11-04 (T272, T273 fixed (migration 000019 timestamptz); T174 job photos (000020) and T176 signature + service report (000021) done — phase E complete; master CI bundle check fixed.)
+**Last Updated**: 2026-11-04 (T251/T252/T213 code done (needs Rob to run setup). T272, T273 fixed (migration 000019 timestamptz); T174 job photos (000020) and T176 signature + service report (000021) done — phase E complete; master CI bundle check fixed.)
 
 > **How to read this file.** Every task has an ID (T###). The **Task Index** lists all of them: completed rows
 > (struck through) first by ID, then open rows by Phase → ID. Each open task has exactly one detailed section under
@@ -2972,7 +2972,7 @@ Provision and launch. Live since 2026-10-24 (Neon us-east-2 + Cloud Run us-east5
 
 #### T213 — Cost guardrails (Cloud Run max instances × DB pool, budget alerts)
 
-**Phase**: 14 · **Category**: Ops · **Hours**: 1 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: T203, T144
+**Phase**: 14 · **Category**: Ops · **Hours**: 1 · **Status**: Blocked — code done 2026-11-04, needs the budget script run (see "Blocked — needs Rob") · **MVP Gate**: Yes · **Depends on**: T203, T144
 
 **What it is** — Hard ceilings on spend and DB connections.
 
@@ -2982,11 +2982,13 @@ Provision and launch. Live since 2026-10-24 (Neon us-east-2 + Cloud Run us-east5
 
 **Notes** — LL T368 is the pattern. MVP plan (2026-10-25): 4 Cloud Run instances × pool size must stay under Neon's pooler limit.
 
+
+**Code done (2026-11-04)** — `32f0b0b`: deploy-cloudrun.sh sets `--min-instances=0 --max-instances=4` and `DB_MAX_OPEN_CONNS=5` and refuses to deploy when instances × pool > 40 (`DB_CONNECTION_BUDGET`). Math: Neon 0.25 CU max_connections 104 (97 usable); API 20 + migrate/backup/auth/console ≈ 35. Live service already matches. `scripts/setup-cost-guardrails.sh` (not run): $10/month budget alerts at 50/90/100 % + forecast, Artifact Registry cleanup (keep 20, delete > 90 days). Docs: `docs/ops/cost-guardrails.md`.
 ---
 
 #### T251 — Post-deploy smoke check + GCP uptime check and alert
 
-**Phase**: 14 · **Category**: Ops · **Hours**: 3 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: T203
+**Phase**: 14 · **Category**: Ops · **Hours**: 3 · **Status**: Blocked — code done 2026-11-04, needs the GCP uptime checks created (see "Blocked — needs Rob") · **MVP Gate**: Yes · **Depends on**: T203
 
 **What it is** — A `make smoke` script (health, /version through the Worker, login page, an authenticated read) run after every release, plus a Google Cloud uptime check on /health/ready with an email alert.
 **What it does** — Port League Looper's `tools/ops` smoke script; call it from release-deploy.yml after the web job; `gcloud monitoring uptime create` against the Worker URL; alert policy to the owner's email.
@@ -2995,7 +2997,7 @@ Provision and launch. Live since 2026-10-24 (Neon us-east-2 + Cloud Run us-east5
 
 #### T252 — Sentry cron check-ins for scheduled jobs and the nightly backup
 
-**Phase**: 14 · **Category**: Monitoring · **Hours**: 1 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: T126
+**Phase**: 14 · **Category**: Monitoring · **Hours**: 1 · **Status**: Blocked — code done 2026-11-04, needs the `SENTRY_CRONS_DSN` GitHub secret (see "Blocked — needs Rob") · **MVP Gate**: Yes · **Depends on**: T126
 
 **What it is** — Each scheduled job run (`scheduled-jobs.yml`) and the backup (`db-backup.yml`) checks in to a Sentry cron monitor, so a missed or failed run alerts.
 **What it does** — Add `getsentry` cron check-in steps (in_progress / ok / error) keyed per job, as League Looper does; skip when SENTRY_AUTH_TOKEN is unset.
@@ -3014,6 +3016,10 @@ Provision and launch. Live since 2026-10-24 (Neon us-east-2 + Cloud Run us-east5
 
 **Notes** — MVP proposal launch blocker 2; Technical Requirements N1; D11. Added 2026-10-25 from the MVP plan (`docs/product/mvp-plan-2026-10.md`).
 
+
+**Code done (2026-11-04)** — `81064f6`: `scripts/smoke.sh` (`make smoke`; GET-only: `/version` matches tag + SHA, SPA shell with CSP/HSTS, `/login` fallback, `/api/v1/users/me` 401 through the Worker, optional direct `/health/ready` and run.app `/api` 403) with retries; new `smoke` job in release-deploy.yml gates the release notes and prints the rollback commands. Ran against production: all pass. `scripts/setup-monitoring.sh` (idempotent, not run) creates three uptime checks + alert policies + email channel. Docs: `docs/ops/monitoring.md`. Authenticated smoke read skipped (needs a smoke account; auth is moving in T158).
+
+**Code done (2026-11-04)** — `6b992de`: `scripts/sentry-cron.sh start|finish` (DSN-based check-ins carrying the monitor config, so monitors self-create; no-op without the secret); per-job monitors `servicepro-<job>` in scheduled-jobs.yml and `servicepro-db-backup` in db-backup.yml (result step runs on failure). Uses the DSN, not `SENTRY_AUTH_TOKEN`.
 ---
 
 #### T258 — Replace servicepro.com defaults; complete the .env.example files
@@ -3206,6 +3212,9 @@ Validate the beachhead before the Phase 9–10 build-out, then publish positioni
 - **T159 webhook secret** — in Resend → Webhooks, add endpoint `https://servicepro.sharkfins.xyz/api/v1/webhooks/resend` with events `email.bounced` and `email.complained`; copy its signing secret (`whsec_…`) into Bitwarden (Dev & Cloud → Resend API key, custom field `webhook_secret`) and Secret Manager: `bwx get item <id> | jq -r '.fields[] | select(.name=="webhook_secret").value' | gcloud secrets versions add RESEND_WEBHOOK_SECRET --project service-pro-512609 --data-file=-` (create the secret first with `gcloud secrets create RESEND_WEBHOOK_SECRET --project service-pro-512609` and grant `servicepro-api@…` secretAccessor). Until then the route stays off and nothing is suppressed; sending works.
 - **T169 Stripe Connect setup** (test mode first, then live) — Stripe Dashboard → Settings → Connect → platform setup as a SaaS platform whose connected accounts pay Stripe directly (blocks everything else); platform profile + branding; a Connect webhook endpoint `https://servicepro.sharkfins.xyz/api/v1/stripe/webhooks/connect` for `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`, `charge.refunded`, `account.updated` → its secret into Bitwarden and Secret Manager as `STRIPE_CONNECT_WEBHOOK_SECRET`; an event destination (thin payloads) at `/api/v1/stripe/webhooks/v2` for `v2.core.account[requirements].updated` and `v2.core.account[configuration.merchant].capability_status_updated` → `STRIPE_V2_WEBHOOK_SECRET`. Then I run the end-to-end test-mode payment and `INVOICE_PAYMENTS_ENABLED` can go on. Until then pay links stay off.
 - **T160 R2 bucket** — Cloudflare → R2: private bucket `servicepro-uploads` and an Object Read & Write token scoped to it (Bitwarden: Dev & Cloud → `Cloudflare R2 (servicepro-uploads)`); secrets `S3_COMPATIBLE_ACCESS_KEY_ID` / `S3_COMPATIBLE_SECRET_ACCESS_KEY` in Secret Manager; one `gcloud run services update … --update-env-vars` for endpoint/bucket/region/path style. Exact steps: `docs/ops/cloud-run-setup.md` "File storage: Cloudflare R2". Until then PDFs are attached, not linked, and avatar upload is off.
+- **T252 Sentry crons** — `gcloud secrets versions access latest --secret=SENTRY_DSN --project=service-pro-512609 | gh secret set SENTRY_CRONS_DSN`; then Actions → Scheduled jobs → Run workflow (`all`) and check Sentry → Crons shows six monitors; add a Sentry alert rule for cron issues. `servicepro-db-backup` will alert nightly until T209/T160 give the backup its R2 bucket.
+- **T251 uptime checks** — `gcloud auth login && ALERT_EMAIL=<you> scripts/setup-monitoring.sh`, then send a test notification on the new channel. The next `v*` tag runs the new smoke job for the first time.
+- **T213 budget** — `ALERT_EMAIL=<you> scripts/setup-cost-guardrails.sh` (Billing Account Administrator; `BUDGET_AMOUNT=N` to change the $10 default).
 - **T210 / D15 confirm + live Stripe catalog** — read D15 (plans, 30-day Team trial, Free/Basic closed to new sign-ups, founding coupon) and confirm or change it **before the next release**: migration 000014 and the sign-up trial go live with it. Then, in live mode: `make stripe-catalog -- -live` (creates products, prices and the founding coupon; key from Bitwarden via `$(…)`), and make sure the platform webhook endpoint sends `customer.subscription.created`, `customer.subscription.updated` and `customer.subscription.deleted`. Optional local tidy-up: the `STRIPE_PRICE_*` lines in `backend/.env` are unused now.
 
 ## Open Decisions
@@ -3473,6 +3482,7 @@ Dated history from the original "Completed Items" list:
 
 ### 2026-11-04
 
+- **T251, T252, T213 (code)** — post-deploy smoke job + `make smoke`; Sentry cron check-ins for scheduled jobs and backups; Cloud Run instances × DB pool guard; uptime and budget scripts ready for Rob to run. `81064f6`, `6b992de`, `32f0b0b`.
 - **T176** — Customer signature on the visit page and a service report PDF (photos, materials without prices, signature) emailed idempotently to the customer and site contact; proof-of-service card on the job; migration 000021. `9fe9132`…`2185f1a`. Phase E complete.
 - **T174** — Job photos and attachments: migration 000020, validated/resized/EXIF-stripped uploads with thumbnails, presigned downloads, technician scoping; on job detail and the visit page. `0efd0c1`…`f75717b`.
 - **T272** — Technicians no longer request the plan they can't read (no more 403s). `b7c1f27`.
