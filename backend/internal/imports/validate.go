@@ -186,12 +186,13 @@ func (v *validator) customer() {
 	if full := v.get(FFullName); first == "" && last == "" && !strings.EqualFold(full, company) {
 		first, last = splitName(full)
 	}
-	if first == "" && last == "" {
-		if company == "" {
-			v.fail(FFirstName, "a name is required (first/last name or company)")
-		} else {
-			first, last = "Main", "Contact"
-		}
+	switch {
+	case first == "" && last == "" && company != "":
+		first, last = "Main", "Contact"
+	case first == "" && last == "":
+		v.fail(FFirstName, "a name is required (first and last name, or a company)")
+	case first == "" || last == "":
+		v.fail(FLastName, "both a first and a last name are required (or only a company name)")
 	}
 	delete(v.r.Values, FFullName)
 	v.set(FFirstName, first)
@@ -201,11 +202,36 @@ func (v *validator) customer() {
 	v.clip(FCompanyName, maxCompany)
 
 	v.email(FEmail, "email", true)
-	v.phone(FPhone, "phone")
-	v.phone(FPhoneSecondary, "second phone")
-	if v.get(FPhone) == "" && v.get(FPhoneSecondary) != "" {
-		v.set(FPhone, v.get(FPhoneSecondary))
-		delete(v.r.Values, FPhoneSecondary)
+	if e := v.get(FEmail); e != "" && !dbEmailRe.MatchString(e) {
+		v.fail(FEmail, "email %q is not a valid email address", e)
+	}
+
+	// Phones: US numbers only (the customers table checks them). An
+	// extension, or a second number we can't store, goes to the notes.
+	var extra []string
+	raw1, raw2 := v.get(FPhone), v.get(FPhoneSecondary)
+	if raw1 == "" {
+		raw1, raw2 = raw2, ""
+	}
+	phone, ext, ok := usPhone(raw1)
+	switch {
+	case raw1 == "":
+		v.fail(FPhone, "a phone number is required")
+	case !ok:
+		v.fail(FPhone, "phone %q is not a 10-digit US phone number", raw1)
+	}
+	second, ext2, ok2 := usPhone(raw2)
+	if raw2 != "" && !ok2 {
+		extra = append(extra, "Other phone: "+raw2)
+		second, ext2 = "", ""
+	}
+	v.set(FPhone, phone)
+	v.set(FPhoneSecondary, second)
+	if ext != "" {
+		extra = append(extra, "Phone extension: "+ext)
+	}
+	if ext2 != "" {
+		extra = append(extra, "Second phone extension: "+ext2)
 	}
 
 	v.joinStreet(FBillingStreet, FBillingStreet2)
@@ -219,9 +245,21 @@ func (v *validator) customer() {
 	v.address(FBillingStreet, FBillingCity, FBillingState, FBillingZip, "billing")
 	if v.get(FBillingStreet) == "" || v.get(FBillingCity) == "" || v.get(FBillingState) == "" || v.get(FBillingZip) == "" {
 		v.fail(FBillingStreet, "a full billing (or service) address is required: street, city, state and ZIP")
+	} else {
+		if st := v.get(FBillingState); !IsUSState(st) {
+			v.fail(FBillingState, "billing state %q must be a US state (customer addresses are US-only)", st)
+		}
+		if z, ok := usZip(v.get(FBillingZip)); ok {
+			v.set(FBillingZip, z)
+		} else {
+			v.fail(FBillingZip, "billing ZIP %q must be a 5-digit US ZIP code", v.get(FBillingZip))
+		}
 	}
 	if v.get(FStreet) != "" {
 		v.address(FStreet, FCity, FState, FZip, "service")
+		if z, ok := usZip(v.get(FZip)); ok {
+			v.set(FZip, z)
+		}
 	}
 	v.clip(FSiteName, maxSite)
 
@@ -256,6 +294,12 @@ func (v *validator) customer() {
 			notes += "\n"
 		}
 		notes += "Tags: " + tags
+	}
+	for _, line := range extra {
+		if notes != "" {
+			notes += "\n"
+		}
+		notes += line
 	}
 	delete(v.r.Values, FTags)
 	v.set(FNotes, notes)

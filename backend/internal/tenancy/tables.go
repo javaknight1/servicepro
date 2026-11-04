@@ -37,6 +37,7 @@ func DefaultTables() map[string]Mode {
 		"customer_purchase_orders":  Owned, // T187, RLS policy in migration 000018
 		"job_attachments":           Owned, // T174, RLS policy in migration 000020
 		"job_signoffs":              Owned, // T176, RLS policy in migration 000021
+		"import_external_refs":      Owned, // T193, RLS policy in migration 000022
 		"payment_terms":             SharedRead,
 		"tax_rates":                 SharedRead,
 		"invoice_templates":         SharedRead,

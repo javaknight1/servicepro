@@ -46,7 +46,7 @@ func TestJobberClients(t *testing.T) {
 	assert.Equal(t, "Whitfield", riverside[FLastName])
 	assert.Equal(t, "Riverside Property Management", riverside[FCompanyName])
 	assert.Equal(t, "ap@riversidepm.example", riverside[FEmail], "first of the listed emails")
-	assert.Equal(t, "(512) 555-0142", riverside[FPhone])
+	assert.Equal(t, "512-555-0142", riverside[FPhone], "US phones normalised")
 	assert.Equal(t, "512-555-0199", riverside[FPhoneSecondary], "mobile is the second phone")
 	assert.Equal(t, "400 Congress Ave, Suite 210", riverside[FBillingStreet])
 	assert.Equal(t, "TX", riverside[FBillingState], "state names become codes")
@@ -131,6 +131,47 @@ func TestJobberInvoices(t *testing.T) {
 	require.Contains(t, errs, 5, "unreadable balance")
 	assert.Equal(t, FBalance, errs[5][0].Field)
 	assert.Equal(t, "status is Draft", p.Records[4].Values[SkipKey])
+}
+
+func TestCustomerRowsMatchDatabaseChecks(t *testing.T) {
+	base := map[string]string{
+		FFirstName: "Ann", FLastName: "Lee", FEmail: "ann@lee.example", FPhone: "512 555 0100 x7",
+		FPhoneSecondary: "+44 20 7946 0958", FBillingStreet: "1 A St", FBillingCity: "Austin",
+		FBillingState: "TX", FBillingZip: "78701",
+	}
+	rec := func(over map[string]string) *Record {
+		v := map[string]string{}
+		for k, x := range base {
+			v[k] = x
+		}
+		for k, x := range over {
+			v[k] = x
+		}
+		return &Record{Row: 2, Values: v}
+	}
+	r := rec(nil)
+	assert.Empty(t, Validate(SourceGeneric, EntityCustomers, r, testNow))
+	assert.Equal(t, "512-555-0100", r.Values[FPhone])
+	assert.Empty(t, r.Values[FPhoneSecondary], "a foreign second number isn't stored as a phone")
+	assert.Equal(t, "Other phone: +44 20 7946 0958\nPhone extension: 7", r.Values[FNotes])
+
+	for name, tc := range map[string]struct {
+		over  map[string]string
+		field string
+	}{
+		"no phone":          {map[string]string{FPhone: "", FPhoneSecondary: ""}, FPhone},
+		"foreign phone":     {map[string]string{FPhone: "+44 20 7946 0958"}, FPhone},
+		"province":          {map[string]string{FBillingState: "Ontario"}, FBillingState},
+		"postal code":       {map[string]string{FBillingZip: "M5V 3L9"}, FBillingZip},
+		"single name":       {map[string]string{FLastName: ""}, FLastName},
+		"undotted domain":   {map[string]string{FEmail: "ann@localhost"}, FEmail},
+		"no address":        {map[string]string{FBillingStreet: ""}, FBillingStreet},
+		"bad customer type": {map[string]string{FCustomerType: "alien"}, FCustomerType},
+	} {
+		errs := Validate(SourceGeneric, EntityCustomers, rec(tc.over), testNow)
+		require.NotEmpty(t, errs, name)
+		assert.Equal(t, tc.field, errs[0].Field, name)
+	}
 }
 
 func TestHousecallProCustomers(t *testing.T) {
@@ -309,4 +350,27 @@ func TestNormalizers(t *testing.T) {
 	assert.Equal(t, "512-555-0100 x 12", p)
 	_, ok = normalizePhone("call me")
 	assert.False(t, ok)
+
+	for in, want := range map[string]string{
+		"(512) 555-0142": "512-555-0142", "+1 512.555.0142": "512-555-0142", "5125550142": "512-555-0142",
+	} {
+		got, _, ok := usPhone(in)
+		assert.True(t, ok, in)
+		assert.Equal(t, want, got, in)
+	}
+	got, ext, ok := usPhone("512-555-0100 ext. 12")
+	assert.True(t, ok)
+	assert.Equal(t, "512-555-0100", got)
+	assert.Equal(t, "12", ext)
+	_, _, ok = usPhone("+44 20 7946 0958")
+	assert.False(t, ok, "not a US number")
+
+	z, ok := usZip("787011234")
+	assert.True(t, ok)
+	assert.Equal(t, "78701-1234", z)
+	_, ok = usZip("M5V 3L9")
+	assert.False(t, ok)
+	assert.True(t, IsUSState("TX"))
+	assert.True(t, IsUSState("PR"))
+	assert.False(t, IsUSState("ON"))
 }

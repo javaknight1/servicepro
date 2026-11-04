@@ -264,6 +264,64 @@ func normalizeZip(s string) (string, bool) {
 	return s, len(s) <= 10
 }
 
+// Customer rows are checked by the database (migration 000001): US phone
+// numbers, US state codes and 5 or 5+4 digit ZIP codes, and an email
+// address with a dotted domain. These mirror those checks so a row fails in
+// the preview rather than at import.
+var (
+	usZipRe   = regexp.MustCompile(`^\d{5}(-\d{4})?$`)
+	dbEmailRe = regexp.MustCompile(`(?i)^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$`)
+	extRe     = regexp.MustCompile(`(?i)\s*(?:x|ext\.?|extension|#)\s*(\d{1,6})\s*$`)
+)
+
+// usTerritories are the codes the customers table accepts besides the 50
+// states.
+var usTerritories = map[string]bool{"DC": true, "AS": true, "GU": true, "MP": true, "PR": true, "VI": true}
+
+var canadian = map[string]bool{"AB": true, "BC": true, "MB": true, "NB": true, "NL": true, "NS": true, "ON": true, "PE": true, "QC": true, "SK": true, "NT": true, "NU": true, "YT": true}
+
+// IsUSState reports whether a normalised state code is one a customer
+// address may use.
+func IsUSState(code string) bool {
+	return stateCodes[code] && !canadian[code] || usTerritories[code]
+}
+
+// IsUSZip reports whether a ZIP is a 5 or 5+4 digit US ZIP code.
+func IsUSZip(zip string) bool { return usZipRe.MatchString(zip) }
+
+// usZip normalises a US ZIP ("787011234" → "78701-1234", "2134" → "02134").
+func usZip(s string) (string, bool) {
+	z, _ := normalizeZip(s)
+	if len(z) == 9 && strings.Trim(z, "0123456789") == "" {
+		z = z[:5] + "-" + z[5:]
+	}
+	return z, IsUSZip(z)
+}
+
+// usPhone normalises a US phone number to 512-555-0142 (the form the
+// customers table accepts), returning any extension separately.
+func usPhone(s string) (phone, ext string, ok bool) {
+	p := firstOf(s)
+	if m := extRe.FindStringSubmatch(p); m != nil {
+		ext = m[1]
+		p = p[:len(p)-len(m[0])]
+	}
+	var digits []byte
+	for i := 0; i < len(p); i++ {
+		if p[i] >= '0' && p[i] <= '9' {
+			digits = append(digits, p[i])
+		}
+	}
+	if len(digits) == 11 && digits[0] == '1' {
+		digits = digits[1:]
+	}
+	if len(digits) != 10 {
+		return p, "", false
+	}
+	d := string(digits)
+	return d[:3] + "-" + d[3:6] + "-" + d[6:], ext, true
+}
+
 // splitName splits "Pat Q. Smith" into first "Pat Q." and last "Smith".
 func splitName(full string) (first, last string) {
 	parts := strings.Fields(full)

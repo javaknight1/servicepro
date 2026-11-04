@@ -28,7 +28,17 @@ type ImportJob struct {
 	ProcessedRows  int             `json:"processed_rows" gorm:"not null;default:0"`
 	SuccessfulRows int             `json:"successful_rows" gorm:"not null;default:0"`
 	FailedRows     int             `json:"failed_rows" gorm:"not null;default:0"`
-	ErrorSummary   *string         `json:"error_summary" gorm:"type:text"`
+	// SkippedRows: rows not imported on purpose (already imported, or an
+	// invoice already paid). Counted in ProcessedRows, not in Successful.
+	SkippedRows  int     `json:"skipped_rows" gorm:"not null;default:0"`
+	ErrorSummary *string `json:"error_summary" gorm:"type:text"`
+	// Source and Entity say what a mapped import (T193) reads: source
+	// generic/jobber/housecall_pro (servicepro = the customer template) and
+	// entity customers/sites/jobs/invoices.
+	Source string `json:"source" gorm:"type:varchar(30);not null;default:'servicepro'"`
+	Entity string `json:"entity" gorm:"type:varchar(20);not null;default:'customers'"`
+	// Attempts counts interrupted runs of a resumable job (T193).
+	Attempts int `json:"-" gorm:"not null;default:0"`
 	// Payload holds the parsed rows and options of a pending/processing job
 	// (JSON); it is cleared when the job finishes. Never sent to clients.
 	Payload     *string    `json:"-" gorm:"type:jsonb"`
@@ -89,6 +99,23 @@ type ImportStatusResponse struct {
 	CompletedAt    *time.Time            `json:"completed_at,omitempty"`
 	CreatedAt      time.Time             `json:"created_at"`
 }
+
+// ImportExternalRef records which tenant row an imported external record
+// became (T193), so re-importing a file finds it instead of duplicating it.
+type ImportExternalRef struct {
+	ID          uuid.UUID  `gorm:"type:uuid;primary_key;default:uuid_generate_v4()"`
+	TenantID    uuid.UUID  `gorm:"type:uuid;not null"` // set from the caller's tenant (internal/tenancy)
+	Source      string     `gorm:"type:varchar(30);not null"`
+	Entity      string     `gorm:"type:varchar(20);not null"`
+	ExternalID  string     `gorm:"type:varchar(255);not null"`
+	RecordID    uuid.UUID  `gorm:"type:uuid;not null"`
+	ImportJobID *uuid.UUID `gorm:"type:uuid"`
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+}
+
+// TableName specifies the table name for ImportExternalRef.
+func (ImportExternalRef) TableName() string { return "import_external_refs" }
 
 // ImportErrorResponse represents an error in the import process
 type ImportErrorResponse struct {
