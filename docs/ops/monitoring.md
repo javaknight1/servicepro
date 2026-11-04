@@ -81,6 +81,7 @@ workflow — there is nothing to set up per monitor in Sentry.
 | `servicepro-quote-expiry`          | scheduled-jobs.yml | `15 * * * *`         | 45 min       | 10 min run   | 2 bad runs in a row |
 | `servicepro-agreement-visits`      | scheduled-jobs.yml | `15 * * * *`         | 45 min       | 10 min run   | 2 bad runs in a row |
 | `servicepro-consolidated-invoices` | scheduled-jobs.yml | `15 * * * *`         | 45 min       | 10 min run   | 2 bad runs in a row |
+| `servicepro-quickbooks-sync`       | scheduled-jobs.yml | `15 * * * *`         | 45 min       | 10 min run   | 2 bad runs in a row |
 | `servicepro-imports`               | scheduled-jobs.yml | `5,20,35,50 * * * *` | 10 min       | 10 min run   | 4 bad runs in a row |
 | `servicepro-db-backup`             | db-backup.yml      | `0 8 * * *`          | 2 h          | 45 min run   | 1 bad night         |
 

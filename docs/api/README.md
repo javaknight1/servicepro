@@ -96,6 +96,13 @@ once); `/settings/payment-reminders`; public pay links
 under `/public/invoices/*`; `POST /stripe/webhooks`. See
 [invoices.md](./invoices.md) and [payments.md](./payments.md).
 
+### Integrations (QuickBooks Online)
+
+`/tenants/:id/integrations/quickbooks` (status, `connect`, `disconnect`,
+`options`, `settings`, `sync`, `records/:record_id/retry`; needs
+`integrations.manage`) and the Intuit OAuth callback
+`/integrations/quickbooks/callback`. See [integrations.md](./integrations.md).
+
 ### Payment terms and tax rates
 
 | Method          | Endpoint                                                               | Description          |
@@ -128,13 +135,13 @@ See [import-export.md](../features/import-export.md).
 
 ### Outside `/api/v1`
 
-| Method | Endpoint                                                                                                                                                                                                 | Description                                                         |
-| ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
-| GET    | `/version`                                                                                                                                                                                               | Build identity (`git_sha`, `app_version`)                           |
-| GET    | `/health`, `/health/live`, `/health/ready`                                                                                                                                                               | Health; `ready` is 503 when the DB schema is behind/dirty           |
-| POST   | `/internal/jobs/payment-reminders`, `/internal/jobs/quote-expiry`, `/internal/jobs/invoice-overdue`, `/internal/jobs/agreement-visits`, `/internal/jobs/consolidated-invoices`, `/internal/jobs/imports` | Scheduled jobs (`X-Internal-Jobs-Token`); not proxied by the Worker |
-| GET    | `/metrics`                                                                                                                                                                                               | Prometheus (bearer token outside development)                       |
-| GET    | `/api/docs/*`                                                                                                                                                                                            | Swagger UI                                                          |
+| Method | Endpoint                                                                                                                                                                                                                                   | Description                                                         |
+| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------- |
+| GET    | `/version`                                                                                                                                                                                                                                 | Build identity (`git_sha`, `app_version`)                           |
+| GET    | `/health`, `/health/live`, `/health/ready`                                                                                                                                                                                                 | Health; `ready` is 503 when the DB schema is behind/dirty           |
+| POST   | `/internal/jobs/payment-reminders`, `/internal/jobs/quote-expiry`, `/internal/jobs/invoice-overdue`, `/internal/jobs/agreement-visits`, `/internal/jobs/consolidated-invoices`, `/internal/jobs/imports`, `/internal/jobs/quickbooks-sync` | Scheduled jobs (`X-Internal-Jobs-Token`); not proxied by the Worker |
+| GET    | `/metrics`                                                                                                                                                                                                                                 | Prometheus (bearer token outside development)                       |
+| GET    | `/api/docs/*`                                                                                                                                                                                                                              | Swagger UI                                                          |
 
 ## Request/Response Format
 
