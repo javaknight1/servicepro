@@ -1,6 +1,6 @@
 # ServicePro — Roadmap
 
-**Last Updated**: 2026-11-04 (T251/T252/T213 code done (needs Rob to run setup). T272, T273 fixed (migration 000019 timestamptz); T174 job photos (000020) and T176 signature + service report (000021) done — phase E complete; master CI bundle check fixed.)
+**Last Updated**: 2026-11-04 (T193 imports done (migration 000022). T251/T252/T213 code done (needs Rob to run setup). T272, T273 fixed (migration 000019 timestamptz); T174 job photos (000020) and T176 signature + service report (000021) done — phase E complete; master CI bundle check fixed.)
 
 > **How to read this file.** Every task has an ID (T###). The **Task Index** lists all of them: completed rows
 > (struck through) first by ID, then open rows by Phase → ID. Each open task has exactly one detailed section under
@@ -117,7 +117,7 @@ gated task's section says **MVP Gate: Yes**.
 | C. Getting paid                    | 2027-01-04 → 2027-02-14    | ~~T264~~, T169, T170, T210, ~~T265~~                                                                | 50    | A test tenant is paid by ACH into its own Stripe account               |
 | D. Commercial wedge                | 2027-02-15 → 2027-03-31    | ~~T167~~, ~~T186~~, ~~T187~~, ~~T188~~, ~~T028~~, ~~T029~~, ~~T030~~, ~~T035~~, ~~T235~~, ~~T269~~, ~~T270~~                            | 73    | Agreements generate visits; one consolidated invoice per customer      |
 | E. Proof of service                | 2027-04-01 → 2027-05-01    | ~~T173~~, ~~T174~~, ~~T176~~                                                                            | 40    | A tech completes a visit on a phone; the report is emailed             |
-| F. Integrations                    | 2027-05-02 → 2027-06-13    | T192, T193                                                                                  | 40    | QuickBooks sync and Jobber/HCP import used by design partners          |
+| F. Integrations                    | 2027-05-02 → 2027-06-13    | T192, ~~T193~~                                                                                  | 40    | QuickBooks sync and Jobber/HCP import used by design partners          |
 | G. Launch readiness (alongside)    | 2026-11 → 2027-08          | T218, T205, ~~T206~~, T207, T208, T209, T211, T212, T213, T251, T252, ~~T268~~                        | 34    | Interviews by 2027-01-31; backups, legal, monitoring before 2027-09-07 |
 
 **Gates:** 2026-11-08 honesty gate (D11) · 2027-01-31 interviews done (T218; confirm the buyer and the $99 price or
@@ -356,7 +356,7 @@ stripe-go v87 supports v2 accounts) and the first 4h of T192 (QuickBooks OAuth, 
 | T097     | 11     | Integration    | 4      | Add webhook retry logic                                                                                  |
 | T098     | 11     | Docs           | 3      | Document public API (OpenAPI/Swagger)                                                                    |
 | T192     | 11     | Integration    | 32     | QuickBooks Online sync (customers, invoices, payments; one-way first)                                    |
-| T193     | 11     | Integration    | 8      | Import mappers for Jobber / Housecall Pro exports + generic CSV                                          |
+| ~~T193~~ | ~~11~~ | ~~Integration~~ | ~~8~~  | ~~Import mappers for Jobber / Housecall Pro exports + generic CSV~~                                      |
 | T194     | 11     | Integration    | 12     | Zapier app                                                                                               |
 | T195     | 11     | Integration    | 8      | Wisetack consumer financing                                                                              |
 | T196     | 11     | Integration    | 12     | Gusto payroll / timesheets                                                                               |
@@ -2215,7 +2215,7 @@ QuickBooks (the #1 B2B buying gate), import mappers, and partner integrations in
 - [ ] T097 — Add webhook retry logic
 - [ ] T098 — Document public API (OpenAPI/Swagger)
 - [ ] T192 — QuickBooks Online sync (customers, invoices, payments; one-way first)
-- [ ] T193 — Import mappers for Jobber / Housecall Pro exports + generic CSV
+- [x] T193 — Import mappers for Jobber / Housecall Pro exports + generic CSV ✓ (2026-11-04)
 - [ ] T194 — Zapier app
 - [ ] T195 — Wisetack consumer financing
 - [ ] T196 — Gusto payroll / timesheets
@@ -2293,7 +2293,7 @@ QuickBooks (the #1 B2B buying gate), import mappers, and partner integrations in
 
 #### T193 — Import mappers for Jobber / Housecall Pro exports + generic CSV
 
-**Phase**: 11 · **Category**: Integration · **Hours**: 8 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: T186, T241
+**Phase**: 11 · **Category**: Integration · **Hours**: 8 · **Status**: Done (2026-11-04) · **MVP Gate**: Yes · **Depends on**: T186, T241
 
 **What it is** — New tenants import customers, sites, jobs and open invoices from Jobber or Housecall Pro exports, or any CSV.
 
@@ -2303,6 +2303,8 @@ QuickBooks (the #1 B2B buying gate), import mappers, and partner integrations in
 
 **Notes** — `docs/product/competitive-research-2026-10.md` §2 row 26, §5 MVP #9. MVP plan (2026-10-25): depends on T241 (the import worker actually runs).
 
+
+**Done (2026-11-04)** — `b254a54`…`7d53ab4`, `eba6cda`. `internal/imports` mappers for Jobber (clients, properties, jobs, invoices), Housecall Pro (customer list, jobs report; open invoices from the jobs report) and hand-mapped CSV/XLSX, with loose header matching (assumed layouts listed in `docs/api/imports.md`). Migration 000022: `import_external_refs` (RLS) so re-importing a file skips what it created; sites matched by address, customers by email. `/imports/{entity}` preview (saves nothing) → start → `run` in 25-row transactional batches, time-boxed for Cloud Run's 60 s, resumable (3 attempts). Open invoices import as `sent` with one balance line. F-23: 10 MiB file, 50,000 rows, XLSX 64 MiB unzipped. Import data page linked from onboarding and the customers list. Fixed on merge: imported overdue invoices start their reminder schedule on the import day (a backlog import would have emailed every customer on the next run). Not built: quotes, line items, payment history, recurring schedules, assignments, custom fields, attachments; live Jobber/HCP APIs; non-US customers (the customers table is US-only).
 ---
 
 #### T194 — Zapier app
@@ -3482,6 +3484,7 @@ Dated history from the original "Completed Items" list:
 
 ### 2026-11-04
 
+- **T193** — Jobber / Housecall Pro / CSV-XLSX import with preview, idempotent re-import (migration 000022), chunked resumable runs and F-23 caps; imported invoices' reminders count from the import day. `b254a54`…`eba6cda`.
 - **T251, T252, T213 (code)** — post-deploy smoke job + `make smoke`; Sentry cron check-ins for scheduled jobs and backups; Cloud Run instances × DB pool guard; uptime and budget scripts ready for Rob to run. `81064f6`, `6b992de`, `32f0b0b`.
 - **T176** — Customer signature on the visit page and a service report PDF (photos, materials without prices, signature) emailed idempotently to the customer and site contact; proof-of-service card on the job; migration 000021. `9fe9132`…`2185f1a`. Phase E complete.
 - **T174** — Job photos and attachments: migration 000020, validated/resized/EXIF-stripped uploads with thumbnails, presigned downloads, technician scoping; on job detail and the visit page. `0efd0c1`…`f75717b`.
