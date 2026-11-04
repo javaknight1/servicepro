@@ -126,6 +126,10 @@ const appChunks: Array<[name: string, test: (id: string) => boolean]> = [
         !id.includes('/components/membership/TrialBanner')) ||
       id.includes('/services/userService') ||
       id.includes('/services/paymentsService') ||
+      // QuickBooks (T192): shared with onboarding like paymentsService.
+      id.includes('/services/quickbooksService') ||
+      id.includes('/types/quickbooks') ||
+      id.includes('/utils/timeAgo') ||
       id.includes('/utils/redirect') ||
       id.includes('/utils/tenantSettings') ||
       id.includes('/types/membership') ||
@@ -447,7 +451,8 @@ export const performanceBudgets = {
     'page-dashboard': 10,
     // 21.1 KB on 2026-11-04 after T235 (billing defaults, tax rates) and the
     // membership pages; splitting this group has caused chunk import cycles.
-    'page-settings': 24,
+    // 24.6 KB after T192 (Integrations tab, QuickBooks card).
+    'page-settings': 27,
     'page-auth': 20,
     'vendor-neon-auth': 55,
   },
