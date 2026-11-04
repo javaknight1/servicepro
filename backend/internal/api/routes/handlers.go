@@ -86,6 +86,7 @@ func SetupHandlers(
 
 	// Import/Export handler
 	h.ImportExport = handlers.NewImportExportHandler(svc.Import)
+	h.Imports = handlers.NewImportsHandler(svc.Import)
 
 	// Export handler
 	h.Export = handlers.NewExportHandler(svc.Export)

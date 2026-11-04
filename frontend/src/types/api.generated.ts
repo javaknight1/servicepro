@@ -8051,7 +8051,7 @@ export interface paths {
         put?: never;
         /**
          * Import customers
-         * @description Imports customers from a CSV file (max 5 MiB and 10,000 rows). Files up to 1,000 rows are imported during the request (status completed/failed in the response); larger files are queued (status pending) and imported by the scheduled imports job. Poll GET /customers/import/{job_id} for progress and per-row errors.
+         * @description Imports customers from a CSV file in ServicePro's template layout (max 10 MiB and 50,000 rows; for Jobber, Housecall Pro or other layouts use POST /imports/customers). Files up to 1,000 rows start importing during the request (for up to 20 seconds; status completed/failed in the response when done); the rest is imported by the scheduled imports job (status pending). Poll GET /customers/import/{job_id} for progress and per-row errors.
          */
         post: {
             parameters: {
@@ -8376,6 +8376,375 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/imports/{entity}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List imports
+         * @description The tenant's 20 most recent imports of this entity, newest first (no row errors). Permission as for GET /imports/{entity}/{job_id}.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Entity */
+                    entity: "customers" | "sites" | "jobs" | "invoices";
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ImportJobListResponse"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Internal Server Error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * Start an import
+         * @description Uploads the same form as the preview and starts the import: the rows are stored as a job and imported in chunks of up to 20 seconds (the first one during this request; POST /imports/{entity}/{job_id}/run or the scheduled imports job runs the rest). Re-importing the same file is safe: customers, jobs and invoices it created before are recognised by their old ID (or email / invoice number) and skipped, sites by address. Rows that fail are listed in the job's errors. 400 missing_columns when the mapping lacks a required field. Permission as for the preview.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description What the file holds */
+                    entity: "customers" | "sites" | "jobs" | "invoices";
+                };
+                cookie?: never;
+            };
+            requestBody: components["requestBodies"]["postImports_entity_"];
+            responses: {
+                /** @description Accepted */
+                202: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ImportStatusResponse"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Request Entity Too Large */
+                413: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Internal Server Error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/imports/{entity}/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Preview an import
+         * @description Reads an uploaded CSV or XLSX (max 10 MiB and 50,000 rows; first sheet of a workbook) exported from Jobber, Housecall Pro or anywhere else, maps its columns to the entity's fields (automatically by source, or through the mapping form field: a JSON object of field key → column header) and validates every row. Returns the headers, the fields, the mapping used, what it still lacks, counts of valid/skipped/failing rows, the first 20 rows as they would be saved and the first 100 row problems. Nothing is saved. Customers, sites, jobs and invoices are matched to existing customers only when the import runs. Permission: customers.create (customers), customers.update (sites), jobs.create (jobs), invoices.create (invoices).
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description What the file holds */
+                    entity: "customers" | "sites" | "jobs" | "invoices";
+                };
+                cookie?: never;
+            };
+            requestBody: components["requestBodies"]["postImports_entity_"];
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ImportPreviewResponse"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Request Entity Too Large */
+                413: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/imports/{entity}/{job_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get an import
+         * @description Progress, counts (successful, skipped, failed) and the first 100 row errors of one of the tenant's imports of this entity. Permission: customers.list (customers, sites), jobs.list, invoices.list.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Entity */
+                    entity: "customers" | "sites" | "jobs" | "invoices";
+                    /** @description Import job ID */
+                    job_id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ImportStatusResponse"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Internal Server Error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/imports/{entity}/{job_id}/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Continue an import
+         * @description Claims the import (if it is pending) and imports rows for up to 20 seconds, then returns its status. The import page calls this until the job is completed or failed; a job another runner holds, or one already finished, is returned as it is. Permission as for the preview.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Entity */
+                    entity: "customers" | "sites" | "jobs" | "invoices";
+                    /** @description Import job ID */
+                    job_id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ImportStatusResponse"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Internal Server Error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/internal/jobs/agreement-visits": {
         parameters: {
             query?: never;
@@ -8525,7 +8894,7 @@ export interface paths {
         put?: never;
         /**
          * Run CSV imports job
-         * @description Internal job endpoint (auth: X-Internal-Jobs-Token header = INTERNAL_JOBS_SECRET; 404 when the secret is unset). Runs queued customer CSV imports for every tenant: each job is claimed atomically (pending → processing, FOR UPDATE SKIP LOCKED) before it runs, so overlapping runs never import a job twice; each job imports into its own tenant only. Jobs stuck in processing for 15 minutes are marked failed. Runs up to 20 jobs or 4 minutes per call. Mounted at the server root (/internal/jobs/imports), outside /api.
+         * @description Internal job endpoint (auth: X-Internal-Jobs-Token header = INTERNAL_JOBS_SECRET; 404 when the secret is unset). Runs queued imports (customer CSV template and mapped Jobber/Housecall Pro/CSV imports) for every tenant: each job is claimed atomically (pending → processing, FOR UPDATE SKIP LOCKED) before it runs, so overlapping runs never import a job twice; each job imports into its own tenant only. Imports run in chunks: a job not finished when the pass ends (40 s) goes back to pending and continues on the next call. A job stuck in processing for 5 minutes resumes from its saved cursor (mapped imports, up to 3 attempts) or is marked failed (customer-template imports). Runs up to 20 jobs per call. Mounted at the server root (/internal/jobs/imports), outside /api.
          */
         post: {
             parameters: {
@@ -14376,24 +14745,106 @@ export interface components {
             row_data?: string;
             row_number?: number;
         };
+        "github_com_javaknight1_servicepro_backend_internal_models.ImportField": {
+            /**
+             * @description Group: at least one field of the group must be mapped.
+             * @example name
+             */
+            group?: string;
+            help?: string;
+            /** @example email */
+            key?: string;
+            /** @example Email */
+            label?: string;
+            required?: boolean;
+        };
+        "github_com_javaknight1_servicepro_backend_internal_models.ImportJobListResponse": {
+            jobs?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ImportStatusResponse"][];
+        };
         /** @enum {string} */
         "github_com_javaknight1_servicepro_backend_internal_models.ImportJobStatus": "pending" | "processing" | "completed" | "failed" | "cancelled";
+        "github_com_javaknight1_servicepro_backend_internal_models.ImportPreviewResponse": {
+            /** @example customers */
+            entity?: string;
+            /** @example 2 */
+            error_rows?: number;
+            /** @description Errors are the first row problems across the whole file. */
+            errors?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ImportRowError"][];
+            /** @description Fields are the target fields the columns can map to. */
+            fields?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ImportField"][];
+            /** @example clients.csv */
+            filename?: string;
+            /** @description Headers are the file's column headers (repeats suffixed " (2)"). */
+            headers?: string[];
+            /** @description Mapping is field key → header, as used for this preview. */
+            mapping?: {
+                [key: string]: string;
+            };
+            /**
+             * @description Missing lists what the mapping lacks; the import can't start until
+             *     it is empty.
+             */
+            missing?: string[];
+            /** @description Rows are the first rows as they will be saved. */
+            rows?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ImportPreviewRow"][];
+            /** @example 1 */
+            skip_rows?: number;
+            /** @example jobber */
+            source?: string;
+            /** @example 120 */
+            total_rows?: number;
+            /**
+             * @description ValidRows will be imported (or recognised as already imported);
+             *     SkipRows are valid but not imported (e.g. invoices already paid);
+             *     ErrorRows fail.
+             * @example 117
+             */
+            valid_rows?: number;
+        };
+        "github_com_javaknight1_servicepro_backend_internal_models.ImportPreviewRow": {
+            errors?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ImportRowError"][];
+            /** @example 2 */
+            row?: number;
+            /**
+             * @description Skip is why a valid row will not be imported.
+             * @example nothing left to pay
+             */
+            skip?: string;
+            values?: {
+                [key: string]: string;
+            };
+        };
         "github_com_javaknight1_servicepro_backend_internal_models.ImportResponse": {
             job_id?: string;
             message?: string;
             status?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ImportJobStatus"];
             total_rows?: number;
         };
+        "github_com_javaknight1_servicepro_backend_internal_models.ImportRowError": {
+            /** @example email */
+            field?: string;
+            /** @example email is required */
+            message?: string;
+            /** @example 5 */
+            row?: number;
+        };
         "github_com_javaknight1_servicepro_backend_internal_models.ImportStatusResponse": {
             completed_at?: string;
             created_at?: string;
+            /** @example customers */
+            entity?: string;
             error_summary?: string;
             errors?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ImportErrorResponse"][];
             failed_rows?: number;
+            /** @example clients.csv */
+            filename?: string;
             job_id?: string;
             processed_rows?: number;
             /** @description Percentage 0-100 */
             progress?: number;
+            skipped_rows?: number;
+            /** @example jobber */
+            source?: string;
             started_at?: string;
             status?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ImportJobStatus"];
             successful_rows?: number;
@@ -16269,6 +16720,24 @@ export interface components {
         "internal_api_handlers.StartExportRequest": {
             content: {
                 "application/json": components["schemas"]["internal_api_handlers.StartExportRequest"];
+            };
+        };
+        postImports_entity_: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description CSV or XLSX file
+                     */
+                    file: string;
+                    /**
+                     * @description Where the file came from (default generic)
+                     * @enum {string}
+                     */
+                    source?: "generic" | "jobber" | "housecall_pro";
+                    /** @description JSON object of field key → column header; replaces the automatic mapping */
+                    mapping?: string;
+                };
             };
         };
         /** @description Quote details */

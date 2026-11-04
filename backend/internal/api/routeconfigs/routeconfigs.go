@@ -154,6 +154,7 @@ type Handlers struct {
 	Membership        *handlers.MembershipHandler
 	Export            *handlers.ExportHandler
 	ImportExport      *handlers.ImportExportHandler
+	Imports           *handlers.ImportsHandler // mapped imports (T193)
 	ProfilePicture    *handlers.ProfilePictureHandler
 	// JobAttachment is nil when no object storage is configured (T174).
 	JobAttachment *handlers.JobAttachmentHandler

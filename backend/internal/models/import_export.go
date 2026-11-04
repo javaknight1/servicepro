@@ -88,16 +88,99 @@ type ImportResponse struct {
 type ImportStatusResponse struct {
 	JobID          uuid.UUID             `json:"job_id"`
 	Status         ImportJobStatus       `json:"status"`
+	Source         string                `json:"source" example:"jobber"`
+	Entity         string                `json:"entity" example:"customers"`
+	Filename       string                `json:"filename" example:"clients.csv"`
 	TotalRows      int                   `json:"total_rows"`
 	ProcessedRows  int                   `json:"processed_rows"`
 	SuccessfulRows int                   `json:"successful_rows"`
 	FailedRows     int                   `json:"failed_rows"`
+	SkippedRows    int                   `json:"skipped_rows"`
 	Progress       float64               `json:"progress"` // Percentage 0-100
 	ErrorSummary   *string               `json:"error_summary,omitempty"`
 	Errors         []ImportErrorResponse `json:"errors,omitempty"`
 	StartedAt      *time.Time            `json:"started_at,omitempty"`
 	CompletedAt    *time.Time            `json:"completed_at,omitempty"`
 	CreatedAt      time.Time             `json:"created_at"`
+}
+
+// ImportStatusFromJob builds the status response of a job with its first
+// row errors.
+func ImportStatusFromJob(job *ImportJob, errs []ImportError) ImportStatusResponse {
+	progress := 0.0
+	if job.TotalRows > 0 {
+		progress = float64(job.ProcessedRows) / float64(job.TotalRows) * 100
+	}
+	out := make([]ImportErrorResponse, len(errs))
+	for i, e := range errs {
+		out[i] = ImportErrorResponse{RowNumber: e.RowNumber, Field: e.Field, Error: e.Error, RowData: e.RowData}
+	}
+	return ImportStatusResponse{
+		JobID: job.ID, Status: job.Status, Source: job.Source, Entity: job.Entity, Filename: job.Filename,
+		TotalRows: job.TotalRows, ProcessedRows: job.ProcessedRows, SuccessfulRows: job.SuccessfulRows,
+		FailedRows: job.FailedRows, SkippedRows: job.SkippedRows, Progress: progress,
+		ErrorSummary: job.ErrorSummary, Errors: out, StartedAt: job.StartedAt, CompletedAt: job.CompletedAt,
+		CreatedAt: job.CreatedAt,
+	}
+}
+
+// ImportPreviewResponse is POST /imports/{entity}/preview (T193): how the
+// file maps and what its first rows become, before anything is saved.
+type ImportPreviewResponse struct {
+	Source   string `json:"source" example:"jobber"`
+	Entity   string `json:"entity" example:"customers"`
+	Filename string `json:"filename" example:"clients.csv"`
+	// Headers are the file's column headers (repeats suffixed " (2)").
+	Headers []string `json:"headers"`
+	// Fields are the target fields the columns can map to.
+	Fields []ImportField `json:"fields"`
+	// Mapping is field key → header, as used for this preview.
+	Mapping map[string]string `json:"mapping"`
+	// Missing lists what the mapping lacks; the import can't start until
+	// it is empty.
+	Missing   []string `json:"missing"`
+	TotalRows int      `json:"total_rows" example:"120"`
+	// ValidRows will be imported (or recognised as already imported);
+	// SkipRows are valid but not imported (e.g. invoices already paid);
+	// ErrorRows fail.
+	ValidRows int `json:"valid_rows" example:"117"`
+	SkipRows  int `json:"skip_rows" example:"1"`
+	ErrorRows int `json:"error_rows" example:"2"`
+	// Rows are the first rows as they will be saved.
+	Rows []ImportPreviewRow `json:"rows"`
+	// Errors are the first row problems across the whole file.
+	Errors []ImportRowError `json:"errors"`
+}
+
+// ImportField is one target field of an import.
+type ImportField struct {
+	Key      string `json:"key" example:"email"`
+	Label    string `json:"label" example:"Email"`
+	Required bool   `json:"required"`
+	// Group: at least one field of the group must be mapped.
+	Group string `json:"group,omitempty" example:"name"`
+	Help  string `json:"help,omitempty"`
+}
+
+// ImportPreviewRow is one row of a preview, normalised.
+type ImportPreviewRow struct {
+	Row    int               `json:"row" example:"2"`
+	Values map[string]string `json:"values"`
+	Errors []ImportRowError  `json:"errors,omitempty"`
+	// Skip is why a valid row will not be imported.
+	Skip string `json:"skip,omitempty" example:"nothing left to pay"`
+}
+
+// ImportRowError is one problem with one row of a preview.
+type ImportRowError struct {
+	Row     int    `json:"row" example:"5"`
+	Field   string `json:"field,omitempty" example:"email"`
+	Message string `json:"message" example:"email is required"`
+}
+
+// ImportJobListResponse is GET /imports/{entity}.
+type ImportJobListResponse struct {
+	Jobs []ImportStatusResponse `json:"jobs"`
 }
 
 // ImportExternalRef records which tenant row an imported external record

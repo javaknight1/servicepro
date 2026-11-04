@@ -6698,7 +6698,7 @@ const docTemplate = `{
         },
         "/customers/import": {
             "post": {
-                "description": "Imports customers from a CSV file (max 5 MiB and 10,000 rows). Files up to 1,000 rows are imported during the request (status completed/failed in the response); larger files are queued (status pending) and imported by the scheduled imports job. Poll GET /customers/import/{job_id} for progress and per-row errors.",
+                "description": "Imports customers from a CSV file in ServicePro's template layout (max 10 MiB and 50,000 rows; for Jobber, Housecall Pro or other layouts use POST /imports/customers). Files up to 1,000 rows start importing during the request (for up to 20 seconds; status completed/failed in the response when done); the rest is imported by the scheduled imports job (status pending). Poll GET /customers/import/{job_id} for progress and per-row errors.",
                 "consumes": [
                     "multipart/form-data"
                 ],
@@ -6943,6 +6943,386 @@ const docTemplate = `{
                 }
             }
         },
+        "/imports/{entity}": {
+            "get": {
+                "description": "The tenant's 20 most recent imports of this entity, newest first (no row errors). Permission as for GET /imports/{entity}/{job_id}.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Imports"
+                ],
+                "summary": "List imports",
+                "parameters": [
+                    {
+                        "enum": [
+                            "customers",
+                            "sites",
+                            "jobs",
+                            "invoices"
+                        ],
+                        "type": "string",
+                        "description": "Entity",
+                        "name": "entity",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ImportJobListResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "description": "Uploads the same form as the preview and starts the import: the rows are stored as a job and imported in chunks of up to 20 seconds (the first one during this request; POST /imports/{entity}/{job_id}/run or the scheduled imports job runs the rest). Re-importing the same file is safe: customers, jobs and invoices it created before are recognised by their old ID (or email / invoice number) and skipped, sites by address. Rows that fail are listed in the job's errors. 400 missing_columns when the mapping lacks a required field. Permission as for the preview.",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Imports"
+                ],
+                "summary": "Start an import",
+                "parameters": [
+                    {
+                        "enum": [
+                            "customers",
+                            "sites",
+                            "jobs",
+                            "invoices"
+                        ],
+                        "type": "string",
+                        "description": "What the file holds",
+                        "name": "entity",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "file",
+                        "description": "CSV or XLSX file",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "enum": [
+                            "generic",
+                            "jobber",
+                            "housecall_pro"
+                        ],
+                        "type": "string",
+                        "description": "Where the file came from (default generic)",
+                        "name": "source",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
+                        "description": "JSON object of field key → column header; replaces the automatic mapping",
+                        "name": "mapping",
+                        "in": "formData"
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "Accepted",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ImportStatusResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "413": {
+                        "description": "Request Entity Too Large",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/imports/{entity}/preview": {
+            "post": {
+                "description": "Reads an uploaded CSV or XLSX (max 10 MiB and 50,000 rows; first sheet of a workbook) exported from Jobber, Housecall Pro or anywhere else, maps its columns to the entity's fields (automatically by source, or through the mapping form field: a JSON object of field key → column header) and validates every row. Returns the headers, the fields, the mapping used, what it still lacks, counts of valid/skipped/failing rows, the first 20 rows as they would be saved and the first 100 row problems. Nothing is saved. Customers, sites, jobs and invoices are matched to existing customers only when the import runs. Permission: customers.create (customers), customers.update (sites), jobs.create (jobs), invoices.create (invoices).",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Imports"
+                ],
+                "summary": "Preview an import",
+                "parameters": [
+                    {
+                        "enum": [
+                            "customers",
+                            "sites",
+                            "jobs",
+                            "invoices"
+                        ],
+                        "type": "string",
+                        "description": "What the file holds",
+                        "name": "entity",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "file",
+                        "description": "CSV or XLSX file",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "enum": [
+                            "generic",
+                            "jobber",
+                            "housecall_pro"
+                        ],
+                        "type": "string",
+                        "description": "Where the file came from (default generic)",
+                        "name": "source",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
+                        "description": "JSON object of field key → column header; replaces the automatic mapping",
+                        "name": "mapping",
+                        "in": "formData"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ImportPreviewResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "413": {
+                        "description": "Request Entity Too Large",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/imports/{entity}/{job_id}": {
+            "get": {
+                "description": "Progress, counts (successful, skipped, failed) and the first 100 row errors of one of the tenant's imports of this entity. Permission: customers.list (customers, sites), jobs.list, invoices.list.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Imports"
+                ],
+                "summary": "Get an import",
+                "parameters": [
+                    {
+                        "enum": [
+                            "customers",
+                            "sites",
+                            "jobs",
+                            "invoices"
+                        ],
+                        "type": "string",
+                        "description": "Entity",
+                        "name": "entity",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Import job ID",
+                        "name": "job_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ImportStatusResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/imports/{entity}/{job_id}/run": {
+            "post": {
+                "description": "Claims the import (if it is pending) and imports rows for up to 20 seconds, then returns its status. The import page calls this until the job is completed or failed; a job another runner holds, or one already finished, is returned as it is. Permission as for the preview.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Imports"
+                ],
+                "summary": "Continue an import",
+                "parameters": [
+                    {
+                        "enum": [
+                            "customers",
+                            "sites",
+                            "jobs",
+                            "invoices"
+                        ],
+                        "type": "string",
+                        "description": "Entity",
+                        "name": "entity",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Import job ID",
+                        "name": "job_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ImportStatusResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
         "/internal/jobs/agreement-visits": {
             "post": {
                 "description": "Internal job endpoint (auth: X-Internal-Jobs-Token header = INTERNAL_JOBS_SECRET; 404 when the secret is unset). Creates a scheduled job for every visit of every active service agreement over the next 14 days (each tenant's local dates). Idempotent: each (agreement, date) is claimed once. Mounted at the server root (/internal/jobs/agreement-visits), outside /api.",
@@ -7039,7 +7419,7 @@ const docTemplate = `{
         },
         "/internal/jobs/imports": {
             "post": {
-                "description": "Internal job endpoint (auth: X-Internal-Jobs-Token header = INTERNAL_JOBS_SECRET; 404 when the secret is unset). Runs queued customer CSV imports for every tenant: each job is claimed atomically (pending → processing, FOR UPDATE SKIP LOCKED) before it runs, so overlapping runs never import a job twice; each job imports into its own tenant only. Jobs stuck in processing for 15 minutes are marked failed. Runs up to 20 jobs or 4 minutes per call. Mounted at the server root (/internal/jobs/imports), outside /api.",
+                "description": "Internal job endpoint (auth: X-Internal-Jobs-Token header = INTERNAL_JOBS_SECRET; 404 when the secret is unset). Runs queued imports (customer CSV template and mapped Jobber/Housecall Pro/CSV imports) for every tenant: each job is claimed atomically (pending → processing, FOR UPDATE SKIP LOCKED) before it runs, so overlapping runs never import a job twice; each job imports into its own tenant only. Imports run in chunks: a job not finished when the pass ends (40 s) goes back to pending and continues on the next call. A job stuck in processing for 5 minutes resumes from its saved cursor (mapped imports, up to 3 attempts) or is marked failed (customer-template imports). Runs up to 20 jobs per call. Mounted at the server root (/internal/jobs/imports), outside /api.",
                 "produces": [
                     "application/json"
                 ],
@@ -13391,6 +13771,41 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_javaknight1_servicepro_backend_internal_models.ImportField": {
+            "type": "object",
+            "properties": {
+                "group": {
+                    "description": "Group: at least one field of the group must be mapped.",
+                    "type": "string",
+                    "example": "name"
+                },
+                "help": {
+                    "type": "string"
+                },
+                "key": {
+                    "type": "string",
+                    "example": "email"
+                },
+                "label": {
+                    "type": "string",
+                    "example": "Email"
+                },
+                "required": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "github_com_javaknight1_servicepro_backend_internal_models.ImportJobListResponse": {
+            "type": "object",
+            "properties": {
+                "jobs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ImportStatusResponse"
+                    }
+                }
+            }
+        },
         "github_com_javaknight1_servicepro_backend_internal_models.ImportJobStatus": {
             "type": "string",
             "enum": [
@@ -13407,6 +13822,108 @@ const docTemplate = `{
                 "ImportJobStatusFailed",
                 "ImportJobStatusCancelled"
             ]
+        },
+        "github_com_javaknight1_servicepro_backend_internal_models.ImportPreviewResponse": {
+            "type": "object",
+            "properties": {
+                "entity": {
+                    "type": "string",
+                    "example": "customers"
+                },
+                "error_rows": {
+                    "type": "integer",
+                    "example": 2
+                },
+                "errors": {
+                    "description": "Errors are the first row problems across the whole file.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ImportRowError"
+                    }
+                },
+                "fields": {
+                    "description": "Fields are the target fields the columns can map to.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ImportField"
+                    }
+                },
+                "filename": {
+                    "type": "string",
+                    "example": "clients.csv"
+                },
+                "headers": {
+                    "description": "Headers are the file's column headers (repeats suffixed \" (2)\").",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "mapping": {
+                    "description": "Mapping is field key → header, as used for this preview.",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "missing": {
+                    "description": "Missing lists what the mapping lacks; the import can't start until\nit is empty.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "rows": {
+                    "description": "Rows are the first rows as they will be saved.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ImportPreviewRow"
+                    }
+                },
+                "skip_rows": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "source": {
+                    "type": "string",
+                    "example": "jobber"
+                },
+                "total_rows": {
+                    "type": "integer",
+                    "example": 120
+                },
+                "valid_rows": {
+                    "description": "ValidRows will be imported (or recognised as already imported);\nSkipRows are valid but not imported (e.g. invoices already paid);\nErrorRows fail.",
+                    "type": "integer",
+                    "example": 117
+                }
+            }
+        },
+        "github_com_javaknight1_servicepro_backend_internal_models.ImportPreviewRow": {
+            "type": "object",
+            "properties": {
+                "errors": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ImportRowError"
+                    }
+                },
+                "row": {
+                    "type": "integer",
+                    "example": 2
+                },
+                "skip": {
+                    "description": "Skip is why a valid row will not be imported.",
+                    "type": "string",
+                    "example": "nothing left to pay"
+                },
+                "values": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                }
+            }
         },
         "github_com_javaknight1_servicepro_backend_internal_models.ImportResponse": {
             "type": "object",
@@ -13425,6 +13942,23 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_javaknight1_servicepro_backend_internal_models.ImportRowError": {
+            "type": "object",
+            "properties": {
+                "field": {
+                    "type": "string",
+                    "example": "email"
+                },
+                "message": {
+                    "type": "string",
+                    "example": "email is required"
+                },
+                "row": {
+                    "type": "integer",
+                    "example": 5
+                }
+            }
+        },
         "github_com_javaknight1_servicepro_backend_internal_models.ImportStatusResponse": {
             "type": "object",
             "properties": {
@@ -13433,6 +13967,10 @@ const docTemplate = `{
                 },
                 "created_at": {
                     "type": "string"
+                },
+                "entity": {
+                    "type": "string",
+                    "example": "customers"
                 },
                 "error_summary": {
                     "type": "string"
@@ -13446,6 +13984,10 @@ const docTemplate = `{
                 "failed_rows": {
                     "type": "integer"
                 },
+                "filename": {
+                    "type": "string",
+                    "example": "clients.csv"
+                },
                 "job_id": {
                     "type": "string"
                 },
@@ -13455,6 +13997,13 @@ const docTemplate = `{
                 "progress": {
                     "description": "Percentage 0-100",
                     "type": "number"
+                },
+                "skipped_rows": {
+                    "type": "integer"
+                },
+                "source": {
+                    "type": "string",
+                    "example": "jobber"
                 },
                 "started_at": {
                     "type": "string"

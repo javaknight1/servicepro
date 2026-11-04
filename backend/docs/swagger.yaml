@@ -1452,6 +1452,30 @@ definitions:
       row_number:
         type: integer
     type: object
+  github_com_javaknight1_servicepro_backend_internal_models.ImportField:
+    properties:
+      group:
+        description: 'Group: at least one field of the group must be mapped.'
+        example: name
+        type: string
+      help:
+        type: string
+      key:
+        example: email
+        type: string
+      label:
+        example: Email
+        type: string
+      required:
+        type: boolean
+    type: object
+  github_com_javaknight1_servicepro_backend_internal_models.ImportJobListResponse:
+    properties:
+      jobs:
+        items:
+          $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ImportStatusResponse'
+        type: array
+    type: object
   github_com_javaknight1_servicepro_backend_internal_models.ImportJobStatus:
     enum:
     - pending
@@ -1466,6 +1490,84 @@ definitions:
     - ImportJobStatusCompleted
     - ImportJobStatusFailed
     - ImportJobStatusCancelled
+  github_com_javaknight1_servicepro_backend_internal_models.ImportPreviewResponse:
+    properties:
+      entity:
+        example: customers
+        type: string
+      error_rows:
+        example: 2
+        type: integer
+      errors:
+        description: Errors are the first row problems across the whole file.
+        items:
+          $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ImportRowError'
+        type: array
+      fields:
+        description: Fields are the target fields the columns can map to.
+        items:
+          $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ImportField'
+        type: array
+      filename:
+        example: clients.csv
+        type: string
+      headers:
+        description: Headers are the file's column headers (repeats suffixed " (2)").
+        items:
+          type: string
+        type: array
+      mapping:
+        additionalProperties:
+          type: string
+        description: Mapping is field key → header, as used for this preview.
+        type: object
+      missing:
+        description: |-
+          Missing lists what the mapping lacks; the import can't start until
+          it is empty.
+        items:
+          type: string
+        type: array
+      rows:
+        description: Rows are the first rows as they will be saved.
+        items:
+          $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ImportPreviewRow'
+        type: array
+      skip_rows:
+        example: 1
+        type: integer
+      source:
+        example: jobber
+        type: string
+      total_rows:
+        example: 120
+        type: integer
+      valid_rows:
+        description: |-
+          ValidRows will be imported (or recognised as already imported);
+          SkipRows are valid but not imported (e.g. invoices already paid);
+          ErrorRows fail.
+        example: 117
+        type: integer
+    type: object
+  github_com_javaknight1_servicepro_backend_internal_models.ImportPreviewRow:
+    properties:
+      errors:
+        items:
+          $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ImportRowError'
+        type: array
+      row:
+        example: 2
+        type: integer
+      skip:
+        description: Skip is why a valid row will not be imported.
+        example: nothing left to pay
+        type: string
+      values:
+        additionalProperties:
+          type: string
+        type: object
+    type: object
   github_com_javaknight1_servicepro_backend_internal_models.ImportResponse:
     properties:
       job_id:
@@ -1477,11 +1579,26 @@ definitions:
       total_rows:
         type: integer
     type: object
+  github_com_javaknight1_servicepro_backend_internal_models.ImportRowError:
+    properties:
+      field:
+        example: email
+        type: string
+      message:
+        example: email is required
+        type: string
+      row:
+        example: 5
+        type: integer
+    type: object
   github_com_javaknight1_servicepro_backend_internal_models.ImportStatusResponse:
     properties:
       completed_at:
         type: string
       created_at:
+        type: string
+      entity:
+        example: customers
         type: string
       error_summary:
         type: string
@@ -1491,6 +1608,9 @@ definitions:
         type: array
       failed_rows:
         type: integer
+      filename:
+        example: clients.csv
+        type: string
       job_id:
         type: string
       processed_rows:
@@ -1498,6 +1618,11 @@ definitions:
       progress:
         description: Percentage 0-100
         type: number
+      skipped_rows:
+        type: integer
+      source:
+        example: jobber
+        type: string
       started_at:
         type: string
       status:
@@ -9634,11 +9759,12 @@ paths:
     post:
       consumes:
       - multipart/form-data
-      description: Imports customers from a CSV file (max 5 MiB and 10,000 rows).
-        Files up to 1,000 rows are imported during the request (status completed/failed
-        in the response); larger files are queued (status pending) and imported by
-        the scheduled imports job. Poll GET /customers/import/{job_id} for progress
-        and per-row errors.
+      description: Imports customers from a CSV file in ServicePro's template layout
+        (max 10 MiB and 50,000 rows; for Jobber, Housecall Pro or other layouts use
+        POST /imports/customers). Files up to 1,000 rows start importing during the
+        request (for up to 20 seconds; status completed/failed in the response when
+        done); the rest is imported by the scheduled imports job (status pending).
+        Poll GET /customers/import/{job_id} for progress and per-row errors.
       parameters:
       - description: CSV file to import
         in: formData
@@ -9799,6 +9925,283 @@ paths:
       summary: Readiness probe
       tags:
       - Health
+  /imports/{entity}:
+    get:
+      description: The tenant's 20 most recent imports of this entity, newest first
+        (no row errors). Permission as for GET /imports/{entity}/{job_id}.
+      parameters:
+      - description: Entity
+        enum:
+        - customers
+        - sites
+        - jobs
+        - invoices
+        in: path
+        name: entity
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ImportJobListResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List imports
+      tags:
+      - Imports
+    post:
+      consumes:
+      - multipart/form-data
+      description: 'Uploads the same form as the preview and starts the import: the
+        rows are stored as a job and imported in chunks of up to 20 seconds (the first
+        one during this request; POST /imports/{entity}/{job_id}/run or the scheduled
+        imports job runs the rest). Re-importing the same file is safe: customers,
+        jobs and invoices it created before are recognised by their old ID (or email
+        / invoice number) and skipped, sites by address. Rows that fail are listed
+        in the job''s errors. 400 missing_columns when the mapping lacks a required
+        field. Permission as for the preview.'
+      parameters:
+      - description: What the file holds
+        enum:
+        - customers
+        - sites
+        - jobs
+        - invoices
+        in: path
+        name: entity
+        required: true
+        type: string
+      - description: CSV or XLSX file
+        in: formData
+        name: file
+        required: true
+        type: file
+      - description: Where the file came from (default generic)
+        enum:
+        - generic
+        - jobber
+        - housecall_pro
+        in: formData
+        name: source
+        type: string
+      - description: JSON object of field key → column header; replaces the automatic
+          mapping
+        in: formData
+        name: mapping
+        type: string
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: Accepted
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ImportStatusResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "413":
+          description: Request Entity Too Large
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Start an import
+      tags:
+      - Imports
+  /imports/{entity}/{job_id}:
+    get:
+      description: 'Progress, counts (successful, skipped, failed) and the first 100
+        row errors of one of the tenant''s imports of this entity. Permission: customers.list
+        (customers, sites), jobs.list, invoices.list.'
+      parameters:
+      - description: Entity
+        enum:
+        - customers
+        - sites
+        - jobs
+        - invoices
+        in: path
+        name: entity
+        required: true
+        type: string
+      - description: Import job ID
+        in: path
+        name: job_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ImportStatusResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get an import
+      tags:
+      - Imports
+  /imports/{entity}/{job_id}/run:
+    post:
+      description: Claims the import (if it is pending) and imports rows for up to
+        20 seconds, then returns its status. The import page calls this until the
+        job is completed or failed; a job another runner holds, or one already finished,
+        is returned as it is. Permission as for the preview.
+      parameters:
+      - description: Entity
+        enum:
+        - customers
+        - sites
+        - jobs
+        - invoices
+        in: path
+        name: entity
+        required: true
+        type: string
+      - description: Import job ID
+        in: path
+        name: job_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ImportStatusResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Continue an import
+      tags:
+      - Imports
+  /imports/{entity}/preview:
+    post:
+      consumes:
+      - multipart/form-data
+      description: 'Reads an uploaded CSV or XLSX (max 10 MiB and 50,000 rows; first
+        sheet of a workbook) exported from Jobber, Housecall Pro or anywhere else,
+        maps its columns to the entity''s fields (automatically by source, or through
+        the mapping form field: a JSON object of field key → column header) and validates
+        every row. Returns the headers, the fields, the mapping used, what it still
+        lacks, counts of valid/skipped/failing rows, the first 20 rows as they would
+        be saved and the first 100 row problems. Nothing is saved. Customers, sites,
+        jobs and invoices are matched to existing customers only when the import runs.
+        Permission: customers.create (customers), customers.update (sites), jobs.create
+        (jobs), invoices.create (invoices).'
+      parameters:
+      - description: What the file holds
+        enum:
+        - customers
+        - sites
+        - jobs
+        - invoices
+        in: path
+        name: entity
+        required: true
+        type: string
+      - description: CSV or XLSX file
+        in: formData
+        name: file
+        required: true
+        type: file
+      - description: Where the file came from (default generic)
+        enum:
+        - generic
+        - jobber
+        - housecall_pro
+        in: formData
+        name: source
+        type: string
+      - description: JSON object of field key → column header; replaces the automatic
+          mapping
+        in: formData
+        name: mapping
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ImportPreviewResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "413":
+          description: Request Entity Too Large
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Preview an import
+      tags:
+      - Imports
   /internal/jobs/agreement-visits:
     post:
       description: 'Internal job endpoint (auth: X-Internal-Jobs-Token header = INTERNAL_JOBS_SECRET;
@@ -9874,12 +10277,16 @@ paths:
   /internal/jobs/imports:
     post:
       description: 'Internal job endpoint (auth: X-Internal-Jobs-Token header = INTERNAL_JOBS_SECRET;
-        404 when the secret is unset). Runs queued customer CSV imports for every
-        tenant: each job is claimed atomically (pending → processing, FOR UPDATE SKIP
-        LOCKED) before it runs, so overlapping runs never import a job twice; each
-        job imports into its own tenant only. Jobs stuck in processing for 15 minutes
-        are marked failed. Runs up to 20 jobs or 4 minutes per call. Mounted at the
-        server root (/internal/jobs/imports), outside /api.'
+        404 when the secret is unset). Runs queued imports (customer CSV template
+        and mapped Jobber/Housecall Pro/CSV imports) for every tenant: each job is
+        claimed atomically (pending → processing, FOR UPDATE SKIP LOCKED) before it
+        runs, so overlapping runs never import a job twice; each job imports into
+        its own tenant only. Imports run in chunks: a job not finished when the pass
+        ends (40 s) goes back to pending and continues on the next call. A job stuck
+        in processing for 5 minutes resumes from its saved cursor (mapped imports,
+        up to 3 attempts) or is marked failed (customer-template imports). Runs up
+        to 20 jobs per call. Mounted at the server root (/internal/jobs/imports),
+        outside /api.'
       parameters:
       - description: Internal jobs secret
         in: header

@@ -33,12 +33,13 @@ func NewImportExportHandler(
 	}
 }
 
-// importInlineTimeout bounds an import run inside the upload request.
-const importInlineTimeout = 2 * time.Minute
+// importInlineTimeout bounds an import run inside the upload request (the
+// chunk itself stops after services.ImportInlineBudget).
+const importInlineTimeout = services.ImportInlineBudget + 10*time.Second
 
 // ImportCustomers handles customer import
 // @Summary		Import customers
-// @Description	Imports customers from a CSV file (max 5 MiB and 10,000 rows). Files up to 1,000 rows are imported during the request (status completed/failed in the response); larger files are queued (status pending) and imported by the scheduled imports job. Poll GET /customers/import/{job_id} for progress and per-row errors.
+// @Description	Imports customers from a CSV file in ServicePro's template layout (max 10 MiB and 50,000 rows; for Jobber, Housecall Pro or other layouts use POST /imports/customers). Files up to 1,000 rows start importing during the request (for up to 20 seconds; status completed/failed in the response when done); the rest is imported by the scheduled imports job (status pending). Poll GET /customers/import/{job_id} for progress and per-row errors.
 // @Tags			Import/Export
 // @Accept			multipart/form-data
 // @Produce		json
@@ -216,13 +217,15 @@ func (h *ImportExportHandler) ImportCustomers(c *gin.Context) {
 		if claimed, err := h.importService.ClaimImportJob(runCtx, job.ID); err != nil {
 			logging.Error(ctx, "[IMPORT-HANDLER] Inline claim failed; left for the imports job", map[string]any{"error": err.Error(), "job_id": job.ID.String()})
 		} else if claimed != nil {
-			finished, err := h.importService.RunImportJob(runCtx, claimed)
+			finished, err := h.importService.RunImportChunk(runCtx, claimed, services.ImportInlineBudget)
 			if err != nil {
 				apierror.Internal(c, err, "failed to run import job")
 				return
 			}
 			job = finished
-			message = "Import finished"
+			if job.Status != models.ImportJobStatusPending {
+				message = "Import finished"
+			}
 		}
 	}
 
@@ -267,46 +270,13 @@ func (h *ImportExportHandler) GetImportStatus(c *gin.Context) {
 		return
 	}
 
-	// Calculate progress
-	progress := 0.0
-	if job.TotalRows > 0 {
-		progress = float64(job.ProcessedRows) / float64(job.TotalRows) * 100
-	}
-
 	// Get errors (limit to 100)
 	importErrors, err := h.importService.GetImportErrors(c.Request.Context(), jobID, 100)
 	if err != nil {
 		apierror.Internal(c, err, "failed to retrieve import errors")
 		return
 	}
-
-	// Convert to response format
-	errorResponses := make([]models.ImportErrorResponse, len(importErrors))
-	for i, e := range importErrors {
-		errorResponses[i] = models.ImportErrorResponse{
-			RowNumber: e.RowNumber,
-			Field:     e.Field,
-			Error:     e.Error,
-			RowData:   e.RowData,
-		}
-	}
-
-	response := models.ImportStatusResponse{
-		JobID:          job.ID,
-		Status:         job.Status,
-		TotalRows:      job.TotalRows,
-		ProcessedRows:  job.ProcessedRows,
-		SuccessfulRows: job.SuccessfulRows,
-		FailedRows:     job.FailedRows,
-		Progress:       progress,
-		ErrorSummary:   job.ErrorSummary,
-		Errors:         errorResponses,
-		StartedAt:      job.StartedAt,
-		CompletedAt:    job.CompletedAt,
-		CreatedAt:      job.CreatedAt,
-	}
-
-	c.JSON(http.StatusOK, response)
+	c.JSON(http.StatusOK, models.ImportStatusFromJob(job, importErrors))
 }
 
 // ExportCustomers handles customer export
