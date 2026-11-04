@@ -19,7 +19,10 @@ name: Release
 #   api      — Cloud Run revision boots with no traffic, then takes 100%
 #   web      — after the API, so the bundle never calls an endpoint that
 #              isn't deployed yet
-#   release  — publish notes only once the deploy succeeded (or was skipped)
+#   smoke    — scripts/smoke.sh against the live site; fails loudly with the
+#              rollback commands (T251)
+#   release  — publish notes only once the deploy and smoke test succeeded
+#              (or the deploy was skipped)
 on:
   push:
     tags:
@@ -262,14 +265,44 @@ jobs:
           echo "::error::${SITE_URL}/version never returned ${EXPECTED_SHA}."
           exit 1
 
+  smoke:
+    # End-to-end checks of the live stack once both artifacts are out (T251):
+    # /version through the Worker (tag's version + SHA), the app shell with its
+    # CSP/HSTS headers, a deep link, an anonymous API call through the Worker
+    # (401 proves proxy + edge secret + auth), and /health/ready direct.
+    # Read-only. A failure fails the run, blocks the release notes and prints
+    # the rollback commands (docs/ops/deploy.md) in the log and step summary.
+    # Re-run this job after a fix or rollback to publish the notes.
+    needs: web
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # tags, to name the previous revision in the rollback hint
+      - name: Find the previous release tag
+        run: |
+          prev=$(git describe --tags --abbrev=0 --match 'v*' "${GITHUB_REF_NAME}^" 2>/dev/null || true)
+          echo "previous release: ${prev:-<none>}"
+          echo "PREVIOUS_TAG=${prev}" >> "$GITHUB_ENV"
+      - name: Smoke test production
+        env:
+          SITE_URL: ${{ vars.SITE_URL || 'https://servicepro.sharkfins.xyz' }}
+          API_URL: ${{ vars.API_URL }}
+          EXPECTED_SHA: ${{ github.sha }}
+          EXPECTED_VERSION: ${{ github.ref_name }}
+          SMOKE_TIMEOUT: '180'
+        run: bash scripts/smoke.sh
+
   release:
-    # Runs when the deploy succeeded, or when deploys were skipped because
-    # hosting isn't configured yet (guard.deploy=false).
-    needs: [guard, api, web]
+    # Runs when the deploy and smoke test succeeded, or when deploys were
+    # skipped because hosting isn't configured yet (guard.deploy=false).
+    needs: [guard, api, web, smoke]
     if: >-
       ${{ !cancelled() && needs.guard.result == 'success' &&
       (needs.guard.outputs.deploy != 'true' ||
-      (needs.api.result == 'success' && needs.web.result == 'success')) }}
+      (needs.api.result == 'success' && needs.web.result == 'success' &&
+      needs.smoke.result == 'success')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

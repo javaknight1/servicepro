@@ -44,7 +44,7 @@ SEED_FILE            := backend/seeds/dev_seed.sql
 	docker-dev docker-dev-d docker-down docker-clean docker-logs docker-logs-backend docker-logs-frontend \
 	docker-logs-db docker-ps docker-shell-backend docker-shell-frontend docker-shell-db \
 	docker-rebuild-backend docker-rebuild-frontend logs ps \
-	bump release-check clean
+	bump release-check smoke clean
 
 help: ## Show this help
 	@grep -hE '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-26s\033[0m %s\n", $$1, $$2}'
@@ -378,6 +378,9 @@ release-check: ## Verify the working tree is ready to tag a release
 	@echo "branch:       $$(git rev-parse --abbrev-ref HEAD)"
 	@echo "last release: $$(git tag --list 'v*' --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$$' | head -1 || echo '<none>')"
 	@echo "-> git tag v$$(tr -d '[:space:]' < VERSION) && git push origin v$$(tr -d '[:space:]' < VERSION)"
+
+smoke: ## Read-only smoke test of production (SITE_URL, API_URL, EXPECTED_SHA, EXPECTED_VERSION optional)
+	@./scripts/smoke.sh
 
 # =============================================================================
 # Clean

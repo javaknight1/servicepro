@@ -114,10 +114,10 @@ If you changed swag annotations, run `make docs` and commit
    git push origin master
    git tag v0.8.0 && git push origin v0.8.0
    ```
-3. Watch the **Release** run: `guard` → `migrate` → `api` → `web` → `release`.
-4. Verify:
+3. Watch the **Release** run: `guard` → `migrate` → `api` → `web` → `smoke` → `release`.
+4. Verify (the `smoke` job already did; this is the same check by hand):
    ```bash
-   curl -s https://servicepro.sharkfins.xyz/version | jq   # through the Worker proxy
+   make smoke   # or: curl -s https://servicepro.sharkfins.xyz/version | jq
    ```
 
 Preview the notes locally without publishing:
@@ -125,13 +125,14 @@ Preview the notes locally without publishing:
 
 ### What the pipeline does, and why in that order
 
-| Job       | Does                                                                                                                   | Why here                                                                         |
-| --------- | ---------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| `guard`   | Asserts tag == `VERSION`; decides deploy vs notes-only from `vars.GCP_PROJECT_ID`                                      | A mistyped tag fails in seconds, before a migration touches prod                 |
-| `migrate` | `cd backend && go run ./cmd/migrate up` then `version` against `MIGRATION_DATABASE_URL`                                | **Schema first.** Code must never land ahead of its schema                       |
-| `api`     | `scripts/deploy-cloudrun.sh`: build → push → deploy `--no-traffic` → shift traffic; then poll `/version`               | The revision must boot and pass its startup probe before it gets traffic         |
-| `web`     | Build → Sentry source maps → strip maps → `wrangler deploy` (Worker `servicepro-web`) → verify `/version` via the site | After the API, so the bundle never calls an endpoint that isn't live             |
-| `release` | `scripts/gh-release.sh` publishes the GitHub Release                                                                   | Only once the deploy succeeded — or was skipped because hosting isn't configured |
+| Job       | Does                                                                                                                           | Why here                                                                              |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------- |
+| `guard`   | Asserts tag == `VERSION`; decides deploy vs notes-only from `vars.GCP_PROJECT_ID`                                              | A mistyped tag fails in seconds, before a migration touches prod                      |
+| `migrate` | `cd backend && go run ./cmd/migrate up` then `version` against `MIGRATION_DATABASE_URL`                                        | **Schema first.** Code must never land ahead of its schema                            |
+| `api`     | `scripts/deploy-cloudrun.sh`: build → push → deploy `--no-traffic` → shift traffic; then poll `/version`                       | The revision must boot and pass its startup probe before it gets traffic              |
+| `web`     | Build → Sentry source maps → strip maps → `wrangler deploy` (Worker `servicepro-web`) → verify `/version` via the site         | After the API, so the bundle never calls an endpoint that isn't live                  |
+| `smoke`   | `scripts/smoke.sh`: `/version` (tag + SHA), app shell + CSP/HSTS, deep link, anonymous API 401 via the Worker, `/health/ready` | Fails loudly with the rollback commands; blocks the notes until it passes (T251)      |
+| `release` | `scripts/gh-release.sh` publishes the GitHub Release                                                                           | Only once deploy + smoke succeeded — or the deploy was skipped (hosting unconfigured) |
 
 Releases are serialized (`concurrency: release-production`, never cancelled):
 aborting a half-finished deploy leaves a migrated database behind the old code.

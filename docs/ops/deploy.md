@@ -97,6 +97,16 @@ small, or a destructive schema change would make rollback unsafe.
 2. **`/version` polling.** `/version` reports `GIT_SHA` baked into the image, so
    the job only goes green once the new code is actually serving — first on the
    run.app URL, then through the Worker on the public domain.
+3. **`smoke` job** (`scripts/smoke.sh`, T251). After both artifacts are out it
+   checks the tag's version + SHA, the app shell and its CSP/HSTS headers, a
+   deep link, an anonymous API call through the Worker (expects 401; a 403
+   means the edge secret differs) and `/health/ready` on the run.app URL. On
+   failure it prints the rollback commands above, with the previous revision
+   filled in, to the log and the run summary, and the GitHub Release notes are
+   not published until a re-run passes. Run it by hand with `make smoke`.
+
+Between releases, Google Cloud uptime checks and Sentry cron monitors watch
+production: [`monitoring.md`](./monitoring.md).
 
 Triage a failure at either step:
 
