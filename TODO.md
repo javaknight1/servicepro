@@ -1,6 +1,6 @@
 # ServicePro — Roadmap
 
-**Last Updated**: 2026-11-04 (T158 SPA on Neon Auth behind a flag (D17 proposed). T193 imports done (migration 000022). T251/T252/T213 code done (needs Rob to run setup). T272, T273 fixed (migration 000019 timestamptz); T174 job photos (000020) and T176 signature + service report (000021) done — phase E complete; master CI bundle check fixed.)
+**Last Updated**: 2026-11-04 (T212 config review done. T158 SPA on Neon Auth behind a flag (D17 proposed). T193 imports done (migration 000022). T251/T252/T213 code done (needs Rob to run setup). T272, T273 fixed (migration 000019 timestamptz); T174 job photos (000020) and T176 signature + service report (000021) done — phase E complete; master CI bundle check fixed.)
 
 > **How to read this file.** Every task has an ID (T###). The **Task Index** lists all of them: completed rows
 > (struck through) first by ID, then open rows by Phase → ID. Each open task has exactly one detailed section under
@@ -119,7 +119,7 @@ gated task's section says **MVP Gate: Yes**.
 | D. Commercial wedge                | 2027-02-15 → 2027-03-31    | ~~T167~~, ~~T186~~, ~~T187~~, ~~T188~~, ~~T028~~, ~~T029~~, ~~T030~~, ~~T035~~, ~~T235~~, ~~T269~~, ~~T270~~                            | 73    | Agreements generate visits; one consolidated invoice per customer      |
 | E. Proof of service                | 2027-04-01 → 2027-05-01    | ~~T173~~, ~~T174~~, ~~T176~~                                                                            | 40    | A tech completes a visit on a phone; the report is emailed             |
 | F. Integrations                    | 2027-05-02 → 2027-06-13    | T192, ~~T193~~                                                                                  | 40    | QuickBooks sync and Jobber/HCP import used by design partners          |
-| G. Launch readiness (alongside)    | 2026-11 → 2027-08          | T218, T205, ~~T206~~, T207, T208, T209, T211, T212, T213, T251, T252, ~~T268~~                        | 34    | Interviews by 2027-01-31; backups, legal, monitoring before 2027-09-07 |
+| G. Launch readiness (alongside)    | 2026-11 → 2027-08          | T218, T205, ~~T206~~, T207, T208, T209, T211, ~~T212~~, T213, T251, T252, ~~T268~~                        | 34    | Interviews by 2027-01-31; backups, legal, monitoring before 2027-09-07 |
 
 **Gates:** 2026-11-08 honesty gate (D11) · 2027-01-31 interviews done (T218; confirm the buyer and the $99 price or
 change the plan before phase D) · 2027-03-01 new name chosen and cleared (OD-10) · 2027-04-05 design-partner beta
@@ -401,7 +401,7 @@ stripe-go v87 supports v2 accounts) and the first 4h of T192 (QuickBooks OAuth, 
 | T209     | 14     | Ops            | 2      | Activate nightly backups to R2 + restore drill                                                           |
 | T210     | 14     | Billing        | 12     | ServicePro plans & billing: Solo/Team/Pro flat, unlimited users, founding offer                          |
 | T211     | 14     | Docs           | 1      | Update Fleet and the blog when ServicePro goes live                                                      |
-| T212     | 14     | Ops            | 2      | Production config review                                                                                 |
+| ~~T212~~ | ~~14~~ | ~~Ops~~        | ~~2~~  | ~~Production config review~~                                                                             |
 | T213     | 14     | Ops            | 1      | Cost guardrails (Cloud Run max instances × DB pool, budget alerts)                                       |
 | T251     | 14     | Ops            | 3      | Post-deploy smoke check + GCP uptime check and alert                                                     |
 | T252     | 14     | Monitoring     | 1      | Sentry cron check-ins for scheduled jobs and the nightly backup                                          |
@@ -2826,7 +2826,7 @@ Provision and launch. Live since 2026-10-24 (Neon us-east-2 + Cloud Run us-east5
 - [ ] T209 — Activate nightly backups to R2 + restore drill
 - [ ] T210 — ServicePro plans & billing: Solo/Team/Pro flat, unlimited users, founding offer
 - [ ] T211 — Update Fleet and the blog when ServicePro goes live
-- [ ] T212 — Production config review
+- [x] T212 — Production config review ✓ (2026-11-04)
 - [ ] T213 — Cost guardrails (Cloud Run max instances × DB pool, budget alerts)
 - [ ] T251 — Post-deploy smoke check + GCP uptime check and alert
 - [ ] T252 — Sentry cron check-ins for scheduled jobs and the nightly backup
@@ -2963,7 +2963,7 @@ Provision and launch. Live since 2026-10-24 (Neon us-east-2 + Cloud Run us-east5
 
 #### T212 — Production config review
 
-**Phase**: 14 · **Category**: Ops · **Hours**: 2 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: T203
+**Phase**: 14 · **Category**: Ops · **Hours**: 2 · **Status**: Done (2026-11-04) · **MVP Gate**: Yes · **Depends on**: T203
 
 **What it is** — A checklist-driven review that production runs with safe settings.
 
@@ -2973,6 +2973,8 @@ Provision and launch. Live since 2026-10-24 (Neon us-east-2 + Cloud Run us-east5
 
 **Notes** — security audit F-14, F-15, F-16.
 
+
+**Done (2026-11-04)** — `822e65f`, `3c76685`, `3418716`. Read-only review of Cloud Run, Secret Manager (names only), IAM, the Worker, GitHub vars/secrets, Neon and live headers: `docs/ops/production-config-review-2026-11.md`. Code: the API refuses to start on Cloud Run with ENV unset, and in production without `EDGE_PROXY_SECRET`, `INTERNAL_JOBS_SECRET`, Secure cookies, a real `DATABASE_URL`, or with startup migrations on (production already satisfies all; checked before merging). OK: production env, CORS, invite-only, cookies, edge secret both sides (run.app /api 403), Swagger/metrics/pprof off, CSP/HSTS live, least-privilege service accounts, pool 5 × 4. Findings for Rob are in "Blocked — needs Rob" (nightly backup failing, HTTP not redirected, Sentry/PostHog keys empty, default compute SA has Editor, Neon Auth production settings). Neon Auth production allows open sign-up, but the API only admits linked users and provision needs a verified email + invite, so a stray Neon user gets no access.
 ---
 
 #### T213 — Cost guardrails (Cloud Run max instances × DB pool, budget alerts)
@@ -3221,6 +3223,13 @@ Validate the beachhead before the Phase 9–10 build-out, then publish positioni
 - **T251 uptime checks** — `gcloud auth login && ALERT_EMAIL=<you> scripts/setup-monitoring.sh`, then send a test notification on the new channel. The next `v*` tag runs the new smoke job for the first time.
 - **T213 budget** — `ALERT_EMAIL=<you> scripts/setup-cost-guardrails.sh` (Billing Account Administrator; `BUDGET_AMOUNT=N` to change the $10 default).
 - **T158 production switch** — on the production Neon branch's auth: add trusted domain `https://servicepro.sharkfins.xyz`, switch to custom SMTP (Resend), turn off localhost; (Google only after adding your own Google OAuth app, redirect `<auth URL>/callback/google`). Then Cloud Run `NEON_AUTH_BASE_URL` = the auth URL, and the GitHub repo variable `VITE_NEON_AUTH_URL` = the same URL (`gh variable set VITE_NEON_AUTH_URL`; release-deploy passes it to the web build); release. Existing users then "Set up your sign-in" once with the same email. Also: OK to delete the 10 Neon `dev`-branch test users T158 created (IDs in the T158 hand-off)?
+- **T212 review fixes** (details: `docs/ops/production-config-review-2026-11.md`):
+  - **Nightly backup has failed every night since 2026-11-01** — create R2 bucket `servicepro-backups` + a token scoped to it, then `gh secret set R2_ACCESS_KEY_ID` and `gh secret set R2_SECRET_ACCESS_KEY` (T209). Until then Neon's 6-hour history is the only recovery.
+  - **HTTP isn't redirected to HTTPS** — Cloudflare → sharkfins.xyz → SSL/TLS → Edge Certificates → Always Use HTTPS on.
+  - **Sentry API DSN is empty** — `gcloud secrets versions add SENTRY_DSN --data-file=- --project=service-pro-512609` (value from Bitwarden/Sentry); GitHub secrets `SENTRY_DSN_WEB`, `SENTRY_AUTH_TOKEN`, `SENTRY_ORG` (and `SENTRY_CRONS_DSN`, T252).
+  - **PostHog off** — decide; if wanted, add a version to `POSTHOG_API_KEY` and GitHub secret `POSTHOG_API_KEY_WEB`.
+  - **Default compute service account has project Editor** (nothing uses it) — `gcloud projects remove-iam-policy-binding service-pro-512609 --member=serviceAccount:736486908135-compute@developer.gserviceaccount.com --role=roles/editor`.
+  - **Check `DATABASE_URL` uses the `-pooler` host** (couldn't read the secret).
 - **T210 / D15 confirm + live Stripe catalog** — read D15 (plans, 30-day Team trial, Free/Basic closed to new sign-ups, founding coupon) and confirm or change it **before the next release**: migration 000014 and the sign-up trial go live with it. Then, in live mode: `make stripe-catalog -- -live` (creates products, prices and the founding coupon; key from Bitwarden via `$(…)`), and make sure the platform webhook endpoint sends `customer.subscription.created`, `customer.subscription.updated` and `customer.subscription.deleted`. Optional local tidy-up: the `STRIPE_PRICE_*` lines in `backend/.env` are unused now.
 
 ## Open Decisions
@@ -3488,6 +3497,7 @@ Dated history from the original "Completed Items" list:
 
 ### 2026-11-04
 
+- **T212** — Production config review (`docs/ops/production-config-review-2026-11.md`); API now fails fast on unsafe production config. `822e65f`…`3418716`.
 - **T158 (SPA)** — Neon Auth sign-in screens, client, interceptor and store behind `VITE_NEON_AUTH_URL`; provision records terms; bearer beats leftover cookie; verified on the Neon dev branch. D17 proposed. `2c05de3`…`6392173`.
 - **T193** — Jobber / Housecall Pro / CSV-XLSX import with preview, idempotent re-import (migration 000022), chunked resumable runs and F-23 caps; imported invoices' reminders count from the import day. `b254a54`…`eba6cda`.
 - **T251, T252, T213 (code)** — post-deploy smoke job + `make smoke`; Sentry cron check-ins for scheduled jobs and backups; Cloud Run instances × DB pool guard; uptime and budget scripts ready for Rob to run. `81064f6`, `6b992de`, `32f0b0b`.
