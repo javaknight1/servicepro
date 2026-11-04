@@ -379,6 +379,9 @@ func (s *ImportService) RunImportChunk(ctx context.Context, job *models.ImportJo
 	var summary *string
 	if st.failed > 0 {
 		msg := fmt.Sprintf("%d rows failed to import", st.failed)
+		if st.failed == 1 {
+			msg = "1 row failed to import"
+		}
 		summary = &msg
 	}
 	status := models.ImportJobStatusCompleted
