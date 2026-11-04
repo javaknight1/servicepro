@@ -377,6 +377,7 @@ func NewTemplateRegistry() *TemplateRegistry {
 	r.RegisterTemplate(TemplateTypeWorkOrder, renderWorkOrderTemplate)
 	r.RegisterTemplate(TemplateTypeServiceReport, renderServiceReportTemplate)
 	r.RegisterTemplate(TemplateTypeTableReport, renderTableReportTemplate)
+	r.RegisterTemplate(TemplateTypeProofOfService, renderProofOfServiceTemplate)
 
 	return r
 }
