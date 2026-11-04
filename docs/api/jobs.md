@@ -53,6 +53,46 @@ read that rather than hard-coding the rules. The per-action endpoints
 | POST   | `/jobs/:id/materials`            | Add a material                                |
 | POST   | `/jobs/:id/notes`                | Add a note (`note`, `is_internal`)            |
 
+### Photos and files (T174)
+
+| Method | Endpoint                                     | Permission    | Description                                  |
+| ------ | -------------------------------------------- | ------------- | -------------------------------------------- |
+| GET    | `/jobs/:id/attachments`                      | `jobs.read`   | List, oldest first, with presigned links     |
+| POST   | `/jobs/:id/attachments`                      | `jobs.update` | Upload (multipart `file`, optional `caption`) |
+| GET    | `/jobs/:id/attachments/:attachmentId/file`   | `jobs.read`   | 302 to a presigned link to the stored file   |
+| GET    | `/jobs/:id/attachments/:attachmentId/thumb`  | `jobs.read`   | 302 to the photo's thumbnail (files: 404)    |
+| PATCH  | `/jobs/:id/attachments/:attachmentId`        | `jobs.update` | Set or clear the caption (`caption`)         |
+| DELETE | `/jobs/:id/attachments/:attachmentId`        | `jobs.update` | Delete the attachment and its stored objects |
+
+Only registered when object storage is configured. Uploads go through the API
+(not presigned PUTs) because the server has to see the bytes anyway:
+
+- **Size**: at most 15 MB (`413 file_too_large`; the body is capped before the
+  multipart form is parsed). A job holds at most 100 (`409 attachment_limit`).
+- **Type**: sniffed from the bytes, never the declared type or the name. JPEG,
+  PNG and WebP photos, and PDF files; anything else is
+  `415 unsupported_file_type`.
+- **Photos**: the declared dimensions are checked with `image.DecodeConfig`
+  before decoding (security audit F-19): over 12000 px a side or 40 megapixels
+  is `400 image_too_large`, undecodable bytes `400 invalid_image`. The photo
+  is then turned upright from its EXIF orientation, scaled to 2048 px on the
+  longest side and re-encoded as JPEG, which strips EXIF (GPS, device data);
+  a 400 px JPEG thumbnail is stored next to it. At most two photos decode at
+  once per instance.
+- **Files** (PDF) are stored as uploaded and have no thumbnail.
+
+Objects live in the private bucket under
+`job-attachments/{tenant}/{job}/{attachment}.jpg|.pdf` (and `_thumb.jpg`).
+Responses carry `url` / `thumb_url` (presigned, about an hour; refetch the list
+for fresh ones) and `file_path` / `thumb_path` (API paths that redirect to a
+fresh link, for invoices and service reports).
+
+Technicians (no `jobs.view_all`) see and add attachments only on jobs assigned
+to them — other jobs are `404 job_not_found`, the same row filter as
+`GET /jobs/:id` — and may caption or delete only what they uploaded
+(`403 attachment_not_yours`). Office staff can change any. Another tenant's
+attachments are 404.
+
 ### Conflicts
 
 | Method | Endpoint           | Description                              |

@@ -148,6 +148,8 @@ func SetupServices(
 	// Profile picture service (optional - depends on storage client)
 	if storageClient != nil {
 		svc.ProfilePicture = services.NewProfilePictureService(repos.User, repos.Tenant, storageClient)
+		// Job photos and files (T174)
+		svc.JobAttachments = services.NewJobAttachmentService(repos.JobAttachments, storageClient)
 	}
 
 	// Stripe service (optional - depends on configuration)

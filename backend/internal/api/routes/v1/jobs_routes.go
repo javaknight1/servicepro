@@ -121,5 +121,23 @@ func SetupJobRoutes(router *gin.RouterGroup, cfg *routeconfigs.RouteConfig) {
 		jobs.POST("/:id/notes",
 			cfg.Middleware.PermMiddleware.RequirePermission(permissions.JobsUpdate),
 			cfg.Handlers.Job.AddNote)
+
+		// Job photos and files (T174; only with object storage). Reading
+		// needs "jobs.read", adding/changing "jobs.update"; technicians hold
+		// both for their assigned jobs and other jobs are 404.
+		if h := cfg.Handlers.JobAttachment; h != nil {
+			jobs.GET("/:id/attachments",
+				cfg.Middleware.PermMiddleware.RequirePermission(permissions.JobsRead), h.ListAttachments)
+			jobs.POST("/:id/attachments",
+				cfg.Middleware.PermMiddleware.RequirePermission(permissions.JobsUpdate), h.UploadAttachment)
+			jobs.GET("/:id/attachments/:attachmentId/file",
+				cfg.Middleware.PermMiddleware.RequirePermission(permissions.JobsRead), h.GetAttachmentFile)
+			jobs.GET("/:id/attachments/:attachmentId/thumb",
+				cfg.Middleware.PermMiddleware.RequirePermission(permissions.JobsRead), h.GetAttachmentThumb)
+			jobs.PATCH("/:id/attachments/:attachmentId",
+				cfg.Middleware.PermMiddleware.RequirePermission(permissions.JobsUpdate), h.UpdateAttachment)
+			jobs.DELETE("/:id/attachments/:attachmentId",
+				cfg.Middleware.PermMiddleware.RequirePermission(permissions.JobsUpdate), h.DeleteAttachment)
+		}
 	}
 }

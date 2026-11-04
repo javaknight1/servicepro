@@ -4477,6 +4477,452 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/jobs/{id}/attachments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List a job's photos and files
+         * @description Oldest first. Each carries presigned links (url, thumb_url for photos) valid for about an hour, and API paths (file_path, thumb_path) that redirect to fresh ones.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Job ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.JobAttachmentListResponse"];
+                    };
+                };
+                /** @description Invalid ID */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Job not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Internal server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * Attach a photo or file to a job
+         * @description Multipart upload (field "file", optional "caption"), at most 15 MB. The type is sniffed from the bytes: JPEG, PNG and WebP photos are re-encoded as JPEG (EXIF stripped, orientation applied, longest side 2048 px) with a 400 px thumbnail; PDFs are stored as uploaded. Photos declaring more than 12000 px a side or 40 megapixels are refused before decoding. Technicians can attach only to jobs assigned to them; other jobs are 404. A job holds at most 100 attachments.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Job ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "multipart/form-data": {
+                        /**
+                         * Format: binary
+                         * @description Photo (JPEG, PNG, WebP) or PDF
+                         */
+                        file: string;
+                        /** @description Caption, up to 500 characters */
+                        caption?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.JobAttachmentResponse"];
+                    };
+                };
+                /** @description No file, unreadable photo (invalid_image), too many pixels (image_too_large), caption too long */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Job not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description The job already has 100 attachments (attachment_limit) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Larger than 15 MB (file_too_large) */
+                413: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Not a JPEG, PNG, WebP or PDF (unsupported_file_type) */
+                415: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Internal server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/jobs/{id}/attachments/{attachmentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete a job attachment
+         * @description Removes the attachment and its stored file. Technicians can delete only attachments they added (403 attachment_not_yours).
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Job ID */
+                    id: string;
+                    /** @description Attachment ID */
+                    attachmentId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Deleted */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Invalid ID */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Someone else's attachment (attachment_not_yours) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Job or attachment not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Internal server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        /**
+         * Caption a job attachment
+         * @description Sets the caption; an empty one clears it. Technicians can change only attachments they added (403 attachment_not_yours).
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Job ID */
+                    id: string;
+                    /** @description Attachment ID */
+                    attachmentId: string;
+                };
+                cookie?: never;
+            };
+            /** @description Caption */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.UpdateJobAttachmentRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.JobAttachmentResponse"];
+                    };
+                };
+                /** @description Invalid request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Someone else's attachment (attachment_not_yours) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Job or attachment not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Internal server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/jobs/{id}/attachments/{attachmentId}/file": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download a job attachment
+         * @description Redirects to a presigned link (about an hour) to the stored photo or file.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Job ID */
+                    id: string;
+                    /** @description Attachment ID */
+                    attachmentId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Found */
+                302: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Invalid ID */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Job or attachment not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Internal server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/jobs/{id}/attachments/{attachmentId}/thumb": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download a job photo's thumbnail
+         * @description Redirects to a presigned link (about an hour) to the 400 px thumbnail. Files (PDF) have none: 404.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Job ID */
+                    id: string;
+                    /** @description Attachment ID */
+                    attachmentId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Found */
+                302: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Invalid ID */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Job, attachment or thumbnail not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Internal server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/jobs/{id}/invoice": {
         parameters: {
             query?: never;
@@ -13759,6 +14205,54 @@ export interface components {
             user_id?: string;
             user_name?: string;
         };
+        /** @enum {string} */
+        "github_com_javaknight1_servicepro_backend_internal_models.JobAttachmentKind": "photo" | "file";
+        "github_com_javaknight1_servicepro_backend_internal_models.JobAttachmentListResponse": {
+            attachments?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.JobAttachmentResponse"][];
+            total?: number;
+        };
+        "github_com_javaknight1_servicepro_backend_internal_models.JobAttachmentResponse": {
+            /** @example Lobby floor */
+            caption?: string;
+            /** @example image/jpeg */
+            content_type?: string;
+            created_at?: string;
+            /**
+             * @description FilePath and ThumbPath are API paths that redirect (302) to fresh
+             *     presigned links; stable enough to put in an invoice or report.
+             * @example /api/v1/jobs/7b0c.../attachments/1f2e.../file
+             */
+            file_path?: string;
+            /**
+             * @description Filename is the name the file had on the uploader's device.
+             * @example IMG_2041.jpg
+             */
+            filename?: string;
+            /** @example 1536 */
+            height?: number;
+            id?: string;
+            job_id?: string;
+            /**
+             * @example photo
+             * @enum {unknown}
+             */
+            kind?: "photo" | "file";
+            /** @example 412345 */
+            size_bytes?: number;
+            thumb_path?: string;
+            thumb_url?: string;
+            /** @description UploadedBy is the uploader's user ID (absent once the user is deleted). */
+            uploaded_by?: string;
+            /** @example Tasha Green */
+            uploaded_by_name?: string;
+            /**
+             * @description URL and ThumbURL are presigned links valid for about an hour (fetch the
+             *     list again for fresh ones). ThumbURL is set for photos only.
+             */
+            url?: string;
+            /** @example 2048 */
+            width?: number;
+        };
         "github_com_javaknight1_servicepro_backend_internal_models.JobListResponse": {
             jobs?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.JobResponse"][];
             page?: number;
@@ -14662,6 +15156,10 @@ export interface components {
             service_address_zip?: string;
             /** @enum {unknown} */
             status?: "active" | "inactive" | "prospect";
+        };
+        "github_com_javaknight1_servicepro_backend_internal_models.UpdateJobAttachmentRequest": {
+            /** @example Restroom 2F */
+            caption?: string;
         };
         "github_com_javaknight1_servicepro_backend_internal_models.UpdateJobRequest": {
             actual_cost?: number;

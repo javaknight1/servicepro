@@ -33,6 +33,7 @@ import (
 	permissionsSvc "github.com/javaknight1/servicepro/backend/internal/services/permissions"
 	"github.com/javaknight1/servicepro/backend/internal/tenancy"
 	"github.com/javaknight1/servicepro/backend/pkg/auth"
+	storagemock "github.com/javaknight1/servicepro/backend/pkg/clients/storage/mock"
 	"github.com/javaknight1/servicepro/backend/pkg/database"
 )
 
@@ -79,6 +80,8 @@ type techFixture struct {
 	db     *gorm.DB
 	engine *gin.Engine
 	jwt    *auth.JWTManager
+	// store is the in-memory object store behind job attachments (T174).
+	store *storagemock.Client
 
 	tenantA, tenantB               uuid.UUID
 	ownerA, officeA, techA, techA2 uuid.UUID
@@ -162,6 +165,7 @@ func setupTechFixture(t *testing.T) *techFixture {
 	tenantMW := middleware.NewTenantMiddleware(repository.NewTenantRepository(db))
 	tenantMW.SetAccessScope(middleware.AccessScope(checker))
 
+	f.store = storagemock.NewClient(nil)
 	jobService := services.NewJobService(repository.NewJobRepository(db), repository.NewCustomerRepository(db), db)
 	cfg := &routeconfigs.RouteConfig{
 		Middleware: &routeconfigs.Middleware{PermMiddleware: permMW, TenantMW: tenantMW, PermChecker: checker},
@@ -171,6 +175,8 @@ func setupTechFixture(t *testing.T) *techFixture {
 			Job: handlers.NewJobHandler(jobService),
 			JobApproval: handlers.NewJobApprovalHandler(
 				services.NewJobApprovalService(db, repository.NewJobApprovalRepository(db))),
+			JobAttachment: handlers.NewJobAttachmentHandler(
+				services.NewJobAttachmentService(repository.NewJobAttachmentRepository(db), f.store)),
 		},
 	}
 	f.engine = gin.New()

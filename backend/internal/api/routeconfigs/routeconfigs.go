@@ -63,6 +63,8 @@ type Repositories struct {
 	JobApprovals repository.JobApprovalRepositoryInterface
 	// Agreements are recurring service agreements (T167).
 	Agreements repository.AgreementRepositoryInterface
+	// JobAttachments are job photos and files (T174).
+	JobAttachments repository.JobAttachmentRepositoryInterface
 }
 
 // Services holds all service instances
@@ -82,15 +84,17 @@ type Services struct {
 	Membership        *services.MembershipService
 	Stripe            *services.StripeService
 	ProfilePicture    *services.ProfilePictureService
-	Revenue           services.RevenueReportService
-	ARAging           services.ARAgingService
-	Export            services.UnifiedExportService
-	Import            *services.ImportService
-	PaymentTerms      *services.PaymentTermsService
-	TaxRates          *services.TaxRateService
-	StripeClient      *stripeService.Client
-	StripeEvents      *stripeService.EventProcessor
-	StripeWebhook     *stripeService.WebhookHandler
+	// JobAttachments stores job photos and files (T174); nil without storage.
+	JobAttachments *services.JobAttachmentService
+	Revenue        services.RevenueReportService
+	ARAging        services.ARAgingService
+	Export         services.UnifiedExportService
+	Import         *services.ImportService
+	PaymentTerms   *services.PaymentTermsService
+	TaxRates       *services.TaxRateService
+	StripeClient   *stripeService.Client
+	StripeEvents   *stripeService.EventProcessor
+	StripeWebhook  *stripeService.WebhookHandler
 	// StripeConnectWebhook receives events from connected accounts and
 	// StripeV2Webhook thin v2 account events (T169); nil when unconfigured.
 	StripeConnectWebhook *stripeService.WebhookHandler
@@ -146,14 +150,16 @@ type Handlers struct {
 	Export            *handlers.ExportHandler
 	ImportExport      *handlers.ImportExportHandler
 	ProfilePicture    *handlers.ProfilePictureHandler
-	PaymentTerms      *handlers.PaymentTermsHandler
-	TaxRate           *handlers.TaxRateHandler
-	Conflict          *handlers.ConflictHandler
-	PaymentReminder   *handlers.PaymentReminderHandler
-	NeonAuth          *handlers.NeonAuthHandler
-	Site              *handlers.SiteHandler
-	PurchaseOrder     *handlers.PurchaseOrderHandler
-	JobApproval       *handlers.JobApprovalHandler
-	Agreement         *handlers.AgreementHandler
-	QuoteConversion   *handlers.QuoteConversionHandler
+	// JobAttachment is nil when no object storage is configured (T174).
+	JobAttachment   *handlers.JobAttachmentHandler
+	PaymentTerms    *handlers.PaymentTermsHandler
+	TaxRate         *handlers.TaxRateHandler
+	Conflict        *handlers.ConflictHandler
+	PaymentReminder *handlers.PaymentReminderHandler
+	NeonAuth        *handlers.NeonAuthHandler
+	Site            *handlers.SiteHandler
+	PurchaseOrder   *handlers.PurchaseOrderHandler
+	JobApproval     *handlers.JobApprovalHandler
+	Agreement       *handlers.AgreementHandler
+	QuoteConversion *handlers.QuoteConversionHandler
 }

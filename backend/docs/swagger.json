@@ -3709,6 +3709,382 @@
                 ]
             }
         },
+        "/api/v1/jobs/{id}/attachments": {
+            "get": {
+                "description": "Oldest first. Each carries presigned links (url, thumb_url for photos) valid for about an hour, and API paths (file_path, thumb_path) that redirect to fresh ones.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "jobs"
+                ],
+                "summary": "List a job's photos and files",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Job ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.JobAttachmentListResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid ID",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Job not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "description": "Multipart upload (field \"file\", optional \"caption\"), at most 15 MB. The type is sniffed from the bytes: JPEG, PNG and WebP photos are re-encoded as JPEG (EXIF stripped, orientation applied, longest side 2048 px) with a 400 px thumbnail; PDFs are stored as uploaded. Photos declaring more than 12000 px a side or 40 megapixels are refused before decoding. Technicians can attach only to jobs assigned to them; other jobs are 404. A job holds at most 100 attachments.",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "jobs"
+                ],
+                "summary": "Attach a photo or file to a job",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Job ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "file",
+                        "description": "Photo (JPEG, PNG, WebP) or PDF",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Caption, up to 500 characters",
+                        "name": "caption",
+                        "in": "formData"
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.JobAttachmentResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "No file, unreadable photo (invalid_image), too many pixels (image_too_large), caption too long",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Job not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "The job already has 100 attachments (attachment_limit)",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "413": {
+                        "description": "Larger than 15 MB (file_too_large)",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "415": {
+                        "description": "Not a JPEG, PNG, WebP or PDF (unsupported_file_type)",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/jobs/{id}/attachments/{attachmentId}": {
+            "delete": {
+                "description": "Removes the attachment and its stored file. Technicians can delete only attachments they added (403 attachment_not_yours).",
+                "tags": [
+                    "jobs"
+                ],
+                "summary": "Delete a job attachment",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Job ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Attachment ID",
+                        "name": "attachmentId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Deleted"
+                    },
+                    "400": {
+                        "description": "Invalid ID",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Someone else's attachment (attachment_not_yours)",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Job or attachment not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            },
+            "patch": {
+                "description": "Sets the caption; an empty one clears it. Technicians can change only attachments they added (403 attachment_not_yours).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "jobs"
+                ],
+                "summary": "Caption a job attachment",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Job ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Attachment ID",
+                        "name": "attachmentId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Caption",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.UpdateJobAttachmentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.JobAttachmentResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Someone else's attachment (attachment_not_yours)",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Job or attachment not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/jobs/{id}/attachments/{attachmentId}/file": {
+            "get": {
+                "description": "Redirects to a presigned link (about an hour) to the stored photo or file.",
+                "tags": [
+                    "jobs"
+                ],
+                "summary": "Download a job attachment",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Job ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Attachment ID",
+                        "name": "attachmentId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "302": {
+                        "description": "Found"
+                    },
+                    "400": {
+                        "description": "Invalid ID",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Job or attachment not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/jobs/{id}/attachments/{attachmentId}/thumb": {
+            "get": {
+                "description": "Redirects to a presigned link (about an hour) to the 400 px thumbnail. Files (PDF) have none: 404.",
+                "tags": [
+                    "jobs"
+                ],
+                "summary": "Download a job photo's thumbnail",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Job ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Attachment ID",
+                        "name": "attachmentId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "302": {
+                        "description": "Found"
+                    },
+                    "400": {
+                        "description": "Invalid ID",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Job, attachment or thumbnail not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/v1/jobs/{id}/invoice": {
             "post": {
                 "description": "Creates a draft invoice from a completed job and moves the job to invoiced, all in one transaction (T029). Lines are built by the server (T030): a job converted from a quote bills the quote's lines (and links the quote); otherwise labor = actual time on site (actual start/end, else actual duration) × the tenant's laborRate setting, or — no rate or no time recorded — one line for the job's amount (total, else actual cost, else estimate); then each billable material at its unit cost. Lines carry the job's site name; the job's completion notes and non-internal notes become the invoice notes; the customer's default PO and the tenant's default payment term and tax rate apply; totals are computed server-side. Idempotent: a job is invoiced once — a second (or concurrent) call answers 409 already_invoiced with the existing invoice's ID in resource_id, including when a consolidated invoice billed the job. 409 job_not_completed for other statuses; 409 agreement_visit for agreement visits (billed on the consolidated invoice).",
@@ -13445,6 +13821,105 @@
                 }
             }
         },
+        "github_com_javaknight1_servicepro_backend_internal_models.JobAttachmentKind": {
+            "type": "string",
+            "enum": [
+                "photo",
+                "file"
+            ],
+            "x-enum-varnames": [
+                "JobAttachmentPhoto",
+                "JobAttachmentFile"
+            ]
+        },
+        "github_com_javaknight1_servicepro_backend_internal_models.JobAttachmentListResponse": {
+            "type": "object",
+            "properties": {
+                "attachments": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.JobAttachmentResponse"
+                    }
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_javaknight1_servicepro_backend_internal_models.JobAttachmentResponse": {
+            "type": "object",
+            "properties": {
+                "caption": {
+                    "type": "string",
+                    "example": "Lobby floor"
+                },
+                "content_type": {
+                    "type": "string",
+                    "example": "image/jpeg"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "file_path": {
+                    "description": "FilePath and ThumbPath are API paths that redirect (302) to fresh\npresigned links; stable enough to put in an invoice or report.",
+                    "type": "string",
+                    "example": "/api/v1/jobs/7b0c.../attachments/1f2e.../file"
+                },
+                "filename": {
+                    "description": "Filename is the name the file had on the uploader's device.",
+                    "type": "string",
+                    "example": "IMG_2041.jpg"
+                },
+                "height": {
+                    "type": "integer",
+                    "example": 1536
+                },
+                "id": {
+                    "type": "string"
+                },
+                "job_id": {
+                    "type": "string"
+                },
+                "kind": {
+                    "enum": [
+                        "photo",
+                        "file"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.JobAttachmentKind"
+                        }
+                    ],
+                    "example": "photo"
+                },
+                "size_bytes": {
+                    "type": "integer",
+                    "example": 412345
+                },
+                "thumb_path": {
+                    "type": "string"
+                },
+                "thumb_url": {
+                    "type": "string"
+                },
+                "uploaded_by": {
+                    "description": "UploadedBy is the uploader's user ID (absent once the user is deleted).",
+                    "type": "string"
+                },
+                "uploaded_by_name": {
+                    "type": "string",
+                    "example": "Tasha Green"
+                },
+                "url": {
+                    "description": "URL and ThumbURL are presigned links valid for about an hour (fetch the\nlist again for fresh ones). ThumbURL is set for photos only.",
+                    "type": "string"
+                },
+                "width": {
+                    "type": "integer",
+                    "example": 2048
+                }
+            }
+        },
         "github_com_javaknight1_servicepro_backend_internal_models.JobListResponse": {
             "type": "object",
             "properties": {
@@ -16126,6 +16601,16 @@
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.CustomerStatus"
                         }
                     ]
+                }
+            }
+        },
+        "github_com_javaknight1_servicepro_backend_internal_models.UpdateJobAttachmentRequest": {
+            "type": "object",
+            "properties": {
+                "caption": {
+                    "type": "string",
+                    "maxLength": 500,
+                    "example": "Restroom 2F"
                 }
             }
         },

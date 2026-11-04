@@ -2007,6 +2007,80 @@ definitions:
       user_name:
         type: string
     type: object
+  github_com_javaknight1_servicepro_backend_internal_models.JobAttachmentKind:
+    enum:
+    - photo
+    - file
+    type: string
+    x-enum-varnames:
+    - JobAttachmentPhoto
+    - JobAttachmentFile
+  github_com_javaknight1_servicepro_backend_internal_models.JobAttachmentListResponse:
+    properties:
+      attachments:
+        items:
+          $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.JobAttachmentResponse'
+        type: array
+      total:
+        type: integer
+    type: object
+  github_com_javaknight1_servicepro_backend_internal_models.JobAttachmentResponse:
+    properties:
+      caption:
+        example: Lobby floor
+        type: string
+      content_type:
+        example: image/jpeg
+        type: string
+      created_at:
+        type: string
+      file_path:
+        description: |-
+          FilePath and ThumbPath are API paths that redirect (302) to fresh
+          presigned links; stable enough to put in an invoice or report.
+        example: /api/v1/jobs/7b0c.../attachments/1f2e.../file
+        type: string
+      filename:
+        description: Filename is the name the file had on the uploader's device.
+        example: IMG_2041.jpg
+        type: string
+      height:
+        example: 1536
+        type: integer
+      id:
+        type: string
+      job_id:
+        type: string
+      kind:
+        allOf:
+        - $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.JobAttachmentKind'
+        enum:
+        - photo
+        - file
+        example: photo
+      size_bytes:
+        example: 412345
+        type: integer
+      thumb_path:
+        type: string
+      thumb_url:
+        type: string
+      uploaded_by:
+        description: UploadedBy is the uploader's user ID (absent once the user is
+          deleted).
+        type: string
+      uploaded_by_name:
+        example: Tasha Green
+        type: string
+      url:
+        description: |-
+          URL and ThumbURL are presigned links valid for about an hour (fetch the
+          list again for fresh ones). ThumbURL is set for photos only.
+        type: string
+      width:
+        example: 2048
+        type: integer
+    type: object
   github_com_javaknight1_servicepro_backend_internal_models.JobListResponse:
     properties:
       jobs:
@@ -3870,6 +3944,13 @@ definitions:
         - active
         - inactive
         - prospect
+    type: object
+  github_com_javaknight1_servicepro_backend_internal_models.UpdateJobAttachmentRequest:
+    properties:
+      caption:
+        example: Restroom 2F
+        maxLength: 500
+        type: string
     type: object
   github_com_javaknight1_servicepro_backend_internal_models.UpdateJobRequest:
     properties:
@@ -7188,6 +7269,262 @@ paths:
       security:
       - BearerAuth: []
       summary: Unassign a technician from a job
+      tags:
+      - jobs
+  /api/v1/jobs/{id}/attachments:
+    get:
+      description: Oldest first. Each carries presigned links (url, thumb_url for
+        photos) valid for about an hour, and API paths (file_path, thumb_path) that
+        redirect to fresh ones.
+      parameters:
+      - description: Job ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.JobAttachmentListResponse'
+        "400":
+          description: Invalid ID
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "404":
+          description: Job not found
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List a job's photos and files
+      tags:
+      - jobs
+    post:
+      consumes:
+      - multipart/form-data
+      description: 'Multipart upload (field "file", optional "caption"), at most 15
+        MB. The type is sniffed from the bytes: JPEG, PNG and WebP photos are re-encoded
+        as JPEG (EXIF stripped, orientation applied, longest side 2048 px) with a
+        400 px thumbnail; PDFs are stored as uploaded. Photos declaring more than
+        12000 px a side or 40 megapixels are refused before decoding. Technicians
+        can attach only to jobs assigned to them; other jobs are 404. A job holds
+        at most 100 attachments.'
+      parameters:
+      - description: Job ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Photo (JPEG, PNG, WebP) or PDF
+        in: formData
+        name: file
+        required: true
+        type: file
+      - description: Caption, up to 500 characters
+        in: formData
+        name: caption
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.JobAttachmentResponse'
+        "400":
+          description: No file, unreadable photo (invalid_image), too many pixels
+            (image_too_large), caption too long
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "404":
+          description: Job not found
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "409":
+          description: The job already has 100 attachments (attachment_limit)
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "413":
+          description: Larger than 15 MB (file_too_large)
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "415":
+          description: Not a JPEG, PNG, WebP or PDF (unsupported_file_type)
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Attach a photo or file to a job
+      tags:
+      - jobs
+  /api/v1/jobs/{id}/attachments/{attachmentId}:
+    delete:
+      description: Removes the attachment and its stored file. Technicians can delete
+        only attachments they added (403 attachment_not_yours).
+      parameters:
+      - description: Job ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Attachment ID
+        in: path
+        name: attachmentId
+        required: true
+        type: string
+      responses:
+        "204":
+          description: Deleted
+        "400":
+          description: Invalid ID
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "403":
+          description: Someone else's attachment (attachment_not_yours)
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "404":
+          description: Job or attachment not found
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete a job attachment
+      tags:
+      - jobs
+    patch:
+      consumes:
+      - application/json
+      description: Sets the caption; an empty one clears it. Technicians can change
+        only attachments they added (403 attachment_not_yours).
+      parameters:
+      - description: Job ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Attachment ID
+        in: path
+        name: attachmentId
+        required: true
+        type: string
+      - description: Caption
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.UpdateJobAttachmentRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.JobAttachmentResponse'
+        "400":
+          description: Invalid request
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "403":
+          description: Someone else's attachment (attachment_not_yours)
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "404":
+          description: Job or attachment not found
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Caption a job attachment
+      tags:
+      - jobs
+  /api/v1/jobs/{id}/attachments/{attachmentId}/file:
+    get:
+      description: Redirects to a presigned link (about an hour) to the stored photo
+        or file.
+      parameters:
+      - description: Job ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Attachment ID
+        in: path
+        name: attachmentId
+        required: true
+        type: string
+      responses:
+        "302":
+          description: Found
+        "400":
+          description: Invalid ID
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "404":
+          description: Job or attachment not found
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Download a job attachment
+      tags:
+      - jobs
+  /api/v1/jobs/{id}/attachments/{attachmentId}/thumb:
+    get:
+      description: 'Redirects to a presigned link (about an hour) to the 400 px thumbnail.
+        Files (PDF) have none: 404.'
+      parameters:
+      - description: Job ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Attachment ID
+        in: path
+        name: attachmentId
+        required: true
+        type: string
+      responses:
+        "302":
+          description: Found
+        "400":
+          description: Invalid ID
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "404":
+          description: Job, attachment or thumbnail not found
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Download a job photo's thumbnail
       tags:
       - jobs
   /api/v1/jobs/{id}/invoice:

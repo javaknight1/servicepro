@@ -94,6 +94,9 @@ func SetupHandlers(
 	if svc.ProfilePicture != nil {
 		h.ProfilePicture = handlers.NewProfilePictureHandler(svc.ProfilePicture)
 	}
+	if svc.JobAttachments != nil {
+		h.JobAttachment = handlers.NewJobAttachmentHandler(svc.JobAttachments)
+	}
 
 	// Payment terms handler
 	h.PaymentTerms = handlers.NewPaymentTermsHandler(svc.PaymentTerms)
