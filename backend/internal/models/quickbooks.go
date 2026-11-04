@@ -25,7 +25,7 @@ const (
 )
 
 // QuickBooksConnection is a tenant's link to its QuickBooks Online company
-// (migration 000024). Tokens are sealed with pkg/secretbox; never serialise
+// (migration 000023). Tokens are sealed with pkg/secretbox; never serialise
 // this struct to a client.
 type QuickBooksConnection struct {
 	ID                    uuid.UUID  `gorm:"type:uuid;primary_key;default:uuid_generate_v4()"`
@@ -52,6 +52,7 @@ type QuickBooksConnection struct {
 	TaxCodeName           *string    `gorm:"type:varchar(255)"`
 	DepositAccountID      *string    `gorm:"type:varchar(50)"`
 	DepositAccountName    *string    `gorm:"type:varchar(255)"`
+	SyncLockedUntil       *time.Time `gorm:"type:timestamptz"`
 	LastSyncAt            *time.Time `gorm:"type:timestamptz"`
 	LastSyncError         *string    `gorm:"type:text"`
 	CreatedAt             time.Time  `gorm:"autoCreateTime"`
@@ -62,7 +63,7 @@ type QuickBooksConnection struct {
 func (QuickBooksConnection) TableName() string { return "quickbooks_connections" }
 
 // QuickBooksSyncRecord maps one local record to its QuickBooks entity and is
-// its work-queue entry (migration 000024).
+// its work-queue entry (migration 000023).
 type QuickBooksSyncRecord struct {
 	ID             uuid.UUID  `gorm:"type:uuid;primary_key;default:uuid_generate_v4()"`
 	TenantID       uuid.UUID  `gorm:"type:uuid;not null"`
@@ -73,7 +74,6 @@ type QuickBooksSyncRecord struct {
 	Status         string     `gorm:"type:varchar(20);not null"`
 	Attempts       int        `gorm:"not null"`
 	NextAttemptAt  time.Time  `gorm:"type:timestamptz;not null"`
-	ClaimedAt      *time.Time `gorm:"type:timestamptz"`
 	RequestID      *string    `gorm:"type:varchar(50)"`
 	PayloadHash    *string    `gorm:"type:varchar(64)"`
 	LocalUpdatedAt *time.Time `gorm:"type:timestamptz"`

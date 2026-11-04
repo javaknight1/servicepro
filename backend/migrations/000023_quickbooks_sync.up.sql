@@ -1,4 +1,4 @@
--- 000024_quickbooks_sync (T192)
+-- 000023_quickbooks_sync (T192)
 -- One-way sync of customers, invoices and payments to a tenant's QuickBooks
 -- Online company.
 --
@@ -14,10 +14,12 @@
 -- QuickBooks IDs with their display names.
 --
 -- quickbooks_sync_map: one row per synced record (tenant, entity, local id)
--- and its QuickBooks Id/SyncToken. It is also the work queue: status
--- pending rows are pushed by POST /internal/jobs/quickbooks-sync (claimed
--- with FOR UPDATE SKIP LOCKED), errors keep last_error and back off via
--- next_attempt_at. request_id is the Intuit requestid of the in-flight
+-- and its QuickBooks Id/SyncToken. It is also the work queue: pending rows
+-- are pushed by POST /internal/jobs/quickbooks-sync; errors keep last_error
+-- and back off via next_attempt_at. One worker syncs a tenant at a time: it
+-- holds a short lease (quickbooks_connections.sync_locked_until, longer than
+-- the 60 s request timeout) so overlapping runs never push the same record
+-- twice. request_id is the Intuit requestid of the in-flight
 -- create, reused on retries so a create that reached Intuit but whose answer
 -- was lost is not duplicated. payload_hash skips unchanged updates.
 --
@@ -53,6 +55,7 @@ CREATE TABLE IF NOT EXISTS quickbooks_connections (
     tax_code_name            VARCHAR(255),
     deposit_account_id       VARCHAR(50),
     deposit_account_name     VARCHAR(255),
+    sync_locked_until        TIMESTAMPTZ,
     last_sync_at             TIMESTAMPTZ,
     last_sync_error          TEXT,
     created_at               TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -80,7 +83,6 @@ CREATE TABLE IF NOT EXISTS quickbooks_sync_map (
                      CHECK (status IN ('pending', 'synced', 'error')),
     attempts         INT NOT NULL DEFAULT 0,
     next_attempt_at  TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    claimed_at       TIMESTAMPTZ,
     request_id       VARCHAR(50),
     payload_hash     VARCHAR(64),
     local_updated_at TIMESTAMPTZ,

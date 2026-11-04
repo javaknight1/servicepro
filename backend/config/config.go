@@ -55,7 +55,10 @@ type QuickBooksConfig struct {
 	Fake bool
 }
 
-// Enabled reports whether the QuickBooks integration can be offered.
+// Enabled reports whether the QuickBooks integration can be offered. It is
+// optional: unset or incomplete settings switch it off (Settings shows
+// "Coming soon"); they never stop the server. Outside development it also
+// needs a valid INTEGRATIONS_ENCRYPTION_KEY (checked where it is wired).
 func (q QuickBooksConfig) Enabled(env string) bool {
 	return (q.ClientID != "" && q.ClientSecret != "") || (q.Fake && env == "development")
 }
