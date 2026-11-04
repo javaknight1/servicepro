@@ -1,12 +1,16 @@
 # Import/Export
 
-Customer import (CSV) and async exports for customers, jobs, invoices, quotes and reports.
+Imports (customers, sites, jobs and open invoices from Jobber, Housecall Pro or any
+CSV/XLSX — see [docs/api/imports.md](../api/imports.md)) and async exports for
+customers, jobs, invoices, quotes and reports.
 
 ## Overview
 
 The Import/Export system provides:
 
-- CSV import of customers (with dry run)
+- Mapped imports from Jobber / Housecall Pro / any CSV or XLSX, with preview
+  ([imports.md](../api/imports.md), T193)
+- CSV import of customers in ServicePro's template layout (with dry run)
 - Async export jobs in CSV, JSON, XLSX and PDF
 - Data validation during import
 - Error reporting and handling
@@ -14,13 +18,14 @@ The Import/Export system provides:
 
 ## Supported Entities
 
-| Entity          | Import | Export (async export jobs) |
-| --------------- | ------ | -------------------------- |
-| Customers       | CSV    | CSV, JSON, XLSX, PDF       |
-| Jobs            | -      | CSV, JSON, XLSX, PDF       |
-| Invoices        | -      | CSV, JSON, XLSX, PDF       |
-| Quotes          | -      | CSV, JSON, XLSX, PDF       |
-| Revenue report  | -      | CSV, JSON, XLSX            |
+| Entity          | Import    | Export (async export jobs) |
+| --------------- | --------- | -------------------------- |
+| Customers       | CSV, XLSX | CSV, JSON, XLSX, PDF       |
+| Sites           | CSV, XLSX | -                          |
+| Jobs            | CSV, XLSX | CSV, JSON, XLSX, PDF       |
+| Invoices (open) | CSV, XLSX | CSV, JSON, XLSX, PDF       |
+| Quotes          | -         | CSV, JSON, XLSX, PDF       |
+| Revenue report  | -         | CSV, JSON, XLSX            |
 
 `GET /api/v1/exports/formats` returns the live list. Single invoice and quote
 PDFs are `GET /api/v1/invoices/:id/pdf` and `GET /api/v1/quotes/:id/pdf`.
@@ -33,18 +38,18 @@ generator in `backend/internal/services/pdf` — there is no HTML-to-PDF engine
 
 All under `/api/v1`, authenticated and tenant-scoped.
 
-| Method | Endpoint                                                                           | Description                                 |
-| ------ | ---------------------------------------------------------------------------------- | ------------------------------------------- |
-| GET    | `/exports/formats`                                                                 | Supported formats and export types (public) |
-| POST   | `/exports`                                                                         | Start an async export job                   |
-| POST   | `/exports/quick`                                                                   | Small export, returned directly             |
-| GET    | `/exports`                                                                         | List recent export jobs (`?limit=20`)       |
-| GET    | `/exports/:id`                                                                     | Export job status                           |
-| GET    | `/exports/:id/progress`                                                            | Progress                                    |
-| GET    | `/exports/:id/stream`                                                              | Progress as a server-sent event stream      |
-| GET    | `/exports/:id/download`                                                            | Download the finished file                  |
-| POST   | `/exports/:id/cancel`                                                              | Cancel a running export                     |
-| POST   | `/reports/revenue/export`, `/reports/ar-aging/export`                              | Report exports                              |
+| Method | Endpoint                                              | Description                                 |
+| ------ | ----------------------------------------------------- | ------------------------------------------- |
+| GET    | `/exports/formats`                                    | Supported formats and export types (public) |
+| POST   | `/exports`                                            | Start an async export job                   |
+| POST   | `/exports/quick`                                      | Small export, returned directly             |
+| GET    | `/exports`                                            | List recent export jobs (`?limit=20`)       |
+| GET    | `/exports/:id`                                        | Export job status                           |
+| GET    | `/exports/:id/progress`                               | Progress                                    |
+| GET    | `/exports/:id/stream`                                 | Progress as a server-sent event stream      |
+| GET    | `/exports/:id/download`                               | Download the finished file                  |
+| POST   | `/exports/:id/cancel`                                 | Cancel a running export                     |
+| POST   | `/reports/revenue/export`, `/reports/ar-aging/export` | Report exports                              |
 
 `GET /customers/export` is deprecated and returns **410 Gone** — use
 `POST /exports` with `export_type: "customers"`.
@@ -80,7 +85,9 @@ formula injection.
 | GET    | `/customers/import/template` | Download the CSV template    |
 | GET    | `/customers/import/:job_id`  | Import job status and errors |
 
-Only customers can be imported today.
+These are the customer-template endpoints. Jobber, Housecall Pro and mapped
+CSV/XLSX imports of customers, sites, jobs and open invoices use
+`/imports/{entity}` — see [imports.md](../api/imports.md).
 
 ## Import Customers
 
@@ -98,18 +105,21 @@ Form fields:
 | `duplicate_handling` | no       | `error` (default), `skip` or `update` — matched by email |
 | `dry_run`            | no       | `true` to validate and preview without saving            |
 
-Limits: 5 MiB and 10,000 data rows per file (413 / 400 `file_too_large` above that).
+Limits: 10 MiB and 50,000 data rows per file (413 / 400 `file_too_large` above that;
+reasoning in [imports.md](../api/imports.md#limits-security-audit-f-23)).
 A file with any row-level format error is rejected whole (400 `validation_error`).
 
 How it runs: the upload creates an import job holding the parsed rows. Files of
-up to 1,000 rows are imported during the request (the 202 response already has
-status `completed` or `failed`). Larger files stay `pending` and are imported by
+up to 1,000 rows start importing during the request, for up to 20 seconds (the 202
+response has status `completed` or `failed` when that finished them). The rest stays
+`pending` and is imported in chunks (a saved row cursor, see
+[imports.md](../api/imports.md#how-an-import-runs)) by
 `POST /internal/jobs/imports`, which the scheduler calls every 15 minutes
 (`.github/workflows/scheduled-jobs.yml`; the dev server runs it every minute with
 `RUN_BACKGROUND_WORKERS`). Each job is claimed atomically before it runs, so it is
 imported once even when runs overlap, and always into its own tenant. A job stuck
-in `processing` for 15 minutes is marked `failed` (not re-run, which could
-duplicate rows). The stored rows are deleted when the job finishes.
+in `processing` for 5 minutes is marked `failed` (template imports are not
+resumed: with `duplicate_handling=error` a re-run would report duplicates). The stored rows are deleted when the job finishes.
 
 ### Get Import Template
 

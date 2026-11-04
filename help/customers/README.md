@@ -50,21 +50,20 @@ Use `Ctrl/Cmd + K` to open global search, type customer name.
 
 ## Importing Customers
 
-Bulk import from CSV:
+Bring your customers (and their sites, jobs and unpaid invoices) over from
+Jobber, Housecall Pro or any spreadsheet:
 
-1. Go to **Customers** > **Import**
-2. Download the template CSV
-3. Fill in customer data
-4. Upload completed CSV
-5. Map columns to fields
-6. Review and confirm import
+1. Go to **Customers** > **Import** (or **Settings** > **Import data**)
+2. Pick where the file comes from: **Jobber**, **Housecall Pro** or **CSV or Excel**
+3. Pick what it holds: customers first, then sites, jobs and open invoices
+4. Upload the export (CSV or .xlsx, up to 10 MB and 50,000 rows)
+5. Check the preview: the first rows as they will be saved, and any rows with
+   problems. For a CSV from anywhere else, match its columns to ServicePro's fields
+6. Click **Import** and wait for the result (you can leave the page; it keeps going)
 
-### CSV Format
-
-```
-name,type,contact_name,email,phone,address,city,state,zip
-ABC Corp,commercial,John Smith,john@abc.com,555-1234,123 Main St,Austin,TX,78701
-```
+Importing the same file again won't create duplicates. Customers need an email,
+a US phone number and a full US billing address. Only invoices with a balance due
+are imported, for that balance.
 
 ## Customer Profile
 

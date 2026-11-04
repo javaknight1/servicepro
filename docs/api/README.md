@@ -67,6 +67,12 @@ See [authentication.md](./authentication.md).
 `/stats`, `/email/:email`, `/:id/jobs`, `/:id/quotes`, CSV import. See
 [customers.md](./customers.md).
 
+### Imports
+
+`/imports/{entity}` (customers, sites, jobs, invoices): `POST …/preview`,
+`POST` (start), `POST …/{job_id}/run`, `GET …/{job_id}`, `GET` (recent) — Jobber,
+Housecall Pro and mapped CSV/XLSX files (T193). See [imports.md](./imports.md).
+
 ### Jobs and scheduling
 
 `/jobs` CRUD, `/jobs/my`, `/scheduled`, `/overdue`, `/stats`, status actions
@@ -104,13 +110,13 @@ See [tax rates](../features/tax-service.md).
 
 ### Reports and exports
 
-| Method   | Endpoint                                                                                                       | Description           |
-| -------- | -------------------------------------------------------------------------------------------------------------- | --------------------- |
-| GET      | `/reports/revenue`, `/revenue/time-series`, `/revenue/categories`, `/revenue/customers`, `/revenue/chart-data` | Revenue               |
-| GET      | `/reports/ar-aging`, `/ar-aging/buckets`, `/ar-aging/buckets/:bucket/invoices`, `/ar-aging/customers`          | AR aging              |
-| POST     | `/reports/{revenue,ar-aging}/export`                                                                           | Report exports        |
-| POST     | `/reports/revenue/cache/refresh`                                                                               | Refresh report cache  |
-| GET/POST | `/exports`, `/exports/quick`, `/exports/:id{,/progress,/stream,/download,/cancel}`, `/exports/formats`         | Export jobs           |
+| Method   | Endpoint                                                                                                       | Description          |
+| -------- | -------------------------------------------------------------------------------------------------------------- | -------------------- |
+| GET      | `/reports/revenue`, `/revenue/time-series`, `/revenue/categories`, `/revenue/customers`, `/revenue/chart-data` | Revenue              |
+| GET      | `/reports/ar-aging`, `/ar-aging/buckets`, `/ar-aging/buckets/:bucket/invoices`, `/ar-aging/customers`          | AR aging             |
+| POST     | `/reports/{revenue,ar-aging}/export`                                                                           | Report exports       |
+| POST     | `/reports/revenue/cache/refresh`                                                                               | Refresh report cache |
+| GET/POST | `/exports`, `/exports/quick`, `/exports/:id{,/progress,/stream,/download,/cancel}`, `/exports/formats`         | Export jobs          |
 
 See [import-export.md](../features/import-export.md).
 
@@ -122,13 +128,13 @@ See [import-export.md](../features/import-export.md).
 
 ### Outside `/api/v1`
 
-| Method | Endpoint                                                          | Description                                                         |
-| ------ | ----------------------------------------------------------------- | ------------------------------------------------------------------- |
-| GET    | `/version`                                                        | Build identity (`git_sha`, `app_version`)                           |
-| GET    | `/health`, `/health/live`, `/health/ready`                        | Health; `ready` is 503 when the DB schema is behind/dirty           |
+| Method | Endpoint                                                                                                                                                                                                 | Description                                                         |
+| ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| GET    | `/version`                                                                                                                                                                                               | Build identity (`git_sha`, `app_version`)                           |
+| GET    | `/health`, `/health/live`, `/health/ready`                                                                                                                                                               | Health; `ready` is 503 when the DB schema is behind/dirty           |
 | POST   | `/internal/jobs/payment-reminders`, `/internal/jobs/quote-expiry`, `/internal/jobs/invoice-overdue`, `/internal/jobs/agreement-visits`, `/internal/jobs/consolidated-invoices`, `/internal/jobs/imports` | Scheduled jobs (`X-Internal-Jobs-Token`); not proxied by the Worker |
-| GET    | `/metrics`                                                        | Prometheus (bearer token outside development)                       |
-| GET    | `/api/docs/*`                                                     | Swagger UI                                                          |
+| GET    | `/metrics`                                                                                                                                                                                               | Prometheus (bearer token outside development)                       |
+| GET    | `/api/docs/*`                                                                                                                                                                                            | Swagger UI                                                          |
 
 ## Request/Response Format
 
