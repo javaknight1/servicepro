@@ -1,6 +1,6 @@
 # ServicePro — Roadmap
 
-**Last Updated**: 2026-11-04 (T272, T273 fixed (migration 000019 timestamptz); T174 job photos done (migration 000020); master CI bundle check fixed. T176 in progress, migration 000021.)
+**Last Updated**: 2026-11-04 (T272, T273 fixed (migration 000019 timestamptz); T174 job photos (000020) and T176 signature + service report (000021) done — phase E complete; master CI bundle check fixed.)
 
 > **How to read this file.** Every task has an ID (T###). The **Task Index** lists all of them: completed rows
 > (struck through) first by ID, then open rows by Phase → ID. Each open task has exactly one detailed section under
@@ -116,7 +116,7 @@ gated task's section says **MVP Gate: Yes**.
 | B. Platform                        | 2026-11-23 → 2027-01-03    | T158 (rest), ~~T159~~, T160, ~~T154~~, ~~T241~~, ~~T263~~                                                   | 51    | Neon Auth sign-in live; RLS on; files in R2                            |
 | C. Getting paid                    | 2027-01-04 → 2027-02-14    | ~~T264~~, T169, T170, T210, ~~T265~~                                                                | 50    | A test tenant is paid by ACH into its own Stripe account               |
 | D. Commercial wedge                | 2027-02-15 → 2027-03-31    | ~~T167~~, ~~T186~~, ~~T187~~, ~~T188~~, ~~T028~~, ~~T029~~, ~~T030~~, ~~T035~~, ~~T235~~, ~~T269~~, ~~T270~~                            | 73    | Agreements generate visits; one consolidated invoice per customer      |
-| E. Proof of service                | 2027-04-01 → 2027-05-01    | ~~T173~~, ~~T174~~, T176                                                                            | 40    | A tech completes a visit on a phone; the report is emailed             |
+| E. Proof of service                | 2027-04-01 → 2027-05-01    | ~~T173~~, ~~T174~~, ~~T176~~                                                                            | 40    | A tech completes a visit on a phone; the report is emailed             |
 | F. Integrations                    | 2027-05-02 → 2027-06-13    | T192, T193                                                                                  | 40    | QuickBooks sync and Jobber/HCP import used by design partners          |
 | G. Launch readiness (alongside)    | 2026-11 → 2027-08          | T218, T205, ~~T206~~, T207, T208, T209, T211, T212, T213, T251, T252, ~~T268~~                        | 34    | Interviews by 2027-01-31; backups, legal, monitoring before 2027-09-07 |
 
@@ -318,7 +318,7 @@ stripe-go v87 supports v2 accounts) and the first 4h of T192 (QuickBooks OAuth, 
 | ~~T173~~ | ~~7~~  | ~~Mobile~~     | ~~24~~ | ~~Technician "My Day" mobile-first view~~                                                                |
 | ~~T174~~ | ~~7~~  | ~~Feature~~    | ~~8~~  | ~~Job photos and attachments (R2)~~                                                                      |
 | T175     | 7      | Feature        | 12     | Job checklists / forms                                                                                   |
-| T176     | 7      | Feature        | 8      | Customer signature on completion + service report PDF emailed                                            |
+| ~~T176~~ | ~~7~~  | ~~Feature~~    | ~~8~~  | ~~Customer signature on completion + service report PDF emailed~~                                        |
 | T177     | 7      | Feature        | 12     | Time clock per job + timesheet export                                                                    |
 | T178     | 7      | Feature        | 8      | Map / route view of the day                                                                              |
 | T179     | 7      | Mobile         | 40     | Offline-capable tech app (queue + sync)                                                                  |
@@ -1481,7 +1481,7 @@ The technician experience (the product's weakest area) and the remaining schedul
 - [x] T173 — Technician "My Day" mobile-first view ✓ (2026-11-03)
 - [x] T174 — Job photos and attachments (R2) ✓ (2026-11-04)
 - [ ] T175 — Job checklists / forms
-- [ ] T176 — Customer signature on completion + service report PDF emailed
+- [x] T176 — Customer signature on completion + service report PDF emailed ✓ (2026-11-04)
 - [ ] T177 — Time clock per job + timesheet export
 - [ ] T178 — Map / route view of the day
 - [ ] T179 — Offline-capable tech app (queue + sync)
@@ -1689,7 +1689,7 @@ The technician experience (the product's weakest area) and the remaining schedul
 
 #### T176 — Customer signature on completion + service report PDF emailed
 
-**Phase**: 7 · **Category**: Feature · **Hours**: 8 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: T173, T174, T159
+**Phase**: 7 · **Category**: Feature · **Hours**: 8 · **Status**: Done (2026-11-04) · **MVP Gate**: Yes · **Depends on**: T173, T174, T159
 
 **What it is** — At completion the customer signs on the tech's device, and a service report PDF is emailed to the customer's contacts.
 
@@ -1699,6 +1699,8 @@ The technician experience (the product's weakest area) and the remaining schedul
 
 **Notes** — `docs/product/competitive-research-2026-10.md` §5 v1 "Job checklists and service report PDF". MVP plan (2026-10-25): the service report is emailed to the property manager as proof of service.
 
+
+**Done (2026-11-04)** — `9fe9132`…`2185f1a`. Migration 000021 `job_signoffs` (one per job, `UNIQUE (tenant_id, job_id)`, RLS). Sign only once the visit has started; re-signing replaces until the report is emailed, then locked (409 `signoff_locked`). Signature: PNG sniffed, ≤512 KB, `DecodeConfig` 100×40–3000×3000, blank refused, flattened and re-encoded; IP via `ClientIP`, user agent, captured_by. Service report (gofpdf `proof_of_service.go`): job/customer/site/PO, on-site times in tenant TZ, crew, work and notes, materials without prices, up to 12 photos, signature. Emailed to customer + site contact (+ signer), respecting `do_not_email`, claimed with a conditional UPDATE (idempotent; `resend` explicit; stale claim 10 min; provider failure 502 releases). `/jobs/:id/signoff` (+ `/signature`, `/report`, `/report/link`, `/email`). SignaturePad on `/my-day/:jobId`; proof-of-service card on job detail (mockup 09). Verified end to end: Mailpit got one email with the PDF; repeat POST sent nothing; resend sent a second. Not built: checklist answers (T175), email-open tracking, auto-send on completion, signature history; dev seed has no tenant time zone (reports show UTC locally).
 ---
 
 #### T177 — Time clock per job + timesheet export
@@ -3471,6 +3473,7 @@ Dated history from the original "Completed Items" list:
 
 ### 2026-11-04
 
+- **T176** — Customer signature on the visit page and a service report PDF (photos, materials without prices, signature) emailed idempotently to the customer and site contact; proof-of-service card on the job; migration 000021. `9fe9132`…`2185f1a`. Phase E complete.
 - **T174** — Job photos and attachments: migration 000020, validated/resized/EXIF-stripped uploads with thumbnails, presigned downloads, technician scoping; on job detail and the visit page. `0efd0c1`…`f75717b`.
 - **T272** — Technicians no longer request the plan they can't read (no more 403s). `b7c1f27`.
 - **T273** — All remaining timestamp columns are `timestamptz` (migration 000019); note times correct outside UTC. `ea96c35`.
