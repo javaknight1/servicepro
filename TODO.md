@@ -276,7 +276,7 @@ stripe-go v87 supports v2 accounts) and the first 4h of T192 (QuickBooks OAuth, 
 | ~~T271~~ | ~~4~~  | ~~Infra~~      | ~~2~~  | ~~Replace MinIO in the local Docker stack (images no longer pullable)~~                                  |
 | ~~T272~~ | ~~5~~  | ~~Bug~~        | ~~1~~  | ~~Technicians get repeated 403s on GET /tenants/:id/membership~~                                         |
 | ~~T273~~ | ~~5~~  | ~~Bug~~        | ~~1~~  | ~~Job note timestamps come back hours off (time zone)~~                                                  |
-| T274     | 5      | Chore          | 2      | npm updates blocked by the Neon Auth beta peer graph                                                     |
+| ~~T274~~ | ~~5~~  | ~~Chore~~      | ~~2~~  | ~~npm updates blocked by the Neon Auth beta peer graph~~                                                 |
 | ~~T264~~ | ~~4~~  | ~~Backend~~    | ~~4~~  | ~~Upgrade stripe-go v76 → v87; replace archived nfnt/resize~~                                            |
 | ~~T028~~ | ~~5~~  | ~~Feature~~    | ~~3~~  | ~~Add "Convert Quote to Job" button~~                                                                    |
 | ~~T029~~ | ~~5~~  | ~~Feature~~    | ~~2~~  | ~~Add "Generate Invoice from Job" button~~                                                               |
@@ -1004,13 +1004,15 @@ D2: move to League Looper's stack one strangler step at a time while the app kee
 
 #### T274 — npm updates blocked by the Neon Auth beta peer graph
 
-**Phase**: 5 · **Category**: Chore · **Hours**: 2 · **Status**: Open · **MVP Gate**: No · **Depends on**: T158
+**Phase**: 5 · **Category**: Chore · **Hours**: 2 · **Status**: Done (2026-11-04) · **MVP Gate**: No · **Depends on**: T158
 
 **What it is** — Dependabot's npm minor/patch group (and `npm update`) work again.
 **What it does** — Since T158 added `@neondatabase/auth` 0.7.0-beta with better-auth 1.7.16 overrides, `npm update` fails with ERESOLVE (`@neondatabase/auth-ui` 0.4.0-beta peers on `@neondatabase/auth` 0.6.0-beta) and Dependabot closed PR #90 as "no longer updatable". Drop `auth-ui` if unused, or align the overrides, then apply the pending minor/patch bumps (Sentry, Stripe, TanStack Query, axios, vitest, eslint, wrangler, …) and run all frontend gates.
 **Why we need it** — Without it no npm security or patch updates land automatically.
 **Notes** — Found 2026-11-04 while re-running Dependabot after the CI bundle fix.
 
+
+**Done (2026-11-04)** — `npm update` still trips over `@neondatabase/auth` 0.7.0-beta nesting `@neondatabase/auth-ui` 0.4.0-beta (which peers on auth 0.6.0-beta), but explicit installs resolve: applied the pending minor/patch bumps (Stripe, TanStack Query, react-router, Tailwind, vite plugin, vitest, eslint, wrangler, lucide, …). Held back: `@sentry/react` 11.10 and `posthog-js` 1.445 (they push `vendor-observability` to 207 KB > 195 KB and total JS to 754 KB > 750 KB; T246), TypeScript 7 and `@hookform/resolvers` 7 (majors). Total JS is now 741 KB of the 750 KB hard limit (the lazy Neon Auth chunk is 51 KB) — T246 should trim before more features land. Dependabot may keep failing on the npm group until the Neon beta settles.
 ---
 
 #### T264 — Upgrade stripe-go v76 → v87; replace archived nfnt/resize
@@ -1347,7 +1349,7 @@ The quote → job → invoice loop, roles for field and office staff, recurring 
 ---
 - [x] T272 — Technicians get repeated 403s on GET /tenants/:id/membership ✓ (2026-11-04)
 - [x] T273 — Job note timestamps come back hours off (time zone) ✓ (2026-11-04)
-- [ ] T274 — npm updates blocked by the Neon Auth beta peer graph
+- [x] T274 — npm updates blocked by the Neon Auth beta peer graph ✓ (2026-11-04)
 
 
 ### Phase 6 — Payments to the Business (T061, T063, T083, T169, T170, T171, T172, T261)
@@ -3513,6 +3515,7 @@ Dated history from the original "Completed Items" list:
 
 ### 2026-11-04
 
+- **T274** — npm minor/patch bumps applied by hand (Dependabot blocked by the Neon Auth beta peer graph); Sentry/PostHog held for bundle budget. Total JS 741/750 KB.
 - **T192 (code)** — QuickBooks Online one-way sync (customers, invoices, payments) with OAuth, sealed tokens, idempotent retries and an Integrations tab; migration 000023; off until the Intuit app exists. `17b7ba2`…`cad3128`.
 - **T212** — Production config review (`docs/ops/production-config-review-2026-11.md`); API now fails fast on unsafe production config. `822e65f`…`3418716`.
 - **T158 (SPA)** — Neon Auth sign-in screens, client, interceptor and store behind `VITE_NEON_AUTH_URL`; provision records terms; bearer beats leftover cookie; verified on the Neon dev branch. D17 proposed. `2c05de3`…`6392173`.
