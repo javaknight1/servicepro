@@ -16,6 +16,7 @@ const (
 	ResourceRoles        = "roles"
 	ResourceSettings     = "settings"
 	ResourceMembership   = "membership"
+	ResourceIntegrations = "integrations"
 )
 
 // Actions defines all action types in the system
@@ -168,6 +169,12 @@ const (
 	MembershipBilling = "membership.billing"
 )
 
+// Integration permissions (T192): connect, configure and sync accounting
+// integrations (QuickBooks Online). Owners and admins.
+const (
+	IntegrationsManage = "integrations.manage"
+)
+
 // PermissionDefinition represents a permission with its metadata
 type PermissionDefinition struct {
 	Name        string
@@ -267,6 +274,9 @@ func AllPermissions() []PermissionDefinition {
 		// Membership
 		{MembershipUpdate, "Change membership tier", ResourceMembership, ActionUpdate},
 		{MembershipBilling, "Manage billing settings", ResourceMembership, ActionAdmin},
+
+		// Integrations
+		{IntegrationsManage, "Connect, configure and sync accounting integrations (QuickBooks)", ResourceIntegrations, ActionManage},
 	}
 }
 
@@ -297,6 +307,7 @@ func DefaultRolePermissions() []RolePermissions {
 				RolesCreate, RolesRead, RolesUpdate, RolesDelete, RolesAssign,
 				SettingsRead, SettingsUpdate,
 				MembershipUpdate, MembershipBilling,
+				IntegrationsManage,
 			},
 		},
 		{
@@ -317,6 +328,7 @@ func DefaultRolePermissions() []RolePermissions {
 				RolesRead, RolesAssign,
 				SettingsRead, SettingsUpdate,
 				MembershipUpdate, MembershipBilling,
+				IntegrationsManage,
 			},
 		},
 		{
@@ -400,5 +412,6 @@ func PermissionsByResource() map[string][]string {
 		ResourceRoles:        {RolesCreate, RolesRead, RolesUpdate, RolesDelete, RolesAssign},
 		ResourceSettings:     {SettingsRead, SettingsUpdate},
 		ResourceMembership:   {MembershipUpdate, MembershipBilling},
+		ResourceIntegrations: {IntegrationsManage},
 	}
 }

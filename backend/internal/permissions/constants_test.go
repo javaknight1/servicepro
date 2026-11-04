@@ -64,3 +64,18 @@ func TestTechnicianRolePermissions(t *testing.T) {
 		}
 	}
 }
+
+// T192: integrations.manage (connect QuickBooks, which writes into the
+// business's books) is for owners and admins only.
+func TestIntegrationsManageOwnersAndAdminsOnly(t *testing.T) {
+	for _, r := range DefaultRolePermissions() {
+		has := false
+		for _, p := range r.Permissions {
+			has = has || p == IntegrationsManage
+		}
+		want := r.RoleName == RoleSuperAdmin || r.RoleName == RoleAdmin
+		if has != want {
+			t.Errorf("role %s: integrations.manage = %v, want %v", r.RoleName, has, want)
+		}
+	}
+}
