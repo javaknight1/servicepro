@@ -1,6 +1,6 @@
 # ServicePro — Roadmap
 
-**Last Updated**: 2026-11-04 (T272 and T273 fixed; migration 000019 timestamptz. T174 in progress, migration 000020.)
+**Last Updated**: 2026-11-04 (T272, T273 fixed (migration 000019 timestamptz); T174 job photos done (migration 000020); master CI bundle check fixed. T176 in progress, migration 000021.)
 
 > **How to read this file.** Every task has an ID (T###). The **Task Index** lists all of them: completed rows
 > (struck through) first by ID, then open rows by Phase → ID. Each open task has exactly one detailed section under
@@ -116,7 +116,7 @@ gated task's section says **MVP Gate: Yes**.
 | B. Platform                        | 2026-11-23 → 2027-01-03    | T158 (rest), ~~T159~~, T160, ~~T154~~, ~~T241~~, ~~T263~~                                                   | 51    | Neon Auth sign-in live; RLS on; files in R2                            |
 | C. Getting paid                    | 2027-01-04 → 2027-02-14    | ~~T264~~, T169, T170, T210, ~~T265~~                                                                | 50    | A test tenant is paid by ACH into its own Stripe account               |
 | D. Commercial wedge                | 2027-02-15 → 2027-03-31    | ~~T167~~, ~~T186~~, ~~T187~~, ~~T188~~, ~~T028~~, ~~T029~~, ~~T030~~, ~~T035~~, ~~T235~~, ~~T269~~, ~~T270~~                            | 73    | Agreements generate visits; one consolidated invoice per customer      |
-| E. Proof of service                | 2027-04-01 → 2027-05-01    | ~~T173~~, T174, T176                                                                            | 40    | A tech completes a visit on a phone; the report is emailed             |
+| E. Proof of service                | 2027-04-01 → 2027-05-01    | ~~T173~~, ~~T174~~, T176                                                                            | 40    | A tech completes a visit on a phone; the report is emailed             |
 | F. Integrations                    | 2027-05-02 → 2027-06-13    | T192, T193                                                                                  | 40    | QuickBooks sync and Jobber/HCP import used by design partners          |
 | G. Launch readiness (alongside)    | 2026-11 → 2027-08          | T218, T205, ~~T206~~, T207, T208, T209, T211, T212, T213, T251, T252, ~~T268~~                        | 34    | Interviews by 2027-01-31; backups, legal, monitoring before 2027-09-07 |
 
@@ -316,7 +316,7 @@ stripe-go v87 supports v2 accounts) and the first 4h of T192 (QuickBooks OAuth, 
 | T079     | 7      | Feature        | 1      | Add travel time notes field                                                                              |
 | T099     | 7      | Backend        | 4      | Add tenant timezone support for conflict detection                                                       |
 | ~~T173~~ | ~~7~~  | ~~Mobile~~     | ~~24~~ | ~~Technician "My Day" mobile-first view~~                                                                |
-| T174     | 7      | Feature        | 8      | Job photos and attachments (R2)                                                                          |
+| ~~T174~~ | ~~7~~  | ~~Feature~~    | ~~8~~  | ~~Job photos and attachments (R2)~~                                                                      |
 | T175     | 7      | Feature        | 12     | Job checklists / forms                                                                                   |
 | T176     | 7      | Feature        | 8      | Customer signature on completion + service report PDF emailed                                            |
 | T177     | 7      | Feature        | 12     | Time clock per job + timesheet export                                                                    |
@@ -1479,7 +1479,7 @@ The technician experience (the product's weakest area) and the remaining schedul
 - [ ] T079 — Add travel time notes field
 - [ ] T099 — Add tenant timezone support for conflict detection
 - [x] T173 — Technician "My Day" mobile-first view ✓ (2026-11-03)
-- [ ] T174 — Job photos and attachments (R2)
+- [x] T174 — Job photos and attachments (R2) ✓ (2026-11-04)
 - [ ] T175 — Job checklists / forms
 - [ ] T176 — Customer signature on completion + service report PDF emailed
 - [ ] T177 — Time clock per job + timesheet export
@@ -1659,7 +1659,7 @@ The technician experience (the product's weakest area) and the remaining schedul
 
 #### T174 — Job photos and attachments (R2)
 
-**Phase**: 7 · **Category**: Feature · **Hours**: 8 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: T160
+**Phase**: 7 · **Category**: Feature · **Hours**: 8 · **Status**: Done (2026-11-04) · **MVP Gate**: Yes · **Depends on**: T160
 
 **What it is** — Techs and office staff attach photos and files to jobs (and quotes/invoices), stored in R2.
 
@@ -1669,6 +1669,8 @@ The technician experience (the product's weakest area) and the remaining schedul
 
 **Notes** — `docs/product/competitive-research-2026-10.md` §2 row 16. Folds in old P3 "Image Optimization Strategy" (resize on upload, WebP, lazy loading).
 
+
+**Done (2026-11-04)** — `0efd0c1`, `a0c8058`, `f75717b`. Migration 000020 `job_attachments` (RLS, DefaultTables; hard delete removes the objects). Multipart upload through the API (not presigned PUT: the server must read the bytes anyway): 15 MB cap (413), type sniffed from bytes (JPEG/PNG/WebP/PDF, else 415), `image.DecodeConfig` before decode (≤12000 px a side, ≤40 MP; F-19), EXIF orientation applied then stripped by re-encoding, 2048 px JPEG + 400 px thumbnail, two decodes at a time, 100 per job. `/jobs/:id/attachments` list/upload/file/thumb (302 presigned)/caption/delete; technicians only on assigned jobs (404) and only change their own. Photos on job detail and on `/my-day/:jobId` (camera capture). Verified end to end on RustFS and at 375 px. Not built: WebP output (no stdlib encoder; stored as JPEG), attachments on quotes/invoices, photo count on mockup 09 cards, HEIC, orphan-object sweep. Storage on production waits for T160 (R2).
 ---
 
 #### T175 — Job checklists / forms
@@ -3469,6 +3471,7 @@ Dated history from the original "Completed Items" list:
 
 ### 2026-11-04
 
+- **T174** — Job photos and attachments: migration 000020, validated/resized/EXIF-stripped uploads with thumbnails, presigned downloads, technician scoping; on job detail and the visit page. `0efd0c1`…`f75717b`.
 - **T272** — Technicians no longer request the plan they can't read (no more 403s). `b7c1f27`.
 - **T273** — All remaining timestamp columns are `timestamptz` (migration 000019); note times correct outside UTC. `ea96c35`.
 
