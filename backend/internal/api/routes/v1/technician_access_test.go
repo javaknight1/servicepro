@@ -30,9 +30,11 @@ import (
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/repository"
 	"github.com/javaknight1/servicepro/backend/internal/services"
+	"github.com/javaknight1/servicepro/backend/internal/services/pdf"
 	permissionsSvc "github.com/javaknight1/servicepro/backend/internal/services/permissions"
 	"github.com/javaknight1/servicepro/backend/internal/tenancy"
 	"github.com/javaknight1/servicepro/backend/pkg/auth"
+	emailmock "github.com/javaknight1/servicepro/backend/pkg/clients/email/mock"
 	storagemock "github.com/javaknight1/servicepro/backend/pkg/clients/storage/mock"
 	"github.com/javaknight1/servicepro/backend/pkg/database"
 )
@@ -82,6 +84,8 @@ type techFixture struct {
 	jwt    *auth.JWTManager
 	// store is the in-memory object store behind job attachments (T174).
 	store *storagemock.Client
+	// mail records emails sent (service reports, T176).
+	mail *emailmock.Client
 
 	tenantA, tenantB               uuid.UUID
 	ownerA, officeA, techA, techA2 uuid.UUID
@@ -166,6 +170,11 @@ func setupTechFixture(t *testing.T) *techFixture {
 	tenantMW.SetAccessScope(middleware.AccessScope(checker))
 
 	f.store = storagemock.NewClient(nil)
+	f.mail = emailmock.NewClient(nil)
+	pdfCfg := pdf.DefaultConfig()
+	pdfCfg.Storage.LocalPath = t.TempDir()
+	pdfGen, err := pdf.NewGenerator(context.Background(), pdfCfg, nil)
+	require.NoError(t, err)
 	jobService := services.NewJobService(repository.NewJobRepository(db), repository.NewCustomerRepository(db), db)
 	cfg := &routeconfigs.RouteConfig{
 		Middleware: &routeconfigs.Middleware{PermMiddleware: permMW, TenantMW: tenantMW, PermChecker: checker},
@@ -177,6 +186,8 @@ func setupTechFixture(t *testing.T) *techFixture {
 				services.NewJobApprovalService(db, repository.NewJobApprovalRepository(db))),
 			JobAttachment: handlers.NewJobAttachmentHandler(
 				services.NewJobAttachmentService(repository.NewJobAttachmentRepository(db), f.store)),
+			JobSignoff: handlers.NewJobSignoffHandler(
+				services.NewJobSignoffService(repository.NewJobSignoffRepository(db), f.store, pdfGen, f.mail)),
 		},
 	}
 	f.engine = gin.New()

@@ -139,5 +139,22 @@ func SetupJobRoutes(router *gin.RouterGroup, cfg *routeconfigs.RouteConfig) {
 			jobs.DELETE("/:id/attachments/:attachmentId",
 				cfg.Middleware.PermMiddleware.RequirePermission(permissions.JobsUpdate), h.DeleteAttachment)
 		}
+
+		// Customer sign-off and the service report (T176; only with object
+		// storage). Reading needs "jobs.read", signing and emailing
+		// "jobs.update"; technicians hold both for their assigned jobs and
+		// other jobs are 404.
+		if h := cfg.Handlers.JobSignoff; h != nil {
+			jobs.GET("/:id/signoff",
+				cfg.Middleware.PermMiddleware.RequirePermission(permissions.JobsRead), h.GetSignoff)
+			jobs.POST("/:id/signoff",
+				cfg.Middleware.PermMiddleware.RequirePermission(permissions.JobsUpdate), h.CaptureSignoff)
+			jobs.GET("/:id/signoff/signature",
+				cfg.Middleware.PermMiddleware.RequirePermission(permissions.JobsRead), h.GetSignature)
+			jobs.GET("/:id/signoff/report",
+				cfg.Middleware.PermMiddleware.RequirePermission(permissions.JobsRead), h.GetReport)
+			jobs.POST("/:id/signoff/email",
+				cfg.Middleware.PermMiddleware.RequirePermission(permissions.JobsUpdate), h.EmailReport)
+		}
 	}
 }

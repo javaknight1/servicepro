@@ -97,6 +97,9 @@ func SetupHandlers(
 	if svc.JobAttachments != nil {
 		h.JobAttachment = handlers.NewJobAttachmentHandler(svc.JobAttachments)
 	}
+	if svc.JobSignoffs != nil {
+		h.JobSignoff = handlers.NewJobSignoffHandler(svc.JobSignoffs)
+	}
 
 	// Payment terms handler
 	h.PaymentTerms = handlers.NewPaymentTermsHandler(svc.PaymentTerms)

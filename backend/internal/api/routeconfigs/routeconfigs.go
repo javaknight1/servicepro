@@ -65,6 +65,8 @@ type Repositories struct {
 	Agreements repository.AgreementRepositoryInterface
 	// JobAttachments are job photos and files (T174).
 	JobAttachments repository.JobAttachmentRepositoryInterface
+	// JobSignoffs are customers' sign-offs and service reports (T176).
+	JobSignoffs repository.JobSignoffRepositoryInterface
 }
 
 // Services holds all service instances
@@ -86,15 +88,18 @@ type Services struct {
 	ProfilePicture    *services.ProfilePictureService
 	// JobAttachments stores job photos and files (T174); nil without storage.
 	JobAttachments *services.JobAttachmentService
-	Revenue        services.RevenueReportService
-	ARAging        services.ARAgingService
-	Export         services.UnifiedExportService
-	Import         *services.ImportService
-	PaymentTerms   *services.PaymentTermsService
-	TaxRates       *services.TaxRateService
-	StripeClient   *stripeService.Client
-	StripeEvents   *stripeService.EventProcessor
-	StripeWebhook  *stripeService.WebhookHandler
+	// JobSignoffs stores sign-offs and emails service reports (T176); nil
+	// without storage.
+	JobSignoffs   *services.JobSignoffService
+	Revenue       services.RevenueReportService
+	ARAging       services.ARAgingService
+	Export        services.UnifiedExportService
+	Import        *services.ImportService
+	PaymentTerms  *services.PaymentTermsService
+	TaxRates      *services.TaxRateService
+	StripeClient  *stripeService.Client
+	StripeEvents  *stripeService.EventProcessor
+	StripeWebhook *stripeService.WebhookHandler
 	// StripeConnectWebhook receives events from connected accounts and
 	// StripeV2Webhook thin v2 account events (T169); nil when unconfigured.
 	StripeConnectWebhook *stripeService.WebhookHandler
@@ -151,7 +156,9 @@ type Handlers struct {
 	ImportExport      *handlers.ImportExportHandler
 	ProfilePicture    *handlers.ProfilePictureHandler
 	// JobAttachment is nil when no object storage is configured (T174).
-	JobAttachment   *handlers.JobAttachmentHandler
+	JobAttachment *handlers.JobAttachmentHandler
+	// JobSignoff is nil when no object storage is configured (T176).
+	JobSignoff      *handlers.JobSignoffHandler
 	PaymentTerms    *handlers.PaymentTermsHandler
 	TaxRate         *handlers.TaxRateHandler
 	Conflict        *handlers.ConflictHandler

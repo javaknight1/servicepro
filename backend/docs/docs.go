@@ -4325,6 +4325,311 @@ const docTemplate = `{
                 ]
             }
         },
+        "/api/v1/jobs/{id}/signoff": {
+            "get": {
+                "description": "The sign-off (null when the job hasn't been signed) with a presigned link to the signature, whether and to whom the service report was emailed, and suggested_recipients: who the report goes to (the customer's email and the site contact unless the customer opted out of email, and the signer's email).",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "jobs"
+                ],
+                "summary": "Get a job's customer sign-off",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Job ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.JobSignoffEnvelope"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid ID",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Job not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "description": "The customer signs on the technician's phone: signer name (optional title and email) and the signature as a PNG data URL. The type is sniffed from the bytes (PNG only), at most 512 KB and 100 x 40 to 3000 x 3000 pixels (checked before decoding); a canvas without ink is refused. The visit must be started or done (409 job_not_started). Signing again replaces the sign-off until the service report has been emailed, then it is locked (409 signoff_locked). The time, IP and device are recorded. Technicians can sign off only jobs assigned to them; other jobs are 404.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "jobs"
+                ],
+                "summary": "Record the customer's signature on a job",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Job ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Signer and signature",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.CaptureJobSignoffRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.JobSignoffResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request, unreadable signature (invalid_signature), wrong size (signature_dimensions), empty canvas (signature_empty)",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Job not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Visit not started (job_not_started) or report already emailed (signoff_locked)",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "413": {
+                        "description": "Signature over 512 KB (signature_too_large)",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "415": {
+                        "description": "Not a PNG (unsupported_signature_type)",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/jobs/{id}/signoff/email": {
+            "post": {
+                "description": "Emails the service report PDF to suggested_recipients, from the business. Sends at most once: a repeated request after a successful send returns sent=false and sends nothing; {\"resend\": true} sends the stored report again. A concurrent send is 409 email_in_progress; no address (or the customer opted out and the signer gave none) is 409 no_recipients.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "jobs"
+                ],
+                "summary": "Email the service report to the customer",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Job ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Resend",
+                        "name": "request",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.EmailJobReportRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.EmailJobReportResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Job or sign-off not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "No recipients (no_recipients) or already sending (email_in_progress)",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "502": {
+                        "description": "The email provider refused it (email_failed)",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Email not configured (email_unavailable)",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/jobs/{id}/signoff/report": {
+            "get": {
+                "description": "Redirects to a presigned link (about an hour) to the service report: once emailed, the copy the customer received; before that, one built from the job as it is now (work done, notes, materials without prices, time on site, photos, signature).",
+                "tags": [
+                    "jobs"
+                ],
+                "summary": "Download the service report PDF",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Job ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "302": {
+                        "description": "Found"
+                    },
+                    "400": {
+                        "description": "Invalid ID",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Job or sign-off not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/jobs/{id}/signoff/signature": {
+            "get": {
+                "description": "Redirects to a presigned link (about an hour) to the signature PNG.",
+                "tags": [
+                    "jobs"
+                ],
+                "summary": "Download the customer's signature",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Job ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "302": {
+                        "description": "Found"
+                    },
+                    "400": {
+                        "description": "Invalid ID",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Job or sign-off not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/v1/jobs/{id}/status-history": {
             "get": {
                 "description": "Retrieve the status transition history for a job",
@@ -11649,6 +11954,36 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_javaknight1_servicepro_backend_internal_models.CaptureJobSignoffRequest": {
+            "type": "object",
+            "required": [
+                "signature",
+                "signer_name"
+            ],
+            "properties": {
+                "signature": {
+                    "description": "Signature is the PNG, at most 512 KB, 3000 px a side.",
+                    "type": "string",
+                    "example": "data:image/png;base64,iVBORw0KGgo..."
+                },
+                "signer_email": {
+                    "description": "SignerEmail, when given, also receives the service report.",
+                    "type": "string",
+                    "maxLength": 255,
+                    "example": "ray.burke@example.com"
+                },
+                "signer_name": {
+                    "type": "string",
+                    "maxLength": 100,
+                    "example": "Ray Burke"
+                },
+                "signer_title": {
+                    "type": "string",
+                    "maxLength": 100,
+                    "example": "Site manager"
+                }
+            }
+        },
         "github_com_javaknight1_servicepro_backend_internal_models.ConflictSeverity": {
             "type": "string",
             "enum": [
@@ -12737,6 +13072,27 @@ const docTemplate = `{
                 "start": {
                     "description": "\"07:00\" format",
                     "type": "string"
+                }
+            }
+        },
+        "github_com_javaknight1_servicepro_backend_internal_models.EmailJobReportRequest": {
+            "type": "object",
+            "properties": {
+                "resend": {
+                    "description": "Resend sends the report again after it has been emailed. Without it a\nrepeated request sends nothing and returns the sign-off as it is.",
+                    "type": "boolean"
+                }
+            }
+        },
+        "github_com_javaknight1_servicepro_backend_internal_models.EmailJobReportResponse": {
+            "type": "object",
+            "properties": {
+                "sent": {
+                    "description": "Sent is false when the report had already been emailed and resend\nwasn't asked for (a retried request sends nothing).",
+                    "type": "boolean"
+                },
+                "signoff": {
+                    "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.JobSignoffResponse"
                 }
             }
         },
@@ -14250,6 +14606,94 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "warnings": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "github_com_javaknight1_servicepro_backend_internal_models.JobSignoffEnvelope": {
+            "type": "object",
+            "properties": {
+                "signoff": {
+                    "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.JobSignoffResponse"
+                },
+                "suggested_recipients": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "github_com_javaknight1_servicepro_backend_internal_models.JobSignoffResponse": {
+            "type": "object",
+            "properties": {
+                "captured_by": {
+                    "description": "CapturedByName is the user whose phone the customer signed on.",
+                    "type": "string"
+                },
+                "captured_by_name": {
+                    "type": "string",
+                    "example": "Tasha Green"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "job_id": {
+                    "type": "string"
+                },
+                "locked": {
+                    "description": "Locked: the report has been emailed, so signing again is refused.",
+                    "type": "boolean"
+                },
+                "report_email_count": {
+                    "type": "integer"
+                },
+                "report_emailed_at": {
+                    "description": "ReportEmailedAt is when the report was last emailed; Recipients who to.",
+                    "type": "string"
+                },
+                "report_generated_at": {
+                    "type": "string"
+                },
+                "report_path": {
+                    "description": "ReportPath redirects (302) to the service report PDF.",
+                    "type": "string",
+                    "example": "/api/v1/jobs/7b0c.../signoff/report"
+                },
+                "report_recipients": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "signature_path": {
+                    "type": "string",
+                    "example": "/api/v1/jobs/7b0c.../signoff/signature"
+                },
+                "signature_url": {
+                    "description": "SignatureURL is a presigned link to the PNG valid for about an hour;\nSignaturePath redirects (302) to a fresh one.",
+                    "type": "string"
+                },
+                "signed_at": {
+                    "type": "string"
+                },
+                "signer_email": {
+                    "type": "string",
+                    "example": "ray.burke@example.com"
+                },
+                "signer_name": {
+                    "type": "string",
+                    "example": "Ray Burke"
+                },
+                "signer_title": {
+                    "type": "string",
+                    "example": "Site manager"
+                },
+                "suggested_recipients": {
+                    "description": "SuggestedRecipients are who the report would go to now: the\ncustomer's email, the site contact and the signer (opted-out\ncustomers get none).",
                     "type": "array",
                     "items": {
                         "type": "string"

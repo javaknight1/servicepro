@@ -150,6 +150,8 @@ func SetupServices(
 		svc.ProfilePicture = services.NewProfilePictureService(repos.User, repos.Tenant, storageClient)
 		// Job photos and files (T174)
 		svc.JobAttachments = services.NewJobAttachmentService(repos.JobAttachments, storageClient)
+		// Customer sign-off and the emailed service report (T176)
+		svc.JobSignoffs = services.NewJobSignoffService(repos.JobSignoffs, storageClient, pdfGenerator, emailClient)
 	}
 
 	// Stripe service (optional - depends on configuration)

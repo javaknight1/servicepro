@@ -5201,6 +5201,395 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/jobs/{id}/signoff": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a job's customer sign-off
+         * @description The sign-off (null when the job hasn't been signed) with a presigned link to the signature, whether and to whom the service report was emailed, and suggested_recipients: who the report goes to (the customer's email and the site contact unless the customer opted out of email, and the signer's email).
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Job ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.JobSignoffEnvelope"];
+                    };
+                };
+                /** @description Invalid ID */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Job not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Internal server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * Record the customer's signature on a job
+         * @description The customer signs on the technician's phone: signer name (optional title and email) and the signature as a PNG data URL. The type is sniffed from the bytes (PNG only), at most 512 KB and 100 x 40 to 3000 x 3000 pixels (checked before decoding); a canvas without ink is refused. The visit must be started or done (409 job_not_started). Signing again replaces the sign-off until the service report has been emailed, then it is locked (409 signoff_locked). The time, IP and device are recorded. Technicians can sign off only jobs assigned to them; other jobs are 404.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Job ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            /** @description Signer and signature */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.CaptureJobSignoffRequest"];
+                };
+            };
+            responses: {
+                /** @description Created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.JobSignoffResponse"];
+                    };
+                };
+                /** @description Invalid request, unreadable signature (invalid_signature), wrong size (signature_dimensions), empty canvas (signature_empty) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Job not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Visit not started (job_not_started) or report already emailed (signoff_locked) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Signature over 512 KB (signature_too_large) */
+                413: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Not a PNG (unsupported_signature_type) */
+                415: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Internal server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/jobs/{id}/signoff/email": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Email the service report to the customer
+         * @description Emails the service report PDF to suggested_recipients, from the business. Sends at most once: a repeated request after a successful send returns sent=false and sends nothing; {"resend": true} sends the stored report again. A concurrent send is 409 email_in_progress; no address (or the customer opted out and the signer gave none) is 409 no_recipients.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Job ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            /** @description Resend */
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.EmailJobReportRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.EmailJobReportResponse"];
+                    };
+                };
+                /** @description Invalid request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Job or sign-off not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description No recipients (no_recipients) or already sending (email_in_progress) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Internal server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description The email provider refused it (email_failed) */
+                502: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Email not configured (email_unavailable) */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/jobs/{id}/signoff/report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download the service report PDF
+         * @description Redirects to a presigned link (about an hour) to the service report: once emailed, the copy the customer received; before that, one built from the job as it is now (work done, notes, materials without prices, time on site, photos, signature).
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Job ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Found */
+                302: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Invalid ID */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Job or sign-off not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Internal server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/jobs/{id}/signoff/signature": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download the customer's signature
+         * @description Redirects to a presigned link (about an hour) to the signature PNG.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Job ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Found */
+                302: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Invalid ID */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Job or sign-off not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Internal server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/jobs/{id}/status-history": {
         parameters: {
             query?: never;
@@ -13406,6 +13795,22 @@ export interface components {
             line_ending?: string;
             quote_all?: boolean;
         };
+        "github_com_javaknight1_servicepro_backend_internal_models.CaptureJobSignoffRequest": {
+            /**
+             * @description Signature is the PNG, at most 512 KB, 3000 px a side.
+             * @example data:image/png;base64,iVBORw0KGgo...
+             */
+            signature: string;
+            /**
+             * @description SignerEmail, when given, also receives the service report.
+             * @example ray.burke@example.com
+             */
+            signer_email?: string;
+            /** @example Ray Burke */
+            signer_name: string;
+            /** @example Site manager */
+            signer_title?: string;
+        };
         /** @enum {string} */
         "github_com_javaknight1_servicepro_backend_internal_models.ConflictSeverity": "low" | "medium" | "high" | "critical";
         /** @enum {string} */
@@ -13791,6 +14196,21 @@ export interface components {
             end?: string;
             /** @description "07:00" format */
             start?: string;
+        };
+        "github_com_javaknight1_servicepro_backend_internal_models.EmailJobReportRequest": {
+            /**
+             * @description Resend sends the report again after it has been emailed. Without it a
+             *     repeated request sends nothing and returns the sign-off as it is.
+             */
+            resend?: boolean;
+        };
+        "github_com_javaknight1_servicepro_backend_internal_models.EmailJobReportResponse": {
+            /**
+             * @description Sent is false when the report had already been emailed and resend
+             *     wasn't asked for (a retried request sends nothing).
+             */
+            sent?: boolean;
+            signoff?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.JobSignoffResponse"];
         };
         "github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse": {
             /** @description Details lists extra messages, e.g. per-row import errors. */
@@ -14374,6 +14794,50 @@ export interface components {
             total_amount?: number;
             updated_at?: string;
             warnings?: string[];
+        };
+        "github_com_javaknight1_servicepro_backend_internal_models.JobSignoffEnvelope": {
+            signoff?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.JobSignoffResponse"];
+            suggested_recipients?: string[];
+        };
+        "github_com_javaknight1_servicepro_backend_internal_models.JobSignoffResponse": {
+            /** @description CapturedByName is the user whose phone the customer signed on. */
+            captured_by?: string;
+            /** @example Tasha Green */
+            captured_by_name?: string;
+            id?: string;
+            job_id?: string;
+            /** @description Locked: the report has been emailed, so signing again is refused. */
+            locked?: boolean;
+            report_email_count?: number;
+            /** @description ReportEmailedAt is when the report was last emailed; Recipients who to. */
+            report_emailed_at?: string;
+            report_generated_at?: string;
+            /**
+             * @description ReportPath redirects (302) to the service report PDF.
+             * @example /api/v1/jobs/7b0c.../signoff/report
+             */
+            report_path?: string;
+            report_recipients?: string[];
+            /** @example /api/v1/jobs/7b0c.../signoff/signature */
+            signature_path?: string;
+            /**
+             * @description SignatureURL is a presigned link to the PNG valid for about an hour;
+             *     SignaturePath redirects (302) to a fresh one.
+             */
+            signature_url?: string;
+            signed_at?: string;
+            /** @example ray.burke@example.com */
+            signer_email?: string;
+            /** @example Ray Burke */
+            signer_name?: string;
+            /** @example Site manager */
+            signer_title?: string;
+            /**
+             * @description SuggestedRecipients are who the report would go to now: the
+             *     customer's email, the site contact and the signer (opted-out
+             *     customers get none).
+             */
+            suggested_recipients?: string[];
         };
         "github_com_javaknight1_servicepro_backend_internal_models.JobSiteSummary": {
             access_notes?: string;

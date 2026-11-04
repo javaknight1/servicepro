@@ -93,6 +93,57 @@ to them — other jobs are `404 job_not_found`, the same row filter as
 (`403 attachment_not_yours`). Office staff can change any. Another tenant's
 attachments are 404.
 
+### Customer sign-off and service report (T176)
+
+| Method | Endpoint                         | Permission    | Description                                             |
+| ------ | -------------------------------- | ------------- | ------------------------------------------------------- |
+| GET    | `/jobs/:id/signoff`              | `jobs.read`   | The sign-off (`signoff: null` when unsigned) and `suggested_recipients` |
+| POST   | `/jobs/:id/signoff`              | `jobs.update` | Record the signature (`signer_name`, optional `signer_title`, `signer_email`, `signature`) |
+| GET    | `/jobs/:id/signoff/signature`    | `jobs.read`   | 302 to a presigned link to the signature PNG            |
+| GET    | `/jobs/:id/signoff/report`       | `jobs.read`   | 302 to the service report PDF                           |
+| POST   | `/jobs/:id/signoff/email`        | `jobs.update` | Email the report (`{"resend": true}` to send it again)  |
+
+Only registered when object storage is configured.
+
+- **Signing**: the customer signs on the technician's phone; `signature` is a
+  PNG data URL (`canvas.toDataURL("image/png")`) or bare base64. The type is
+  sniffed from the bytes (PNG only, else `415 unsupported_signature_type`), at
+  most 512 KB (`413 signature_too_large`; the body is capped at 800 KB before
+  parsing), and the declared size is checked with `image.DecodeConfig` before
+  decoding: 100 x 40 to 3000 x 3000 px (`400 signature_dimensions`). A canvas
+  without ink is `400 signature_empty`. The PNG is flattened onto white,
+  scaled to 1200 px wide and re-encoded. The signed time, IP
+  (`middleware.ClientIP`), user agent and the signed-in user are recorded.
+- **When**: the visit must be started or done (`in_progress`, `on_hold`,
+  `completed`, `invoiced`, `paid`), else `409 job_not_started`.
+- **One per job**: signing again replaces the sign-off (and deletes the old
+  signature) until the report has been emailed; after that the sign-off is
+  the record the customer received and is locked (`409 signoff_locked`).
+- **Report**: a PDF with the job, customer, site and PO, scheduled and
+  on-site times in the tenant's time zone (actual start/end, else the status
+  history), the crew, work done, completion and customer-visible notes,
+  materials with quantities (never prices), up to 12 photo thumbnails and the
+  signature with signer, title and time. Before it is emailed,
+  `GET .../report` builds it from the job as it is now; after, it returns the
+  stored copy that was sent.
+- **Recipients**: the customer's email and the site contact's (skipped when
+  the customer has `do_not_email`), plus the signer's email if given,
+  deduplicated. None is `409 no_recipients`.
+- **Email is idempotent**: the send is claimed with a conditional `UPDATE`
+  before anything goes out, so a retried or doubled request sends at most
+  once; a repeated request after a successful send returns `sent: false`. A
+  send in flight is `409 email_in_progress` (a claim older than 10 minutes is
+  taken over), a provider failure is `502 email_failed` and releases the
+  claim. `{"resend": true}` sends the stored report again. The email comes
+  from "<Business> via ServicePro" with replies to the business, the PDF
+  attached.
+
+Objects live in the private bucket under
+`job-signoffs/{tenant}/{job}/{uuid}_signature.png` and
+`job-signoffs/{tenant}/{job}/{signoff}_report.pdf`. Technicians sign, read
+and email only on jobs assigned to them; other jobs and other tenants' jobs
+are `404 job_not_found`.
+
 ### Conflicts
 
 | Method | Endpoint           | Description                              |

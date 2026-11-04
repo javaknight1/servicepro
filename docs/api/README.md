@@ -71,7 +71,8 @@ See [authentication.md](./authentication.md).
 
 `/jobs` CRUD, `/jobs/my`, `/scheduled`, `/overdue`, `/stats`, status actions
 (`start`, `complete`, `cancel`, `hold`, `resume`, `transition`), assignments,
-materials, notes, photos and files (`/jobs/:id/attachments`, T174), and
+materials, notes, photos and files (`/jobs/:id/attachments`, T174), the
+customer sign-off and service report (`/jobs/:id/signoff`, T176), and
 `POST /conflicts/check`. See [jobs.md](./jobs.md).
 
 ### Quotes
