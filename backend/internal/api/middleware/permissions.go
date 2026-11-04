@@ -81,6 +81,16 @@ func (pm *PermissionMiddleware) RequireAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var tokenString string
 
+		// A Neon Auth bearer token wins over any session cookie: the SPA on
+		// Neon Auth sends only the bearer, and a leftover cookie from the old
+		// sign-in (possibly another user's) must not decide who this is (T158).
+		if pm.neonAuth != nil {
+			if bearer, ok := strings.CutPrefix(c.GetHeader("Authorization"), "Bearer "); ok && neonauth.IsNeonToken(bearer) {
+				pm.authenticateNeon(c, bearer)
+				return
+			}
+		}
+
 		// Try to get token from httpOnly cookie first
 		if pm.cookieManager != nil {
 			if cookieToken, err := pm.cookieManager.GetAccessToken(c); err == nil && cookieToken != "" {

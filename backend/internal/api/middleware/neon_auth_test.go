@@ -73,6 +73,18 @@ func TestRequireAuth_NeonAuth(t *testing.T) {
 		assert.Equal(t, linkedUser.String(), w.Body.String())
 	})
 
+	t.Run("a Neon bearer wins over a leftover session cookie", func(t *testing.T) {
+		other, err := jwtManager.GenerateAccessToken(uuid.NewString(), "other@example.com")
+		require.NoError(t, err)
+		req := httptest.NewRequest(http.MethodGet, "/test", nil)
+		req.Header.Set("Authorization", "Bearer "+good)
+		req.AddCookie(&http.Cookie{Name: "access_token", Value: other})
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		require.Equal(t, http.StatusOK, w.Code)
+		assert.Equal(t, linkedUser.String(), w.Body.String())
+	})
+
 	t.Run("Neon token that fails verification", func(t *testing.T) {
 		assert.Equal(t, http.StatusUnauthorized, call(neonShapedToken("forged")).Code)
 	})
