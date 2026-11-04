@@ -130,6 +130,7 @@ func TestJobberInvoices(t *testing.T) {
 
 	require.Contains(t, errs, 5, "unreadable balance")
 	assert.Equal(t, FBalance, errs[5][0].Field)
+	assert.Equal(t, "abc", p.Records[3].Values[FBalance], "an unreadable balance is not replaced by the total")
 	assert.Equal(t, "status is Draft", p.Records[4].Values[SkipKey])
 }
 
@@ -195,6 +196,7 @@ func TestHousecallProCustomers(t *testing.T) {
 
 	require.Contains(t, errs, 4)
 	assert.Equal(t, FEmail, errs[4][0].Field)
+	assert.Len(t, errs[4], 1, "one message per problem")
 }
 
 func TestHousecallProJobsAndInvoices(t *testing.T) {

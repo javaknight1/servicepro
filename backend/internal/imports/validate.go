@@ -201,8 +201,9 @@ func (v *validator) customer() {
 	v.clip(FLastName, maxName)
 	v.clip(FCompanyName, maxCompany)
 
+	before := len(v.errs)
 	v.email(FEmail, "email", true)
-	if e := v.get(FEmail); e != "" && !dbEmailRe.MatchString(e) {
+	if e := v.get(FEmail); len(v.errs) == before && e != "" && !dbEmailRe.MatchString(e) {
 		v.fail(FEmail, "email %q is not a valid email address", e)
 	}
 
@@ -444,8 +445,11 @@ func (v *validator) invoice() {
 	}
 	total, hasTotal := amount(FTotal, "total")
 	paid, hasPaid := amount(FAmountPaid, "amount paid")
+	balanceGiven := v.get(FBalance) != ""
 	balance, hasBalance := amount(FBalance, "balance due")
-	if !hasBalance {
+	// Derive the balance only when the file has none (not when it is
+	// unreadable: that row fails).
+	if !hasBalance && !balanceGiven {
 		switch {
 		case hasTotal && hasPaid:
 			balance, hasBalance = total.Sub(paid), true
