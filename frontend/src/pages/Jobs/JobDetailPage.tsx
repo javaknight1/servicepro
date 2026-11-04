@@ -10,6 +10,7 @@ import { Button, EmptyState } from '@components/shared';
 import {
   JobApprovalsSection,
   JobAssignmentsSection,
+  JobPhotosSection,
   JobSitePicker,
   PendingAssignmentsSection,
   StatusTransitionButton,
@@ -31,7 +32,7 @@ import { trackEvent, AnalyticsEvents } from '@services/analytics';
 import { datetimeLocalToEpoch, epochToDatetimeLocal } from '@/utils/epoch';
 import { useTenantTimezone } from '@/hooks/useTenantTimezone';
 import { useInvoiceJob } from '@/hooks/useInvoiceJob';
-import { useTenantStore } from '@store';
+import { useAuthStore, useTenantStore } from '@store';
 import {
   APP_PERMISSIONS,
   useTenantPermissions,
@@ -119,6 +120,7 @@ export function JobDetailPage() {
   // deleting).
   const seesMoney = can(APP_PERMISSIONS.invoicesRead);
   const isOffice = can(APP_PERMISSIONS.jobsViewAll);
+  const currentUserId = useAuthStore((s) => s.user?.id);
   const canListCustomers = can(APP_PERMISSIONS.customersList);
   const canReadCustomers = can(APP_PERMISSIONS.customersRead);
   const canAssign = can(APP_PERMISSIONS.jobsAssign);
@@ -898,6 +900,18 @@ export function JobDetailPage() {
             </div>
           </div>
         </form>
+
+        {/* Outside the form: the viewer has its own form (T174). */}
+        {!isNew && currentJob && (
+          <div className="mt-6">
+            <JobPhotosSection
+              jobId={currentJob.id}
+              currentUserId={currentUserId}
+              canManageAll={isOffice}
+              timeZone={timeZone}
+            />
+          </div>
+        )}
 
         {/* Outside the form: the approval dialog has its own form. */}
         {!isNew && currentJob && isOffice && (

@@ -7,3 +7,4 @@ export { StatusTransitionButton } from './StatusTransitionButton';
 export { JobSitePicker } from './JobSitePicker';
 export { JobApprovalsSection } from './JobApprovalsSection';
 export { RecordApprovalModal } from './RecordApprovalModal';
+export { JobPhotosSection } from './JobPhotosSection';

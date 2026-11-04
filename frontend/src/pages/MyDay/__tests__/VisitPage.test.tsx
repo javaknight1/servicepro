@@ -29,6 +29,26 @@ const tenant: Tenant = {
 vi.mock('@store', () => ({
   useTenantStore: (select: (s: { currentTenant: Tenant }) => unknown) =>
     select({ currentTenant: tenant }),
+  useAuthStore: (select: (s: { user: { id: string } }) => unknown) =>
+    select({ user: { id: 'tech-1' } }),
+}));
+
+// A technician: their assigned jobs only.
+vi.mock('@/utils/tenantPermissions', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/utils/tenantPermissions')>()),
+  useTenantPermissions: () => ({
+    can: (p: string) => p === 'jobs.read' || p === 'jobs.update',
+  }),
+}));
+
+vi.mock('@services/jobAttachmentService', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@services/jobAttachmentService')>()),
+  jobAttachmentService: {
+    list: vi.fn(),
+    upload: vi.fn(),
+    updateCaption: vi.fn(),
+    remove: vi.fn(),
+  },
 }));
 
 vi.mock('@services/jobService', async (importOriginal) => ({
@@ -42,6 +62,7 @@ vi.mock('@services/jobService', async (importOriginal) => ({
 }));
 
 import { jobService, JobStatus, JobType } from '@services/jobService';
+import { jobAttachmentService } from '@services/jobAttachmentService';
 import { VisitPage } from '../VisitPage';
 
 // 2026-11-03 17:32 CST
@@ -144,6 +165,7 @@ describe('VisitPage (T173)', () => {
     vi.mocked(jobService.getJob).mockResolvedValue(job);
     vi.mocked(jobService.addNote).mockResolvedValue(undefined);
     vi.mocked(jobService.addMaterial).mockResolvedValue(undefined);
+    vi.mocked(jobAttachmentService.list).mockResolvedValue([]);
   });
 
   it('shows what to do, the site, notes and materials', async () => {
@@ -177,13 +199,15 @@ describe('VisitPage (T173)', () => {
       )
     ).toBeInTheDocument();
 
-    // Back to the same day; no money, no photo or signature placeholders.
+    // Back to the same day; no money, no signature placeholder yet.
     expect(screen.getByRole('link', { name: 'My day' })).toHaveAttribute(
       'href',
       '/my-day?date=2026-11-03'
     );
     expect(screen.queryByText(/\$/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/photo/i)).not.toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { name: 'Photos' })
+    ).toBeInTheDocument();
     expect(screen.queryByText(/signature/i)).not.toBeInTheDocument();
   });
 
@@ -245,6 +269,39 @@ describe('VisitPage (T173)', () => {
     renderPage();
     await screen.findByRole('heading', { name: 'Elm Street Plaza' });
     expect(screen.getByRole('button', { name: 'Add material' })).toBeDisabled();
+  });
+
+  it('takes a photo with the camera from the bottom bar (T174)', async () => {
+    vi.mocked(jobAttachmentService.upload).mockResolvedValue({
+      id: 'att-1',
+      job_id: 'job-1',
+      kind: 'photo',
+      filename: 'IMG_1.jpg',
+      content_type: 'image/jpeg',
+      size_bytes: 1000,
+      url: 'https://store/att-1.jpg',
+      file_path: '/api/v1/jobs/job-1/attachments/att-1/file',
+      created_at: '2026-11-03T23:41:00Z',
+    });
+    renderPage();
+    const user = userEvent.setup();
+    await screen.findByRole('heading', { name: 'Elm Street Plaza' });
+
+    const input = screen.getByTestId('job-photo-input');
+    expect(input).toHaveAttribute('accept', 'image/*');
+    expect(input).toHaveAttribute('capture', 'environment');
+    const click = vi.spyOn(input, 'click');
+    await user.click(screen.getByRole('button', { name: 'Add photo' }));
+    expect(click).toHaveBeenCalled();
+
+    const photo = new File(['jpeg'], 'IMG_1.jpg', { type: 'image/jpeg' });
+    await user.upload(input as HTMLInputElement, photo);
+    expect(jobAttachmentService.upload).toHaveBeenCalledWith(
+      'job-1',
+      photo,
+      undefined,
+      expect.any(Function)
+    );
   });
 
   it('shows Visit not found for a job the caller cannot see', async () => {

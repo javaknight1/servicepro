@@ -90,6 +90,18 @@ vi.mock('@/utils/tenantPermissions', async (importOriginal) => ({
   useTenantPermissions: vi.fn(),
 }));
 
+vi.mock('@services/jobAttachmentService', async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import('../../src/services/jobAttachmentService')
+  >()),
+  jobAttachmentService: {
+    list: vi.fn(),
+    upload: vi.fn(),
+    updateCaption: vi.fn(),
+    remove: vi.fn(),
+  },
+}));
+
 vi.mock('@services/siteService', () => ({
   siteService: { list: vi.fn(), create: vi.fn(), update: vi.fn() },
   sitesQueryKey: (customerId: string | null, includeInactive = false) => [
@@ -116,6 +128,7 @@ import { useAuthStore, useTenantStore, useSidebarStore } from '@store';
 import { jobService } from '@services/jobService';
 import type { JobStats } from '@app-types/job';
 import { customerService } from '@services/customerService';
+import { jobAttachmentService } from '@services/jobAttachmentService';
 import { siteService, type Site } from '@services/siteService';
 import { useTenantPermissions } from '@/utils/tenantPermissions';
 
@@ -354,6 +367,7 @@ const setupMocks = () => {
   vi.mocked(jobService.getStats).mockResolvedValue(mockJobStats);
   vi.mocked(jobService.getApprovals).mockResolvedValue([]);
   vi.mocked(siteService.list).mockResolvedValue(mockSites);
+  vi.mocked(jobAttachmentService.list).mockResolvedValue([]);
 
   vi.mocked(customerService.getCustomers).mockResolvedValue({
     customers: [mockCustomer],
@@ -1718,5 +1732,62 @@ describe("Technician's day (T173)", () => {
     });
 
     expect(screen.queryByText(/\$/)).not.toBeInTheDocument();
+  });
+});
+
+describe('Job photos (T174)', () => {
+  const photo = (id: string, uploadedBy: string, caption?: string) => ({
+    id,
+    job_id: 'job-1',
+    kind: 'photo' as const,
+    filename: `${id}.jpg`,
+    content_type: 'image/jpeg',
+    size_bytes: 1000,
+    caption,
+    uploaded_by: uploadedBy,
+    uploaded_by_name: 'Tasha Green',
+    url: `https://store/${id}.jpg`,
+    thumb_url: `https://store/${id}_thumb.jpg`,
+    file_path: `/api/v1/jobs/job-1/attachments/${id}/file`,
+    created_at: '2026-11-02T23:41:00Z',
+  });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setupMocks();
+    vi.mocked(jobService.getJob).mockResolvedValue(
+      mockJobs[0] as unknown as Awaited<ReturnType<typeof jobService.getJob>>
+    );
+  });
+
+  it("shows the job photos to the office, who can delete anyone's", async () => {
+    vi.mocked(jobAttachmentService.list).mockResolvedValue([
+      photo('p1', 'tech-9', 'Lobby floor'),
+    ]);
+    vi.mocked(jobAttachmentService.remove).mockResolvedValue(undefined);
+    const { JobDetailPage } =
+      await import('../../src/pages/Jobs/JobDetailPage');
+    render(
+      <MemoryRouter initialEntries={['/jobs/job-1']}>
+        <Routes>
+          <Route path="/jobs/:id" element={<JobDetailPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    const grid = await screen.findByRole('list', { name: 'Job photos' });
+    expect(jobAttachmentService.list).toHaveBeenCalledWith('job-1');
+    expect(within(grid).getByText('Lobby floor')).toBeInTheDocument();
+    expect(screen.getByText('1 photo')).toBeInTheDocument();
+
+    const user = userEvent.setup();
+    await user.click(
+      within(grid).getByRole('button', { name: 'View Lobby floor' })
+    );
+    await user.click(await screen.findByRole('button', { name: 'Delete' }));
+    await user.click(screen.getByRole('button', { name: 'Delete this photo' }));
+    await waitFor(() =>
+      expect(jobAttachmentService.remove).toHaveBeenCalledWith('job-1', 'p1')
+    );
   });
 });

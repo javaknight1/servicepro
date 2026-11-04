@@ -1,14 +1,15 @@
 /**
  * One visit on a phone (T173, mockup 16 where it applies today): what to do,
  * how to get in, notes and materials used, and the big Start / Complete
- * action. Checklists (T175), photos (T174) and the sign-off (T176) slot in
- * here later. Never shows money.
+ * action, and photos (T174: "Add photo" opens the camera). Checklists (T175)
+ * and the sign-off (T176) slot in here later. Never shows money.
  */
 import { useRef, useState, type FormEvent } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
 import {
+  Camera,
   CheckCircle2,
   ChevronLeft,
   MapPin,
@@ -18,7 +19,12 @@ import {
   Play,
 } from 'lucide-react';
 import { DashboardLayout } from '@components/layout';
-import { useTenantStore } from '@store';
+import { JobPhotosSection } from '@components/jobs/JobPhotosSection';
+import { useAuthStore, useTenantStore } from '@store';
+import {
+  APP_PERMISSIONS,
+  useTenantPermissions,
+} from '@/utils/tenantPermissions';
 import { jobService, JobStatus, type Job } from '@services/jobService';
 import { cn } from '@utils/cn';
 import { getErrorMessage } from '@/utils/error';
@@ -245,6 +251,9 @@ export function VisitPage() {
   const timeZone = currentTenant?.settings?.timezone || undefined;
   const action = useVisitAction();
   const noteRef = useRef<HTMLTextAreaElement>(null);
+  const photoRef = useRef<HTMLInputElement>(null);
+  const userId = useAuthStore((s) => s.user?.id);
+  const { can } = useTenantPermissions(currentTenant);
 
   const {
     data: job,
@@ -402,6 +411,14 @@ export function VisitPage() {
             </Section>
           )}
 
+          <JobPhotosSection
+            jobId={job.id}
+            variant="phone"
+            currentUserId={userId}
+            canManageAll={can(APP_PERMISSIONS.jobsViewAll)}
+            inputRef={photoRef}
+            timeZone={timeZone}
+          />
           <NotesSection job={job} noteRef={noteRef} />
           <MaterialsSection job={job} />
         </div>
@@ -410,13 +427,23 @@ export function VisitPage() {
           <div className="flex gap-3">
             <button
               type="button"
+              onClick={() => photoRef.current?.click()}
+              className="flex min-h-14 flex-1 items-center justify-center gap-2 rounded-xl border-2 border-primary-600 bg-white text-lg font-semibold text-primary-600 hover:bg-primary-50"
+            >
+              <Camera className="h-5 w-5" aria-hidden="true" />
+              Add photo
+            </button>
+            <button
+              type="button"
               onClick={() => noteRef.current?.focus()}
               className="flex min-h-14 flex-1 items-center justify-center gap-2 rounded-xl border border-neutral-300 bg-white text-lg font-semibold text-neutral-800 hover:bg-neutral-50"
             >
               <PenLine className="h-5 w-5" aria-hidden="true" />
               Add note
             </button>
-            {next && (
+          </div>
+          {next && (
+            <div className="mt-3 flex">
               <button
                 type="button"
                 onClick={() => action.run(job, next)}
@@ -430,8 +457,8 @@ export function VisitPage() {
                 )}
                 {busy ? 'Saving…' : next.label}
               </button>
-            )}
-          </div>
+            </div>
+          )}
           {action.failedJobId === job.id && (
             <p role="alert" className="mt-2 text-sm text-error-600">
               {getErrorMessage(action.error, "Couldn't update the visit")}
