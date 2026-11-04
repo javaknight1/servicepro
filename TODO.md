@@ -276,6 +276,7 @@ stripe-go v87 supports v2 accounts) and the first 4h of T192 (QuickBooks OAuth, 
 | ~~T271~~ | ~~4~~  | ~~Infra~~      | ~~2~~  | ~~Replace MinIO in the local Docker stack (images no longer pullable)~~                                  |
 | ~~T272~~ | ~~5~~  | ~~Bug~~        | ~~1~~  | ~~Technicians get repeated 403s on GET /tenants/:id/membership~~                                         |
 | ~~T273~~ | ~~5~~  | ~~Bug~~        | ~~1~~  | ~~Job note timestamps come back hours off (time zone)~~                                                  |
+| T274     | 5      | Chore          | 2      | npm updates blocked by the Neon Auth beta peer graph                                                     |
 | ~~T264~~ | ~~4~~  | ~~Backend~~    | ~~4~~  | ~~Upgrade stripe-go v76 → v87; replace archived nfnt/resize~~                                            |
 | ~~T028~~ | ~~5~~  | ~~Feature~~    | ~~3~~  | ~~Add "Convert Quote to Job" button~~                                                                    |
 | ~~T029~~ | ~~5~~  | ~~Feature~~    | ~~2~~  | ~~Add "Generate Invoice from Job" button~~                                                               |
@@ -1001,6 +1002,17 @@ D2: move to League Looper's stack one strangler step at a time while the app kee
 **Done (2026-11-04)** — `ea96c35`: cause was 57 `timestamp without time zone` columns in 000001 (pgx writes local wall time, reads UTC). Migration 000019 converts them all to `timestamptz` (`AT TIME ZONE 'UTC'`, idempotent, five analytics views dropped and recreated); regression test with `time.Local` = America/New_York. Tested up/down/up; DB tests pass with `TZ=America/New_York`.
 ---
 
+#### T274 — npm updates blocked by the Neon Auth beta peer graph
+
+**Phase**: 5 · **Category**: Chore · **Hours**: 2 · **Status**: Open · **MVP Gate**: No · **Depends on**: T158
+
+**What it is** — Dependabot's npm minor/patch group (and `npm update`) work again.
+**What it does** — Since T158 added `@neondatabase/auth` 0.7.0-beta with better-auth 1.7.16 overrides, `npm update` fails with ERESOLVE (`@neondatabase/auth-ui` 0.4.0-beta peers on `@neondatabase/auth` 0.6.0-beta) and Dependabot closed PR #90 as "no longer updatable". Drop `auth-ui` if unused, or align the overrides, then apply the pending minor/patch bumps (Sentry, Stripe, TanStack Query, axios, vitest, eslint, wrangler, …) and run all frontend gates.
+**Why we need it** — Without it no npm security or patch updates land automatically.
+**Notes** — Found 2026-11-04 while re-running Dependabot after the CI bundle fix.
+
+---
+
 #### T264 — Upgrade stripe-go v76 → v87; replace archived nfnt/resize
 
 **Phase**: 4 · **Category**: Backend · **Hours**: 4 · **Status**: Done (2026-11-02) · **MVP Gate**: Yes · **Depends on**: none
@@ -1335,6 +1347,7 @@ The quote → job → invoice loop, roles for field and office staff, recurring 
 ---
 - [x] T272 — Technicians get repeated 403s on GET /tenants/:id/membership ✓ (2026-11-04)
 - [x] T273 — Job note timestamps come back hours off (time zone) ✓ (2026-11-04)
+- [ ] T274 — npm updates blocked by the Neon Auth beta peer graph
 
 
 ### Phase 6 — Payments to the Business (T061, T063, T083, T169, T170, T171, T172, T261)
