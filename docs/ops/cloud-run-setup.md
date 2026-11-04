@@ -180,6 +180,7 @@ profile-picture upload route isn't registered). To turn files on:
    Leave `S3_COMPATIBLE_PUBLIC_URL` and `S3_COMPATIBLE_PRESIGN_ENDPOINT` unset:
    the bucket stays private, PDFs use presigned links and profile pictures are
    served through `GET /api/v1/users/{id}/profile-picture`.
+
 4. The next release attaches the two secrets. Check: upload a profile picture
    and open an invoice PDF link.
 
@@ -193,7 +194,7 @@ the backstop on:
 
 1. Create a login role in the group (Neon SQL editor, as the owner; password
    generated and saved in Bitwarden): `CREATE ROLE servicepro_api LOGIN
-   PASSWORD '…' IN ROLE servicepro_app;`
+PASSWORD '…' IN ROLE servicepro_app;`
 2. Point the runtime `DATABASE_URL` secret at `servicepro_api` (pooler host).
    `MIGRATION_DATABASE_URL` stays on the owner.
 3. In the same revision, set `RLS_ENFORCE=true` (without it the new role sees
@@ -276,15 +277,16 @@ Repo **variables** (Settings → Secrets and variables → Actions → Variables
 
 Repo **secrets**:
 
-| Secret                                      | Value                                                   | Used by                            |
-| ------------------------------------------- | ------------------------------------------------------- | ---------------------------------- |
-| `MIGRATION_DATABASE_URL`                    | Neon direct (non-pooler) URL, port **5432**             | release-deploy, migrate, db-backup |
-| `INTERNAL_JOBS_SECRET`                      | same value as the Secret Manager secret                 | scheduled-jobs                     |
-| `CLOUDFLARE_API_TOKEN`                      | token with Workers Scripts:Edit (+ routes for the zone) | release-deploy (web)               |
-| `CLOUDFLARE_ACCOUNT_ID`                     | Cloudflare account id                                   | release-deploy, db-backup          |
-| `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` | R2 token scoped to `servicepro-backups`                 | db-backup                          |
-| `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`           | optional; Sentry steps skip without them                | release-deploy                     |
-| `SENTRY_DSN_WEB`, `POSTHOG_API_KEY_WEB`     | optional; browser DSN / PostHog key                     | release-deploy (web build)         |
+| Secret                                      | Value                                                    | Used by                            |
+| ------------------------------------------- | -------------------------------------------------------- | ---------------------------------- |
+| `MIGRATION_DATABASE_URL`                    | Neon direct (non-pooler) URL, port **5432**              | release-deploy, migrate, db-backup |
+| `INTERNAL_JOBS_SECRET`                      | same value as the Secret Manager secret                  | scheduled-jobs                     |
+| `CLOUDFLARE_API_TOKEN`                      | token with Workers Scripts:Edit (+ routes for the zone)  | release-deploy (web)               |
+| `CLOUDFLARE_ACCOUNT_ID`                     | Cloudflare account id                                    | release-deploy, db-backup          |
+| `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` | R2 token scoped to `servicepro-backups`                  | db-backup                          |
+| `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`           | optional; Sentry steps skip without them                 | release-deploy                     |
+| `SENTRY_CRONS_DSN`                          | optional; `servicepro-api` DSN for cron check-ins (T252) | scheduled-jobs, db-backup          |
+| `SENTRY_DSN_WEB`, `POSTHOG_API_KEY_WEB`     | optional; browser DSN / PostHog key                      | release-deploy (web build)         |
 
 ## 9. Cloudflare Worker (`servicepro-web`)
 

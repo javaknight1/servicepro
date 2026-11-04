@@ -21,7 +21,10 @@
 #   R2_SECRET_ACCESS_KEY     Object Read & Write.
 #   CLOUDFLARE_ACCOUNT_ID    already set for the Workers deploy.
 #
-# A failed scheduled run emails the repo admin (GitHub's default).
+# A failed scheduled run emails the repo admin (GitHub's default), and every
+# run checks in to the Sentry cron monitor servicepro-db-backup (T252), so a
+# missed or failed night opens a Sentry issue. Needs the SENTRY_CRONS_DSN
+# secret; without it check-ins are skipped. See docs/ops/monitoring.md.
 name: Database backup
 
 on:
@@ -69,7 +72,24 @@ jobs:
       AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
       R2_ENDPOINT: https://${{ secrets.CLOUDFLARE_ACCOUNT_ID }}.r2.cloudflarestorage.com
       BUCKET: servicepro-backups
+      # Sentry cron monitor servicepro-db-backup (T252): optional; skipped without it.
+      SENTRY_CRONS_DSN: ${{ secrets.SENTRY_CRONS_DSN }}
+    # Read access for the sparse checkout of scripts/sentry-cron.sh only.
+    permissions:
+      contents: read
     steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: scripts/sentry-cron.sh
+          sparse-checkout-cone-mode: false
+
+      # Daily at 08:00 UTC; missed after 2 h, failed after 45 min of runtime;
+      # one bad night opens a Sentry issue. The monitor is created by this
+      # first check-in.
+      - name: Sentry check-in (in progress)
+        id: checkin
+        run: echo "id=$(scripts/sentry-cron.sh start servicepro-db-backup '0 8 * * *' 120 45 1)" >> "$GITHUB_OUTPUT"
+
       - name: Check configuration
         run: |
           : "${AWS_ACCESS_KEY_ID:?R2_ACCESS_KEY_ID secret is not set}"
@@ -118,3 +138,10 @@ jobs:
             aws s3 ls "s3://${BUCKET}/${prefix}/" --endpoint-url "$R2_ENDPOINT"
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Sentry check-in (result)
+        if: always()
+        env:
+          CHECKIN_ID: ${{ steps.checkin.outputs.id }}
+          RESULT: ${{ job.status == 'success' && 'ok' || 'error' }}
+        run: scripts/sentry-cron.sh finish servicepro-db-backup "$CHECKIN_ID" "$RESULT"
