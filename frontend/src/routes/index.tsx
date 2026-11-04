@@ -19,6 +19,7 @@ import {
   preloadEagerRoutes,
   getPreloadHandler,
 } from '@config/splitting';
+import { isNeonAuthEnabled } from '@config/auth';
 
 // =============================================================================
 // Lazy Loaded Pages
@@ -51,27 +52,42 @@ const RegisterPage = loadable(
   { chunkName: 'register', delay: 100 }
 );
 
+// Neon Auth builds (VITE_NEON_AUTH_URL set, T158) use code-based screens for
+// password reset and email verification; cookie-auth builds keep the
+// link-based ones.
 const ForgotPasswordPage = loadable(
   () =>
-    import(/* webpackChunkName: "page-auth" */ '@pages/ForgotPassword').then(
-      (m) => ({ default: m.ForgotPasswordPage })
-    ),
+    isNeonAuthEnabled
+      ? import('@pages/ForgotPassword/NeonForgotPasswordPage').then((m) => ({
+          default: m.NeonForgotPasswordPage,
+        }))
+      : import(
+          /* webpackChunkName: "page-auth" */ '@pages/ForgotPassword'
+        ).then((m) => ({ default: m.ForgotPasswordPage })),
   { chunkName: 'forgot-password', delay: 100 }
 );
 
 const ResetPasswordPage = loadable(
   () =>
-    import(/* webpackChunkName: "page-auth" */ '@pages/ResetPassword').then(
-      (m) => ({ default: m.ResetPasswordPage })
-    ),
+    isNeonAuthEnabled
+      ? import('@pages/ResetPassword/NeonResetPasswordPage').then((m) => ({
+          default: m.NeonResetPasswordPage,
+        }))
+      : import(/* webpackChunkName: "page-auth" */ '@pages/ResetPassword').then(
+          (m) => ({ default: m.ResetPasswordPage })
+        ),
   { chunkName: 'reset-password', delay: 100 }
 );
 
 const VerifyEmailPage = loadable(
   () =>
-    import(/* webpackChunkName: "page-auth" */ '@pages/VerifyEmail').then(
-      (m) => ({ default: m.VerifyEmailPage })
-    ),
+    isNeonAuthEnabled
+      ? import('@pages/VerifyEmail/NeonVerifyEmailPage').then((m) => ({
+          default: m.NeonVerifyEmailPage,
+        }))
+      : import(/* webpackChunkName: "page-auth" */ '@pages/VerifyEmail').then(
+          (m) => ({ default: m.VerifyEmailPage })
+        ),
   { chunkName: 'verify-email', delay: 100 }
 );
 

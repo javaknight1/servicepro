@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -19,8 +19,17 @@ import {
   TOO_MANY_ATTEMPTS_MESSAGE,
 } from '@/utils/error';
 import { getSafeReturnUrl } from '@/utils/urlSanitizer';
+import { isNeonAuthEnabled } from '@config/auth';
+import {
+  getNeonAuthErrorMessage,
+  needsEmailVerification,
+  OAUTH_CALLBACK_PARAM,
+  verifyEmailPath,
+} from '@/utils/authMessages';
+import { GoogleSignInButton } from './GoogleSignInButton';
 
 const INVALID_CREDENTIALS_MESSAGE = 'Invalid email or password.';
+const SIGN_IN_FAILED_MESSAGE = 'Failed to login. Please check your credentials.';
 
 /**
  * Map a failed login to a user-facing message. The API returns the same 401
@@ -51,7 +60,13 @@ export function LoginPage() {
   const [searchParams] = useSearchParams();
   const returnUrl = getSafeReturnUrl(searchParams.get('returnUrl'));
   const login = useAuthStore((state) => state.login);
+  const completeSignIn = useAuthStore((state) => state.completeSignIn);
   const [error, setError] = useState<string>('');
+  const oauthState = isNeonAuthEnabled
+    ? searchParams.get(OAUTH_CALLBACK_PARAM)
+    : null;
+  const [finishingOAuth, setFinishingOAuth] = useState(oauthState === '1');
+  const oauthHandled = useRef(false);
 
   const {
     register,
@@ -61,15 +76,64 @@ export function LoginPage() {
     resolver: zodResolver(loginSchema),
   });
 
+  // Neon Auth: back from Google — link/load the account, then continue.
+  useEffect(() => {
+    if (!oauthState || oauthHandled.current) return;
+    oauthHandled.current = true;
+    if (oauthState !== '1') {
+      setError('Google sign-in was cancelled or failed. Please try again.');
+      return;
+    }
+    completeSignIn()
+      .then(() => navigate(returnUrl ?? '/dashboard'))
+      .catch((err: unknown) => {
+        setError(getNeonAuthErrorMessage(err, SIGN_IN_FAILED_MESSAGE));
+        setFinishingOAuth(false);
+      });
+  }, [oauthState, completeSignIn, navigate, returnUrl]);
+
   const onSubmit = async (data: LoginFormData) => {
     try {
       setError('');
       await login(data.email, data.password);
       navigate(returnUrl ?? '/dashboard');
     } catch (err: unknown) {
-      setError(getLoginErrorMessage(err));
+      if (!isNeonAuthEnabled) {
+        setError(getLoginErrorMessage(err));
+        return;
+      }
+      if (needsEmailVerification(err)) {
+        // Signed in to Neon Auth, but the API links only verified emails:
+        // send a code and ask for it.
+        try {
+          const { sendVerificationCode } = await import('@services/neonAuth');
+          await sendVerificationCode(data.email);
+          navigate(verifyEmailPath(data.email, returnUrl));
+        } catch (sendErr: unknown) {
+          setError(
+            getNeonAuthErrorMessage(
+              sendErr,
+              'Failed to send the verification code.'
+            )
+          );
+        }
+        return;
+      }
+      setError(getNeonAuthErrorMessage(err, SIGN_IN_FAILED_MESSAGE));
     }
   };
+
+  if (finishingOAuth) {
+    return (
+      <MainLayout>
+        <div className="min-h-[calc(100vh-16rem)] flex items-center justify-center py-12 px-4">
+          <p className="text-neutral-600" role="status">
+            Signing you in…
+          </p>
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout>
@@ -135,6 +199,21 @@ export function LoginPage() {
                   Sign in
                 </Button>
               </form>
+
+              <GoogleSignInButton returnUrl={returnUrl} onError={setError} />
+
+              {isNeonAuthEnabled && (
+                <p className="mt-6 text-center text-xs text-neutral-500">
+                  First time signing in since ServicePro upgraded its sign-in?{' '}
+                  <Link
+                    to="/register"
+                    className="text-primary-600 hover:text-primary-700 font-medium"
+                  >
+                    Set up your sign-in
+                  </Link>{' '}
+                  with the email you already use.
+                </p>
+              )}
             </CardContent>
           </Card>
         </div>

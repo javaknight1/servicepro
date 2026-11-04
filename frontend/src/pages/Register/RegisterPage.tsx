@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useSearchParams } from 'react-router';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod/mini';
@@ -21,6 +21,16 @@ import {
 } from '@/utils/error';
 import type { Invitation } from '@/types/tenant';
 import { CheckCircle, Building2, AlertCircle } from 'lucide-react';
+import { isNeonAuthEnabled } from '@config/auth';
+import {
+  getNeonAuthErrorMessage,
+  verifyEmailPath,
+} from '@/utils/authMessages';
+import { GoogleSignInButton } from '@pages/Login/GoogleSignInButton';
+
+const INVITE_CODE_HELP = isNeonAuthEnabled
+  ? 'ServicePro is invite-only right now. Enter the code from your invite. Already use ServicePro? Leave this empty and use the email you sign in with.'
+  : 'ServicePro is invite-only right now. Enter the code from your invite.';
 
 /** Query params an invite-code link may use (`/register?invite=CODE`). */
 const INVITE_CODE_PARAMS = ['invite', 'code', 'invite_code'] as const;
@@ -79,6 +89,7 @@ type RegisterFormData = z.infer<typeof registerSchema>;
 
 export function RegisterPage() {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const register_action = useAuthStore((state) => state.register);
   const [error, setError] = useState<string>('');
   const [success, setSuccess] = useState(false);
@@ -98,6 +109,8 @@ export function RegisterPage() {
     register,
     handleSubmit,
     setValue,
+    getValues,
+    setError: setFieldError,
     formState: { errors, isSubmitting },
   } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
@@ -135,10 +148,40 @@ export function RegisterPage() {
         inviteCode: data.inviteCode || undefined,
         acceptTerms: data.acceptTerms,
       });
+      if (isNeonAuthEnabled) {
+        // Neon Auth emailed a code; the account is linked or created once
+        // the email is verified.
+        navigate(verifyEmailPath(data.email));
+        return;
+      }
       setSuccess(true);
     } catch (err: unknown) {
-      setError(getRegisterErrorMessage(err));
+      setError(
+        isNeonAuthEnabled
+          ? getNeonAuthErrorMessage(
+              err,
+              'Failed to create account. Please try again.'
+            )
+          : getRegisterErrorMessage(err)
+      );
     }
+  };
+
+  /** Google sign-up: needs the terms ticked; keeps the invite for after. */
+  const beforeGoogleSignUp = async (): Promise<boolean> => {
+    if (getValues('acceptTerms') !== true) {
+      setFieldError('acceptTerms', {
+        message: 'Please agree to the Terms of Service and Privacy Policy',
+      });
+      return false;
+    }
+    const { savePendingSignup } = await import('@services/neonAuth');
+    savePendingSignup({
+      inviteCode: getValues('inviteCode') || undefined,
+      invitationToken: invitationToken || undefined,
+      acceptTerms: true,
+    });
+    return true;
   };
 
   if (success) {
@@ -304,7 +347,7 @@ export function RegisterPage() {
                     autoComplete="off"
                     spellCheck={false}
                     fullWidth
-                    helperText="ServicePro is invite-only right now. Enter the code from your invite."
+                    helperText={INVITE_CODE_HELP}
                     error={errors.inviteCode?.message}
                     {...register('inviteCode')}
                   />
@@ -368,6 +411,11 @@ export function RegisterPage() {
                   {invitation ? 'Create account & join' : 'Create account'}
                 </Button>
               </form>
+
+              <GoogleSignInButton
+                beforeStart={beforeGoogleSignUp}
+                onError={setError}
+              />
             </CardContent>
           </Card>
         </div>
