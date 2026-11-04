@@ -30,6 +30,34 @@ type Config struct {
 	PDF          PDFConfig
 	CORS         CORSConfig
 	SMS          SMSConfig
+	QuickBooks   QuickBooksConfig
+	// IntegrationsEncryptionKey (INTEGRATIONS_ENCRYPTION_KEY) encrypts
+	// third-party OAuth tokens at rest (AES-256-GCM, pkg/secretbox): 32
+	// bytes, base64. Never logged.
+	IntegrationsEncryptionKey string
+}
+
+// QuickBooksConfig holds the Intuit (QuickBooks Online) app credentials
+// (T192). The integration is off unless ClientID and ClientSecret are set
+// (or Fake is on in development).
+type QuickBooksConfig struct {
+	ClientID     string
+	ClientSecret string
+	// Environment is "sandbox" (development keys, sandbox companies) or
+	// "production" (production keys, after Intuit's app assessment).
+	Environment string
+	// RedirectURI must match one registered on the Intuit app exactly.
+	// Default: FRONTEND_URL + /api/v1/integrations/quickbooks/callback (the
+	// edge Worker proxies /api/* to the API).
+	RedirectURI string
+	// Fake uses an in-memory QuickBooks (no Intuit calls) so the flow can be
+	// clicked through locally. Honoured only when ENV=development.
+	Fake bool
+}
+
+// Enabled reports whether the QuickBooks integration can be offered.
+func (q QuickBooksConfig) Enabled(env string) bool {
+	return (q.ClientID != "" && q.ClientSecret != "") || (q.Fake && env == "development")
 }
 
 // SMSConfig holds SMS service configuration
@@ -580,6 +608,15 @@ func Load() *Config {
 				BurstSize:    getEnvAsInt("SMS_RATE_LIMIT_BURST_SIZE", 5),
 			},
 		},
+		QuickBooks: QuickBooksConfig{
+			ClientID:     getEnv("QUICKBOOKS_CLIENT_ID", ""),
+			ClientSecret: getEnv("QUICKBOOKS_CLIENT_SECRET", ""),
+			Environment:  getEnv("QUICKBOOKS_ENVIRONMENT", "sandbox"),
+			RedirectURI: getEnv("QUICKBOOKS_REDIRECT_URI",
+				strings.TrimRight(getEnv("FRONTEND_URL", "http://localhost:3000"), "/")+"/api/v1/integrations/quickbooks/callback"),
+			Fake: getEnvAsBool("QUICKBOOKS_FAKE", false),
+		},
+		IntegrationsEncryptionKey: getEnv("INTEGRATIONS_ENCRYPTION_KEY", ""),
 	}
 
 	// Validate configuration for production environments
