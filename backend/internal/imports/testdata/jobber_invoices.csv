@@ -1,0 +1,6 @@
+Invoice #,Client name,Client email,Subject,Status,Issued date,Due date,Subtotal $,Tax amount $,Total $,Balance $,Paid with,Paid date
+1001,Riverside Property Management,ap@riversidepm.example,March janitorial,Awaiting payment,2024-04-01,2024-05-01,"$4,200.00",$0.00,"$4,200.00","$4,200.00",,
+1002,Riverside Property Management,ap@riversidepm.example,February janitorial,Paid,2024-03-01,2024-03-31,"$4,200.00",$0.00,"$4,200.00",$0.00,ACH,2024-03-28
+1003,Harbor Medical Plaza,facilities@harbormed.example,Post-construction clean,Past due,05/08/2024,06/07/2024,"$1,850.00",$0.00,"$1,850.00",$850.00,Check,
+1004,Sam Ortiz,sam.ortiz@example.com,Window cleaning,Awaiting payment,2024-06-03,2024-06-17,$180.00,$0.00,$180.00,abc,,
+1005,Riverside Property Management,ap@riversidepm.example,April janitorial,Draft,2024-05-01,2024-05-31,"$4,200.00",$0.00,"$4,200.00","$4,200.00",,

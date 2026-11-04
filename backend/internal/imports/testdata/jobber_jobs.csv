@@ -1,0 +1,5 @@
+Job #,Client name,Client email,Client phone,Title,Instructions,Job status,Job type,Service street,Service city,Service province,Service ZIP,Created date,Scheduled start date,Closed date,Visits assigned to,Total $
+101,Riverside Property Management,ap@riversidepm.example,(512) 555-0142,Nightly janitorial - Riverside Tower,"Lobby, restrooms and floors 1-12",Archived,Recurring,1200 Riverside Dr,Austin,TX,78704,2024-03-01,"Mar 4, 2024","Mar 31, 2024",Ana Diaz,"$4,200.00"
+102,Riverside Property Management,ap@riversidepm.example,(512) 555-0142,Carpet extraction - Lamar Commons,,Upcoming,One-off,2500 S Lamar Blvd,Austin,TX,78704,2026-10-20,"Dec 2, 2030",,Ana Diaz,$950.00
+103,Harbor Medical Plaza,facilities@harbormed.example,512-555-0110,Post-construction clean,,Requires invoicing,One-off,9000 Mopac Expy,Austin,TX,78759,2024-05-01,"May 6, 2024","May 7, 2024",Ben Ko,"$1,850.00"
+104,Sam Ortiz,sam.ortiz@example.com,737-555-0123,Window cleaning,,Late,One-off,77 Oak Ln,Round Rock,TX,78664,2024-06-01,not a date,,Ben Ko,$180.00

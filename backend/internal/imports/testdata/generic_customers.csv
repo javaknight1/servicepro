@@ -1,0 +1,3 @@
+Customer,Contact email,Tel,Addr,Town,ST,Postcode,Kind
+Acme Offices,frontdesk@acme.example,555-123-4567,1 Market St,San Francisco,CA,94105,commercial
+Bob Jones,bob@jones.example,555-987-6543,22 Pine Rd,Portland,OR,97201,residential
