@@ -405,7 +405,9 @@ export const performanceBudgets = {
     'vendor-table': 10,
     vendor: 60,
     'page-dashboard': 10,
-    'page-settings': 20,
+    // 21.1 KB on 2026-11-04 after T235 (billing defaults, tax rates) and the
+    // membership pages; splitting this group has caused chunk import cycles.
+    'page-settings': 24,
     'page-auth': 20,
   },
 

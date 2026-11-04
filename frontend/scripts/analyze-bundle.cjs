@@ -63,7 +63,9 @@ const config = {
     'vendor-observability': 195,
     vendor: 60,
     'page-dashboard': 10,
-    'page-settings': 20,
+    // 21.1 KB on 2026-11-04 after T235 (billing defaults, tax rates) and the
+    // membership pages; splitting this group has caused chunk import cycles.
+    'page-settings': 24,
     'page-auth': 20,
   },
 };
@@ -231,10 +233,15 @@ function analyzeFiles() {
     analysis.summary.byCategory[category].brotli += sizes.brotli;
     analysis.summary.byCategory[category].count++;
 
-    analysis.summary.total.raw += sizes.raw;
-    analysis.summary.total.gzip += sizes.gzip;
-    analysis.summary.total.brotli += sizes.brotli;
-    analysis.summary.total.count++;
+    // The total is what browsers download: pre-compressed .gz/.br twins of
+    // files already counted would otherwise roughly double it.
+    const shipped = !/\.(gz|br)$/i.test(relativePath);
+    if (shipped) {
+      analysis.summary.total.raw += sizes.raw;
+      analysis.summary.total.gzip += sizes.gzip;
+      analysis.summary.total.brotli += sizes.brotli;
+      analysis.summary.total.count++;
+    }
 
     // Track JS chunks
     if (category === 'javascript') {
