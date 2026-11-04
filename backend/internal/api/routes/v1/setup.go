@@ -28,6 +28,7 @@ func Setup(router *gin.RouterGroup, cfg *routeconfigs.RouteConfig) {
 	SetupWebhookRoutes(router, cfg)
 	SetupBillingRoutes(router, cfg)
 	SetupPaymentsRoutes(router, cfg)
+	SetupQuickBooksRoutes(router, cfg)
 	setupExportJobRoutes(router, cfg)
 	SetupPaymentTermsRoutes(router, cfg)
 	SetupTaxRateRoutes(router, cfg)

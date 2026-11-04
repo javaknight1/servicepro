@@ -130,6 +130,11 @@ func SetupHandlers(
 		h.PaymentsConnect = handlers.NewPaymentsConnectHandler(svc.PaymentsConnect)
 	}
 
+	// QuickBooks (T192); answers "not configured" without Intuit keys.
+	if svc.QuickBooks != nil {
+		h.QuickBooks = handlers.NewQuickBooksHandler(svc.QuickBooks, cfg.Server.FrontendURL)
+	}
+
 	// Billing handler (optional - depends on Stripe service)
 	if svc.Stripe != nil {
 		h.Billing = handlers.NewBillingHandler(svc.Stripe)

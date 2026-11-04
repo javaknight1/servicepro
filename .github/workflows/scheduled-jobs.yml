@@ -19,6 +19,11 @@
 #   hourly at :15   consolidated-invoices draft consolidated invoices for last month,
 #                                        on the 1st in each tenant's time zone
 #                                        (idempotent: one claim per customer+month)
+#   hourly at :15   quickbooks-sync      push new/changed customers, invoices and
+#                                        payments to each connected tenant's
+#                                        QuickBooks Online (T192; no-op until the
+#                                        Intuit keys are set; idempotent: per-tenant
+#                                        lease, sync map, Intuit requestid)
 #   :05/:20/:35/:50 imports              queued customer CSV imports (> 1,000 rows;
 #                                        smaller files import during the upload)
 # Add a job here only once the API exposes /internal/jobs/<name> for it.
@@ -51,6 +56,7 @@ on:
           - invoice-overdue
           - agreement-visits
           - consolidated-invoices
+          - quickbooks-sync
           - imports
 
 concurrency:
@@ -128,14 +134,14 @@ jobs:
 
           if [ "$EVENT" = "workflow_dispatch" ]; then
             if [ "$INPUT_JOB" = "all" ]; then
-              jobs="invoice-overdue payment-reminders quote-expiry agreement-visits consolidated-invoices imports"
+              jobs="invoice-overdue payment-reminders quote-expiry agreement-visits consolidated-invoices quickbooks-sync imports"
             else
               jobs="$INPUT_JOB"
             fi
           elif [ "$SCHEDULE" = "15 * * * *" ]; then
             # Hourly tick: overdue marking, reminders, quote expiry and
             # agreement visits and consolidated invoices every hour.
-            jobs="invoice-overdue payment-reminders quote-expiry agreement-visits consolidated-invoices"
+            jobs="invoice-overdue payment-reminders quote-expiry agreement-visits consolidated-invoices quickbooks-sync"
           else
             # Quarter-hour tick: queued CSV imports. (Each tick wakes the Neon
             # compute; an idle run is one cheap UPDATE.)

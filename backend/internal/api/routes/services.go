@@ -12,11 +12,15 @@ import (
 	"github.com/javaknight1/servicepro/backend/internal/services/conflict"
 	"github.com/javaknight1/servicepro/backend/internal/services/pdf"
 	permissionsSvc "github.com/javaknight1/servicepro/backend/internal/services/permissions"
+	"github.com/javaknight1/servicepro/backend/internal/services/quickbooks"
 	stripeService "github.com/javaknight1/servicepro/backend/internal/services/stripe"
 	"github.com/javaknight1/servicepro/backend/pkg/auth"
 	emailclient "github.com/javaknight1/servicepro/backend/pkg/clients/email"
+	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"
+	qboclient "github.com/javaknight1/servicepro/backend/pkg/clients/quickbooks"
 	smsclient "github.com/javaknight1/servicepro/backend/pkg/clients/sms"
 	storageclient "github.com/javaknight1/servicepro/backend/pkg/clients/storage"
+	"github.com/javaknight1/servicepro/backend/pkg/secretbox"
 )
 
 // SetupServices initializes all service instances
@@ -119,6 +123,14 @@ func SetupServices(
 	})
 	// ...and the invoice's tenant can take payments on its own account (T169).
 	svc.Invoice.SetPayLinkPolicy(svc.PaymentsConnect)
+
+	// QuickBooks Online sync (T192): off (status "not configured") unless
+	// the Intuit app keys are set. Sent invoices and recorded payments are
+	// queued for the tenant's QuickBooks when it is connected.
+	svc.QuickBooks = setupQuickBooks(cfg, db, permChecker)
+	if svc.QuickBooks.Configured() {
+		svc.Invoice.SetAccountingSync(svc.QuickBooks)
+	}
 
 	// Revenue report service
 	svc.Revenue = services.NewRevenueReportService(db)
@@ -266,4 +278,44 @@ func SetupServices(
 	})
 
 	return svc
+}
+
+// setupQuickBooks builds the QuickBooks service (T192). Without Intuit keys
+// (or QUICKBOOKS_FAKE in development), or without a valid
+// INTEGRATIONS_ENCRYPTION_KEY outside development, it is the unconfigured
+// service: the integration shows "Coming soon" and the server still starts.
+func setupQuickBooks(cfg *config.Config, db *gorm.DB, perms quickbooks.PermissionChecker) *quickbooks.Service {
+	ctx := context.Background()
+	off := quickbooks.NewService(quickbooks.Config{DB: db})
+	isDev := cfg.Server.Env == "development"
+	if !cfg.QuickBooks.Enabled(cfg.Server.Env) {
+		return off
+	}
+	box, err := secretbox.FromBase64(cfg.IntegrationsEncryptionKey)
+	if err != nil {
+		if !isDev {
+			logging.Warn(ctx, "[QUICKBOOKS] INTEGRATIONS_ENCRYPTION_KEY missing or invalid: QuickBooks stays off", map[string]any{"source": "quickbooks"})
+			return off
+		}
+		// Development only: a per-process key (stored tokens stop opening
+		// after a restart; reconnect).
+		if box, err = secretbox.Random(); err != nil {
+			return off
+		}
+		logging.Warn(ctx, "[QUICKBOOKS] No INTEGRATIONS_ENCRYPTION_KEY; using a random development key", map[string]any{"source": "quickbooks"})
+	}
+	var client qboclient.Client
+	env := cfg.QuickBooks.Environment
+	fake := cfg.QuickBooks.Fake && isDev && cfg.QuickBooks.ClientID == ""
+	if fake {
+		client = qboclient.NewFake(cfg.QuickBooks.RedirectURI)
+		env = "sandbox"
+	} else {
+		client = qboclient.NewHTTPClient(qboclient.Config{
+			ClientID: cfg.QuickBooks.ClientID, ClientSecret: cfg.QuickBooks.ClientSecret,
+			RedirectURI: cfg.QuickBooks.RedirectURI, Environment: env,
+		})
+	}
+	logging.Info(ctx, "[QUICKBOOKS] QuickBooks sync enabled", map[string]any{"source": "quickbooks", "environment": env, "fake": fake})
+	return quickbooks.NewService(quickbooks.Config{DB: db, Client: client, Box: box, Environment: env, Perms: perms})
 }

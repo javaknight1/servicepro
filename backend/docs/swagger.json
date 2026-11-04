@@ -7317,6 +7317,47 @@
                 ]
             }
         },
+        "/integrations/quickbooks/callback": {
+            "get": {
+                "description": "Intuit redirects the browser here (the redirect URI registered on the Intuit app) with code, state and realmId, or with error when the user cancels. The signed, single-use state identifies the tenant and the user who started the connect; no session is needed. Always answers with a redirect to Settings → Integrations (?quickbooks=connected, or ?quickbooks=error\u0026reason=...).",
+                "tags": [
+                    "Integrations"
+                ],
+                "summary": "QuickBooks OAuth callback",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Authorization code",
+                        "name": "code",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "State from the connect URL",
+                        "name": "state",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "QuickBooks company ID",
+                        "name": "realmId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Set when the user declined",
+                        "name": "error",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "302": {
+                        "description": "Found"
+                    }
+                }
+            }
+        },
         "/internal/jobs/agreement-visits": {
             "post": {
                 "description": "Internal job endpoint (auth: X-Internal-Jobs-Token header = INTERNAL_JOBS_SECRET; 404 when the secret is unset). Creates a scheduled job for every visit of every active service agreement over the next 14 days (each tenant's local dates). Idempotent: each (agreement, date) is claimed once. Mounted at the server root (/internal/jobs/agreement-visits), outside /api.",
@@ -7551,6 +7592,53 @@
                     },
                     "503": {
                         "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/internal/jobs/quickbooks-sync": {
+            "post": {
+                "description": "Internal job endpoint (auth: X-Internal-Jobs-Token header = INTERNAL_JOBS_SECRET; 404 when the secret is unset). For every tenant with QuickBooks connected (least recently synced first): finds new and changed customers, invoices and payments and pushes them to the tenant's own QuickBooks company, for up to 40 s per call (more=true: work left for the next call). Idempotent: one worker per tenant at a time (a lease on the connection), every record mapped once, creates carry an Intuit requestid that is reused on retry. Failed records back off exponentially and stay listed in Settings → Integrations. Mounted at the server root (/internal/jobs/quickbooks-sync), outside /api. A no-op when QuickBooks isn't configured.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Internal"
+                ],
+                "summary": "Run QuickBooks sync job",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Internal jobs secret",
+                        "name": "X-Internal-Jobs-Token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_api_handlers.QuickBooksSyncJobResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
@@ -10378,6 +10466,425 @@
                     },
                     "500": {
                         "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/tenants/{id}/integrations/quickbooks": {
+            "get": {
+                "description": "Whether QuickBooks is available (configured=false: the server has no Intuit app yet, show \"Coming soon\"), the connection (connected, reauth_required, disconnected; company, environment, since when invoices sync), the mapping settings, synced counts, records that failed (with their error) and recent activity. Requires integrations.manage (owners and admins).",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Integrations"
+                ],
+                "summary": "Get QuickBooks status",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Tenant ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.QuickBooksStatusResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/tenants/{id}/integrations/quickbooks/connect": {
+            "post": {
+                "description": "Returns the Intuit consent URL to open in the browser. The link is single use and expires after 10 minutes; Intuit sends the browser back to /integrations/quickbooks/callback, which returns it to Settings → Integrations. Connecting a different company than before starts the sync over from today. Requires integrations.manage.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Integrations"
+                ],
+                "summary": "Connect QuickBooks",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Tenant ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.QuickBooksConnectResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "QuickBooks not configured on the server",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/tenants/{id}/integrations/quickbooks/disconnect": {
+            "post": {
+                "description": "Revokes the tokens at Intuit and forgets them. Nothing is deleted from QuickBooks; reconnecting the same company carries on where the sync stopped. Requires integrations.manage.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Integrations"
+                ],
+                "summary": "Disconnect QuickBooks",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Tenant ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.QuickBooksStatusResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Not connected",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/tenants/{id}/integrations/quickbooks/options": {
+            "get": {
+                "description": "Income accounts, tax codes and deposit accounts (bank and other current asset) of the connected QuickBooks company. Requires integrations.manage.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Integrations"
+                ],
+                "summary": "List QuickBooks mapping options",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Tenant ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.QuickBooksOptionsResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Not connected, or needs reconnecting",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "502": {
+                        "description": "QuickBooks didn't answer",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/tenants/{id}/integrations/quickbooks/records/{record_id}/retry": {
+            "post": {
+                "description": "Puts a record that failed to sync back in the queue (it goes with the next sync, or \"Sync now\"). Requires integrations.manage.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Integrations"
+                ],
+                "summary": "Retry a QuickBooks record",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Tenant ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Sync record ID",
+                        "name": "record_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.QuickBooksStatusResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/tenants/{id}/integrations/quickbooks/settings": {
+            "put": {
+                "description": "Sets the income account invoice lines post to (ServicePro finds or creates a service item \"ServicePro - \u003caccount\u003e\" on it; without one, the company's \"Services\" item is used), an optional sales tax code (companies without automated sales tax) and an optional deposit account for payments (default: Undeposited Funds). Empty tax code / deposit account clear them. Records that failed are retried. Requires integrations.manage.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Integrations"
+                ],
+                "summary": "Update QuickBooks mapping",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Tenant ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Mapping",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.QuickBooksSettingsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.QuickBooksStatusResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Not an account or tax code of the company",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "502": {
+                        "description": "Bad Gateway",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/tenants/{id}/integrations/quickbooks/sync": {
+            "post": {
+                "description": "Finds new and changed customers, invoices (issued since the connection) and payments and pushes them to QuickBooks for up to 25 seconds; anything left goes with the hourly sync. Safe to repeat: records already in QuickBooks are never created twice. Requires integrations.manage.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Integrations"
+                ],
+                "summary": "Sync QuickBooks now",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Tenant ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.QuickBooksSyncResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Not connected, or needs reconnecting",
                         "schema": {
                             "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
                         }
@@ -16188,6 +16695,226 @@
                 }
             }
         },
+        "github_com_javaknight1_servicepro_backend_internal_models.QuickBooksConnectResponse": {
+            "type": "object",
+            "properties": {
+                "url": {
+                    "type": "string",
+                    "example": "https://appcenter.intuit.com/connect/oauth2?client_id=...\u0026state=..."
+                }
+            }
+        },
+        "github_com_javaknight1_servicepro_backend_internal_models.QuickBooksOptionsResponse": {
+            "type": "object",
+            "properties": {
+                "deposit_accounts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.QuickBooksRef"
+                    }
+                },
+                "income_accounts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.QuickBooksRef"
+                    }
+                },
+                "tax_codes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.QuickBooksRef"
+                    }
+                }
+            }
+        },
+        "github_com_javaknight1_servicepro_backend_internal_models.QuickBooksRef": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "example": "79"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Cleaning Services"
+                }
+            }
+        },
+        "github_com_javaknight1_servicepro_backend_internal_models.QuickBooksSettingsRequest": {
+            "type": "object",
+            "properties": {
+                "deposit_account_id": {
+                    "type": "string",
+                    "maxLength": 50,
+                    "example": "35"
+                },
+                "income_account_id": {
+                    "type": "string",
+                    "maxLength": 50,
+                    "example": "79"
+                },
+                "tax_code_id": {
+                    "type": "string",
+                    "maxLength": 50,
+                    "example": "3"
+                }
+            }
+        },
+        "github_com_javaknight1_servicepro_backend_internal_models.QuickBooksStatusResponse": {
+            "type": "object",
+            "properties": {
+                "company_name": {
+                    "type": "string",
+                    "example": "Brightline Facility Services LLC"
+                },
+                "configured": {
+                    "description": "Configured is false when the server has no Intuit app keys: the UI\nshows \"Coming soon\".",
+                    "type": "boolean",
+                    "example": true
+                },
+                "connected_at": {
+                    "type": "string"
+                },
+                "counts": {
+                    "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.QuickBooksSyncCounts"
+                },
+                "deposit_account": {
+                    "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.QuickBooksRef"
+                },
+                "environment": {
+                    "type": "string",
+                    "example": "sandbox"
+                },
+                "errors": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.QuickBooksSyncRecordResponse"
+                    }
+                },
+                "income_account": {
+                    "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.QuickBooksRef"
+                },
+                "item": {
+                    "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.QuickBooksRef"
+                },
+                "last_sync_at": {
+                    "type": "string"
+                },
+                "last_sync_error": {
+                    "description": "LastSyncError is the last connection-level problem (e.g. the\nQuickBooks authorization expired), not a per-record error.",
+                    "type": "string"
+                },
+                "recent": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.QuickBooksSyncRecordResponse"
+                    }
+                },
+                "status": {
+                    "type": "string",
+                    "enum": [
+                        "connected",
+                        "reauth_required",
+                        "disconnected"
+                    ],
+                    "example": "connected"
+                },
+                "sync_from": {
+                    "type": "string",
+                    "example": "2026-11-04"
+                },
+                "tax_code": {
+                    "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.QuickBooksRef"
+                }
+            }
+        },
+        "github_com_javaknight1_servicepro_backend_internal_models.QuickBooksSyncCounts": {
+            "type": "object",
+            "properties": {
+                "customers": {
+                    "type": "integer",
+                    "example": 23
+                },
+                "errors": {
+                    "type": "integer",
+                    "example": 0
+                },
+                "invoices": {
+                    "type": "integer",
+                    "example": 118
+                },
+                "payments": {
+                    "type": "integer",
+                    "example": 96
+                },
+                "pending": {
+                    "type": "integer",
+                    "example": 2
+                }
+            }
+        },
+        "github_com_javaknight1_servicepro_backend_internal_models.QuickBooksSyncRecordResponse": {
+            "type": "object",
+            "properties": {
+                "attempts": {
+                    "type": "integer",
+                    "example": 2
+                },
+                "entity": {
+                    "type": "string",
+                    "example": "invoice"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "label": {
+                    "type": "string",
+                    "example": "Invoice INV-1042 · Harborview Property Management"
+                },
+                "last_error": {
+                    "type": "string",
+                    "example": "Choose an income account in Settings → Integrations"
+                },
+                "last_synced_at": {
+                    "type": "string"
+                },
+                "local_id": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string",
+                    "example": "error"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_javaknight1_servicepro_backend_internal_models.QuickBooksSyncResponse": {
+            "type": "object",
+            "properties": {
+                "enqueued": {
+                    "type": "integer",
+                    "example": 3
+                },
+                "failed": {
+                    "type": "integer",
+                    "example": 0
+                },
+                "more": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "skipped": {
+                    "type": "integer",
+                    "example": 0
+                },
+                "synced": {
+                    "type": "integer",
+                    "example": 3
+                }
+            }
+        },
         "github_com_javaknight1_servicepro_backend_internal_models.QuoteItemRequest": {
             "type": "object",
             "required": [
@@ -18994,6 +19721,43 @@
                         "bank",
                         "card"
                     ]
+                }
+            }
+        },
+        "internal_api_handlers.QuickBooksSyncJobResponse": {
+            "type": "object",
+            "properties": {
+                "duration_ms": {
+                    "type": "integer",
+                    "example": 812
+                },
+                "enqueued": {
+                    "type": "integer",
+                    "example": 5
+                },
+                "failed": {
+                    "type": "integer",
+                    "example": 0
+                },
+                "job": {
+                    "type": "string",
+                    "example": "quickbooks-sync"
+                },
+                "more": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "skipped": {
+                    "type": "integer",
+                    "example": 0
+                },
+                "synced": {
+                    "type": "integer",
+                    "example": 5
+                },
+                "tenants": {
+                    "type": "integer",
+                    "example": 2
                 }
             }
         },

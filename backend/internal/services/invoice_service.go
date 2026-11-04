@@ -90,6 +90,28 @@ type InvoiceService struct {
 	// payLinks decides per tenant: only tenants whose own Stripe account
 	// can take payments get a pay link (T169).
 	payLinks PayLinkPolicy
+	// accounting queues sent invoices and recorded payments for the
+	// tenant's accounting sync (QuickBooks, T192); nil when off.
+	accounting AccountingSync
+}
+
+// AccountingSync queues a record for a tenant's accounting sync after its
+// transaction committed (implemented by the QuickBooks service, T192). It
+// is best effort: the sync's own sweep finds anything missed.
+type AccountingSync interface {
+	EnqueueAfterCommit(ctx context.Context, tenantID uuid.UUID, entity string, localID uuid.UUID)
+}
+
+// SetAccountingSync installs the accounting sync hook (T192).
+func (s *InvoiceService) SetAccountingSync(a AccountingSync) {
+	s.accounting = a
+}
+
+// queueAccounting enqueues a record for the accounting sync, if on.
+func (s *InvoiceService) queueAccounting(ctx context.Context, tenantID uuid.UUID, entity string, localID uuid.UUID) {
+	if s.accounting != nil && tenantID != uuid.Nil {
+		s.accounting.EnqueueAfterCommit(ctx, tenantID, entity, localID)
+	}
 }
 
 // PayLinkPolicy reports whether a tenant's invoices may carry a pay link
@@ -843,11 +865,13 @@ func (s *InvoiceService) RecordPayment(ctx context.Context, payment *models.Invo
 		payment.PaymentDate = time.Now()
 	}
 
+	var tenantID uuid.UUID
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		invoice, err := lockInvoice(tx, payment.InvoiceID)
 		if err != nil {
 			return err
 		}
+		tenantID = invoice.TenantID
 		if invoice.Status == models.InvoiceStatusPaid {
 			return ErrInvoiceAlreadyPaid
 		}
@@ -866,6 +890,7 @@ func (s *InvoiceService) RecordPayment(ctx context.Context, payment *models.Invo
 	if err != nil {
 		return nil, err
 	}
+	s.queueAccounting(ctx, tenantID, "payment", payment.ID)
 	return payment, nil
 }
 
@@ -1064,6 +1089,7 @@ func (s *InvoiceService) SendInvoiceWithOptions(ctx context.Context, id uuid.UUI
 	if err != nil {
 		return nil, err
 	}
+	s.queueAccounting(ctx, invoice.TenantID, "invoice", invoice.ID)
 
 	// Send email asynchronously if email client is configured
 	if s.emailClient != nil && invoice.Customer != nil {
@@ -1272,11 +1298,13 @@ func (s *InvoiceService) ValidatePaymentToken(ctx context.Context, token string)
 // index on invoice_payments.stripe_checkout_session_id (migration 000007)
 // backs this up.
 func (s *InvoiceService) MarkInvoiceAsPaid(ctx context.Context, id uuid.UUID, amountPaid decimal.Decimal, stripeCheckoutSessionID, stripePaymentIntentID string) (*models.Invoice, error) {
+	var tenantID, paymentID uuid.UUID
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		invoice, err := lockInvoice(tx, id)
 		if err != nil {
 			return err
 		}
+		tenantID = invoice.TenantID
 
 		if stripeCheckoutSessionID != "" {
 			var n int64
@@ -1309,6 +1337,7 @@ func (s *InvoiceService) MarkInvoiceAsPaid(ctx context.Context, id uuid.UUID, am
 		if err := tx.Create(payment).Error; err != nil {
 			return fmt.Errorf("failed to record stripe payment: %w", err)
 		}
+		paymentID = payment.ID
 
 		extra := map[string]interface{}{}
 		if stripeCheckoutSessionID != "" {
@@ -1326,6 +1355,9 @@ func (s *InvoiceService) MarkInvoiceAsPaid(ctx context.Context, id uuid.UUID, am
 	})
 	if err != nil {
 		return nil, err
+	}
+	if paymentID != uuid.Nil {
+		s.queueAccounting(ctx, tenantID, "payment", paymentID)
 	}
 
 	return s.GetInvoice(ctx, id)

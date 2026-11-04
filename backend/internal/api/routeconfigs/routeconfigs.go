@@ -11,6 +11,7 @@ import (
 	"github.com/javaknight1/servicepro/backend/internal/services"
 	"github.com/javaknight1/servicepro/backend/internal/services/conflict"
 	permissionsSvc "github.com/javaknight1/servicepro/backend/internal/services/permissions"
+	"github.com/javaknight1/servicepro/backend/internal/services/quickbooks"
 	stripeService "github.com/javaknight1/servicepro/backend/internal/services/stripe"
 	"github.com/javaknight1/servicepro/backend/pkg/auth"
 	"github.com/javaknight1/servicepro/backend/pkg/auth/neonauth"
@@ -114,6 +115,9 @@ type Services struct {
 	Agreements      *services.AgreementService
 	// QuoteConversion turns accepted quotes into jobs (T028).
 	QuoteConversion *services.QuoteConversionService
+	// QuickBooks is the QuickBooks Online sync (T192); always set, answers
+	// "not configured" without Intuit keys.
+	QuickBooks *quickbooks.Service
 }
 
 // Middleware holds all middleware instances
@@ -170,4 +174,6 @@ type Handlers struct {
 	JobApproval     *handlers.JobApprovalHandler
 	Agreement       *handlers.AgreementHandler
 	QuoteConversion *handlers.QuoteConversionHandler
+	// QuickBooks serves Settings → Integrations → QuickBooks (T192).
+	QuickBooks *handlers.QuickBooksHandler
 }

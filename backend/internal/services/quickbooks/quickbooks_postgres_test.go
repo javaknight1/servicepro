@@ -492,6 +492,23 @@ func TestPostgresQuickBooksCrossTenant(t *testing.T) {
 	assert.Equal(t, 2, res.Synced)
 }
 
+// Payments on invoices issued before the connection aren't pushed (nor is
+// their invoice): the accountant has those already.
+func TestPostgresQuickBooksSkipsPreConnectionInvoices(t *testing.T) {
+	f := newQBFixture(t)
+	a := f.tenant(t, "Acme")
+	f.connect(t, a)
+	old := f.invoice(t, a, "OLD-1")
+	f.exec(t, `UPDATE invoices SET issue_date = issue_date - 40 WHERE id = ?`, old)
+	pay := f.payment(t, old, "10.00")
+	require.NoError(t, f.svc.Enqueue(context.Background(), a.id, models.QuickBooksEntityPayment, pay))
+	r := f.sync(t, a)
+	assert.Zero(t, r.Synced)
+	assert.Zero(t, r.Failed)
+	assert.Empty(t, f.fake.Snapshot(qbo.EntityKindInvoice))
+	assert.Empty(t, f.fake.Snapshot(qbo.EntityKindPayment))
+}
+
 func TestPostgresQuickBooksEnqueueOnlyWhenConnected(t *testing.T) {
 	f := newQBFixture(t)
 	a := f.tenant(t, "Acme")

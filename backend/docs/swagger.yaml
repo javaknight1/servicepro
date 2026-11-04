@@ -3167,6 +3167,165 @@ definitions:
       updated_at:
         type: string
     type: object
+  github_com_javaknight1_servicepro_backend_internal_models.QuickBooksConnectResponse:
+    properties:
+      url:
+        example: https://appcenter.intuit.com/connect/oauth2?client_id=...&state=...
+        type: string
+    type: object
+  github_com_javaknight1_servicepro_backend_internal_models.QuickBooksOptionsResponse:
+    properties:
+      deposit_accounts:
+        items:
+          $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.QuickBooksRef'
+        type: array
+      income_accounts:
+        items:
+          $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.QuickBooksRef'
+        type: array
+      tax_codes:
+        items:
+          $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.QuickBooksRef'
+        type: array
+    type: object
+  github_com_javaknight1_servicepro_backend_internal_models.QuickBooksRef:
+    properties:
+      id:
+        example: "79"
+        type: string
+      name:
+        example: Cleaning Services
+        type: string
+    type: object
+  github_com_javaknight1_servicepro_backend_internal_models.QuickBooksSettingsRequest:
+    properties:
+      deposit_account_id:
+        example: "35"
+        maxLength: 50
+        type: string
+      income_account_id:
+        example: "79"
+        maxLength: 50
+        type: string
+      tax_code_id:
+        example: "3"
+        maxLength: 50
+        type: string
+    type: object
+  github_com_javaknight1_servicepro_backend_internal_models.QuickBooksStatusResponse:
+    properties:
+      company_name:
+        example: Brightline Facility Services LLC
+        type: string
+      configured:
+        description: |-
+          Configured is false when the server has no Intuit app keys: the UI
+          shows "Coming soon".
+        example: true
+        type: boolean
+      connected_at:
+        type: string
+      counts:
+        $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.QuickBooksSyncCounts'
+      deposit_account:
+        $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.QuickBooksRef'
+      environment:
+        example: sandbox
+        type: string
+      errors:
+        items:
+          $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.QuickBooksSyncRecordResponse'
+        type: array
+      income_account:
+        $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.QuickBooksRef'
+      item:
+        $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.QuickBooksRef'
+      last_sync_at:
+        type: string
+      last_sync_error:
+        description: |-
+          LastSyncError is the last connection-level problem (e.g. the
+          QuickBooks authorization expired), not a per-record error.
+        type: string
+      recent:
+        items:
+          $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.QuickBooksSyncRecordResponse'
+        type: array
+      status:
+        enum:
+        - connected
+        - reauth_required
+        - disconnected
+        example: connected
+        type: string
+      sync_from:
+        example: "2026-11-04"
+        type: string
+      tax_code:
+        $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.QuickBooksRef'
+    type: object
+  github_com_javaknight1_servicepro_backend_internal_models.QuickBooksSyncCounts:
+    properties:
+      customers:
+        example: 23
+        type: integer
+      errors:
+        example: 0
+        type: integer
+      invoices:
+        example: 118
+        type: integer
+      payments:
+        example: 96
+        type: integer
+      pending:
+        example: 2
+        type: integer
+    type: object
+  github_com_javaknight1_servicepro_backend_internal_models.QuickBooksSyncRecordResponse:
+    properties:
+      attempts:
+        example: 2
+        type: integer
+      entity:
+        example: invoice
+        type: string
+      id:
+        type: string
+      label:
+        example: Invoice INV-1042 · Harborview Property Management
+        type: string
+      last_error:
+        example: Choose an income account in Settings → Integrations
+        type: string
+      last_synced_at:
+        type: string
+      local_id:
+        type: string
+      status:
+        example: error
+        type: string
+      updated_at:
+        type: string
+    type: object
+  github_com_javaknight1_servicepro_backend_internal_models.QuickBooksSyncResponse:
+    properties:
+      enqueued:
+        example: 3
+        type: integer
+      failed:
+        example: 0
+        type: integer
+      more:
+        example: false
+        type: boolean
+      skipped:
+        example: 0
+        type: integer
+      synced:
+        example: 3
+        type: integer
+    type: object
   github_com_javaknight1_servicepro_backend_internal_models.QuoteItemRequest:
     properties:
       description:
@@ -5125,6 +5284,33 @@ definitions:
         - bank
         - card
         type: string
+    type: object
+  internal_api_handlers.QuickBooksSyncJobResponse:
+    properties:
+      duration_ms:
+        example: 812
+        type: integer
+      enqueued:
+        example: 5
+        type: integer
+      failed:
+        example: 0
+        type: integer
+      job:
+        example: quickbooks-sync
+        type: string
+      more:
+        example: false
+        type: boolean
+      skipped:
+        example: 0
+        type: integer
+      synced:
+        example: 5
+        type: integer
+      tenants:
+        example: 2
+        type: integer
     type: object
   internal_api_handlers.QuoteExpiryJobResponse:
     properties:
@@ -10209,6 +10395,37 @@ paths:
       summary: Preview an import
       tags:
       - Imports
+  /integrations/quickbooks/callback:
+    get:
+      description: Intuit redirects the browser here (the redirect URI registered
+        on the Intuit app) with code, state and realmId, or with error when the user
+        cancels. The signed, single-use state identifies the tenant and the user who
+        started the connect; no session is needed. Always answers with a redirect
+        to Settings → Integrations (?quickbooks=connected, or ?quickbooks=error&reason=...).
+      parameters:
+      - description: Authorization code
+        in: query
+        name: code
+        type: string
+      - description: State from the connect URL
+        in: query
+        name: state
+        required: true
+        type: string
+      - description: QuickBooks company ID
+        in: query
+        name: realmId
+        type: string
+      - description: Set when the user declined
+        in: query
+        name: error
+        type: string
+      responses:
+        "302":
+          description: Found
+      summary: QuickBooks OAuth callback
+      tags:
+      - Integrations
   /internal/jobs/agreement-visits:
     post:
       description: 'Internal job endpoint (auth: X-Internal-Jobs-Token header = INTERNAL_JOBS_SECRET;
@@ -10394,6 +10611,46 @@ paths:
           schema:
             $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
       summary: Run payment reminders job
+      tags:
+      - Internal
+  /internal/jobs/quickbooks-sync:
+    post:
+      description: 'Internal job endpoint (auth: X-Internal-Jobs-Token header = INTERNAL_JOBS_SECRET;
+        404 when the secret is unset). For every tenant with QuickBooks connected
+        (least recently synced first): finds new and changed customers, invoices and
+        payments and pushes them to the tenant''s own QuickBooks company, for up to
+        40 s per call (more=true: work left for the next call). Idempotent: one worker
+        per tenant at a time (a lease on the connection), every record mapped once,
+        creates carry an Intuit requestid that is reused on retry. Failed records
+        back off exponentially and stay listed in Settings → Integrations. Mounted
+        at the server root (/internal/jobs/quickbooks-sync), outside /api. A no-op
+        when QuickBooks isn''t configured.'
+      parameters:
+      - description: Internal jobs secret
+        in: header
+        name: X-Internal-Jobs-Token
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_api_handlers.QuickBooksSyncJobResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+      summary: Run QuickBooks sync job
       tags:
       - Internal
   /internal/jobs/quote-expiry:
@@ -12252,6 +12509,294 @@ paths:
       summary: Create setup intent
       tags:
       - Billing
+  /tenants/{id}/integrations/quickbooks:
+    get:
+      description: 'Whether QuickBooks is available (configured=false: the server
+        has no Intuit app yet, show "Coming soon"), the connection (connected, reauth_required,
+        disconnected; company, environment, since when invoices sync), the mapping
+        settings, synced counts, records that failed (with their error) and recent
+        activity. Requires integrations.manage (owners and admins).'
+      parameters:
+      - description: Tenant ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.QuickBooksStatusResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get QuickBooks status
+      tags:
+      - Integrations
+  /tenants/{id}/integrations/quickbooks/connect:
+    post:
+      description: Returns the Intuit consent URL to open in the browser. The link
+        is single use and expires after 10 minutes; Intuit sends the browser back
+        to /integrations/quickbooks/callback, which returns it to Settings → Integrations.
+        Connecting a different company than before starts the sync over from today.
+        Requires integrations.manage.
+      parameters:
+      - description: Tenant ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.QuickBooksConnectResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "503":
+          description: QuickBooks not configured on the server
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Connect QuickBooks
+      tags:
+      - Integrations
+  /tenants/{id}/integrations/quickbooks/disconnect:
+    post:
+      description: Revokes the tokens at Intuit and forgets them. Nothing is deleted
+        from QuickBooks; reconnecting the same company carries on where the sync stopped.
+        Requires integrations.manage.
+      parameters:
+      - description: Tenant ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.QuickBooksStatusResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "409":
+          description: Not connected
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Disconnect QuickBooks
+      tags:
+      - Integrations
+  /tenants/{id}/integrations/quickbooks/options:
+    get:
+      description: Income accounts, tax codes and deposit accounts (bank and other
+        current asset) of the connected QuickBooks company. Requires integrations.manage.
+      parameters:
+      - description: Tenant ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.QuickBooksOptionsResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "409":
+          description: Not connected, or needs reconnecting
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "502":
+          description: QuickBooks didn't answer
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List QuickBooks mapping options
+      tags:
+      - Integrations
+  /tenants/{id}/integrations/quickbooks/records/{record_id}/retry:
+    post:
+      description: Puts a record that failed to sync back in the queue (it goes with
+        the next sync, or "Sync now"). Requires integrations.manage.
+      parameters:
+      - description: Tenant ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Sync record ID
+        in: path
+        name: record_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.QuickBooksStatusResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Retry a QuickBooks record
+      tags:
+      - Integrations
+  /tenants/{id}/integrations/quickbooks/settings:
+    put:
+      consumes:
+      - application/json
+      description: 'Sets the income account invoice lines post to (ServicePro finds
+        or creates a service item "ServicePro - <account>" on it; without one, the
+        company''s "Services" item is used), an optional sales tax code (companies
+        without automated sales tax) and an optional deposit account for payments
+        (default: Undeposited Funds). Empty tax code / deposit account clear them.
+        Records that failed are retried. Requires integrations.manage.'
+      parameters:
+      - description: Tenant ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Mapping
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.QuickBooksSettingsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.QuickBooksStatusResponse'
+        "400":
+          description: Not an account or tax code of the company
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "502":
+          description: Bad Gateway
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update QuickBooks mapping
+      tags:
+      - Integrations
+  /tenants/{id}/integrations/quickbooks/sync:
+    post:
+      description: 'Finds new and changed customers, invoices (issued since the connection)
+        and payments and pushes them to QuickBooks for up to 25 seconds; anything
+        left goes with the hourly sync. Safe to repeat: records already in QuickBooks
+        are never created twice. Requires integrations.manage.'
+      parameters:
+      - description: Tenant ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.QuickBooksSyncResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "409":
+          description: Not connected, or needs reconnecting
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Sync QuickBooks now
+      tags:
+      - Integrations
   /tenants/{id}/me:
     get:
       description: Returns the caller's membership role and the exact permission names

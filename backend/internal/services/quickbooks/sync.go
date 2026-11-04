@@ -367,8 +367,21 @@ func isLocalProblem(err error) bool {
 	return errors.Is(err, errMissingItem) || errors.Is(err, errDependency)
 }
 
-// errLocalMissing: the local record is gone (deleted).
+// errLocalMissing: the local record is gone (deleted), or not one the sync
+// pushes (an invoice issued before the connection, a draft, a cancelled
+// invoice).
 var errLocalMissing = errors.New("record no longer exists in ServicePro")
+
+// outOfScope reports invoices the sync leaves alone: issued before the
+// connection's sync_from (the accountant entered those already; their
+// payments aren't pushed either), drafts, and cancelled ones (voiding in
+// QuickBooks is not built yet).
+func (w *worker) outOfScope(inv *models.Invoice) bool {
+	if w.conn.SyncFrom != nil && inv.IssueDate.Before(*w.conn.SyncFrom) {
+		return true
+	}
+	return inv.Status == models.InvoiceStatusDraft || inv.Status == models.InvoiceStatusCancelled
+}
 
 // userError turns an error into the message shown on the record.
 func userError(err error) string {
@@ -620,6 +633,9 @@ func (w *worker) syncInvoice(rec *models.QuickBooksSyncRecord) (string, outcome,
 		}
 		return "", 0, err
 	}
+	if w.outOfScope(&inv) {
+		return "", 0, errLocalMissing
+	}
 	var lines []models.InvoiceLine
 	if err := w.db().Where("invoice_id = ?", inv.ID).Order("sort_order, created_at").Find(&lines).Error; err != nil {
 		return "", 0, err
@@ -694,6 +710,9 @@ func (w *worker) syncPayment(rec *models.QuickBooksSyncRecord) (outcome, error) 
 			return 0, errLocalMissing
 		}
 		return 0, err
+	}
+	if w.outOfScope(&inv) {
+		return 0, errLocalMissing
 	}
 	invoiceID, err := w.dependency(models.QuickBooksEntityInvoice, inv.ID)
 	if err != nil {

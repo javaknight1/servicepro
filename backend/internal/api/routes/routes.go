@@ -118,6 +118,10 @@ func setupInternalJobRoutes(router *gin.Engine, routeCfg *RouteConfig, cfg *conf
 		group.POST("/imports", handlers.RunImports(routeCfg.Services.Import.ProcessPending))
 		endpoints += ", /internal/jobs/imports"
 	}
+	if routeCfg.Services != nil && routeCfg.Services.QuickBooks != nil {
+		group.POST("/quickbooks-sync", handlers.RunQuickBooksSync(routeCfg.Services.QuickBooks.ProcessPending))
+		endpoints += ", /internal/jobs/quickbooks-sync"
+	}
 
 	logging.Info(context.Background(), "Internal job endpoints registered", map[string]any{
 		"enabled": cfg.Server.InternalJobsSecret != "", "endpoints": endpoints, "source": "jobs",
