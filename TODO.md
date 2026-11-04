@@ -1,6 +1,6 @@
 # ServicePro — Roadmap
 
-**Last Updated**: 2026-11-03 (T187 PO tracking and T173 My Day done (migration 000018); T272, T273 filed. T271 local storage on RustFS (D16). T035 Technician role done (migration 000017). T028–T030 quote→job→invoice done (migration 000016). T235 settings validation + onboarding wizard done. T188 consolidated invoicing done (migration 000015). T186 sites and T167 agreements done with their screens; T187 screens merged, PO on quotes/agreements and PO balances left. T210 plans/trial/founding offer merged on Proposed D15 (migration 000014) — confirm D15 before the next release. T170 pay page + ACH pending merged (migration 000013). T186 sites, T187 billing rules and T167 agreements backend merged — migrations now 000001–000012; their screens are in progress. T169 Stripe Connect code merged and T160 R2 code done — both blocked on Rob's setup; overdue invoices now marked by an hourly job; record-payment 500 and A/R aging bucket bugs fixed. T269 app shell + dashboard and T270 page restyle done per the mockups. T154 RLS backstop (off by default), T241 imports, T263 table drops merged; migrations now 000001–000008. T265 done: tenant-branded, opt-out-respecting customer email. T264 done: stripe-go v87, x/image/draw. Phase A done: T257, T258, T259, T260, T262, T266, T267 merged (parallel worktree agents). T268 done: landing page per mockup 01. T159 done (Resend only, retries + idempotency, signed bounce/complaint webhook + suppression list). Mockups in `docs/product/mockups/`; T268 landing, T269 app shell + dashboard and T270 page restyle added to the MVP gate (49 tasks, ~310h). T205 in progress: owner account live; blank-site regression fixed in v0.10.5. T206 done: SPF/DKIM/DMARC on servicepro.sharkfins.xyz, test send delivered. T159 step 1 + T206 sender domain live in v0.10.3. T256 done — honesty gate (T255, T256, T261) complete. T255 done: honest public site, beta-access CTA, pricing hidden, Terms/Privacy acceptance recorded at sign-up. T261 done: invoice pay links off by default — `INVOICE_PAYMENTS_ENABLED`; Dependabot auto-merge now includes majors.) 2026-10-25 (MVP re-scope: the owner confirmed the Notion app-upgrade docs — D7–D14 decided, OD-4 closed by D9, OD-12 decided, OD-10/OD-11 opened; the "v1 Launch Gate" became the **MVP Launch Gate** (phases A–G, 46 tasks, ~292h, paid launch 2027-09-07) and every section's gate field is now **MVP Gate**; new tasks T255–T267 from the Technical Requirements N-tasks and the MVP feature table; T169 rewritten for Connect Accounts v2 direct charges; T153/T155–T157/T162 frozen (D12); T048–T050, T061, T063, T081, T183, T101, T243, T244 deferred; T242 Won't Do. Plan: `docs/product/mvp-plan-2026-10.md`.) Earlier — 2026-10-24 (TODO reformatted from the P0–P3/sprint layout to League Looper's indexed phase format: Task Index with ID/Phase/Category/Hours, one detailed section per open task, a launch gate and Verified Complete. A full audit of the repo (backend security, backend correctness, frontend, infra — stored in `docs/audits/2026-10-16/`) is filed as Phases 1–3 (T102–T152, T223–T226). The stack-convergence plan towards League Looper's stack is Phase 4 (T153–T166). Competitive research (`docs/product/competitive-research-2026-10.md`) became product Phases 5–16, merging the open T027–T101 tasks with new T167–T222. Hosting is deferred: ServicePro stays local-only until the production database decision (T202). Old IDs T001–T101 are kept; T011 never existed. Same day: Phase 3 platform work T139–T152 landed — golang-migrate, /version + schema-aware readiness, internal job endpoints, optional Redis, Cloud Run image, LL-style CI/release/hooks, Cloudflare Worker edge (not deployed); frontend fixes T130–T138; all of Phase 1 security (T102–T117) — tenant isolation plugin, per-tenant authz, invite-only registration, token/login/webhook/CSRF hardening, no known Go vulns; T227 added for the frontend follow-through. Same day: Phase 2 correctness work landed (T118–T129, T223–T239 — money path, numbering, status machines, refunds, quotes, tenant settings, error envelope + request IDs, ~39k lines of dead backend code removed, stricter golangci-lint); follow-ups T241–T244 filed. 2026-10-18: T231 (org deletion) deferred; Dependabot security-fix PRs enabled; SQLite ruled out for OD-1; Go deps bumped, T247 filed; T202 decided — Neon; OD-9 (auth provider) opened, then decided 2026-10-19 — Neon's managed Better Auth; 2026-10-24: Neon project linked, Neon agent skills + MCP server added, managed MFA confirmed on Neon's roadmap (T092); T164 frontend majors done (React 19, Router 7, Vite 8, ESLint 10, zod 4, Headless UI 2), T248/T249 filed; Tailwind 4 engine landed (T163 tokens + dark mode remain); 0 open Dependabot alerts.)
+**Last Updated**: 2026-11-04 (T272 and T273 fixed; migration 000019 timestamptz. T174 in progress, migration 000020.)
 
 > **How to read this file.** Every task has an ID (T###). The **Task Index** lists all of them: completed rows
 > (struck through) first by ID, then open rows by Phase → ID. Each open task has exactly one detailed section under
@@ -273,8 +273,8 @@ stripe-go v87 supports v2 accounts) and the first 4h of T192 (QuickBooks OAuth, 
 | T248     | 4      | Monitoring     | 3      | Upgrade @sentry/react to 11 with an explicit data-collection config                                      |
 | T249     | 4      | Frontend       | 2      | Drop Vite's legacy.inconsistentCjsInterop flag and ready the config for Vite's native loader             |
 | ~~T271~~ | ~~4~~  | ~~Infra~~      | ~~2~~  | ~~Replace MinIO in the local Docker stack (images no longer pullable)~~                                  |
-| T272     | 5      | Bug            | 1      | Technicians get repeated 403s on GET /tenants/:id/membership                                             |
-| T273     | 5      | Bug            | 1      | Job note timestamps come back hours off (time zone)                                                      |
+| ~~T272~~ | ~~5~~  | ~~Bug~~        | ~~1~~  | ~~Technicians get repeated 403s on GET /tenants/:id/membership~~                                         |
+| ~~T273~~ | ~~5~~  | ~~Bug~~        | ~~1~~  | ~~Job note timestamps come back hours off (time zone)~~                                                  |
 | ~~T264~~ | ~~4~~  | ~~Backend~~    | ~~4~~  | ~~Upgrade stripe-go v76 → v87; replace archived nfnt/resize~~                                            |
 | ~~T028~~ | ~~5~~  | ~~Feature~~    | ~~3~~  | ~~Add "Convert Quote to Job" button~~                                                                    |
 | ~~T029~~ | ~~5~~  | ~~Feature~~    | ~~2~~  | ~~Add "Generate Invoice from Job" button~~                                                               |
@@ -974,24 +974,28 @@ D2: move to League Looper's stack one strangler step at a time while the app kee
 
 #### T272 — Technicians get repeated 403s on GET /tenants/:id/membership
 
-**Phase**: 5 · **Category**: Bug · **Hours**: 1 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: T035
+**Phase**: 5 · **Category**: Bug · **Hours**: 1 · **Status**: Done (2026-11-04) · **MVP Gate**: Yes · **Depends on**: T035
 
 **What it is** — A technician's app stops calling the membership endpoint it isn't allowed to read.
 **What it does** — The plan badge / trial banner (T210) request `GET /tenants/:id/membership` for everyone; technicians lack the permission and get 403 on every page. Gate the query on the permission (or return a minimal plan summary every member may see) and add a test.
 **Why we need it** — Noise in logs and Sentry, wasted requests on phones.
 **Notes** — Found during T173 (2026-11-03).
 
+
+**Done (2026-11-04)** — `b7c1f27`: the sidebar plan badge and trial banner only request `GET /tenants/:id/membership` once `/tenants/:id/me` has loaded and includes `tenants.read` (`canReadPlan`); technicians never fire it. Permission model unchanged; route comment corrected. Vitest regressions for Sidebar and TrialBanner.
 ---
 
 #### T273 — Job note timestamps come back hours off (time zone)
 
-**Phase**: 5 · **Category**: Bug · **Hours**: 1 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: none
+**Phase**: 5 · **Category**: Bug · **Hours**: 1 · **Status**: Done (2026-11-04) · **MVP Gate**: Yes · **Depends on**: none
 
 **What it is** — Note `created_at` values are correct regardless of the server's time zone.
 **What it does** — With the API running in US Eastern time, job note `created_at` came back ~5 hours off. Check the column type (`timestamp` vs `timestamptz`) and how GORM writes it; fix with an additive migration if the column lacks a time zone, plus a test that runs with a non-UTC `TZ`.
 **Why we need it** — Visit notes show the wrong time to techs and the office.
 **Notes** — Found during T173 (2026-11-03). Production runs in UTC, so it may only show locally — confirm.
 
+
+**Done (2026-11-04)** — `ea96c35`: cause was 57 `timestamp without time zone` columns in 000001 (pgx writes local wall time, reads UTC). Migration 000019 converts them all to `timestamptz` (`AT TIME ZONE 'UTC'`, idempotent, five analytics views dropped and recreated); regression test with `time.Local` = America/New_York. Tested up/down/up; DB tests pass with `TZ=America/New_York`.
 ---
 
 #### T264 — Upgrade stripe-go v76 → v87; replace archived nfnt/resize
@@ -1326,8 +1330,8 @@ The quote → job → invoice loop, roles for field and office staff, recurring 
 **Notes** — Follow-up from T223 (2026-10-16).
 
 ---
-- [ ] T272 — Technicians get repeated 403s on GET /tenants/:id/membership
-- [ ] T273 — Job note timestamps come back hours off (time zone)
+- [x] T272 — Technicians get repeated 403s on GET /tenants/:id/membership ✓ (2026-11-04)
+- [x] T273 — Job note timestamps come back hours off (time zone) ✓ (2026-11-04)
 
 
 ### Phase 6 — Payments to the Business (T061, T063, T083, T169, T170, T171, T172, T261)
@@ -3462,6 +3466,11 @@ Dated history from the original "Completed Items" list:
 
 - **T206** — Production email domain. `servicepro.sharkfins.xyz` verified in Resend (SPF + MX on `send.servicepro`, DKIM `resend._domainkey.servicepro`, added by Resend's Cloudflare integration); DMARC TXT `_dmarc.servicepro.sharkfins.xyz` = `v=DMARC1; p=none;` (Cloudflare API, "CF DNS Edit API key" in Bitwarden). `RESEND_FROM_EMAIL` defaults to `noreply@servicepro.sharkfins.xyz` (v0.10.3); `RESEND_API_KEY` in Secret Manager. A direct test send was delivered to the owner's inbox. An in-app send (reset/invite) is checked once the first production account exists (T205).
 - **T159** — Email is Resend only. Step 1: SES email + SNS SMS providers, `AWSConfig` and the aws-sdk ses/sns modules removed; production refuses to start without `RESEND_API_KEY` (v0.10.2). Step 3: transient failures retried with capped full-jitter backoff (Retry-After honoured, 4 attempts, 4xx fail fast) and one Idempotency-Key per message (`resend/retry.go`). Step 2: signed Svix webhook `POST /api/v1/webhooks/resend` → `email_suppressions` (migration 000004) for permanent bounces and complaints; the Resend client skips suppressed recipients. Tests: `retry_test.go`, `suppression_test.go`, `resend_webhook_handler_test.go`, `email_suppression_repository_test.go`.
+
+### 2026-11-04
+
+- **T272** — Technicians no longer request the plan they can't read (no more 403s). `b7c1f27`.
+- **T273** — All remaining timestamp columns are `timestamptz` (migration 000019); note times correct outside UTC. `ea96c35`.
 
 ### 2026-11-03
 
