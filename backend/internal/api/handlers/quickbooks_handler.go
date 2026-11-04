@@ -141,6 +141,7 @@ func (h *QuickBooksHandler) Callback(c *gin.Context) {
 
 func (h *QuickBooksHandler) redirect(c *gin.Context, reason string) {
 	q := url.Values{}
+	q.Set("tab", "integrations")
 	if reason == "" {
 		q.Set("quickbooks", "connected")
 	} else {
@@ -149,7 +150,7 @@ func (h *QuickBooksHandler) redirect(c *gin.Context, reason string) {
 	}
 	c.Header("Cache-Control", "no-store")
 	c.Header("Referrer-Policy", "no-referrer") // the URL carried a code
-	c.Redirect(http.StatusFound, h.frontendURL+"/settings/integrations?"+q.Encode())
+	c.Redirect(http.StatusFound, h.frontendURL+"/settings/organization?"+q.Encode())
 }
 
 // Disconnect revokes the QuickBooks connection.

@@ -30,6 +30,8 @@ export const TENANT_PERMISSIONS = {
   membershipBilling: 'membership.billing',
   /** Creating, editing and deactivating tax rates (T237). */
   manageTaxRates: 'tax_rates.manage',
+  /** Connecting and syncing QuickBooks (T192). */
+  manageIntegrations: 'integrations.manage',
 } as const;
 
 /**

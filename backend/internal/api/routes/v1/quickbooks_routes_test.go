@@ -116,13 +116,13 @@ func TestPostgresQuickBooksRoutes(t *testing.T) {
 		cb := httptest.NewRecorder()
 		engine.ServeHTTP(cb, httptest.NewRequest(http.MethodGet, "/api/v1/integrations/quickbooks/callback?"+u.RawQuery, nil))
 		require.Equal(t, http.StatusFound, cb.Code)
-		assert.Equal(t, "http://app.test/settings/integrations?quickbooks=connected", cb.Header().Get("Location"))
+		assert.Equal(t, "http://app.test/settings/organization?quickbooks=connected&tab=integrations", cb.Header().Get("Location"))
 
 		// Replay: refused, still a redirect (never an error page with the code).
 		cb = httptest.NewRecorder()
 		engine.ServeHTTP(cb, httptest.NewRequest(http.MethodGet, "/api/v1/integrations/quickbooks/callback?"+u.RawQuery, nil))
 		require.Equal(t, http.StatusFound, cb.Code)
-		assert.True(t, strings.HasSuffix(cb.Header().Get("Location"), "quickbooks=error&reason=expired"), cb.Header().Get("Location"))
+		assert.True(t, strings.HasSuffix(cb.Header().Get("Location"), "quickbooks=error&reason=expired&tab=integrations"), cb.Header().Get("Location"))
 
 		w = do(adminA, tenantA, http.MethodGet, pathA)
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &st))
@@ -152,7 +152,7 @@ func TestPostgresQuickBooksRoutes(t *testing.T) {
 		cb := httptest.NewRecorder()
 		engine.ServeHTTP(cb, httptest.NewRequest(http.MethodGet, "/api/v1/integrations/quickbooks/callback?error=access_denied&state=x", nil))
 		require.Equal(t, http.StatusFound, cb.Code)
-		assert.True(t, strings.HasSuffix(cb.Header().Get("Location"), "reason=cancelled"))
+		assert.True(t, strings.HasSuffix(cb.Header().Get("Location"), "reason=cancelled&tab=integrations"))
 	})
 }
 

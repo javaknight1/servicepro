@@ -8,6 +8,10 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router';
 import { paymentsApi, paymentsStatusQueryKey } from '@services/paymentsService';
+import {
+  quickbooksApi,
+  quickbooksStatusQueryKey,
+} from '@services/quickbooksService';
 import { getErrorMessage } from '@/utils/error';
 import { redirectTo } from '@/utils/redirect';
 import type { Tenant } from '@/types/tenant';
@@ -39,8 +43,9 @@ function shortMoney(amount: string, currency: string): string {
 /**
  * Onboarding 3 — get paid (mockup 04): Stripe payouts through the T169
  * Connect endpoint, imports from Jobber / Housecall Pro / CSV (T193, the
- * import page) and QuickBooks shown as coming soon (D11: nothing that isn't
- * built is offered as if it were). Connecting can fail
+ * import page) and QuickBooks (T192): a link to Settings → Integrations
+ * when the server has an Intuit app, "Coming soon" until then (D11:
+ * nothing that isn't available is offered as if it were). Connecting can fail
  * today (Connect isn't enabled on the platform yet): the error is shown and
  * the step can still be skipped or finished.
  */
@@ -76,6 +81,17 @@ export function GetPaidStep({
   });
 
   const connected = status?.state === 'active';
+
+  // QuickBooks status (integrations.manage: owners and admins, like payouts).
+  const quickbooksQuery = useQuery({
+    queryKey: quickbooksStatusQueryKey(tenant.id),
+    queryFn: async () => (await quickbooksApi.getStatus(tenant.id)).data,
+    enabled: canConnect,
+    retry: false,
+  });
+  const quickbooks = quickbooksQuery.data;
+  const quickbooksReady = !!quickbooks?.configured;
+  const quickbooksConnected = quickbooks?.status === 'connected';
 
   return (
     <div>
@@ -210,20 +226,36 @@ export function GetPaidStep({
             <h2 className="text-lg font-semibold text-neutral-900">
               QuickBooks Online
             </h2>
-            <ComingSoon />
+            {!quickbooksReady && <ComingSoon />}
+            {quickbooksConnected && (
+              <span className="rounded-full bg-success-50 px-2 py-0.5 text-xs font-medium text-success-700">
+                Connected
+              </span>
+            )}
           </div>
           <p className="mt-3 text-sm text-neutral-600">
             Send customers, invoices and payments to QuickBooks automatically.
-            We&apos;ll let you know when it&apos;s ready.
+            {!quickbooksReady && " We'll let you know when it's ready."}
           </p>
           <div className="mt-auto pt-4">
-            <button
-              type="button"
-              disabled
-              className="rounded-lg border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-400"
-            >
-              Connect QuickBooks
-            </button>
+            {quickbooksReady ? (
+              <Link
+                to="/settings/organization?tab=integrations"
+                className="inline-block rounded-lg border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-800 hover:border-primary-600"
+              >
+                {quickbooksConnected
+                  ? 'QuickBooks settings'
+                  : 'Connect QuickBooks'}
+              </Link>
+            ) : (
+              <button
+                type="button"
+                disabled
+                className="rounded-lg border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-400"
+              >
+                Connect QuickBooks
+              </button>
+            )}
           </div>
         </section>
       </div>

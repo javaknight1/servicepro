@@ -12,6 +12,7 @@ import type {
   PaymentsConnectResponse,
   PaymentsStatus,
 } from '@/types/paymentsConnect';
+import type { QuickBooksStatus } from '@/types/quickbooks';
 
 const store = vi.hoisted(() => ({
   currentTenant: null as Tenant | null,
@@ -84,6 +85,28 @@ vi.mock('@services/paymentsService', () => ({
   },
   paymentsStatusQueryKey: (id: string) => ['payments-status', id],
 }));
+
+const getQuickBooksStatus =
+  vi.fn<(tenantId: string) => Promise<AxiosResponse<QuickBooksStatus>>>();
+vi.mock('@services/quickbooksService', () => ({
+  quickbooksApi: {
+    getStatus: (id: string) => getQuickBooksStatus(id),
+  },
+  quickbooksStatusQueryKey: (id: string) => ['quickbooks-status', id],
+}));
+
+function quickbooksStatus(
+  overrides: Partial<QuickBooksStatus> = {}
+): QuickBooksStatus {
+  return {
+    configured: false,
+    status: 'disconnected',
+    counts: { customers: 0, invoices: 0, payments: 0, pending: 0, errors: 0 },
+    errors: [],
+    recent: [],
+    ...overrides,
+  };
+}
 
 const redirectTo = vi.fn<(url: string) => void>();
 vi.mock('@/utils/redirect', () => ({
@@ -163,6 +186,8 @@ describe('OnboardingPage', () => {
     connect.mockReset();
     getStatus.mockReset();
     redirectTo.mockReset();
+    getQuickBooksStatus.mockReset();
+    getQuickBooksStatus.mockResolvedValue(ok(quickbooksStatus()));
     getStatus.mockResolvedValue(
       ok({
         connected: false,
@@ -342,6 +367,22 @@ describe('OnboardingPage', () => {
     expect(lastSave().settings?.onboardingCompletedAt).toEqual(
       expect.any(String)
     );
+  });
+
+  it('step 3 links QuickBooks to Settings once the server offers it (T192)', async () => {
+    getQuickBooksStatus.mockResolvedValue(
+      ok(quickbooksStatus({ configured: true }))
+    );
+    renderWizard({ onboardingStep: 3 });
+
+    const link = await screen.findByRole('link', {
+      name: 'Connect QuickBooks',
+    });
+    expect(link).toHaveAttribute(
+      'href',
+      '/settings/organization?tab=integrations'
+    );
+    expect(screen.queryByText('Coming soon')).not.toBeInTheDocument();
   });
 
   it('step 3 sends the owner to Stripe onboarding', async () => {

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { DashboardLayout } from '@components/layout';
 import {
@@ -21,10 +21,14 @@ import {
   type PaymentReminderSettings,
 } from '@services/paymentReminderService';
 import { getFieldErrors, getTenantErrorMessage } from '@/utils/error';
-import { useTenantPermissions } from '@/utils/tenantPermissions';
+import {
+  TENANT_PERMISSIONS,
+  useTenantPermissions,
+} from '@/utils/tenantPermissions';
 import { mergeSettings, timezoneOptions } from '@/utils/tenantSettings';
 import { BillingDefaultsCard } from '@components/settings/BillingDefaultsCard';
 import { TaxRatesCard } from '@components/settings/TaxRatesCard';
+import { IntegrationsTab } from '@components/settings/IntegrationsTab';
 import {
   Building2,
   Users,
@@ -40,6 +44,7 @@ import {
   Plus,
   Receipt,
   Percent,
+  Plug,
 } from 'lucide-react';
 import { MembershipTab } from '@components/membership';
 import type {
@@ -53,6 +58,7 @@ type TabId =
   | 'general'
   | 'billing'
   | 'taxRates'
+  | 'integrations'
   | 'members'
   | 'membership'
   | 'notifications'
@@ -62,6 +68,7 @@ const TAB_IDS: readonly TabId[] = [
   'general',
   'billing',
   'taxRates',
+  'integrations',
   'members',
   'membership',
   'notifications',
@@ -75,7 +82,7 @@ function initialTab(param: string | null): TabId {
 
 export function OrgSettingsPage() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const {
     currentTenant,
     isLoading,
@@ -104,11 +111,21 @@ export function OrgSettingsPage() {
   // The caller's effective permissions in this tenant (GET /tenants/:id/me);
   // the API still enforces each one and answers 403.
   const {
+    can,
     canManageMembers: canManage,
     canUpdateTenant: canEditSettings,
     canDeleteTenant: canDelete,
     canManageTaxRates,
   } = useTenantPermissions(currentTenant);
+
+  // The QuickBooks OAuth callback lands on ?tab=integrations&quickbooks=…
+  // (T192): shown once, then dropped from the URL.
+  const quickbooksResult = searchParams.get('quickbooks');
+  const quickbooksReason = searchParams.get('reason');
+  const clearQuickbooksParams = useCallback(
+    () => setSearchParams({ tab: 'integrations' }, { replace: true }),
+    [setSearchParams]
+  );
 
   // Form state for general settings
   const [name, setName] = useState('');
@@ -157,6 +174,7 @@ export function OrgSettingsPage() {
     { id: 'general' as const, label: 'Business', icon: Settings },
     { id: 'billing' as const, label: 'Billing defaults', icon: Receipt },
     { id: 'taxRates' as const, label: 'Tax rates', icon: Percent },
+    { id: 'integrations' as const, label: 'Integrations', icon: Plug },
     { id: 'members' as const, label: 'Members', icon: Users },
     { id: 'membership' as const, label: 'Plan', icon: CreditCard },
     { id: 'notifications' as const, label: 'Notifications', icon: Bell },
@@ -670,6 +688,18 @@ export function OrgSettingsPage() {
 
             {activeTab === 'taxRates' && (
               <TaxRatesCard canManage={canManageTaxRates} />
+            )}
+
+            {activeTab === 'integrations' && (
+              <IntegrationsTab
+                tenantId={currentTenant.id}
+                canManage={can(TENANT_PERMISSIONS.manageIntegrations)}
+                callback={{
+                  result: quickbooksResult,
+                  reason: quickbooksReason,
+                }}
+                onCallbackSeen={clearQuickbooksParams}
+              />
             )}
 
             {activeTab === 'members' && (
