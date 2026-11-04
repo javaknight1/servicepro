@@ -18,7 +18,8 @@ func SetupMembershipRoutes(router *gin.RouterGroup, cfg *routeconfigs.RouteConfi
 	tenants.Use(cfg.Middleware.PermMiddleware.RequireAuth())
 	tenants.Use(cfg.Middleware.TenantMW.RequireTenantFromPath("id"))
 	{
-		// Get tenant membership - any member of the tenant
+		// Get tenant membership - requires tenants.read (technicians lack it; the
+		// SPA skips the request for them, T272)
 		tenants.GET("/membership",
 			cfg.Middleware.PermMiddleware.RequirePermission(permissions.TenantsRead),
 			cfg.Handlers.Membership.GetTenantMembership)

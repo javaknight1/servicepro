@@ -9,6 +9,7 @@ import { TenantSwitcher } from '@components/tenants';
 import {
   APP_PERMISSIONS,
   TENANT_PERMISSIONS,
+  canReadPlan,
   isFieldUser,
   useTenantPermissions,
 } from '@/utils/tenantPermissions';
@@ -263,17 +264,18 @@ function PlanBadge() {
   const membership = useMembershipStore((s) => s.currentMembership);
   const loadMembership = useMembershipStore((s) => s.loadMembership);
   const tenantId = currentTenant?.id;
+  // Technicians may not read the plan (T272): no request, no badge.
+  const allowed = canReadPlan(useTenantPermissions(currentTenant));
 
   useEffect(() => {
-    if (!tenantId) return;
+    if (!tenantId || !allowed) return;
     if (membership?.subscription?.tenant_id === tenantId) return;
-    // Not every role may read the plan; the badge is simply left out then.
     loadMembership(tenantId).catch(() => undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tenantId]);
+  }, [tenantId, allowed]);
 
   const parts = planBadgeParts(membership);
-  if (!tenantId || !parts) return null;
+  if (!tenantId || !allowed || !parts) return null;
   return (
     <div className="border-t border-neutral-200 p-3">
       <div className="rounded-xl bg-neutral-100 px-4 py-3 text-sm text-neutral-600">

@@ -112,10 +112,29 @@ describe('Sidebar (T269)', () => {
     );
   });
 
-  it('shows the plan badge from the membership', () => {
+  it('shows the plan badge from the membership', async () => {
+    grant('owner', ['tenants.read', 'jobs.list', 'jobs.view_all']);
     renderAt('/dashboard');
-    expect(screen.getByText('Team plan')).toBeInTheDocument();
+    expect(await screen.findByText('Team plan')).toBeInTheDocument();
     expect(screen.getByText(/unlimited users/)).toBeInTheDocument();
+  });
+
+  // T272: no plan request until the permission list says tenants.read.
+  it('does not load the plan while the permission list loads', () => {
+    useMembershipStore.setState({ currentMembership: null });
+    renderAt('/dashboard');
+    expect(useMembershipStore.getState().loadMembership).not.toHaveBeenCalled();
+  });
+
+  it('loads the plan once tenants.read is confirmed', async () => {
+    useMembershipStore.setState({ currentMembership: null });
+    grant('owner', ['tenants.read', 'jobs.list', 'jobs.view_all']);
+    renderAt('/dashboard');
+    await waitFor(() =>
+      expect(useMembershipStore.getState().loadMembership).toHaveBeenCalledWith(
+        'tenant-1'
+      )
+    );
   });
 
   it('shows only Dashboard without an organization', () => {
@@ -153,6 +172,19 @@ describe('Sidebar for technicians (T035)', () => {
     expect(
       screen.queryByRole('button', { name: /Reports/ })
     ).not.toBeInTheDocument();
+  });
+
+  // T272: technicians lack tenants.read, so GET /tenants/:id/membership 403s.
+  it('never requests or shows the plan', async () => {
+    const tech = { ...tenant, role: 'technician' };
+    useTenantStore.setState({ currentTenant: tech, tenants: [tech] });
+    useMembershipStore.setState({ currentMembership: teamPlan });
+    grant('technician', ['jobs.read', 'jobs.list', 'jobs.update']);
+    renderAt('/my-day');
+
+    await waitFor(() => expect(linkLabels()).toEqual(['My day', 'Jobs']));
+    expect(useMembershipStore.getState().loadMembership).not.toHaveBeenCalled();
+    expect(screen.queryByText('Team plan')).not.toBeInTheDocument();
   });
 
   it('never flashes money or admin items while the list loads', () => {

@@ -7,6 +7,7 @@ import {
   membershipApi,
   tenantMembershipQueryKey,
 } from '@/services/membershipService';
+import { canReadPlan, useTenantPermissions } from '@/utils/tenantPermissions';
 
 function TrialEndedBanner({ tenantId }: { tenantId: string }) {
   const { data } = useQuery({
@@ -35,15 +36,23 @@ function TrialEndedBanner({ tenantId }: { tenantId: string }) {
   );
 }
 
+/** Renders the banner only for callers who may read the plan (T272). */
+function PlanGatedTrialBanner() {
+  const { currentTenant } = useTenantStore();
+  const allowed = canReadPlan(useTenantPermissions(currentTenant));
+  const tenantId = currentTenant?.id;
+  if (!allowed || typeof tenantId !== 'string') return null;
+  return <TrialEndedBanner tenantId={tenantId} />;
+}
+
 /**
  * Non-blocking app-wide banner once the no-card trial has ended and no plan
  * was chosen (D15: no lockout during the invite-only beta). Silent on errors,
- * and absent where no QueryClient is provided.
+ * absent where no QueryClient is provided, and never shown to (or requested
+ * for) roles that can't read the plan, such as technicians (T272).
  */
 export function TrialBanner() {
   const client = useContext(QueryClientContext);
-  const { currentTenant } = useTenantStore();
-  const tenantId = currentTenant?.id;
-  if (!client || typeof tenantId !== 'string') return null;
-  return <TrialEndedBanner tenantId={tenantId} />;
+  if (!client) return null;
+  return <PlanGatedTrialBanner />;
 }

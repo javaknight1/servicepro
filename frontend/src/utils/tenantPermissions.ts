@@ -176,3 +176,16 @@ export function useTenantPermissions(
     isLoading: !!tenantId && isLoading,
   };
 }
+
+/**
+ * Whether the caller may read the organization's plan (`GET
+ * /tenants/:id/membership` needs tenants.read). Technicians may not (T272), so
+ * the plan badge and trial banner stay out of their app and never request it.
+ * False until the API's permission list has loaded, so a custom role without
+ * tenants.read never fires the request on the loading fallback.
+ */
+export function canReadPlan(
+  permissions: Pick<TenantPermissions, 'can' | 'isLoading'>
+): boolean {
+  return !permissions.isLoading && permissions.can(APP_PERMISSIONS.tenantsRead);
+}
