@@ -846,7 +846,7 @@ export interface paths {
         put?: never;
         /**
          * Link or create the ServicePro user for a Neon Auth sign-in
-         * @description Called after signing in with Neon Auth when the API answers 401 account_not_linked. Authenticated by the Neon Auth JWT (Bearer). Links an existing user with the same verified email, or creates one when an invitation for that email or a valid invite code admits it. Idempotent.
+         * @description Called after signing in with Neon Auth when the API answers 401 account_not_linked. Authenticated by the Neon Auth JWT (Bearer). Links an existing user with the same verified email, or creates one when an invitation for that email or a valid invite code admits it and accept_terms is true (the current terms version is recorded). Idempotent.
          */
         post: {
             parameters: {
@@ -871,7 +871,7 @@ export interface paths {
                         "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.NeonProvisionResponse"];
                     };
                 };
-                /** @description invalid_email */
+                /** @description invalid_email or terms_not_accepted */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -15456,6 +15456,12 @@ export interface components {
             visits?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.JobResponse"][];
         };
         "github_com_javaknight1_servicepro_backend_internal_models.NeonProvisionRequest": {
+            /**
+             * @description AcceptTerms must be true to create a new user: they agree to the Terms
+             *     of Service and Privacy Policy (CurrentTermsVersion is recorded, T255).
+             *     Not needed to link an existing user.
+             */
+            accept_terms?: boolean;
             invitation_token?: string;
             invite_code?: string;
         };

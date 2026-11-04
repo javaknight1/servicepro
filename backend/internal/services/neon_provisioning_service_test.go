@@ -73,13 +73,37 @@ func (f *provisionFixture) insertUser(t *testing.T, email string, authUserID *st
 	return id
 }
 
+const testTerms = "2026-10-16"
+
+func TestNeonProvision_NewUserMustAcceptTerms(t *testing.T) {
+	f := newProvisionFixture(t)
+	code, _, err := NewInviteCodeService(f.db).Create(f.ctx, 1, 0, nil, strPtr("test "+f.tag))
+	require.NoError(t, err)
+
+	_, err = f.svc.Provision(f.ctx, f.identity(f.email("noterms")), NeonProvisionInput{InviteCode: &code})
+	require.ErrorIs(t, err, ErrTermsNotAccepted)
+
+	// The refused sign-up did not spend the single-use code.
+	res, err := f.svc.Provision(f.ctx, f.identity(f.email("noterms")), NeonProvisionInput{InviteCode: &code, TermsVersion: testTerms})
+	require.NoError(t, err)
+	require.True(t, res.Created)
+}
+
+func TestNeonProvision_LinkingExistingUserNeedsNoTerms(t *testing.T) {
+	f := newProvisionFixture(t)
+	existing := f.insertUser(t, f.email("legacy"), nil)
+	res, err := f.svc.Provision(f.ctx, f.identity(f.email("legacy")), NeonProvisionInput{})
+	require.NoError(t, err)
+	require.Equal(t, existing, res.UserID)
+}
+
 func TestNeonProvision_RequiresVerifiedEmail(t *testing.T) {
 	f := newProvisionFixture(t)
 	f.insertUser(t, f.email("victim"), nil)
 
 	id := f.identity(f.email("victim"))
 	id.EmailVerified = false
-	_, err := f.svc.Provision(f.ctx, id, nil, nil)
+	_, err := f.svc.Provision(f.ctx, id, NeonProvisionInput{})
 	require.ErrorIs(t, err, ErrNeonEmailNotVerified)
 }
 
@@ -88,12 +112,12 @@ func TestNeonProvision_LinksExistingUserByEmailAndIsIdempotent(t *testing.T) {
 	existing := f.insertUser(t, f.email("owner"), nil)
 	id := f.identity(strings.ToUpper(f.email("owner"))) // case-insensitive match
 
-	res, err := f.svc.Provision(f.ctx, id, nil, nil)
+	res, err := f.svc.Provision(f.ctx, id, NeonProvisionInput{})
 	require.NoError(t, err)
 	require.Equal(t, existing, res.UserID)
 	require.True(t, res.Linked)
 
-	again, err := f.svc.Provision(f.ctx, id, nil, nil)
+	again, err := f.svc.Provision(f.ctx, id, NeonProvisionInput{})
 	require.NoError(t, err)
 	require.Equal(t, existing, again.UserID)
 	require.False(t, again.Linked || again.Created)
@@ -103,17 +127,17 @@ func TestNeonProvision_RefusesEmailLinkedToAnotherIdentity(t *testing.T) {
 	f := newProvisionFixture(t)
 	f.insertUser(t, f.email("taken"), strPtr("neon-someone-else-"+f.tag))
 
-	_, err := f.svc.Provision(f.ctx, f.identity(f.email("taken")), nil, nil)
+	_, err := f.svc.Provision(f.ctx, f.identity(f.email("taken")), NeonProvisionInput{})
 	require.ErrorIs(t, err, ErrAuthIdentityConflict)
 }
 
 func TestNeonProvision_NewUserNeedsAnInvite(t *testing.T) {
 	f := newProvisionFixture(t)
 
-	_, err := f.svc.Provision(f.ctx, f.identity(f.email("stranger")), nil, nil)
+	_, err := f.svc.Provision(f.ctx, f.identity(f.email("stranger")), NeonProvisionInput{TermsVersion: testTerms})
 	require.ErrorIs(t, err, ErrRegistrationClosed)
 
-	_, err = f.svc.Provision(f.ctx, f.identity(f.email("stranger")), strPtr("NOT-A-CODE"), nil)
+	_, err = f.svc.Provision(f.ctx, f.identity(f.email("stranger")), NeonProvisionInput{InviteCode: strPtr("NOT-A-CODE"), TermsVersion: testTerms})
 	require.ErrorIs(t, err, ErrInvalidInviteCode)
 
 	var count int64
@@ -127,18 +151,19 @@ func TestNeonProvision_NewUserWithInviteCode(t *testing.T) {
 	require.NoError(t, err)
 
 	id := f.identity(f.email("invited"))
-	res, err := f.svc.Provision(f.ctx, id, &code, nil)
+	res, err := f.svc.Provision(f.ctx, id, NeonProvisionInput{InviteCode: &code, TermsVersion: testTerms})
 	require.NoError(t, err)
 	require.True(t, res.Created)
 
-	var authUserID string
+	var authUserID, terms string
 	var verified bool
-	require.NoError(t, f.db.Raw(`SELECT auth_user_id, email_verified FROM users WHERE id = ?`, res.UserID).Row().Scan(&authUserID, &verified))
+	require.NoError(t, f.db.Raw(`SELECT auth_user_id, email_verified, terms_version FROM users WHERE id = ? AND terms_accepted_at IS NOT NULL`, res.UserID).Row().Scan(&authUserID, &verified, &terms))
 	require.Equal(t, id.AuthUserID, authUserID)
 	require.True(t, verified)
+	require.Equal(t, testTerms, terms)
 
 	// Single-use code is spent.
-	_, err = f.svc.Provision(f.ctx, f.identity(f.email("second")), &code, nil)
+	_, err = f.svc.Provision(f.ctx, f.identity(f.email("second")), NeonProvisionInput{InviteCode: &code, TermsVersion: testTerms})
 	require.ErrorIs(t, err, ErrInvalidInviteCode)
 }
 
@@ -153,7 +178,7 @@ func TestNeonProvision_NewUserWithInvitationJoinsTenant(t *testing.T) {
 		VALUES (?, ?, (SELECT id FROM roles WHERE name = 'user' LIMIT 1), ?, ?, NOW() + INTERVAL '1 day')`,
 		tenantID, f.email("tech"), token, inviter).Error)
 
-	res, err := f.svc.Provision(f.ctx, f.identity(f.email("tech")), nil, &token)
+	res, err := f.svc.Provision(f.ctx, f.identity(f.email("tech")), NeonProvisionInput{InvitationToken: &token, TermsVersion: testTerms})
 	require.NoError(t, err)
 	require.True(t, res.Created)
 	require.True(t, res.InvitationAccepted)
@@ -163,6 +188,6 @@ func TestNeonProvision_NewUserWithInvitationJoinsTenant(t *testing.T) {
 	require.Equal(t, int64(1), members)
 
 	// Someone else holding the same token is not admitted.
-	_, err = f.svc.Provision(f.ctx, f.identity(f.email("thief")), nil, &token)
+	_, err = f.svc.Provision(f.ctx, f.identity(f.email("thief")), NeonProvisionInput{InvitationToken: &token, TermsVersion: testTerms})
 	require.Error(t, err)
 }

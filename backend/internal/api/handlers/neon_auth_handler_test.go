@@ -16,6 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/javaknight1/servicepro/backend/internal/models"
 	"github.com/javaknight1/servicepro/backend/internal/services"
 	"github.com/javaknight1/servicepro/backend/pkg/auth/neonauth"
 )
@@ -33,14 +34,13 @@ func (s stubVerifier) Verify(_ context.Context, token string) (*neonauth.Claims,
 }
 
 type stubProvisioner struct {
-	err      error
-	gotID    services.NeonIdentity
-	gotCode  *string
-	gotToken *string
+	err   error
+	gotID services.NeonIdentity
+	gotIn services.NeonProvisionInput
 }
 
-func (s *stubProvisioner) Provision(_ context.Context, id services.NeonIdentity, code, token *string) (*services.NeonProvisionResult, error) {
-	s.gotID, s.gotCode, s.gotToken = id, code, token
+func (s *stubProvisioner) Provision(_ context.Context, id services.NeonIdentity, in services.NeonProvisionInput) (*services.NeonProvisionResult, error) {
+	s.gotID, s.gotIn = id, in
 	if s.err != nil {
 		return nil, s.err
 	}
@@ -91,9 +91,14 @@ func TestNeonProvision_SuccessPassesIdentityAndInvite(t *testing.T) {
 	assert.Equal(t, true, body["created"])
 
 	assert.Equal(t, services.NeonIdentity{AuthUserID: "neon-sub", Email: "a@example.com", EmailVerified: true}, p.gotID)
-	require.NotNil(t, p.gotCode)
-	assert.Equal(t, "ABC-123", *p.gotCode)
-	assert.Nil(t, p.gotToken)
+	require.NotNil(t, p.gotIn.InviteCode)
+	assert.Equal(t, "ABC-123", *p.gotIn.InviteCode)
+	assert.Nil(t, p.gotIn.InvitationToken)
+	assert.Empty(t, p.gotIn.TermsVersion, "terms not accepted")
+
+	// accept_terms records the current terms version.
+	require.Equal(t, http.StatusOK, callProvision(h, neonToken("good"), `{"invite_code":"ABC-123","accept_terms":true}`).Code)
+	assert.Equal(t, models.CurrentTermsVersion, p.gotIn.TermsVersion)
 
 	// No body at all is fine (existing user being linked).
 	assert.Equal(t, http.StatusOK, callProvision(h, neonToken("good"), "").Code)
@@ -110,6 +115,7 @@ func TestNeonProvision_ErrorMapping(t *testing.T) {
 		{services.ErrInvalidInviteCode, http.StatusForbidden, "invalid_invite_code"},
 		{services.ErrInvalidInvitation, http.StatusForbidden, "invalid_invitation"},
 		{services.ErrAuthIdentityConflict, http.StatusConflict, "identity_conflict"},
+		{services.ErrTermsNotAccepted, http.StatusBadRequest, "terms_not_accepted"},
 		{errors.New("boom"), http.StatusInternalServerError, ""},
 	}
 	for _, tc := range cases {

@@ -142,6 +142,10 @@ type ProfilePictureUploadResponse struct {
 type NeonProvisionRequest struct {
 	InviteCode      *string `json:"invite_code,omitempty"`
 	InvitationToken *string `json:"invitation_token,omitempty"`
+	// AcceptTerms must be true to create a new user: they agree to the Terms
+	// of Service and Privacy Policy (CurrentTermsVersion is recorded, T255).
+	// Not needed to link an existing user.
+	AcceptTerms bool `json:"accept_terms,omitempty"`
 }
 
 // NeonProvisionResponse reports what POST /auth/neon/provision did.

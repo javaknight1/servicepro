@@ -22,7 +22,21 @@ var (
 	// ErrAuthIdentityConflict is returned when the email belongs to a user
 	// already linked to a different Neon Auth identity.
 	ErrAuthIdentityConflict = errors.New("email is linked to another sign-in")
+	// ErrTermsNotAccepted is returned when a new user would be created without
+	// having agreed to the Terms of Service and Privacy Policy (T255).
+	ErrTermsNotAccepted = errors.New("terms not accepted")
 )
+
+// NeonProvisionInput is what the client may send with a first sign-in. Only a
+// brand-new user needs it: an invite code or invitation token (invite-only
+// registration) and the accepted terms version.
+type NeonProvisionInput struct {
+	InviteCode      *string
+	InvitationToken *string
+	// TermsVersion is the Terms/Privacy version the user agreed to
+	// (models.CurrentTermsVersion), or "" when they did not agree.
+	TermsVersion string
+}
 
 // NeonIdentity is a verified Neon Auth JWT's identity.
 type NeonIdentity struct {
@@ -57,7 +71,7 @@ func NewNeonProvisioningService(db *gorm.DB, gate *RegistrationGate, invitations
 // Provision links or creates the ServicePro user for a Neon Auth identity and,
 // when an invitation token is given, accepts that invitation. It is
 // idempotent: an identity that is already linked just returns its user.
-func (s *NeonProvisioningService) Provision(ctx context.Context, id NeonIdentity, inviteCode, invitationToken *string) (*NeonProvisionResult, error) {
+func (s *NeonProvisioningService) Provision(ctx context.Context, id NeonIdentity, in NeonProvisionInput) (*NeonProvisionResult, error) {
 	if id.AuthUserID == "" {
 		return nil, errors.New("neon identity has no user id")
 	}
@@ -69,12 +83,12 @@ func (s *NeonProvisioningService) Provision(ctx context.Context, id NeonIdentity
 		return nil, err
 	}
 
-	res, err := s.linkOrCreate(ctx, id.AuthUserID, email, inviteCode, invitationToken)
+	res, err := s.linkOrCreate(ctx, id.AuthUserID, email, in)
 	if err != nil {
 		return nil, err
 	}
 
-	if invitationToken != nil && strings.TrimSpace(*invitationToken) != "" && s.invitations != nil {
+	if invitationToken := in.InvitationToken; invitationToken != nil && strings.TrimSpace(*invitationToken) != "" && s.invitations != nil {
 		// As in POST /auth/register: a stale or mismatched invitation does not
 		// undo the sign-in; the user can be re-invited.
 		if err := s.invitations.AcceptInvitationOnRegistration(ctx, *invitationToken, res.UserID); err != nil {
@@ -91,7 +105,7 @@ type userLink struct {
 	AuthUserID *string
 }
 
-func (s *NeonProvisioningService) linkOrCreate(ctx context.Context, authUserID, email string, inviteCode, invitationToken *string) (*NeonProvisionResult, error) {
+func (s *NeonProvisioningService) linkOrCreate(ctx context.Context, authUserID, email string, in NeonProvisionInput) (*NeonProvisionResult, error) {
 	db := s.db.WithContext(ctx)
 
 	// Already linked.
@@ -124,16 +138,21 @@ func (s *NeonProvisioningService) linkOrCreate(ctx context.Context, authUserID, 
 		return &NeonProvisionResult{UserID: u.ID, Linked: true}, nil
 	}
 
-	// A new user: only if the registration gate admits it.
-	release, err := s.gate.Admit(ctx, email, inviteCode, invitationToken)
+	// A new user: only with the terms accepted (checked first so a refused
+	// sign-up never spends an invite code) and if the registration gate
+	// admits it.
+	if strings.TrimSpace(in.TermsVersion) == "" {
+		return nil, ErrTermsNotAccepted
+	}
+	release, err := s.gate.Admit(ctx, email, in.InviteCode, in.InvitationToken)
 	if err != nil {
 		return nil, err
 	}
 	var newID uuid.UUID
 	// No password: this user signs in through Neon Auth only. An empty hash
 	// never matches in the legacy password login.
-	err = db.Raw(`INSERT INTO users (email, password_hash, email_verified, auth_user_id)
-		VALUES (?, '', true, ?) RETURNING id`, email, authUserID).Row().Scan(&newID)
+	err = db.Raw(`INSERT INTO users (email, password_hash, email_verified, auth_user_id, terms_version, terms_accepted_at)
+		VALUES (?, '', true, ?, ?, NOW()) RETURNING id`, email, authUserID, in.TermsVersion).Row().Scan(&newID)
 	if err != nil {
 		release()
 		return nil, fmt.Errorf("create user: %w", err)

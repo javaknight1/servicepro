@@ -22,7 +22,7 @@ type NeonTokenVerifier interface {
 
 // NeonProvisioner links or creates the user for a Neon Auth identity.
 type NeonProvisioner interface {
-	Provision(ctx context.Context, id services.NeonIdentity, inviteCode, invitationToken *string) (*services.NeonProvisionResult, error)
+	Provision(ctx context.Context, id services.NeonIdentity, in services.NeonProvisionInput) (*services.NeonProvisionResult, error)
 }
 
 // NeonAuthHandler handles the Neon Auth (managed Better Auth) endpoints (T158).
@@ -38,14 +38,14 @@ func NewNeonAuthHandler(verifier NeonTokenVerifier, provisioner NeonProvisioner)
 
 // Provision handles POST /api/v1/auth/neon/provision
 // @Summary Link or create the ServicePro user for a Neon Auth sign-in
-// @Description Called after signing in with Neon Auth when the API answers 401 account_not_linked. Authenticated by the Neon Auth JWT (Bearer). Links an existing user with the same verified email, or creates one when an invitation for that email or a valid invite code admits it. Idempotent.
+// @Description Called after signing in with Neon Auth when the API answers 401 account_not_linked. Authenticated by the Neon Auth JWT (Bearer). Links an existing user with the same verified email, or creates one when an invitation for that email or a valid invite code admits it and accept_terms is true (the current terms version is recorded). Idempotent.
 // @Tags auth
 // @Accept json
 // @Produce json
 // @Security BearerAuth
 // @Param request body models.NeonProvisionRequest false "Invite code or invitation token (needed only for a new user)"
 // @Success 200 {object} models.NeonProvisionResponse
-// @Failure 400 {object} models.ErrorResponse "invalid_email"
+// @Failure 400 {object} models.ErrorResponse "invalid_email or terms_not_accepted"
 // @Failure 401 {object} models.ErrorResponse "Missing or invalid Neon Auth token"
 // @Failure 403 {object} models.ErrorResponse "email_not_verified, registration_closed, invalid_invite_code or invalid_invitation"
 // @Failure 404 {object} models.ErrorResponse "Neon Auth is not enabled"
@@ -76,11 +76,15 @@ func (h *NeonAuthHandler) Provision(c *gin.Context) {
 		}
 	}
 
+	in := services.NeonProvisionInput{InviteCode: req.InviteCode, InvitationToken: req.InvitationToken}
+	if req.AcceptTerms {
+		in.TermsVersion = models.CurrentTermsVersion
+	}
 	res, err := h.provisioner.Provision(c.Request.Context(), services.NeonIdentity{
 		AuthUserID:    claims.Subject,
 		Email:         claims.Email,
 		EmailVerified: claims.EmailVerified,
-	}, req.InviteCode, req.InvitationToken)
+	}, in)
 	if err != nil {
 		writeProvisionError(c, err)
 		return
@@ -108,6 +112,8 @@ func writeProvisionError(c *gin.Context, err error) {
 		forbidden("invalid_invitation", "This invitation is no longer valid for this email address.")
 	case errors.Is(err, services.ErrAuthIdentityConflict):
 		apierror.WriteResponse(c, http.StatusConflict, models.ErrorResponse{Error: "identity_conflict", Message: "This email is already linked to a different sign-in."})
+	case errors.Is(err, services.ErrTermsNotAccepted):
+		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{Error: "terms_not_accepted", Message: "Please agree to the Terms of Service and Privacy Policy to create an account."})
 	case errors.Is(err, auth.ErrInvalidEmailFormat):
 		apierror.WriteResponse(c, http.StatusBadRequest, models.ErrorResponse{Error: "invalid_email", Message: "Invalid email format"})
 	default:
