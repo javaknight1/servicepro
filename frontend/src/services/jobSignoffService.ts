@@ -64,6 +64,10 @@ export const SIGNABLE_STATUSES: ReadonlySet<string> = new Set([
 
 const basePath = (jobId: string) => `/v1/jobs/${jobId}/signoff`;
 
+/** Building the report fetches photos and renders a PDF (and emailing
+ * sends it): longer than the client's default 10 s. */
+const REPORT_TIMEOUT_MS = 60_000;
+
 const trimmed = (v?: string) => {
   const t = v?.trim();
   return t ? t : undefined;
@@ -95,7 +99,8 @@ export const jobSignoffService = {
   async emailReport(jobId: string, resend = false): Promise<EmailReportResult> {
     const response = await api.post<EmailReportResult>(
       `${basePath(jobId)}/email`,
-      { resend }
+      { resend },
+      { timeout: REPORT_TIMEOUT_MS }
     );
     return response.data;
   },
@@ -103,7 +108,8 @@ export const jobSignoffService = {
   /** A presigned link (about an hour) to the service report PDF. */
   async reportLink(jobId: string): Promise<string> {
     const response = await api.get<{ url: string }>(
-      `${basePath(jobId)}/report/link`
+      `${basePath(jobId)}/report/link`,
+      { timeout: REPORT_TIMEOUT_MS }
     );
     return response.data.url;
   },
