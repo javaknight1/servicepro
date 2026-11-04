@@ -220,6 +220,9 @@ jobs:
           VITE_API_URL: /api
           VITE_ENV: production
           VITE_STRIPE_PUBLISHABLE_KEY: ${{ vars.VITE_STRIPE_PUBLISHABLE_KEY }}
+          # Neon Auth sign-in (T158, D17): unset = the API's own cookie sign-in.
+          VITE_NEON_AUTH_URL: ${{ vars.VITE_NEON_AUTH_URL }}
+          VITE_NEON_AUTH_GOOGLE: ${{ vars.VITE_NEON_AUTH_GOOGLE }}
           VITE_SENTRY_DSN: ${{ secrets.SENTRY_DSN_WEB }}
           VITE_POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY_WEB }}
           VITE_POSTHOG_HOST: https://us.i.posthog.com

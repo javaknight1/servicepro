@@ -1,6 +1,6 @@
 # ServicePro — Roadmap
 
-**Last Updated**: 2026-11-04 (T193 imports done (migration 000022). T251/T252/T213 code done (needs Rob to run setup). T272, T273 fixed (migration 000019 timestamptz); T174 job photos (000020) and T176 signature + service report (000021) done — phase E complete; master CI bundle check fixed.)
+**Last Updated**: 2026-11-04 (T158 SPA on Neon Auth behind a flag (D17 proposed). T193 imports done (migration 000022). T251/T252/T213 code done (needs Rob to run setup). T272, T273 fixed (migration 000019 timestamptz); T174 job photos (000020) and T176 signature + service report (000021) done — phase E complete; master CI bundle check fixed.)
 
 > **How to read this file.** Every task has an ID (T###). The **Task Index** lists all of them: completed rows
 > (struck through) first by ID, then open rows by Phase → ID. Each open task has exactly one detailed section under
@@ -100,6 +100,7 @@ owner).
     fees on every plan, mapped per plan in code so they can differ later. Stripe Products/Prices are found by
     `lookup_key` (created idempotently by a script in test mode first), replacing the `STRIPE_PRICE_*` env vars.
 16. **D16 — Local object storage: RustFS (2026-11-03, local dev only).** MinIO images no longer pull anonymously, so the `minio` compose service runs `rustfs/rustfs` (pinned, Apache-2.0, S3-compatible with SigV4 presigning and path-style; console on :9001). Production stays on Cloudflare R2 (D2, T160). T271.
+17. **D17 — Neon Auth session handling in the SPA (Proposed, 2026-11-04).** The Better Auth session stays in Neon's own HttpOnly, Secure, SameSite=None, Partitioned cookie on the Neon Auth host (7 days); the SPA never reads it. The API gets the 15-minute EdDSA JWT as a Bearer token, held in memory only (never localStorage), refreshed a minute before expiry and retried once on 401. Accepted trade-offs vs today's httpOnly cookies: script on our page could read the short-lived JWT (CSP is the mitigation), and a JWT issued before sign-out stays valid at the API for up to 15 minutes. Safari partitioned-cookie support unverified; fallback is proxying Neon Auth same-origin through the Worker. T158.
 
 ---
 
@@ -816,7 +817,7 @@ D2: move to League Looper's stack one strangler step at a time while the app kee
 
 #### T158 — Neon Auth (managed Better Auth): own sign-in screens, JWKS verification, users.auth_user_id, invite flow
 
-**Phase**: 4 · **Category**: Auth · **Hours**: 40 · **Status**: Open · **MVP Gate**: Yes · **Depends on**: T202, T153
+**Phase**: 4 · **Category**: Auth · **Hours**: 40 · **Status**: Blocked — code done 2026-11-04, behind `VITE_NEON_AUTH_URL`; production switch needs Rob (see "Blocked — needs Rob") · **MVP Gate**: Yes · **Depends on**: T202, T153
 
 **What it is** — Authentication moves to Neon's managed Better Auth (Neon Auth) while ServicePro keeps its own `users` table (keyed by `auth_user_id`), its own sign-in screens and its invite-only rules.
 
@@ -826,6 +827,8 @@ D2: move to League Looper's stack one strangler step at a time while the app kee
 
 **Notes** — frontend audit §6 "Supabase Auth client" (3–5 days frontend; check where the Better Auth client keeps the session — no regression vs today's httpOnly cookies without deciding it knowingly). LL `docs/auth-migration.md` is still a useful reference for the shape (own `users` table, JWKS middleware, invite rules). 2026-10-19: provider decided — Neon's managed Better Auth (OD-9), replacing Supabase Auth from D2. Managed means some Better Auth server settings are fixed by Neon; confirm email+password sign-in and the Organization plugin fit before building, and keep tenants/memberships in our own tables either way. Backups must include the `neon_auth` schema (T151). Each Neon branch has its own auth environment, so preview/CI branches can test sign-in safely. **Progress 2026-10-24 (step 1 of the backend half):** `users.auth_user_id` (migration 000002); `pkg/auth/neonauth` verifier (EdDSA via cached JWKS, iss/aud = Neon Auth origin, exp required, banned rejected); `RequireAuth` accepts Neon Auth bearer tokens for linked users next to the API's own JWTs, on when `NEON_AUTH_BASE_URL` is set; rate limiter keys Neon callers by `sub`. Verified live on the Neon `dev` branch (real token 200, tampered 401). **Step 2 done 2026-10-24:** `POST /api/v1/auth/neon/provision` — an unlinked Neon sign-in (RequireAuth → 401 `account_not_linked`) links the existing user with the same email or creates one only via invitation/invite code; requires a **verified** Neon email (Neon allows unverified sign-ups — linking by email otherwise is an account takeover). Verified live on Neon `dev`. Next: the frontend sign-in screens on `@neondatabase/auth` (email verification code step included), then retiring the in-house JWT/password code. MVP plan (2026-10-25): backend half done (JWKS verification, `users.auth_user_id`, `POST /auth/neon/provision`); ~24h left — SPA sign-in/sign-up/reset/invite screens on Neon Auth, retire own JWT login/refresh/bcrypt and the default `JWT_SECRET`, Neon production checklist (Resend as sender, trusted domain, localhost off). Linking by email must stay invite-gated and verified-email-only. The Neon sign-up must also require agreeing to the Terms/Privacy and record `models.CurrentTermsVersion` on the user, as `/auth/register` does since T255 (`POST /auth/neon/provision` doesn't yet).
 
+
+**SPA done (2026-11-04)** — `2c05de3`…`6392173`. Behind the build flag `VITE_NEON_AUTH_URL` (unset = today's cookie flow, no Neon code loaded): `@neondatabase/auth` 0.7.0-beta in a lazy `vendor-neon-auth` chunk (51 KB gzip; tree overridden to better-auth 1.7.16 for `npm audit`), client wrapper, interceptor and store; own Login/Register/verify-by-code/reset-by-code screens; Google button only with `VITE_NEON_AUTH_GOOGLE=true`. Provision now requires `accept_terms` for new users. Fixed: a Neon bearer token now wins over a leftover session cookie in `RequireAuth`. Verified live on the Neon `dev` branch (existing-user linking, invite sign-up, invite-only refusal, reset, reload, sign-out, production build). Session handling: D17 (Proposed). To retire after production switches: `pkg/auth` jwt/cookies/password/token, the own login/refresh/logout/register/reset/verify endpoints and services, lockout fields, `TokenVersion`, `JWT_SECRET` default, CSRF middleware, the cookie branches in authStore/api.ts and the legacy auth pages. Not built: Neon email branding, orphan Neon users after a refused provision, Safari check.
 ---
 
 #### T159 — Email → Resend only (remove SES/SNS/CloudWatch and the AWS email SDKs)
@@ -3217,6 +3220,7 @@ Validate the beachhead before the Phase 9–10 build-out, then publish positioni
 - **T252 Sentry crons** — `gcloud secrets versions access latest --secret=SENTRY_DSN --project=service-pro-512609 | gh secret set SENTRY_CRONS_DSN`; then Actions → Scheduled jobs → Run workflow (`all`) and check Sentry → Crons shows six monitors; add a Sentry alert rule for cron issues. `servicepro-db-backup` will alert nightly until T209/T160 give the backup its R2 bucket.
 - **T251 uptime checks** — `gcloud auth login && ALERT_EMAIL=<you> scripts/setup-monitoring.sh`, then send a test notification on the new channel. The next `v*` tag runs the new smoke job for the first time.
 - **T213 budget** — `ALERT_EMAIL=<you> scripts/setup-cost-guardrails.sh` (Billing Account Administrator; `BUDGET_AMOUNT=N` to change the $10 default).
+- **T158 production switch** — on the production Neon branch's auth: add trusted domain `https://servicepro.sharkfins.xyz`, switch to custom SMTP (Resend), turn off localhost; (Google only after adding your own Google OAuth app, redirect `<auth URL>/callback/google`). Then Cloud Run `NEON_AUTH_BASE_URL` = the auth URL, and the GitHub repo variable `VITE_NEON_AUTH_URL` = the same URL (`gh variable set VITE_NEON_AUTH_URL`; release-deploy passes it to the web build); release. Existing users then "Set up your sign-in" once with the same email. Also: OK to delete the 10 Neon `dev`-branch test users T158 created (IDs in the T158 hand-off)?
 - **T210 / D15 confirm + live Stripe catalog** — read D15 (plans, 30-day Team trial, Free/Basic closed to new sign-ups, founding coupon) and confirm or change it **before the next release**: migration 000014 and the sign-up trial go live with it. Then, in live mode: `make stripe-catalog -- -live` (creates products, prices and the founding coupon; key from Bitwarden via `$(…)`), and make sure the platform webhook endpoint sends `customer.subscription.created`, `customer.subscription.updated` and `customer.subscription.deleted`. Optional local tidy-up: the `STRIPE_PRICE_*` lines in `backend/.env` are unused now.
 
 ## Open Decisions
@@ -3484,6 +3488,7 @@ Dated history from the original "Completed Items" list:
 
 ### 2026-11-04
 
+- **T158 (SPA)** — Neon Auth sign-in screens, client, interceptor and store behind `VITE_NEON_AUTH_URL`; provision records terms; bearer beats leftover cookie; verified on the Neon dev branch. D17 proposed. `2c05de3`…`6392173`.
 - **T193** — Jobber / Housecall Pro / CSV-XLSX import with preview, idempotent re-import (migration 000022), chunked resumable runs and F-23 caps; imported invoices' reminders count from the import day. `b254a54`…`eba6cda`.
 - **T251, T252, T213 (code)** — post-deploy smoke job + `make smoke`; Sentry cron check-ins for scheduled jobs and backups; Cloud Run instances × DB pool guard; uptime and budget scripts ready for Rob to run. `81064f6`, `6b992de`, `32f0b0b`.
 - **T176** — Customer signature on the visit page and a service report PDF (photos, materials without prices, signature) emailed idempotently to the customer and site contact; proof-of-service card on the job; migration 000021. `9fe9132`…`2185f1a`. Phase E complete.
