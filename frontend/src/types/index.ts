@@ -11,6 +11,8 @@ export type {
   ResendVerificationRequest,
   ErrorResponse,
   AuthState,
+  NeonProvisionRequest,
+  NeonProvisionResponse,
 } from './auth';
 
 export type {

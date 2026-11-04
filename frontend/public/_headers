@@ -9,11 +9,14 @@
 #   Sentry                *.sentry.io ingest; replay runs in a blob: worker
 #   PostHog               *.posthog.com (VITE_POSTHOG_HOST, default us.i.posthog.com)
 #   Fonts are self-hosted (@fontsource-variable/inter, T262): no font CDN.
+#   Neon Auth             the production branch's auth host (VITE_NEON_AUTH_URL,
+#                         T158); only contacted by Neon Auth builds. Change it
+#                         if the production Neon endpoint ever changes.
 # If VITE_POSTHOG_HOST is pointed at a reverse proxy on another host, add it
 # to connect-src and script-src.
 
 /*
-  Content-Security-Policy: default-src 'self'; script-src 'self' https://js.stripe.com https://*.js.stripe.com https://*.posthog.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' wss://servicepro.sharkfins.xyz https://api.stripe.com https://*.stripe.com https://*.sentry.io https://*.posthog.com; frame-src https://js.stripe.com https://*.js.stripe.com https://hooks.stripe.com; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://js.stripe.com https://*.js.stripe.com https://*.posthog.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' wss://servicepro.sharkfins.xyz https://api.stripe.com https://*.stripe.com https://*.sentry.io https://*.posthog.com https://ep-dawn-art-b53wsdjg.neonauth.c-7.us-east-2.aws.neon.tech; frame-src https://js.stripe.com https://*.js.stripe.com https://hooks.stripe.com; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests
   Strict-Transport-Security: max-age=31536000; includeSubDomains
   X-Content-Type-Options: nosniff
   X-Frame-Options: SAMEORIGIN

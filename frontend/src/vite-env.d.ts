@@ -10,6 +10,10 @@ interface ImportMetaEnv {
   readonly VITE_GIT_SHA?: string;
   /** Public support address used by the Contact and legal pages. */
   readonly VITE_SUPPORT_EMAIL?: string;
+  /** Neon Auth URL; set = sign in with Neon Auth (T158). See src/config/auth.ts. */
+  readonly VITE_NEON_AUTH_URL?: string;
+  /** "true" shows "Continue with Google" (Neon Auth only). */
+  readonly VITE_NEON_AUTH_GOOGLE?: string;
 }
 
 interface ImportMeta {

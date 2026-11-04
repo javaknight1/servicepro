@@ -13,8 +13,11 @@ import type {
   ResendVerificationRequest,
   ApiError,
   User,
+  NeonProvisionRequest,
+  NeonProvisionResponse,
 } from '@app-types';
 import { API_BASE_URL } from '@config/endpoints';
+import { isNeonAuthEnabled } from '@config/auth';
 import { clearQueryCaches } from './queryCacheRegistry';
 import { addBreadcrumb, setTag } from './errorTracking';
 import { getApiErrorInfo } from '@/utils/error';
@@ -43,8 +46,28 @@ export function clearTenantHeader(instance: AxiosInstance): void {
   }
 }
 
-// Request interceptor - add tenant ID to requests
-// Note: Auth tokens are handled via httpOnly cookies (automatically sent with withCredentials: true)
+/** The Neon Auth module, loaded only when VITE_NEON_AUTH_URL is set (T158). */
+const loadNeonAuth = () => import('./neonAuth');
+
+// Request interceptor - add tenant ID (and, on Neon Auth, the bearer token)
+// Cookie sign-in: auth tokens are httpOnly cookies (sent with withCredentials).
+// Neon Auth sign-in: a short-lived JWT in memory, sent as Authorization: Bearer.
+async function attachNeonToken(
+  config: InternalAxiosRequestConfig
+): Promise<InternalAxiosRequestConfig> {
+  if (config.headers && !config.headers.Authorization) {
+    try {
+      const { getNeonAccessToken } = await loadNeonAuth();
+      const token = await getNeonAccessToken();
+      if (token) config.headers.Authorization = `Bearer ${token}`;
+    } catch {
+      // Neon Auth unreachable: send the request without a token; a
+      // protected endpoint answers 401 and the response handler retries.
+    }
+  }
+  return config;
+}
+
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     // Add tenant ID header if available
@@ -53,7 +76,7 @@ api.interceptors.request.use(
       config.headers['X-Tenant-ID'] = tenantId;
     }
 
-    return config;
+    return isNeonAuthEnabled ? attachNeonToken(config) : config;
   },
   (error) => {
     return Promise.reject(error);
@@ -75,6 +98,7 @@ const AUTH_ENDPOINT_PATTERNS: RegExp[] = [
   /\/v1\/auth\/forgot-password\b/,
   /\/v1\/auth\/verify\b/,
   /\/v1\/auth\/resend-verification\b/,
+  /\/v1\/auth\/neon\/provision\b/,
 ];
 
 export function isAuthEndpoint(url: string | undefined): boolean {
@@ -122,16 +146,68 @@ function recordServerError(error: AxiosError<ApiError>): void {
   });
 }
 
+/**
+ * The session is gone: clear local auth/tenant state and cached server data,
+ * then send the user to the login page.
+ */
+function expireSession(): void {
+  localStorage.removeItem('auth-storage'); // Clear zustand persisted auth state
+  localStorage.removeItem('tenant-storage'); // Clear tenant state
+  localStorage.removeItem(CURRENT_TENANT_KEY);
+  clearTenantHeader(api);
+  clearQueryCaches(); // Drop cached server data (memory + persisted)
+  if (window.location.pathname !== '/login') {
+    window.location.href = '/login';
+  }
+}
+
+type RetryableRequest = InternalAxiosRequestConfig & { _retry?: boolean };
+
+/**
+ * Neon Auth 401s: retry once with a freshly minted JWT; if Neon Auth has no
+ * session any more, the user is signed out. `account_not_linked` is left to
+ * the sign-in flow (it calls POST /auth/neon/provision).
+ */
+async function handleNeonUnauthorized(
+  error: AxiosError<ApiError>,
+  originalRequest: RetryableRequest | undefined
+): Promise<unknown> {
+  if (
+    !originalRequest ||
+    isAuthEndpoint(originalRequest.url) ||
+    getApiErrorInfo(error).code === 'account_not_linked'
+  ) {
+    return Promise.reject(error);
+  }
+  const neon = await loadNeonAuth();
+  if (!originalRequest._retry) {
+    originalRequest._retry = true;
+    const token = await neon.getNeonAccessToken({ forceRefresh: true });
+    if (token) {
+      originalRequest.headers.Authorization = `Bearer ${token}`;
+      return api(originalRequest);
+    }
+  }
+  neon.clearNeonAccessToken();
+  expireSession();
+  return Promise.reject(error);
+}
+
 // Response interceptor - handle token refresh
-// Tokens are in httpOnly cookies, so refresh is handled automatically by the backend
+// Cookie sign-in: tokens are in httpOnly cookies, refreshed via /auth/refresh.
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError<ApiError>) => {
     recordServerError(error);
 
-    const originalRequest = error.config as
-      | (InternalAxiosRequestConfig & { _retry?: boolean })
-      | undefined;
+    const originalRequest = error.config as RetryableRequest | undefined;
+
+    if (isNeonAuthEnabled) {
+      if (error.response?.status === 401) {
+        return handleNeonUnauthorized(error, originalRequest);
+      }
+      return Promise.reject(error);
+    }
 
     // If error is 401 and we haven't retried yet, try to refresh the token.
     // Auth endpoints are excluded so their errors reach the caller
@@ -153,14 +229,7 @@ api.interceptors.response.use(
         return api(originalRequest);
       } catch (refreshError) {
         // Refresh failed - clear local auth state and redirect to login
-        localStorage.removeItem('auth-storage'); // Clear zustand persisted auth state
-        localStorage.removeItem('tenant-storage'); // Clear tenant state
-        localStorage.removeItem(CURRENT_TENANT_KEY);
-        clearTenantHeader(api);
-        clearQueryCaches(); // Drop cached server data (memory + persisted)
-        if (window.location.pathname !== '/login') {
-          window.location.href = '/login';
-        }
+        expireSession();
         return Promise.reject(refreshError);
       }
     }
@@ -198,6 +267,10 @@ export const authApi = {
 
   resendVerification: (data: ResendVerificationRequest) =>
     api.post('/v1/auth/resend-verification', data),
+
+  /** Link or create the ServicePro user for a Neon Auth sign-in (T158). */
+  provisionNeonAccount: (data: NeonProvisionRequest) =>
+    api.post<NeonProvisionResponse>('/v1/auth/neon/provision', data),
 };
 
 // User API endpoints

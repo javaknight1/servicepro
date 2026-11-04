@@ -67,6 +67,21 @@ export interface ErrorResponse {
   message?: string;
 }
 
+/** POST /v1/auth/neon/provision body; only a brand-new user needs it (T158). */
+export interface NeonProvisionRequest {
+  invite_code?: string;
+  invitation_token?: string;
+  /** Required to create a new user (T255); not needed to link an existing one. */
+  accept_terms?: boolean;
+}
+
+export interface NeonProvisionResponse {
+  user_id: string;
+  created: boolean;
+  linked: boolean;
+  invitation_accepted: boolean;
+}
+
 export interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
@@ -83,4 +98,10 @@ export interface AuthState {
   updateProfilePicture: (url: string | null) => void;
   fetchCurrentUser: () => Promise<void>;
   checkAuth: () => Promise<boolean>;
+  /**
+   * Finish a Neon Auth sign-in that happened outside `login` (email code,
+   * Google redirect): link or create the ServicePro user if needed, then load
+   * the profile. Throws when there is no session or the account is refused.
+   */
+  completeSignIn: () => Promise<void>;
 }
