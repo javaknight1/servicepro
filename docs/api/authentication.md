@@ -2,13 +2,16 @@
 
 Registration, login, sessions, password reset and email verification.
 
-> **Two sign-in paths today.** The SPA signs in with the API's **own JWTs in
-> httpOnly cookies** (below). The API also accepts **Neon Auth (Neon's managed
-> Better Auth) JWTs** as `Authorization: Bearer` tokens for users linked to a
-> Neon identity (`users.auth_user_id`), verified against Neon's JWKS when
-> `NEON_AUTH_BASE_URL` is set. The SPA moves to Neon Auth in T158, after which
-> the in-house password/JWT code is retired. Swagger UI (`/api/docs`) is the
-> source of truth for request/response shapes.
+> **Two sign-in paths today.** A default SPA build signs in with the API's
+> **own JWTs in httpOnly cookies** (below). The API also accepts **Neon Auth
+> (Neon's managed Better Auth) JWTs** as `Authorization: Bearer` tokens for
+> users linked to a Neon identity (`users.auth_user_id`), verified against
+> Neon's JWKS when `NEON_AUTH_BASE_URL` is set. An SPA built with
+> `VITE_NEON_AUTH_URL` (T158, see "SPA on Neon Auth") signs in, signs up,
+> verifies email and resets passwords with Neon Auth and calls the API with
+> its JWT. Once production runs that build, the in-house password/JWT code is
+> retired. Swagger UI (`/api/docs`) is the source of truth for
+> request/response shapes.
 
 ## Endpoints
 
@@ -119,14 +122,33 @@ After a Neon Auth sign-in, a user the API doesn't know yet gets **401**
 POST /api/v1/auth/neon/provision
 Authorization: Bearer <Neon Auth JWT>
 
-{ "invite_code": "optional", "invitation_token": "optional" }
+{ "invite_code": "optional", "invitation_token": "optional", "accept_terms": true }
 ```
 
 It links the existing user with the same **verified** email, or creates one
-when an invitation or invite code admits it. Idempotent. **403**
-`email_not_verified` / `registration_closed` / `invalid_invite_code` /
-`invalid_invitation`, **409** `identity_conflict`, **404** when Neon Auth isn't
-enabled.
+when an invitation or invite code admits it **and** `accept_terms` is true
+(the current terms version is recorded, as on `/auth/register`). Idempotent.
+**400** `terms_not_accepted`, **403** `email_not_verified` /
+`registration_closed` / `invalid_invite_code` / `invalid_invitation`, **409**
+`identity_conflict`, **404** when Neon Auth isn't enabled.
+
+### SPA on Neon Auth (T158)
+
+With `VITE_NEON_AUTH_URL` set at build time (`frontend/src/config/auth.ts`):
+
+- **Sign-in / sign-up / reset / verify** go to Neon Auth from the browser
+  (`frontend/src/services/neonAuth.ts`). Email verification and password
+  reset use emailed **codes** (they work on Neon's shared and custom SMTP).
+  Sign-up keeps the invite code / invitation token and terms in
+  `sessionStorage` until the email is verified, then calls `provision`.
+- **Session:** the Better Auth session is Neon's httpOnly, `Secure`,
+  `SameSite=None; Partitioned` cookie on the Neon Auth host. The SPA keeps the
+  15-minute JWT in memory only, sends it as `Authorization: Bearer`, refreshes
+  it a minute before expiry, and on a 401 retries once with a fresh one
+  before signing out. `account_not_linked` triggers `provision`.
+- **Sign-out** ends the Neon session; a JWT already issued stays valid at the
+  API until it expires (≤ 15 minutes).
+- A Neon bearer token takes precedence over any leftover API session cookie.
 
 ## Making Authenticated Requests
 
