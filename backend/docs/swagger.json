@@ -4578,6 +4578,58 @@
                 ]
             }
         },
+        "/api/v1/jobs/{id}/signoff/report/link": {
+            "get": {
+                "description": "The same report as GET /jobs/{id}/signoff/report, as JSON with a presigned link (about an hour) for the web app to open.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "jobs"
+                ],
+                "summary": "Get a link to the service report PDF",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Job ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.JobSignoffLinkResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid ID",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Job or sign-off not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/v1/jobs/{id}/signoff/signature": {
             "get": {
                 "description": "Redirects to a presigned link (about an hour) to the signature PNG.",
@@ -14618,6 +14670,15 @@
                     "items": {
                         "type": "string"
                     }
+                }
+            }
+        },
+        "github_com_javaknight1_servicepro_backend_internal_models.JobSignoffLinkResponse": {
+            "type": "object",
+            "properties": {
+                "url": {
+                    "description": "URL is valid for about an hour.",
+                    "type": "string"
                 }
             }
         },

@@ -153,6 +153,8 @@ func SetupJobRoutes(router *gin.RouterGroup, cfg *routeconfigs.RouteConfig) {
 				cfg.Middleware.PermMiddleware.RequirePermission(permissions.JobsRead), h.GetSignature)
 			jobs.GET("/:id/signoff/report",
 				cfg.Middleware.PermMiddleware.RequirePermission(permissions.JobsRead), h.GetReport)
+			jobs.GET("/:id/signoff/report/link",
+				cfg.Middleware.PermMiddleware.RequirePermission(permissions.JobsRead), h.GetReportLink)
 			jobs.POST("/:id/signoff/email",
 				cfg.Middleware.PermMiddleware.RequirePermission(permissions.JobsUpdate), h.EmailReport)
 		}

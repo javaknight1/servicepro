@@ -186,3 +186,29 @@ func (h *JobSignoffHandler) EmailReport(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, res)
 }
+
+// GetReportLink handles GET /api/v1/jobs/:id/signoff/report/link
+// @Summary Get a link to the service report PDF
+// @Description The same report as GET /jobs/{id}/signoff/report, as JSON with a presigned link (about an hour) for the web app to open.
+// @Tags jobs
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Job ID"
+// @Success 200 {object} models.JobSignoffLinkResponse
+// @Failure 400 {object} models.ErrorResponse "Invalid ID"
+// @Failure 404 {object} models.ErrorResponse "Job or sign-off not found"
+// @Failure 500 {object} models.ErrorResponse "Internal server error"
+// @Router /api/v1/jobs/{id}/signoff/report/link [get]
+func (h *JobSignoffHandler) GetReportLink(c *gin.Context) {
+	jobID, ok := parseUUIDParam(c, "id", "job")
+	if !ok {
+		return
+	}
+	url, err := h.signoffs.ReportLink(c.Request.Context(), jobID)
+	if err != nil {
+		apierror.Respond(c, err, "Failed to load the service report")
+		return
+	}
+	c.Header("Cache-Control", "private, no-store")
+	c.JSON(http.StatusOK, models.JobSignoffLinkResponse{URL: url})
+}

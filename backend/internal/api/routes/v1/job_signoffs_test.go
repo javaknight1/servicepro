@@ -99,6 +99,11 @@ func TestPostgresJobSignoffTechnicianOnAssignedJob(t *testing.T) {
 		require.Equal(t, http.StatusFound, w.Code, path+": "+w.Body.String())
 		assert.True(t, strings.HasPrefix(w.Header().Get("Location"), "mock://"), path)
 	}
+	w = f.do(t, f.techA, f.tenantA, http.MethodGet, base+"/report/link", nil)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	var link models.JobSignoffLinkResponse
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &link))
+	assert.True(t, strings.HasPrefix(link.URL, "mock://"))
 	var reports int
 	for key, data := range f.store.GetAllObjects() {
 		if strings.HasSuffix(key, "_report.pdf") {
@@ -152,7 +157,7 @@ func TestPostgresJobSignoffTechnicianUnassignedJobIs404(t *testing.T) {
 	w = f.do(t, f.techA, f.tenantA, http.MethodPost, base, signoffBody(t, inkPNG(t, 900, 300, true)))
 	assert.Equal(t, http.StatusNotFound, w.Code, w.Body.String())
 	assert.Equal(t, "job_not_found", errorCode(t, w))
-	for _, path := range []string{base, base + "/signature", base + "/report"} {
+	for _, path := range []string{base, base + "/signature", base + "/report", base + "/report/link"} {
 		assert.Equal(t, http.StatusNotFound, f.do(t, f.techA, f.tenantA, http.MethodGet, path, nil).Code, path)
 	}
 	assert.Equal(t, http.StatusNotFound, f.do(t, f.techA, f.tenantA, http.MethodPost, base+"/email", nil).Code)
@@ -167,7 +172,7 @@ func TestPostgresJobSignoffCrossTenant(t *testing.T) {
 	require.Equal(t, http.StatusCreated, w.Code, w.Body.String())
 
 	// Tenant B's owner: tenant A's job and sign-off don't exist.
-	for _, path := range []string{base, base + "/signature", base + "/report"} {
+	for _, path := range []string{base, base + "/signature", base + "/report", base + "/report/link"} {
 		assert.Equal(t, http.StatusNotFound, f.do(t, f.ownerB, f.tenantB, http.MethodGet, path, nil).Code, path)
 	}
 	w = f.do(t, f.ownerB, f.tenantB, http.MethodPost, base, signoffBody(t, inkPNG(t, 900, 300, true)))

@@ -151,3 +151,10 @@ func UserDisplayName(u *User) string {
 	}
 	return strings.Join(parts, " ")
 }
+
+// JobSignoffLinkResponse is a presigned link for the SPA to open (a browser
+// navigation can't carry the X-Tenant-ID header the redirect routes need).
+type JobSignoffLinkResponse struct {
+	// URL is valid for about an hour.
+	URL string `json:"url"`
+}

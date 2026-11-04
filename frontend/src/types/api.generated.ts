@@ -5523,6 +5523,75 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/jobs/{id}/signoff/report/link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a link to the service report PDF
+         * @description The same report as GET /jobs/{id}/signoff/report, as JSON with a presigned link (about an hour) for the web app to open.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Job ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.JobSignoffLinkResponse"];
+                    };
+                };
+                /** @description Invalid ID */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Job or sign-off not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+                /** @description Internal server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/jobs/{id}/signoff/signature": {
         parameters: {
             query?: never;
@@ -14798,6 +14867,10 @@ export interface components {
         "github_com_javaknight1_servicepro_backend_internal_models.JobSignoffEnvelope": {
             signoff?: components["schemas"]["github_com_javaknight1_servicepro_backend_internal_models.JobSignoffResponse"];
             suggested_recipients?: string[];
+        };
+        "github_com_javaknight1_servicepro_backend_internal_models.JobSignoffLinkResponse": {
+            /** @description URL is valid for about an hour. */
+            url?: string;
         };
         "github_com_javaknight1_servicepro_backend_internal_models.JobSignoffResponse": {
             /** @description CapturedByName is the user whose phone the customer signed on. */

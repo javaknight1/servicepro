@@ -2364,6 +2364,12 @@ definitions:
           type: string
         type: array
     type: object
+  github_com_javaknight1_servicepro_backend_internal_models.JobSignoffLinkResponse:
+    properties:
+      url:
+        description: URL is valid for about an hour.
+        type: string
+    type: object
   github_com_javaknight1_servicepro_backend_internal_models.JobSignoffResponse:
     properties:
       captured_by:
@@ -7984,6 +7990,40 @@ paths:
       security:
       - BearerAuth: []
       summary: Download the service report PDF
+      tags:
+      - jobs
+  /api/v1/jobs/{id}/signoff/report/link:
+    get:
+      description: The same report as GET /jobs/{id}/signoff/report, as JSON with
+        a presigned link (about an hour) for the web app to open.
+      parameters:
+      - description: Job ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.JobSignoffLinkResponse'
+        "400":
+          description: Invalid ID
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "404":
+          description: Job or sign-off not found
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_javaknight1_servicepro_backend_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get a link to the service report PDF
       tags:
       - jobs
   /api/v1/jobs/{id}/signoff/signature:

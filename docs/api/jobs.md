@@ -101,6 +101,7 @@ attachments are 404.
 | POST   | `/jobs/:id/signoff`              | `jobs.update` | Record the signature (`signer_name`, optional `signer_title`, `signer_email`, `signature`) |
 | GET    | `/jobs/:id/signoff/signature`    | `jobs.read`   | 302 to a presigned link to the signature PNG            |
 | GET    | `/jobs/:id/signoff/report`       | `jobs.read`   | 302 to the service report PDF                           |
+| GET    | `/jobs/:id/signoff/report/link`  | `jobs.read`   | The same report as `{"url": ...}` (presigned, about an hour), for the web app |
 | POST   | `/jobs/:id/signoff/email`        | `jobs.update` | Email the report (`{"resend": true}` to send it again)  |
 
 Only registered when object storage is configured.
