@@ -426,6 +426,41 @@ func TestJobRepository_Notes(t *testing.T) {
 	assert.False(t, notes[0].IsInternal)
 }
 
+// T273: with the API in a non-UTC zone, a note's created_at must read back as
+// the same instant. A timestamp column without a time zone stored the Go
+// value's local wall clock and read it back as UTC (hours off).
+func TestJobRepository_NoteTimestamps_NonUTCZone(t *testing.T) {
+	eastern, err := time.LoadLocation("America/New_York")
+	require.NoError(t, err)
+	prevLocal := time.Local
+	time.Local = eastern
+	t.Cleanup(func() { time.Local = prevLocal })
+
+	f := newJobFixture(t)
+	customer := f.createTestCustomer(t)
+	job := f.createTestJob(t, customer.ID)
+
+	before := time.Now()
+	require.NoError(t, f.repo.AddNote(&models.JobNote{
+		JobID:  job.ID,
+		UserID: f.tenant.OwnerID,
+		Note:   "Arrived on site",
+	}))
+	after := time.Now()
+
+	notes, err := f.repo.GetJobNotes(job.ID, true)
+	require.NoError(t, err)
+	require.Len(t, notes, 1)
+	got := notes[0].CreatedAt
+	assert.False(t, got.Before(before.Add(-time.Second)) || got.After(after.Add(time.Second)),
+		"created_at %s should be between %s and %s", got.UTC(), before.UTC(), after.UTC())
+
+	// The stored instant agrees with the database's own clock too.
+	var dbNow time.Time
+	require.NoError(t, f.db.Raw(`SELECT now()`).Scan(&dbNow).Error)
+	assert.WithinDuration(t, dbNow, got, 5*time.Second)
+}
+
 func TestJobRepository_GetJobStats(t *testing.T) {
 	f := newJobFixture(t)
 	customer := f.createTestCustomer(t)
