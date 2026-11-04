@@ -640,6 +640,35 @@ func configErrors(cfg *Config, cloudRunService string) []string {
 		errors = append(errors, "STRIPE_WEBHOOK_SECRET is required when Stripe is configured - webhooks without signature verification are a security risk")
 	}
 
+	if cfg.Server.Env == "production" {
+		errors = append(errors, productionConfigErrors(cfg)...)
+	}
+
+	return errors
+}
+
+// productionConfigErrors covers settings whose absence fails open in
+// production instead of failing loudly (T212).
+func productionConfigErrors(cfg *Config) []string {
+	var errors []string
+	if cfg.Server.EdgeProxySecret == "" {
+		// Without it the edge check is skipped: *.run.app is reachable
+		// directly and every visitor shares the Worker's IP for rate limits.
+		errors = append(errors, "EDGE_PROXY_SECRET is required in production (must match the servicepro-web Worker secret)")
+	}
+	if !cfg.Cookie.Secure {
+		errors = append(errors, "COOKIE_SECURE must be true in production")
+	}
+	if cfg.Database.URL == DefaultDatabaseURL {
+		errors = append(errors, "DATABASE_URL is required in production")
+	}
+	if cfg.Database.RunMigrationsOnStartup {
+		errors = append(errors, "RUN_MIGRATIONS_ON_STARTUP must be false in production (the release pipeline migrates)")
+	}
+	if cfg.Server.InternalJobsSecret == "" {
+		// Without it /internal/jobs/* is 404 and reminders silently stop.
+		errors = append(errors, "INTERNAL_JOBS_SECRET is required in production (scheduled-jobs.yml calls /internal/jobs/*)")
+	}
 	return errors
 }
 
