@@ -67,6 +67,9 @@ const config = {
     // membership pages; splitting this group has caused chunk import cycles.
     'page-settings': 24,
     'page-auth': 20,
+    // Neon Auth client (T158): 51.2 KB on 2026-11-04 (better-auth 1.7.16 with
+    // its own zod copy); lazy, loaded only by Neon Auth builds.
+    'vendor-neon-auth': 55,
   },
 };
 

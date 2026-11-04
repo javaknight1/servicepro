@@ -62,6 +62,35 @@ export const manualChunks = {
   ],
 };
 
+/** Packages only the Neon Auth client uses (vendor-neon-auth). */
+const NEON_AUTH_PACKAGES = [
+  '@neondatabase/auth',
+  '@neondatabase/auth-ui',
+  'better-auth',
+  '@better-auth',
+  '@better-fetch',
+  'better-call',
+  'jose',
+  '@supabase',
+  'nanostores',
+  '@noble',
+  'defu',
+  'rou3',
+  'uncrypto',
+  'kysely',
+];
+
+/**
+ * Their nested node_modules: Better Auth's own zod copy (package.json
+ * overrides keep it separate from the app's, so its classic-API modules never
+ * land in vendor-forms).
+ */
+const NEON_AUTH_NESTED = [
+  'node_modules/better-auth/node_modules/',
+  'node_modules/@neondatabase/auth/node_modules/',
+  'node_modules/@better-auth/',
+];
+
 /** True when `id` lives in `node_modules/<pkg>` (exact package boundary, so
  * 'react' does not match 'react-big-calendar'). */
 function isPackage(id: string, pkg: string): boolean {
@@ -133,6 +162,17 @@ const codeSplittingGroups = [
     name: 'preload-helper',
     test: (id: string) => id.includes('vite/preload-helper'),
     priority: 40,
+  },
+  // Neon Auth client (T158): only Neon Auth builds load it, lazily. Its own
+  // chunk, ahead of the named vendor groups, so neither the catch-all
+  // `vendor` (every page) nor `vendor-forms` (better-auth's nested zod copy)
+  // picks any of it up.
+  {
+    name: 'vendor-neon-auth',
+    test: (id: string) =>
+      NEON_AUTH_NESTED.some((dir) => id.includes(dir)) ||
+      NEON_AUTH_PACKAGES.some((pkg) => isPackage(id, pkg)),
+    priority: 35,
   },
   ...Object.entries(manualChunks).map(([name, packages]) => ({
     name,
@@ -409,6 +449,7 @@ export const performanceBudgets = {
     // membership pages; splitting this group has caused chunk import cycles.
     'page-settings': 24,
     'page-auth': 20,
+    'vendor-neon-auth': 55,
   },
 
   // Maximum total bundle size (gzipped)
