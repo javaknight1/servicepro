@@ -16,6 +16,7 @@ import (
 	"gorm.io/gorm/clause"
 
 	apperrors "github.com/javaknight1/servicepro/backend/internal/errors"
+	"github.com/javaknight1/servicepro/backend/internal/imports"
 	"github.com/javaknight1/servicepro/backend/internal/models"
 	emailclient "github.com/javaknight1/servicepro/backend/pkg/clients/email"
 	"github.com/javaknight1/servicepro/backend/pkg/clients/logging"
@@ -172,6 +173,13 @@ func (s *PaymentReminderService) ProcessTenantReminders(ctx context.Context, ten
 		return result
 	}
 
+	importedAt, err := s.importedInvoiceTimes(ctx, tenant.ID, invoices)
+	if err != nil {
+		logging.Error(ctx, fmt.Sprintf("%s Failed to look up imported invoices for tenant %s", logPrefix, tenant.ID), map[string]any{"error": err.Error()})
+		result.Failed++
+		return result
+	}
+
 	for i := range invoices {
 		invoice := &invoices[i]
 		if invoice.Customer == nil {
@@ -179,6 +187,14 @@ func (s *PaymentReminderService) ProcessTenantReminders(ctx context.Context, ten
 		}
 
 		daysOverdue := tenantDaysOverdue(tenant, invoice)
+		// An invoice imported from another system (T193) starts its reminder
+		// schedule on the day it was imported, not its original due date:
+		// importing a backlog must not email every overdue customer at once.
+		// The reminder text still states the real days overdue.
+		scheduleDays := daysOverdue
+		if at, ok := importedAt[invoice.ID]; ok && at.After(invoice.DueDate) {
+			scheduleDays = calendarDaysBetween(at, time.Now(), loadLocationOrUTC(tenant.Settings.Timezone))
+		}
 
 		// Only the latest reminder whose threshold has passed is due. Earlier
 		// slots that were never sent (the invoice became overdue before the
@@ -186,7 +202,7 @@ func (s *PaymentReminderService) ProcessTenantReminders(ctx context.Context, ten
 		// sent all at once.
 		reminderNumber := 0
 		for idx, dayThreshold := range reminderDays {
-			if daysOverdue >= dayThreshold {
+			if scheduleDays >= dayThreshold {
 				reminderNumber = idx + 1
 			}
 		}
@@ -218,6 +234,32 @@ func (s *PaymentReminderService) ProcessTenantReminders(ctx context.Context, ten
 		}
 	}
 	return result
+}
+
+// importedInvoiceTimes returns when each of these invoices was imported from
+// another system (T193), keyed by invoice ID; invoices created in ServicePro
+// are absent.
+func (s *PaymentReminderService) importedInvoiceTimes(ctx context.Context, tenantID uuid.UUID, invoices []models.Invoice) (map[uuid.UUID]time.Time, error) {
+	out := map[uuid.UUID]time.Time{}
+	if len(invoices) == 0 {
+		return out, nil
+	}
+	ids := make([]uuid.UUID, len(invoices))
+	for i := range invoices {
+		ids[i] = invoices[i].ID
+	}
+	var refs []models.ImportExternalRef
+	if err := s.db.WithContext(ctx).
+		Where("tenant_id = ? AND entity = ? AND record_id IN ?", tenantID, string(imports.EntityInvoices), ids).
+		Find(&refs).Error; err != nil {
+		return nil, err
+	}
+	for _, r := range refs {
+		if prev, ok := out[r.RecordID]; !ok || r.CreatedAt.Before(prev) {
+			out[r.RecordID] = r.CreatedAt
+		}
+	}
+	return out, nil
 }
 
 // tenantDaysOverdue counts whole calendar days past the invoice's due date in

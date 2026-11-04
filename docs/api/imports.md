@@ -133,8 +133,10 @@ row fails and asks for an email column). Unknown customer → the row fails with
   balance** ("Balance carried over from Jobber invoice 1003"); the original total
   is in the notes. Payments made in the old system are not re-created, so
   ServicePro's totals and payments start from what is still owed. Amounts are
-  `shopspring/decimal` throughout. Overdue imported invoices are picked up by the
-  overdue marking and payment reminders like any other sent invoice.
+  `shopspring/decimal` throughout. Overdue imported invoices are marked overdue
+  like any other sent invoice, but their automatic reminder schedule counts from
+  the day they were imported, not the original due date, so importing a backlog
+  emails nobody at once (the reminder still states the real days overdue).
 
 Dates are read as `YYYY-MM-DD`, US `MM/DD/YYYY` (both vendors export US dates for
 US accounts), `Jan 2, 2006`, with or without a time, or Excel serial numbers.

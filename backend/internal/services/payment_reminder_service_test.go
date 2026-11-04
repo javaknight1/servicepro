@@ -97,6 +97,7 @@ func setupReminderFixture(t *testing.T) *reminderFixture {
 	createSQLiteTableForModel(t, db, &models.Customer{}, "")
 	createSQLiteTableForModel(t, db, &models.Invoice{}, "")
 	createSQLiteTableForModel(t, db, &models.PaymentReminder{}, "UNIQUE (invoice_id, is_manual, reminder_number)")
+	createSQLiteTableForModel(t, db, &models.ImportExternalRef{}, "")
 
 	tenant := &models.Tenant{ID: uuid.New(), Name: "Acme HVAC"}
 	tenant.Settings.PaymentRemindersEnabled = true
@@ -284,4 +285,30 @@ func TestReminders_SkipPaymentPendingInvoices(t *testing.T) {
 		f.invoiceID.String()).Error)
 	res = f.svc.ProcessTenantReminders(ctx, f.tenant)
 	assert.Equal(t, 1, res.Sent)
+}
+
+// T193: an overdue invoice imported from another system starts its reminder
+// schedule on the import day, so importing a backlog emails nobody at once.
+func TestReminders_ImportedInvoiceScheduleStartsAtImport(t *testing.T) {
+	f := setupReminderFixture(t)
+	ctx := context.Background()
+	importedAt := time.Now().Add(-time.Hour)
+	require.NoError(t, f.db.Exec(
+		`INSERT INTO import_external_refs (id, tenant_id, source, entity, external_id, record_id, created_at, updated_at)
+		 VALUES (?, ?, 'jobber', 'invoices', 'INV-0001', ?, ?, ?)`,
+		uuid.New().String(), f.tenant.ID.String(), f.invoiceID.String(), importedAt, importedAt).Error)
+
+	res := f.svc.ProcessTenantReminders(ctx, f.tenant)
+	assert.Equal(t, 0, res.Sent, "imported today: no reminder yet")
+	assert.Empty(t, f.email.GetSentEmails())
+
+	// Eight days after the import, the first reminder (7 days) is due.
+	eightDaysAgo := time.Now().AddDate(0, 0, -8)
+	require.NoError(t, f.db.Exec(`UPDATE import_external_refs SET created_at = ? WHERE record_id = ?`,
+		eightDaysAgo, f.invoiceID.String()).Error)
+	res = f.svc.ProcessTenantReminders(ctx, f.tenant)
+	assert.Equal(t, 1, res.Sent)
+	var n int64
+	require.NoError(t, f.db.Model(&models.PaymentReminder{}).Where("invoice_id = ? AND reminder_number = 1", f.invoiceID.String()).Count(&n).Error)
+	assert.Equal(t, int64(1), n, "reminder #1, not #2 that the original due date would give")
 }
